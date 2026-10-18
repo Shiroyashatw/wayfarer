@@ -38,6 +38,10 @@ const ICONS={
   run:["....kk..","...kwwk.","..kwwk..",".kwwk...","kwwwwk..","kbbbbbk.","kkkkkkk.","........"],
   castle:["w.w..w.w","wwwwwwww",".wwwwww.",".wkwwkw.",".wwwwww.",".wwkkww.",".wwkkww.","........"],
   eye:["........","..wwww..",".wwccww.","wwckkcww","wwckkcww",".wwccww.","..wwww..","........"],
+  flag:["k.......","kyyyyy..","kyyyyyy.","kyyyyy..","kyyyy...","k.......","k.......","kk......"],
+  party:[".ww..yy.","wwwwyyyy",".ww..yy.","........","wwwwyyyy","wwwwyyyy","wwwwyyyy","........"],
+  key:["..yyy...",".y...y..",".y...y..","..yyy...","...y....","...yy...","...y....","...yy..."],
+  star:["...yy...","...yy...","yyyyyyyy",".yyyyyy.","..yyyy..",".yy..yy.","yy....yy","........"],
   gear:["...ww...",".w.ww.w.","..wwww..","wwwkkwww","wwwkkwww","..wwww..",".w.ww.w.","...ww..."]
 };
 const ICOPAL={w:'#e8e6e0',k:'#3a3340',b:'#9a6a3a',y:'#ffd166',r:'#e5484d',c:'#8fe0ff',g:'#7bd36b'};

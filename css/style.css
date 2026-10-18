@@ -25,7 +25,6 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .fab{position:fixed;right:calc(10px + var(--sar));z-index:5;width:48px;height:48px;border-radius:50%;border:1px solid #00000080;background:var(--card);box-shadow:0 4px 14px #0008;display:grid;place-items:center;font-size:18px}
 #fabMe{bottom:calc(84px + var(--sab))}
 #fabMode{bottom:calc(140px + var(--sab));font-size:11px;font-family:var(--f-pix);line-height:1.1;text-align:center}
-.place{position:fixed;left:50%;transform:translateX(-50%);top:calc(70px + var(--sat));z-index:4;background:#000000a0;border-radius:999px;padding:3px 12px;font-size:12px;color:var(--dim);white-space:nowrap;max-width:80vw;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 #toast{position:fixed;left:50%;top:calc(100px + var(--sat));transform:translateX(-50%);z-index:30;background:#000000e0;border:1px solid var(--gild);border-radius:10px;padding:8px 14px;font-size:14px;max-width:88vw;text-align:center;pointer-events:none;transition:opacity .3s,transform .3s}
 
 /* ---------- bottom nav ---------- */
@@ -122,8 +121,7 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 
 #world{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block;background:#211d22}
 .vign{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 46%,transparent 55%,rgba(0,0,0,.55) 100%)}
-.topbar{position:fixed;top:calc(8px + var(--sat));left:calc(10px + var(--sal));right:calc(10px + var(--sar));display:flex;gap:8px;align-items:flex-start;justify-content:space-between;pointer-events:none;z-index:5}
-.place{position:static;transform:none;pointer-events:none;background:rgba(20,16,22,.82);border:1px solid rgba(201,164,92,.6);border-radius:6px;padding:6px 14px;font-family:var(--f-pix);font-size:15px;color:#f2d9a6;max-width:62vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar{position:fixed;top:calc(8px + var(--sat));left:calc(10px + var(--sal));right:calc(10px + var(--sar));display:flex;gap:8px;align-items:flex-start;justify-content:flex-end;pointer-events:none;z-index:5}
 .money{display:grid;gap:4px;justify-items:end}
 #toast{top:calc(60px + var(--sat))}
 #fabMe{bottom:calc(132px + var(--sab));right:calc(12px + var(--sar));font-size:20px}
@@ -230,3 +228,16 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .scmp{line-height:1.5}
 .shint{text-align:center;padding:6px 0}
 .tsum{line-height:1.6;max-height:24vh;overflow:auto}
+/* ---------- bottom nav popup ---------- */
+.rb i{position:relative}
+.rb.open i,.meb.open .ring{border-color:var(--gold);box-shadow:0 0 12px #f2c14e88,0 3px 0 #000a}
+.ndot{position:absolute;top:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:#e5484d;border:2px solid #1d181c}
+.npop{position:fixed;z-index:7;display:flex;flex-direction:column-reverse;gap:8px;align-items:flex-start;pointer-events:none}
+.nb{pointer-events:auto;background:none;border:0;padding:0;display:flex;align-items:center;gap:8px;color:#f2e6cc;font-family:inherit;font-size:13px;animation:nbIn .18s ease-out both}
+.nb span{background:rgba(20,16,22,.88);border:1px solid rgba(201,164,92,.5);border-radius:6px;padding:3px 8px;white-space:nowrap;order:2}
+.nb i{position:relative;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#3a3236,#1d181c);border:2px solid var(--gild);box-shadow:0 3px 0 #000a}
+.nb img{width:24px;height:24px;image-rendering:pixelated}
+.nb:active i{transform:translateY(2px)}
+@keyframes nbIn{from{opacity:0;transform:translateY(14px) scale(.8)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.nb{animation:none}}
+.srow .btn{flex:none;white-space:nowrap}

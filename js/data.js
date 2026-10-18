@@ -239,5 +239,5 @@ const TREE=(()=>{const N=[],E=[],byId={};const P=(r,a)=>[r*Math.cos(a*Math.PI/18
   for(let j=0;j<SPOKES.length;j++){const k=(j+1)%SPOKES.length,a1=SPOKES[j].a,a2=a1+24;
     [[5,'m'],[9,'o']].forEach(([i,tag])=>{let prev=sp[j][i];for(let q=1;q<=2;q++){const [x,y]=P(RS+i*STEP,a1+(a2-a1)*q/3),pool=q===1?SPOKES[j].sm:SPOKES[k].sm;const id=add(`${tag}${j}_${q}`,x,y,TH[pool[q%2]].s,'small');ln(prev,id);prev=id}ln(prev,sp[k][i])})}
   return{N,E,byId}})();
-const VER='0.1.8';
+const VER='0.1.9';
 const START={lat:24.1372,lng:120.6869,name:'台中車站'};

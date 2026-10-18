@@ -21,7 +21,7 @@ function ptConnect(){const ch=CLOUD.sb.channel('wf-party-'+PT.code,{config:{broa
   MSGS.forEach(ev=>ch.on('broadcast',{event:ev},m=>ptMsg(ev,m.payload||{})));
   ch.on('presence',{event:'leave'},({key})=>ptGone(key));
   ch.subscribe(async st=>{if(st!=='SUBSCRIBED')return;await ch.track({uid:CLOUD.uid});if(amLeader())ptLobby();else ptSend('join',mySnap())})}
-function ptPill(){const el=$('ptPill');if(!el)return;el.hidden=!PT||!!MB;if(PT)el.textContent=`隊伍 ${PT.code}・${PT.members.size} 人`}
+function ptPill(){const sd=$('socDot');if(sd)sd.hidden=!PT&&!SOC.friends.some(f=>f.status==='pending'&&f.incoming);const el=$('ptPill');if(!el)return;el.hidden=!PT||!!MB;if(PT)el.textContent=`隊伍 ${PT.code}・${PT.members.size} 人`}
 /* 隊長建立隊伍 */
 function partyCreate(e){if(!CLOUD.sb||!CLOUD.uid){toast('雲端沒有連線，暫時不能組隊');return}if(PT)partyLeave(true);
   PT={code:genCode(),leader:CLOUD.uid,dun:{id:e.id,kind:'dungeon',dt:e.dt,mods:e.mods,lv:e.lv,lat:e.lat,lng:e.lng,name:e.name},members:new Map([[CLOUD.uid,mySnap()]]),started:false};
@@ -55,7 +55,8 @@ function ptMsg(ev,p){if(!PT)return;
   else if(ev==='roomclear'){if(MB)mpRoomReward(p.e)}
   else if(ev==='clear'){if(MB)mpClear()}
   else if(ev==='wipe'){if(MB)mpWipe()}}
-function partyHTML(){if(!PT)return'<p class="sub">目前沒有隊伍。</p>';const d=PT.dun,lead=amLeader();
+const ptCodeHTML=()=>`<h3>用隊伍代碼加入</h3><div class="card"><div class="srow"><input class="inp" id="ptCode" maxlength="6" placeholder="6 碼隊伍代碼" autocapitalize="characters" style="text-transform:uppercase"><button class="btn pri" data-act="ptJoin">加入</button></div><p class="sub" style="margin-top:6px">隊長在地城按「組隊進入」就會拿到代碼。遊客也可以用代碼加入。</p></div>`;
+function partyHTML(){if(!PT)return`<div class="card"><p class="sub">目前沒有隊伍。走到地城旁邊按「組隊進入」就能當隊長開隊，或用下面的代碼加入別人的隊伍。</p></div>${ptCodeHTML()}`;const d=PT.dun,lead=amLeader();
   if(!d)return`<div class="card"><p>正在連線隊伍 <b style="color:var(--gold)">${PT.code}</b>…</p></div><div class="btns"><button class="btn" data-act="ptLeave">取消</button></div>`;
   const sp=dunSpec(d),T=DTYPES[d.dt||'normal'],mem=[...PT.members.values()];
   let h=`<div class="card"><b style="color:${T.col};font-family:var(--f-pix);font-size:18px;font-weight:400">${esc(dunName(d))} Lv${d.lv}</b><p class="sub">${sp.floors} 層・物品數量 +${sp.q}%・稀有度 +${sp.r}%・怪物生命隨人數提高</p>${dunModsHTML(sp)}</div>

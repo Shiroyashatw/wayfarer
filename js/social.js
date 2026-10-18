@@ -6,7 +6,7 @@ const isOnline=f=>Date.now()-new Date(f.seen_at).getTime()<3*60e3;
 /* 把名字、等級、職業、上線時間寫到 profiles，好友列表才看得到 */
 async function profileSync(force){if(!CLOUD.sb||CLOUD.anon||!CLOUD.uid)return;if(!force&&Date.now()-SOC.syncT<60e3)return;SOC.syncT=Date.now();
   try{await CLOUD.sb.from('profiles').update({name:(S.name||'旅人').slice(0,12),lv:S.lv,cls:S.cls,seen_at:new Date().toISOString()}).eq('user_id',CLOUD.uid)}catch(e){}}
-async function friendsLoad(){if(!CLOUD.sb||CLOUD.anon)return;try{const {data,error}=await CLOUD.sb.rpc('friend_list');if(!error){SOC.friends=data||[];SOC.loaded=true}}catch(e){}if(sheetName==='friends'||sheetName==='party')renderSheet()}
+async function friendsLoad(){if(!CLOUD.sb||CLOUD.anon)return;try{const {data,error}=await CLOUD.sb.rpc('friend_list');if(!error){SOC.friends=data||[];SOC.loaded=true}}catch(e){}ptPill();if(sheetName==='friends'||sheetName==='party')renderSheet()}
 const FR_MSG={sent:'已送出好友邀請',accepted:'對方也邀請過你，已成為好友！',already:'你們已經是好友了',self:'這是你自己的編號',not_found:'找不到這個玩家編號',guest:'要先註冊帳號才能加好友',no_profile:'帳號還沒拿到玩家編號，請稍後再試'};
 async function friendAdd(no){const {data,error}=await CLOUD.sb.rpc('friend_request',{target_no:no});if(error)throw new Error(error.message);await friendsLoad();return FR_MSG[data]||data}
 async function friendRespond(uid,ok){await CLOUD.sb.rpc('friend_respond',{other:uid,accept:ok});await friendsLoad()}
@@ -34,8 +34,8 @@ async function inviteFriend(f){if(!PT||!CLOUD.sb)return;const d=PT.dun;
 /* ================= friends sheet ================= */
 function friendsHTML(){const inc=SOC.friends.filter(f=>f.status==='pending'&&f.incoming),out=SOC.friends.filter(f=>f.status==='pending'&&!f.incoming),ok=SOC.friends.filter(f=>f.status==='accepted');
   const row=(f,btns)=>`<div class="card"><div class="rowx"><div class="t"><b>${esc(f.name)} <span class="sub">#${String(f.player_no).padStart(6,'0')}</span></b><small><span style="color:${(CLASSES[f.cls]||CLASSES.novice).color}">${(CLASSES[f.cls]||CLASSES.novice).name}</span> Lv${f.lv}・${isOnline(f)?'<span style="color:var(--good)">在線</span>':'離線'}</small></div><div class="btns">${btns}</div></div></div>`;
-  let h=`<h3>用隊伍代碼加入</h3><div class="card"><div class="srow"><input class="inp" id="ptCode" maxlength="6" placeholder="6 碼隊伍代碼" autocapitalize="characters" style="text-transform:uppercase"><button class="btn pri" data-act="ptJoin">加入</button></div><p class="sub" style="margin-top:6px">隊長在地城按「組隊進入」就會拿到代碼。遊客也可以用代碼加入。</p></div>`;
-  if(CLOUD.anon)return h+`<h3>好友</h3><div class="card"><p class="sub">註冊帳號、拿到玩家編號後就能加好友，並直接邀請好友一起打地城。</p><div class="btns"><button class="btn pri" data-act="sheet" data-s="settings">前往註冊</button></div></div>`;
+  let h='';
+  if(CLOUD.anon)return`<div class="card"><p class="sub">註冊帳號、拿到玩家編號後就能加好友，並直接邀請好友一起打地城。</p><div class="btns"><button class="btn pri" data-act="sheet" data-s="settings">前往註冊</button></div></div>`;
   h+=`<h3>加好友</h3><div class="card"><p class="sub">你的編號是 <b style="color:var(--gold)">${playerTag()}</b>，把它告訴朋友。</p><div class="srow" style="margin-top:6px"><input class="inp" id="frNo" inputmode="numeric" placeholder="對方的玩家編號"><button class="btn pri" data-act="frAdd">送出</button></div><p class="sub" id="frMsg"></p></div>`;
   if(inc.length)h+=`<h3>收到的好友邀請 ${inc.length}</h3>`+inc.map(f=>row(f,`<button class="btn sm pri" data-act="frYes" data-u="${f.user_id}">接受</button><button class="btn sm" data-act="frNo" data-u="${f.user_id}">拒絕</button>`)).join('');
   h+=`<h3>好友 ${ok.length}</h3>`+(ok.length?ok.map(f=>row(f,`<button class="btn sm" data-act="frDel" data-u="${f.user_id}">刪除</button>`)).join(''):`<p class="sub">${SOC.loaded?'還沒有好友。':'讀取中…'}</p>`);
