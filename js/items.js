@@ -1,25 +1,29 @@
 /* 漫步勇者 · 玩家狀態、裝備、詞綴、通貨製作、屬性計算 */
 'use strict';
 /* ================= player & items ================= */
-function newGame(){const g={v:5,cls:'novice',lv:1,xp:0,gold:80,crystal:0,hp:60,mp:20,potions:3,ethers:1,inv:[],eq:{},cur:{trans:4,alt:4,aug:2,alch:2,chaos:1,exalt:0,scour:1},tree:['start_novice'],
+function newGame(){const g={v:6,cls:'novice',lv:1,xp:0,gold:80,crystal:0,hp:60,mp:20,potions:3,ethers:1,inv:[],eq:{},cur:{trans:4,aug:4,regal:2,alch:1,chaos:1,exalt:0,scour:1},tree:['start_novice'],
   lat:START.lat-0.0009,lng:START.lng,walked:0,walkCur:0,bases:[],defeated:{},cleared:{},bought:{},found:{},log:[],timeOffset:0,classOffered:false,music:true,sfx:true,intro:true,trail:[],explMs:0,buff:null,bonusPts:0,treeV2:1};
-  SLOTS.forEach(s=>g.eq[s]=null);g.eq.weapon=makeItem('weapon',1,0,0);g.inv.push(makeItem('lantern',1,0,0),makeItem('ring',2,1,0),makeItem('chest',2,0,0),makeItem('boots',2,1,1));return g}
+  SLOTS.forEach(s=>g.eq[s]=null);g.eq.weapon=makeItem('weapon',1,0,0);g.inv.push(makeItem('offhand',1,0,0),makeItem('belt',1,0,0),makeItem('ring',2,1,0),makeItem('chest',2,0,0),makeItem('boots',2,1,1));return g}
 function makeItem(slot,ilvl,rar,baseIdx,r=Math.random){const bl=BASES[slot],bi=baseIdx??fl(r()*bl.length),b=bl[bi];const it={id:uid(),slot,bi,ilvl,r:0,aff:[]};
   if(slot==='weapon'){const k=1+ilvl*.1;it.phys=[Math.round(b.phys[0]*k),Math.round(b.phys[1]*k)];it.crit=b.crit}
   if(b.arm)it.arm=Math.round(b.arm*(6+ilvl*2.5));if(b.imp)it.imp=b.imp;if(b.lure)it.lure=b.lure;
   if(rar===1)toMagic(it,r);else if(rar===2)toRare(it,r);return it}
 const baseOf=it=>BASES[it.slot][it.bi];
-const slotKey=it=>it.slot==='ring'?'ring':it.slot;
-function rollAffix(it,type,r=Math.random){const have=new Set(it.aff.map(a=>a.id));const pool=AFF.filter(a=>a.t===type&&a.slots.includes(slotKey(it))&&!have.has(a.id));if(!pool.length)return false;
+/* 詞綴可以開放給整個部位（offhand），或只給某種底材（lantern、shield、focus） */
+const affFits=(a,it)=>a.slots.includes(it.slot)||(!!baseOf(it).k&&a.slots.includes(baseOf(it).k));
+/* 物品能不能放進某個裝備欄：戒指兩格都可以 */
+const fitsSlot=(it,sl)=>it.slot===sl.replace(/\d$/,'');
+function rollAffix(it,type,r=Math.random){const have=new Set(it.aff.map(a=>a.id));const pool=AFF.filter(a=>a.t===type&&affFits(a,it)&&!have.has(a.id));if(!pool.length)return false;
   const a=pool[fl(r()*pool.length)],ok=a.tiers.map((t,i)=>({t,i})).filter(o=>o.t[0]<=it.ilvl);let tot=0;ok.forEach(o=>tot+=o.i+1);let x=r()*tot,pick=ok[ok.length-1];for(const o of ok){x-=o.i+1;if(x<0){pick=o;break}}
   const [,lo,hi]=pick.t;it.aff.push({id:a.id,tier:pick.i+1,v:lo+fl(r()*(hi-lo+1))});return true}
 const cnt=(it,t)=>it.aff.filter(a=>AFFI[a.id].t===t).length;
 function addRandom(it,r=Math.random){const maxP=it.r===1?1:3,maxS=it.r===1?1:3,opts=[];if(cnt(it,'P')<maxP)opts.push('P');if(cnt(it,'S')<maxS)opts.push('S');if(!opts.length)return false;const t=opts[fl(r()*opts.length)];return rollAffix(it,t,r)||rollAffix(it,t==='P'?'S':'P',r)}
-function toMagic(it,r=Math.random){it.r=1;it.aff=[];const n=r()<.5?1:2;for(let i=0;i<n;i++)addRandom(it,r);if(!it.aff.length)addRandom(it,r);it.rn=null}
-function toRare(it,r=Math.random,n=4){it.r=2;it.aff=[];for(let i=0;i<n;i++)addRandom(it,r);it.rn=RAREA[fl(r()*RAREA.length)]+RAREB[fl(r()*RAREB.length)]}
+function toMagic(it,r=Math.random,n=r()<.5?1:2){it.r=1;it.aff=[];for(let i=0;i<n;i++)addRandom(it,r);if(!it.aff.length)addRandom(it,r);it.rn=null}
+const rareName=r=>RAREA[fl(r()*RAREA.length)]+RAREB[fl(r()*RAREB.length)];
+function toRare(it,r=Math.random,n=4){it.r=2;it.aff=[];for(let i=0;i<n;i++)addRandom(it,r);it.rn=rareName(r)}
 function itemTitle(it){const b=baseOf(it);if(it.r===2)return it.rn;if(it.r===1){const p=it.aff.find(a=>AFFI[a.id].t==='P'),s=it.aff.find(a=>AFFI[a.id].t==='S');return`${p?AFFI[p.id].n+'的':''}${b.n}${s?'・'+AFFI[s.id].n:''}`}return b.n}
 const itemName=it=>`<span style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</span>`;
-function itemSum(it){const out=[];if(it.phys)out.push(`物理 ${it.phys[0]}–${it.phys[1]}`);if(it.arm)out.push(`護甲 ${it.arm}`);it.aff.slice(0,2).forEach(a=>out.push(AFFI[a.id].f(a.v)));return out.join('・')+(it.aff.length>2?`・另 ${it.aff.length-2} 條`:'')}
+function itemSum(it){const out=[];if(it.phys)out.push(`物理 ${it.phys[0]}–${it.phys[1]}`);if(it.arm)out.push(`護甲 ${it.arm}`);if(!it.aff.length&&it.imp)out.push(STATN[it.imp[0]](it.imp[1]));it.aff.slice(0,2).forEach(a=>out.push(AFFI[a.id].f(a.v)));return out.join('・')+(it.aff.length>2?`・另 ${it.aff.length-2} 條`:'')}
 function itemCard(it,title){const b=baseOf(it);let h=`<div class="icard" style="border-color:${RCOL[it.r]}88"><div class="ihead" style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</div><div class="isub">${it.r===2?esc(b.n)+'・':''}${RNAME[it.r]}${SLOTN[it.slot]}・物品等級 ${it.ilvl}${title?'・'+title:''}</div>`;
   const base=[];if(it.phys)base.push(`物理傷害 ${it.phys[0]}–${it.phys[1]}`,`暴擊率 ${it.crit}%`);if(it.arm)base.push(`護甲 ${it.arm}`);if(it.imp)base.push(STATN[it.imp[0]](it.imp[1]));if(it.lure)base.push(STATN.lure(it.lure));
   if(base.length)h+=`<div class="ibase">${base.map(esc).join('<br>')}</div>`;
@@ -30,9 +34,11 @@ function giveItem(it){if(S.inv.length>=30){S.gold+=sellVal(it);addLog(`背包已
 function giveCur(id,n=1){S.cur[id]=(S.cur[id]||0)+n}
 function rollCur(boost=1){let tot=0;CUR.forEach(c=>tot+=c.id==='chaos'||c.id==='exalt'||c.id==='alch'?c.w*boost:c.w);let x=Math.random()*tot;for(const c of CUR){x-=c.id==='chaos'||c.id==='exalt'||c.id==='alch'?c.w*boost:c.w;if(x<0)return c.id}return'trans'}
 const curDot=id=>`<img class="cico" src="${curIcon(id)}" alt="">`;
-function craftable(it,id){if(!it)return false;return{trans:it.r===0,alt:it.r===1,aug:it.r===1&&it.aff.length<2,alch:it.r===0,chaos:it.r===2,exalt:it.r===2&&it.aff.length<6,scour:it.r===1||it.r===2}[id]}
+/* PoE2 式製作：沒有改造石，魔法裝備用增幅石補滿、富豪石升稀有，稀有裝備用崇高石加詞綴、混沌石一次換一條 */
+function craftable(it,id){if(!it)return false;return{trans:it.r===0,aug:it.r===1&&it.aff.length<2,regal:it.r===1,alch:it.r===0,chaos:it.r===2&&it.aff.length>0,exalt:it.r===2&&it.aff.length<6,scour:it.r===1||it.r===2}[id]}
 function craft(it,id){if(!craftable(it,id)||!(S.cur[id]>0))return false;S.cur[id]--;
-  if(id==='trans'||id==='alt')toMagic(it);else if(id==='aug')addRandom(it);else if(id==='alch')toRare(it);else if(id==='chaos'){const r=Math.random();toRare(it,Math.random,r<.6?4:r<.9?5:6)}else if(id==='exalt')addRandom(it);else if(id==='scour'){it.r=0;it.aff=[];it.rn=null}return true}
+  if(id==='trans')toMagic(it,Math.random,1);else if(id==='aug')addRandom(it);else if(id==='regal'){it.r=2;it.rn=rareName(Math.random);addRandom(it)}else if(id==='alch')toRare(it);
+  else if(id==='chaos'){const gone=it.aff.splice(fl(Math.random()*it.aff.length),1)[0];if(!addRandom(it))it.aff.push(gone)}else if(id==='exalt')addRandom(it);else if(id==='scour'){it.r=0;it.aff=[];it.rn=null}return true}
 
 /* ================= stats ================= */
 function sumStats(){const t={life:0,lifePct:0,physPct:0,flatPhys:0,addFire:0,addCold:0,addLight:0,spellPct:0,elePct:0,armor:0,armorPct:0,mana:0,resFire:0,resCold:0,resLight:0,resAll:0,critPct:0,critMulti:0,leech:0,speed:0,regen:0,physMore:0,vision:0,lure:0};
@@ -46,7 +52,8 @@ function stats(){const g=CLASSES[S.cls].g,L=S.lv-1,t=sumStats(),w=S.eq.weapon,ph
     fire:t.addFire*eleMul,cold:t.addCold*eleMul,light:t.addLight*eleMul,spell:(9+3.4*L+g.mag*L*1.2)*(1+t.spellPct/100)*eleMul,
     crit:Math.max(0,Math.min(75,(w?w.crit:5)+t.critPct)),critMulti:Math.max(110,150+t.critMulti),leech:t.leech,speed:10+t.speed,regen:t.regen,
     dodge:Math.max(0,Math.min(30,(t.speed)*1.5)),vision:Math.round((dayPhase().night>.5?260:600)*(1+t.vision/100)),lure:t.lure}}
-const xpNeed=lv=>Math.round(20*Math.pow(lv,1.5));
+/* 升級曲線：Lv1→2 約 6 隻怪，Lv5 約 25 隻，Lv10 約 60 隻（同等級怪） */
+const xpNeed=lv=>Math.round(40*Math.pow(lv,2.1)+20*lv);
 function fullHeal(){const st=stats();S.hp=st.maxhp;S.mp=st.maxmp}
 function clampHP(){const st=stats();S.hp=Math.min(S.hp,st.maxhp);S.mp=Math.min(S.mp,st.maxmp)}
 function addLog(t){S.log.unshift(t);if(S.log.length>60)S.log.length=60}
@@ -73,13 +80,13 @@ function classModal(after){const opts=['knight','mage','ranger'];
   showModal('選擇進階職業',`<p class="sub">職業決定技能；成長方向交給天賦樹。demo 中轉職後無法再更換。</p>${opts.map((k,i)=>`<button class="btn" style="text-align:left;display:grid;gap:2px" data-act="mbtn" data-i="${i+1}"><span style="color:${CLASSES[k].color}">${CLASSES[k].name}</span><small class="sub">${CLASSES[k].desc}・技能：${CLASSES[k].skills.slice(1).map(s=>SKILLS[s].name).join('、')}</small></button>`).join('')}`,
     [{label:'稍後再選',fn:()=>{hideModal();after&&after()}}]);
   modalFns.push(...opts.map(k=>()=>{S.cls=k;S.tree=[startOf(k)];fullHeal();sfx('level');addLog(`轉職為 ${CLASSES[k].name}！`);toast(`成為 ${CLASSES[k].name}`);hideModal();renderHud();after&&after()}))}
-function openShop(e,merchant){const he=hourEp(),r=rng(h(fl(e.lat*1e4),fl(e.lng*1e4),he)),lv=S.lv+(merchant?2:0);
-  const slots=['weapon','helm','chest','gloves','boots','ring','amulet'],stock=[0,1,2].map(()=>makeItem(slots[fl(r()*slots.length)],lv,merchant?2:(r()<.3?2:1),undefined,r));
+function openShop(e,merchant){const he=epoch(),r=rng(h(fl(e.lat*1e4),fl(e.lng*1e4),he)),lv=S.lv+(merchant?2:0);
+  const stock=[0,1,2].map(()=>makeItem(DROPS[fl(r()*DROPS.length)],lv,merchant?2:(r()<.3?2:1),undefined,r));
   const price=it=>sellVal(it)*(merchant?3:4);
   const render=()=>{showModal(esc(e.name),`<div class="card"><div class="rowx"><div class="t"><b>生命藥水</b><small>恢復 40% 生命・持有 ${S.potions}</small></div><button class="btn sm" data-act="mbtn" data-i="1" ${S.gold<20?'disabled':''}>20 金</button></div>
       <div class="rowx"><div class="t"><b>魔力藥水</b><small>恢復 50% 魔力・持有 ${S.ethers}</small></div><button class="btn sm" data-act="mbtn" data-i="2" ${S.gold<30?'disabled':''}>30 金</button></div>
       ${merchant?`<div class="rowx"><div class="t"><b>${curDot('chaos')}混沌石</b><small>流浪商人限定</small></div><button class="btn sm" data-act="mbtn" data-i="6" ${S.gold<120?'disabled':''}>120 金</button></div>`:''}</div>
       ${stock.map((it,i)=>{const sold=S.bought[`${e.id},${he},${i}`],p=price(it);return`${itemCard(it)}<div class="btns" style="margin-top:-4px"><button class="btn sm" data-act="mbtn" data-i="${3+i}" ${sold||S.gold<p?'disabled':''}>${sold?'已售出':'購買 '+p+' 金'}</button></div>`}).join('')}
-      <p class="sub">持有 <span style="color:var(--gold)">${S.gold}</span> 金・商品每小時更換</p>`,[{label:'離開',fn:()=>{hideModal();renderHud()}}]);
+      <p class="sub">持有 <span style="color:var(--gold)">${S.gold}</span> 金・商品每 15 分鐘更換</p>`,[{label:'離開',fn:()=>{hideModal();renderHud()}}]);
     modalFns.push(()=>{S.gold-=20;S.potions++;sfx('coin');render()},()=>{S.gold-=30;S.ethers++;sfx('coin');render()},...stock.map((it,i)=>()=>{S.gold-=price(it);S.bought[`${e.id},${he},${i}`]=1;giveItem({...it,id:uid(),aff:it.aff.map(a=>({...a}))});sfx('coin');addLog(`購買了 ${itemTitle(it)}`);render()}),()=>{S.gold-=120;giveCur('chaos');sfx('coin');render()})};
   sfx('door');render()}

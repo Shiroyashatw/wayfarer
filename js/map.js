@@ -91,7 +91,7 @@ function trailStep(force){const [x,y]=toM(S.lat,S.lng),last=S.trail[S.trail.leng
     const ms=MILES[S.explMs];if(ms&&explPct()>=ms){S.explMs++;const g=60+ms*20,c=rollCur(2);S.gold+=g;giveCur(c);toast(`探索度達到 ${ms}%！+${g} 金幣、1 個${CURI[c].n}`);addLog(`探索度達到 ${ms}%`);sfx('level')}}}
 
 /* ================= spawns ================= */
-let spawnAt=null;const MCELL=130,DCELL=450,SCELL=350,CCELL=260,EVMS=30*60e3;
+let spawnAt=null;const MCELL=130,DCELL=450,SCELL=350,CCELL=260,EVMS=REFRESH;
 const evEp=()=>fl(now()/EVMS);
 function nearTown(x,y,r){return TOWNS.some(t=>Math.hypot(t.x-x,t.y-y)<r)}
 function genEntities(){const out=new Map(),[px,py]=toM(S.lat,S.lng),ep=epoch(),ee=evEp(),R=950,st=stats(),dens=Math.min(70,42*(1+st.lure/100)+(dayPhase().night>.5?8:0));
@@ -114,7 +114,7 @@ function refreshEntities(force){const ep=epoch()*1000+evEp()*10+(dayPhase().nigh
 let VIS={x:0,y:0,r:600};
 const MOBILE=new Set(['monster','chest','event']);
 const visible=e=>e.kind==='town'||e.kind==='base'?true:MOBILE.has(e.kind)?Math.hypot(e.x-VIS.x,e.y-VIS.y)<=VIS.r:revealed(e.x,e.y);
-function isDone(e){return(e.kind==='dungeon'&&S.cleared[e.id]===hourEp())||(e.kind==='event'&&S.cleared[e.id]===evEp())}
+function isDone(e){return(e.kind==='dungeon'&&S.cleared[e.id]===epoch())||(e.kind==='event'&&S.cleared[e.id]===evEp())}
 const townLv=t=>S.lv+1+fl(Math.hypot(t.x,t.y)/1500);
 
 /* ================= world rendering ================= */

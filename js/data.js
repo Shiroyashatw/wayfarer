@@ -2,7 +2,7 @@
 'use strict';
 /* ================= state ================= */
 const KEY='wayfarer_art_v6';
-let S, B=null, D=null, modalFns=[], sheetName=null, ENT=new Map(), simTarget=null, follow=true, resetArm=false, selItem=null, selNode=null;
+let S, B=null, D=null, modalFns=[], sheetName=null, ENT=new Map(), simTarget=null, follow=true, resetArm=false, selItem=null, selSlot=null, selNode=null;
 
 /* ================= game data ================= */
 const CLASSES={
@@ -42,27 +42,30 @@ const EMODS=[
 ];
 const RCOL=['#e8e2d4','#7fa8ff','#f2d25e','#e8873a'], RNAME=['普通','魔法','稀有','傳奇'];
 const RAREA=['腐朽','暴怒','深淵','雷霆','血色','古老','狂嘯','幽影'], RAREB=['獠牙','之握','之心','咆哮','之眼','守望','裂痕','之刃'];
-const SLOTS=['weapon','helm','chest','gloves','boots','ring1','ring2','amulet','lantern'];
-const SLOTN={weapon:'武器',helm:'頭盔',chest:'胸甲',gloves:'手套',boots:'鞋子',ring:'戒指',ring1:'戒指',ring2:'戒指',amulet:'護身符',lantern:'提燈'};
+const SLOTS=['weapon','offhand','helm','chest','gloves','boots','belt','ring1','ring2','amulet'];
+const SLOTN={weapon:'武器',offhand:'副手',helm:'頭盔',chest:'胸甲',gloves:'手套',boots:'鞋子',belt:'腰帶',ring:'戒指',ring1:'戒指',ring2:'戒指',amulet:'護身符'};
 const BASES={
   weapon:[{n:'短劍',phys:[3,7],crit:6},{n:'長劍',phys:[5,11],crit:5},{n:'戰斧',phys:[8,15],crit:4},{n:'獵弓',phys:[4,10],crit:6},{n:'法杖',phys:[2,5],crit:5,imp:['spellPct',20]}],
   helm:[{n:'皮帽',arm:1},{n:'鐵盔',arm:1.6}],chest:[{n:'皮甲',arm:2},{n:'鎖子甲',arm:3}],gloves:[{n:'皮手套',arm:.8},{n:'鐵手甲',arm:1.2}],boots:[{n:'皮靴',arm:.8,imp:['speed',2]},{n:'鐵靴',arm:1.2}],
   ring:[{n:'紅寶石戒指',imp:['resFire',12]},{n:'藍寶石戒指',imp:['resCold',12]},{n:'黃玉戒指',imp:['resLight',12]},{n:'鐵戒指',imp:['flatPhys',2]}],
   amulet:[{n:'琥珀護身符',imp:['life',20]},{n:'翡翠護身符',imp:['critPct',2]},{n:'青金護身符',imp:['mana',15]}],
-  lantern:[{n:'提燈',imp:['vision',30],lure:20},{n:'聖光提燈',imp:['vision',45],lure:35}]
+  belt:[{n:'皮腰帶',imp:['life',15]},{n:'重腰帶',arm:.6},{n:'鏈腰帶',imp:['regen',2]}],
+  /* 副手：k 是副手種類，詞綴可以只開放給某一種（例如誘引只出現在提燈） */
+  offhand:[{n:'提燈',k:'lantern',imp:['vision',30],lure:20},{n:'聖光提燈',k:'lantern',imp:['vision',45],lure:35},{n:'木盾',k:'shield',arm:1.4},{n:'塔盾',k:'shield',arm:2.2},{n:'符文法珠',k:'focus',imp:['spellPct',15]}]
 };
+const DROPS=['weapon','offhand','helm','chest','gloves','boots','belt','ring','amulet'];
 const T5=(a,b,c,d,e)=>[[40,...a],[28,...b],[18,...c],[8,...d],[1,...e]];
-const ARMOR=['helm','chest','gloves','boots'], JEW=['ring','amulet','lantern'];
+const ARMOR=['helm','chest','gloves','boots','belt','shield'], JEW=['ring','amulet','offhand'];
 const AFF=[
   {id:'physPct',t:'P',n:'鋒利',slots:['weapon'],tiers:T5([60,79],[45,59],[30,44],[18,29],[8,17]),f:v=>`物理傷害 +${v}%`},
   {id:'flatPhys',t:'P',n:'沉重',slots:['weapon','gloves','ring'],tiers:T5([12,16],[8,11],[5,7],[3,4],[1,2]),f:v=>`附加 ${v} 物理傷害`},
   {id:'addFire',t:'P',n:'灼熱',slots:['weapon','gloves','ring','amulet'],tiers:T5([18,24],[12,17],[8,11],[4,7],[2,3]),f:v=>`附加 ${v} 火焰傷害`},
   {id:'addCold',t:'P',n:'冰冷',slots:['weapon','gloves','ring','amulet'],tiers:T5([16,22],[11,15],[7,10],[4,6],[2,3]),f:v=>`附加 ${v} 冰冷傷害`},
   {id:'addLight',t:'P',n:'雷鳴',slots:['weapon','gloves','ring','amulet'],tiers:T5([10,30],[7,21],[4,14],[2,8],[1,4]),f:v=>`附加 ${v} 閃電傷害`},
-  {id:'spellPct',t:'P',n:'博學',slots:['weapon','amulet','ring','helm'],tiers:T5([50,64],[36,49],[24,35],[14,23],[6,13]),f:v=>`法術傷害 +${v}%`},
+  {id:'spellPct',t:'P',n:'博學',slots:['weapon','amulet','ring','helm','focus'],tiers:T5([50,64],[36,49],[24,35],[14,23],[6,13]),f:v=>`法術傷害 +${v}%`},
   {id:'life',t:'P',n:'健壯',slots:[...ARMOR,...JEW],tiers:T5([70,89],[50,69],[35,49],[20,34],[8,19]),f:v=>`最大生命 +${v}`},
   {id:'armor',t:'P',n:'堅固',slots:ARMOR,tiers:T5([80,110],[55,79],[35,54],[20,34],[8,19]),f:v=>`護甲 +${v}`},
-  {id:'mana',t:'P',n:'睿智',slots:['helm','ring','amulet'],tiers:T5([40,50],[30,39],[20,29],[12,19],[5,11]),f:v=>`最大魔力 +${v}`},
+  {id:'mana',t:'P',n:'睿智',slots:['helm','ring','amulet','belt','focus'],tiers:T5([40,50],[30,39],[20,29],[12,19],[5,11]),f:v=>`最大魔力 +${v}`},
   {id:'resFire',t:'S',n:'抗火',slots:[...ARMOR,...JEW],tiers:T5([36,45],[28,35],[20,27],[12,19],[6,11]),f:v=>`火焰抗性 +${v}%`},
   {id:'resCold',t:'S',n:'抗寒',slots:[...ARMOR,...JEW],tiers:T5([36,45],[28,35],[20,27],[12,19],[6,11]),f:v=>`冰冷抗性 +${v}%`},
   {id:'resLight',t:'S',n:'抗雷',slots:[...ARMOR,...JEW],tiers:T5([36,45],[28,35],[20,27],[12,19],[6,11]),f:v=>`閃電抗性 +${v}%`},
@@ -72,16 +75,16 @@ const AFF=[
   {id:'speed',t:'S',n:'迅捷',slots:['boots','gloves','amulet'],tiers:T5([10,12],[8,9],[6,7],[4,5],[2,3]),f:v=>`速度 +${v}`},
   {id:'vision',t:'S',n:'遠見',slots:['helm','lantern','amulet'],tiers:T5([26,30],[20,25],[14,19],[9,13],[4,8]),f:v=>`視線範圍 +${v}%`},
   {id:'lure',t:'P',n:'誘引',slots:['lantern'],tiers:T5([36,45],[28,35],[20,27],[12,19],[6,11]),f:v=>`吸引的怪物 +${v}%`},
-  {id:'regen',t:'S',n:'再生',slots:['chest','helm','amulet','ring'],tiers:T5([10,13],[7,9],[5,6],[3,4],[1,2]),f:v=>`每回合回復 ${v} 生命`}
+  {id:'regen',t:'S',n:'再生',slots:['chest','helm','amulet','ring','belt'],tiers:T5([10,13],[7,9],[5,6],[3,4],[1,2]),f:v=>`每回合回復 ${v} 生命`}
 ];
 const AFFI=Object.fromEntries(AFF.map(a=>[a.id,a]));
 const STATN={life:v=>`最大生命 +${v}`,lifePct:v=>`最大生命 +${v}%`,physPct:v=>`物理傷害 +${v}%`,flatPhys:v=>`附加 ${v} 物理傷害`,armor:v=>`護甲 +${v}`,armorPct:v=>`護甲 +${v}%`,critPct:v=>`暴擊率 +${v}%`,critMulti:v=>`暴擊傷害 ${v>0?'+':''}${v}%`,
   speed:v=>`速度 ${v>0?'+':''}${v}`,leech:v=>`傷害的 ${v}% 轉為生命`,spellPct:v=>`法術傷害 +${v}%`,elePct:v=>`元素傷害 +${v}%`,mana:v=>`最大魔力 +${v}`,regen:v=>`每回合回復 ${v} 生命`,resAll:v=>`全部抗性 +${v}%`,
   physMore:v=>`物理傷害 ${v}%（總乘）`,resFire:v=>`火焰抗性 +${v}%`,vision:v=>`視線範圍 +${v}%`,lure:v=>`吸引的怪物 +${v}%`,resCold:v=>`冰冷抗性 +${v}%`,resLight:v=>`閃電抗性 +${v}%`,addFire:v=>`附加 ${v} 火焰傷害`};
 const CUR=[
-  {id:'trans',n:'蛻變石',d:'普通 → 魔法，1～2 個詞綴',c:'#8fb7ff',w:30},{id:'alt',n:'改造石',d:'重骰魔法裝備的詞綴',c:'#5f8fff',w:28},
-  {id:'aug',n:'增幅石',d:'魔法裝備未滿時加 1 個詞綴',c:'#a8d8ff',w:18},{id:'alch',n:'點金石',d:'普通 → 稀有，4 個詞綴',c:'#f2c14e',w:10},
-  {id:'chaos',n:'混沌石',d:'重骰稀有裝備（4～6 個詞綴）',c:'#e58a3a',w:7},{id:'exalt',n:'崇高石',d:'稀有裝備未滿時加 1 個詞綴',c:'#fff2b0',w:1.2},
+  {id:'trans',n:'蛻變石',d:'普通 → 魔法，1 個詞綴',c:'#8fb7ff',w:30},{id:'aug',n:'增幅石',d:'魔法裝備未滿時加 1 個詞綴',c:'#a8d8ff',w:26},
+  {id:'regal',n:'富豪石',d:'魔法 → 稀有，保留原詞綴再加 1 個',c:'#7fd6c2',w:14},{id:'alch',n:'點金石',d:'普通 → 稀有，4 個詞綴',c:'#f2c14e',w:8},
+  {id:'chaos',n:'混沌石',d:'稀有裝備隨機移除 1 個詞綴，再加 1 個',c:'#e58a3a',w:7},{id:'exalt',n:'崇高石',d:'稀有裝備未滿時加 1 個詞綴',c:'#fff2b0',w:1.2},
   {id:'scour',n:'洗淨石',d:'清除全部詞綴，回到普通',c:'#cfcfcf',w:4}
 ];
 const CURI=Object.fromEntries(CUR.map(c=>[c.id,c]));
@@ -132,5 +135,5 @@ const TREE=(()=>{const N=[],E=[],byId={};const P=(r,a)=>[r*Math.cos(a*Math.PI/18
   for(let t=0;t<6;t++){const [a,aa]=tips[t],[b,ab]=tips[(t+1)%6];let prev=a;const R=410;
     for(let q=0;q<3;q++){const tt=(q+1)/4,[x,y]=P(R,aa+(ab-aa)*tt),kind=['s','si','i','id','d','ds'][t];const pool=SM[kind]||SM.s;const id=add(`o${t}_${q}`,x,y,pool[q%pool.length],'small');ln(prev,id);prev=id}ln(prev,b)}
   return{N,E,byId}})();
-const VER='0.1.4';
+const VER='0.1.5';
 const START={lat:24.1372,lng:120.6869,name:'台中車站'};

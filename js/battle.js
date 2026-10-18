@@ -106,7 +106,7 @@ function endEnemyTurn(){if(!B)return;const st=stats();if(B.guard>0)B.guard--;if(
   if(B.pFrozen){B.pFrozen=0;bmsg('你被凍住了，跳過這回合');renderBHud();later(900,enemyTurn);return}B.busy=false;renderBHud()}
 function dropLoot(e,boss){const buf=buffOn()?1.2:1,rem=D&&D.remote?.8:1,out=[],r=e.rar||0;
   const itemCh=[.22,.5,1][r]*buf*rem,curN=boss?3+fl(Math.random()*2):r===2?2+fl(Math.random()*2):r===1?(Math.random()<.6?1:0)+(Math.random()<.3?1:0):(Math.random()<.25*buf?1:0);
-  const slots=['weapon','helm','chest','gloves','boots','ring','amulet'];
+  const slots=DROPS;
   const mk=minR=>{const q=Math.random();let rar=q<.55?0:q<.9?1:2;rar=Math.max(rar,minR);const it=makeItem(slots[fl(Math.random()*slots.length)],e.lv,rar);giveItem(it);out.push(itemName(it))};
   if(boss)mk(2);else if(Math.random()<itemCh)mk(r>=2?1:0);if(r===2&&Math.random()<.5)mk(0);
   for(let i=0;i<Math.round(curN*rem);i++){const c=rollCur(boss||r===2?3:1);giveCur(c);out.push(curDot(c)+CURI[c].n)}
@@ -123,7 +123,7 @@ function winBattle(){const e=B.e,mult=(D&&D.remote?.8:1)*(buffOn()?1.2:1),xp=Mat
 function loseBattle(){sfx('lose');buzz(300);const lost=fl(S.gold*.1);S.gold-=lost;fullHeal();D=null;const main=S.bases.find(b=>b.type==='main');
   addLog(`戰敗，損失 ${lost} 金幣`);showModal('你倒下了……',`<p>損失 ${lost} 金幣，狀態已恢復。${main?'你被送回主據點。':''}</p><p class="sub">提示：看看角色頁的抗性，元素怪物對低抗性很痛。</p>`,[{label:'重新出發',pri:1,fn:()=>{hideModal();if(main){S.lat=main.lat;S.lng=main.lng;refreshEntities(true)}endBattle()}}])}
 function endBattle(){$('battle').hidden=true;B=null;playSong('field');renderHud();save()}
-function enterDungeon(t,remote){D={id:t.id,kind:t.kind,lat:t.lat,lng:t.lng,lv:t.lv,room:0,remote,lm:t.kind==='landmark'?t:null,seed:h(fl(t.lat*1e4),fl(t.lng*1e4),hourEp())};sfx('door');
+function enterDungeon(t,remote){D={id:t.id,kind:t.kind,lat:t.lat,lng:t.lng,lv:t.lv,room:0,remote,lm:t.kind==='landmark'?t:null,seed:h(fl(t.lat*1e4),fl(t.lng*1e4),epoch())};sfx('door');
   addLog(`${remote?'從據點遠征':'進入'}${t.kind==='rift'?'魔物裂隙':D.lm?D.lm.dn:'洞窟'}（Lv${t.lv}）`);nextRoom()}
 function nextRoom(){const boss=D.room===2,r=h(D.seed,D.room,9);let e,bg;
   if(D.kind==='rift'){const b=pickMon(r,D.lv);e=boss?makeEnemy(b,D.lv+1,2,rollMods(r,3)):makeEnemy(b,D.lv,1,rollMods(r,1+(r%2)));bg=b.bg}
@@ -133,9 +133,9 @@ function nextRoom(){const boss=D.room===2,r=h(D.seed,D.room,9);let e,bg;
   if(B){B.e=e;B.boss=boss&&D.kind!=='rift';B.poison=B.burn=B.shock=B.frozen=B.pFrozen=B.guard=0;B.busy=true;BFX.en={a:null,flash:0};BFX.pops=[];paintBG(bg);BFX.t0=performance.now();playSong(boss?'boss':'battle');renderBHud();bmsg(`${e.name} 出現了！`);sfx('encounter');setTimeout(()=>{if(B){B.busy=false;renderBHud()}},800)}
   else startBattle(e,{boss:boss&&D.kind!=='rift',bg})}
 function dungeonClear(){const mult=D.remote?.8:1,kind=D.kind,bonus=D.lm?1.6:1,gold=Math.round((40+D.lv*25)*mult*bonus),cry=kind==='rift'?0:Math.max(1,Math.round((2+fl(D.lv/2))*mult*bonus));
-  const it=makeItem(['weapon','helm','chest','gloves','boots','ring','amulet'][fl(Math.random()*7)],D.lv+1,D.lm||kind==='rift'?2:1);S.gold+=gold;S.crystal+=cry;giveItem(it);
+  const it=makeItem(DROPS[fl(Math.random()*DROPS.length)],D.lv+1,D.lm||kind==='rift'?2:1);S.gold+=gold;S.crystal+=cry;giveItem(it);
   const curs=[];for(let i=0;i<(kind==='rift'?4:2);i++){const c=rollCur(3);giveCur(c);curs.push(curDot(c)+CURI[c].n)}
-  S.cleared[D.id]=kind==='rift'?evEp():hourEp();const nm=kind==='rift'?'魔物裂隙':D.lm?D.lm.dn:'洞窟',rem=D.remote;addLog(`攻略${nm}（Lv${D.lv}）`);sfx('level');D=null;
+  S.cleared[D.id]=kind==='rift'?evEp():epoch();const nm=kind==='rift'?'魔物裂隙':D.lm?D.lm.dn:'洞窟',rem=D.remote;addLog(`攻略${nm}（Lv${D.lv}）`);sfx('level');D=null;
   showModal('攻略完成！',`<p><span style="color:var(--gold)">${gold} 金幣</span>${cry?`・<span style="color:#9fe7ff">${cry} 魔晶</span>`:''}</p>${itemCard(it,'首領寶箱')}<div class="loot">${curs.map(c=>`<span>${c}</span>`).join('')}</div>${rem?'<p class="sub">遠征獎勵為實地攻略的 80%。</p>':''}`,
     [{label:'返回地圖',pri:1,fn:()=>{hideModal();endBattle()}}])}
 /* ================= battle: drawing ================= */

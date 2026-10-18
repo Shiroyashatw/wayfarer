@@ -57,7 +57,7 @@ const heroPal=()=>({h:'#6b3324',s:'#f1c27d',e:'#1a1626',c:CLASSES[S.cls].color,a
 /* ================= icons: currency, item slots, passive nodes ================= */
 const PIX={
   cur_trans:{r:["...ww...","..wbbw..",".wbbbbw.","wbbllbbw","wbbllbbw",".wbbbbw.","..wbbw..","...ww..."],p:{w:'#dfe8ff',b:'#5f8fff',l:'#bcd2ff'}},
-  cur_alt:{r:["..bbbb..",".bllllb.","bll..llb","bl.bb.lb","bl.b..lb","bll.bllb",".bllllb.","..bbbb.."],p:{b:'#2f5fcf',l:'#7fb0ff'}},
+  cur_regal:{r:["y..y..y.","yy.yy.yy","yyyyyyyy",".tttttt.","tttwtttt","tttttttt",".tttttt.","..tttt.."],p:{y:'#f2c14e',t:'#3fae96',w:'#d6fff4'}},
   cur_aug:{r:["...bb...","...bb...","..bwwb..","bbwbbwbb","bbwbbwbb","..bwwb..","...bb...","...bb..."],p:{b:'#6aa8ff',w:'#e8f2ff'}},
   cur_alch:{r:["..yyyy..",".yywyyy.","yywyyyyo","yyyyyyyo","yyyyyyyo","yyyyyyoo",".yyyyoo.","..oooo.."],p:{y:'#f2c14e',w:'#fff6c8',o:'#b07d1a'}},
   cur_chaos:{r:["..oooo..",".oorroo.","oor..roo","or.oo.ro","or.o.rro","oorr.roo",".oorroo.","..oooo.."],p:{o:'#e58a3a',r:'#9a2f7a'}},
@@ -74,6 +74,9 @@ const PIX={
   sl_ring:{r:["...mm...","..mwwm..",".yyyyyy.","y......y","y......y","y......y",".y....y.","..yyyy.."]},
   sl_amulet:{r:["y......y",".y....y.","..y..y..","...yy...","..mmmm..",".mwmmm..",".mmmmm..","..mmm..."]},
   sl_lantern:{r:["...kk...","..k..k..",".kkkkkk.",".kmmmmk.",".kmwmmk.",".kmmmmk.",".kkkkkk.","........"]},
+  sl_shield:{r:[".mmmmmm.","mwwmmmmm","mwmmmmmm","mmmkkmmm","mmmkkmmm",".mmmmmm.","..mmmm..","...mm..."]},
+  sl_focus:{r:["...mm...","..mwmm..",".mwmmmm.",".mmmmmm.","..mmmm..","...kk...","..kkkk..","........"]},
+  sl_belt:{r:["........","........","mmmmmmmm","mmkkkkmm","mmkwwkmm","mmkkkkmm","........","........"]},
   ic_heart:{r:[".rr.rr..","rrrrrrr.","rrwrrrr.","rrrrrrr.",".rrrrr..","..rrr...","...r....","........"],p:{r:'#e5484d',w:'#ffd0d0'}},
   ic_shield:{r:[".kkkkkk.","kwwbbwwk","kwwbbwwk","kbbbbbbk","kwwbbwwk",".kwbbwk.","..kwwk..","...kk..."],p:{k:'#3a3340',w:'#cfd6e0',b:'#8a6a3a'}},
   ic_sword:{r:[".......w","......ww",".....ww.","....ww..","k.ww....",".kw.....","bkk.....","b..k...."],p:{w:'#e8e6e0',k:'#3a3340',b:'#b8862e'}},
@@ -98,6 +101,7 @@ function pixURL(key,tint){const k=key+'|'+(tint||'');if(PIXC.has(k))return PIXC.
   const u=out.toDataURL();PIXC.set(k,u);return u}
 const curIcon=id=>pixURL('cur_'+id);
 function slotIcon(it,slot){const s=it?it.slot:slot.replace(/\d/,'');let key='sl_'+s;if(s==='weapon'){const n=it?baseOf(it).n:'短劍';key=n.includes('斧')?'sl_axe':n.includes('弓')?'sl_bow':n.includes('杖')?'sl_staff':'sl_sword'}
+  if(s==='offhand')key='sl_'+(it?baseOf(it).k:'shield');
   return pixURL(key,it?shade(RCOL[it.r]==='#e8e2d4'?'#b8b2a4':RCOL[it.r],0):'#5a5064')}
 const ICIMG=new Map();
 function nodeIcon(ic){if(ICIMG.has(ic))return ICIMG.get(ic);const im=new Image();im.src=pixURL('ic_'+ic);ICIMG.set(ic,im);return im}

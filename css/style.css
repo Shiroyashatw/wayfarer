@@ -52,10 +52,12 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
 /* ---------- sheets ---------- */
 .scrim{position:fixed;inset:0;z-index:20;background:#0008}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--card2);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px #000a;max-height:82dvh;display:flex;flex-direction:column;padding-bottom:var(--sab);transform:translateY(0);transition:transform .25s ease}
+/* 面板一律滿版 */
+.sheet{position:fixed;inset:0;z-index:21;background:var(--card2);display:flex;flex-direction:column;padding-top:var(--sat);padding-bottom:var(--sab);transform:translateY(0);transition:transform .25s ease}
 .sheet.off{transform:translateY(105%)}
-.grab{width:44px;height:5px;border-radius:3px;background:#ffffff40;margin:8px auto 2px;flex:none}
-.shead{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px;gap:8px;flex:none}
+.shead{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;gap:8px;flex:none;border-bottom:1px solid #ffffff12;margin-bottom:10px}
+.sbody{flex:1;min-height:0}
+.srow{display:flex;gap:8px;align-items:center}.srow .irow{flex:1;min-width:0}
 .shead h2{margin:0;font-family:var(--f-pix);font-weight:400;font-size:19px;color:var(--gold);letter-spacing:.06em}
 .x{background:var(--btn);border:0;border-radius:10px;width:40px;height:40px;font-size:18px}
 .sbody{overflow:auto;padding:0 16px 18px;padding-left:max(16px,var(--sal));padding-right:max(16px,var(--sar));display:grid;gap:10px;align-content:start;-webkit-overflow-scrolling:touch}
@@ -172,12 +174,12 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .irow{display:flex!important;align-items:center;gap:10px}
 .irow img{width:36px;height:36px;image-rendering:pixelated;flex:none}
 .irow>span{display:grid;gap:2px;min-width:0}
-.doll{position:relative;display:grid;grid-template-columns:1fr .85fr 1.1fr .85fr 1fr;grid-template-areas:"w . h a l" "w r1 c r2 l" "g g . b b";gap:8px;padding:10px;border-radius:14px;background:radial-gradient(ellipse at 50% 45%,#3a3046,#16121c 75%);border:1px solid #ffffff14}
+.doll{position:relative;display:grid;grid-template-columns:1fr .85fr 1.1fr .85fr 1fr;grid-template-areas:"w . h a o" "w r1 c r2 o" "g g bt b b";gap:8px;padding:10px;border-radius:14px;background:radial-gradient(ellipse at 50% 45%,#3a3046,#16121c 75%);border:1px solid #ffffff14}
 #dollHero{position:absolute;left:50%;top:50%;width:150px;height:150px;transform:translate(-50%,-56%);image-rendering:pixelated;opacity:.22;pointer-events:none}
 .doll-s{position:relative;background:#0007;border:1px solid #ffffff22;border-radius:10px;display:grid;justify-items:center;align-content:center;gap:4px;padding:8px 4px;min-height:72px;color:inherit;font-family:inherit}
 .doll-s img{width:36px;height:36px;image-rendering:pixelated}
 .doll-s small{font-size:10.5px;color:var(--dim);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}
-.doll-s[style*="grid-area:w"],.doll-s[style*="grid-area:l"]{min-height:152px}
+.doll-s[style*="grid-area:w"],.doll-s[style*="grid-area:o"]{min-height:152px}
 .doll-s[style*="grid-area:c"]{min-height:96px}
 #expl{line-height:1.35;text-align:right}
 .curs>span>span{background:none;padding:0;border-radius:0;display:block;white-space:nowrap}
@@ -194,3 +196,7 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .tvTools{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .tvTools .btn{background:rgba(46,40,54,.92);min-height:36px;padding:6px 10px;font-size:12px}
 .tvCard{background:rgba(35,30,43,.95);border:1px solid rgba(201,164,92,.4);max-height:38vh;overflow:auto}
+/* ---------- 帳號表單 ---------- */
+.auth{display:grid;gap:8px;margin-top:10px}
+.inp{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid #ffffff2a;background:#0006;color:var(--ink);font:inherit;font-size:16px}
+.inp:focus{outline:2px solid var(--gold);outline-offset:1px}
