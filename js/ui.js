@@ -7,7 +7,15 @@ function renderHud(){clampHP();const st=stats();$('hpb').style.width=(S.hp/st.ma
 let toastT;function toast(t){const el=$('toast');el.textContent=t;el.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>el.style.opacity=0,2400)}
 function openSheet(name,title){sheetName=name;$('stitle').textContent=title||TITLES[name];$('scrim').hidden=false;$('sheet').classList.remove('off');renderSheet()}
 function closeSheet(){sheetName=null;$('scrim').hidden=true;$('sheet').classList.add('off')}
-const TITLES={hero:'角色',bag:'背包',item:'裝備',tree:'天賦樹',base:'據點',near:'附近',settings:'設定',log:'冒險日誌',friends:'好友與組隊',party:'組隊'};
+const TITLES={hero:'角色',bag:'背包',item:'裝備',tree:'天賦樹',base:'據點',near:'附近',settings:'設定',log:'冒險日誌',friends:'好友',party:'組隊'};
+/* 底部導覽：群組按鈕點了往上展開 2～3 個功能，再點一次或點地圖就收起來 */
+const NAVG={adv:[['near','附近','eye'],['base','據點','castle'],['log','冒險日誌','book']],soc:[['party','組隊','party'],['friends','好友','heart'],['ptcode','輸入隊伍代碼','key']],me:[['hero','角色','shield'],['tree','天賦樹','star']]};
+let navG=null;
+function navClose(){if(!navG)return;navG=null;$('npop').hidden=true;document.querySelectorAll('#nav [data-g]').forEach(b=>{b.classList.remove('open');b.setAttribute('aria-expanded','false')})}
+function navOpen(g){if(navG===g){navClose();return}navClose();const btn=document.querySelector(`#nav [data-g="${g}"]`),el=$('npop');navG=g;btn.classList.add('open');btn.setAttribute('aria-expanded','true');
+  const dot=s=>s==='tree'&&treePts()>0||s==='party'&&PT||s==='friends'&&SOC.friends.some(f=>f.status==='pending'&&f.incoming);
+  el.innerHTML=NAVG[g].map(([s,n,ic],i)=>`<button class="nb" data-act="${s==='ptcode'?'ptCodeAsk':'sheet'}" data-s="${s}" style="animation-delay:${i*45}ms"><span>${n}</span><i><img src="${iconURL(ic)}" alt="">${dot(s)?'<b class="ndot"></b>':''}</i></button>`).join('');
+  el.hidden=false;const r=btn.getBoundingClientRect(),w=el.offsetWidth;el.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-23))+'px';el.style.bottom=(innerHeight-r.top+4)+'px'}
 const KIND={monster:'怪物',dungeon:'地城',shrine:'廟宇',town:'城鎮',base:'據點',chest:'寶箱',event:'限時事件'};
 function bar(label,v,max,col){return`<div style="display:grid;gap:3px"><div class="rowx" style="font-size:12px;color:var(--dim)"><span>${label}</span><span>${Math.ceil(v)} / ${max}</span></div><div class="mbar" style="height:8px"><i style="width:${Math.max(0,Math.min(100,v/max*100))}%;background:${col}"></i></div></div>`}
 function entIcon(e){const c=document.createElement('canvas');c.width=18;c.height=18;const x=c.getContext('2d');let n,p;
@@ -21,7 +29,7 @@ function renderSheet(){if(!sheetName||sheetName==='ent')return;const el=$('sbody
     <h3>攻擊</h3><div class="kv"><div><span>物理傷害</span><b>${fmt1(st.physLo)}–${fmt1(st.physHi)}</b></div><div><span>元素附加</span><b>${fmt1(st.fire+st.cold+st.light)}</b></div><div><span>法術基礎</span><b>${fmt1(st.spell)}</b></div><div><span>暴擊率</span><b>${st.crit}%</b></div><div><span>暴擊傷害</span><b>${st.critMulti}%</b></div><div><span>吸血</span><b>${st.leech}%</b></div></div>
     <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>視線範圍</span><b>${st.vision}m</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div></div>
     <h3>技能</h3><div class="card">${c.skills.map(k=>`<div class="rowx"><div class="t"><b>${SKILLS[k].name}</b><small>${SKILLS[k].kind==='spell'?EL[SKILLS[k].el]+'法術，吃法術傷害':SKILLS[k].kind==='attack'?'攻擊，吃武器與附加傷害':'回復'}</small></div><small style="color:${st.blood?'var(--hp)':'var(--mp)'}">${costTxt(st,SKILLS[k])||'—'}</small></div>`).join('')}</div>
-    <div class="btns"><button class="btn pri" data-act="sheet" data-s="friends">好友與組隊</button><button class="btn" data-act="sheet" data-s="log">冒險日誌</button></div>`}
+`}
   else if(sheetName==='bag'){const cell=(sl,area)=>{const it=S.eq[sl];return`<button class="doll-s" style="grid-area:${area};${it?`border-color:${RCOL[it.r]};box-shadow:0 0 10px ${RCOL[it.r]}44 inset`:''}" data-act="eqslot" data-s="${sl}" aria-label="${SLOTN[sl]}"><img src="${slotIcon(it,sl)}" alt=""><small>${it?esc(itemTitle(it)):SLOTN[sl]}</small></button>`};
     html=`<div class="doll"><canvas id="dollHero" width="18" height="18"></canvas>${cell('weapon','w')}${cell('helm','h')}${cell('amulet','a')}${cell('offhand','o')}${cell('ring1','r1')}${cell('chest','c')}${cell('ring2','r2')}${cell('gloves','g')}${cell('belt','bt')}${cell('boots','b')}</div>
     <h3>通貨</h3>${curRow()}
@@ -174,7 +182,9 @@ const A={
   frReload:()=>{friendsLoad();toast('重新整理中…')},
   /* 組隊 */
   partyOpen:d=>{const e=ENT.get(d.id);if(!inRange(e)||isDone(e))return;sfx('select');partyCreate(e);friendsLoad()},
-  ptJoin:()=>partyJoin($('ptCode')&&$('ptCode').value),
+  ptJoin:()=>{const v=$('ptCode')&&$('ptCode').value;if(!$('modal').hidden)hideModal();partyJoin(v)},
+  nav:d=>{audioInit();sfx('tap');navOpen(d.g)},
+  ptCodeAsk:()=>{showModal('輸入隊伍代碼',`<input class="inp" id="ptCode" maxlength="6" placeholder="6 碼隊伍代碼" autocapitalize="characters" style="text-transform:uppercase"><p class="sub">隊長在地城按「組隊進入」就會拿到代碼。遊客也可以用代碼加入。</p>`,[{label:'取消',fn:hideModal},{label:'加入',pri:true,fn:()=>A.ptJoin()}]);setTimeout(()=>$('ptCode')&&$('ptCode').focus(),50)},
   ptOpen:()=>{if(PT)openSheet('party','組隊')},
   ptLeave:()=>partyLeave(false),
   ptStart:()=>mpStart(),
@@ -189,7 +199,7 @@ const A={
   ff:()=>{S.timeOffset+=3600e3;toast('時間快轉了 1 小時');refreshEntities(true);renderSheet()},
   reset:()=>{if(!resetArm){resetArm=true;renderSheet();return}try{localStorage.removeItem(KEY)}catch(e){}resetArm=false;S=newGame();delete S.intro;fogReset();[cam.x,cam.y]=toM(S.lat,S.lng);trailStep(true);refreshEntities(true);renderHud();closeSheet();toast('新的旅程開始了')}
 };
-document.addEventListener('click',ev=>{if(ev.target.id==='treeCv')return;const el=ev.target.closest('[data-act]');if(!el||el.disabled)return;const f=A[el.dataset.act];if(f){ev.stopPropagation();f(el.dataset)}});
+document.addEventListener('click',ev=>{if(ev.target.id==='treeCv')return;const el=ev.target.closest('[data-act]');if(!el||el.disabled){if(navG&&!ev.target.closest('#npop'))navClose();return}if(el.dataset.act!=='nav')navClose();const f=A[el.dataset.act];if(f){ev.stopPropagation();f(el.dataset)}});
 document.addEventListener('pointerdown',()=>audioInit(),{capture:true,passive:true});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 window.addEventListener('resize',sizeWorld);

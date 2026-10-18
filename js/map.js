@@ -320,7 +320,6 @@ function tick(t){requestAnimationFrame(tick);const dt=Math.min(.1,(t-lastFrame)/
   if(simTarget&&!busy()&&!S.gps){const d=dist(S.lat,S.lng,simTarget[0],simTarget[1]);if(d<1.5)simTarget=null;else{const k=Math.min(1,SIM_SPEED*dt/d);setPos(S.lat+(simTarget[0]-S.lat)*k,S.lng+(simTarget[1]-S.lng)*k,Math.min(d,SIM_SPEED*dt))}}
   renderWorld(t);placeLabel()}
 const mmss=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return`${fl(s/60)}:${String(s%60).padStart(2,'0')}`};
-let plT=0;function placeLabel(){if(performance.now()-plT<500)return;plT=performance.now();const [x,y]=toM(S.lat,S.lng);let best=null,bd=1e9;for(const t of TOWNS){const d=Math.hypot(t.x-x,t.y-y);if(d<bd){bd=d;best=t}}
-  const nm=S.found[best.id]?best.n:'未知城鎮';$('place').textContent=bd<230?nm:`${nm}${dirName(best.lat,best.lng,S.lat,S.lng)}方 ${fmtD(bd)}`;
+let plT=0;function placeLabel(){if(performance.now()-plT<500)return;plT=performance.now();
   const dp=dayPhase(),hh=String(fl(dp.hr)).padStart(2,'0'),mm=String(fl(dp.hr%1*60)).padStart(2,'0'),left=REFRESH-now()%REFRESH;
   $('expl').innerHTML=`<span style="color:${dp.night>.5?'#9fb8ff':'#ffd877'}">${dp.label}</span> ${hh}:${mm}・視野 ${stats().vision}m<br><span class="rf${left<60e3?' soon':''}">刷新 ${mmss(left)}</span>・探索 ${explKm2().toFixed(2)} km²`+(buffOn()?`<br>祝福 ${Math.ceil((S.buff.until-now())/60e3)} 分`:'')+(mapLoading()?'<br><span style="color:#9fe7ff">載入地圖中…</span>':'')}
