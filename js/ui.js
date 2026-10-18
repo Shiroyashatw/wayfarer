@@ -7,21 +7,21 @@ function renderHud(){clampHP();const st=stats();$('hpb').style.width=(S.hp/st.ma
 let toastT;function toast(t){const el=$('toast');el.textContent=t;el.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>el.style.opacity=0,2400)}
 function openSheet(name,title){sheetName=name;$('stitle').textContent=title||TITLES[name];$('scrim').hidden=false;$('sheet').classList.remove('off');renderSheet()}
 function closeSheet(){sheetName=null;$('scrim').hidden=true;$('sheet').classList.add('off')}
-const TITLES={hero:'角色',bag:'背包',item:'裝備',tree:'天賦樹',base:'據點',near:'附近',settings:'設定',log:'冒險日誌'};
-const KIND={monster:'怪物',dungeon:'洞窟',shrine:'廟宇',town:'城鎮',base:'據點',chest:'寶箱',event:'限時事件'};
+const TITLES={hero:'角色',bag:'背包',item:'裝備',tree:'天賦樹',base:'據點',near:'附近',settings:'設定',log:'冒險日誌',friends:'好友與組隊',party:'組隊'};
+const KIND={monster:'怪物',dungeon:'地城',shrine:'廟宇',town:'城鎮',base:'據點',chest:'寶箱',event:'限時事件'};
 function bar(label,v,max,col){return`<div style="display:grid;gap:3px"><div class="rowx" style="font-size:12px;color:var(--dim)"><span>${label}</span><span>${Math.ceil(v)} / ${max}</span></div><div class="mbar" style="height:8px"><i style="width:${Math.max(0,Math.min(100,v/max*100))}%;background:${col}"></i></div></div>`}
 function entIcon(e){const c=document.createElement('canvas');c.width=18;c.height=18;const x=c.getContext('2d');let n,p;
-  if(e.kind==='monster'){n=e.base.spr;p=e.base.pal}else if(e.kind==='town'){n=e.t.svc.includes('temple')?'shrine':'crystal';p=e.t.svc.includes('temple')?PAL.shrine:PAL.crystal}else if(e.kind==='base'){n=e.b.type==='main'?'castle':'camp';p=PAL[n]}else if(e.kind==='event'){n=e.sub;p=PAL[e.sub]}else{n=e.kind;p=PAL[e.kind]}x.drawImage(sprite(n,p),0,0);return c}
+  if(e.kind==='monster'){n=e.base.spr;p=e.base.pal}else if(e.kind==='town'){n=e.t.svc.includes('temple')?'shrine':'crystal';p=e.t.svc.includes('temple')?PAL.shrine:PAL.crystal}else if(e.kind==='base'){n=e.b.type==='main'?'castle':'camp';p=PAL[n]}else if(e.kind==='event'){n=e.sub;p=PAL[e.sub]}else if(e.kind==='dungeon'){n='dungeon';p=DTYPES[e.dt].pal}else{n=e.kind;p=PAL[e.kind]}x.drawImage(sprite(n,p),0,0);return c}
 const fmt1=v=>Math.round(v);
 function curRow(){return`<div class="curs">${CUR.map(c=>`<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id]||0}</b></span></span>`).join('')}</div>`}
 function renderSheet(){if(!sheetName||sheetName==='ent')return;const el=$('sbody'),st=stats(),c=CLASSES[S.cls];let html='';
   if(sheetName==='hero'){const avg=(st.physLo+st.physHi)/2+st.fire+st.cold+st.light*1;
-    html=`<div class="card"><div class="ent"><canvas id="heroBig" width="18" height="18"></canvas><div style="flex:1;display:grid;gap:6px;min-width:0"><b style="font-family:var(--f-pix);font-size:18px;font-weight:400">旅人 <span style="color:${c.color};font-size:14px">${c.name}</span> Lv${S.lv}</b><small class="sub">玩家編號 ${playerTag()}</small>${bar('生命',S.hp,st.maxhp,'var(--hp)')}${bar('魔力',S.mp,st.maxmp,'var(--mp)')}${bar('經驗',S.xp,xpNeed(S.lv),'var(--xp)')}</div></div></div>
+    html=`<div class="card"><div class="ent"><canvas id="heroBig" width="18" height="18"></canvas><div style="flex:1;display:grid;gap:6px;min-width:0"><b style="font-family:var(--f-pix);font-size:18px;font-weight:400">${esc(S.name||"旅人")} <span style="color:${c.color};font-size:14px">${c.name}</span> Lv${S.lv}</b><small class="sub">玩家編號 ${playerTag()}</small>${bar('生命',S.hp,st.maxhp,'var(--hp)')}${bar('魔力',S.mp,st.maxmp,'var(--mp)')}${bar('經驗',S.xp,xpNeed(S.lv),'var(--xp)')}</div></div></div>
     <button class="btn pri" data-act="openTree">天賦樹${treePts()>0?`（剩 ${treePts()} 點未分配）`:''}</button>
     <h3>攻擊</h3><div class="kv"><div><span>物理傷害</span><b>${fmt1(st.physLo)}–${fmt1(st.physHi)}</b></div><div><span>元素附加</span><b>${fmt1(st.fire+st.cold+st.light)}</b></div><div><span>法術基礎</span><b>${fmt1(st.spell)}</b></div><div><span>暴擊率</span><b>${st.crit}%</b></div><div><span>暴擊傷害</span><b>${st.critMulti}%</b></div><div><span>吸血</span><b>${st.leech}%</b></div></div>
     <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>視線範圍</span><b>${st.vision}m</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div></div>
     <h3>技能</h3><div class="card">${c.skills.map(k=>`<div class="rowx"><div class="t"><b>${SKILLS[k].name}</b><small>${SKILLS[k].kind==='spell'?EL[SKILLS[k].el]+'法術，吃法術傷害':SKILLS[k].kind==='attack'?'攻擊，吃武器與附加傷害':'回復'}</small></div><small style="color:var(--mp)">${SKILLS[k].mp?'MP '+SKILLS[k].mp:'—'}</small></div>`).join('')}</div>
-    <div class="btns"><button class="btn" data-act="sheet" data-s="log">冒險日誌</button></div>`}
+    <div class="btns"><button class="btn pri" data-act="sheet" data-s="friends">好友與組隊</button><button class="btn" data-act="sheet" data-s="log">冒險日誌</button></div>`}
   else if(sheetName==='bag'){const cell=(sl,area)=>{const it=S.eq[sl];return`<button class="doll-s" style="grid-area:${area};${it?`border-color:${RCOL[it.r]};box-shadow:0 0 10px ${RCOL[it.r]}44 inset`:''}" data-act="eqslot" data-s="${sl}" aria-label="${SLOTN[sl]}"><img src="${slotIcon(it,sl)}" alt=""><small>${it?esc(itemTitle(it)):SLOTN[sl]}</small></button>`};
     html=`<div class="doll"><canvas id="dollHero" width="18" height="18"></canvas>${cell('weapon','w')}${cell('helm','h')}${cell('amulet','a')}${cell('offhand','o')}${cell('ring1','r1')}${cell('chest','c')}${cell('ring2','r2')}${cell('gloves','g')}${cell('belt','bt')}${cell('boots','b')}</div>
     <h3>通貨</h3>${curRow()}
@@ -46,16 +46,20 @@ function renderSheet(){if(!sheetName||sheetName==='ent')return;const el=$('sbody
     ${main?`<div class="card"><div class="rowx"><div class="t"><b>建立分支據點</b><small>${chk||'可以在你現在的位置建立（150 金幣）'}</small></div><button class="btn pri sm" data-act="buildBranch" ${chk?'disabled':''}>建立</button></div></div>`:''}
     <div class="card"><div class="rowx"><div class="t"><b>測試用：時間快轉</b><small>據點產出、遠征恢復、怪物與事件刷新</small></div><button class="btn sm" data-act="ff">快轉 1 小時</button></div></div>`}
   else if(sheetName==='near'){const list=[...ENT.values()].filter(e=>e.kind!=='base'&&visible(e)).map(e=>({...e,d:dist(S.lat,S.lng,e.lat,e.lng)})).sort((a,b)=>(b.ev?1:0)-(a.ev?1:0)||a.d-b.d).slice(0,30);
-    html=`<p class="sub">探索度 ${explPct().toFixed(1)}%・下次地圖刷新在 ${Math.ceil((REFRESH-now()%REFRESH)/60e3)} 分鐘後。迷霧裡的東西要走近才看得到；限時事件排在最前面。</p>${list.map(e=>`<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="openEnt" data-id="${e.id}"><div class="ent"><canvas data-ent="${e.id}" width="18" height="18" style="width:44px;height:44px"></canvas><div style="flex:1;min-width:0"><b style="font-weight:500;color:${e.kind==='monster'?RCOL[e.rar||0]:'inherit'}">${esc(e.kind==='monster'?`${e.name} Lv${e.lv}`:e.kind==='town'&&!S.found[e.id]?'未探索的城鎮':e.name)}</b><small class="sub" style="display:block">${e.bounty?'懸賞目標':KIND[e.kind]}・${dirName(S.lat,S.lng,e.lat,e.lng)}方 ${fmtD(e.d)}${e.d<=(e.kind==='town'?120:RANGE)?'・<span style="color:var(--good)">可互動</span>':''}</small></div></div></button>`).join('')}`}
+    html=`<p class="sub">探索面積 ${explKm2().toFixed(2)} 平方公里・下次地圖刷新在 ${mmss(REFRESH-now()%REFRESH)} 後。迷霧裡的東西要走近才看得到；限時事件排在最前面。</p>${list.map(e=>`<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="openEnt" data-id="${e.id}"><div class="ent"><canvas data-ent="${e.id}" width="18" height="18" style="width:44px;height:44px"></canvas><div style="flex:1;min-width:0"><b style="font-weight:500;color:${e.kind==='monster'?RCOL[e.rar||0]:'inherit'}">${esc(e.kind==='monster'?`${e.name} Lv${e.lv}`:e.kind==='town'&&!S.found[e.id]?'未探索的城鎮':e.name)}</b><small class="sub" style="display:block">${e.bounty?'懸賞目標':KIND[e.kind]}・${dirName(S.lat,S.lng,e.lat,e.lng)}方 ${fmtD(e.d)}${e.d<=(e.kind==='town'?120:RANGE)?'・<span style="color:var(--good)">可互動</span>':''}</small></div></div></button>`).join('')}`}
   else if(sheetName==='settings'){
     html=`<h3>聲音</h3><div class="seg"><button data-act="toggle" data-k="music" aria-pressed="${S.music}">音樂 ${S.music?'開':'關'}</button><button data-act="toggle" data-k="sfx" aria-pressed="${S.sfx}">音效・震動 ${S.sfx?'開':'關'}</button></div>
-    <h3>模擬傳送</h3><div class="btns">${['台中車站','科博館','國家歌劇院','逢甲夜市'].map(n=>`<button class="btn sm" data-act="warp" data-n="${n}">${n}</button>`).join('')}</div>
+    <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps?'開':'關'}</b><small>${S.gps?(GPS.err||'用手機定位實際走路移動，點地圖不會再走過去'):'目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm ${S.gps?'':'pri'}" data-act="gps">${S.gps?'關閉':'開啟'}</button></div></div>
+    <h3>模擬傳送（測試用）</h3><div class="btns">${['台中車站','台北車站','台北101','九份老街','日月潭','赤崁樓','駁二藝術特區','墾丁大街','花蓮車站','宜蘭車站'].map(n=>`<button class="btn sm" data-act="warp" data-n="${n}">${n}</button>`).join('')}</div>
+    <h3>名字</h3><div class="card"><div class="srow"><input class="inp" id="nameInp" maxlength="12" value="${esc(S.name||"旅人")}"><button class="btn" data-act="setName">儲存</button></div><p class="sub" style="margin-top:6px">好友列表和組隊時顯示的名字，最多 12 個字。</p></div>
     <h3>帳號</h3><div class="card"><div class="rowx"><div class="t"><b>玩家編號 <span style="color:var(--gold)">${playerTag()}</span></b><small>${CLOUD.anon?'目前是遊客，存檔綁在這台裝置。註冊後會拿到玩家編號，換手機也能登入，之後的多人地城、副本也需要帳號。':esc(CLOUD.email||'')}</small></div>${CLOUD.anon?'':`<button class="btn sm" data-act="logout">登出</button>`}</div>
       ${CLOUD.anon?`${CLOUD.pending?`<p class="sub" style="color:var(--good)">確認信已寄到 ${esc(CLOUD.pending)}，點信裡的連結回到遊戲就完成綁定，目前的進度會一起帶過去。</p>`:''}
       <form class="auth" data-auth autocomplete="on" onsubmit="return false"><input class="inp" id="authEmail" type="email" placeholder="信箱" autocomplete="email" required><input class="inp" id="authPw" type="password" placeholder="密碼（至少 6 個字）" autocomplete="current-password" minlength="6" required>
       <div class="btns"><button class="btn pri" type="button" data-act="register" ${CLOUD.sb?'':'disabled'}>註冊並綁定進度</button><button class="btn" type="button" data-act="login" ${CLOUD.sb?'':'disabled'}>登入已有帳號</button></div><p class="sub" id="authMsg"></p></form>`:''}</div>
-    <h3>雲端存檔</h3><div class="card"><div class="rowx"><div class="t"><b>${esc(CLOUD.status)}</b><small>${CLOUD.uid?'每 15 秒、切到背景時自動上傳':'存檔只在這台裝置'}</small></div><button class="btn sm" data-act="cloudSync" ${CLOUD.uid?'':'disabled'}>立即同步</button></div></div><h3>版本</h3><p class="sub">漫步勇者 v${VER}</p><h3>關於這個 demo</h3><p class="sub">點地圖模擬走路。道路依台中車站周邊的真實位置手工近似，巷弄為生成；正式版會把 OpenStreetMap 道路畫成這種遊戲風格，並使用手機 GPS。</p>
+    <h3>雲端存檔</h3><div class="card"><div class="rowx"><div class="t"><b>${esc(CLOUD.status)}</b><small>${CLOUD.uid?'每 15 秒、切到背景時自動上傳':'存檔只在這台裝置'}</small></div><button class="btn sm" data-act="cloudSync" ${CLOUD.uid?'':'disabled'}>立即同步</button></div></div><h3>版本</h3><p class="sub">漫步勇者 v${VER}</p><h3>關於這個 demo</h3><p class="sub">地圖是全台灣的真實道路、河流、公園與廟宇（資料來自 OpenStreetMap，第一次到一個地方會稍微載入一下）。可以點地圖模擬走路，或開 GPS 實際走路。</p>
     <h3>資料</h3><div class="card"><div class="rowx"><div class="t"><b>重新開始</b><small>清除這台裝置上的存檔與迷霧</small></div><button class="btn sm" data-act="reset">${resetArm?'再按一次確認':'重置'}</button></div></div>`}
+  else if(sheetName==='friends'){html=friendsHTML();if(!CLOUD.anon&&!SOC.loaded)friendsLoad()}
+  else if(sheetName==='party'){html=partyHTML()}
   else if(sheetName==='log'){html=`<div class="log">${S.log.map(t=>`<div>${esc(t)}</div>`).join('')}</div>`}
   el.innerHTML=html;const hb=$('heroBig');if(hb)hb.getContext('2d').drawImage(sprite('heroF',heroPal()),0,0);
   el.querySelectorAll('canvas[data-ent]').forEach(cv=>{const e=ENT.get(cv.dataset.ent);if(e)cv.getContext('2d').drawImage(entIcon(e),0,0)});
@@ -66,9 +70,13 @@ function nearTownE(){return TOWNS.some(t=>dist(S.lat,S.lng,t.lat,t.lng)<230)}
 function openEnt(id){const e=ENT.get(id);if(!e)return;const d=dist(S.lat,S.lng,e.lat,e.lng),lim=e.kind==='town'?120:RANGE,inR=d<=lim||e.kind==='base';sheetName='ent';
   $('stitle').textContent=e.bounty?'懸賞目標':KIND[e.kind];$('scrim').hidden=false;$('sheet').classList.remove('off');let desc='',act='';
   if(e.kind==='monster'){desc=e.rar?`<span style="color:${RCOL[e.rar]}">${RNAME[e.rar]}怪物</span>：${e.mods.map(id=>{const m=EMODS.find(q=>q.id===id);return`<b>${m.n}</b>（${m.d}）`}).join('、')}。掉落更多更好的東西。`:`野生的 ${esc(e.name)} 在路上徘徊。`;
+    if(e.rar===4)desc=`<span class="danger">⚠ 危險怪物</span> 比你高 ${e.lv-S.lv} 級，生命約一般怪的 3 倍、攻擊 1.6 倍，還帶 ${e.mods.length} 個詞綴：${e.mods.map(id=>`<b>${EMODS.find(q=>q.id===id).n}</b>`).join('、')}。打贏保證掉 2 件稀有裝備與大量通貨，但很可能會輸。`;
     desc+=`<br><span class="sub">攻擊屬性：${EL[e.base.el]}${e.base.res.some(v=>v)?'・抗性 火'+e.base.res[0]+'% 冰'+e.base.res[1]+'% 雷'+e.base.res[2]+'%':''}</span>`;if(e.bounty)desc+='<br><span style="color:#ff8a6a">懸賞：擊敗可得額外金幣與混沌石。</span>';
     act=`<button class="btn pri" data-act="fight" data-id="${id}" ${inR?'':'disabled'}>戰鬥</button>`}
-  else if(e.kind==='dungeon'){desc=isDone(e)?'這座洞窟已被攻略，地圖刷新（每 15 分鐘）後重新開啟。':'共 3 層，最深處有首領。每過一層恢復 15% 生命與魔力。';act=`<button class="btn pri" data-act="enter" data-id="${id}" ${inR&&!isDone(e)?'':'disabled'}>進入洞窟</button>`}
+  else if(e.kind==='dungeon'){const sp=dunSpec(e),T=DTYPES[e.dt],ok=inR&&!isDone(e);
+    desc=isDone(e)?'這座地城已被攻略，地圖刷新（每 15 分鐘）後會換成新的地城。':`<b style="color:${T.col}">${T.n}</b>・共 ${sp.floors} 層，最深處有首領。${T.desc}${sp.noregen?'':'每過一層恢復 15% 生命與魔力。'}
+      <h3 style="margin-top:10px">地城詞綴</h3>${dunModsHTML(sp)}<div class="kv" style="margin-top:6px"><div><span>物品數量</span><b>+${sp.q}%</b></div><div><span>物品稀有度</span><b>+${sp.r}%</b></div></div>`;
+    act=`<button class="btn ${e.dt==='normal'?'pri':''}" data-act="enter" data-id="${id}" ${ok?'':'disabled'}>單人進入</button><button class="btn ${e.dt==='normal'?'':'pri'}" data-act="partyOpen" data-id="${id}" ${ok?'':'disabled'}>組隊進入（好友或隊伍代碼）</button>`}
   else if(e.kind==='shrine'){desc='誠心參拜可以恢復全部生命與魔力，偶爾會得到通貨。';act=`<button class="btn pri" data-act="pray" data-id="${id}" ${inR?'':'disabled'}>參拜</button>`}
   else if(e.kind==='chest'){desc='路邊的寶箱。裡面通常有通貨，偶爾是裝備……也可能是寶箱怪。';act=`<button class="btn pri" data-act="openChest" data-id="${id}" ${inR?'':'disabled'}>打開</button>`}
   else if(e.kind==='event'){desc={merchant:'流浪商人只在這裡停留到下次地圖刷新，賣比較好的稀有裝備，還有混沌石。',rift:'裂隙裡會連續湧出 3 波魔法怪物，最後一波是稀有怪物。完成可得大量通貨。',fountain:'喝下泉水，30 分鐘內經驗與掉落提高 20%。'}[e.sub]+`<br><span class="sub">出現在${esc(e.town)}附近，地圖刷新（每 15 分鐘）前有效。</span>`;
@@ -91,8 +99,9 @@ const stored=b=>Math.floor(Math.min(prodRate(b)*8,prodRate(b)*(now()-b.last)/3.6
 function charges(b){const t=now();if(b.exp>=3){b.expTs=t;return 3}const k=fl((t-b.expTs)/P30);if(k>0){b.exp=Math.min(3,b.exp+k);b.expTs+=k*P30;if(b.exp>=3)b.expTs=t}return b.exp}
 const baseName=b=>b.type==='main'?'主據點':`分支據點 ${S.bases.filter(q=>q.type==='branch').indexOf(b)+1}`;
 function baseTarget(b){const [bx,by]=toM(b.lat,b.lng);let best=null;
-  for(let i=fl((bx-1500)/DCELL);i<=fl((bx+1500)/DCELL);i++)for(let j=fl((by-1500)/DCELL);j<=fl((by+1500)/DCELL);j++){const r=h(i,j,41);if(r%100>=30)continue;const x=(i+.15+((r>>>8)%70)/100)*DCELL,y=(j+.15+((r>>>16)%70)/100)*DCELL,id=`d${i}_${j}`;
-    if(Math.hypot(x,y)>BOUND||nearTown(x,y,160)||S.cleared[id]===epoch())continue;const d=Math.hypot(x-bx,y-by);if(!best||d<best.d){const [la,ln]=toLL(x,y);best={id,name:'洞窟',lat:la,lng:ln,d,lv:S.lv+1,kind:'dungeon'}}}
+  /* 遠征只能打普通與團體地城；地獄地城要實地組隊 */
+  for(let i=fl((bx-1500)/DCELL);i<=fl((bx+1500)/DCELL);i++)for(let j=fl((by-1500)/DCELL);j<=fl((by+1500)/DCELL);j++){const g=dungeonAt(i,j);if(!g||g.dt==='hell'||S.cleared[g.id]===epoch())continue;
+    const d=Math.hypot(g.x-bx,g.y-by);if(d<=1500&&(!best||d<best.d))best={...g,d}}
   for(const t of TOWNS){const d=Math.hypot(t.x-bx,t.y-by);if(d<1500&&S.found[t.id]&&S.cleared[t.id]!==epoch()&&(!best||d<best.d))best={id:t.id,name:t.dn,lat:t.lat,lng:t.lng,d,lv:townLv(t),kind:'landmark',dn:t.dn}}return best}
 function branchCheck(){if(!S.bases.some(b=>b.type==='main'))return'先建立主據點';if(S.bases.filter(b=>b.type==='branch').length>=3)return'分支據點已達上限 3 座';if(S.gold<150)return'需要 150 金幣';
   if(nearTownE())return'城鎮範圍內不能建立據點';const near=S.bases.find(b=>dist(b.lat,b.lng,S.lat,S.lng)<1000);if(near)return`離${baseName(near)}太近，需要相距 1 公里以上`;return''}
@@ -154,6 +163,24 @@ const A={
     showModal(`遠征・${esc(tg.name)} Lv${tg.lv}`,`<p>從${baseName(b)}派出遠征，不需要走過去。獎勵為實地攻略的 80%。</p><p class="sub">消耗 1 次遠征（剩 ${charges(b)} 次）・目前生命 ${S.hp}/${stats().maxhp}</p>`,
       [{label:'取消',fn:hideModal},{label:'出發',pri:1,fn:()=>{hideModal();closeSheet();b.exp--;if(b.exp===2)b.expTs=now();enterDungeon(tg,true)}}])},
   goto:d=>{const b=S.bases.find(q=>q.id===d.id);closeSheet();follow=false;[cam.x,cam.y]=toM(b.lat,b.lng)},
+  setName:()=>{const v=($('nameInp').value||'').trim().slice(0,12);if(!v){toast('名字不能是空的');return}S.name=v;save();profileSync(true);toast(`名字改成「${v}」`);renderSheet()},
+  /* 好友 */
+  frAdd:async()=>{const n=parseInt(($('frNo').value||'').replace(/\D/g,''),10),msg=$('frMsg');if(!n){msg.textContent='請輸入對方的玩家編號（數字）';return}msg.textContent='送出中…';try{const r=await friendAdd(n);toast(r);if($('frMsg'))$('frMsg').textContent=r}catch(e){msg.textContent=e.message}},
+  frYes:async d=>{await friendRespond(d.u,true);toast('已成為好友！');sfx('level')},
+  frNo:async d=>{await friendRespond(d.u,false);toast('已拒絕')},
+  frDel:async d=>{await friendRemove(d.u);toast('已刪除')},
+  frReload:()=>{friendsLoad();toast('重新整理中…')},
+  /* 組隊 */
+  partyOpen:d=>{const e=ENT.get(d.id);if(!inRange(e)||isDone(e))return;sfx('select');partyCreate(e);friendsLoad()},
+  ptJoin:()=>partyJoin($('ptCode')&&$('ptCode').value),
+  ptOpen:()=>{if(PT)openSheet('party','組隊')},
+  ptLeave:()=>partyLeave(false),
+  ptStart:()=>mpStart(),
+  ptInvite:d=>{const f=SOC.friends.find(q=>q.user_id===d.u);if(f)inviteFriend(f)},
+  mpAct:d=>mpMy(d.k),
+  mpSub:d=>{if(!MB)return;sfx('tap');MB.sub=d.k||null;renderMBHud()},
+  mpQuit:()=>mpLeave(),
+  gps:()=>{if(S.gps){S.gps=false;gpsStop();toast('已關閉 GPS，改為點地圖移動')}else{if(!gpsStart()){toast(GPS.err);return}S.gps=true;toast('GPS 定位中…')}save();renderSheet()},
   warp:d=>{const t=TOWNS.find(t=>t.n===d.n);simTarget=null;S.lat=t.lat-0.0009;S.lng=t.lng;follow=true;[cam.x,cam.y]=toM(S.lat,S.lng);trailStep(true);refreshEntities(true);checkArrive();closeSheet();toast(`模擬傳送：${t.n}`)},
   toggle:d=>{S[d.k]=!S[d.k];audioInit();if(AU.ctx){AU.music.gain.value=S.music?.5:0;AU.sfx.gain.value=S.sfx?.8:0}save();renderSheet()},
   ff:()=>{S.timeOffset+=3600e3;toast('時間快轉了 1 小時');refreshEntities(true);renderSheet()},

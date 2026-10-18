@@ -1,7 +1,7 @@
 /* 漫步勇者 · 玩家狀態、裝備、詞綴、通貨製作、屬性計算 */
 'use strict';
 /* ================= player & items ================= */
-function newGame(){const g={v:6,cls:'novice',lv:1,xp:0,gold:80,crystal:0,hp:60,mp:20,potions:3,ethers:1,inv:[],eq:{},cur:{trans:4,aug:4,regal:2,alch:1,chaos:1,exalt:0,scour:1},tree:['start_novice'],
+function newGame(){const g={v:7,cls:'novice',lv:1,xp:0,gold:80,crystal:0,hp:60,mp:20,potions:3,ethers:1,inv:[],eq:{},cur:{trans:4,aug:4,regal:2,alch:1,chaos:1,exalt:0},tree:['start_novice'],
   lat:START.lat-0.0009,lng:START.lng,walked:0,walkCur:0,bases:[],defeated:{},cleared:{},bought:{},found:{},log:[],timeOffset:0,classOffered:false,music:true,sfx:true,intro:true,trail:[],explMs:0,buff:null,bonusPts:0,treeV2:1};
   SLOTS.forEach(s=>g.eq[s]=null);g.eq.weapon=makeItem('weapon',1,0,0);g.inv.push(makeItem('offhand',1,0,0),makeItem('belt',1,0,0),makeItem('ring',2,1,0),makeItem('chest',2,0,0),makeItem('boots',2,1,1));return g}
 function makeItem(slot,ilvl,rar,baseIdx,r=Math.random){const bl=BASES[slot],bi=baseIdx??fl(r()*bl.length),b=bl[bi];const it={id:uid(),slot,bi,ilvl,r:0,aff:[]};
@@ -35,19 +35,21 @@ function giveCur(id,n=1){S.cur[id]=(S.cur[id]||0)+n}
 function rollCur(boost=1){let tot=0;CUR.forEach(c=>tot+=c.id==='chaos'||c.id==='exalt'||c.id==='alch'?c.w*boost:c.w);let x=Math.random()*tot;for(const c of CUR){x-=c.id==='chaos'||c.id==='exalt'||c.id==='alch'?c.w*boost:c.w;if(x<0)return c.id}return'trans'}
 const curDot=id=>`<img class="cico" src="${curIcon(id)}" alt="">`;
 /* PoE2 式製作：沒有改造石，魔法裝備用增幅石補滿、富豪石升稀有，稀有裝備用崇高石加詞綴、混沌石一次換一條 */
-function craftable(it,id){if(!it)return false;return{trans:it.r===0,aug:it.r===1&&it.aff.length<2,regal:it.r===1,alch:it.r===0,chaos:it.r===2&&it.aff.length>0,exalt:it.r===2&&it.aff.length<6,scour:it.r===1||it.r===2}[id]}
+function craftable(it,id){if(!it)return false;return{trans:it.r===0,aug:it.r===1&&it.aff.length<2,regal:it.r===1,alch:it.r===0,chaos:it.r===2&&it.aff.length>0,exalt:it.r===2&&it.aff.length<6}[id]}
 function craft(it,id){if(!craftable(it,id)||!(S.cur[id]>0))return false;S.cur[id]--;
   if(id==='trans')toMagic(it,Math.random,1);else if(id==='aug')addRandom(it);else if(id==='regal'){it.r=2;it.rn=rareName(Math.random);addRandom(it)}else if(id==='alch')toRare(it);
-  else if(id==='chaos'){const gone=it.aff.splice(fl(Math.random()*it.aff.length),1)[0];if(!addRandom(it))it.aff.push(gone)}else if(id==='exalt')addRandom(it);else if(id==='scour'){it.r=0;it.aff=[];it.rn=null}return true}
+  else if(id==='chaos'){const gone=it.aff.splice(fl(Math.random()*it.aff.length),1)[0];if(!addRandom(it))it.aff.push(gone)}else if(id==='exalt')addRandom(it);return true}
 
 /* ================= stats ================= */
+/* 目前所在地城的規格（單人 D 或多人 MB） */
+const curSpec=()=>(D&&D.spec)||(MB&&MB.spec)||null;
 function sumStats(){const t={life:0,lifePct:0,physPct:0,flatPhys:0,addFire:0,addCold:0,addLight:0,spellPct:0,elePct:0,armor:0,armorPct:0,mana:0,resFire:0,resCold:0,resLight:0,resAll:0,critPct:0,critMulti:0,leech:0,speed:0,regen:0,physMore:0,vision:0,lure:0};
   for(const s of SLOTS){const it=S.eq[s];if(!it)continue;if(it.arm)t.armor+=it.arm;if(it.imp)t[it.imp[0]]+=it.imp[1];if(it.lure)t.lure+=it.lure;it.aff.forEach(a=>t[a.id]+=a.v)}
   for(const id of S.tree){const n=TREE.byId[id];if(n)for(const k in n.st)t[k]+=n.st[k]}return t}
 function stats(){const g=CLASSES[S.cls].g,L=S.lv-1,t=sumStats(),w=S.eq.weapon,ph=w?w.phys:[1,3];const flat=4+g.atk*L+t.flatPhys;
-  const eleMul=1+t.elePct/100;
+  const eleMul=1+t.elePct/100,sp=curSpec(),ew=sp&&sp.eleweak?20:0;
   return{maxhp:Math.round((80+g.hp*L+t.life)*(1+t.lifePct/100)),maxmp:Math.round(20+g.mp*L+t.mana),armor:Math.round((15+g.def*L*4+t.armor)*(1+t.armorPct/100)),
-    res:{fire:Math.min(75,t.resFire+t.resAll),cold:Math.min(75,t.resCold+t.resAll),light:Math.min(75,t.resLight+t.resAll)},
+    res:{fire:Math.min(75,t.resFire+t.resAll-ew),cold:Math.min(75,t.resCold+t.resAll-ew),light:Math.min(75,t.resLight+t.resAll-ew)},
     physLo:(ph[0]+flat)*(1+t.physPct/100)*(1+t.physMore/100),physHi:(ph[1]+flat)*(1+t.physPct/100)*(1+t.physMore/100),
     fire:t.addFire*eleMul,cold:t.addCold*eleMul,light:t.addLight*eleMul,spell:(9+3.4*L+g.mag*L*1.2)*(1+t.spellPct/100)*eleMul,
     crit:Math.max(0,Math.min(75,(w?w.crit:5)+t.critPct)),critMulti:Math.max(110,150+t.critMulti),leech:t.leech,speed:10+t.speed,regen:t.regen,
@@ -64,18 +66,21 @@ const buffOn=()=>S.buff&&S.buff.until>now();
 
 /* ================= enemies ================= */
 function pickMon(r,lv){const pool=MONS.filter(q=>!q.min||q.min<=lv+1);let tot=pool.reduce((a,q)=>a+q.w,0),x=r%tot;for(const q of pool){x-=q.w;if(x<0)return q}return pool[0]}
-function makeEnemy(b,lv,rar=0,mods=[]){const f=lv-1,e={name:b.name,lv,spr:b.spr,pal:b.pal,bg:b.bg,el:b.el,res:[...b.res],rar,mods,
+/* dm：地城詞綴帶來的倍率 {hp,atk,arm} */
+function makeEnemy(b,lv,rar=0,mods=[],dm){const f=lv-1,e={name:b.name,lv,spr:b.spr,pal:b.pal,bg:b.bg,el:b.el,res:[...b.res],rar,mods,
   maxhp:Math.round(b.hp*(1+.38*f)),atk:Math.round(b.atk*.8*(1+.2*f)),arm:Math.round(b.arm*(1+.25*f)),xp:Math.round(b.xp*(1+.5*f)),gold:Math.round(b.gold*(1+.4*f)),speed:10};
-  const hm=[1,1.5,2.4][rar]||1,am=[1,1.15,1.3][rar]||1,rm=[1,2.5,5][rar]||1;e.maxhp=Math.round(e.maxhp*hm);e.atk=Math.round(e.atk*am);e.xp=Math.round(e.xp*rm);e.gold=Math.round(e.gold*rm);
+  const hm=[1,1.5,2.4,1,3][rar]||1,am=[1,1.15,1.3,1,1.6][rar]||1,rm=[1,2.5,5,1,12][rar]||1;e.maxhp=Math.round(e.maxhp*hm);e.atk=Math.round(e.atk*am);e.xp=Math.round(e.xp*rm);e.gold=Math.round(e.gold*rm);
+  if(rar===4){e.arm=Math.round(e.arm*1.5)+10;e.res=e.res.map(v=>v+20);e.speed=14}
+  if(dm){e.maxhp=Math.round(e.maxhp*(dm.hp||1));e.atk=Math.round(e.atk*(dm.atk||1));e.arm=Math.round(e.arm*(dm.arm||1))}
   if(mods.includes('tough'))e.maxhp=Math.round(e.maxhp*1.6);if(mods.includes('armored'))e.arm=e.arm*2+10;if(mods.includes('swift'))e.speed=18;
-  if(rar===2)e.name=`${RAREA[h(lv,b.hp,mods.length)%RAREA.length]}之${b.name}`;else if(rar===1)e.name=`${EMODS.find(m=>m.id===mods[0]).n}的${b.name}`;e.hp=e.maxhp;return e}
+  if(rar===4)e.name=`災厄・${b.name}`;else if(rar===2)e.name=`${RAREA[h(lv,b.hp,mods.length)%RAREA.length]}之${b.name}`;else if(rar===1)e.name=`${EMODS.find(m=>m.id===mods[0]).n}的${b.name}`;e.hp=e.maxhp;return e}
 function rollMods(r,n){const ids=[],pool=EMODS.map(m=>m.id);for(let i=0;i<n;i++){const k=(r>>>(i*5))%pool.length;ids.push(pool.splice(k,1)[0])}return ids}
 const modNames=e=>e.mods.map(id=>EMODS.find(m=>m.id===id).n).join('・');
 
 /* ================= modal ================= */
 function showModal(title,html,btns){modalFns=btns.map(b=>b.fn);$('dlg').innerHTML=`<h2>${title}</h2><div style="display:grid;gap:8px">${html}</div><div class="btns">${btns.map((b,i)=>`<button class="btn ${b.pri?'pri':''}" data-act="mbtn" data-i="${i}" ${b.dis?'disabled':''}>${b.label}</button>`).join('')}</div>`;$('modal').hidden=false}
 function hideModal(){$('modal').hidden=true}
-const busy=()=>!$('modal').hidden||!!B;
+const busy=()=>!$('modal').hidden||!!B||!!MB;
 function classModal(after){const opts=['knight','mage','ranger'];
   showModal('選擇進階職業',`<p class="sub">職業決定技能；成長方向交給天賦樹。demo 中轉職後無法再更換。</p>${opts.map((k,i)=>`<button class="btn" style="text-align:left;display:grid;gap:2px" data-act="mbtn" data-i="${i+1}"><span style="color:${CLASSES[k].color}">${CLASSES[k].name}</span><small class="sub">${CLASSES[k].desc}・技能：${CLASSES[k].skills.slice(1).map(s=>SKILLS[s].name).join('、')}</small></button>`).join('')}`,
     [{label:'稍後再選',fn:()=>{hideModal();after&&after()}}]);

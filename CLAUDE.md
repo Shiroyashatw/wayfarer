@@ -19,10 +19,12 @@
 | `js/audio.js` | Web Audio 合成音樂與音效 |
 | `js/items.js` | `newGame`、裝備、詞綴、通貨製作、屬性計算 |
 | `js/battle.js` | 戰鬥背景、回合邏輯、繪製 |
-| `js/map.js` | 世界地圖（以台中車站為原點、公尺座標）、道路、迷霧、晝夜視野、生成、攝影機 |
+| `js/map.js` | 世界地圖（以台中車站為原點、公尺座標）、OpenFreeMap 向量圖磚（z14）解碼與 IndexedDB 快取、45 個地標城鎮、分塊迷霧、晝夜視野、生成（`dungeonAt`）、攝影機、GPS |
 | `js/tree.js` | 天賦樹全螢幕介面（縮放、拖曳、多節點路徑） |
 | `js/ui.js` | HUD、底部面板、互動、據點、`data-act` 動作表 |
-| `js/cloud.js` | Supabase 匿名登入、存檔上傳（每 15 秒／切到背景時） |
+| `js/cloud.js` | Supabase 匿名登入、信箱註冊／登入、玩家編號、存檔上傳（每 15 秒／切到背景時） |
+| `js/social.js` | 好友（`friend_*` RPC）、名字同步到 `profiles`、組隊邀請（`party_invites` + Realtime） |
+| `js/mp.js` | 隊伍（6 碼代碼、Realtime 廣播頻道 `wf-party-代碼`）與多人戰鬥；隊長的裝置計算、廣播 `state` |
 | `js/main.js` | `load`/`save`/`migrate`/`start`，最後執行 `start()` |
 | `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽 |
 | `supabase/migrations/` | 資料庫結構 |
@@ -32,7 +34,9 @@
 python3 -m http.server 8000   # 開 http://localhost:8000
 python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 ```
-存檔在 localStorage；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換。
+存檔在 localStorage；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換（存檔版本是 `S.v`）。
+測多人：同一個瀏覽器開兩個分頁，第二個網址加 `?p=2`（不同存檔與帳號）。
+地圖資料要標示「© OpenStreetMap 貢獻者」（畫面左下角）。
 
 ## Supabase
 - 專案 ref：`eugkdfhkoaxvqhztvptc`，URL `https://eugkdfhkoaxvqhztvptc.supabase.co`

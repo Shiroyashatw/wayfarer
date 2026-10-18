@@ -16,7 +16,9 @@
 <div class="vign"></div>
 <div class="topbar"><div class="place" id="place"></div><div class="money"><div class="pill" id="gold"></div><div class="pill" id="cry"></div><div class="pill" id="expl" style="font-size:11px"></div></div></div>
 <button class="fab" id="fabMe" data-act="recenter" aria-label="回到我的位置">◎</button>
+<button class="ptpill" id="ptPill" data-act="ptOpen" hidden></button>
 <div id="toast" style="opacity:0"></div>
+<div class="osm">地圖資料 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> 貢獻者</div>
 <nav class="onav" id="nav">
   <button class="rb" data-act="sheet" data-s="near"><i><canvas data-icon="eye" width="8" height="8"></canvas></i>附近</button>
   <button class="rb" data-act="sheet" data-s="bag"><i><canvas data-icon="bag" width="8" height="8"></canvas></i>背包</button>
@@ -30,7 +32,7 @@
   <div class="bview" id="bview">
     <canvas id="bbg"></canvas><canvas id="bfx"></canvas>
     <div class="btop"><div class="bname" id="bname"></div><div class="bstat" id="bstat"></div></div>
-    <div class="pills" id="hpills"></div><div class="pills" id="epills"></div>
+    <div class="pills" id="hpills"></div><div class="pills" id="epills"></div><div id="mpills"></div>
     <div class="bmsg" id="bmsg" style="opacity:0"></div>
   </div>
   <div class="bcmd" id="bcmd"></div>
@@ -50,6 +52,8 @@
 <script src="js/tree.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/cloud.js"></script>
+<script src="js/social.js"></script>
+<script src="js/mp.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

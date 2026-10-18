@@ -1,8 +1,10 @@
 /* 漫步勇者 · 遊戲資料：地點、怪物、詞綴、通貨、天賦樹、版本號 */
 'use strict';
 /* ================= state ================= */
-const KEY='wayfarer_art_v6';
-let S, B=null, D=null, modalFns=[], sheetName=null, ENT=new Map(), simTarget=null, follow=true, resetArm=false, selItem=null, selSlot=null, selNode=null;
+/* 測試用：網址加 ?p=2 可以在同一個瀏覽器開第二個角色（不同存檔與帳號），用來測多人連線 */
+const SLOT=new URLSearchParams(location.search).get('p')||'';
+const KEY='wayfarer_art_v6'+(SLOT?'_p'+SLOT:'');
+let S, B=null, D=null, modalFns=[], sheetName=null, ENT=new Map(), simTarget=null, follow=true, resetArm=false, selItem=null, selSlot=null, selNode=null, MB=null;
 
 /* ================= game data ================= */
 const CLASSES={
@@ -32,7 +34,16 @@ const MONS=[
   {name:'狂暴山豬',bg:'forest',spr:'boar',pal:{b:'#6b4a35',e:'#ffdd55',n:'#c99a85',w:'#f4ead2'},hp:55,atk:12,arm:25,el:'phys',res:[0,10,0],xp:20,gold:14,w:2,min:3},
   {name:'魔神仔',bg:'forest',spr:'spirit',pal:{v:'#8fcdbd',e:'#102a24',m:'#c0392b'},hp:45,atk:13,arm:0,el:'cold',res:[0,40,0],xp:22,gold:16,w:2,min:4},
   {name:'雪原狼',bg:'mountain',spr:'wolf',pal:{g:'#c3cddb',e:'#e5484d',n:'#2a2a35',w:'#ffffff'},hp:60,atk:15,arm:12,el:'cold',res:[0,50,-10],xp:28,gold:20,w:2,min:5},
-  {name:'岩石魔像',bg:'mountain',spr:'golem',pal:{r:'#8a8070',y:'#7fe0ff'},hp:80,atk:14,arm:60,el:'phys',res:[20,20,20],xp:32,gold:24,w:1,min:6}
+  {name:'岩石魔像',bg:'mountain',spr:'golem',pal:{r:'#8a8070',y:'#7fe0ff'},hp:80,atk:14,arm:60,el:'phys',res:[20,20,20],xp:32,gold:24,w:1,min:6},
+  {name:'焰史萊姆',bg:'meadow',spr:'slime',pal:{g:'#e8603a',w:'#ffe0a0',e:'#3a0d05'},hp:32,atk:8,arm:4,el:'fire',res:[50,-20,0],xp:10,gold:8,w:3,min:2},
+  {name:'流浪犬魔',bg:'city',spr:'wolf',pal:{g:'#9a7a52',e:'#ff4040',n:'#3a2a1a',w:'#e8d8b8'},hp:40,atk:10,arm:8,el:'phys',res:[0,0,0],xp:13,gold:10,w:3,min:2},
+  {name:'冰晶史萊姆',bg:'mountain',spr:'slime',pal:{g:'#8fd8f0',w:'#ffffff',e:'#0d2a3a'},hp:32,atk:8,arm:6,el:'cold',res:[-20,50,0],xp:10,gold:8,w:2,min:3},
+  {name:'雷鳴蝠',bg:'city',spr:'bat',pal:{p:'#c9b23a',e:'#3a1a5a',w:'#ffffff'},hp:26,atk:10,arm:0,el:'light',res:[0,0,50],xp:12,gold:9,w:2,min:3},
+  {name:'百步蛇',bg:'forest',spr:'snake',pal:{s:'#8a7a5a',b:'#3f3226',e:'#ffdd55',w:'#d8c8a0'},hp:42,atk:13,arm:6,el:'phys',res:[0,0,0],xp:18,gold:12,w:2,min:4},
+  {name:'石虎',bg:'forest',spr:'wolf',pal:{g:'#c98a4a',e:'#7bd36b',n:'#2a1a10',w:'#f4e3c8'},hp:48,atk:14,arm:10,el:'phys',res:[0,0,0],xp:22,gold:15,w:2,min:4},
+  {name:'水鬼',bg:'meadow',spr:'spirit',pal:{v:'#5f8fb8',e:'#06121e',m:'#2a4a6a'},hp:50,atk:14,arm:0,el:'cold',res:[0,40,-20],xp:24,gold:17,w:2,min:5},
+  {name:'熔岩魔像',bg:'mountain',spr:'golem',pal:{r:'#7a3020',y:'#ffb040'},hp:85,atk:16,arm:50,el:'fire',res:[50,-10,20],xp:36,gold:26,w:1,min:7},
+  {name:'台灣黑熊',bg:'forest',spr:'bear',pal:{b:'#2a2630',e:'#ffdd55',n:'#8a7060',w:'#f4ead2'},hp:95,atk:18,arm:30,el:'phys',res:[10,10,0],xp:40,gold:28,w:1,min:7}
 ];
 const MIMIC={name:'寶箱怪',bg:'city',spr:'mimic',pal:{b:'#9a5a2a',y:'#f2c14e',e:'#ff3a3a',w:'#ffffff'},hp:50,atk:12,arm:20,el:'phys',res:[10,10,10],xp:20,gold:30};
 const EMODS=[
@@ -40,7 +51,30 @@ const EMODS=[
   {id:'cold',n:'冰霜',d:'攻擊附帶冰冷傷害，可能凍結你'},{id:'shock',n:'雷暴',d:'攻擊附帶閃電傷害'},{id:'leech',n:'吸血',d:'造成傷害時回復生命'},
   {id:'reflect',n:'反射',d:'反彈 15% 受到的傷害'},{id:'fury',n:'狂暴',d:'生命低於一半時攻擊 +50%'},{id:'armored',n:'鐵甲',d:'護甲大幅提高'}
 ];
-const RCOL=['#e8e2d4','#7fa8ff','#f2d25e','#e8873a'], RNAME=['普通','魔法','稀有','傳奇'];
+/* 稀有度：0 普通 1 魔法 2 稀有 3 首領（橘）4 危險怪（紅名，只出現在怪物） */
+/* 地城種類：層數、等級加成、詞綴數量範圍、掉寶加成（數量 q%／稀有度 r%） */
+const DTYPES={
+  normal:{n:'普通地城',floors:3,lv:1,mods:[0,1],q:0,r:0,hp:1,col:'#c9b59a',pal:{x:'#7b7182',m:'#5b5466',r:'#ff4d4d'},desc:'一個人就能攻略的地城。'},
+  party:{n:'團體地城',floors:4,lv:2,mods:[1,2],q:30,r:20,hp:1.5,col:'#7fd6ff',pal:{x:'#5a6a8a',m:'#3a4a66',r:'#7fd6ff'},desc:'建議 2～4 人組隊。怪物比較硬，掉寶比較多。'},
+  hell:{n:'地獄地城',floors:5,lv:4,mods:[3,4],q:80,r:60,hp:2,col:'#ff4a4a',pal:{x:'#6a2a2a',m:'#3a1414',r:'#ffb040'},desc:'非常危險。首領是災厄級，建議等級夠高再組滿隊伍挑戰。'}
+};
+/* 地城詞綴（參考 PoE 地圖詞綴）：讓地城更難，但提高掉落數量與稀有度。em 會加到每隻怪物身上，dm 是怪物數值倍率 */
+const DMODS=[
+  {id:'mhp',n:'強壯怪物',d:'怪物生命 +40%',q:8,r:5,dm:{hp:1.4}},
+  {id:'matk',n:'兇猛怪物',d:'怪物傷害 +25%',q:10,r:6,dm:{atk:1.25}},
+  {id:'marm',n:'堅甲怪物',d:'怪物護甲 +100%',q:6,r:4,dm:{arm:2}},
+  {id:'fire',n:'灼熱之地',d:'怪物攻擊附帶火焰傷害',q:8,r:6,em:'fire'},
+  {id:'cold',n:'冰封之地',d:'怪物攻擊附帶冰冷傷害，可能凍結你',q:8,r:6,em:'cold'},
+  {id:'shock',n:'雷霆之地',d:'怪物攻擊附帶閃電傷害',q:8,r:6,em:'shock'},
+  {id:'swift',n:'迅捷怪物',d:'怪物有機率行動兩次',q:10,r:8,em:'swift'},
+  {id:'leech',n:'吸血怪物',d:'怪物造成傷害時回復生命',q:6,r:5,em:'leech'},
+  {id:'eleweak',n:'元素削弱',d:'你的全部抗性 -20%',q:12,r:10},
+  {id:'noregen',n:'無法喘息',d:'每層之間不會回復生命與魔力',q:10,r:8},
+  {id:'elite',n:'精英巢穴',d:'魔法怪與稀有怪大幅增加',q:15,r:12}
+];
+const DMODI=Object.fromEntries(DMODS.map(m=>[m.id,m]));
+const RCOL=['#e8e2d4','#7fa8ff','#f2d25e','#e8873a','#ff4a4a'], RNAME=['普通','魔法','稀有','傳奇','危險'];
+const RGLOW=['','110,160,255','242,210,94','232,135,58','255,60,60'];
 const RAREA=['腐朽','暴怒','深淵','雷霆','血色','古老','狂嘯','幽影'], RAREB=['獠牙','之握','之心','咆哮','之眼','守望','裂痕','之刃'];
 const SLOTS=['weapon','offhand','helm','chest','gloves','boots','belt','ring1','ring2','amulet'];
 const SLOTN={weapon:'武器',offhand:'副手',helm:'頭盔',chest:'胸甲',gloves:'手套',boots:'鞋子',belt:'腰帶',ring:'戒指',ring1:'戒指',ring2:'戒指',amulet:'護身符'};
@@ -84,8 +118,7 @@ const STATN={life:v=>`最大生命 +${v}`,lifePct:v=>`最大生命 +${v}%`,physP
 const CUR=[
   {id:'trans',n:'蛻變石',d:'普通 → 魔法，1 個詞綴',c:'#8fb7ff',w:30},{id:'aug',n:'增幅石',d:'魔法裝備未滿時加 1 個詞綴',c:'#a8d8ff',w:26},
   {id:'regal',n:'富豪石',d:'魔法 → 稀有，保留原詞綴再加 1 個',c:'#7fd6c2',w:14},{id:'alch',n:'點金石',d:'普通 → 稀有，4 個詞綴',c:'#f2c14e',w:8},
-  {id:'chaos',n:'混沌石',d:'稀有裝備隨機移除 1 個詞綴，再加 1 個',c:'#e58a3a',w:7},{id:'exalt',n:'崇高石',d:'稀有裝備未滿時加 1 個詞綴',c:'#fff2b0',w:1.2},
-  {id:'scour',n:'洗淨石',d:'清除全部詞綴，回到普通',c:'#cfcfcf',w:4}
+  {id:'chaos',n:'混沌石',d:'稀有裝備隨機移除 1 個詞綴，再加 1 個',c:'#e58a3a',w:7},{id:'exalt',n:'崇高石',d:'稀有裝備未滿時加 1 個詞綴',c:'#fff2b0',w:1.2}
 ];
 const CURI=Object.fromEntries(CUR.map(c=>[c.id,c]));
 /* passive tree: PoE-style wheel. Center = 冒險者, ring of class starts, sectors + hybrid sectors + outer ring */
@@ -135,5 +168,5 @@ const TREE=(()=>{const N=[],E=[],byId={};const P=(r,a)=>[r*Math.cos(a*Math.PI/18
   for(let t=0;t<6;t++){const [a,aa]=tips[t],[b,ab]=tips[(t+1)%6];let prev=a;const R=410;
     for(let q=0;q<3;q++){const tt=(q+1)/4,[x,y]=P(R,aa+(ab-aa)*tt),kind=['s','si','i','id','d','ds'][t];const pool=SM[kind]||SM.s;const id=add(`o${t}_${q}`,x,y,pool[q%pool.length],'small');ln(prev,id);prev=id}ln(prev,b)}
   return{N,E,byId}})();
-const VER='0.1.5';
+const VER='0.1.6';
 const START={lat:24.1372,lng:120.6869,name:'台中車站'};
