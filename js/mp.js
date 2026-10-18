@@ -4,7 +4,10 @@
    每回合依速度排順序，輪到的人有 15 秒；時間到自動普攻，換下一個人。怪物在每輪最後行動。
    戰鬥狀態只在隊長那邊算，算完廣播 state 給大家；每個人的經驗、金幣、掉寶在自己的裝置結算。 */
 let PT=null;
-const TURN_MS=15000,PT_MAX=4,MSGS=['join','lobby','leave','kick','start','state','act','roomclear','clear','wipe','end'];
+const TURN_MS=15000,MSGS=['join','lobby','leave','kick','ready','start','state','act','roomclear','clear','wipe','end'];
+/* 人數上限依地城危險度：普通 2、團體 3、地獄 4 */
+const ptMax=()=>PT&&PT.dun?(DTYPES[PT.dun.dt||'normal'].max||4):4;
+const allReady=()=>PT&&PT.members.size>0&&[...PT.members.values()].every(m=>m.ready);
 const genCode=()=>Array.from({length:6},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[fl(Math.random()*32)]).join('');
 const amLeader=()=>PT&&PT.leader===CLOUD.uid;
 function mySnap(){const st=stats();return{uid:CLOUD.uid,name:S.name||'旅人',no:CLOUD.no,cls:S.cls,lv:S.lv,hp:S.hp,mp:S.mp,
@@ -35,9 +38,11 @@ function ptGone(uid){if(!PT||uid===CLOUD.uid)return;
   if(amLeader()){if(MB){const p=MB.ps.find(q=>q.uid===uid);if(p&&!p.gone){p.gone=true;mpPush([{t:'msg',s:`${p.name} 斷線了，之後的回合自動普攻`}]);if(MB.actor===uid)mpArm(1500)}}else if(PT.members.delete(uid))ptLobby()}}
 function ptMsg(ev,p){if(!PT)return;
   if(amLeader()){
-    if(ev==='join'){if(!p.uid)return;if(PT.started){ptSend('kick',{uid:p.uid,reason:'這個隊伍已經開始戰鬥了'});return}if(!PT.members.has(p.uid)&&PT.members.size>=PT_MAX){ptSend('kick',{uid:p.uid,reason:'隊伍已滿（最多 4 人）'});return}
+    if(ev==='join'){if(!p.uid)return;if(PT.started){ptSend('kick',{uid:p.uid,reason:'這個隊伍已經開始戰鬥了'});return}if(!PT.members.has(p.uid)&&PT.members.size>=ptMax()){ptSend('kick',{uid:p.uid,reason:`隊伍已滿（${DTYPES[PT.dun.dt||'normal'].n}最多 ${ptMax()} 人）`});return}
+      const old=PT.members.get(p.uid);p.ready=old?old.ready:false;
       const isNew=!PT.members.has(p.uid);PT.members.set(p.uid,p);ptLobby();if(isNew){toast(`${p.name} 加入了隊伍`);sfx('select')}}
     else if(ev==='leave'){if(MB){ptGone(p.uid)}else if(PT.members.delete(p.uid)){ptLobby();toast('有隊員離開了')}}
+    else if(ev==='ready'){const m=PT.members.get(p.uid);if(m&&!PT.started){m.ready=!!p.ready;ptLobby()}}
     else if(ev==='act')mpOnAct(p.uid,p.k,p.tok);
     return}
   if(ev==='lobby'){const first=!PT.leader;PT.leader=p.leader;PT.dun=p.dun;PT.members=new Map(p.members.map(m=>[m.uid,m]));PT.started=p.started;ptPill();
@@ -54,11 +59,15 @@ function partyHTML(){if(!PT)return'<p class="sub">目前沒有隊伍。</p>';con
   const sp=dunSpec(d),T=DTYPES[d.dt||'normal'],mem=[...PT.members.values()];
   let h=`<div class="card"><b style="color:${T.col};font-family:var(--f-pix);font-size:18px;font-weight:400">${esc(dunName(d))} Lv${d.lv}</b><p class="sub">${sp.floors} 層・物品數量 +${sp.q}%・稀有度 +${sp.r}%・怪物生命隨人數提高</p>${dunModsHTML(sp)}</div>
     <div class="card ptcode"><small class="sub">隊伍代碼</small><b>${PT.code}</b><small class="sub">好友在「好友與組隊」輸入這組代碼就能加入</small></div>
-    <h3>隊員 ${mem.length}/${PT_MAX}</h3>${mem.map(m=>`<div class="card"><div class="rowx"><div class="t"><b>${esc(m.name)}${m.uid===PT.leader?' <span style="color:var(--gold)">隊長</span>':''}${m.uid===CLOUD.uid?' <span class="sub">（你）</span>':''}</b><small><span style="color:${(CLASSES[m.cls]||CLASSES.novice).color}">${(CLASSES[m.cls]||CLASSES.novice).name}</span> Lv${m.lv}・生命 ${m.st.maxhp}・速度 ${m.st.speed}</small></div></div></div>`).join('')}`;
+    <h3>大廳・隊員 ${mem.length}/${ptMax()}・準備 ${mem.filter(m=>m.ready).length}/${mem.length}</h3>${mem.map(m=>`<div class="card"><div class="rowx"><div class="t"><b>${esc(m.name)}${m.uid===PT.leader?' <span style="color:var(--gold)">隊長</span>':''}${m.uid===CLOUD.uid?' <span class="sub">（你）</span>':''}</b><small><span style="color:${(CLASSES[m.cls]||CLASSES.novice).color}">${(CLASSES[m.cls]||CLASSES.novice).name}</span> Lv${m.lv}・生命 ${m.st.maxhp}・速度 ${m.st.speed}</small></div><span class="rdy ${m.ready?'ok':''}">${m.ready?'✓ 準備好了':'準備中…'}</span></div></div>`).join('')}`;
   if(lead&&!CLOUD.anon){const fr=SOC.friends.filter(f=>f.status==='accepted'&&!PT.members.has(f.user_id)).sort((a,b)=>isOnline(b)-isOnline(a));
     h+=`<h3>邀請好友</h3>${fr.length?fr.map(f=>`<div class="card"><div class="rowx"><div class="t"><b>${esc(f.name)}</b><small>Lv${f.lv}・${isOnline(f)?'<span style="color:var(--good)">在線</span>':'離線'}</small></div><button class="btn sm pri" data-act="ptInvite" data-u="${f.user_id}">邀請</button></div></div>`).join(''):'<p class="sub">沒有可以邀請的好友。也可以把代碼直接傳給朋友。</p>'}`}
   else if(lead)h+=`<p class="sub">註冊帳號後可以直接邀請好友；現在也能把代碼傳給朋友。</p>`;
-  h+=`<div class="btns">${lead?`<button class="btn pri" data-act="ptStart" ${PT.started?'disabled':''}>開始戰鬥（${mem.length} 人）</button>`:`<p class="sub" style="width:100%">等待隊長開始…</p>`}<button class="btn" data-act="ptLeave">${lead?'解散隊伍':'離開隊伍'}</button></div>`;
+  /* 全員按「準備」後，隊長才能出發 */
+  const me=PT.members.get(CLOUD.uid),ok=allReady();
+  h+=`<div class="btns"><button class="btn ${me&&me.ready?'':'pri'}" data-act="ptReady" ${PT.started?'disabled':''}>${me&&me.ready?'取消準備':'準備'}</button>
+    ${lead?`<button class="btn pri" data-act="ptStart" ${PT.started||!ok?'disabled':''}>${ok?`出發（${mem.length} 人）`:'等待全員準備'}</button>`:`<p class="sub" style="width:100%">${ok?'全員準備好了，等待隊長出發…':'全員按「準備」後，隊長就能出發。'}</p>`}
+    <button class="btn" data-act="ptLeave">${lead?'解散隊伍':'離開隊伍'}</button></div>`;
   return h}
 
 /* ================= battle state (leader authoritative) ================= */
@@ -69,7 +78,8 @@ const pub=()=>{const o={...MB};delete o.loot;delete o.sub;delete o.sent;delete o
 function mpPush(fx){if(!MB)return;MB.left=MB.dl?Math.max(0,MB.dl-Date.now()):0;ptSend('state',{mb:pub(),fx:fx||[]});mpApply(null,fx||[])}
 function mpArm(ms){clearTimeout(MBT);const tok=MB.tok,uid=MB.actor;MB.dl=Date.now()+ms;MBT=setTimeout(()=>{if(MB&&MB.tok===tok&&MB.actor===uid)mpResolve(uid,'attack',true)},ms)}
 /* 隊長按開始 */
-function mpStart(){if(!amLeader()||PT.started||MB)return;const d=PT.dun,mem=[...PT.members.values()];PT.started=true;ptLobby();
+function ptReady(){if(!PT||PT.started)return;const me=PT.members.get(CLOUD.uid);if(!me)return;me.ready=!me.ready;sfx('select');if(amLeader())ptLobby();else{ptSend('ready',{uid:CLOUD.uid,ready:me.ready});renderSheet()}}
+function mpStart(){if(!amLeader()||PT.started||MB||!allReady())return;const d=PT.dun,mem=[...PT.members.values()];PT.started=true;ptLobby();
   const seed=h(fl(d.lat*1e4),fl(d.lng*1e4),epoch()),spec=dunSpec(d);
   MB={spec,d:{id:d.id,kind:'dungeon',dt:d.dt,mods:d.mods,lv:d.lv,lat:d.lat,lng:d.lng,seed,spec,lm:null},room:0,floors:spec.floors,n:mem.length,round:0,tok:0,ti:-1,order:[],actor:null,leader:CLOUD.uid,
     ps:mem.map(m=>({uid:m.uid,name:m.name,cls:m.cls,lv:m.lv,hp:Math.max(1,Math.min(m.hp,m.st.maxhp)),mp:Math.min(m.mp,m.st.maxmp),st:m.st,alive:true,gone:false,guard:0,frozen:0})),es:{}};

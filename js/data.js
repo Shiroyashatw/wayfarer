@@ -43,7 +43,40 @@ const MONS=[
   {name:'石虎',bg:'forest',spr:'wolf',pal:{g:'#c98a4a',e:'#7bd36b',n:'#2a1a10',w:'#f4e3c8'},hp:48,atk:14,arm:10,el:'phys',res:[0,0,0],xp:22,gold:15,w:2,min:4},
   {name:'水鬼',bg:'meadow',spr:'spirit',pal:{v:'#5f8fb8',e:'#06121e',m:'#2a4a6a'},hp:50,atk:14,arm:0,el:'cold',res:[0,40,-20],xp:24,gold:17,w:2,min:5},
   {name:'熔岩魔像',bg:'mountain',spr:'golem',pal:{r:'#7a3020',y:'#ffb040'},hp:85,atk:16,arm:50,el:'fire',res:[50,-10,20],xp:36,gold:26,w:1,min:7},
-  {name:'台灣黑熊',bg:'forest',spr:'bear',pal:{b:'#2a2630',e:'#ffdd55',n:'#8a7060',w:'#f4ead2'},hp:95,atk:18,arm:30,el:'phys',res:[10,10,0],xp:40,gold:28,w:1,min:7}
+  {name:'台灣黑熊',bg:'forest',spr:'bear',pal:{b:'#2a2630',e:'#ffdd55',n:'#8a7060',w:'#f4ead2'},hp:95,atk:18,arm:30,el:'phys',res:[10,10,0],xp:40,gold:28,w:1,min:7},
+  /* 0.1.7：再加 32 種（共 50 種），min 是玩家等級門檻 */
+  {name:'招潮蟹',bg:'meadow',spr:'crab',pal:{r:'#e86a3a',e:'#1a1a1a',w:'#f4e3c8'},hp:30,atk:7,arm:12,el:'phys',res:[0,0,0],xp:9,gold:7,w:3,min:1},
+  {name:'毒蘑菇',bg:'forest',spr:'mush',pal:{r:'#c0392b',w:'#f4ead2',s:'#e8dcc0',e:'#2a1a10',m:'#7a2a1a'},hp:26,atk:8,arm:2,el:'phys',res:[-20,0,0],xp:9,gold:7,w:3,min:1},
+  {name:'夜鷺',bg:'meadow',spr:'bird',pal:{b:'#4a5a6a',e:'#ffdd55',y:'#f2c14e',w:'#c8d4e0'},hp:24,atk:9,arm:0,el:'phys',res:[0,0,0],xp:10,gold:7,w:3,min:1},
+  {name:'斑腿樹蛙',bg:'forest',spr:'frog',pal:{g:'#6fae4a',w:'#ffffff',m:'#3f6e2a'},hp:28,atk:8,arm:4,el:'cold',res:[0,20,0],xp:10,gold:8,w:3,min:2},
+  {name:'垃圾史萊姆',bg:'city',spr:'slime',pal:{g:'#7a7a5a',w:'#c8c8a0',e:'#1a1a10'},hp:34,atk:8,arm:8,el:'phys',res:[0,0,0],xp:11,gold:9,w:3,min:2},
+  {name:'夜市鼠王',bg:'city',spr:'boar',pal:{b:'#6a6a72',e:'#ff4040',n:'#d8a0a0',w:'#f4ead2'},hp:36,atk:10,arm:8,el:'phys',res:[0,0,0],xp:12,gold:11,w:3,min:2},
+  {name:'海鷗',bg:'meadow',spr:'bird',pal:{b:'#e8eef4',e:'#1a1a1a',y:'#f2a03a',w:'#ffffff'},hp:24,atk:10,arm:0,el:'phys',res:[0,10,0],xp:11,gold:8,w:2,min:2},
+  {name:'火蟻巢',bg:'meadow',spr:'slime',pal:{g:'#b8402a',w:'#ffb15a',e:'#2a0a05'},hp:30,atk:11,arm:6,el:'fire',res:[30,0,0],xp:12,gold:9,w:2,min:3},
+  {name:'檳榔精',bg:'forest',spr:'scare',pal:{y:'#7fae4a',t:'#c9a878',e:'#2a1a10',m:'#c0392b',w:'#6a4a2a',r:'#3f6e2a'},hp:40,atk:11,arm:10,el:'phys',res:[0,0,0],xp:14,gold:11,w:2,min:3},
+  {name:'電音蝠',bg:'city',spr:'bat',pal:{p:'#3fd6e8',e:'#ff3ad6',w:'#ffffff'},hp:28,atk:12,arm:0,el:'light',res:[0,0,40],xp:14,gold:11,w:2,min:4},
+  {name:'白鷺精',bg:'meadow',spr:'bird',pal:{b:'#f4f4f4',e:'#1a1a1a',y:'#f2c14e',w:'#ffffff'},hp:40,atk:13,arm:4,el:'cold',res:[0,30,0],xp:18,gold:13,w:2,min:4},
+  {name:'寄居蟹',bg:'meadow',spr:'crab',pal:{r:'#c9a03a',e:'#1a1a1a',w:'#f4e3c8'},hp:44,atk:12,arm:40,el:'phys',res:[10,10,10],xp:18,gold:13,w:2,min:4},
+  {name:'夜叉鬼',bg:'forest',spr:'spirit',pal:{v:'#8a3a5a',e:'#ffdd55',m:'#2a0a1a'},hp:52,atk:14,arm:0,el:'phys',res:[0,0,0],xp:22,gold:16,w:2,min:5},
+  {name:'雷鳴蛙',bg:'forest',spr:'frog',pal:{g:'#c9c23a',w:'#ffffff',m:'#7a6a1a'},hp:44,atk:14,arm:6,el:'light',res:[0,0,40],xp:20,gold:15,w:2,min:5},
+  {name:'山羌',bg:'forest',spr:'wolf',pal:{g:'#a07a4a',e:'#1a1a1a',n:'#2a1a10',w:'#e8d8b8'},hp:46,atk:13,arm:6,el:'phys',res:[0,0,0],xp:20,gold:15,w:2,min:5},
+  {name:'毒菇王',bg:'forest',spr:'mush',pal:{r:'#7a3aa0',w:'#e8d4ff',s:'#d8c8b8',e:'#2a1a10',m:'#4a1a6a'},hp:50,atk:14,arm:10,el:'phys',res:[-10,0,0],xp:22,gold:16,w:1,min:6},
+  {name:'黑面琵鷺',bg:'meadow',spr:'bird',pal:{b:'#f0f0f0',e:'#1a1a1a',y:'#2a2a2a',w:'#ffffff'},hp:46,atk:15,arm:4,el:'phys',res:[0,10,0],xp:22,gold:16,w:1,min:6},
+  {name:'鬼火',bg:'city',spr:'spirit',pal:{v:'#6ab8ff',e:'#ffffff',m:'#1a3a8a'},hp:44,atk:16,arm:0,el:'fire',res:[40,0,0],xp:24,gold:17,w:2,min:6},
+  {name:'赤尾青竹絲',bg:'forest',spr:'snake',pal:{s:'#4aae4a',b:'#2a6e2a',e:'#ffdd55',w:'#c0392b'},hp:46,atk:17,arm:4,el:'phys',res:[0,0,0],xp:26,gold:18,w:2,min:6},
+  {name:'高山白鼻心',bg:'mountain',spr:'boar',pal:{b:'#7a6a5a',e:'#ffdd55',n:'#f4f4f4',w:'#f4ead2'},hp:56,atk:15,arm:14,el:'phys',res:[0,10,0],xp:26,gold:18,w:2,min:6},
+  {name:'城隍差役',bg:'city',spr:'scare',pal:{y:'#3a3a4a',t:'#d8c8a8',e:'#1a1a1a',m:'#c0392b',w:'#5a4030',r:'#2a2a3a'},hp:58,atk:15,arm:20,el:'phys',res:[10,10,10],xp:28,gold:20,w:1,min:7},
+  {name:'雲豹',bg:'forest',spr:'wolf',pal:{g:'#c9b48a',e:'#7fd6c2',n:'#2a2a35',w:'#f4ead2'},hp:60,atk:17,arm:12,el:'phys',res:[0,0,0],xp:30,gold:22,w:1,min:8},
+  {name:'冰霧狼',bg:'mountain',spr:'wolf',pal:{g:'#8fd8f0',e:'#1a3a5a',n:'#2a4a6a',w:'#ffffff'},hp:66,atk:18,arm:12,el:'cold',res:[0,60,-10],xp:32,gold:23,w:1,min:9},
+  {name:'熊鷹',bg:'mountain',spr:'bird',pal:{b:'#6a4a2a',e:'#ffdd55',y:'#f2c14e',w:'#e8d8b8'},hp:70,atk:22,arm:10,el:'phys',res:[0,0,0],xp:40,gold:28,w:1,min:9},
+  {name:'玉山晶石魔像',bg:'mountain',spr:'golem',pal:{r:'#8fb8d8',y:'#ffffff'},hp:95,atk:19,arm:55,el:'cold',res:[20,50,20],xp:42,gold:30,w:1,min:10},
+  {name:'椰子蟹',bg:'meadow',spr:'crab',pal:{r:'#5a3a8a',e:'#ffdd55',w:'#c8a8e8'},hp:90,atk:20,arm:60,el:'phys',res:[10,10,10],xp:44,gold:31,w:1,min:10},
+  {name:'雷神魔像',bg:'mountain',spr:'golem',pal:{r:'#5a5a2a',y:'#fff27a'},hp:92,atk:20,arm:50,el:'light',res:[20,20,60],xp:42,gold:30,w:1,min:11},
+  {name:'山魈',bg:'forest',spr:'bear',pal:{b:'#5a4a3a',e:'#ff4040',n:'#c99a85',w:'#c9a878'},hp:100,atk:22,arm:28,el:'phys',res:[10,0,0],xp:46,gold:33,w:1,min:11},
+  {name:'赤目魔神仔',bg:'forest',spr:'spirit',pal:{v:'#2a4a3a',e:'#ff3a3a',m:'#c0392b'},hp:80,atk:23,arm:0,el:'cold',res:[0,40,0],xp:46,gold:33,w:1,min:12},
+  {name:'地府判官',bg:'city',spr:'scare',pal:{y:'#2a1a1a',t:'#e8d8b8',e:'#ff3a3a',m:'#c0392b',w:'#2a2a2a',r:'#4a0e0e'},hp:96,atk:24,arm:30,el:'fire',res:[40,20,20],xp:52,gold:37,w:1,min:13},
+  {name:'熔岩巨蛙',bg:'mountain',spr:'frog',pal:{g:'#a03a1a',w:'#ffb040',m:'#ff7a3a'},hp:96,atk:24,arm:24,el:'fire',res:[60,-20,0],xp:52,gold:37,w:1,min:13},
+  {name:'黑潮海龍',bg:'meadow',spr:'snake',pal:{s:'#2a4a8a',b:'#1a2a5a',e:'#7fe0ff',w:'#c8e8ff'},hp:110,atk:26,arm:30,el:'cold',res:[0,50,0],xp:60,gold:42,w:1,min:14}
 ];
 const MIMIC={name:'寶箱怪',bg:'city',spr:'mimic',pal:{b:'#9a5a2a',y:'#f2c14e',e:'#ff3a3a',w:'#ffffff'},hp:50,atk:12,arm:20,el:'phys',res:[10,10,10],xp:20,gold:30};
 const EMODS=[
@@ -54,9 +87,9 @@ const EMODS=[
 /* 稀有度：0 普通 1 魔法 2 稀有 3 首領（橘）4 危險怪（紅名，只出現在怪物） */
 /* 地城種類：層數、等級加成、詞綴數量範圍、掉寶加成（數量 q%／稀有度 r%） */
 const DTYPES={
-  normal:{n:'普通地城',floors:3,lv:1,mods:[0,1],q:0,r:0,hp:1,col:'#c9b59a',pal:{x:'#7b7182',m:'#5b5466',r:'#ff4d4d'},desc:'一個人就能攻略的地城。'},
-  party:{n:'團體地城',floors:4,lv:2,mods:[1,2],q:30,r:20,hp:1.5,col:'#7fd6ff',pal:{x:'#5a6a8a',m:'#3a4a66',r:'#7fd6ff'},desc:'建議 2～4 人組隊。怪物比較硬，掉寶比較多。'},
-  hell:{n:'地獄地城',floors:5,lv:4,mods:[3,4],q:80,r:60,hp:2,col:'#ff4a4a',pal:{x:'#6a2a2a',m:'#3a1414',r:'#ffb040'},desc:'非常危險。首領是災厄級，建議等級夠高再組滿隊伍挑戰。'}
+  normal:{n:'普通地城',max:2,floors:3,lv:1,mods:[0,1],q:0,r:0,hp:1,col:'#c9b59a',pal:{x:'#7b7182',m:'#5b5466',r:'#ff4d4d'},desc:'一個人就能攻略，也可以 2 人組隊。'},
+  party:{n:'團體地城',max:3,floors:4,lv:2,mods:[1,2],q:30,r:20,hp:1.5,col:'#7fd6ff',pal:{x:'#5a6a8a',m:'#3a4a66',r:'#7fd6ff'},desc:'最多 3 人組隊。怪物比較硬，掉寶比較多。'},
+  hell:{n:'地獄地城',max:4,floors:5,lv:4,mods:[3,4],q:80,r:60,hp:2,col:'#ff4a4a',pal:{x:'#6a2a2a',m:'#3a1414',r:'#ffb040'},desc:'非常危險。首領是災厄級，最多 4 人，建議等級夠高再組滿隊伍挑戰。'}
 };
 /* 地城詞綴（參考 PoE 地圖詞綴）：讓地城更難，但提高掉落數量與稀有度。em 會加到每隻怪物身上，dm 是怪物數值倍率 */
 const DMODS=[
@@ -168,5 +201,5 @@ const TREE=(()=>{const N=[],E=[],byId={};const P=(r,a)=>[r*Math.cos(a*Math.PI/18
   for(let t=0;t<6;t++){const [a,aa]=tips[t],[b,ab]=tips[(t+1)%6];let prev=a;const R=410;
     for(let q=0;q<3;q++){const tt=(q+1)/4,[x,y]=P(R,aa+(ab-aa)*tt),kind=['s','si','i','id','d','ds'][t];const pool=SM[kind]||SM.s;const id=add(`o${t}_${q}`,x,y,pool[q%pool.length],'small');ln(prev,id);prev=id}ln(prev,b)}
   return{N,E,byId}})();
-const VER='0.1.6';
+const VER='0.1.7';
 const START={lat:24.1372,lng:120.6869,name:'台中車站'};

@@ -176,6 +176,7 @@ const A={
   ptOpen:()=>{if(PT)openSheet('party','組隊')},
   ptLeave:()=>partyLeave(false),
   ptStart:()=>mpStart(),
+  ptReady:()=>ptReady(),
   ptInvite:d=>{const f=SOC.friends.find(q=>q.user_id===d.u);if(f)inviteFriend(f)},
   mpAct:d=>mpMy(d.k),
   mpSub:d=>{if(!MB)return;sfx('tap');MB.sub=d.k||null;renderMBHud()},
