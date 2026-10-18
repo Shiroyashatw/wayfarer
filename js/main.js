@@ -4,7 +4,8 @@
 function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
 function save(){CLOUD.dirty=true;S.savedAt=Date.now();try{const ep=epoch();for(const k in S.defeated)if((k[0]==='m'||k[0]==='c')&&!k.endsWith('_'+ep))delete S.defeated[k];if(S.trail.length>4000)S.trail=S.trail.slice(-4000);localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function rebuildWorld(){fogReset();S.trail.forEach(([x,y])=>reveal(x,y));trailStep(true);[cam.x,cam.y]=toM(S.lat,S.lng);refreshEntities(true);renderHud();if(sheetName)renderSheet()}
-function migrate(s){if(!s.treeV2){s.tree=[startOf(s.cls)];s.treeV2=1}
+function migrate(s){// 0.1.8：天賦樹大改版，舊的節點全部作廢，點數返還
+  if((s.treeV||0)<3){const had=s.tree&&s.tree.length>1;s.tree=[startOf(s.cls)];s.treeV=3;delete s.treeV2;if(had&&s.log)s.log.unshift('天賦樹大改版：已點的天賦全部返還，可以重新分配')}
   if((s.v||0)<6){// 0.1.5：改造石換成蛻變石、提燈欄改為副手、新增腰帶欄
     if(s.cur.alt){s.cur.trans=(s.cur.trans||0)+s.cur.alt}delete s.cur.alt;s.cur.regal=s.cur.regal||1;
     const fix=it=>{if(it&&it.slot==='lantern')it.slot='offhand'};s.inv.forEach(fix);Object.values(s.eq).forEach(fix);

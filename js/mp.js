@@ -11,7 +11,8 @@ const allReady=()=>PT&&PT.members.size>0&&[...PT.members.values()].every(m=>m.re
 const genCode=()=>Array.from({length:6},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[fl(Math.random()*32)]).join('');
 const amLeader=()=>PT&&PT.leader===CLOUD.uid;
 function mySnap(){const st=stats();return{uid:CLOUD.uid,name:S.name||'旅人',no:CLOUD.no,cls:S.cls,lv:S.lv,hp:S.hp,mp:S.mp,
-  st:{maxhp:st.maxhp,maxmp:st.maxmp,armor:st.armor,res:[st.res.fire,st.res.cold,st.res.light],physLo:st.physLo,physHi:st.physHi,fire:st.fire,cold:st.cold,light:st.light,spell:st.spell,crit:st.crit,critMulti:st.critMulti,leech:st.leech,speed:st.speed,regen:st.regen,dodge:st.dodge}}}
+  st:{maxhp:st.maxhp,maxmp:st.maxmp,armor:st.armor,res:[st.res.fire,st.res.cold,st.res.light],physLo:st.physLo,physHi:st.physHi,fire:st.fire,cold:st.cold,light:st.light,spell:st.spell,crit:st.crit,critMulti:st.critMulti,leech:st.leech,speed:st.speed,regen:st.regen,dodge:st.dodge,
+    elm:st.elm,mpCost:st.mpCost,blood:st.blood,mom:st.mom,lowLife:st.lowLife,healMul:st.healMul,manaRegen:st.manaRegen,poisonCh:st.poisonCh,poisonMul:st.poisonMul,ail:st.ail,dbl:st.dbl,noFreeze:st.noFreeze}}}
 const palFor=cls=>({h:'#6b3324',s:'#f1c27d',e:'#1a1626',c:(CLASSES[cls]||CLASSES.novice).color,a:shade((CLASSES[cls]||CLASSES.novice).color,-.35),b:'#d9a441',l:'#3b3550',f:'#5a3a26'});
 
 /* ================= party / lobby ================= */
@@ -91,30 +92,27 @@ function mpNext(){if(!MB)return;MB.ti++;if(MB.ti>=MB.order.length){mpEndRound();
   const p=MB.ps.find(q=>q.uid===a);if(!p||!p.alive)return mpNext();
   if(p.frozen){p.frozen=0;MB.actor=a;MB.dl=0;mpPush([{t:'msg',s:`${p.name} 被凍住了，跳過這回合`}]);clearTimeout(MBT);MBT=setTimeout(mpNext,1100);return}
   MB.actor=a;mpArm(p.gone?1500:TURN_MS);mpPush([{t:'turn',uid:a}])}
-function mpEndRound(){for(const p of MB.ps){if(!p.alive)continue;if(p.st.regen)p.hp=Math.min(p.st.maxhp,p.hp+p.st.regen);if(p.guard>0)p.guard--}}
+function mpEndRound(){for(const p of MB.ps){if(!p.alive)continue;if(p.st.regen)p.hp=Math.min(p.st.maxhp,p.hp+p.st.regen);if(p.st.manaRegen)p.mp=Math.min(p.st.maxmp,p.mp+p.st.manaRegen);if(p.guard>0)p.guard--}}
 function mpOnAct(uid,k,tok){if(!MB||MB.actor!==uid||tok!==MB.tok)return;clearTimeout(MBT);mpResolve(uid,k,false)}
 /* 一位玩家的行動 */
 function mpResolve(uid,k,auto){const p=MB.ps.find(q=>q.uid===uid),e=MB.e,fx=[],ES=MB.es;if(!p||!e)return;MB.tok++;MB.actor=null;MB.dl=0;
-  let sk=SKILLS[k];if(k==='potion'||k==='ether'){const v=k==='potion'?Math.round(p.st.maxhp*.4):Math.round(p.st.maxmp*.5);if(k==='potion')p.hp=Math.min(p.st.maxhp,p.hp+v);else p.mp=Math.min(p.st.maxmp,p.mp+v);
+  let sk=SKILLS[k];if(k==='potion'||k==='ether'){const hm=p.st.healMul||1,v=k==='potion'?Math.round(p.st.maxhp*.4*hm):Math.round(p.st.maxmp*.5*hm);if(k==='potion')p.hp=Math.min(p.st.maxhp,p.hp+v);else p.mp=Math.min(p.st.maxmp,p.mp+v);
     fx.push({t:'msg',s:`${p.name} 使用${k==='potion'?'生命':'魔力'}藥水`},{t:'heal',uid,v,mp:k==='ether'});mpPush(fx);MBT=setTimeout(mpNext,900);return}
-  if(!sk||!(CLASSES[p.cls]||CLASSES.novice).skills.includes(k)||p.mp<sk.mp){sk=SKILLS.attack;k='attack'}p.mp-=sk.mp;
+  if(!sk||!(CLASSES[p.cls]||CLASSES.novice).skills.includes(k)||!canPay(p,p.st,sk)){sk=SKILLS.attack;k='attack'}payCost(p,p.st,sk);
   fx.push({t:'msg',s:auto?`${p.name} 時間到，自動攻擊`:`${p.name}：${sk.name}`});
-  if(sk.kind==='heal'){const tg=MB.ps.filter(q=>q.alive).sort((a,b)=>a.hp/a.st.maxhp-b.hp/b.st.maxhp)[0],v=Math.round(tg.st.maxhp*.35);tg.hp=Math.min(tg.st.maxhp,tg.hp+v);fx.push({t:'heal',uid:tg.uid,from:uid,v})}
-  else{const hits=sk.hits||1;for(let n=0;n<hits&&e.hp>0;n++){const st=p.st;let pk;
-      if(sk.kind==='spell'){pk={phys:0,fire:0,cold:0,light:0};pk[sk.el]=st.spell*sk.mult*rnd(.85,1.15)}
-      else pk={phys:rnd(st.physLo,st.physHi)*sk.mult,fire:st.fire*sk.mult*rnd(.8,1.2),cold:st.cold*sk.mult*rnd(.8,1.2),light:st.light*sk.mult*rnd(.3,1.7)};
-      let d=mitigate(pk,e.arm,e.res,ES.shock>0);const crit=Math.random()*100<st.crit;if(crit)d*=st.critMulti/100;d=Math.round(d);e.hp=Math.max(0,e.hp-d);
+  if(sk.kind==='heal'){const tg=MB.ps.filter(q=>q.alive).sort((a,b)=>a.hp/a.st.maxhp-b.hp/b.st.maxhp)[0],v=Math.round(tg.st.maxhp*.35*(p.st.healMul||1));tg.hp=Math.min(tg.st.maxhp,tg.hp+v);fx.push({t:'heal',uid:tg.uid,from:uid,v})}
+  else{const hits=(sk.hits||1)+extraHit(p.st,sk);for(let n=0;n<hits&&e.hp>0;n++){const st=p.st,pk=heroPacket(st,sk,sk.mult);
+      const {d,crit}=heroDmg(st,pk,e,ES.shock>0,p);e.hp=Math.max(0,e.hp-d);
       const col=pk.fire>pk.cold&&pk.fire>pk.light&&pk.fire>pk.phys*.5?'#ffb15a':pk.cold>pk.phys*.5&&pk.cold>pk.light?'#9fe7ff':pk.light>pk.phys*.5?'#fff27a':'#ffffff';
       fx.push({t:'hit',from:uid,d,crit,col,fx:sk.kind==='spell'?sk.fx:sk.fx==='whirl'?'whirl':(sk.fx==='arrow'||p.cls==='ranger')?'arrow':'slash'});
       if(st.leech&&d>0)p.hp=Math.min(st.maxhp,p.hp+Math.max(1,Math.round(d*st.leech/100)));
-      if(e.hp>0){if(pk.fire>0&&Math.random()<(sk.el==='fire'?.4:.2)){ES.burn=3;ES.burnDmg=Math.max(1,Math.round(pk.fire*.3));fx.push({t:'st',s:'燃燒',col:'#ffb15a'})}
-        if(pk.cold>0&&Math.random()<(sk.freeze||.12)){ES.frozen=1;fx.push({t:'st',s:'凍結',col:'#9fe7ff'})}if(pk.light>0&&Math.random()<.25){ES.shock=2;fx.push({t:'st',s:'感電',col:'#fff27a'})}}
+      if(e.hp>0)heroAil(st,sk,pk,ES).forEach(([s,col])=>fx.push({t:'st',s,col}));
       if(e.mods.includes('reflect')){const r=Math.max(1,Math.round(d*.15));p.hp=Math.max(1,p.hp-r);fx.push({t:'dmg',uid,d:r,col:'#ff8a8a'})}}
-    if(sk.guard){p.guard=sk.guard;fx.push({t:'st',uid,s:'護甲↑',col:'#9fd4ef'})}if(sk.poison&&e.hp>0){ES.poison=sk.poison;fx.push({t:'st',s:'中毒',col:'#9be36b'})}}
+    if(sk.guard){p.guard=sk.guard;fx.push({t:'st',uid,s:'護甲↑',col:'#9fd4ef'})}if(sk.poison&&e.hp>0){ES.poison=sk.poison;ES.pMul=p.st.poisonMul||1;fx.push({t:'st',s:'中毒',col:'#9be36b'})}}
   mpPush(fx);clearTimeout(MBT);MBT=setTimeout(()=>{if(!MB)return;if(MB.e.hp<=0)mpRoomClear();else mpNext()},700+(sk.hits||1)*350)}
 /* 怪物行動：先結算中毒、燃燒，再隨機打一位活著的隊員 */
 function mpEnemy(){if(!MB)return;const e=MB.e,ES=MB.es,fx=[];
-  if(ES.poison>0){const d=Math.max(1,Math.round(e.maxhp*.08));e.hp=Math.max(0,e.hp-d);fx.push({t:'hit',d,col:'#9be36b',dot:1});ES.poison--}
+  if(ES.poison>0){const d=poisonTick(e,ES);e.hp=Math.max(0,e.hp-d);fx.push({t:'hit',d,col:'#9be36b',dot:1});ES.poison--}
   if(ES.burn>0){e.hp=Math.max(0,e.hp-ES.burnDmg);fx.push({t:'hit',d:ES.burnDmg,col:'#ffb15a',dot:1});ES.burn--}if(ES.shock>0)ES.shock--;
   if(e.hp<=0){mpPush(fx);MBT=setTimeout(mpRoomClear,700);return}
   if(ES.frozen){ES.frozen=0;fx.push({t:'msg',s:`${e.name} 被凍住，無法行動`});mpPush(fx);MBT=setTimeout(mpNext,1000);return}
@@ -124,10 +122,10 @@ function mpEnemy(){if(!MB)return;const e=MB.e,ES=MB.es,fx=[];
     if(Math.random()*100<p.st.dodge){fx.push({t:'dodge',uid:p.uid});continue}
     let atk=e.atk*(strong?1.5:1)*rnd(.9,1.1);if(e.mods.includes('fury')&&e.hp<e.maxhp/2)atk*=1.5;
     const pk={phys:0,fire:0,cold:0,light:0};pk[e.el]+=atk;if(e.mods.includes('fire'))pk.fire+=atk*.4;if(e.mods.includes('cold'))pk.cold+=atk*.4;if(e.mods.includes('shock'))pk.light+=atk*.4;
-    const d=Math.round(mitigate(pk,p.st.armor*(p.guard>0?2:1),p.st.res.map(v=>v-ew),false));p.hp=Math.max(0,p.hp-d);
+    const d=Math.round(mitigate(pk,p.st.armor*(p.guard>0?2:1),p.st.res.map(v=>v-ew),false));takeDmg(p,p.st,d);
     fx.push({t:'dmg',uid:p.uid,d,strong,col:pk.fire>pk.phys?'#ffb15a':pk.cold>pk.phys?'#9fe7ff':pk.light>pk.phys?'#fff27a':'#ff8a8a'});
     if(e.mods.includes('leech')){const hl=Math.round(d*.15);if(hl>0)e.hp=Math.min(e.maxhp,e.hp+hl)}
-    if(pk.cold>0&&Math.random()<.12&&p.hp>0){p.frozen=1;fx.push({t:'st',uid:p.uid,s:'凍結',col:'#9fe7ff'})}
+    if(pk.cold>0&&!p.st.noFreeze&&Math.random()<.12&&p.hp>0){p.frozen=1;fx.push({t:'st',uid:p.uid,s:'凍結',col:'#9fe7ff'})}
     if(p.hp<=0){p.alive=false;fx.push({t:'msg',s:`${p.name} 倒下了！`})}}
   mpPush(fx);clearTimeout(MBT);MBT=setTimeout(()=>{if(!MB)return;if(!MB.ps.some(p=>p.alive)){ptSend('wipe',{});mpWipe()}else mpNext()},900+acts*300)}
 /* 打倒這層的怪物：大家各自領獎，倒下的隊員以 20% 生命復活，進下一層 */
@@ -154,9 +152,9 @@ function mpApply(mb,fx){if(mb){const keep=MB?{loot:MB.loot,sub:MB.sub,sent:MB.se
   renderMBHud()}
 /* 自己的行動：隊長直接算，隊員送給隊長 */
 function mpMy(k){if(!MB||MB.actor!==CLOUD.uid||MB.sent===MB.tok)return;const me=MB.ps.find(p=>p.uid===CLOUD.uid);if(!me)return;
-  if(k==='potion'||k==='ether'){const key=k==='potion'?'potions':'ethers';if(!S[key])return;S[key]--}else if(SKILLS[k]&&me.mp<SKILLS[k].mp)return;
+  if(k==='potion'||k==='ether'){const key=k==='potion'?'potions':'ethers';if(!S[key])return;S[key]--}else if(SKILLS[k]&&!canPay(me,me.st,SKILLS[k]))return;
   MB.sent=MB.tok;MB.sub=null;sfx('select');renderMBHud();if(amLeader())mpOnAct(CLOUD.uid,k,MB.tok);else ptSend('act',{uid:CLOUD.uid,k,tok:MB.tok})}
-function mpRoomReward(info){const e={...info},xp=e.xp,gold=Math.round(e.gold*rnd(.8,1.2));S.gold+=gold;const up=gainXP(xp),drops=dropLoot(e,e.boss,MB.spec,false);
+function mpRoomReward(info){const e={...info},xp=e.xp,gold=Math.round(e.gold*rnd(.8,1.2)*stats().goldMul);S.gold+=gold;const up=gainXP(xp),drops=dropLoot(e,e.boss,MB.spec,false);
   MB.loot=(MB.loot||[]).concat(drops);addLog(`組隊擊敗 ${e.name} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);
   bmsg(`擊敗 ${e.name}！+${xp} 經驗 +${gold} 金幣${drops.length?`・${drops.length} 樣戰利品`:''}`);sfx('win');if(up)setTimeout(()=>sfx('level'),500);save();renderMBHud()}
 function mpClear(){if(!MB)return;const d=MB.d,rw=dunReward({spec:MB.spec,lv:d.lv,kind:'dungeon',lm:null,remote:false}),loot=MB.loot||[];S.cleared[d.id]=epoch();addLog(`組隊攻略${dunName(d)}（Lv${d.lv}）`);sfx('level');
@@ -176,9 +174,9 @@ function renderMBHud(){if(!MB)return;const e=MB.e,p=POS(),me=MB.ps.find(q=>q.uid
   const ep=$('epills');ep.style.left=p.ex+'px';ep.style.top=(p.y+14)+'px';ep.innerHTML=e?`<div class="bp hp"><i style="width:${Math.max(0,e.hp/e.maxhp*100)}%"></i><span>${Math.ceil(e.hp).toLocaleString()}</span></div>`:'';
   $('hpills').innerHTML='';
   $('mpills').innerHTML=MB.ps.map((q,i)=>{const ps=mpPos(i);return`<div class="mp ${q.uid===MB.actor?'on':''} ${q.alive?'':'down'}" style="left:${ps.x}px;top:${ps.y+10}px"><b>${esc(q.name)}${q.gone?'（離線）':''}</b><i class="mh"><i style="width:${q.hp/q.st.maxhp*100}%"></i></i><i class="mm"><i style="width:${q.mp/q.st.maxmp*100}%"></i></i></div>`}).join('');
-  const c=CLASSES[(me&&me.cls)||S.cls],sk=c.skills.filter(k=>k!=='attack'),dis=my?'':'disabled',mp=me?me.mp:0;
+  const c=CLASSES[(me&&me.cls)||S.cls],sk=c.skills.filter(k=>k!=='attack'),dis=my?'':'disabled';
   const cb=(label,icon,sub,data,disabled,extra='')=>`<button class="cb ${extra}" data-act="mpAct" ${data} ${disabled||dis}><img src="${iconURL(icon)}" alt="">${label}${sub?`<small>${sub}</small>`:''}</button>`;
-  const slot=k=>cb(SKILLS[k].name,SKILLS[k].icon,SKILLS[k].mp+' 魔力',`data-k="${k}"`,mp<SKILLS[k].mp?'disabled':'');
+  const slot=k=>cb(SKILLS[k].name,SKILLS[k].icon,costTxt(me?me.st:stats(),SKILLS[k]),`data-k="${k}"`,me&&canPay(me,me.st,SKILLS[k])?'':'disabled');
   let html=`<div class="mpturn" id="mpTurn"></div>`+(sk[0]?slot(sk[0]):cb('生命藥水','heart','×'+S.potions,'data-k="potion"',S.potions?'':'disabled'))+cb('攻擊','axe','','data-k="attack"','')+(sk[1]?slot(sk[1]):cb('魔力藥水','ice','×'+S.ethers,'data-k="ether"',S.ethers?'':'disabled'))
     +`<button class="cb" data-act="mpSub" data-k="skills" ${dis}><img src="${iconURL('book')}" alt="">技能</button><button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button><button class="cb" data-act="mpSub" data-k="items" ${dis}><img src="${iconURL('bag')}" alt="">物品</button>`;
   if(MB.sub==='skills'&&my)html+=`<div class="bsub">${c.skills.map(k=>SKILLS[k].mp?slot(k):cb(SKILLS[k].name,SKILLS[k].icon,'',`data-k="${k}"`,'')).join('')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;

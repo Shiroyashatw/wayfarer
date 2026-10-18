@@ -2,7 +2,7 @@
 'use strict';
 /* ================= player & items ================= */
 function newGame(){const g={v:7,cls:'novice',lv:1,xp:0,gold:80,crystal:0,hp:60,mp:20,potions:3,ethers:1,inv:[],eq:{},cur:{trans:4,aug:4,regal:2,alch:1,chaos:1,exalt:0},tree:['start_novice'],
-  lat:START.lat-0.0009,lng:START.lng,walked:0,walkCur:0,bases:[],defeated:{},cleared:{},bought:{},found:{},log:[],timeOffset:0,classOffered:false,music:true,sfx:true,intro:true,trail:[],explMs:0,buff:null,bonusPts:0,treeV2:1};
+  lat:START.lat-0.0009,lng:START.lng,walked:0,walkCur:0,bases:[],defeated:{},cleared:{},bought:{},found:{},log:[],timeOffset:0,classOffered:false,music:true,sfx:true,intro:true,trail:[],explMs:0,buff:null,bonusPts:0,treeV:3};
   SLOTS.forEach(s=>g.eq[s]=null);g.eq.weapon=makeItem('weapon',1,0,0);g.inv.push(makeItem('offhand',1,0,0),makeItem('belt',1,0,0),makeItem('ring',2,1,0),makeItem('chest',2,0,0),makeItem('boots',2,1,1));return g}
 function makeItem(slot,ilvl,rar,baseIdx,r=Math.random){const bl=BASES[slot],bi=baseIdx??fl(r()*bl.length),b=bl[bi];const it={id:uid(),slot,bi,ilvl,r:0,aff:[]};
   if(slot==='weapon'){const k=1+ilvl*.1;it.phys=[Math.round(b.phys[0]*k),Math.round(b.phys[1]*k)];it.crit=b.crit}
@@ -43,17 +43,24 @@ function craft(it,id){if(!craftable(it,id)||!(S.cur[id]>0))return false;S.cur[id
 /* ================= stats ================= */
 /* 目前所在地城的規格（單人 D 或多人 MB） */
 const curSpec=()=>(D&&D.spec)||(MB&&MB.spec)||null;
-function sumStats(){const t={life:0,lifePct:0,physPct:0,flatPhys:0,addFire:0,addCold:0,addLight:0,spellPct:0,elePct:0,armor:0,armorPct:0,mana:0,resFire:0,resCold:0,resLight:0,resAll:0,critPct:0,critMulti:0,leech:0,speed:0,regen:0,physMore:0,vision:0,lure:0};
-  for(const s of SLOTS){const it=S.eq[s];if(!it)continue;if(it.arm)t.armor+=it.arm;if(it.imp)t[it.imp[0]]+=it.imp[1];if(it.lure)t.lure+=it.lure;it.aff.forEach(a=>t[a.id]+=a.v)}
-  for(const id of S.tree){const n=TREE.byId[id];if(n)for(const k in n.st)t[k]+=n.st[k]}return t}
+const STAT0=['life','lifePct','lifeMore','physPct','flatPhys','addFire','addCold','addLight','spellPct','elePct','firePct','coldPct','lightPct','armor','armorPct','armorMore','mana','resFire','resCold','resLight','resAll',
+  'critPct','critMulti','leech','speed','regen','physMore','dmgMore','vision','lure','evade','dodgeCap','conv','poisonPct','poisonCh','ail','dbl','mpCost','healPct','goldPct','manaRegen',
+  'noCrit','blood','mom','lowLife','vaal','ironReflex','noFreeze','noDodge'];
+function sumStats(){const t={};STAT0.forEach(k=>t[k]=0);const A=(k,v)=>t[k]=(t[k]||0)+v;
+  for(const s of SLOTS){const it=S.eq[s];if(!it)continue;if(it.arm)t.armor+=it.arm;if(it.imp)A(it.imp[0],it.imp[1]);if(it.lure)t.lure+=it.lure;it.aff.forEach(a=>A(a.id,a.v))}
+  for(const id of S.tree){const n=TREE.byId[id];if(n)for(const k in n.st)A(k,n.st[k])}return t}
+/* 天賦的基石會改變規則（血魔法、心靈凌駕、鋼鐵反射…），全部在這裡換算成數值，單人與多人戰鬥共用 */
 function stats(){const g=CLASSES[S.cls].g,L=S.lv-1,t=sumStats(),w=S.eq.weapon,ph=w?w.phys:[1,3];const flat=4+g.atk*L+t.flatPhys;
-  const eleMul=1+t.elePct/100,sp=curSpec(),ew=sp&&sp.eleweak?20:0;
-  return{maxhp:Math.round((80+g.hp*L+t.life)*(1+t.lifePct/100)),maxmp:Math.round(20+g.mp*L+t.mana),armor:Math.round((15+g.def*L*4+t.armor)*(1+t.armorPct/100)),
+  const sp=curSpec(),ew=sp&&sp.eleweak?20:0,dm=1+t.dmgMore/100,elm={fire:1+(t.elePct+t.firePct)/100,cold:1+(t.elePct+t.coldPct)/100,light:1+(t.elePct+t.lightPct)/100};
+  const pm=(1+t.physPct/100)*(1+t.physMore/100)*dm,cv=Math.min(100,t.conv)/100;let physLo=(ph[0]+flat)*pm,physHi=(ph[1]+flat)*pm;const toFire=(physLo+physHi)/2*cv*elm.fire;physLo*=1-cv;physHi*=1-cv;
+  const dodgeRaw=t.speed*1.5+t.evade;let armor=(15+g.def*L*4+t.armor)*(1+t.armorPct/100)*(1+t.armorMore/100);if(t.ironReflex)armor*=1+Math.max(0,dodgeRaw)*3/100;
+  return{maxhp:Math.max(1,Math.round((80+g.hp*L+t.life)*(1+t.lifePct/100)*(1+t.lifeMore/100))),maxmp:Math.round(20+g.mp*L+t.mana),armor:Math.round(armor),
     res:{fire:Math.min(75,t.resFire+t.resAll-ew),cold:Math.min(75,t.resCold+t.resAll-ew),light:Math.min(75,t.resLight+t.resAll-ew)},
-    physLo:(ph[0]+flat)*(1+t.physPct/100)*(1+t.physMore/100),physHi:(ph[1]+flat)*(1+t.physPct/100)*(1+t.physMore/100),
-    fire:t.addFire*eleMul,cold:t.addCold*eleMul,light:t.addLight*eleMul,spell:(9+3.4*L+g.mag*L*1.2)*(1+t.spellPct/100)*eleMul,
-    crit:Math.max(0,Math.min(75,(w?w.crit:5)+t.critPct)),critMulti:Math.max(110,150+t.critMulti),leech:t.leech,speed:10+t.speed,regen:t.regen,
-    dodge:Math.max(0,Math.min(30,(t.speed)*1.5)),vision:Math.round((dayPhase().night>.5?260:600)*(1+t.vision/100)),lure:t.lure}}
+    physLo,physHi,fire:t.addFire*elm.fire*dm+toFire,cold:t.addCold*elm.cold*dm,light:t.addLight*elm.light*dm,spell:(9+3.4*L+g.mag*L*1.2)*(1+t.spellPct/100)*dm,elm,
+    crit:t.noCrit?0:Math.max(0,Math.min(75,(w?w.crit:5)+t.critPct)),critMulti:Math.max(110,150+t.critMulti),leech:t.leech*(t.vaal?2:1),speed:10+t.speed,regen:t.vaal?0:t.regen,
+    dodge:t.ironReflex||t.noDodge?0:Math.max(0,Math.min(30+t.dodgeCap,dodgeRaw)),vision:Math.round((dayPhase().night>.5?260:600)*(1+t.vision/100)),lure:t.lure,
+    mpCost:Math.min(60,t.mpCost),blood:!!t.blood,mom:Math.min(50,t.mom),lowLife:t.lowLife,healMul:1+t.healPct/100,goldMul:1+t.goldPct/100,manaRegen:t.manaRegen,
+    poisonCh:Math.min(100,t.poisonCh),poisonMul:1+t.poisonPct/100,ail:1+t.ail/100,dbl:Math.min(50,t.dbl),noFreeze:!!t.noFreeze}}
 /* 升級曲線：Lv1→2 約 6 隻怪，Lv5 約 25 隻，Lv10 約 60 隻（同等級怪） */
 const xpNeed=lv=>Math.round(40*Math.pow(lv,2.1)+20*lv);
 function fullHeal(){const st=stats();S.hp=st.maxhp;S.mp=st.maxmp}
@@ -85,13 +92,24 @@ function classModal(after){const opts=['knight','mage','ranger'];
   showModal('選擇進階職業',`<p class="sub">職業決定技能；成長方向交給天賦樹。demo 中轉職後無法再更換。</p>${opts.map((k,i)=>`<button class="btn" style="text-align:left;display:grid;gap:2px" data-act="mbtn" data-i="${i+1}"><span style="color:${CLASSES[k].color}">${CLASSES[k].name}</span><small class="sub">${CLASSES[k].desc}・技能：${CLASSES[k].skills.slice(1).map(s=>SKILLS[s].name).join('、')}</small></button>`).join('')}`,
     [{label:'稍後再選',fn:()=>{hideModal();after&&after()}}]);
   modalFns.push(...opts.map(k=>()=>{S.cls=k;S.tree=[startOf(k)];fullHeal();sfx('level');addLog(`轉職為 ${CLASSES[k].name}！`);toast(`成為 ${CLASSES[k].name}`);hideModal();renderHud();after&&after()}))}
+/* 商店：格子只顯示圖示和價格，點了才在下方顯示詳細資訊與購買按鈕 */
 function openShop(e,merchant){const he=epoch(),r=rng(h(fl(e.lat*1e4),fl(e.lng*1e4),he)),lv=S.lv+(merchant?2:0);
-  const stock=[0,1,2].map(()=>makeItem(DROPS[fl(r()*DROPS.length)],lv,merchant?2:(r()<.3?2:1),undefined,r));
-  const price=it=>sellVal(it)*(merchant?3:4);
-  const render=()=>{showModal(esc(e.name),`<div class="card"><div class="rowx"><div class="t"><b>生命藥水</b><small>恢復 40% 生命・持有 ${S.potions}</small></div><button class="btn sm" data-act="mbtn" data-i="1" ${S.gold<20?'disabled':''}>20 金</button></div>
-      <div class="rowx"><div class="t"><b>魔力藥水</b><small>恢復 50% 魔力・持有 ${S.ethers}</small></div><button class="btn sm" data-act="mbtn" data-i="2" ${S.gold<30?'disabled':''}>30 金</button></div>
-      ${merchant?`<div class="rowx"><div class="t"><b>${curDot('chaos')}混沌石</b><small>流浪商人限定</small></div><button class="btn sm" data-act="mbtn" data-i="6" ${S.gold<120?'disabled':''}>120 金</button></div>`:''}</div>
-      ${stock.map((it,i)=>{const sold=S.bought[`${e.id},${he},${i}`],p=price(it);return`${itemCard(it)}<div class="btns" style="margin-top:-4px"><button class="btn sm" data-act="mbtn" data-i="${3+i}" ${sold||S.gold<p?'disabled':''}>${sold?'已售出':'購買 '+p+' 金'}</button></div>`}).join('')}
-      <p class="sub">持有 <span style="color:var(--gold)">${S.gold}</span> 金・商品每 15 分鐘更換</p>`,[{label:'離開',fn:()=>{hideModal();renderHud()}}]);
-    modalFns.push(()=>{S.gold-=20;S.potions++;sfx('coin');render()},()=>{S.gold-=30;S.ethers++;sfx('coin');render()},...stock.map((it,i)=>()=>{S.gold-=price(it);S.bought[`${e.id},${he},${i}`]=1;giveItem({...it,id:uid(),aff:it.aff.map(a=>({...a}))});sfx('coin');addLog(`購買了 ${itemTitle(it)}`);render()}),()=>{S.gold-=120;giveCur('chaos');sfx('coin');render()})};
+  const stock=Array.from({length:merchant?6:10},()=>makeItem(DROPS[fl(r()*DROPS.length)],lv,merchant?2:(r()<.3?2:1),undefined,r));
+  const price=it=>sellVal(it)*(merchant?3:4),key=i=>`${e.id},${he},${i}`;
+  const goods=[{n:'生命藥水',ic:pixURL('ic_potion'),p:20,d:'恢復 40% 生命',have:()=>S.potions,buy:()=>S.potions++},{n:'魔力藥水',ic:pixURL('ic_ether'),p:30,d:'恢復 50% 魔力',have:()=>S.ethers,buy:()=>S.ethers++},
+    ...(merchant?[{n:'混沌石',ic:curIcon('chaos'),p:120,d:CURI.chaos.d+'・流浪商人限定',have:()=>S.cur.chaos||0,buy:()=>giveCur('chaos')}]:[]),
+    ...stock.map((it,i)=>({it,i,ic:slotIcon(it),p:price(it)}))];
+  let sel=null;
+  const detail=g=>{if(!g)return'<p class="sub shint">點上面的商品看詳細資訊。</p>';
+    if(!g.it)return`<div class="card"><div class="ent"><img class="bigico" src="${g.ic}" alt=""><div class="t" style="flex:1;min-width:0"><b>${g.n}</b><div class="sub">${g.d}・持有 ${g.have()}</div></div></div>
+      <button class="btn pri" data-act="mbtn" data-i="1" ${S.gold<g.p?'disabled':''}>購買 ${g.p} 金</button></div>`;
+    const it=g.it,sold=S.bought[key(g.i)],cur=it.slot==='ring'?S.eq.ring1:S.eq[it.slot];
+    return`${itemCard(it)}<div class="sub scmp">${cur?`目前穿戴：${itemName(cur)}<br>${esc(itemSum(cur))}`:`${SLOTN[it.slot]}欄目前是空的`}</div>
+      <button class="btn pri" data-act="mbtn" data-i="1" ${sold||S.gold<g.p?'disabled':''}>${sold?'已售出':S.gold<g.p?`金幣不足（${g.p} 金）`:`購買 ${g.p} 金`}</button>`};
+  const render=()=>{const g=sel==null?null:goods[sel];
+    showModal(esc(e.name),`<div class="sgrid">${goods.map((q,i)=>{const sold=q.it&&S.bought[key(q.i)];return`<button class="stile ${i===sel?'on':''} ${sold?'sold':''}" data-act="mbtn" data-i="${2+i}" style="${q.it?`border-color:${RCOL[q.it.r]}88;`:''}" aria-label="${esc(q.it?itemTitle(q.it):q.n)}">
+        <img src="${q.ic}" alt="">${q.it?'':`<i>${q.have()}</i>`}<small class="${S.gold<q.p&&!sold?'poor':''}">${sold?'售出':q.p+' 金'}</small></button>`}).join('')}</div>
+      <div class="sdet">${detail(g)}</div><p class="sub">持有 <span style="color:var(--gold)">${S.gold}</span> 金・商品每 15 分鐘更換</p>`,[{label:'離開',fn:()=>{hideModal();renderHud()}}]);
+    modalFns.push(()=>{if(!g||S.gold<g.p)return;if(g.it){if(S.bought[key(g.i)])return;S.bought[key(g.i)]=1;giveItem({...g.it,id:uid(),aff:g.it.aff.map(a=>({...a}))});addLog(`購買了 ${itemTitle(g.it)}`)}else g.buy();
+      S.gold-=g.p;sfx('coin');render()},...goods.map((q,i)=>()=>{sel=sel===i?null:i;sfx('tap');render()}))};
   sfx('door');render()}

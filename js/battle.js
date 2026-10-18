@@ -53,43 +53,58 @@ function renderBHud(){if(!B)return;const st=stats(),e=B.e,p=POS();
   const ep=$('epills');ep.style.left=p.ex+'px';ep.style.top=(p.y+14)+'px';ep.innerHTML=pill('hp',e.hp,e.maxhp);
   const c=CLASSES[S.cls],sk=c.skills.filter(k=>k!=='attack'),dis=B.busy?'disabled':'';
   const cb=(label,icon,sub,act,data,disabled,extra='')=>`<button class="cb ${extra}" data-act="${act}" ${data} ${disabled||dis}><img src="${iconURL(icon)}" alt="">${label}${sub?`<small>${sub}</small>`:''}</button>`;
-  const slot=k=>k?cb(SKILLS[k].name,SKILLS[k].icon,SKILLS[k].mp?SKILLS[k].mp+' 魔力':'','skill',`data-k="${k}"`,S.mp<SKILLS[k].mp?'disabled':''):cb('生命藥水','heart','×'+S.potions,'bitem','data-k="potions"',S.potions?'':'disabled');
+  const slot=k=>k?cb(SKILLS[k].name,SKILLS[k].icon,costTxt(st,SKILLS[k]),'skill',`data-k="${k}"`,canPay(S,st,SKILLS[k])?'':'disabled'):cb('生命藥水','heart','×'+S.potions,'bitem','data-k="potions"',S.potions?'':'disabled');
   let html=slot(sk[0])+cb('攻擊','axe','','skill','data-k="attack"','')+slot(sk[1])+cb('技能','book','','bsub','data-k="skills"','')+cb('逃跑','run',D?'無法逃跑':'','flee','',D?'disabled':'','run')+cb('物品','bag','','bsub','data-k="items"','');
-  if(B.sub==='skills')html+=`<div class="bsub">${c.skills.map(k=>cb(SKILLS[k].name,SKILLS[k].icon,SKILLS[k].mp?SKILLS[k].mp+' 魔力':'','skill',`data-k="${k}"`,S.mp<SKILLS[k].mp?'disabled':'')).join('')}${cb('返回','run','','bsub','data-k=""','')}</div>`;
+  if(B.sub==='skills')html+=`<div class="bsub">${c.skills.map(k=>cb(SKILLS[k].name,SKILLS[k].icon,costTxt(st,SKILLS[k]),'skill',`data-k="${k}"`,canPay(S,st,SKILLS[k])?'':'disabled')).join('')}${cb('返回','run','','bsub','data-k=""','')}</div>`;
   if(B.sub==='items')html+=`<div class="bsub">${cb('生命藥水','heart','×'+S.potions+'・恢復 40%','bitem','data-k="potions"',S.potions?'':'disabled')}${cb('魔力藥水','ice','×'+S.ethers+'・恢復 50%','bitem','data-k="ethers"',S.ethers?'':'disabled')}${cb('返回','run','','bsub','data-k=""','')}</div>`;
   $('bcmd').innerHTML=html}
 /* damage packets: {phys,fire,cold,light} */
 function mitigate(pk,arm,res,shock){const tot=pk.phys+pk.fire+pk.cold+pk.light;const pr=pk.phys>0?arm/(arm+10*pk.phys):0;
   let d=pk.phys*(1-pr)+pk.fire*(1-res[0]/100)+pk.cold*(1-res[1]/100)+pk.light*(1-res[2]/100);if(shock)d*=1.2;return Math.max(1,d)}
-function playerHit(sk,mult){const st=stats(),e=B.e,p=POS();let pk;
-  if(sk.kind==='spell'){pk={phys:0,fire:0,cold:0,light:0};pk[sk.el]=st.spell*mult*rnd(.85,1.15)}
-  else pk={phys:rnd(st.physLo,st.physHi)*mult,fire:st.fire*mult*rnd(.8,1.2),cold:st.cold*mult*rnd(.8,1.2),light:st.light*mult*rnd(.3,1.7)};
-  let d=mitigate(pk,e.arm,e.res,B.shock>0);const crit=Math.random()*100<st.crit;if(crit)d*=st.critMulti/100;d=Math.round(d);e.hp=Math.max(0,e.hp-d);
+/* ---- 天賦規則（單人與多人共用）：o 是有 hp/mp 的對象（S 或隊員），st 是它的屬性 ---- */
+const skCost=(st,sk)=>Math.round(sk.mp*(1-(st.mpCost||0)/100));
+const canPay=(o,st,sk)=>st.blood?o.hp>skCost(st,sk):o.mp>=skCost(st,sk);
+function payCost(o,st,sk){const n=skCost(st,sk);if(st.blood)o.hp=Math.max(1,o.hp-n);else o.mp-=n}
+const costTxt=(st,sk)=>sk.mp?skCost(st,sk)+(st.blood?' 生命':' 魔力'):'';
+const extraHit=(st,sk)=>sk.kind==='attack'&&st.dbl&&Math.random()*100<st.dbl?1:0;
+function heroPacket(st,sk,mult){if(sk.kind==='spell'){const pk={phys:0,fire:0,cold:0,light:0};pk[sk.el]=st.spell*((st.elm&&st.elm[sk.el])||1)*mult*rnd(.85,1.15);return pk}
+  return{phys:rnd(st.physLo,st.physHi)*mult,fire:st.fire*mult*rnd(.8,1.2),cold:st.cold*mult*rnd(.8,1.2),light:st.light*mult*rnd(.3,1.7)}}
+function heroDmg(st,pk,e,shock,o){let d=mitigate(pk,e.arm,e.res,shock);const crit=Math.random()*100<st.crit;if(crit)d*=st.critMulti/100;if(st.lowLife&&o.hp<st.maxhp/2)d*=1+st.lowLife/100;return{d:Math.round(d),crit}}
+/* 命中後的異常狀態，es 是敵人身上的狀態（B 或 MB.es），回傳要跳出的文字 */
+function heroAil(st,sk,pk,es){const out=[],m=st.ail||1;
+  if(pk.fire>0&&Math.random()<(sk.el==='fire'?.4:.2)*m){es.burn=3;es.burnDmg=Math.max(1,Math.round(pk.fire*.3));out.push(['燃燒','#ffb15a'])}
+  if(pk.cold>0&&Math.random()<(sk.freeze||.12)*m){es.frozen=1;out.push(['凍結','#9fe7ff'])}
+  if(pk.light>0&&Math.random()<.25*m){es.shock=2;out.push(['感電','#fff27a'])}
+  if(sk.kind==='attack'&&!sk.poison&&st.poisonCh&&Math.random()*100<st.poisonCh){es.poison=Math.max(es.poison||0,3);es.pMul=st.poisonMul||1;out.push(['中毒','#9be36b'])}
+  return out}
+const poisonTick=(e,es)=>Math.max(1,Math.round(e.maxhp*.08*(es.pMul||1)));
+/* 受到傷害：心靈凌駕讓一部分改扣魔力 */
+function takeDmg(o,st,d){const m=st.mom?Math.max(0,Math.min(o.mp,Math.round(d*st.mom/100))):0;o.mp-=m;o.hp=Math.max(0,o.hp-(d-m));return m}
+function playerHit(sk,mult){const st=stats(),e=B.e,p=POS(),pk=heroPacket(st,sk,mult);
+  const {d,crit}=heroDmg(st,pk,e,B.shock>0,S);e.hp=Math.max(0,e.hp-d);
   BFX.en.flash=performance.now();anim('en','hurt',300);const main=pk.fire>pk.cold&&pk.fire>pk.light&&pk.fire>pk.phys*.5?'#ffb15a':pk.cold>pk.phys*.5&&pk.cold>pk.light?'#9fe7ff':pk.light>pk.phys*.5?'#fff27a':'#ffffff';
   pop(crit?d+'!':String(d),p.ex+rnd(-12,12),p.y-80,crit?'#ffd166':main);if(crit){BFX.shake=performance.now();sfx('crit');buzz(40)}else sfx('hit');
   if(st.leech&&d>0){const v=Math.max(1,Math.round(d*st.leech/100));S.hp=Math.min(st.maxhp,S.hp+v)}
-  if(e.hp>0){if(pk.fire>0&&Math.random()<(sk.el==='fire'?.4:.2)){B.burn=3;B.burnDmg=Math.max(1,Math.round(pk.fire*.3));pop('燃燒',p.ex,p.y-100,'#ffb15a')}
-    if(pk.cold>0&&Math.random()<(sk.freeze||.12)){B.frozen=1;pop('凍結',p.ex,p.y-100,'#9fe7ff')}
-    if(pk.light>0&&Math.random()<.25){B.shock=2;pop('感電',p.ex,p.y-100,'#fff27a')}}
+  if(e.hp>0)heroAil(st,sk,pk,B).forEach(([t,c],i)=>pop(t,p.ex,p.y-100-i*16,c));
   if(e.mods&&e.mods.includes('reflect')){const r=Math.max(1,Math.round(d*.15));S.hp=Math.max(1,S.hp-r);pop('-'+r,p.hx,p.y-90,'#ff8a8a')}
   renderBHud()}
-function useSkill(k){const sk=SKILLS[k];if(!B||B.busy||S.mp<sk.mp)return;B.busy=true;B.sub=null;S.mp-=sk.mp;sfx('select');bmsg(sk.name);renderBHud();const p=POS();
-  if(sk.kind==='attack'){const ranged=sk.fx==='arrow'||CLASSES[S.cls].wep==='bow',hits=sk.hits||1;
+function useSkill(k){const sk=SKILLS[k],st0=stats();if(!B||B.busy||!canPay(S,st0,sk))return;B.busy=true;B.sub=null;payCost(S,st0,sk);sfx('select');bmsg(sk.name);renderBHud();const p=POS();
+  if(sk.kind==='attack'){const ranged=sk.fx==='arrow'||CLASSES[S.cls].wep==='bow',hits=(sk.hits||1)+extraHit(st0,sk);
     for(let n=0;n<hits;n++)later(n*380,()=>{if(B.e.hp<=0)return;if(ranged){anim('hero','cast',300);sfx('arrow');BFX.fx.push({type:'arrow',t:performance.now(),dur:260})}else{anim('hero','lunge',380);later(140,()=>sfx('slash'))}
       later(ranged?240:170,()=>{BFX.fx.push({type:sk.fx==='whirl'?'whirl':ranged?'pierce':'slash',t:performance.now(),dur:300});playerHit(sk,sk.mult);
-        if(sk.guard){B.guard=sk.guard;pop('護甲↑',p.hx,p.y-90,'#9fd4ef')}if(sk.poison&&B.e.hp>0){B.poison=sk.poison;pop('中毒',p.ex,p.y-100,'#9be36b')}})});
+        if(sk.guard){B.guard=sk.guard;pop('護甲↑',p.hx,p.y-90,'#9fd4ef')}if(sk.poison&&B.e.hp>0){B.poison=sk.poison;B.pMul=st0.poisonMul||1;pop('中毒',p.ex,p.y-100,'#9be36b')}})});
     later(hits*380+380,afterPlayer)}
   else if(sk.kind==='spell'){anim('hero','cast',500);BFX.fx.push({type:'charge',t:performance.now(),dur:450});later(360,()=>{sfx(sk.fx);BFX.fx.push({type:sk.fx,t:performance.now(),dur:600})});
     later(700,()=>playerHit(sk,sk.mult));later(1150,afterPlayer)}
-  else{anim('hero','cast',500);later(250,()=>{sfx('heal');BFX.fx.push({type:'heal',t:performance.now(),dur:700});const st=stats(),v=Math.round(st.maxhp*.35);S.hp=Math.min(st.maxhp,S.hp+v);pop('+'+v,p.hx,p.y-90,'#7bd36b');renderBHud()});later(1000,afterPlayer)}}
-function bItem(k){if(!B||B.busy||!S[k])return;B.busy=true;B.sub=null;sfx('heal');const st=stats(),p=POS();S[k]--;if(k==='potions'){const v=Math.round(st.maxhp*.4);S.hp=Math.min(st.maxhp,S.hp+v);pop('+'+v,p.hx,p.y-90,'#7bd36b')}else{const v=Math.round(st.maxmp*.5);S.mp=Math.min(st.maxmp,S.mp+v);pop('+'+v+' MP',p.hx,p.y-90,'#6ab8ff')}
+  else{anim('hero','cast',500);later(250,()=>{sfx('heal');BFX.fx.push({type:'heal',t:performance.now(),dur:700});const st=stats(),v=Math.round(st.maxhp*.35*st.healMul);S.hp=Math.min(st.maxhp,S.hp+v);pop('+'+v,p.hx,p.y-90,'#7bd36b');renderBHud()});later(1000,afterPlayer)}}
+function bItem(k){if(!B||B.busy||!S[k])return;B.busy=true;B.sub=null;sfx('heal');const st=stats(),p=POS();S[k]--;if(k==='potions'){const v=Math.round(st.maxhp*.4*st.healMul);S.hp=Math.min(st.maxhp,S.hp+v);pop('+'+v,p.hx,p.y-90,'#7bd36b')}else{const v=Math.round(st.maxmp*.5*st.healMul);S.mp=Math.min(st.maxmp,S.mp+v);pop('+'+v+' MP',p.hx,p.y-90,'#6ab8ff')}
   BFX.fx.push({type:'heal',t:performance.now(),dur:700});bmsg(k==='potions'?'生命藥水':'魔力藥水');renderBHud();later(800,afterPlayer)}
 function flee(){if(!B||B.busy||D)return;B.busy=true;B.sub=null;sfx('select');renderBHud();if(Math.random()<.7){bmsg('成功逃跑！');addLog(`從 ${B.e.name} 身邊逃走了`);later(700,()=>endBattle())}else{bmsg('逃跑失敗！');later(700,afterPlayer)}}
 function enemyDead(){BFX.en.dying=performance.now();sfx('win');later(900,winBattle)}
 function afterPlayer(){if(B.e.hp<=0)return enemyDead();later(250,enemyTurn)}
 function enemyTurn(){const e=B.e,p=POS(),st=stats();
   const dot=(n,col)=>{e.hp=Math.max(0,e.hp-n);pop(String(n),p.ex+rnd(-10,10),p.y-80,col);BFX.en.flash=performance.now();sfx('hit')};
-  if(B.poison>0){dot(Math.max(1,Math.round(e.maxhp*.08)),'#9be36b');B.poison--}if(B.burn>0){dot(B.burnDmg,'#ffb15a');B.burn--}if(B.shock>0)B.shock--;renderBHud();
+  if(B.poison>0){dot(poisonTick(e,B),'#9be36b');B.poison--}if(B.burn>0){dot(B.burnDmg,'#ffb15a');B.burn--}if(B.shock>0)B.shock--;renderBHud();
   if(e.hp<=0){later(400,enemyDead);return}
   later(350,()=>{if(B.frozen){B.frozen=0;bmsg(`${e.name} 被凍住，無法行動`);renderBHud();later(800,endEnemyTurn);return}
     const acts=e.mods&&e.mods.includes('swift')&&Math.random()<.35?2:1;let n=0;
@@ -97,12 +112,12 @@ function enemyTurn(){const e=B.e,p=POS(),st=stats();
       later(210,()=>{if(Math.random()*100<st.dodge){pop('閃避',p.hx,p.y-90,'#d8d2c4');sfx('tap')}else{
         let atk=e.atk*(strong?1.5:1)*rnd(.9,1.1);if(e.mods&&e.mods.includes('fury')&&e.hp<e.maxhp/2)atk*=1.5;
         const pk={phys:0,fire:0,cold:0,light:0};pk[e.el]+=atk;if(e.mods){if(e.mods.includes('fire'))pk.fire+=atk*.4;if(e.mods.includes('cold'))pk.cold+=atk*.4;if(e.mods.includes('shock'))pk.light+=atk*.4}
-        const d=Math.round(mitigate(pk,st.armor*(B.guard>0?2:1),[st.res.fire,st.res.cold,st.res.light],false));S.hp=Math.max(0,S.hp-d);anim('hero','hurt',320);BFX.shake=performance.now();sfx('hurt');buzz(strong?120:50);
-        pop(String(d),p.hx,p.y-90,pk.fire>pk.phys?'#ffb15a':pk.cold>pk.phys?'#9fe7ff':pk.light>pk.phys?'#fff27a':'#ff8a8a');
+        const d=Math.round(mitigate(pk,st.armor*(B.guard>0?2:1),[st.res.fire,st.res.cold,st.res.light],false)),toMp=takeDmg(S,st,d);anim('hero','hurt',320);BFX.shake=performance.now();sfx('hurt');buzz(strong?120:50);
+        if(toMp)pop(toMp+' MP',p.hx+30,p.y-70,'#6ab8ff');pop(String(d-toMp),p.hx,p.y-90,pk.fire>pk.phys?'#ffb15a':pk.cold>pk.phys?'#9fe7ff':pk.light>pk.phys?'#fff27a':'#ff8a8a');
         if(e.mods&&e.mods.includes('leech')){const hl=Math.round(d*.15);if(hl>0){e.hp=Math.min(e.maxhp,e.hp+hl);pop('+'+hl,p.ex,p.y-100,'#7bd36b')}}
-        if(pk.cold>0&&Math.random()<.12){B.pFrozen=1;pop('你被凍結',p.hx,p.y-110,'#9fe7ff')}}
+        if(pk.cold>0&&!st.noFreeze&&Math.random()<.12){B.pFrozen=1;pop('你被凍結',p.hx,p.y-110,'#9fe7ff')}}
         renderBHud();if(S.hp<=0){later(700,loseBattle);return}n++;if(n<acts)later(500,strike);else later(500,endEnemyTurn)})};strike()})}
-function endEnemyTurn(){if(!B)return;const st=stats();if(B.guard>0)B.guard--;if(st.regen&&S.hp>0){S.hp=Math.min(st.maxhp,S.hp+st.regen)}
+function endEnemyTurn(){if(!B)return;const st=stats();if(B.guard>0)B.guard--;if(st.regen&&S.hp>0){S.hp=Math.min(st.maxhp,S.hp+st.regen)}if(st.manaRegen)S.mp=Math.min(st.maxmp,S.mp+st.manaRegen);
   if(B.pFrozen){B.pFrozen=0;bmsg('你被凍住了，跳過這回合');renderBHud();later(900,enemyTurn);return}B.busy=false;renderBHud()}
 /* ================= dungeons (shared by solo and party) ================= */
 /* 把地圖上的地城／裂隙／試煉整理成一份規格：層數、怪物倍率、附加詞綴、掉寶加成 */
@@ -132,7 +147,7 @@ function dunReward(D){const sp=D.spec,mult=D.remote?.8:1,Q=1+sp.q/100,bonus=(D.l
   S.gold+=gold;S.crystal+=cry;items.forEach(giveItem);const curs=[];for(let i=0;i<Math.round((D.kind==='rift'?4:2)*Q);i++){const c=rollCur(sp.dt==='hell'?5:3);giveCur(c);curs.push(curDot(c)+CURI[c].n)}
   return{gold,cry,items,curs}}
 function dunModsHTML(sp){return sp.mods.length?`<div class="dmods">${sp.mods.map(id=>`<div><b>${DMODI[id].n}</b><small>${DMODI[id].d}</small></div>`).join('')}</div>`:'<p class="sub">沒有地城詞綴。</p>'}
-function winBattle(){const e=B.e,mult=(D&&D.remote?.8:1)*(buffOn()?1.2:1),xp=Math.round(e.xp*mult),gold=Math.round(e.gold*rnd(.8,1.2)*mult);S.gold+=gold;const up=gainXP(xp);{const st0=stats();S.hp=Math.min(st0.maxhp,S.hp+Math.round(st0.maxhp*.2));S.mp=Math.min(st0.maxmp,S.mp+Math.round(st0.maxmp*.2))}
+function winBattle(){const e=B.e,mult=(D&&D.remote?.8:1)*(buffOn()?1.2:1),xp=Math.round(e.xp*mult),gold=Math.round(e.gold*rnd(.8,1.2)*mult*stats().goldMul);S.gold+=gold;const up=gainXP(xp);{const st0=stats();S.hp=Math.min(st0.maxhp,S.hp+Math.round(st0.maxhp*.2));S.mp=Math.min(st0.maxmp,S.mp+Math.round(st0.maxmp*.2))}
   if(B.entId){S.defeated[B.entId]=1;ENT.delete(B.entId)}const drops=dropLoot(e,B.boss,D&&D.spec,D&&D.remote);let bonus='';
   if(B.bounty){const g=100+S.lv*30;S.gold+=g;giveCur('chaos');bonus=`<p style="color:var(--gold)">懸賞完成！額外 ${g} 金幣與 1 個混沌石</p>`;S.cleared[B.bounty]=evEp()}
   addLog(`擊敗 ${e.name} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);if(up)setTimeout(()=>sfx('level'),500);renderBHud();save();const inD=!!D;
