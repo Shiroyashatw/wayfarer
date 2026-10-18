@@ -9,6 +9,10 @@
 ## 專案結構
 純靜態網頁，沒有建置步驟。所有 JS 是一般 `<script>`（非 module），依序載入、共用全域；`main.js` 必須最後。
 
+**改程式前先看 `docs/CODEMAP.md`**：裡面有「要改什麼看哪裡」對照表、面板與全域變數說明，以及每個檔案的函式／常數行號索引。找到行號後用 Read 的 offset/limit 只讀那一段，不要整個檔案讀進來，也不要 `cat` 整個 JS。
+- 改完 JS 後：`npx prettier@3.3.3 --write js/*.js`（設定在 `.prettierrc`），再 `python3 tools/codemap.py` 更新索引行號。
+- 新增檔案、區段或重要函式時，順手更新 `docs/CODEMAP.md` 的對照表。
+
 | 檔案 | 內容 |
 | --- | --- |
 | `index.html` | 頁面骨架與 DOM、載入順序 |
@@ -27,6 +31,7 @@
 | `js/mp.js` | 隊伍（6 碼代碼、Realtime 廣播頻道 `wf-party-代碼`）與多人戰鬥；隊長的裝置計算、廣播 `state` |
 | `js/main.js` | `load`/`save`/`migrate`/`start`，最後執行 `start()` |
 | `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽 |
+| `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的函式行號索引 |
 | `supabase/migrations/` | 資料庫結構 |
 
 ## 本機執行
