@@ -339,7 +339,7 @@ const TREE=(()=>{const N=[{id:'root',x:300,y:300,n:'起點',st:{},type:'root',ic
     TREE.E.push([ea,ids[0]]);for(let q=0;q<3;q++)TREE.E.push([ids[q],ids[q+1]]);TREE.E.push([ids[3],eb])};
   bridge(192,228,TREE.B[0],'si');bridge(312,348,TREE.B[1],'id');bridge(72,108,TREE.B[2],'ds');
   TREE.byId=Object.fromEntries(TREE.N.map(n=>[n.id,n]))})();
-const VER='0.1.2';
+const VER='0.1.3';
 const START={lat:24.1372,lng:120.6869,name:'台中車站'};
 /* ================= utils ================= */
 function h(x,y,s=0){let n=Math.imul(x|0,374761393)^Math.imul(y|0,668265263)^Math.imul((s|0)+1,1442695041);n=Math.imul(n^(n>>>13),1274126177);n^=n>>>16;return n>>>0}
@@ -556,7 +556,7 @@ function sumStats(){const t={life:0,lifePct:0,physPct:0,flatPhys:0,addFire:0,add
   for(const id of S.tree){const n=TREE.byId[id];if(n)for(const k in n.st)t[k]+=n.st[k]}return t}
 function stats(){const g=CLASSES[S.cls].g,L=S.lv-1,t=sumStats(),w=S.eq.weapon,ph=w?w.phys:[1,3];const flat=4+g.atk*L+t.flatPhys;
   const eleMul=1+t.elePct/100;
-  return{maxhp:Math.round((60+g.hp*L+t.life)*(1+t.lifePct/100)),maxmp:Math.round(20+g.mp*L+t.mana),armor:Math.round((4+g.def*L*3+t.armor)*(1+t.armorPct/100)),
+  return{maxhp:Math.round((80+g.hp*L+t.life)*(1+t.lifePct/100)),maxmp:Math.round(20+g.mp*L+t.mana),armor:Math.round((15+g.def*L*4+t.armor)*(1+t.armorPct/100)),
     res:{fire:Math.min(75,t.resFire+t.resAll),cold:Math.min(75,t.resCold+t.resAll),light:Math.min(75,t.resLight+t.resAll)},
     physLo:(ph[0]+flat)*(1+t.physPct/100)*(1+t.physMore/100),physHi:(ph[1]+flat)*(1+t.physPct/100)*(1+t.physMore/100),
     fire:t.addFire*eleMul,cold:t.addCold*eleMul,light:t.addLight*eleMul,spell:(9+3.4*L+g.mag*L*1.2)*(1+t.spellPct/100)*eleMul,
@@ -574,9 +574,9 @@ const buffOn=()=>S.buff&&S.buff.until>now();
 /* ================= enemies ================= */
 function pickMon(r,lv){const pool=MONS.filter(q=>!q.min||q.min<=lv+1);let tot=pool.reduce((a,q)=>a+q.w,0),x=r%tot;for(const q of pool){x-=q.w;if(x<0)return q}return pool[0]}
 function makeEnemy(b,lv,rar=0,mods=[]){const f=lv-1,e={name:b.name,lv,spr:b.spr,pal:b.pal,bg:b.bg,el:b.el,res:[...b.res],rar,mods,
-  maxhp:Math.round(b.hp*(1+.38*f)),atk:Math.round(b.atk*(1+.22*f)),arm:Math.round(b.arm*(1+.25*f)),xp:Math.round(b.xp*(1+.5*f)),gold:Math.round(b.gold*(1+.4*f)),speed:10};
+  maxhp:Math.round(b.hp*(1+.38*f)),atk:Math.round(b.atk*.8*(1+.2*f)),arm:Math.round(b.arm*(1+.25*f)),xp:Math.round(b.xp*(1+.5*f)),gold:Math.round(b.gold*(1+.4*f)),speed:10};
   const hm=[1,1.5,2.4][rar]||1,am=[1,1.15,1.3][rar]||1,rm=[1,2.5,5][rar]||1;e.maxhp=Math.round(e.maxhp*hm);e.atk=Math.round(e.atk*am);e.xp=Math.round(e.xp*rm);e.gold=Math.round(e.gold*rm);
-  if(mods.includes('tough'))e.maxhp=Math.round(e.maxhp*1.6);if(mods.includes('armored'))e.arm=e.arm*3+20;if(mods.includes('swift'))e.speed=18;
+  if(mods.includes('tough'))e.maxhp=Math.round(e.maxhp*1.6);if(mods.includes('armored'))e.arm=e.arm*2+10;if(mods.includes('swift'))e.speed=18;
   if(rar===2)e.name=`${RAREA[h(lv,b.hp,mods.length)%RAREA.length]}之${b.name}`;else if(rar===1)e.name=`${EMODS.find(m=>m.id===mods[0]).n}的${b.name}`;e.hp=e.maxhp;return e}
 function rollMods(r,n){const ids=[],pool=EMODS.map(m=>m.id);for(let i=0;i<n;i++){const k=(r>>>(i*5))%pool.length;ids.push(pool.splice(k,1)[0])}return ids}
 const modNames=e=>e.mods.map(id=>EMODS.find(m=>m.id===id).n).join('・');
@@ -698,7 +698,7 @@ function enemyTurn(){const e=B.e,p=POS(),st=stats();
         const pk={phys:0,fire:0,cold:0,light:0};pk[e.el]+=atk;if(e.mods){if(e.mods.includes('fire'))pk.fire+=atk*.4;if(e.mods.includes('cold'))pk.cold+=atk*.4;if(e.mods.includes('shock'))pk.light+=atk*.4}
         const d=Math.round(mitigate(pk,st.armor*(B.guard>0?2:1),[st.res.fire,st.res.cold,st.res.light],false));S.hp=Math.max(0,S.hp-d);anim('hero','hurt',320);BFX.shake=performance.now();sfx('hurt');buzz(strong?120:50);
         pop(String(d),p.hx,p.y-90,pk.fire>pk.phys?'#ffb15a':pk.cold>pk.phys?'#9fe7ff':pk.light>pk.phys?'#fff27a':'#ff8a8a');
-        if(e.mods&&e.mods.includes('leech')){e.hp=Math.min(e.maxhp,e.hp+Math.round(d*.3))}
+        if(e.mods&&e.mods.includes('leech')){const hl=Math.round(d*.15);if(hl>0){e.hp=Math.min(e.maxhp,e.hp+hl);pop('+'+hl,p.ex,p.y-100,'#7bd36b')}}
         if(pk.cold>0&&Math.random()<.12){B.pFrozen=1;pop('你被凍結',p.hx,p.y-110,'#9fe7ff')}}
         renderBHud();if(S.hp<=0){later(700,loseBattle);return}n++;if(n<acts)later(500,strike);else later(500,endEnemyTurn)})};strike()})}
 function endEnemyTurn(){if(!B)return;const st=stats();if(B.guard>0)B.guard--;if(st.regen&&S.hp>0){S.hp=Math.min(st.maxhp,S.hp+st.regen)}
@@ -710,7 +710,7 @@ function dropLoot(e,boss){const buf=buffOn()?1.2:1,rem=D&&D.remote?.8:1,out=[],r
   if(boss)mk(2);else if(Math.random()<itemCh)mk(r>=2?1:0);if(r===2&&Math.random()<.5)mk(0);
   for(let i=0;i<Math.round(curN*rem);i++){const c=rollCur(boss||r===2?3:1);giveCur(c);out.push(curDot(c)+CURI[c].n)}
   if(Math.random()<.12){S.potions++;out.push('生命藥水')}return out}
-function winBattle(){const e=B.e,mult=(D&&D.remote?.8:1)*(buffOn()?1.2:1),xp=Math.round(e.xp*mult),gold=Math.round(e.gold*rnd(.8,1.2)*mult);S.gold+=gold;const up=gainXP(xp);
+function winBattle(){const e=B.e,mult=(D&&D.remote?.8:1)*(buffOn()?1.2:1),xp=Math.round(e.xp*mult),gold=Math.round(e.gold*rnd(.8,1.2)*mult);S.gold+=gold;const up=gainXP(xp);{const st0=stats();S.hp=Math.min(st0.maxhp,S.hp+Math.round(st0.maxhp*.2));S.mp=Math.min(st0.maxmp,S.mp+Math.round(st0.maxmp*.2))}
   if(B.entId){S.defeated[B.entId]=1;ENT.delete(B.entId)}const drops=dropLoot(e,B.boss);let bonus='';
   if(B.bounty){const g=100+S.lv*30;S.gold+=g;giveCur('chaos');bonus=`<p style="color:var(--gold)">懸賞完成！額外 ${g} 金幣與 1 個混沌石</p>`;S.cleared[B.bounty]=evEp()}
   addLog(`擊敗 ${e.name} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);if(up)setTimeout(()=>sfx('level'),500);renderBHud();save();const inD=!!D;
@@ -866,7 +866,7 @@ function genEntities(){const out=new Map(),[px,py]=toM(S.lat,S.lng),ep=epoch(),e
   const put=(id,o)=>{const [la,ln]=toLL(o.x,o.y);out.set(id,{id,lat:la,lng:ln,...o})};
   cells(MCELL,R,(i,j)=>{const r=h(i,j,ep+77);if(r%100>=dens)return;const id=`m${i}_${j}_${ep}`;if(S.defeated[id])return;let x=(i+((r>>>8)%100)/100)*MCELL,y=(j+((r>>>16)%100)/100)*MCELL;
     if(Math.hypot(x,y)>BOUND||nearTown(x,y,120))return;const p=snapRoad(x,y,80);if(!p)return;[x,y]=p;const lv=Math.max(1,S.lv+((r>>>4)%3)-1),base=pickMon(r>>>12,lv),q=h(i,j,ep+5)%100;
-    const rar=q<4?2:q<20?1:0,mods=rar?rollMods(h(i,j,ep+9),rar===2?3:1+(q%2)):[];put(id,{kind:'monster',x,y,lv,base,rar,mods,name:rar?makeEnemy(base,lv,rar,mods).name:base.name,ph:r%628/100})});
+    const rar=q<(S.lv>=3?4:0)?2:q<(S.lv>=3?20:8)?1:0,mods=rar?rollMods(h(i,j,ep+9),rar===2?3:1+(q%2)):[];put(id,{kind:'monster',x,y,lv,base,rar,mods,name:rar?makeEnemy(base,lv,rar,mods).name:base.name,ph:r%628/100})});
   cells(DCELL,R+300,(i,j)=>{const r=h(i,j,41);if(r%100>=30)return;const x=(i+.15+((r>>>8)%70)/100)*DCELL,y=(j+.15+((r>>>16)%70)/100)*DCELL;if(Math.hypot(x,y)>BOUND||nearTown(x,y,160))return;put(`d${i}_${j}`,{kind:'dungeon',x,y,lv:S.lv+1,name:'洞窟'})});
   cells(SCELL,R,(i,j)=>{const r=h(i,j,53);if(r%100>=30)return;let x=(i+((r>>>8)%100)/100)*SCELL,y=(j+((r>>>16)%100)/100)*SCELL;if(Math.hypot(x,y)>BOUND||nearTown(x,y,140))return;const p=snapRoad(x,y,90);if(!p)return;[x,y]=p;put(`p${i}_${j}`,{kind:'shrine',x,y,name:'福德祠'})});
   cells(CCELL,R,(i,j)=>{const r=h(i,j,ep+311);if(r%100>=16)return;const id=`c${i}_${j}_${ep}`;if(S.defeated[id])return;let x=(i+((r>>>8)%100)/100)*CCELL,y=(j+((r>>>16)%100)/100)*CCELL;if(Math.hypot(x,y)>BOUND||nearTown(x,y,100))return;const p=snapRoad(x,y,80);if(!p)return;[x,y]=p;put(id,{kind:'chest',x,y,name:'寶箱',mimic:(r>>>20)%100<12})});
