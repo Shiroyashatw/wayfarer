@@ -217,3 +217,16 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .mpturn{grid-column:1/-1;position:relative;display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:8px;background:#0007;font-size:13px;overflow:hidden;min-height:30px}
 .mpturn i{position:absolute;left:0;bottom:0;height:3px;background:var(--gold);transition:width .25s linear}
 .rdy{font-size:12px;color:var(--dim);white-space:nowrap}.rdy.ok{color:var(--good);font-weight:700}
+/* ---------- shop ---------- */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:6px}
+.stile{position:relative;aspect-ratio:1;background:#0005;border:1px solid #ffffff22;border-radius:10px;padding:4px 2px 2px;display:grid;grid-template-rows:1fr auto;justify-items:center;align-items:center;color:inherit;font-family:inherit;cursor:pointer}
+.stile img{width:34px;height:34px;image-rendering:pixelated}
+.stile small{font-size:11px;color:var(--gold);white-space:nowrap}
+.stile small.poor{color:var(--dim)}
+.stile i{position:absolute;top:3px;right:6px;font-style:normal;font-size:11px;color:var(--dim)}
+.stile.on{background:#f2c14e22;box-shadow:0 0 0 2px var(--gold) inset}
+.stile.sold{opacity:.38}
+.sdet{display:grid;gap:8px}
+.scmp{line-height:1.5}
+.shint{text-align:center;padding:6px 0}
+.tsum{line-height:1.6;max-height:24vh;overflow:auto}

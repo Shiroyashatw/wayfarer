@@ -17,10 +17,10 @@ function curRow(){return`<div class="curs">${CUR.map(c=>`<span title="${c.d}"><i
 function renderSheet(){if(!sheetName||sheetName==='ent')return;const el=$('sbody'),st=stats(),c=CLASSES[S.cls];let html='';
   if(sheetName==='hero'){const avg=(st.physLo+st.physHi)/2+st.fire+st.cold+st.light*1;
     html=`<div class="card"><div class="ent"><canvas id="heroBig" width="18" height="18"></canvas><div style="flex:1;display:grid;gap:6px;min-width:0"><b style="font-family:var(--f-pix);font-size:18px;font-weight:400">${esc(S.name||"旅人")} <span style="color:${c.color};font-size:14px">${c.name}</span> Lv${S.lv}</b><small class="sub">玩家編號 ${playerTag()}</small>${bar('生命',S.hp,st.maxhp,'var(--hp)')}${bar('魔力',S.mp,st.maxmp,'var(--mp)')}${bar('經驗',S.xp,xpNeed(S.lv),'var(--xp)')}</div></div></div>
-    <button class="btn pri" data-act="openTree">天賦樹${treePts()>0?`（剩 ${treePts()} 點未分配）`:''}</button>
+    <button class="btn pri" data-act="openTree">天賦樹${treePts()>0?`（剩 ${treePts()} 點未分配）`:''}</button>${(()=>{const k=treeTotals().keys;return k.length?`<div class="sub" style="text-align:center">基石：<span style="color:#e8873a">${k.map(n=>n.n).join('、')}</span></div>`:''})()}
     <h3>攻擊</h3><div class="kv"><div><span>物理傷害</span><b>${fmt1(st.physLo)}–${fmt1(st.physHi)}</b></div><div><span>元素附加</span><b>${fmt1(st.fire+st.cold+st.light)}</b></div><div><span>法術基礎</span><b>${fmt1(st.spell)}</b></div><div><span>暴擊率</span><b>${st.crit}%</b></div><div><span>暴擊傷害</span><b>${st.critMulti}%</b></div><div><span>吸血</span><b>${st.leech}%</b></div></div>
     <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>視線範圍</span><b>${st.vision}m</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div></div>
-    <h3>技能</h3><div class="card">${c.skills.map(k=>`<div class="rowx"><div class="t"><b>${SKILLS[k].name}</b><small>${SKILLS[k].kind==='spell'?EL[SKILLS[k].el]+'法術，吃法術傷害':SKILLS[k].kind==='attack'?'攻擊，吃武器與附加傷害':'回復'}</small></div><small style="color:var(--mp)">${SKILLS[k].mp?'MP '+SKILLS[k].mp:'—'}</small></div>`).join('')}</div>
+    <h3>技能</h3><div class="card">${c.skills.map(k=>`<div class="rowx"><div class="t"><b>${SKILLS[k].name}</b><small>${SKILLS[k].kind==='spell'?EL[SKILLS[k].el]+'法術，吃法術傷害':SKILLS[k].kind==='attack'?'攻擊，吃武器與附加傷害':'回復'}</small></div><small style="color:${st.blood?'var(--hp)':'var(--mp)'}">${costTxt(st,SKILLS[k])||'—'}</small></div>`).join('')}</div>
     <div class="btns"><button class="btn pri" data-act="sheet" data-s="friends">好友與組隊</button><button class="btn" data-act="sheet" data-s="log">冒險日誌</button></div>`}
   else if(sheetName==='bag'){const cell=(sl,area)=>{const it=S.eq[sl];return`<button class="doll-s" style="grid-area:${area};${it?`border-color:${RCOL[it.r]};box-shadow:0 0 10px ${RCOL[it.r]}44 inset`:''}" data-act="eqslot" data-s="${sl}" aria-label="${SLOTN[sl]}"><img src="${slotIcon(it,sl)}" alt=""><small>${it?esc(itemTitle(it)):SLOTN[sl]}</small></button>`};
     html=`<div class="doll"><canvas id="dollHero" width="18" height="18"></canvas>${cell('weapon','w')}${cell('helm','h')}${cell('amulet','a')}${cell('offhand','o')}${cell('ring1','r1')}${cell('chest','c')}${cell('ring2','r2')}${cell('gloves','g')}${cell('belt','bt')}${cell('boots','b')}</div>
@@ -136,7 +136,7 @@ const A={
     else enterDungeon({id:e.id,kind:'rift',lat:e.lat,lng:e.lng,lv:e.lv},false)},
   skill:d=>useSkill(d.k), bitem:d=>bItem(d.k), flee:()=>flee(),
   bsub:d=>{if(!B||B.busy)return;sfx('tap');B.sub=d.k||null;renderBHud()},
-  use:d=>{const st=stats();if(!S[d.k])return;S[d.k]--;sfx('heal');if(d.k==='potions'){const v=Math.round(st.maxhp*.4);S.hp=Math.min(st.maxhp,S.hp+v);toast(`恢復 ${v} 生命`)}else{const v=Math.round(st.maxmp*.5);S.mp=Math.min(st.maxmp,S.mp+v);toast(`恢復 ${v} 魔力`)}renderHud();renderSheet()},
+  use:d=>{const st=stats();if(!S[d.k])return;S[d.k]--;sfx('heal');if(d.k==='potions'){const v=Math.round(st.maxhp*.4*st.healMul);S.hp=Math.min(st.maxhp,S.hp+v);toast(`恢復 ${v} 生命`)}else{const v=Math.round(st.maxmp*.5*st.healMul);S.mp=Math.min(st.maxmp,S.mp+v);toast(`恢復 ${v} 魔力`)}renderHud();renderSheet()},
   pick:d=>{selItem={i:+d.i};if(d.from!=='slot')selSlot=null;sfx('tap');openSheet('item')},
   eqslot:d=>{selSlot=d.s;sfx('tap');openSheet('slot',SLOTN[d.s])},
   eqdetail:d=>{if(!S.eq[d.s])return;selItem={eq:d.s};sfx('tap');openSheet('item')},
@@ -145,6 +145,8 @@ const A={
   equip:d=>{const it=S.inv.splice(selItem.i,1)[0],cur=S.eq[d.s];S.eq[d.s]=it;if(cur)S.inv.push(cur);sfx('select');toast(`裝備了 ${itemTitle(it)}`);selItem={eq:d.s};renderHud();openSheet('item');save()},
   unequip:d=>{const it=S.eq[d.s];if(!it)return;if(S.inv.length>=30){toast('背包已滿');return}S.inv.push(it);S.eq[d.s]=null;sfx('select');renderHud();if(sheetName==='slot'){renderSheet();save();return}selItem={i:S.inv.length-1};openSheet('item')},
   sell:()=>{const it=S.inv.splice(selItem.i,1)[0];S.gold+=sellVal(it);sfx('coin');toast(`賣出 ${itemTitle(it)} +${sellVal(it)} 金`);renderHud();if(selSlot)openSheet('slot',SLOTN[selSlot]);else openSheet('bag')},
+  refund:()=>{if(!selNode||!canRefund(selNode))return;S.tree=S.tree.filter(x=>x!==selNode);sfx('select');clampHP();renderHud();renderTreeCard();save()},
+  treeSum:()=>{TV.sum=!TV.sum;selNode=null;sfx('tap');renderTreeCard()},
   alloc:()=>{const p=selNode&&pathTo(selNode);if(!p||!p.length||p.length>treePts())return;S.tree.push(...p);sfx('level');buzz(30);renderHud();renderTreeCard();save()},
   treeReset:()=>{S.tree=[startOf(S.cls)];selNode=null;sfx('select');renderHud();renderTreeCard();save()},
   cloudSync:async()=>{CLOUD.dirty=true;await cloudPush();toast(CLOUD.status);renderSheet()},

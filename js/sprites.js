@@ -94,7 +94,15 @@ const PIX={
   ic_prism:{r:["...ww...","..wrrw..","..wrrw..",".wccyyw.",".wccyyw.","wccccyyw","wwwwwwww","........"],p:{w:'#f3ede0',r:'#ff8a5a',c:'#8fe0ff',y:'#fff27a'}},
   ic_flame:{r:["...r....","..rr....","..ryr...",".ryyr.r.",".ryyyrr.","ryyyyyr.","ryyyyyr.",".rrrrr.."],p:{r:'#e5484d',y:'#ffd166'}},
   ic_lantern:{r:["...kk...","..k..k..",".kkkkkk.",".kyyyyk.",".kywyyk.",".kyyyyk.",".kkkkkk.","........"],p:{k:'#3a3340',y:'#ffd877',w:'#ffffff'}},
-  ic_star:{r:["...yy...","...yy...","yyyyyyyy",".yyyyyy.","..yyyy..",".yy..yy.","yy....yy","........"],p:{y:'#f2c14e'}}
+  ic_star:{r:["...yy...","...yy...","yyyyyyyy",".yyyyyy.","..yyyy..",".yy..yy.","yy....yy","........"],p:{y:'#f2c14e'}},
+  ic_ice:{r:["...c....","c..c..c.",".c.c.c..","..ccc...","ccc.ccc.","..ccc...",".c.c.c..","c..c..c."],p:{c:'#9fe7ff'}},
+  ic_bolt:{r:["....yy..","...yy...","..yy....",".yyyyy..","...yy...","..yy....",".yy.....","yy......"],p:{y:'#fff27a'}},
+  ic_leaf:{r:["......gg",".....ggg","...gggwg","..gggwgg",".ggwggg.",".gwggg..",".wggg...","w......."],p:{g:'#7bd36b',w:'#2e6b2a'}},
+  ic_wind:{r:["........","wwwww...",".....w..","wwwwww..","........","..wwwwww",".w......","..www..."],p:{w:'#cfe6f0'}},
+  ic_coin:{r:["..yyyy..",".yywwyy.","yywyyyyo","yywyyyyo","yyyyyyyo","yyyyyyyo",".yyyyoo.","..oooo.."],p:{y:'#f2c14e',w:'#fff6c8',o:'#b07d1a'}},
+  ic_twin:{r:["w.....w.","ww...ww.",".ww.ww..","..www...","..www...",".bb.bb..","bb...bb.","b.....b."],p:{w:'#e8e6e0',b:'#b8862e'}},
+  ic_potion:{r:["..kk....","..ww....",".wrrw...","wrrrrw..","wrwrrw..","wrrrrw..",".wwww...","........"],p:{r:'#e5484d',w:'#e8e2d4',k:'#8a5a2f'}},
+  ic_ether:{r:["..kk....","..ww....",".wbbw...","wbbbbw..","wbwbbw..","wbbbbw..",".wwww...","........"],p:{b:'#3a8cf0',w:'#e8e2d4',k:'#8a5a2f'}}
 };
 const PIXC=new Map();
 function pixURL(key,tint){const k=key+'|'+(tint||'');if(PIXC.has(k))return PIXC.get(k);const d=PIX[key],c=document.createElement('canvas');c.width=10;c.height=10;const x=c.getContext('2d');

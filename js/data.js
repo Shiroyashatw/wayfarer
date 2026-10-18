@@ -148,58 +148,96 @@ const AFFI=Object.fromEntries(AFF.map(a=>[a.id,a]));
 const STATN={life:v=>`最大生命 +${v}`,lifePct:v=>`最大生命 +${v}%`,physPct:v=>`物理傷害 +${v}%`,flatPhys:v=>`附加 ${v} 物理傷害`,armor:v=>`護甲 +${v}`,armorPct:v=>`護甲 +${v}%`,critPct:v=>`暴擊率 +${v}%`,critMulti:v=>`暴擊傷害 ${v>0?'+':''}${v}%`,
   speed:v=>`速度 ${v>0?'+':''}${v}`,leech:v=>`傷害的 ${v}% 轉為生命`,spellPct:v=>`法術傷害 +${v}%`,elePct:v=>`元素傷害 +${v}%`,mana:v=>`最大魔力 +${v}`,regen:v=>`每回合回復 ${v} 生命`,resAll:v=>`全部抗性 +${v}%`,
   physMore:v=>`物理傷害 ${v}%（總乘）`,resFire:v=>`火焰抗性 +${v}%`,vision:v=>`視線範圍 +${v}%`,lure:v=>`吸引的怪物 +${v}%`,resCold:v=>`冰冷抗性 +${v}%`,resLight:v=>`閃電抗性 +${v}%`,addFire:v=>`附加 ${v} 火焰傷害`};
+const sg=v=>v>0?'+'+v:String(v);
+Object.assign(STATN,{addCold:v=>`附加 ${v} 冰冷傷害`,addLight:v=>`附加 ${v} 閃電傷害`,dmgMore:v=>`傷害 ${sg(v)}%（總乘）`,lifeMore:v=>`最大生命 ${sg(v)}%（總乘）`,armorMore:v=>`護甲 ${sg(v)}%（總乘）`,
+  firePct:v=>`火焰傷害 +${v}%`,coldPct:v=>`冰冷傷害 +${v}%`,lightPct:v=>`閃電傷害 +${v}%`,poisonPct:v=>`中毒傷害 +${v}%`,poisonCh:v=>`攻擊有 ${v}% 機率使敵人中毒`,ail:v=>`燃燒、凍結、感電機率 +${v}%`,
+  dbl:v=>`攻擊有 ${v}% 機率多打一下`,mpCost:v=>`技能消耗 -${v}%`,healPct:v=>`治癒與藥水效果 +${v}%`,goldPct:v=>`金幣獲得 +${v}%`,manaRegen:v=>`每回合回復 ${v} 魔力`,evade:v=>`閃避率 +${v}%`,dodgeCap:v=>`閃避上限 +${v}%`,
+  conv:v=>`${v}% 物理傷害轉換為火焰傷害`,noCrit:()=>'無法暴擊',blood:()=>'技能改為消耗生命，不再消耗魔力',mom:v=>`受到傷害的 ${v}% 改由魔力承受`,lowLife:v=>`生命低於一半時，傷害 +${v}%（總乘）`,
+  vaal:()=>'吸血效果加倍，但每回合不再回復生命',ironReflex:()=>'無法閃避，原本每 1% 閃避轉為 +3% 護甲',noFreeze:()=>'無法被凍結',noDodge:()=>'無法閃避'});
 const CUR=[
   {id:'trans',n:'蛻變石',d:'普通 → 魔法，1 個詞綴',c:'#8fb7ff',w:30},{id:'aug',n:'增幅石',d:'魔法裝備未滿時加 1 個詞綴',c:'#a8d8ff',w:26},
   {id:'regal',n:'富豪石',d:'魔法 → 稀有，保留原詞綴再加 1 個',c:'#7fd6c2',w:14},{id:'alch',n:'點金石',d:'普通 → 稀有，4 個詞綴',c:'#f2c14e',w:8},
   {id:'chaos',n:'混沌石',d:'稀有裝備隨機移除 1 個詞綴，再加 1 個',c:'#e58a3a',w:7},{id:'exalt',n:'崇高石',d:'稀有裝備未滿時加 1 個詞綴',c:'#fff2b0',w:1.2}
 ];
 const CURI=Object.fromEntries(CUR.map(c=>[c.id,c]));
-/* passive tree: PoE-style wheel. Center = 冒險者, ring of class starts, sectors + hybrid sectors + outer ring */
+/* 天賦樹：PoE 式大輪盤。中央冒險者、內圈三職業起點，往外 15 條輻射路線（每 24° 一條），
+   每條路線兩側各有兩個節點群（含重要節點），盡頭是改變玩法的基石；中圈、外圈環狀連結讓路線可以互相轉換 */
+const TH={
+  life:{s:['體魄',{life:10},'heart'],n:[['巨人之血',{lifePct:10,life:20},'heart'],['生生不息',{regen:3,lifePct:5},'heart'],['鋼筋鐵骨',{life:30,armorPct:10},'heart'],['不滅之心',{lifePct:12,resAll:4},'heart'],['戰神之軀',{lifePct:15},'heart'],['泰坦',{life:40},'heart']]},
+  armor:{s:['鋼甲',{armorPct:12},'shield'],n:[['鋼鐵之軀',{armorPct:30,armor:30},'shield'],['不動如山',{armorPct:20,lifePct:5},'shield'],['堡壘',{armor:60,resAll:4},'shield'],['重裝步兵',{armorPct:25,physPct:8},'shield'],['盾牆',{armorPct:35},'shield']]},
+  phys:{s:['力道',{physPct:8},'sword'],n:[['重擊',{physPct:20,critMulti:10},'sword'],['碎骨',{physPct:16,flatPhys:3},'sword'],['武器大師',{physPct:15,dbl:5},'sword'],['屠夫',{physPct:22,life:15},'sword'],['破甲',{physPct:18,flatPhys:2},'sword']]},
+  regen:{s:['堅韌',{regen:1},'plus'],n:[['堅毅不拔',{life:30,regen:3},'plus'],['再生之軀',{regen:4},'plus'],['戰地醫護',{healPct:25,regen:2},'plus']]},
+  crit:{s:['敏銳',{critPct:1},'target'],n:[['獵手直覺',{critPct:2,critMulti:15},'target'],['精準打擊',{critPct:3},'target'],['弱點洞察',{critPct:2,physPct:10},'target'],['刺客印記',{critPct:2,critMulti:10,dbl:3},'target'],['冷血',{critPct:3,critMulti:5},'target']]},
+  cmul:{s:['殘暴',{critMulti:8},'skull'],n:[['致命一擊',{critMulti:25},'skull'],['處決者',{critMulti:20,physPct:10},'skull'],['刺客之道',{critMulti:20,critPct:1},'skull'],['殘酷',{critMulti:30},'skull']]},
+  speed:{s:['輕盈',{speed:2},'boot'],n:[['疾風',{speed:5,evade:3},'boot'],['先發制人',{speed:4,critPct:1},'boot'],['游擊戰術',{speed:3,leech:1,life:15},'boot'],['風行者',{speed:4,vision:10},'boot']]},
+  evade:{s:['閃避',{evade:2},'wind'],n:[['殘影',{evade:5,speed:2},'wind'],['身輕如燕',{evade:4,critPct:1},'wind'],['幻影步',{evade:6},'wind'],['反擊姿態',{evade:3,physPct:10},'wind']]},
+  leech:{s:['渴血',{leech:1},'blood'],n:[['嗜血',{leech:2,critMulti:10},'blood'],['血之盛宴',{leech:2,life:20},'blood'],['血刃',{leech:1,physPct:15},'blood'],['吸血鬼之觸',{leech:3},'blood'],['血祭',{leech:2,physPct:8},'blood'],['血族',{leech:2,lifePct:5},'blood']]},
+  spell:{s:['博學',{spellPct:8},'book'],n:[['秘術專注',{spellPct:15,critPct:1},'book'],['奧術學者',{spellPct:20},'book'],['咒語編織',{spellPct:12,mpCost:10},'book'],['法術大師',{spellPct:15,mana:15},'book']]},
+  mana:{s:['冥想',{mana:8},'mana'],n:[['魔力奔流',{mana:20,manaRegen:2},'mana'],['清明心智',{mana:15,mpCost:10},'mana'],['智慧泉源',{manaRegen:3},'mana'],['秘法之海',{mana:30},'mana'],['節能施法',{mpCost:15},'mana']]},
+  res:{s:['護符',{resAll:4},'prism'],n:[['元素護符',{resAll:12},'prism'],['聖騎士之心',{lifePct:8,resAll:8},'prism'],['淨化',{resAll:10,regen:1},'prism'],['風暴屏障',{resLight:20,resCold:10},'prism'],['火焰庇護',{resFire:20,resAll:4},'prism']]},
+  ele:{s:['元素',{elePct:6},'prism'],n:[['元素掌握',{elePct:15,spellPct:8},'prism'],['元素鋒芒',{elePct:10,critMulti:10},'prism'],['元素專精',{elePct:16},'prism']]},
+  fire:{s:['灼熱',{firePct:10},'flame'],n:[['烈焰之心',{firePct:25},'flame'],['焚燒',{firePct:15,ail:20},'flame'],['火焰附魔',{addFire:6,firePct:10},'flame'],['熔岩護甲',{firePct:12,armorPct:12},'flame'],['燎原',{firePct:20,elePct:5},'flame']]},
+  cold:{s:['寒霜',{coldPct:10},'ice'],n:[['冰霜之心',{coldPct:25},'ice'],['冰封',{coldPct:15,ail:20},'ice'],['冰冷附魔',{addCold:5,coldPct:10},'ice'],['冰晶護盾',{coldPct:12,resAll:6},'ice'],['永凍',{coldPct:20,elePct:5},'ice']]},
+  light:{s:['雷霆',{lightPct:10},'bolt'],n:[['雷霆之心',{lightPct:25},'bolt'],['電流',{lightPct:15,ail:20},'bolt'],['雷鳴附魔',{addLight:7,lightPct:10},'bolt'],['風暴術士',{lightPct:15,speed:2},'bolt'],['連鎖閃電',{lightPct:20,elePct:5},'bolt']]},
+  poison:{s:['毒素',{poisonPct:10},'leaf'],n:[['劇毒',{poisonPct:25,poisonCh:8},'leaf'],['毒刃',{poisonCh:12,physPct:8},'leaf'],['瘴氣',{poisonPct:30},'leaf'],['致命毒素',{poisonPct:15,critPct:1},'leaf']]},
+  ail:{s:['異常',{ail:10},'skull'],n:[['元素災厄',{ail:30},'skull'],['凍傷',{ail:20,coldPct:10},'skull'],['感電蔓延',{ail:20,lightPct:10},'skull'],['餘燼',{ail:20,firePct:10},'skull']]},
+  dbl:{s:['連擊',{dbl:3},'twin'],n:[['疾風連斬',{dbl:8},'twin'],['劍舞',{dbl:5,speed:2},'twin'],['箭雨',{dbl:6,critPct:1},'twin'],['亂舞',{dbl:6,physPct:8},'twin'],['追擊',{dbl:5,critMulti:10},'twin']]},
+  heal:{s:['治癒',{healPct:8},'plus'],n:[['生命之泉',{healPct:25},'plus'],['急救',{healPct:15,regen:2},'plus']]},
+  gold:{s:['尋寶',{goldPct:6},'coin'],n:[['財富',{goldPct:20},'coin'],['拾荒者',{goldPct:15,vision:8},'coin'],['黃金獵人',{goldPct:12,critPct:1},'coin']]},
+  vision:{s:['遠見',{vision:6},'lantern'],n:[['鷹眼',{vision:20,critPct:1},'lantern'],['夜行者',{vision:15,evade:2},'lantern']]}
+};
+/* 15 條路線：角度、路線上的小節點主題、四個節點群主題（第 2、4、6、8 格）、盡頭基石 */
+const SPOKES=[
+  {a:126,k:'s',sm:['phys','leech'],cl:['phys','leech','dbl','cmul'],ks:['狂戰之血',{lowLife:40,lifeMore:-10},'blood']},
+  {a:150,k:'s',sm:['life','armor'],cl:['life','armor','regen','life'],ks:['不屈意志',{lifePct:40,speed:-4},'heart']},
+  {a:174,k:'s',sm:['armor','res'],cl:['armor','res','heal','armor'],ks:['鋼鐵反射',{ironReflex:1},'shield']},
+  {a:198,k:'si',sm:['fire','armor'],cl:['fire','armor','ele','fire'],ks:['烈焰化身',{conv:50,firePct:20},'flame']},
+  {a:222,k:'si',sm:['res','life'],cl:['res','heal','regen','res'],ks:['聖靈之軀',{noFreeze:1,noDodge:1,resAll:10},'prism']},
+  {a:246,k:'i',sm:['fire','spell'],cl:['fire','spell','ail','life'],ks:['血魔法',{blood:1,lifePct:20},'blood']},
+  {a:270,k:'i',sm:['spell','ele'],cl:['spell','ele','cold','light'],ks:['元素親和',{resAll:15,elePct:30,physMore:-40},'prism']},
+  {a:294,k:'i',sm:['mana','spell'],cl:['mana','spell','cold','mana'],ks:['心靈凌駕',{mom:30,mana:30},'mana']},
+  {a:318,k:'id',sm:['light','crit'],cl:['light','crit','ail','light'],ks:['玻璃大砲',{dmgMore:40,lifeMore:-30},'skull']},
+  {a:342,k:'id',sm:['cold','speed'],cl:['cold','evade','ail','cold'],ks:['災厄使者',{ail:100,dmgMore:-15},'skull']},
+  {a:366,k:'d',sm:['crit','evade'],cl:['crit','evade','vision','speed'],ks:['雜技',{evade:20,dodgeCap:20,armorMore:-50},'wind']},
+  {a:390,k:'d',sm:['crit','cmul'],cl:['crit','cmul','dbl','speed'],ks:['致命節奏',{critPct:8,critMulti:-30},'target']},
+  {a:414,k:'d',sm:['poison','speed'],cl:['poison','dbl','poison','leech'],ks:['瘟疫使者',{poisonCh:30,poisonPct:50,dmgMore:-15},'leaf']},
+  {a:438,k:'ds',sm:['phys','crit'],cl:['phys','dbl','cmul','gold'],ks:['堅毅技巧',{noCrit:1,dmgMore:30},'sword']},
+  {a:462,k:'ds',sm:['leech','life'],cl:['leech','gold','life','leech'],ks:['不朽魔血',{vaal:1,leech:2},'blood']}
+];
 const TREE=(()=>{const N=[],E=[],byId={};const P=(r,a)=>[r*Math.cos(a*Math.PI/180),r*Math.sin(a*Math.PI/180)];
   const add=(id,x,y,def,type,extra)=>{const n={id,x,y,n:def[0],st:def[1],ic:def[2],type,...(extra||{})};N.push(n);byId[id]=n;return id};
   const ln=(a,b)=>{if(a&&b&&a!==b)E.push([a,b])};
-  const SM={s:[['體魄',{life:10},'heart'],['鋼甲',{armorPct:12},'shield'],['力道',{physPct:8},'sword'],['堅韌',{regen:1},'plus']],
-    d:[['敏銳',{critPct:1},'target'],['輕盈',{speed:2},'boot'],['殘暴',{critMulti:8},'skull'],['渴血',{leech:1},'blood']],
-    i:[['博學',{spellPct:8},'book'],['冥想',{mana:8},'mana'],['護符',{resAll:4},'prism'],['元素',{elePct:6},'flame']],
-    si:[['守護',{life:8,resAll:2},'prism'],['魔甲',{armorPct:8,spellPct:4},'shield'],['生機',{regen:1,mana:4},'plus']],
-    id:[['秘眼',{critPct:1,spellPct:4},'target'],['迅思',{speed:1,mana:6},'boot'],['元素鋒芒',{elePct:4,critMulti:5},'flame']],
-    ds:[['獵殺',{physPct:5,critPct:1},'sword'],['靈巧',{life:6,speed:1},'boot'],['血刃',{physPct:4,leech:1},'blood']]};
-  const NT={s:[['鋼鐵之軀',{lifePct:10,armorPct:25},'shield'],['重擊',{physPct:18,critMulti:10},'sword'],['戰鬥狂熱',{physPct:15,leech:1},'blood'],['堅毅不拔',{life:30,regen:3},'heart']],
-    d:[['獵手直覺',{critPct:2,critMulti:15},'target'],['疾風',{speed:5},'boot'],['嗜血',{leech:2,critMulti:10},'blood'],['鷹眼',{vision:20,critPct:1},'lantern']],
-    i:[['元素掌握',{spellPct:18,elePct:10},'flame'],['魔力奔流',{mana:20,regen:2},'mana'],['元素護符',{resAll:12},'prism'],['秘術專注',{spellPct:15,critPct:1},'book']],
-    si:[['聖騎士之心',{lifePct:8,resAll:8},'prism'],['符文鎧甲',{armorPct:20,spellPct:10},'shield']],
-    id:[['星辰之眼',{critPct:2,spellPct:12},'target'],['風暴術士',{elePct:15,speed:2},'flame']],
-    ds:[['刺客之道',{critMulti:20,physPct:10},'skull'],['游擊戰術',{speed:3,leech:1,life:15},'boot']]};
-  const KEY={s:['不屈意志',{lifePct:40,speed:-4},'heart'],d:['致命節奏',{critPct:8,critMulti:-30},'target'],i:['元素親和',{resAll:15,elePct:30,physMore:-40},'flame']};
-  const BIG={si:['神聖壁壘',{lifePct:12,armorPct:20,resAll:6},'shield'],id:['奧術風暴',{spellPct:20,critPct:2,elePct:10},'flame'],ds:['影刃',{physPct:20,critPct:2,leech:1},'sword']};
-  const CLS={knight:{a:150,k:'s',name:'劍士',st:{life:20,armorPct:10},ic:'shield'},ranger:{a:30,k:'d',name:'遊俠',st:{critPct:1,speed:2},ic:'target'},mage:{a:-90,k:'i',name:'術士',st:{spellPct:10,mana:10},ic:'book'}};
+  const used={},notable=t=>{const L=TH[t].n,i=used[t]=(used[t]||0);used[t]++;return L[i%L.length]};
+  const CLS={knight:{a:150,name:'劍士',st:{life:20,armorPct:10},ic:'shield'},ranger:{a:30,name:'遊俠',st:{critPct:1,speed:2},ic:'target'},mage:{a:-90,name:'術士',st:{spellPct:10,mana:10},ic:'book'}};
+  const R0=125,RS=210,STEP=42;
   add('start_novice',0,0,['冒險者起點',{life:8,physPct:4,spellPct:4},'star'],'start',{cls:'novice'});
-  const R0=125;
-  for(const [c,v] of Object.entries(CLS)){const [x,y]=P(R0,v.a);add('start_'+c,x,y,[v.name+'起點',v.st,v.ic],'start',{cls:c})}
-  const spineFirst={};
-  // class sectors
-  for(const [c,v] of Object.entries(CLS)){const A=v.a,k=v.k;let prev='start_'+c;const spine=[];
-    for(let i=0;i<7;i++){const [x,y]=P(R0+42+i*34,A);const id=add(`${k}p${i}`,x,y,SM[k][i%4],'small');ln(prev,id);prev=id;spine.push(id)}
-    spineFirst[c]=spine[0];
-    const [kx,ky]=P(R0+42+7*34+14,A);add(`${k}K`,kx,ky,KEY[k],'key');ln(prev,`${k}K`);
-    [[1,-1],[2,1],[4,-1],[5,1]].forEach(([si,side],ci)=>{const r=R0+42+si*34,ang=A+side*(16-si*.9),[cx,cy]=P(r+18,ang),rr=19,ids=[];
-      for(let q=0;q<5;q++){const a=q/5*360+A+side*90,x=cx+rr*Math.cos(a*Math.PI/180),y=cy+rr*Math.sin(a*Math.PI/180),nb=q===2;ids.push(add(`${k}c${ci}_${q}`,x,y,nb?NT[k][ci]:SM[k][(q+ci)%4],nb?'notable':'small'))}
-      ln(spine[si],ids[0]);for(let q=0;q<5;q++)ln(ids[q],ids[(q+1)%5])})}
-  // inner ring arcs between class starts, plus hybrid sectors and spokes to the center
-  const pairs=[['knight','mage','si',210],['mage','ranger','id',-30],['ranger','knight','ds',90]];
-  for(const [a,b,h,mid] of pairs){const A1=CLS[a].a,A2=A1+((CLS[b].a-A1+540)%360-180);const arc=[];
-    for(let q=0;q<5;q++){const t=(q+1)/6,[x,y]=P(R0,A1+(A2-A1)*t);arc.push(add(`r${h}${q}`,x,y,SM[h][q%3],'small'))}
-    ln('start_'+a,arc[0]);ln(spineFirst[a],arc[0]);for(let q=0;q<4;q++)ln(arc[q],arc[q+1]);ln(arc[4],'start_'+b);ln(arc[4],spineFirst[b]);
-    const hub=arc[2];let pv='start_novice';for(let q=0;q<2;q++){const [x,y]=P(42+q*40,mid);const id=add(`sp${h}${q}`,x,y,SM[h][(q+1)%3],'small');ln(pv,id);pv=id}ln(pv,hub);
-    let prev=hub;const sp=[];for(let i=0;i<5;i++){const [x,y]=P(R0+44+i*36,mid);const id=add(`${h}p${i}`,x,y,SM[h][i%3],'small');ln(prev,id);prev=id;sp.push(id)}
-    const [bx,by]=P(R0+44+5*36+12,mid);add(`${h}B`,bx,by,BIG[h],'notable');ln(prev,`${h}B`);
-    [[1,1],[3,-1]].forEach(([si,side],ci)=>{const r=R0+44+si*36,ang=mid+side*14,[cx,cy]=P(r+16,ang),rr=19,ids=[];
-      for(let q=0;q<5;q++){const a2=q/5*360+mid+side*90,x=cx+rr*Math.cos(a2*Math.PI/180),y=cy+rr*Math.sin(a2*Math.PI/180),nb=q===2;ids.push(add(`${h}c${ci}_${q}`,x,y,nb?NT[h][ci]:SM[h][(q+ci)%3],nb?'notable':'small'))}
-      ln(sp[si],ids[0]);for(let q=0;q<5;q++)ln(ids[q],ids[(q+1)%5])})}
-  // outer ring linking every sector tip
-  const tips=[['sK',150],['siB',210],['iK',270],['idB',330],['dK',390],['dsB',450]];
-  for(let t=0;t<6;t++){const [a,aa]=tips[t],[b,ab]=tips[(t+1)%6];let prev=a;const R=410;
-    for(let q=0;q<3;q++){const tt=(q+1)/4,[x,y]=P(R,aa+(ab-aa)*tt),kind=['s','si','i','id','d','ds'][t];const pool=SM[kind]||SM.s;const id=add(`o${t}_${q}`,x,y,pool[q%pool.length],'small');ln(prev,id);prev=id}ln(prev,b)}
+  const fork={};
+  for(const [c,v] of Object.entries(CLS)){const [x,y]=P(R0,v.a);add('start_'+c,x,y,[v.name+'起點',v.st,v.ic],'start',{cls:c});
+    const [fx,fy]=P(168,v.a),f=add('f_'+c,fx,fy,[...TH[{knight:'life',ranger:'crit',mage:'spell'}[c]].s],'small');ln('start_'+c,f);fork[c]=f}
+  // 內圈弧線（職業起點之間）與中央輻條
+  const arcs={};
+  [['knight','mage',210],['mage','ranger',-30],['ranger','knight',90]].forEach(([a,b,mid],hi)=>{const A1=CLS[a].a,A2=A1+((CLS[b].a-A1+540)%360-180),arc=[],h=['si','id','ds'][hi];
+    const pool=[TH[{si:'armor',id:'crit',ds:'phys'}[h]].s,TH[{si:'res',id:'mana',ds:'life'}[h]].s];
+    for(let q=0;q<5;q++){const t=(q+1)/6,[x,y]=P(R0,A1+(A2-A1)*t);arc.push(add(`r${h}${q}`,x,y,pool[q%2],'small'))}
+    ln('start_'+a,arc[0]);ln(fork[a],arc[0]);for(let q=0;q<4;q++)ln(arc[q],arc[q+1]);ln(arc[4],'start_'+b);ln(arc[4],fork[b]);
+    let pv='start_novice';for(let q=0;q<2;q++){const [x,y]=P(42+q*40,mid);const id=add(`sp${h}${q}`,x,y,pool[(q+1)%2],'small');ln(pv,id);pv=id}ln(pv,arc[2]);arcs[h]=arc});
+  // 輻射路線
+  const sp=SPOKES.map((s,j)=>{const ids=[];
+    for(let i=0;i<=10;i++){const [x,y]=P(RS+i*STEP,s.a);ids.push(add(`p${j}_${i}`,x,y,TH[s.sm[i%2]].s,'small'));if(i)ln(ids[i-1],ids[i])}
+    const [kx,ky]=P(RS+10*STEP+52,s.a);add(`k${j}`,kx,ky,s.ks,'key');ln(ids[10],`k${j}`);
+    // 節點群：第 2、6 格在順時針側，第 4、8 格在逆時針側；外側兩群是 6 節點
+    [[2,1],[4,-1],[6,1],[8,-1]].forEach(([i,side],ci)=>{const t=s.cl[ci],big=ci>=2,n=big?6:5,rr=big?24:21,off=big?48:44;
+      const a=s.a*Math.PI/180,tx=-Math.sin(a)*side,ty=Math.cos(a)*side,[bx,by]=P(RS+i*STEP,s.a),cx=bx+tx*off,cy=by+ty*off;
+      const base=Math.atan2(-ty,-tx),nb=big?(ci===3?[2,4]:[3]):[2],ring=[];
+      for(let q=0;q<n;q++){const aa=base+q/n*Math.PI*2,isN=nb.includes(q);ring.push(add(`c${j}_${ci}_${q}`,cx+rr*Math.cos(aa),cy+rr*Math.sin(aa),isN?notable(t):TH[t].s,isN?'notable':'small'))}
+      ln(ids[i],ring[0]);for(let q=0;q<n;q++)ln(ring[q],ring[(q+1)%n])});
+    return ids});
+  // 每條路線的起點
+  for(const [c,v] of Object.entries(CLS))SPOKES.forEach((s,j)=>{const d=((s.a-v.a)%360+540)%360-180;if(Math.abs(d)<=24)ln(fork[c],sp[j][0])});
+  SPOKES.forEach((s,j)=>{if(s.k.length===2){const arc=arcs[s.k],first=SPOKES.findIndex(q=>q.k===s.k)===j;ln(first?arc[1]:arc[3],sp[j][0])}});
+  // 中圈（第 5 格）與外圈（第 9 格）把相鄰路線接起來
+  for(let j=0;j<SPOKES.length;j++){const k=(j+1)%SPOKES.length,a1=SPOKES[j].a,a2=a1+24;
+    [[5,'m'],[9,'o']].forEach(([i,tag])=>{let prev=sp[j][i];for(let q=1;q<=2;q++){const [x,y]=P(RS+i*STEP,a1+(a2-a1)*q/3),pool=q===1?SPOKES[j].sm:SPOKES[k].sm;const id=add(`${tag}${j}_${q}`,x,y,TH[pool[q%2]].s,'small');ln(prev,id);prev=id}ln(prev,sp[k][i])})}
   return{N,E,byId}})();
-const VER='0.1.7';
+const VER='0.1.8';
 const START={lat:24.1372,lng:120.6869,name:'台中車站'};
