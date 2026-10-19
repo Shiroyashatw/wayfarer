@@ -20,6 +20,7 @@
 | `js/core.js` | `$`、`fl`、`m` 與共用工具（座標、繪圖輔助） |
 | `js/data.js` | 地點／城鎮、怪物、詞綴、通貨、天賦樹 `TREE`、`VER` |
 | `js/sprites.js` | 16x16 像素圖（自動描邊陰影）、8x8 圖示 |
+| `js/gear.js` | 0.3.1 裝備外觀：每種底材的 12×12 圖示 `GEAR`、材質階級 `tierOf`、`gearIcon`、角色外觀疊圖 `heroLook`／`heroSpr`／`heroPal`（`sprites.js` 之後載入） |
 | `js/skills.js` | 0.3 技能石擴充（約 100 種，武器／元素標籤、召喚、增益）與新圖示（`sprites.js` 之後載入） |
 | `js/audio.js` | Web Audio 合成音樂與音效 |
 | `js/items.js` | `newGame`、裝備、詞綴、通貨製作、屬性計算 |

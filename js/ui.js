@@ -11,7 +11,7 @@ function renderHud() {
   $('cry').innerHTML = `<span style="color:#9fe7ff">◆</span> ${S.crystal}`;
   const a = $('ava').getContext('2d');
   a.clearRect(0, 0, 18, 18);
-  a.drawImage(sprite('heroF', heroPal()), 0, 0);
+  a.drawImage(sprite(heroSpr('F'), heroPal()), 0, 0);
   $('ptDot').hidden = treePts() <= 0 && !(typeof ascAlert === 'function' && ascAlert());
   /* 頭像上方的經驗值圓弧，快升級時發光 */
   const xr = Math.min(1, S.xp / xpNeed(S.lv));
@@ -36,6 +36,7 @@ function openSheet(name, title) {
 }
 function closeSheet() {
   sheetName = null;
+  if (typeof SEL !== 'undefined') SEL.sell = null;
   $('scrim').hidden = true;
   $('sheet').classList.add('off');
 }
@@ -309,6 +310,8 @@ function renderSheet() {
     <div class="btns"><button class="btn" data-act="gemBreak">分解（得 ${gemDustBack(g)} 粉塵）</button><button class="btn" data-act="sheet" data-s="skills">返回技能</button></div>`;
   } else if (sheetName === 'bag' && SEL.bag !== 'eq') {
     html = bagTabs() + matsHTML(SEL.bag);
+  } else if (sheetName === 'bag' && SEL.sell) {
+    html = bagListHTML();
   } else if (sheetName === 'bag') {
     const cell = (sl, area) => {
       const it = S.eq[sl];
@@ -317,7 +320,7 @@ function renderSheet() {
     html = `${bagTabs()}<div class="doll"><canvas id="dollHero" width="18" height="18"></canvas>${cell('weapon', 'w')}${cell('helm', 'h')}${cell('amulet', 'a')}${cell('offhand', 'o')}${cell('ring1', 'r1')}${cell('chest', 'c')}${cell('ring2', 'r2')}${cell('gloves', 'g')}${cell('belt', 'bt')}${cell('boots', 'b')}</div>
     <h3>通貨</h3>${curRow()}
     <h3>消耗品</h3><div class="card"><div class="rowx"><div class="t"><b>生命藥水 ×${S.potions}</b></div><button class="btn sm" data-act="use" data-k="potions" ${S.potions ? '' : 'disabled'}>使用</button></div><div class="rowx"><div class="t"><b>魔力藥水 ×${S.ethers}</b></div><button class="btn sm" data-act="use" data-k="ethers" ${S.ethers ? '' : 'disabled'}>使用</button></div></div>
-    <h3>背包 ${S.inv.length}/30</h3>${S.inv.length ? `<div class="list">${S.inv.map((it, i) => `<button class="irow" data-act="pick" data-i="${i}" style="border-left-color:${RCOL[it.r]}"><img src="${slotIcon(it)}" alt=""><span><b>${itemName(it)}</b><small>${SLOTN[it.slot]}・iLv${it.ilvl}・${esc(itemSum(it))}</small></span></button>`).join('')}</div>` : '<p class="sub">背包是空的。</p>'}`;
+    ${bagListHTML()}`;
   } else if (sheetName === 'slot') {
     const cur = S.eq[selSlot],
       cands = S.inv
@@ -338,7 +341,7 @@ function renderSheet() {
     <h3>製作</h3><div class="crafts">${CUR.map(cu => `<button class="btn sm" data-act="craft" data-c="${cu.id}" ${craftable(it, cu.id) && S.cur[cu.id] > 0 ? '' : 'disabled'}>${curDot(cu.id)}${cu.n} <b>${S.cur[cu.id] || 0}</b><small>${cu.d}</small></button>`).join('')}</div>
     ${undeadCraftHTML(it)}
     <div class="btns">${selItem.eq ? `<button class="btn" data-act="unequip" data-s="${selItem.eq}">卸下</button>` : it.slot === 'ring' ? `<button class="btn pri" data-act="equip" data-s="ring1">裝在戒指 1</button><button class="btn pri" data-act="equip" data-s="ring2">裝在戒指 2</button>` : `<button class="btn pri" data-act="equip" data-s="${it.slot}">裝備</button>`}
-    ${selItem.eq ? '' : `<button class="btn" data-act="sell">賣出 ${sellVal(it)} 金</button>`}${selSlot ? `<button class="btn" data-act="eqslot" data-s="${selSlot}">返回${SLOTN[selSlot]}</button>` : `<button class="btn" data-act="sheet" data-s="bag">返回背包</button>`}</div>`;
+    ${selItem.eq ? '' : `<button class="btn" data-act="lock">${it.lock ? '解鎖' : '上鎖'}</button><button class="btn" data-act="sell" ${canSell() && !it.lock ? '' : 'disabled'}>${it.lock ? '已上鎖' : canSell() ? `賣出 ${sellVal(it)} 金` : '城鎮或據點才能賣'}</button>`}${selSlot ? `<button class="btn" data-act="eqslot" data-s="${selSlot}">返回${SLOTN[selSlot]}</button>` : `<button class="btn" data-act="sheet" data-s="bag">返回背包</button>`}</div>`;
   } else if (sheetName === 'base') {
     html = baseHTML();
   } else if (sheetName === 'stele') {
@@ -356,7 +359,8 @@ function renderSheet() {
           `<div style="margin-top:8px"><b>${n}（剩 ${c}）</b><small class="sub">・${S[k] ? `低於 ${S[k]}% 時喝` : '關閉'}</small><div class="seg" style="margin-top:6px">${[0, 30, 50, 70].map(v => `<button data-act="autoPot" data-k="${k}" data-v="${v}" aria-pressed="${(S[k] || 0) === v}">${v ? v + '%' : '關'}</button>`).join('')}</div></div>`
       )
       .join('')}</div>
-    <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps ? '開' : '關'}</b><small>${S.gps ? GPS.err || '用手機定位實際走路移動，點地圖不會再走過去' : '目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm ${S.gps ? '' : 'pri'}" data-act="gps">${S.gps ? '關閉' : '開啟'}</button></div></div>
+    <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps ? '開' : '關'}</b><small>${S.gps ? GPS.err || '用手機定位實際走路移動，點地圖不會再走過去' : '目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm ${S.gps ? '' : 'pri'}" data-act="gps">${S.gps ? '關閉' : '開啟'}</button></div>
+      <div style="margin-top:10px"><b>點地圖移動速度</b><small class="sub">・測試用，GPS 開啟時不影響</small><div class="seg" style="margin-top:6px;grid-template-columns:repeat(3,1fr)">${[1, 1.5, 2].map(v => `<button data-act="simSpd" data-v="${v}" aria-pressed="${(S.simSpd || 1) === v}">×${v}</button>`).join('')}</div></div></div>
     <h3>新手教學</h3><div class="card"><div class="rowx"><div class="t"><b>重看新手教學</b><small>一步步介紹畫面上的按鈕與玩法</small></div><button class="btn sm" data-act="tutor">開始</button></div></div>
     <h3>名字</h3><div class="card"><div class="srow"><input class="inp" id="nameInp" maxlength="12" value="${esc(S.name || '旅人')}"><button class="btn" data-act="setName">儲存</button></div><p class="sub" style="margin-top:6px">好友列表和組隊時顯示的名字，最多 12 個字。</p></div>
     <h3>帳號</h3><div class="card"><div class="rowx"><div class="t"><b>玩家編號 <span style="color:var(--gold)">${playerTag()}</span></b><small>${CLOUD.anon ? '目前是遊客，存檔綁在這台裝置。註冊後會拿到玩家編號，換手機也能登入，之後的多人地城、副本也需要帳號。' : esc(CLOUD.email || '')}</small></div>${CLOUD.anon ? '' : `<button class="btn sm" data-act="logout">登出</button>`}</div>
@@ -383,17 +387,48 @@ function renderSheet() {
   }
   el.innerHTML = html;
   const hb = $('heroBig');
-  if (hb) hb.getContext('2d').drawImage(sprite('heroF', heroPal()), 0, 0);
+  if (hb) hb.getContext('2d').drawImage(sprite(heroSpr('F'), heroPal()), 0, 0);
   el.querySelectorAll('canvas[data-ent]').forEach(cv => {
     const e = ENT.get(cv.dataset.ent);
     if (e) cv.getContext('2d').drawImage(entIcon(e), 0, 0);
   });
   if (sheetName === 'hunt' || sheetName === 'seal') huntPaint();
   const dh = $('dollHero');
-  if (dh) dh.getContext('2d').drawImage(sprite('heroF', heroPal()), 0, 0);
+  if (dh) dh.getContext('2d').drawImage(sprite(heroSpr('F'), heroPal()), 0, 0);
 }
 function nearTownE() {
   return TOWNS.some(t => dist(S.lat, S.lng, t.lat, t.lng) < 230);
+}
+/* 0.3.1 賣裝備：只有在城鎮或據點（主據點半徑內、分支據點旁）才能賣 */
+function canSell() {
+  return (
+    nearTownE() || (S.bases || []).some(b => dist(S.lat, S.lng, b.lat, b.lng) <= (b.type === 'main' ? baseR(b.lv) : 60))
+  );
+}
+/* 比身上穿的差：同部位穿戴中的稀有度與物品等級都不低於它（戒指跟比較差的那枚比） */
+function worseThanEq(it) {
+  const eqs = it.slot === 'ring' ? [S.eq.ring1, S.eq.ring2] : [S.eq[it.slot]];
+  if (eqs.some(e => !e)) return false;
+  return eqs.some(e => e.r >= it.r && e.ilvl >= it.ilvl);
+}
+const sellSel = () => S.inv.filter(it => SEL.sell && SEL.sell.has(it.id) && !it.lock);
+/* 背包清單：一般模式點開物品；批量賣出模式點一下勾選 */
+function bagListHTML() {
+  const head = `<div class="baghd"><h3>背包 ${S.inv.length}/30</h3>${S.inv.length ? `<button class="btn sm${SEL.sell ? ' pri' : ''}" data-act="sellMode">${SEL.sell ? '完成' : '批量賣出'}</button>` : ''}</div>`;
+  if (!S.inv.length) return head + '<p class="sub">背包是空的。</p>';
+  const row = (it, i) => {
+    const on = SEL.sell && SEL.sell.has(it.id) && !it.lock;
+    return `<button class="irow${on ? ' sel' : ''}${it.lock ? ' locked' : ''}" data-act="${SEL.sell ? 'sellPick' : 'pick'}" data-i="${i}" style="border-left-color:${RCOL[it.r]}">${SEL.sell ? `<i class="ck">${it.lock ? '鎖' : on ? '✓' : ''}</i>` : ''}<img src="${slotIcon(it)}" alt=""><span><b>${itemName(it)}${it.lock && !SEL.sell ? ' <em class="lk">鎖</em>' : ''}</b><small>${SLOTN[it.slot]}・iLv${it.ilvl}・${esc(itemSum(it))}</small></span>${SEL.sell ? `<em class="pr">${sellVal(it)}</em>` : ''}</button>`;
+  };
+  if (!SEL.sell) return head + `<div class="list">${S.inv.map(row).join('')}</div>`;
+  const sel = sellSel(),
+    gold = sel.reduce((n, it) => n + sellVal(it), 0),
+    ok = canSell(),
+    q = (k, n) => `<button class="btn sm" data-act="sellQuick" data-k="${k}">${n}</button>`;
+  return `${head}<div class="sellbar">${q('r0', '普通')}${q('r1', '魔法')}${q('r2', '稀有')}${q('worse', '比穿戴的差')}${q('all', '全選')}${q('none', '清除')}</div>
+    <p class="sub">${ok ? '點裝備勾選；上鎖的裝備不會被選到（在裝備詳情裡上鎖）。' : '⚠ 要在城鎮或據點才能賣出裝備，現在只能先勾選。'}</p>
+    <div class="list">${S.inv.map(row).join('')}</div>
+    <div class="sellgo"><button class="btn pri" data-act="sellMany" ${ok && sel.length ? '' : 'disabled'}>${ok ? `賣出 ${sel.length} 件　+${gold} 金` : '不在城鎮或據點'}</button></div>`;
 }
 
 /* ================= entity interaction ================= */
@@ -962,6 +997,8 @@ const A = {
     openSheet('item');
   },
   sell: () => {
+    const cur = S.inv[selItem.i];
+    if (!cur || cur.lock || !canSell()) return toast('要在城鎮或據點才能賣出裝備');
     const it = S.inv.splice(selItem.i, 1)[0];
     S.gold += sellVal(it);
     sfx('coin');
@@ -970,6 +1007,56 @@ const A = {
     if (selSlot) openSheet('slot', SLOTN[selSlot]);
     else openSheet('bag');
   },
+  lock: () => {
+    const it = S.inv[selItem.i];
+    if (!it) return;
+    it.lock = !it.lock;
+    if (!it.lock) delete it.lock;
+    sfx('tap');
+    save();
+    renderSheet();
+  },
+  sellMode: () => {
+    SEL.sell = SEL.sell ? null : new Set();
+    S.inv.forEach(it => it.id || (it.id = uid()));
+    sfx('tap');
+    renderSheet();
+  },
+  sellPick: d => {
+    const it = S.inv[+d.i];
+    if (!it || !SEL.sell) return;
+    if (it.lock) return toast('這件已上鎖，先到裝備詳情解鎖');
+    SEL.sell.has(it.id) ? SEL.sell.delete(it.id) : SEL.sell.add(it.id);
+    sfx('tap');
+    renderSheet();
+  },
+  sellQuick: d => {
+    if (!SEL.sell) return;
+    if (d.k === 'none') SEL.sell.clear();
+    else
+      S.inv.forEach(it => {
+        if (it.lock) return;
+        if (d.k === 'all' || (d.k === 'worse' ? worseThanEq(it) : d.k === 'r' + it.r)) SEL.sell.add(it.id);
+      });
+    sfx('tap');
+    renderSheet();
+  },
+  sellMany: () => {
+    if (!canSell()) return toast('要在城鎮或據點才能賣出裝備');
+    const sel = sellSel();
+    if (!sel.length) return;
+    const gold = sel.reduce((n, it) => n + sellVal(it), 0);
+    S.inv = S.inv.filter(it => !sel.includes(it));
+    S.gold += gold;
+    SEL.sell = S.inv.length ? new Set() : null;
+    sfx('coin');
+    toast(`賣出 ${sel.length} 件裝備 +${gold} 金`);
+    addLog(`批量賣出 ${sel.length} 件裝備，得到 ${gold} 金`);
+    save();
+    renderHud();
+    renderSheet();
+  },
+
   refund: () => {
     if (!selNode || !canRefund(selNode)) return;
     S.tree = S.tree.filter(x => x !== selNode);
@@ -1249,6 +1336,11 @@ const A = {
       S.gps = true;
       toast('GPS 定位中…');
     }
+    save();
+    renderSheet();
+  },
+  simSpd: d => {
+    S.simSpd = +d.v;
     save();
     renderSheet();
   },

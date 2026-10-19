@@ -162,7 +162,7 @@ function itemSum(it) {
 }
 function itemCard(it, title) {
   const b = baseOf(it);
-  let h = `<div class="icard" style="border-color:${RCOL[it.r]}88"><div class="ihead" style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</div><div class="isub">${it.r === 2 ? esc(b.n) + '・' : ''}${RNAME[it.r]}${SLOTN[it.slot]}・物品等級 ${it.ilvl}${title ? '・' + title : ''}</div>`;
+  let h = `<div class="icard" style="border-color:${RCOL[it.r]}88"><div class="ihead" style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</div><div class="isub">${it.r === 2 ? esc(b.n) + '・' : ''}${RNAME[it.r]}${SLOTN[it.slot]}・物品等級 ${it.ilvl}${typeof gearArt === 'function' && gearArt(it) ? '・' + TIERN[tierOf(it.ilvl)] + '材質' : ''}${title ? '・' + title : ''}</div>`;
   const base = [];
   if (it.phys)
     base.push(

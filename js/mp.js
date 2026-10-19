@@ -24,6 +24,7 @@ function mySnap() {
     mp: S.mp,
     sks: mySkills(),
     pal: heroPal(),
+    look: heroLook(),
     wep: wepKind(),
     st: JSON.parse(JSON.stringify(st))
   };
@@ -833,7 +834,7 @@ function renderMBHud() {
               c: a === CLOUD.uid ? 'me' : '',
               on: i === MB.ti && MB.actor === a,
               dead: !q.alive,
-              img: portrait('heroF', palFor(q))
+              img: portrait(heroSpr('F', q.look || '.....'), palFor(q))
             }
           ]
         : [];
@@ -962,8 +963,8 @@ function renderMB(t) {
     c.fill();
     c.globalAlpha = q.alive ? 1 : 0.35;
     drawPets(c, t, q.pets, ps.x, ps.y, hs);
-    drawWeapon(c, q.wep || 'sword', ps.x + ox, ps.y + Math.sin(t / 320 + i) * 1.5, hs);
-    drawSpr(c, 'heroS', palFor(q), ps.x + ox, ps.y + Math.sin(t / 320 + i) * 1.5, hs, true);
+    drawWeapon(c, q.wep || 'sword', ps.x + ox, ps.y + Math.sin(t / 320 + i) * 1.5, hs, palFor(q).W);
+    drawSpr(c, heroSpr('S', q.look || '.....'), palFor(q), ps.x + ox, ps.y + Math.sin(t / 320 + i) * 1.5, hs, true);
     c.globalAlpha = 1;
   });
   for (let i = MBFX.fx.length - 1; i >= 0; i--) {

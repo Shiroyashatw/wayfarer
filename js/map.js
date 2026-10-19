@@ -1288,7 +1288,7 @@ function renderWorld(t) {
       c.beginPath();
       c.ellipse(hx, hy, 7 * s, 2.2 * s, 0, 0, 6.28);
       c.fill();
-      drawSpr(c, 'heroF', heroPal(), hx, hy - (walking ? Math.abs(Math.sin(t / 90)) * 3 : 0), s + 0.3);
+      drawSpr(c, heroSpr('F'), heroPal(), hx, hy - (walking ? Math.abs(Math.sin(t / 90)) * 3 : 0), s + 0.3);
     }
   });
   list.sort((a, b) => a.y - b.y).forEach(o => o.draw());
@@ -1489,7 +1489,9 @@ function tapWorld(x, y) {
 /* ================= movement ================= */
 let lastFrame = 0,
   stepAcc = 0;
+/* 點地圖走路的速度（公尺／秒）；設定裡可以調倍率 S.simSpd（測試用：1、1.5、2） */
 const SIM_SPEED = 14;
+const simSpeed = () => SIM_SPEED * (S.simSpd || 1);
 function setPos(lat, lng, moved) {
   S.lat = lat;
   S.lng = lng;
@@ -1611,8 +1613,9 @@ function tick(t) {
     const d = dist(S.lat, S.lng, simTarget[0], simTarget[1]);
     if (d < 1.5) simTarget = null;
     else {
-      const k = Math.min(1, (SIM_SPEED * dt) / d);
-      setPos(S.lat + (simTarget[0] - S.lat) * k, S.lng + (simTarget[1] - S.lng) * k, Math.min(d, SIM_SPEED * dt));
+      const v = simSpeed(),
+        k = Math.min(1, (v * dt) / d);
+      setPos(S.lat + (simTarget[0] - S.lat) * k, S.lng + (simTarget[1] - S.lng) * k, Math.min(d, v * dt));
     }
   }
   renderWorld(t);
