@@ -13,6 +13,7 @@ function renderHud() {
   a.clearRect(0, 0, 18, 18);
   a.drawImage(sprite('heroF', heroPal()), 0, 0);
   $('ptDot').hidden = treePts() <= 0;
+  $('gaDot').hidden = (S.cur.soul || 0) < GEM_DRAW * 10;
 }
 let toastT;
 function toast(t) {
@@ -46,6 +47,7 @@ const TITLES = {
   friends: '好友',
   party: '組隊',
   skills: '技能',
+  stele: '石碑與傳送門',
   gem: '技能石'
 };
 /* 底部導覽：群組按鈕點了往上展開 2～3 個功能，再點一次或點地圖就收起來 */
@@ -53,6 +55,7 @@ const NAVG = {
   adv: [
     ['near', '附近', 'eye'],
     ['base', '據點', 'castle'],
+    ['stele', '石碑', 'key'],
     ['log', '冒險日誌', 'book']
   ],
   soc: [
@@ -128,6 +131,24 @@ function entIcon(e) {
   } else if (e.kind === 'town') {
     n = e.t.svc.includes('temple') ? 'shrine' : 'crystal';
     p = e.t.svc.includes('temple') ? PAL.shrine : PAL.crystal;
+  } else if (e.kind === 'stele' || e.kind === 'circle') {
+    const done = isDone(e),
+      nm = e.kind === 'stele' ? '空白石碑卷（單人）' : '空白魔法陣卷（4 人）';
+    desc = done
+      ? '已經封印過了，每小時整點會出現新的。'
+      : `按「壓縮封印」把它收進背包，變成【${nm}】，回家再到「冒險 → 石碑」${e.kind === 'stele' ? '注入碑文碎片開啟單人石碑' : '放入 4～6 個石碑，組隊開啟 20 層魔法陣'}。`;
+    act = `<button class="btn pri" data-act="seal" data-id="${id}" ${inR && !done ? '' : 'disabled'}>壓縮封印</button>`;
+  } else if (e.kind === 'vein') {
+    const done = isDone(e);
+    desc = done ? '靈脈已經枯竭，每小時整點會恢復。' : '湧出靈氣的地脈。採集可以得到刻印石，偶爾有混沌刻印石。';
+    act = `<button class="btn pri" data-act="gather" data-id="${id}" ${inR && !done ? '' : 'disabled'}>採集</button>`;
+  } else if (e.kind === 'obelisk') {
+    const n = (S.obel && S.obel[e.id]) || 0;
+    desc = `冥府之力從地底湧出，方圓 ${OB_R} 公尺內的怪物帶著冥府詞綴（名字前有「冥府・」，非常危險）。在範圍內擊敗被侵蝕的怪物替柱子充能（${n}/${OB_NEED}），滿了就能召喚「冥府看門人」，打倒它可以解除侵蝕並得到冥府碎片。`;
+    act = `<button class="btn pri" data-act="summon" data-id="${id}" ${inR && n >= OB_NEED ? '' : 'disabled'}>${n >= OB_NEED ? '召喚冥府看門人' : `充能 ${n}/${OB_NEED}`}</button>`;
+  } else if (e.kind === 'flag') {
+    desc = `你插下的冒險營旗，還有 ${Math.ceil((e.f.until - now()) / 60e3)} 分鐘。半徑 ${flagR()} 公尺內的東西不用在現場也能互動。`;
+    act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
   } else if (e.kind === 'base') {
     n = e.b.type === 'main' ? 'castle' : 'camp';
     p = PAL[n];
@@ -156,12 +177,26 @@ const gemDesc = q =>
     : q.kind === 'attack'
       ? `攻擊・武器傷害 ${Math.round(q.mult * 100)}%${q.hits > 1 ? ` × ${q.hits} 下` : ''}`
       : `回復 ${Math.round(q.heal * 100)}% 生命`;
+/* 技能石圖示：星級底色、左上等級、右上刻印槽（亮的是已刻印）、右下「裝」表示在技能欄 */
+const gemCell = (g, noEq) => {
+  const r = SKILLS[g.k].r || 3,
+    n = gemSlots(g);
+  return `<span class="gtile r${r}${g.cor ? ' gcor' : ''}"><img src="${iconURL(SKILLS[g.k].icon)}" alt=""><i class="glv">${g.lv}</i>${n ? `<span class="gen">${Array.from({ length: n }, (_, i) => `<i class="${i < g.en.length ? 'f' : ''}"></i>`).join('')}</span>` : ''}${!noEq && S.sk.includes(g.id) ? '<i class="geq">裝</i>' : ''}<i class="gst">${'★'.repeat(r)}</i></span>`;
+};
+/* 可以一鍵分解的重複技能石：同一種技能保留等級最高（刻印最多）的一顆，其餘沒裝備、Lv1、沒刻印、沒腐化的分解 */
+function dupGems() {
+  const best = {};
+  for (const g of S.gems) {
+    const b = best[g.k];
+    if (!b || g.lv > b.lv || (g.lv === b.lv && g.en.length > b.en.length) || S.sk.includes(g.id)) best[g.k] = g;
+  }
+  return S.gems.filter(g => best[g.k] !== g && !S.sk.includes(g.id) && g.lv === 1 && !g.en.length && !g.cor);
+}
 const gemRow = (g, tag) => {
   const q = gemSkill(g);
   return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q)}・刻印 ${g.en.length}/${gemSlots(g)}${gemOpen(g) > 0 ? ' <span style="color:var(--gold)">◇可刻印</span>' : ''}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
 };
 const prayed = id => !!S.prayed && S.prayed[id] === hepoch();
-const nearBase = () => S.bases.some(b => dist(S.lat, S.lng, b.lat, b.lng) <= RANGE);
 function renderSheet() {
   if (!sheetName || sheetName === 'ent') return;
   const el = $('sbody'),
@@ -188,26 +223,27 @@ function renderSheet() {
       .join('')}</div><button class="btn" data-act="sheet" data-s="skills">管理技能石</button>
 `;
   } else if (sheetName === 'skills') {
-    const nb = nearBase(),
-      eqd = new Set(S.sk),
-      list = [...S.gems].sort((a, b) => eqd.has(b.id) - eqd.has(a.id) || b.lv - a.lv || a.k.localeCompare(b.k));
-    html = `<p class="sub">技能全部來自技能石。技能欄 4 格，另外有固定的普通攻擊。技能石每 5 級開 1 個空的刻印槽，用刻印石點下去才會抽出詞綴。</p>
-    <h3>技能欄</h3>${S.sk
+    const eqd = new Set(S.sk),
+      list = [...S.gems].sort(
+        (a, b) =>
+          eqd.has(b.id) - eqd.has(a.id) ||
+          (SKILLS[b.k].r || 3) - (SKILLS[a.k].r || 3) ||
+          b.lv - a.lv ||
+          a.k.localeCompare(b.k)
+      ),
+      dup = dupGems();
+    html = `<div class="gslots">${S.sk
       .map((id, i) => {
         const g = gemOf(id);
         return g
-          ? gemRow(g, `第 ${i + 1} 格`)
-          : `<div class="card"><div class="rowx"><div class="t"><b class="sub">第 ${i + 1} 格：空</b><small>從下方的技能石選一顆裝上</small></div></div></div>`;
+          ? `<button class="gslot" data-act="gem" data-id="${g.id}">${gemCell(g, true)}<span>${SKILLS[g.k].name}</span></button>`
+          : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>第 ${i + 1} 格</span></div>`;
       })
-      .join('')}
-    <h3>靈魂祭壇</h3><div class="card"><div class="rowx"><div class="t"><b>${curDot('soul')}靈魂碎片 ${S.cur.soul || 0}</b><small>${nb ? `用 ${GEM_DRAW} 個抽 1 顆 Lv1 技能石` : '要在自己的據點 80 公尺內才能使用祭壇'}</small></div><button class="btn pri sm" data-act="altar" ${nb && (S.cur.soul || 0) >= GEM_DRAW ? '' : 'disabled'}>抽取</button></div></div>
-    <h3>技能通貨</h3>${curRowG()}
-    <h3>技能石（${S.gems.length}）</h3>${
-      list
-        .filter(g => !eqd.has(g.id))
-        .map(g => gemRow(g))
-        .join('') || '<p class="sub">沒有其他技能石</p>'
-    }`;
+      .join('')}</div>
+    <p class="sub" style="margin:0">另外有固定的普通攻擊。技能石每 5 級開 1 個空的刻印槽，用刻印石點下去才會抽出詞綴。</p>
+    <div class="btns"><button class="btn pri" data-act="gacha">${curDot('soul')}祈願（${S.cur.soul || 0}）</button><button class="btn" data-act="gemDup" ${dup.length ? '' : 'disabled'}>一鍵分解重複（${dup.length}）</button></div>
+    ${curRowG()}
+    <h3>技能石（${S.gems.length}）</h3><div class="ggrid">${list.map(g => `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span></button>`).join('') || '<p class="sub">還沒有技能石，去祈願吧</p>'}</div>`;
   } else if (sheetName === 'gem') {
     const g = gemOf(selGem);
     if (!g) {
@@ -218,7 +254,7 @@ function renderSheet() {
       at = S.sk.indexOf(g.id),
       blk = gemLvBlock(g),
       n = gemSlots(g);
-    html = `<div class="card"><div class="rowx"><div class="t"><b style="font-size:17px"><img class="cico lg" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span></b><small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
+    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span> <span style="color:${RSTAR[SKILLS[g.k].r || 3]}">${'★'.repeat(SKILLS[g.k].r || 3)}</span></b><small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
     <h3>刻印槽 ${g.en.length}/${n}${g.lv < GEM_MAX ? `<small class="sub">・下一個在 Lv${(fl(g.lv / 5) + 1) * 5}</small>` : ''}</h3><div class="card">${
       n
         ? [
@@ -270,30 +306,16 @@ function renderSheet() {
     <div class="btns">${selItem.eq ? `<button class="btn" data-act="unequip" data-s="${selItem.eq}">卸下</button>` : it.slot === 'ring' ? `<button class="btn pri" data-act="equip" data-s="ring1">裝在戒指 1</button><button class="btn pri" data-act="equip" data-s="ring2">裝在戒指 2</button>` : `<button class="btn pri" data-act="equip" data-s="${it.slot}">裝備</button>`}
     ${selItem.eq ? '' : `<button class="btn" data-act="sell">賣出 ${sellVal(it)} 金</button>`}${selSlot ? `<button class="btn" data-act="eqslot" data-s="${selSlot}">返回${SLOTN[selSlot]}</button>` : `<button class="btn" data-act="sheet" data-s="bag">返回背包</button>`}</div>`;
   } else if (sheetName === 'base') {
-    const chk = branchCheck(),
-      main = S.bases.find(b => b.type === 'main');
-    html = `<p class="sub">城鎮是大家共用的地標；據點是你自己的家。據點持續產出金幣（最多累積 8 小時），每 30 分鐘恢復 1 次遠征（上限 3 次），不用出門也能攻略附近的洞窟或城鎮試煉，獎勵為實地的 80%，且不會揭開迷霧。</p>
-    ${main ? '' : `<div class="card"><div class="rowx"><div class="t"><b>建立主據點</b><small>${nearTownE() ? '城鎮範圍內不能建立據點' : '在你現在的位置免費建立'}</small></div><button class="btn pri" data-act="buildMain" ${nearTownE() ? 'disabled' : ''}>在此建立</button></div></div>`}
-    ${S.bases
-      .map(b => {
-        const ch = charges(b),
-          d = baseTarget(b),
-          cost = 120 * b.lv,
-          cc = 2 * b.lv;
-        return `<div class="card"><div class="rowx"><div class="t"><b>${baseName(b)} Lv${b.lv}</b><small>距離你 ${fmtD(dist(S.lat, S.lng, b.lat, b.lng))}・產出 ${prodRate(b)} 金/小時</small></div><div style="text-align:right"><div style="color:var(--gold);font-family:var(--f-pix)">● ${stored(b)}</div><small class="sub">遠征 ${'■'.repeat(ch)}${'□'.repeat(3 - ch)}</small></div></div>
-      <p class="sub">${d ? `遠征目標：${esc(d.name)} Lv${d.lv}（${fmtD(d.d)}）` : '附近沒有可遠征的目標'}</p>
-      <div class="btns"><button class="btn sm" data-act="collect" data-id="${b.id}" ${stored(b) ? '' : 'disabled'}>領取</button><button class="btn sm pri" data-act="expedition" data-id="${b.id}" ${ch && d ? '' : 'disabled'}>遠征</button><button class="btn sm" data-act="upgrade" data-id="${b.id}" ${b.lv < 5 && S.gold >= cost && S.crystal >= cc ? '' : 'disabled'}>${b.lv < 5 ? `升級 ${cost}● ${cc}◆` : '已滿級'}</button><button class="btn sm" data-act="goto" data-id="${b.id}">查看</button></div></div>`;
-      })
-      .join('')}
-    ${main ? `<div class="card"><div class="rowx"><div class="t"><b>建立分支據點</b><small>${chk || '可以在你現在的位置建立（150 金幣）'}</small></div><button class="btn pri sm" data-act="buildBranch" ${chk ? 'disabled' : ''}>建立</button></div></div>` : ''}
-    <div class="card"><div class="rowx"><div class="t"><b>測試用：時間快轉</b><small>據點產出、遠征恢復、怪物與事件刷新</small></div><button class="btn sm" data-act="ff">快轉 1 小時</button></div></div>`;
+    html = baseHTML();
+  } else if (sheetName === 'stele') {
+    html = steleHTML();
   } else if (sheetName === 'near') {
     const list = [...ENT.values()]
       .filter(e => e.kind !== 'base' && visible(e))
       .map(e => ({ ...e, d: dist(S.lat, S.lng, e.lat, e.lng) }))
       .sort((a, b) => (b.ev ? 1 : 0) - (a.ev ? 1 : 0) || a.d - b.d)
       .slice(0, 30);
-    html = `<p class="sub">探索面積 ${explKm2().toFixed(2)} 平方公里・怪物在 ${mmss(REFRESH - (now() % REFRESH))} 後刷新，地城、寶箱、商店在 ${mmss(REFRESH_H - (now() % REFRESH_H))} 後刷新。迷霧裡的東西要走近才看得到；限時事件排在最前面。</p>${list.map(e => `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="openEnt" data-id="${e.id}"><div class="ent"><canvas data-ent="${e.id}" width="18" height="18" style="width:44px;height:44px"></canvas><div style="flex:1;min-width:0"><b style="font-weight:500;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(e.kind === 'monster' ? `${e.name} Lv${e.lv}` : e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name)}</b><small class="sub" style="display:block">${e.bounty ? '懸賞目標' : KIND[e.kind]}・${dirName(S.lat, S.lng, e.lat, e.lng)}方 ${fmtD(e.d)}${e.d <= (e.kind === 'town' ? 120 : RANGE) ? '・<span style="color:var(--good)">可互動</span>' : ''}</small></div></div></button>`).join('')}`;
+    html = `<p class="sub">探索面積 ${explKm2().toFixed(2)} 平方公里・怪物在 ${mmss(REFRESH - (now() % REFRESH))} 後刷新，地城、寶箱、商店在 ${mmss(REFRESH_H - (now() % REFRESH_H))} 後刷新。迷霧裡的東西要走近才看得到；限時事件排在最前面。</p>${list.map(e => `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="openEnt" data-id="${e.id}"><div class="ent"><canvas data-ent="${e.id}" width="18" height="18" style="width:44px;height:44px"></canvas><div style="flex:1;min-width:0"><b style="font-weight:500;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(e.kind === 'monster' ? `${e.name} Lv${e.lv}` : e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name)}</b><small class="sub" style="display:block">${e.bounty ? '懸賞目標' : KIND[e.kind]}・${dirName(S.lat, S.lng, e.lat, e.lng)}方 ${fmtD(e.d)}${inRange(ENT.get(e.id)) ? '・<span style="color:var(--good)">可互動</span>' : ''}</small></div></div></button>`).join('')}`;
   } else if (sheetName === 'settings') {
     html = `<h3>聲音</h3><div class="seg"><button data-act="toggle" data-k="music" aria-pressed="${S.music}">音樂 ${S.music ? '開' : '關'}</button><button data-act="toggle" data-k="sfx" aria-pressed="${S.sfx}">音效・震動 ${S.sfx ? '開' : '關'}</button></div>
     <h3>自動喝水</h3><div class="card"><p class="sub" style="margin-bottom:6px">戰鬥結束後低於門檻就自動喝藥水（每種最多 3 瓶）。戰鬥勝利不會自動回復。</p>${[
@@ -346,7 +368,8 @@ function openEnt(id) {
   if (!e) return;
   const d = dist(S.lat, S.lng, e.lat, e.lng),
     lim = e.kind === 'town' ? 120 : RANGE,
-    inR = d <= lim || e.kind === 'base';
+    zn = d > lim && e.kind !== 'base' && zoneOf(e),
+    inR = d <= lim || e.kind === 'base' || !!zn;
   sheetName = 'ent';
   $('stitle').textContent = e.bounty ? '懸賞目標' : KIND[e.kind];
   $('scrim').hidden = false;
@@ -415,62 +438,26 @@ function openEnt(id) {
         (t.svc.includes('shop')
           ? `<button class="btn" data-act="shop" data-id="${id}" ${inR ? '' : 'disabled'}>商店</button>`
           : '') +
-        `<button class="btn pri" data-act="trial" data-id="${id}" ${inR && !done ? '' : 'disabled'}>${done ? '試煉已完成（15 分鐘內重開）' : `地標試煉「${esc(t.dn)}」Lv${lv}`}</button>`;
+        `<button class="btn pri" data-act="trial" data-id="${id}" ${inR && !done ? '' : 'disabled'}>${done ? '試煉已完成（整點重開）' : `地標試煉「${esc(t.dn)}」Lv${lv}`}</button>`;
   }
   const title = e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name;
   $('sbody').innerHTML =
     `<div class="ent"><canvas id="entBig" width="18" height="18" style="width:84px;height:84px"></canvas><div style="flex:1;min-width:0;display:grid;gap:4px"><b style="font-family:var(--f-pix);font-size:19px;font-weight:400;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(title)}${e.lv && e.kind !== 'town' ? ` <span class="sub">Lv${e.lv}</span>` : ''}</b><span class="sub">${d < 5 ? '就在這裡' : dirName(S.lat, S.lng, e.lat, e.lng) + '方 ' + fmtD(d)}</span></div></div>
-    <p class="sub" style="color:var(--ink)">${desc}</p>${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
+    <p class="sub" style="color:var(--ink)">${desc}</p>${zn ? `<p class="sub" style="color:var(--good)">在${esc(zn.name)}的範圍內，不用走過去就能互動。</p>` : ''}${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
     <div class="btns" style="flex-direction:column">${act}${!inR ? `<button class="btn" data-act="walkto" data-id="${id}">走過去</button>` : ''}</div>`;
   $('entBig').getContext('2d').drawImage(entIcon(e), 0, 0);
 }
-const inRange = e => e && dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE);
+const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE) || inZone(e));
 
 /* ================= bases ================= */
-const P30 = 30 * 60e3;
-const prodRate = b => (b.type === 'main' ? 60 : 30) * b.lv;
+const prodRate = b => 60 * b.lv;
 const stored = b => Math.floor(Math.min(prodRate(b) * 8, (prodRate(b) * (now() - b.last)) / 3.6e6));
-function charges(b) {
-  const t = now();
-  if (b.exp >= 3) {
-    b.expTs = t;
-    return 3;
-  }
-  const k = fl((t - b.expTs) / P30);
-  if (k > 0) {
-    b.exp = Math.min(3, b.exp + k);
-    b.expTs += k * P30;
-    if (b.exp >= 3) b.expTs = t;
-  }
-  return b.exp;
-}
-const baseName = b =>
-  b.type === 'main' ? '主據點' : `分支據點 ${S.bases.filter(q => q.type === 'branch').indexOf(b) + 1}`;
-function baseTarget(b) {
-  const [bx, by] = toM(b.lat, b.lng);
-  let best = null;
-  /* 遠征只能打普通與團體地城；地獄地城要實地組隊 */
-  for (let i = fl((bx - 1500) / DCELL); i <= fl((bx + 1500) / DCELL); i++)
-    for (let j = fl((by - 1500) / DCELL); j <= fl((by + 1500) / DCELL); j++) {
-      const g = dungeonAt(i, j);
-      if (!g || g.dt === 'hell' || S.cleared[g.id] === hepoch()) continue;
-      const d = Math.hypot(g.x - bx, g.y - by);
-      if (d <= 1500 && (!best || d < best.d)) best = { ...g, d };
-    }
-  for (const t of TOWNS) {
-    const d = Math.hypot(t.x - bx, t.y - by);
-    if (d < 1500 && S.found[t.id] && S.cleared[t.id] !== hepoch() && (!best || d < best.d))
-      best = { id: t.id, name: t.dn, lat: t.lat, lng: t.lng, d, lv: townLv(t), kind: 'landmark', dn: t.dn };
-  }
-  return best;
-}
-function branchCheck() {
-  if (!S.bases.some(b => b.type === 'main')) return '先建立主據點';
-  if (S.bases.filter(b => b.type === 'branch').length >= 3) return '分支據點已達上限 3 座';
-  if (S.gold < 150) return '需要 150 金幣';
-  if (nearTownE()) return '城鎮範圍內不能建立據點';
-  const near = S.bases.find(b => dist(b.lat, b.lng, S.lat, S.lng) < 1000);
-  if (near) return `離${baseName(near)}太近，需要相距 1 公里以上`;
+const baseName = () => '主據點';
+function flagCheck() {
+  if (!mainBase()) return '先建立主據點';
+  if (flagsOn().length >= FLAG_MAX) return `營旗最多同時 ${FLAG_MAX} 支`;
+  if (S.gold < FLAG_COST) return `需要 ${FLAG_COST} 金幣`;
+  if (flagsOn().some(f => dist(f.lat, f.lng, S.lat, S.lng) < 200)) return '這附近已經有營旗了';
   return '';
 }
 
@@ -529,6 +516,7 @@ const A = {
     f && f();
   },
   recenter: () => {
+    if (SILK.view) silkView(null);
     follow = true;
     cam.z = Math.max(cam.z, 0.5);
     sfx('tap');
@@ -546,7 +534,7 @@ const A = {
   fight: d => {
     const e = ENT.get(d.id);
     if (!inRange(e)) return;
-    startBattle(makeEnemy(e.base, e.lv, e.rar, e.mods), { entId: e.id, bg: e.base.bg, bounty: e.bounty });
+    startBattle(makeEnemy(e.base, e.lv, e.rar, e.mods), { entId: e.id, bg: e.base.bg, bounty: e.bounty, uw: e.uw });
   },
   enter: d => {
     const e = ENT.get(d.id);
@@ -690,8 +678,17 @@ const A = {
     save();
   },
   gemCraft: d => {
-    const g = gemOf(selGem);
-    if (gemCraft(g, d.c)) {
+    const g = gemOf(selGem),
+      nm = g && `${SKILLS[g.k].name} Lv${g.lv}`,
+      res = gemCraft(g, d.c);
+    if (res && d.c === 'vaal') {
+      sfx(gemOf(selGem) ? 'level' : 'lose');
+      buzz(120);
+      addLog(`腐化 ${nm}：${res}`);
+      showModal('腐化', `<p style="text-align:center">${res}</p>`, [{ label: '好', pri: 1, fn: hideModal }]);
+      openSheet(gemOf(selGem) ? 'gem' : 'skills');
+      save();
+    } else if (res) {
       sfx(d.c === 'eng' ? 'select' : 'level');
       buzz(30);
       addLog(`使用${GCURI[d.c].n}：${SKILLS[g.k].name} Lv${g.lv}`);
@@ -721,25 +718,33 @@ const A = {
       { label: '取消', fn: hideModal }
     ]);
   },
-  altar: () => {
-    if (!nearBase() || (S.cur.soul || 0) < GEM_DRAW) return;
-    S.cur.soul -= GEM_DRAW;
-    const ks = GEMK(),
-      g = giveGem(ks[fl(Math.random() * ks.length)]);
-    sfx('level');
-    buzz(40);
-    addLog(`靈魂祭壇：抽到 ${SKILLS[g.k].name}`);
+  gemDup: () => {
+    const list = dupGems(),
+      v = list.reduce((a, g) => a + gemDustBack(g), 0);
+    if (!list.length) return;
     showModal(
-      '靈魂祭壇',
-      `<p style="text-align:center"><img class="bigico" src="${iconURL(SKILLS[g.k].icon)}" alt=""></p><p style="text-align:center">抽到 <b>${SKILLS[g.k].name}</b> Lv1${S.sk.includes(g.id) ? '，已自動裝進技能欄' : ''}</p>`,
+      '一鍵分解重複',
+      `<p>分解 ${list.length} 顆重複的 Lv1 技能石，得到 ${v} 個靈魂粉塵？每種技能都會留下一顆。</p>`,
       [
-        { label: '再抽一次', pri: 1, dis: (S.cur.soul || 0) < GEM_DRAW, fn: () => (hideModal(), A.altar()) },
-        { label: '好', fn: () => (hideModal(), renderSheet()) }
+        {
+          label: '分解',
+          pri: 1,
+          fn: () => {
+            const ids = new Set(list.map(g => g.id));
+            S.gems = S.gems.filter(g => !ids.has(g.id));
+            giveCur('dust', v);
+            hideModal();
+            sfx('coin');
+            toast(`得到 ${v} 個靈魂粉塵`);
+            renderSheet();
+            save();
+          }
+        },
+        { label: '取消', fn: hideModal }
       ]
     );
-    renderSheet();
-    save();
   },
+
   bitem: d => bItem(d.k),
   flee: () => flee(),
   bsub: d => {
@@ -975,25 +980,14 @@ const A = {
   },
   buildMain: () => {
     if (S.bases.some(b => b.type === 'main') || nearTownE()) return;
-    S.bases.push({ id: uid(), type: 'main', lat: S.lat, lng: S.lng, lv: 1, last: now(), exp: 3, expTs: now() });
+    S.bases.push({ id: uid(), type: 'main', lat: S.lat, lng: S.lng, lv: 1, last: now() });
     sfx('level');
     addLog('建立了主據點');
     toast('主據點建立完成！');
     refreshEntities(true);
     renderSheet();
     save();
-  },
-  buildBranch: () => {
-    if (branchCheck()) return;
-    S.gold -= 150;
-    S.bases.push({ id: uid(), type: 'branch', lat: S.lat, lng: S.lng, lv: 1, last: now(), exp: 3, expTs: now() });
-    sfx('level');
-    addLog('建立了分支據點');
-    toast('分支據點建立完成！');
-    refreshEntities(true);
-    renderHud();
-    renderSheet();
-    save();
+    baseSync();
   },
   collect: d => {
     const b = S.bases.find(q => q.id === d.id),
@@ -1017,32 +1011,12 @@ const A = {
     S.crystal -= cc;
     b.lv++;
     sfx('level');
-    toast(`${baseName(b)} 升級到 Lv${b.lv}`);
+    toast(`${baseName(b)} 升級到 Lv${b.lv}，半徑 ${baseR(b.lv)} 公尺`);
+    refreshEntities(true);
     renderHud();
     renderSheet();
-  },
-  expedition: d => {
-    const b = S.bases.find(q => q.id === d.id),
-      tg = baseTarget(b);
-    if (!tg || charges(b) < 1) return;
-    showModal(
-      `遠征・${esc(tg.name)} Lv${tg.lv}`,
-      `<p>從${baseName(b)}派出遠征，不需要走過去。獎勵為實地攻略的 80%。</p><p class="sub">消耗 1 次遠征（剩 ${charges(b)} 次）・目前生命 ${S.hp}/${stats().maxhp}</p>`,
-      [
-        { label: '取消', fn: hideModal },
-        {
-          label: '出發',
-          pri: 1,
-          fn: () => {
-            hideModal();
-            closeSheet();
-            b.exp--;
-            if (b.exp === 2) b.expTs = now();
-            enterDungeon(tg, true);
-          }
-        }
-      ]
-    );
+    save();
+    baseSync();
   },
   goto: d => {
     const b = S.bases.find(q => q.id === d.id);

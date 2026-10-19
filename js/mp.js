@@ -53,7 +53,12 @@ function mySnap() {
       poisonMul: st.poisonMul,
       ail: st.ail,
       dbl: st.dbl,
-      noFreeze: st.noFreeze
+      noFreeze: st.noFreeze,
+      dmgRed: st.dmgRed,
+      taunt: st.taunt,
+      healAll: st.healAll,
+      allyDmg: st.allyDmg,
+      engPct: st.engPct
     }
   };
 }
@@ -95,7 +100,18 @@ function partyCreate(e) {
   PT = {
     code: genCode(),
     leader: CLOUD.uid,
-    dun: { id: e.id, kind: 'dungeon', dt: e.dt, mods: e.mods, lv: e.lv, lat: e.lat, lng: e.lng, name: e.name },
+    dun: {
+      id: e.id,
+      kind: 'dungeon',
+      dt: e.dt,
+      mods: e.mods,
+      umods: e.umods,
+      lv: e.lv,
+      lat: e.lat,
+      lng: e.lng,
+      name: e.name,
+      pay: e.pay
+    },
     members: new Map([[CLOUD.uid, mySnap()]]),
     started: false
   };
@@ -325,13 +341,30 @@ function mpStart() {
   if (!amLeader() || PT.started || MB || !allReady()) return;
   const d = PT.dun,
     mem = [...PT.members.values()];
+  /* 魔法陣與冥府傳送門：出發時才扣掉隊長的卷軸、石碑或碎片 */
+  if (d.pay && !payDun(d.pay)) {
+    toast('卷軸、石碑或碎片不見了，不能出發');
+    return;
+  }
   PT.started = true;
   ptLobby();
   const seed = h(fl(d.lat * 1e4), fl(d.lng * 1e4), hepoch()),
     spec = dunSpec(d);
   MB = {
     spec,
-    d: { id: d.id, kind: 'dungeon', dt: d.dt, mods: d.mods, lv: d.lv, lat: d.lat, lng: d.lng, seed, spec, lm: null },
+    d: {
+      id: d.id,
+      kind: 'dungeon',
+      dt: d.dt,
+      mods: d.mods,
+      umods: d.umods,
+      lv: d.lv,
+      lat: d.lat,
+      lng: d.lng,
+      seed,
+      spec,
+      lm: null
+    },
     room: 0,
     floors: spec.floors,
     n: mem.length,
@@ -467,11 +500,20 @@ function mpResolve(uid, k, auto) {
       v = Math.round(tg.st.maxhp * (sk.heal || 0.35) * (p.st.healMul || 1));
     tg.hp = Math.min(tg.st.maxhp, tg.hp + v);
     fx.push({ t: 'heal', uid: tg.uid, from: uid, v });
+    /* 群體治癒天賦：其他活著的隊友也回復一部分 */
+    if (p.st.healAll)
+      MB.ps
+        .filter(q => q.alive && q !== tg)
+        .forEach(q => {
+          const w = Math.round((v * p.st.healAll) / 100);
+          q.hp = Math.min(q.st.maxhp, q.hp + w);
+          fx.push({ t: 'heal', uid: q.uid, from: uid, v: w });
+        });
   } else {
     const hits = (sk.hits || 1) + extraHit(pst, sk);
     for (let n = 0; n < hits && e.hp > 0; n++) {
       const st = pst,
-        pk = heroPacket(st, sk, sk.mult);
+        pk = heroPacket(st, sk, sk.mult * (1 + ((st.allyDmg || 0) * (MB.ps.filter(q => q.alive).length - 1)) / 100));
       const { d, crit } = heroDmg(st, pk, e, ES.shock > 0, p);
       e.hp = Math.max(0, e.hp - d);
       const col =
@@ -561,7 +603,12 @@ function mpEnemy() {
   for (let n = 0; n < acts; n++) {
     const alive = MB.ps.filter(p => p.alive);
     if (!alive.length) break;
-    const p = alive[fl(Math.random() * alive.length)],
+    /* 嘲諷：每 1% 嘲諷讓自己被選中的權重 +1% */
+    const wt = alive.map(q => 1 + (q.st.taunt || 0) / 100);
+    let x = Math.random() * wt.reduce((a, b) => a + b, 0),
+      pi = 0;
+    while (pi < alive.length - 1 && (x -= wt[pi]) >= 0) pi++;
+    const p = alive[pi],
       strong = Math.random() < 0.15;
     fx.push({ t: 'msg', s: strong ? `${e.name} 的猛力一擊！` : `${e.name} 攻擊 ${p.name}` });
     if (Math.random() * 100 < p.st.dodge) {
@@ -581,7 +628,8 @@ function mpEnemy() {
         p.st.armor * (p.guard > 0 ? 2 : 1),
         p.st.res.map(v => v - ew),
         false
-      )
+      ) *
+        (1 - (p.st.dmgRed || 0) / 100)
     );
     takeDmg(p, p.st, d);
     fx.push({
@@ -633,7 +681,7 @@ function mpRoomClear() {
     return;
   }
   for (const p of MB.ps) {
-    if (!p.alive) {
+    if (!p.alive && !MB.spec.norevive) {
       p.alive = true;
       p.hp = Math.round(p.st.maxhp * 0.2);
     }

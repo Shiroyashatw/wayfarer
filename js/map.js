@@ -799,9 +799,20 @@ function genEntities() {
     R = 950,
     st = stats(),
     dens = Math.min(85, 58 * (1 + st.lure / 100) + (dayPhase().night > 0.5 ? 8 : 0));
+  /* 除了玩家周圍，主據點、冒險營旗、絲綢之路視角的半徑內也要生成（在家就能互動） */
+  const ctrs = [[px, py, 0], ...zones().map(z => [z.x, z.y, z.r])];
   const cells = (c, rad, fn) => {
-    for (let i = fl((px - rad) / c); i <= fl((px + rad) / c); i++)
-      for (let j = fl((py - rad) / c); j <= fl((py + rad) / c); j++) fn(i, j);
+    const seen = new Set();
+    for (const [cx, cy, zr] of ctrs) {
+      const rr = zr ? zr + c : rad;
+      for (let i = fl((cx - rr) / c); i <= fl((cx + rr) / c); i++)
+        for (let j = fl((cy - rr) / c); j <= fl((cy + rr) / c); j++) {
+          const k = i + ',' + j;
+          if (seen.has(k)) continue;
+          seen.add(k);
+          fn(i, j);
+        }
+    }
   };
   const put = (id, o) => {
     const [la, ln] = toLL(o.x, o.y);
@@ -819,9 +830,11 @@ function genEntities() {
     if (!p) return;
     [x, y] = p;
     const q = h(i, j, ep + 5) % 100,
-      danger = S.lv >= 4 && h(i, j, ep + 13) % 1000 < 7;
-    let lv = Math.max(1, S.lv + ((r >>> 4) % 3) - 1),
-      rar = q < (S.lv >= 3 ? 4 : 0) ? 2 : q < (S.lv >= 3 ? 20 : 8) ? 1 : 0;
+      danger = S.lv >= 4 && h(i, j, ep + 13) % 1000 < 7,
+      zm = zoneXY(x, y).m,
+      zr = zm.rare || 1;
+    let lv = Math.max(1, S.lv + ((r >>> 4) % 3) - 1 + (zm.mlv || 0)),
+      rar = q < (S.lv >= 3 ? 4 : 0) * zr ? 2 : q < (S.lv >= 3 ? 20 : 8) * zr ? 1 : 0;
     if (danger) {
       rar = 4;
       lv = S.lv + 3;
@@ -929,17 +942,21 @@ function genEntities() {
     const [x, y] = toM(b.lat, b.lng);
     out.set('b' + b.id, { id: 'b' + b.id, kind: 'base', x, y, lat: b.lat, lng: b.lng, b, name: baseName(b) });
   });
+  endgameSpawns(out, cells, put, hp);
   return out;
 }
 function refreshEntities(force) {
   const [px, py] = toM(S.lat, S.lng);
   ensureChunks(px, py, 1400);
-  S.bases.forEach(b => {
-    const [bx, by] = toM(b.lat, b.lng);
-    ensureChunks(bx, by, 1500);
-  });
+  zones().forEach(z => ensureChunks(z.x, z.y, z.r + 500));
   const ep =
-    epoch() * 1000 + evEp() * 10 + (dayPhase().night > 0.5 ? 1 : 0) + fl(stats().lure / 5) * 100000 + chunkVer * 1e9;
+    epoch() * 1000 +
+    evEp() * 10 +
+    (dayPhase().night > 0.5 ? 1 : 0) +
+    fl(stats().lure / 5) * 100000 +
+    chunkVer * 1e9 +
+    '|' +
+    zonesKey();
   if (!force && spawnAt && dist(S.lat, S.lng, spawnAt[0], spawnAt[1]) < 120 && spawnAt[2] === ep) return;
   spawnAt = [S.lat, S.lng, ep];
   ENT = genEntities();
@@ -947,13 +964,17 @@ function refreshEntities(force) {
 let VIS = { x: 0, y: 0, r: 600 };
 const MOBILE = new Set(['monster', 'chest', 'event']);
 const visible = e =>
-  e.kind === 'town' || e.kind === 'base'
+  e.kind === 'town' || e.kind === 'base' || e.kind === 'flag' || inZone(e)
     ? true
     : MOBILE.has(e.kind)
       ? Math.hypot(e.x - VIS.x, e.y - VIS.y) <= VIS.r
       : revealed(e.x, e.y);
 function isDone(e) {
-  return (e.kind === 'dungeon' && S.cleared[e.id] === hepoch()) || (e.kind === 'event' && S.cleared[e.id] === evEp());
+  return (
+    (e.kind === 'dungeon' && S.cleared[e.id] === hepoch()) ||
+    (e.kind === 'event' && S.cleared[e.id] === evEp()) ||
+    ((e.kind === 'stele' || e.kind === 'circle' || e.kind === 'vein') && !!S.defeated[e.id])
+  );
 }
 const townLv = t => S.lv + 1 + (t.big ? 1 : 0);
 
@@ -1107,6 +1128,7 @@ function renderWorld(t) {
   }
   c.setLineDash([]);
   c.restore();
+  drawZones(c);
   const s = sprScale(),
     list = [];
   for (const e of ENT.values()) {
@@ -1201,6 +1223,8 @@ function renderWorld(t) {
         if (e.kind === 'event' && cam.z > 0.3) label(c, e.name, x, y - 20 * s, 11, '#f2d9a6');
         if (e.kind === 'dungeon' && cam.z > 0.3) label(c, `${e.name} Lv${e.lv}`, x, y - 20 * sc, 11, DTYPES[e.dt].col);
         if (e.kind === 'shrine') glow(c, x, y - 10 * s, 16 * s, '255,90,60', 0.3);
+        if (e.gl && !isDone(e)) glow(c, x, y - 8 * s, 28 * s, e.gl, 0.3 + 0.15 * Math.sin(t / 300));
+        if (e.lbl && cam.z > 0.3) label(c, e.lbl, x, y - 20 * s, 11, e.lc || '#f2d9a6');
       }
     });
   }
@@ -1567,6 +1591,8 @@ function placeLabel() {
     leftH = REFRESH_H - (now() % REFRESH_H);
   $('expl').innerHTML =
     `<span style="color:${dp.night > 0.5 ? '#9fb8ff' : '#ffd877'}">${dp.label}</span> ${hh}:${mm}・視野 ${stats().vision}m<br><span class="rf${left < 60e3 ? ' soon' : ''}">怪物 ${mmss(left)}</span>・<span class="rf${leftH < 60e3 ? ' soon' : ''}">地城 ${mmss(leftH)}</span>・探索 ${explKm2().toFixed(2)} km²` +
+    `<br>區域：${zoneAt(S.lat, S.lng).m.n}` +
+    (SILK.view ? `<br><span style="color:#ffc878">正在看 ${esc(SILK.view.name)} 的據點</span>` : '') +
     (buffOn() ? `<br>祝福 ${Math.ceil((S.buff.until - now()) / 60e3)} 分` : '') +
     (mapLoading() ? '<br><span style="color:#9fe7ff">載入地圖中…</span>' : '');
 }

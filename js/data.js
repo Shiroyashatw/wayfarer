@@ -32,17 +32,25 @@ const CLASSES = {
   ranger: { name: '遊俠之魂', color: '#3f9a52', gem: 'double', desc: '起點在右下，敏捷路線：暴擊、閃避、連擊與毒' },
   mage: { name: '術士之魂', color: '#5865d6', gem: 'fire', desc: '起點在上方，智力路線：法術、魔力、抗性' }
 };
+/* r 是技能石星級（祈願的稀有度）：3★ 常見、4★ 少見、5★ 稀有 */
 const SKILLS = {
   attack: { name: '攻擊', mp: 0, kind: 'attack', mult: 1, icon: 'axe' },
-  power: { name: '強力一擊', mp: 4, kind: 'attack', mult: 1.6, icon: 'sword' },
-  bash: { name: '盾擊', mp: 5, kind: 'attack', mult: 1.3, guard: 2, icon: 'shield' },
-  whirl: { name: '旋風斬', mp: 10, kind: 'attack', mult: 2.3, fx: 'whirl', icon: 'sword' },
-  fire: { name: '火球術', mp: 5, kind: 'spell', el: 'fire', mult: 2, fx: 'fire', icon: 'flame' },
-  ice: { name: '冰矛', mp: 8, kind: 'spell', el: 'cold', mult: 1.7, fx: 'ice', freeze: 0.3, icon: 'ice' },
-  heal: { name: '治癒', mp: 6, kind: 'heal', icon: 'heart' },
-  double: { name: '連射', mp: 6, kind: 'attack', mult: 1.05, hits: 2, fx: 'arrow', icon: 'arrow' },
-  poison: { name: '毒箭', mp: 5, kind: 'attack', mult: 1.1, poison: 3, fx: 'arrow', icon: 'leaf' }
+  power: { name: '強力一擊', mp: 4, kind: 'attack', mult: 1.6, icon: 'sword', r: 3 },
+  bash: { name: '盾擊', mp: 5, kind: 'attack', mult: 1.3, guard: 2, icon: 'shield', r: 3 },
+  whirl: { name: '旋風斬', mp: 10, kind: 'attack', mult: 2.3, fx: 'whirl', icon: 'sword', r: 4 },
+  fire: { name: '火球術', mp: 5, kind: 'spell', el: 'fire', mult: 2, fx: 'fire', icon: 'flame', r: 3 },
+  ice: { name: '冰矛', mp: 8, kind: 'spell', el: 'cold', mult: 1.7, fx: 'ice', freeze: 0.3, icon: 'ice', r: 4 },
+  heal: { name: '治癒', mp: 6, kind: 'heal', icon: 'heart', r: 3 },
+  double: { name: '連射', mp: 6, kind: 'attack', mult: 1.05, hits: 2, fx: 'arrow', icon: 'arrow', r: 3 },
+  poison: { name: '毒箭', mp: 5, kind: 'attack', mult: 1.1, poison: 3, fx: 'arrow', icon: 'leaf', r: 3 },
+  bolt: { name: '落雷', mp: 7, kind: 'spell', el: 'light', mult: 2.1, fx: 'bolt', icon: 'bolt', r: 4 },
+  pierce: { name: '穿雲箭', mp: 8, kind: 'attack', mult: 1.9, fx: 'arrow', icon: 'arrow', r: 4 },
+  meteor: { name: '隕石術', mp: 16, kind: 'spell', el: 'fire', mult: 3.4, fx: 'fire', icon: 'flame', r: 5 },
+  blizzard: { name: '暴風雪', mp: 14, kind: 'spell', el: 'cold', mult: 2.8, fx: 'ice', freeze: 0.5, icon: 'ice', r: 5 },
+  cleave: { name: '裂地斬', mp: 14, kind: 'attack', mult: 3, fx: 'whirl', icon: 'axe', r: 5 },
+  sanct: { name: '聖域', mp: 14, kind: 'heal', heal: 0.6, icon: 'heart', r: 5 }
 };
+const RSTAR = { 3: '#7fb4ff', 4: '#c58cff', 5: '#ffcf5a' };
 /* 技能石：等級上限 30，每 5 級開 1 個空的刻印槽，要用刻印石點下去才會抽出詞綴 */
 const GEM_MAX = 30;
 const GEM_DRAW = 10;
@@ -133,13 +141,14 @@ const GAFF = [
 const GAFFI = Object.fromEntries(GAFF.map(a => [a.id, a]));
 /* 技能石專用通貨（存在 S.cur，但不列在裝備製作） */
 const GCUR = [
-  { id: 'soul', n: '靈魂碎片', d: `在據點的靈魂祭壇用 ${GEM_DRAW} 個抽 1 顆 Lv1 技能石`, c: '#b7a6ff' },
+  { id: 'soul', n: '靈魂碎片', d: `祈願用，每抽 ${GEM_DRAW} 個`, c: '#b7a6ff' },
   { id: 'dust', n: '靈魂粉塵', d: '分解技能石得到，用來替技能石升級', c: '#d8d0ff' },
   { id: 'eng', n: '刻印石', d: '在空的刻印槽抽一條隨機詞綴', c: '#9fd4ef' },
   { id: 'engC', n: '混沌刻印石', d: '隨機重洗一條刻印詞綴', c: '#e58a3a' },
   { id: 'engX', n: '崇高刻印石', d: '在空的刻印槽抽一條 T1～T2 詞綴', c: '#fff2b0' },
   { id: 'prism', n: '昇華稜鏡', d: '重洗階級最低的那條刻印詞綴', c: '#ff8fd8' },
-  { id: 'engD', n: '神聖刻印石', d: '不換詞綴種類，重骰所有刻印詞綴的數值', c: '#ffe27a' }
+  { id: 'engD', n: '神聖刻印石', d: '不換詞綴種類，重骰所有刻印詞綴的數值', c: '#ffe27a' },
+  { id: 'vaal', n: '冥府之血', d: '腐化 Lv30 技能石：超限、擴槽、毀滅或降等（各 25%）', c: '#ff3a5a' }
 ];
 const GCURI = Object.fromEntries(GCUR.map(c => [c.id, c]));
 const EL = { phys: '物理', fire: '火焰', cold: '冰冷', light: '閃電' };
@@ -956,6 +965,48 @@ const DTYPES = {
     col: '#ff4a4a',
     pal: { x: '#6a2a2a', m: '#3a1414', r: '#ffb040' },
     desc: '非常危險。首領是災厄級，最多 4 人，建議等級夠高再組滿隊伍挑戰。'
+  },
+  /* 以下三種不會在路邊出現，由背包裡的卷軸、石碑、冥府碎片組成；norevive：倒下不會在下一層復活 */
+  stele: {
+    n: '單人石碑',
+    max: 1,
+    floors: 3,
+    lv: 2,
+    mods: [0, 0],
+    q: 20,
+    r: 20,
+    hp: 1.3,
+    col: '#b9b6c4',
+    pal: { x: '#8a8796', m: '#5a5466', r: '#7fd6ff' },
+    desc: '空白石碑卷注入碑文碎片做成的短副本，失敗就沒了。'
+  },
+  circle: {
+    n: '石碑魔法陣',
+    max: 4,
+    floors: 20,
+    lv: 3,
+    mods: [0, 0],
+    q: 60,
+    r: 50,
+    hp: 1.6,
+    norevive: true,
+    col: '#b89aff',
+    pal: { x: '#4a3a6a', m: '#2a2040', r: '#b89aff' },
+    desc: '4～6 個石碑合成的 20 層地城，倒下不會復活，全隊倒下就失敗。'
+  },
+  portal: {
+    n: '冥府傳送門',
+    max: 4,
+    floors: 8,
+    lv: 5,
+    mods: [0, 0],
+    q: 120,
+    r: 100,
+    hp: 2.2,
+    norevive: true,
+    col: '#ff3a5a',
+    pal: { x: '#3a1a2e', m: '#1a0a14', r: '#ff3a5a' },
+    desc: '4 片冥府碎片組成的傳送門，首領保證掉落冥府之血。倒下不會復活。'
   }
 };
 /* 地城詞綴（參考 PoE 地圖詞綴）：讓地城更難，但提高掉落數量與稀有度。em 會加到每隻怪物身上，dm 是怪物數值倍率 */
@@ -973,6 +1024,30 @@ const DMODS = [
   { id: 'elite', n: '精英巢穴', d: '魔法怪與稀有怪大幅增加', q: 15, r: 12 }
 ];
 const DMODI = Object.fromEntries(DMODS.map(m => [m.id, m]));
+/* 冥府詞綴：侵蝕柱附近的怪物與冥府傳送門的怪物身上才有，效果在 uwApply */
+const UMODS = [
+  { id: 'uw_body', n: '冥府之軀', d: '生命 +120%', uw: 1 },
+  { id: 'uw_flame', n: '冥火', d: '攻擊 +40%，改為火焰傷害', uw: 1 },
+  { id: 'uw_ward', n: '幽冥護體', d: '全部抗性 +40%、護甲 +50%', uw: 1 },
+  { id: 'uw_rage', n: '怨念', d: '攻擊 +20%、速度大幅提高', uw: 1 },
+  { id: 'uw_soul', n: '噬魂', d: '生命 +40%，攻擊時吸血', uw: 1 }
+];
+const EMODI = Object.fromEntries([...EMODS, ...UMODS].map(m => [m.id, m]));
+/* 冥府碎片的 4 個部位 */
+const FRAG_PARTS = ['冥府之眼', '冥府之心', '冥府之手', '冥府之足'];
+/* 區域特性：地圖每 2 公里一格，每 2 小時重骰 */
+const ZONE_CELL = 2000,
+  ZONE_MS = 2 * 3600e3;
+const ZMODS = [
+  { n: '魔物潮', d: '稀有與魔法怪出現率 +40%', rare: 1.4 },
+  { n: '豐收', d: '物品數量 +30%', q: 30 },
+  { n: '寶光', d: '物品稀有度 +30%', r: 30 },
+  { n: '靈魂共鳴', d: '靈魂碎片掉落加倍', soul: 2 },
+  { n: '刻印之風', d: '刻印石掉落率 +50%', eng: 1.5 },
+  { n: '金脈', d: '金幣 +50%', gold: 1.5 },
+  { n: '修羅場', d: '經驗 +30%，怪物等級 +1', xp: 1.3, mlv: 1 },
+  { n: '寧靜', d: '沒有特殊效果' }
+];
 const RCOL = ['#e8e2d4', '#7fa8ff', '#f2d25e', '#e8873a', '#ff4a4a'],
   RNAME = ['普通', '魔法', '稀有', '傳奇', '危險'];
 const RGLOW = ['', '110,160,255', '242,210,94', '232,135,58', '255,60,60'];
@@ -1232,6 +1307,22 @@ const STATN = {
 };
 const sg = v => (v > 0 ? '+' + v : String(v));
 Object.assign(STATN, {
+  swordPct: v => `持劍時物理傷害 +${v}%`,
+  swordCrit: v => `持劍時暴擊率 +${v}%`,
+  axePct: v => `持斧時物理傷害 +${v}%`,
+  axeCm: v => `持斧時暴擊傷害 +${v}%`,
+  bowPct: v => `持弓時物理傷害 +${v}%`,
+  bowCrit: v => `持弓時暴擊率 +${v}%`,
+  staffPct: v => `持法杖時法術傷害 +${v}%`,
+  staffMana: v => `持法杖時最大魔力 +${v}`,
+  shieldArm: v => `裝備盾牌時護甲 +${v}%`,
+  shieldRes: v => `裝備盾牌時全部抗性 +${v}%`,
+  focusPct: v => `裝備法珠時法術傷害 +${v}%`,
+  dmgRed: v => `受到的傷害 -${v}%`,
+  taunt: v => `嘲諷：組隊時怪物攻擊你的機率 +${v}%`,
+  healAll: v => `治癒技能同時替其他隊友回復 ${v}% 的量`,
+  allyDmg: v => `組隊時每位活著的隊友，傷害 +${v}%`,
+  engPct: v => `技能石每條刻印詞綴，該技能傷害 +${v}%`,
   addCold: v => `附加 ${v} 冰冷傷害`,
   addLight: v => `附加 ${v} 閃電傷害`,
   dmgMore: v => `傷害 ${sg(v)}%（總乘）`,
@@ -1474,6 +1565,91 @@ const TH = {
     n: [
       ['鷹眼', { vision: 20, critPct: 1 }, 'lantern'],
       ['夜行者', { vision: 15, evade: 2 }, 'lantern']
+    ]
+  },
+  /* 0.2.4 外圈：武器專精（只在拿著該武器時生效）與組隊、技能石相關 */
+  sword: {
+    s: ['劍術', { swordPct: 8 }, 'sword'],
+    n: [
+      ['劍聖', { swordPct: 20, swordCrit: 2 }, 'sword'],
+      ['疾風劍', { swordPct: 14, dbl: 4 }, 'sword'],
+      ['斬鐵', { swordPct: 18, flatPhys: 3 }, 'sword']
+    ]
+  },
+  axe: {
+    s: ['斧技', { axePct: 8 }, 'axe'],
+    n: [
+      ['伐木者', { axePct: 20, axeCm: 15 }, 'axe'],
+      ['斷頭台', { axePct: 16, axeCm: 25 }, 'axe'],
+      ['蠻力', { axePct: 15, life: 25 }, 'axe']
+    ]
+  },
+  bow: {
+    s: ['弓術', { bowPct: 8 }, 'bow'],
+    n: [
+      ['神射手', { bowPct: 18, bowCrit: 2 }, 'bow'],
+      ['連珠箭', { bowPct: 12, dbl: 6 }, 'bow'],
+      ['穿楊', { bowPct: 20, critMulti: 10 }, 'bow']
+    ]
+  },
+  staff: {
+    s: ['杖術', { staffPct: 10 }, 'staff'],
+    n: [
+      ['大法師之杖', { staffPct: 25, staffMana: 15 }, 'staff'],
+      ['秘法共鳴', { staffPct: 18, ail: 15 }, 'staff'],
+      ['杖心', { staffPct: 15, mpCost: 6 }, 'staff']
+    ]
+  },
+  shield: {
+    s: ['盾術', { shieldArm: 15 }, 'shield'],
+    n: [
+      ['銅牆', { shieldArm: 40, shieldRes: 6 }, 'shield'],
+      ['反擊之盾', { shieldArm: 25, life: 30 }, 'shield'],
+      ['神聖壁壘', { shieldRes: 10, dmgRed: 4 }, 'shield']
+    ]
+  },
+  focus: {
+    s: ['法器', { focusPct: 10 }, 'orb'],
+    n: [
+      ['法珠共鳴', { focusPct: 25, mana: 15 }, 'orb'],
+      ['靈能導管', { focusPct: 15, mpCost: 8 }, 'orb'],
+      ['星辰法器', { focusPct: 20, critPct: 1 }, 'orb']
+    ]
+  },
+  guard: {
+    s: ['守護', { dmgRed: 1 }, 'shield'],
+    n: [
+      ['挑釁', { taunt: 50, dmgRed: 3 }, 'taunt'],
+      ['不動之盾', { dmgRed: 5, armorPct: 15 }, 'shield'],
+      ['替身', { taunt: 40, life: 40 }, 'taunt'],
+      ['堅守陣線', { dmgRed: 4, lifePct: 6 }, 'shield']
+    ]
+  },
+  support: {
+    s: ['祝福', { healPct: 6 }, 'plus'],
+    n: [
+      ['群體治癒', { healAll: 30, healPct: 10 }, 'plus'],
+      ['聖光', { healAll: 20, regen: 3 }, 'plus'],
+      ['靈魂連結', { healPct: 20, manaRegen: 2 }, 'mana'],
+      ['守護天使', { healAll: 25, dmgRed: 2 }, 'plus']
+    ]
+  },
+  tactic: {
+    s: ['戰術', { allyDmg: 2 }, 'twin'],
+    n: [
+      ['協同作戰', { allyDmg: 6, critPct: 1 }, 'twin'],
+      ['圍獵', { allyDmg: 5, dbl: 4 }, 'twin'],
+      ['號令', { allyDmg: 8 }, 'taunt'],
+      ['戰場指揮', { allyDmg: 5, dmgRed: 2 }, 'twin']
+    ]
+  },
+  gem: {
+    s: ['刻印', { engPct: 1 }, 'gem'],
+    n: [
+      ['符文之心', { engPct: 5 }, 'gem'],
+      ['技藝精通', { engPct: 3, mpCost: 6 }, 'gem'],
+      ['石之共鳴', { engPct: 4, healPct: 8 }, 'gem'],
+      ['刻印大師', { engPct: 4, critPct: 1 }, 'gem']
     ]
   }
 };
@@ -1719,6 +1895,105 @@ const TREE = (() => {
       ln(first ? arc[1] : arc[3], sp[j][0]);
     }
   });
+  /* 0.2.4 外圈：每條路線往外分出兩個 9 節點的專精群（左邊武器、右邊組隊），最外圈再把所有專精群接成一圈 */
+  const WEP = [
+      'axe',
+      'sword',
+      'shield',
+      'shield',
+      'focus',
+      'staff',
+      'staff',
+      'focus',
+      'focus',
+      'bow',
+      'bow',
+      'sword',
+      'bow',
+      'axe',
+      'sword'
+    ],
+    PTY = [
+      'guard',
+      'guard',
+      'guard',
+      'guard',
+      'support',
+      'support',
+      'support',
+      'support',
+      'support',
+      'tactic',
+      'tactic',
+      'tactic',
+      'tactic',
+      'tactic',
+      'guard'
+    ],
+    CR = 840,
+    CRAD = 38,
+    RING = 960,
+    outer = [];
+  const angTo = (x, y, cx, cy) => Math.atan2(y - cy, x - cx);
+  SPOKES.forEach((s, j) => {
+    const pair = [];
+    [
+      [WEP[j], -8, 'w'],
+      [PTY[j], 8, 'q']
+    ].forEach(([t, da, tag]) => {
+      const [cx, cy] = P(CR, s.a + da),
+        [sx, sy] = P(RS + 9 * STEP, s.a),
+        a0 = angTo(sx, sy, cx, cy),
+        ex = cx + Math.cos(a0) * CRAD,
+        ey = cy + Math.sin(a0) * CRAD;
+      let prev = `p${j}_9`;
+      for (let q = 1; q <= 3; q++) {
+        const id = add(`${tag}${j}_p${q}`, sx + ((ex - sx) * q) / 4, sy + ((ey - sy) * q) / 4, TH[t].s, 'small');
+        ln(prev, id);
+        prev = id;
+      }
+      const ring = [];
+      for (let q = 0; q < 9; q++) {
+        const aa = a0 + (q / 9) * Math.PI * 2,
+          isG = q === 5,
+          isN = q === 2 || q === 7;
+        ring.push(
+          add(
+            `${tag}${j}_${q}`,
+            cx + CRAD * Math.cos(aa),
+            cy + CRAD * Math.sin(aa),
+            isG ? notable('gem') : isN ? notable(t) : TH[t].s,
+            isG || isN ? 'notable' : 'small'
+          )
+        );
+      }
+      ln(prev, ring[0]);
+      for (let q = 0; q < 9; q++) ln(ring[q], ring[(q + 1) % 9]);
+      pair.push({ ring, cx, cy, a0 });
+    });
+    outer.push(pair);
+  });
+  /* 最外圈：找專精群裡最靠近目標點的節點接出去 */
+  const nearest = (cl, x, y) =>
+    cl.ring.reduce((b, id) =>
+      Math.hypot(byId[id].x - x, byId[id].y - y) < Math.hypot(byId[b].x - x, byId[b].y - y) ? id : b
+    );
+  const chain = (from, to, angs, tag) => {
+    const pts = angs.map(a => P(RING, a));
+    let prev = nearest(from, ...pts[0]);
+    pts.forEach(([x, y], q) => {
+      const id = add(`${tag}_${q}`, x, y, TH.gem.s, 'small');
+      ln(prev, id);
+      prev = id;
+    });
+    ln(prev, nearest(to, ...pts[pts.length - 1]));
+  };
+  SPOKES.forEach((s, j) => {
+    const [w, q] = outer[j],
+      nw = outer[(j + 1) % SPOKES.length][0];
+    chain(w, q, [s.a - 4, s.a, s.a + 4], `x${j}`);
+    chain(q, nw, [s.a + 12], `y${j}`);
+  });
   // 中圈（第 5 格）與外圈（第 9 格）把相鄰路線接起來
   for (let j = 0; j < SPOKES.length; j++) {
     const k = (j + 1) % SPOKES.length,
@@ -1741,5 +2016,5 @@ const TREE = (() => {
   }
   return { N, E, byId };
 })();
-const VER = '0.2.0';
+const VER = '0.2.4';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

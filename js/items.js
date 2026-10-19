@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 8,
+    v: 9,
     cls: 'novice',
     lv: 1,
     xp: 0,
@@ -17,6 +17,13 @@ function newGame() {
     eq: {},
     cur: { trans: 4, aug: 4, regal: 2, alch: 1, chaos: 1, exalt: 0, soul: 0, dust: 0, eng: 1 },
     gems: [],
+    flags: [],
+    scrolls: { stele: 0, circle: 0 },
+    insc: [],
+    tabs: [],
+    frags: [],
+    obel: {},
+    caravan: {},
     sk: [null, null, null, null],
     autoHp: 0,
     autoMp: 0,
@@ -223,13 +230,19 @@ function gemSkill(g) {
     L = g.lv - 1,
     t = {};
   g.en.forEach(a => (t[a.id] = (t[a.id] || 0) + a.v));
-  const sk = { ...b, gid: g.id, lv: g.lv, mp: Math.round(b.mp * (1 + 0.03 * L) * (1 - (t.cost || 0) / 100)) };
+  const sk = {
+    ...b,
+    gid: g.id,
+    lv: g.lv,
+    nEn: g.en.length,
+    mp: Math.round(b.mp * (1 + 0.03 * L) * (1 - (t.cost || 0) / 100))
+  };
   if (b.kind === 'attack') sk.mult = b.mult * (1 + 0.06 * L) * (1 + (t.dmg || 0) / 100);
   if (b.kind === 'spell') {
     sk.mult = b.mult * (1 + (t.dmg || 0) / 100);
     sk.sb = 9 + 4 * L;
   }
-  if (b.kind === 'heal') sk.heal = 0.35 * (1 + 0.06 * L) * (1 + (t.heal || 0) / 100);
+  if (b.kind === 'heal') sk.heal = (b.heal || 0.35) * (1 + 0.06 * L) * (1 + (t.heal || 0) / 100);
   ['crit', 'ail', 'brk', 'leech', 'dbl'].forEach(k => (sk[k] = t[k] || 0));
   return sk;
 }
@@ -252,8 +265,11 @@ function gAffVal(e) {
 }
 const gAffTxt = e => `${GAFFI[e.id].n(e.v)} <span class="sub" style="font-weight:400">T${e.t}</span>`;
 function gemCraftable(g, id) {
-  if (!g || g.cor) return false;
+  if (!g) return false;
+  /* 腐化後只能用刻印石／崇高刻印石填空槽 */
+  if (g.cor) return (id === 'eng' || id === 'engX') && gemOpen(g) > 0;
   return {
+    vaal: g.lv >= GEM_MAX,
     eng: gemOpen(g) > 0,
     engX: gemOpen(g) > 0,
     engC: g.en.length > 0,
@@ -275,7 +291,28 @@ function gemCraft(g, id) {
     g.en.splice(i, 1);
     g.en.splice(i, 0, rollGAff(g, false));
   } else if (id === 'engD') g.en.forEach(gAffVal);
+  else if (id === 'vaal') return corrupt(g);
   return true;
+}
+/* 腐化：超限（等級 +1）、擴槽（刻印槽 +1）、毀滅、降等，各 25%。回傳結果文字 */
+function corrupt(g) {
+  g.cor = true;
+  const x = fl(Math.random() * 4);
+  if (x === 0) {
+    g.lv++;
+    return '超限突破！等級 +1';
+  }
+  if (x === 1) {
+    g.xs = (g.xs || 0) + 1;
+    return '擴槽！刻印槽 +1';
+  }
+  if (x === 2) {
+    S.gems = S.gems.filter(q => q !== g);
+    S.sk = S.sk.map(id => (id === g.id ? null : id));
+    return '技能石在冥府之血中碎裂了……';
+  }
+  g.lv--;
+  return '劣化：等級 -1';
 }
 /* 升級：要粉塵，而且技能石等級不能超過角色等級 */
 function gemLvBlock(g) {
@@ -285,7 +322,7 @@ function gemLvBlock(g) {
   if ((S.cur.dust || 0) < dustNeed(g.lv)) return '粉塵不足';
   return '';
 }
-const gemDustBack = g => 20 + Math.round(g.dust * 0.7);
+const gemDustBack = g => ({ 3: 20, 4: 60, 5: 200 })[SKILLS[g.k].r || 3] + Math.round(g.dust * 0.7);
 function giveGem(k) {
   const g = newGem(k);
   S.gems.push(g);
@@ -346,7 +383,23 @@ const STAT0 = [
   'vaal',
   'ironReflex',
   'noFreeze',
-  'noDodge'
+  'noDodge',
+  'swordPct',
+  'swordCrit',
+  'axePct',
+  'axeCm',
+  'bowPct',
+  'bowCrit',
+  'staffPct',
+  'staffMana',
+  'shieldArm',
+  'shieldRes',
+  'focusPct',
+  'dmgRed',
+  'taunt',
+  'healAll',
+  'allyDmg',
+  'engPct'
 ];
 function sumStats() {
   const t = {};
@@ -373,7 +426,27 @@ const HP_LV = 10,
 function stats() {
   const L = S.lv - 1,
     t = sumStats(),
-    w = S.eq.weapon,
+    wt = wepType(),
+    ot = offType();
+  /* 武器專精天賦：只有拿著對應武器時才生效 */
+  if (wt === 'sword') {
+    t.physPct += t.swordPct;
+    t.critPct += t.swordCrit;
+  } else if (wt === 'axe') {
+    t.physPct += t.axePct;
+    t.critMulti += t.axeCm;
+  } else if (wt === 'bow') {
+    t.physPct += t.bowPct;
+    t.critPct += t.bowCrit;
+  } else if (wt === 'staff') {
+    t.spellPct += t.staffPct;
+    t.mana += t.staffMana;
+  }
+  if (ot === 'shield') {
+    t.armorPct += t.shieldArm;
+    t.resAll += t.shieldRes;
+  } else if (ot === 'focus') t.spellPct += t.focusPct;
+  const w = S.eq.weapon,
     ph = w ? w.phys : [1, 3];
   const flat = 4 + t.flatPhys;
   const sp = curSpec(),
@@ -429,7 +502,12 @@ function stats() {
     poisonMul: 1 + t.poisonPct / 100,
     ail: 1 + t.ail / 100,
     dbl: Math.min(50, t.dbl),
-    noFreeze: !!t.noFreeze
+    noFreeze: !!t.noFreeze,
+    dmgRed: Math.min(50, t.dmgRed),
+    taunt: t.taunt,
+    healAll: t.healAll,
+    allyDmg: t.allyDmg,
+    engPct: t.engPct
   };
 }
 /* 升級曲線：Lv1→2 約 6 隻怪，Lv5 約 25 隻，Lv10 約 60 隻（同等級怪） */
@@ -549,9 +627,11 @@ function makeEnemy(b, lv, rar = 0, mods = [], dm) {
   if (mods.includes('tough')) e.maxhp = Math.round(e.maxhp * 1.6);
   if (mods.includes('armored')) e.arm = e.arm * 2 + 10;
   if (mods.includes('swift')) e.speed = 18;
+  mods.forEach(m => uwApply(e, m));
   if (rar === 4) e.name = `災厄・${b.name}`;
   else if (rar === 2) e.name = `${RAREA[h(lv, b.hp, mods.length) % RAREA.length]}之${b.name}`;
-  else if (rar === 1) e.name = `${EMODS.find(m => m.id === mods[0]).n}的${b.name}`;
+  else if (rar === 1) e.name = `${EMODI[mods[0]].n}的${b.name}`;
+  if (mods.some(m => EMODI[m] && EMODI[m].uw)) e.name = '冥府・' + e.name;
   e.hp = e.maxhp;
   return e;
 }
@@ -564,7 +644,25 @@ function rollMods(r, n) {
   }
   return ids;
 }
-const modNames = e => e.mods.map(id => EMODS.find(m => m.id === id).n).join('・');
+const modNames = e => e.mods.map(id => EMODI[id].n).join('・');
+/* 冥府詞綴的數值效果（加在已經算好的怪物上） */
+function uwApply(e, id) {
+  if (id === 'uw_body') e.maxhp = Math.round(e.maxhp * 2.2);
+  else if (id === 'uw_flame') {
+    e.atk = Math.round(e.atk * 1.4);
+    e.el = 'fire';
+  } else if (id === 'uw_ward') {
+    e.res = e.res.map(v => v + 40);
+    e.arm = Math.round(e.arm * 1.5);
+  } else if (id === 'uw_rage') {
+    e.atk = Math.round(e.atk * 1.2);
+    e.speed += 8;
+  } else if (id === 'uw_soul') {
+    e.maxhp = Math.round(e.maxhp * 1.4);
+    if (!e.mods.includes('leech')) e.mods = [...e.mods, 'leech'];
+  } else return;
+  e.hp = e.maxhp;
+}
 
 /* ================= modal ================= */
 function showModal(title, html, btns) {

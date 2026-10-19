@@ -372,6 +372,8 @@ const ICONS = {
   party: ['.ww..yy.', 'wwwwyyyy', '.ww..yy.', '........', 'wwwwyyyy', 'wwwwyyyy', 'wwwwyyyy', '........'],
   key: ['..yyy...', '.y...y..', '.y...y..', '..yyy...', '...y....', '...yy...', '...y....', '...yy...'],
   star: ['...yy...', '...yy...', 'yyyyyyyy', '.yyyyyy.', '..yyyy..', '.yy..yy.', 'yy....yy', '........'],
+  bolt: ['....yy..', '...yy...', '..yy....', '.yyyyy..', '...yy...', '..yy....', '.yy.....', 'yy......'],
+  gift: ['.r..r...', '..rr....', 'yyyyyyy.', 'yyyryyy.', 'bbbrbbb.', 'bbbrbbb.', 'bbbrbbb.', 'bbbbbbb.'],
   gear: ['...ww...', '.w.ww.w.', '..wwww..', 'wwwkkwww', 'wwwkkwww', '..wwww..', '.w.ww.w.', '...ww...']
 };
 const ICOPAL = { w: '#e8e6e0', k: '#3a3340', b: '#9a6a3a', y: '#ffd166', r: '#e5484d', c: '#8fe0ff', g: '#7bd36b' };
@@ -473,6 +475,12 @@ const wepKind = (w = S.eq.weapon) => {
   const n = w ? BASES.weapon[w.bi].n : '短劍';
   return n.includes('弓') ? 'bow' : n.includes('杖') ? 'staff' : 'sword';
 };
+/* 武器專精天賦用：劍（短劍、長劍）、斧、弓、法杖；副手是盾牌、法珠或提燈 */
+const wepType = (w = S.eq.weapon) => {
+  const n = w ? BASES.weapon[w.bi].n : '短劍';
+  return n.includes('斧') ? 'axe' : wepKind(w);
+};
+const offType = () => (S.eq.offhand ? BASES.offhand[S.eq.offhand.bi].k : '');
 const GEARC = {
   皮甲: '#8a5a2f',
   鎖子甲: '#9aa3ad',
@@ -501,6 +509,10 @@ const heroPal = (cls = S.cls, eq = S.eq) => {
 
 /* ================= icons: currency, item slots, passive nodes ================= */
 const PIX = {
+  cur_vaal: {
+    r: ['...rr...', '...rr...', '..rrrr..', '.rrwrrr.', '.rwrrrr.', '.rrrrdr.', '..rrdd..', '...dd...'],
+    p: { r: '#e5304a', w: '#ffb0bc', d: '#7a1020' }
+  },
   cur_soul: {
     r: ['...pp...', '..plwp..', '.plwwlp.', '.pllllp.', '..pllp..', '...pp...', '..p..p..', '.p....p.'],
     p: { p: '#7f6bd6', l: '#b7a6ff', w: '#efeaff' }
@@ -626,6 +638,30 @@ const PIX = {
   ic_ice: {
     r: ['...c....', 'c..c..c.', '.c.c.c..', '..ccc...', 'ccc.ccc.', '..ccc...', '.c.c.c..', 'c..c..c.'],
     p: { c: '#9fe7ff' }
+  },
+  ic_axe: {
+    r: ['..kkk...', '.kwwwk..', 'kwwwwbk.', '.kwwbk..', '..kbk...', '...b....', '....b...', '.....b..'],
+    p: { w: '#d8dde6', b: '#8a5a2f' }
+  },
+  ic_bow: {
+    r: ['..bbw...', '.b...w..', 'b....w..', 'b..kkkkk', 'b....w..', '.b...w..', '..bbw...', '........'],
+    p: { b: '#b8862e', w: '#e8e2d4', k: '#d8dde6' }
+  },
+  ic_staff: {
+    r: ['.....cc.', '....cwc.', '....cc..', '...b....', '..b.....', '.b......', 'b.......', '........'],
+    p: { c: '#7fe0ff', w: '#ffffff', b: '#8a5a2f' }
+  },
+  ic_orb: {
+    r: ['..pppp..', '.pwlppp.', 'pwllpppp', 'plllpppp', 'pppppppp', '.pppppp.', '..pppp..', '.bbbbbb.'],
+    p: { p: '#7a5ad6', l: '#b9a6ff', w: '#ffffff', b: '#8a5a2f' }
+  },
+  ic_taunt: {
+    r: ['......r.', '..rr.r..', '.rrrr...', 'rrrrr.rr', '.rrrr...', '..rr.r..', '......r.', '........'],
+    p: { r: '#ff7a5a' }
+  },
+  ic_gem: {
+    r: ['..cccc..', '.cwcccc.', 'cwcccccd', 'ccccccdd', '.ccccdd.', '..ccdd..', '...dd...', '........'],
+    p: { c: '#7fd6ff', w: '#ffffff', d: '#3a8ab0' }
   },
   ic_bolt: {
     r: ['....yy..', '...yy...', '..yy....', '.yyyyy..', '...yy...', '..yy....', '.yy.....', 'yy......'],

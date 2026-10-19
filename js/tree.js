@@ -339,7 +339,7 @@ function renderTreeCard() {
     pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     if (pinch && pts.size === 2) {
       const [a, b] = [...pts.values()],
-        ns = Math.max(0.2, Math.min(3.2, (pinch.s * Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d));
+        ns = Math.max(0.12, Math.min(3.2, (pinch.s * Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d));
       const wx = (pinch.mx - TV.W / 2) / pinch.s + pinch.cx,
         wy = (pinch.my - TV.H / 2) / pinch.s + pinch.cy;
       TV.s = ns;
@@ -391,7 +391,7 @@ function renderTreeCard() {
     'wheel',
     ev => {
       ev.preventDefault();
-      const ns = Math.max(0.2, Math.min(3.2, TV.s * Math.exp(-ev.deltaY * 0.0015))),
+      const ns = Math.max(0.12, Math.min(3.2, TV.s * Math.exp(-ev.deltaY * 0.0015))),
         wx = (ev.clientX - TV.W / 2) / TV.s + TV.x,
         wy = (ev.clientY - TV.H / 2) / TV.s + TV.y;
       TV.s = ns;

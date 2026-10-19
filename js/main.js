@@ -16,7 +16,8 @@ function save() {
     const ep = epoch(),
       hp = hepoch();
     for (const k in S.defeated)
-      if ((k[0] === 'm' && !k.endsWith('_' + ep)) || (k[0] === 'c' && !k.endsWith('_' + hp))) delete S.defeated[k];
+      if ((k[0] === 'm' && !k.endsWith('_' + ep)) || ('csov'.includes(k[0]) && !k.endsWith('_' + hp)))
+        delete S.defeated[k];
     if (S.trail.length > 4000) S.trail = S.trail.slice(-4000);
     localStorage.setItem(KEY, JSON.stringify(S));
   } catch (e) {}
@@ -74,6 +75,31 @@ function migrate(s) {
     s.autoMp = s.autoMp || 0;
     delete s.classOffered;
     s.v = 8;
+  }
+  if (s.v < 9) {
+    // 0.2.2：分支據點改為冒險營旗，舊的分支據點移除並退還建造與升級金幣；遠征移除
+    let back = 0;
+    s.bases = (s.bases || []).filter(b => {
+      if (b.type !== 'branch') return true;
+      back += 150;
+      for (let l = 1; l < b.lv; l++) back += 120 * l;
+      return false;
+    });
+    if (back) {
+      s.gold += back;
+      s.log && s.log.unshift(`分支據點改為冒險營旗，退還 ${back} 金幣`);
+    }
+    Object.assign(s, {
+      flags: [],
+      scrolls: { stele: 0, circle: 0 },
+      insc: [],
+      tabs: [],
+      frags: [],
+      obel: {},
+      caravan: {}
+    });
+    s.cur.vaal = s.cur.vaal || 0;
+    s.v = 9;
   }
   return s;
 }
