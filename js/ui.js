@@ -13,6 +13,7 @@ function renderHud() {
   a.clearRect(0, 0, 18, 18);
   a.drawImage(sprite('heroF', heroPal()), 0, 0);
   $('ptDot').hidden = treePts() <= 0;
+  $('gaDot').hidden = (S.cur.soul || 0) < GEM_DRAW * 10;
 }
 let toastT;
 function toast(t) {
@@ -176,12 +177,26 @@ const gemDesc = q =>
     : q.kind === 'attack'
       ? `攻擊・武器傷害 ${Math.round(q.mult * 100)}%${q.hits > 1 ? ` × ${q.hits} 下` : ''}`
       : `回復 ${Math.round(q.heal * 100)}% 生命`;
+/* 技能石圖示：星級底色、左上等級、右上刻印槽（亮的是已刻印）、右下「裝」表示在技能欄 */
+const gemCell = (g, noEq) => {
+  const r = SKILLS[g.k].r || 3,
+    n = gemSlots(g);
+  return `<span class="gtile r${r}${g.cor ? ' gcor' : ''}"><img src="${iconURL(SKILLS[g.k].icon)}" alt=""><i class="glv">${g.lv}</i>${n ? `<span class="gen">${Array.from({ length: n }, (_, i) => `<i class="${i < g.en.length ? 'f' : ''}"></i>`).join('')}</span>` : ''}${!noEq && S.sk.includes(g.id) ? '<i class="geq">裝</i>' : ''}<i class="gst">${'★'.repeat(r)}</i></span>`;
+};
+/* 可以一鍵分解的重複技能石：同一種技能保留等級最高（刻印最多）的一顆，其餘沒裝備、Lv1、沒刻印、沒腐化的分解 */
+function dupGems() {
+  const best = {};
+  for (const g of S.gems) {
+    const b = best[g.k];
+    if (!b || g.lv > b.lv || (g.lv === b.lv && g.en.length > b.en.length) || S.sk.includes(g.id)) best[g.k] = g;
+  }
+  return S.gems.filter(g => best[g.k] !== g && !S.sk.includes(g.id) && g.lv === 1 && !g.en.length && !g.cor);
+}
 const gemRow = (g, tag) => {
   const q = gemSkill(g);
   return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q)}・刻印 ${g.en.length}/${gemSlots(g)}${gemOpen(g) > 0 ? ' <span style="color:var(--gold)">◇可刻印</span>' : ''}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
 };
 const prayed = id => !!S.prayed && S.prayed[id] === hepoch();
-const nearBase = () => S.bases.some(b => dist(S.lat, S.lng, b.lat, b.lng) <= RANGE);
 function renderSheet() {
   if (!sheetName || sheetName === 'ent') return;
   const el = $('sbody'),
@@ -208,26 +223,27 @@ function renderSheet() {
       .join('')}</div><button class="btn" data-act="sheet" data-s="skills">管理技能石</button>
 `;
   } else if (sheetName === 'skills') {
-    const nb = nearBase(),
-      eqd = new Set(S.sk),
-      list = [...S.gems].sort((a, b) => eqd.has(b.id) - eqd.has(a.id) || b.lv - a.lv || a.k.localeCompare(b.k));
-    html = `<p class="sub">技能全部來自技能石。技能欄 4 格，另外有固定的普通攻擊。技能石每 5 級開 1 個空的刻印槽，用刻印石點下去才會抽出詞綴。</p>
-    <h3>技能欄</h3>${S.sk
+    const eqd = new Set(S.sk),
+      list = [...S.gems].sort(
+        (a, b) =>
+          eqd.has(b.id) - eqd.has(a.id) ||
+          (SKILLS[b.k].r || 3) - (SKILLS[a.k].r || 3) ||
+          b.lv - a.lv ||
+          a.k.localeCompare(b.k)
+      ),
+      dup = dupGems();
+    html = `<div class="gslots">${S.sk
       .map((id, i) => {
         const g = gemOf(id);
         return g
-          ? gemRow(g, `第 ${i + 1} 格`)
-          : `<div class="card"><div class="rowx"><div class="t"><b class="sub">第 ${i + 1} 格：空</b><small>從下方的技能石選一顆裝上</small></div></div></div>`;
+          ? `<button class="gslot" data-act="gem" data-id="${g.id}">${gemCell(g, true)}<span>${SKILLS[g.k].name}</span></button>`
+          : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>第 ${i + 1} 格</span></div>`;
       })
-      .join('')}
-    <h3>靈魂祭壇</h3><div class="card"><div class="rowx"><div class="t"><b>${curDot('soul')}靈魂碎片 ${S.cur.soul || 0}</b><small>${nb ? `用 ${GEM_DRAW} 個抽 1 顆 Lv1 技能石` : '要在自己的據點 80 公尺內才能使用祭壇'}</small></div><button class="btn pri sm" data-act="altar" ${nb && (S.cur.soul || 0) >= GEM_DRAW ? '' : 'disabled'}>抽取</button></div></div>
-    <h3>技能通貨</h3>${curRowG()}
-    <h3>技能石（${S.gems.length}）</h3>${
-      list
-        .filter(g => !eqd.has(g.id))
-        .map(g => gemRow(g))
-        .join('') || '<p class="sub">沒有其他技能石</p>'
-    }`;
+      .join('')}</div>
+    <p class="sub" style="margin:0">另外有固定的普通攻擊。技能石每 5 級開 1 個空的刻印槽，用刻印石點下去才會抽出詞綴。</p>
+    <div class="btns"><button class="btn pri" data-act="gacha">${curDot('soul')}祈願（${S.cur.soul || 0}）</button><button class="btn" data-act="gemDup" ${dup.length ? '' : 'disabled'}>一鍵分解重複（${dup.length}）</button></div>
+    ${curRowG()}
+    <h3>技能石（${S.gems.length}）</h3><div class="ggrid">${list.map(g => `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span></button>`).join('') || '<p class="sub">還沒有技能石，去祈願吧</p>'}</div>`;
   } else if (sheetName === 'gem') {
     const g = gemOf(selGem);
     if (!g) {
@@ -238,7 +254,7 @@ function renderSheet() {
       at = S.sk.indexOf(g.id),
       blk = gemLvBlock(g),
       n = gemSlots(g);
-    html = `<div class="card"><div class="rowx"><div class="t"><b style="font-size:17px"><img class="cico lg" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span></b><small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
+    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span> <span style="color:${RSTAR[SKILLS[g.k].r || 3]}">${'★'.repeat(SKILLS[g.k].r || 3)}</span></b><small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
     <h3>刻印槽 ${g.en.length}/${n}${g.lv < GEM_MAX ? `<small class="sub">・下一個在 Lv${(fl(g.lv / 5) + 1) * 5}</small>` : ''}</h3><div class="card">${
       n
         ? [
@@ -702,25 +718,33 @@ const A = {
       { label: '取消', fn: hideModal }
     ]);
   },
-  altar: () => {
-    if (!nearBase() || (S.cur.soul || 0) < GEM_DRAW) return;
-    S.cur.soul -= GEM_DRAW;
-    const ks = GEMK(),
-      g = giveGem(ks[fl(Math.random() * ks.length)]);
-    sfx('level');
-    buzz(40);
-    addLog(`靈魂祭壇：抽到 ${SKILLS[g.k].name}`);
+  gemDup: () => {
+    const list = dupGems(),
+      v = list.reduce((a, g) => a + gemDustBack(g), 0);
+    if (!list.length) return;
     showModal(
-      '靈魂祭壇',
-      `<p style="text-align:center"><img class="bigico" src="${iconURL(SKILLS[g.k].icon)}" alt=""></p><p style="text-align:center">抽到 <b>${SKILLS[g.k].name}</b> Lv1${S.sk.includes(g.id) ? '，已自動裝進技能欄' : ''}</p>`,
+      '一鍵分解重複',
+      `<p>分解 ${list.length} 顆重複的 Lv1 技能石，得到 ${v} 個靈魂粉塵？每種技能都會留下一顆。</p>`,
       [
-        { label: '再抽一次', pri: 1, dis: (S.cur.soul || 0) < GEM_DRAW, fn: () => (hideModal(), A.altar()) },
-        { label: '好', fn: () => (hideModal(), renderSheet()) }
+        {
+          label: '分解',
+          pri: 1,
+          fn: () => {
+            const ids = new Set(list.map(g => g.id));
+            S.gems = S.gems.filter(g => !ids.has(g.id));
+            giveCur('dust', v);
+            hideModal();
+            sfx('coin');
+            toast(`得到 ${v} 個靈魂粉塵`);
+            renderSheet();
+            save();
+          }
+        },
+        { label: '取消', fn: hideModal }
       ]
     );
-    renderSheet();
-    save();
   },
+
   bitem: d => bItem(d.k),
   flee: () => flee(),
   bsub: d => {

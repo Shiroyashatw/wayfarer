@@ -382,7 +382,8 @@ const skSt = (st, sk) =>
         ail: (st.ail || 1) * (1 + sk.ail / 100),
         leech: (st.leech || 0) + sk.leech,
         dbl: Math.min(60, (st.dbl || 0) + sk.dbl),
-        brk: sk.brk
+        brk: sk.brk,
+        skMul: 1 + ((st.engPct || 0) * (sk.nEn || 0)) / 100
       }
     : st;
 /* 依代號取技能：'attack' 是固定的普通攻擊，'s0'～'s3' 是技能欄（list 是 mySkills() 或隊員快照的 sks） */
@@ -391,9 +392,11 @@ const extraHit = (st, sk) => (sk.kind === 'attack' && st.dbl && Math.random() * 
 function heroPacket(st, sk, mult) {
   if (sk.kind === 'spell') {
     const pk = { phys: 0, fire: 0, cold: 0, light: 0 };
-    pk[sk.el] = (sk.sb || 9) * (st.spellMul || 1) * ((st.elm && st.elm[sk.el]) || 1) * mult * rnd(0.85, 1.15);
+    pk[sk.el] =
+      (sk.sb || 9) * (st.spellMul || 1) * ((st.elm && st.elm[sk.el]) || 1) * mult * (st.skMul || 1) * rnd(0.85, 1.15);
     return pk;
   }
+  mult *= st.skMul || 1;
   return {
     phys: rnd(st.physLo, st.physHi) * mult,
     fire: st.fire * mult * rnd(0.8, 1.2),
@@ -642,7 +645,8 @@ function enemyTurn() {
             if (e.mods.includes('shock')) pk.light += atk * 0.4;
           }
           const d = Math.round(
-              mitigate(pk, st.armor * (B.guard > 0 ? 2 : 1), [st.res.fire, st.res.cold, st.res.light], false)
+              mitigate(pk, st.armor * (B.guard > 0 ? 2 : 1), [st.res.fire, st.res.cold, st.res.light], false) *
+                (1 - (st.dmgRed || 0) / 100)
             ),
             toMp = takeDmg(S, st, d);
           anim('hero', 'hurt', 320);
@@ -1236,6 +1240,22 @@ function drawFx(c, f, q, p, u) {
       c.restore();
     }
     blob(c, ex, ey, 70, `rgba(140,220,255,${0.5 * (1 - q)})`);
+  } else if (f.type === 'bolt') {
+    c.strokeStyle = `rgba(255,240,120,${1 - q})`;
+    c.lineWidth = 4 * (1 - q) + 1;
+    for (let k = 0; k < 2; k++) {
+      c.beginPath();
+      let x = ex + (k ? 10 : -6),
+        y = ey - 120;
+      c.moveTo(x, y);
+      for (let s = 0; s < 6; s++) {
+        x += (s % 2 ? 1 : -1) * (8 + ((s * 7 + k * 5) % 9));
+        y += 20;
+        c.lineTo(x, y);
+      }
+      c.stroke();
+    }
+    blob(c, ex, ey, 70, `rgba(255,240,120,${0.55 * (1 - q)})`);
   } else if (f.type === 'heal') {
     for (let k = 0; k < 14; k++) {
       const x = p.hx - 26 + ((k * 37) % 52),

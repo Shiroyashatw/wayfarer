@@ -230,13 +230,19 @@ function gemSkill(g) {
     L = g.lv - 1,
     t = {};
   g.en.forEach(a => (t[a.id] = (t[a.id] || 0) + a.v));
-  const sk = { ...b, gid: g.id, lv: g.lv, mp: Math.round(b.mp * (1 + 0.03 * L) * (1 - (t.cost || 0) / 100)) };
+  const sk = {
+    ...b,
+    gid: g.id,
+    lv: g.lv,
+    nEn: g.en.length,
+    mp: Math.round(b.mp * (1 + 0.03 * L) * (1 - (t.cost || 0) / 100))
+  };
   if (b.kind === 'attack') sk.mult = b.mult * (1 + 0.06 * L) * (1 + (t.dmg || 0) / 100);
   if (b.kind === 'spell') {
     sk.mult = b.mult * (1 + (t.dmg || 0) / 100);
     sk.sb = 9 + 4 * L;
   }
-  if (b.kind === 'heal') sk.heal = 0.35 * (1 + 0.06 * L) * (1 + (t.heal || 0) / 100);
+  if (b.kind === 'heal') sk.heal = (b.heal || 0.35) * (1 + 0.06 * L) * (1 + (t.heal || 0) / 100);
   ['crit', 'ail', 'brk', 'leech', 'dbl'].forEach(k => (sk[k] = t[k] || 0));
   return sk;
 }
@@ -316,7 +322,7 @@ function gemLvBlock(g) {
   if ((S.cur.dust || 0) < dustNeed(g.lv)) return '粉塵不足';
   return '';
 }
-const gemDustBack = g => 20 + Math.round(g.dust * 0.7);
+const gemDustBack = g => ({ 3: 20, 4: 60, 5: 200 })[SKILLS[g.k].r || 3] + Math.round(g.dust * 0.7);
 function giveGem(k) {
   const g = newGem(k);
   S.gems.push(g);
@@ -377,7 +383,23 @@ const STAT0 = [
   'vaal',
   'ironReflex',
   'noFreeze',
-  'noDodge'
+  'noDodge',
+  'swordPct',
+  'swordCrit',
+  'axePct',
+  'axeCm',
+  'bowPct',
+  'bowCrit',
+  'staffPct',
+  'staffMana',
+  'shieldArm',
+  'shieldRes',
+  'focusPct',
+  'dmgRed',
+  'taunt',
+  'healAll',
+  'allyDmg',
+  'engPct'
 ];
 function sumStats() {
   const t = {};
@@ -404,7 +426,27 @@ const HP_LV = 10,
 function stats() {
   const L = S.lv - 1,
     t = sumStats(),
-    w = S.eq.weapon,
+    wt = wepType(),
+    ot = offType();
+  /* 武器專精天賦：只有拿著對應武器時才生效 */
+  if (wt === 'sword') {
+    t.physPct += t.swordPct;
+    t.critPct += t.swordCrit;
+  } else if (wt === 'axe') {
+    t.physPct += t.axePct;
+    t.critMulti += t.axeCm;
+  } else if (wt === 'bow') {
+    t.physPct += t.bowPct;
+    t.critPct += t.bowCrit;
+  } else if (wt === 'staff') {
+    t.spellPct += t.staffPct;
+    t.mana += t.staffMana;
+  }
+  if (ot === 'shield') {
+    t.armorPct += t.shieldArm;
+    t.resAll += t.shieldRes;
+  } else if (ot === 'focus') t.spellPct += t.focusPct;
+  const w = S.eq.weapon,
     ph = w ? w.phys : [1, 3];
   const flat = 4 + t.flatPhys;
   const sp = curSpec(),
@@ -460,7 +502,12 @@ function stats() {
     poisonMul: 1 + t.poisonPct / 100,
     ail: 1 + t.ail / 100,
     dbl: Math.min(50, t.dbl),
-    noFreeze: !!t.noFreeze
+    noFreeze: !!t.noFreeze,
+    dmgRed: Math.min(50, t.dmgRed),
+    taunt: t.taunt,
+    healAll: t.healAll,
+    allyDmg: t.allyDmg,
+    engPct: t.engPct
   };
 }
 /* 升級曲線：Lv1→2 約 6 隻怪，Lv5 約 25 隻，Lv10 約 60 隻（同等級怪） */

@@ -169,6 +169,10 @@ const SFX = {
     tone(200, 0.4, 'sawtooth', 0.06, 0, 60);
   },
   ice: () => [1568, 1319, 1175, 1568, 2093].forEach((f, i) => tone(f, 0.12, 'triangle', 0.08, i * 0.05)),
+  bolt: () => {
+    noise(0.25, 0.25, 0, 3000, 'highpass');
+    tone(110, 0.3, 'sawtooth', 0.08);
+  },
   heal: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.09, i * 0.07)),
   hurt: () => {
     tone(150, 0.2, 'sawtooth', 0.14, 0, 60);
