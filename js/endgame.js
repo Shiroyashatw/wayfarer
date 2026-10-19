@@ -318,6 +318,7 @@ function obeliskCharge(id) {
   S.obel = S.obel || {};
   for (const k in S.obel) if (!k.endsWith('_' + ep2())) delete S.obel[k];
   S.obel[id] = Math.min(OB_NEED, (S.obel[id] || 0) + 1);
+  quest('obel');
   const n = S.obel[id];
   const e = ENT.get(id);
   if (e) e.lbl = `侵蝕 ${n}/${OB_NEED}`;
@@ -675,6 +676,7 @@ Object.assign(A, {
     const e = ENT.get(d.id);
     if (!inRange(e) || isDone(e)) return;
     S.defeated[e.id] = 1;
+    quest('vein');
     const got = ['刻印石'];
     giveCur('eng');
     giveCur('soul', 8);

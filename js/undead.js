@@ -246,7 +246,7 @@ function undeadSpawns(out, cells) {
     if (r % 100 >= 28) return;
     const x = (i + 0.25 + ((r >>> 8) % 50) / 100) * UD_CELL,
       y = (j + 0.25 + ((r >>> 16) % 50) / 100) * UD_CELL,
-      rad = 450 + ((r >>> 4) % 3) * 100,
+      rad = (450 + ((r >>> 4) % 3) * 100) * (dayPhase().night > 0.5 ? 1.25 : 1),
       id = `ud${i}_${j}_${ue}`;
     UDZ.push({ id, x, y, r: rad });
     for (let k = 0; k < UD_ALTARS; k++) {
@@ -348,9 +348,10 @@ function undeadWin(b) {
   if (!u) return '';
   S.und = S.und || {};
   for (const k in S.und) if (!k.endsWith('_' + udEp())) delete S.und[k];
-  const n = [1, 2, 3, 3, 5][r] || 1,
+  /* 霧中亡靈：精華 +1、進度 ×1.5 */
+  const n = ([1, 2, 3, 3, 5][r] || 1) + (b.mist ? 1 : 0),
     got = giveEss(u.ess, n);
-  S.und[b.ud] = Math.min(100, udProg(b.ud) + [5, 8, 14, 14, 20][r]);
+  S.und[b.ud] = Math.min(100, udProg(b.ud) + Math.round([5, 8, 14, 14, 20][r] * (b.mist ? 1.5 : 1)));
   let extra = '';
   if (r >= 2 && Math.random() < 0.1) {
     const c = Math.random() < 0.5 ? 'boneRm' : 'boneSw';

@@ -1067,6 +1067,10 @@ function winBattle() {
   if (B.king) bonus += kingWin();
   if (B.watcher) bonus += watcherWin(B.watcher);
   if (B.hunt) bonus += huntWin(B);
+  quest('kill');
+  if (e.rar >= 2) quest('rare');
+  if (B.ud) quest('ud');
+  if (B.hunt === 'beast') quest('beast');
   addLog(`擊敗 ${e.name} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);
   if (up) setTimeout(() => sfx('level'), 500);
   renderBHud();
@@ -1196,6 +1200,7 @@ function dungeonClear() {
   const kind = D.kind,
     rw = dunReward(D);
   S.cleared[D.id] = kind === 'rift' ? evEp() : hepoch();
+  quest('dun');
   const nm = kind === 'rift' ? '魔物裂隙' : D.lm ? D.lm.dn : DTYPES[D.spec.dt].n,
     rem = D.remote;
   addLog(`攻略${nm}（Lv${D.lv}）`);

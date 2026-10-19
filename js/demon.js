@@ -435,7 +435,7 @@ function demonSpawns(out, cells, hp) {
   for (let i = fl((Z.x - Z.r) / MQ_CELL); i <= fl((Z.x + Z.r) / MQ_CELL); i++)
     for (let j = fl((Z.y - Z.r) / MQ_CELL); j <= fl((Z.y + Z.r) / MQ_CELL); j++) {
       const r = h(i, j, me * 7 + 977);
-      if (r % 100 >= 55) continue;
+      if (r % 100 >= (dayPhase().night > 0.5 ? 70 : 55)) continue;
       const id = `q${i}_${j}_${me}`;
       if (S.defeated[id]) continue;
       let x = (i + ((r >>> 8) % 100) / 100) * MQ_CELL,
@@ -457,6 +457,11 @@ function demonSpawns(out, cells, hp) {
           mods: rar ? rollMods(h(i, j, me + 9), rar === 2 ? 3 : 1 + (q % 2)) : [],
           ph: (r % 628) / 100
         };
+      const uz = udZoneAt(x, y);
+      if (uz) {
+        e.base = UNDEAD[q % UNDEAD.length];
+        e.ud = uz.id;
+      }
       mistify(e, q, 2);
       const [la, ln] = toLL(x, y);
       out.set(id, { id, lat: la, lng: ln, ...e });
@@ -467,14 +472,17 @@ const MQ_CELL = 120,
   mistEp = () => fl(now() / MIST_MS);
 /* 把怪物變成魔霧怪：加魔霧詞綴、等級 +階級，1/k 換成魔霧專屬怪 */
 function mistify(e, q, k) {
-  if (q % k === 0) e.base = MISTMON[(q >>> 3) % MISTMON.length];
+  /* 魔霧蓋到亡靈區：亡靈不換成魔霧怪，變成「霧中亡靈」，同時算兩邊的進度 */
+  if (q % k === 0 && !e.ud) e.base = MISTMON[(q >>> 3) % MISTMON.length];
   const ids = MMODS.map(m => m.id),
     add = [ids.splice((q >>> 5) % ids.length, 1)[0]];
   if (MISTZ.tier >= 2 && (q >>> 9) % 2) add.push(ids[(q >>> 11) % ids.length]);
   e.mods = [...e.mods.filter(m => !m.startsWith('mi_')), ...add];
   e.lv += MISTZ.tier;
   e.mist = true;
-  e.name = '魔霧・' + (e.rar ? makeEnemy(e.base, e.lv, e.rar, e.mods).name.replace(/^魔霧・/, '') : e.base.name);
+  e.name =
+    (e.ud ? '霧中亡靈・' : '魔霧・') +
+    (e.rar ? makeEnemy(e.base, e.lv, e.rar, e.mods).name.replace(/^魔霧・/, '') : e.base.name);
 }
 /* 魔霧：紫色霧氣，邊緣是一圈旋轉的漩渦 */
 function drawMist(c, t) {
@@ -541,11 +549,13 @@ function mistWin(b) {
     e = b.e;
   if (!z || !b.mist) return '';
   const inc =
-    ([4, 7, 12, 12, 18][e.rar || 0] + (MISTMON.some(m => m.name === b.mistBase) ? 2 : 0)) / (1 + 0.15 * z.tier);
+    (([4, 7, 12, 12, 18][e.rar || 0] + (MISTMON.some(m => m.name === b.mistBase) ? 2 : 0)) * (b.ud ? 1.5 : 1)) /
+    (1 + 0.15 * z.tier);
   z.prog = Math.min(100, Math.round(z.prog + inc));
   if (z.prog < 100) return `<p style="color:#d8b8ff">魔霧進度 ${z.prog}%</p>`;
   const n = z.tier + 1;
   giveCur('mfrag', n);
+  quest('mist');
   addLog(`魔霧 ${ROMAN[z.tier]} 碎裂，得到 ${n} 片魔霧碎片`);
   S.mist = null;
   refreshEntities(true);

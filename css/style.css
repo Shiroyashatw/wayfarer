@@ -379,7 +379,7 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 @keyframes xpnear{50%{filter:drop-shadow(0 0 9px #ffd166)}}
 
 /* ---------- bag tabs ---------- */
-.bagtabs{display:flex;overflow-x:auto;gap:4px}
+.bagtabs{display:flex;overflow-x:auto;gap:4px;flex:none;min-height:max-content}
 .bagtabs button{flex:0 0 auto;font-size:13px;padding:7px 10px}
 .bagtabs b{font-family:var(--f-pix);font-weight:400;color:var(--gold);font-size:12px}
 
@@ -394,3 +394,12 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .zcell canvas{width:40px;height:40px;image-rendering:pixelated}
 .zcell b{font-size:13px;font-weight:400}
 .zcell small{font-size:10px;color:var(--dim);text-align:center;line-height:1.2}
+
+/* ---------- daily & near ---------- */
+.qrow{position:relative;display:flex;justify-content:space-between;gap:8px;padding:6px 8px;margin-top:6px;border-radius:8px;background:#0003;font-size:13px;overflow:hidden}
+.qrow i{position:absolute;left:0;bottom:0;height:2px;background:var(--gold)}
+.qrow b{font-family:var(--f-pix);font-weight:400;color:var(--gold);font-size:12px;white-space:nowrap}
+.qrow.ok{color:var(--good)}
+.qrow.ok i{background:var(--good)}
+.nprog{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;font-size:12px}
+.nprog span{padding:3px 8px;border-radius:10px;background:#0004}
