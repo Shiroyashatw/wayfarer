@@ -633,7 +633,7 @@ function sinTurn(e, p) {
     e.hp = Math.min(e.maxhp, e.hp + v);
     pop(`吃掉藥水 +${v}`, p.ex, p.y - 110, '#9be36b');
   } else if (k === 'sloth' && Math.random() < 0.25) {
-    B.pFrozen = 1;
+    B.me.frozen = 1;
     pop('怠惰：無法行動', p.hx, p.hy - 110, '#c8c8ff');
   }
 }

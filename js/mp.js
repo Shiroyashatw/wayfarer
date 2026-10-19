@@ -25,45 +25,7 @@ function mySnap() {
     sks: mySkills(),
     pal: heroPal(),
     wep: wepKind(),
-    st: {
-      maxhp: st.maxhp,
-      maxmp: st.maxmp,
-      armor: st.armor,
-      res: [st.res.fire, st.res.cold, st.res.light],
-      physLo: st.physLo,
-      physHi: st.physHi,
-      fire: st.fire,
-      cold: st.cold,
-      light: st.light,
-      spellMul: st.spellMul,
-      crit: st.crit,
-      critMulti: st.critMulti,
-      leech: st.leech,
-      speed: st.speed,
-      regen: st.regen,
-      dodge: st.dodge,
-      elm: st.elm,
-      mpCost: st.mpCost,
-      blood: st.blood,
-      mom: st.mom,
-      lowLife: st.lowLife,
-      healMul: st.healMul,
-      manaRegen: st.manaRegen,
-      poisonCh: st.poisonCh,
-      poisonMul: st.poisonMul,
-      ail: st.ail,
-      dbl: st.dbl,
-      noFreeze: st.noFreeze,
-      dmgRed: st.dmgRed,
-      taunt: st.taunt,
-      healAll: st.healAll,
-      allyDmg: st.allyDmg,
-      engPct: st.engPct,
-      legPride: st.legPride,
-      legEnvy: st.legEnvy,
-      legWrath: st.legWrath,
-      legLust: st.legLust
-    }
+    st: JSON.parse(JSON.stringify(st))
   };
 }
 const palFor = q => q.pal || heroPal(q.cls, {});
@@ -233,7 +195,7 @@ function ptMsg(ev, p) {
         m.ready = !!p.ready;
         ptLobby();
       }
-    } else if (ev === 'act') mpOnAct(p.uid, p.k, p.tok);
+    } else if (ev === 'act') mpOnAct(p.uid, p.k, p.tok, p.tg);
     return;
   }
   if (ev === 'lobby') {
@@ -265,7 +227,7 @@ function ptMsg(ev, p) {
   } else if (ev === 'state') {
     if (MB) mpApply(p.mb, p.fx);
   } else if (ev === 'roomclear') {
-    if (MB) mpRoomReward(p.e);
+    if (MB) mpRoomReward(p.e, p.n);
   } else if (ev === 'clear') {
     if (MB) mpClear();
   } else if (ev === 'wipe') {
@@ -305,7 +267,7 @@ function partyHTML() {
 /* ================= battle state (leader authoritative) ================= */
 let MBT = null,
   MBbg = null;
-const MBFX = { pops: [], fx: [], shake: 0, hurt: {}, lunge: {}, en: { flash: 0, dying: 0 }, t0: 0 };
+const MBFX = { pops: [], fx: [], shake: 0, hurt: {}, lunge: {}, en: [], t0: 0 };
 /* 廣播用的狀態：去掉只屬於自己的欄位（戰利品、選單、已送出的回合） */
 const pub = () => {
   const o = { ...MB };
@@ -396,25 +358,33 @@ function mpStart() {
       alive: true,
       gone: false,
       guard: 0,
-      frozen: 0
+      frozen: 0,
+      shield: 0,
+      stacks: 0,
+      pets: [],
+      buffs: []
     })),
-    es: {}
+    es: []
   };
+  MB.ps.forEach(battleOpen);
   mpSpawn();
   ptSend('start', { mb: pub() });
   mpEnter(null);
   setTimeout(mpRound, 900);
 }
 function mpSpawn() {
-  const { e, bg, boss } = dunEnemy(MB.d, MB.room),
-    n = MB.n;
-  e.maxhp = Math.round(e.maxhp * (1 + 0.65 * (n - 1)));
-  e.atk = Math.round(e.atk * (1 + 0.08 * (n - 1)));
-  e.hp = e.maxhp;
-  MB.e = e;
+  const n = MB.n,
+    { es, bg, boss } = dunEnemy(MB.d, MB.room, n - 1);
+  for (const e of es) {
+    e.maxhp = Math.round(e.maxhp * (1 + 0.3 * (n - 1)));
+    e.atk = Math.round(e.atk * (1 + 0.08 * (n - 1)));
+    e.hp = e.maxhp;
+    eInit(e);
+  }
+  MB.es = es;
+  MB.e = es[0];
   MB.bg = bg;
   MB.boss = boss;
-  MB.es = { poison: 0, burn: 0, burnDmg: 0, shock: 0, frozen: 0 };
 }
 function mpRound() {
   if (!MB) return;
@@ -460,37 +430,30 @@ function mpNext() {
   mpPush([{ t: 'turn', uid: a }]);
 }
 function mpEndRound() {
-  for (const p of MB.ps) {
-    if (!p.alive) continue;
-    if (p.st.regen) p.hp = Math.min(p.st.maxhp, p.hp + p.st.regen);
-    if (p.st.manaRegen) p.mp = Math.min(p.st.maxmp, p.mp + p.st.manaRegen);
-    if (p.guard > 0) p.guard--;
-  }
+  for (const p of MB.ps) roundEnd(p);
 }
-function mpOnAct(uid, k, tok) {
+function mpOnAct(uid, k, tok, tg) {
   if (!MB || MB.actor !== uid || tok !== MB.tok) return;
   clearTimeout(MBT);
-  mpResolve(uid, k, false);
+  mpResolve(uid, k, false, tg);
 }
-/* 一位玩家的行動 */
-function mpResolve(uid, k, auto) {
-  const p = MB.ps.find(q => q.uid === uid),
-    e = MB.e,
-    fx = [],
-    ES = MB.es;
-  if (!p || !e) return;
+/* 一位玩家的行動（共用 actResolve），tg 是他選的目標 */
+function mpResolve(uid, k, auto, tg = 0) {
+  const p = MB.ps.find(q => q.uid === uid);
+  if (!p || !MB.es) return;
   MB.tok++;
   MB.actor = null;
   MB.dl = 0;
-  let sk = skByKey(k, p.sks || []);
+  let sk = skByKey(k, p.sks || []),
+    fx = [];
   if (k === 'potion' || k === 'ether') {
-    const hm = (p.st.healMul || 1) * (MB.spec.noregen ? 0.5 : 1),
+    const hm = (p.st.healMul || 1) * (MB.spec.noregen ? 0.5 : 1) * (1 + (p.st.potPct || 0) / 100),
       v = k === 'potion' ? Math.round(p.st.maxhp * 0.4 * hm) : Math.round(p.st.maxmp * 0.5 * hm);
     if (k === 'potion') p.hp = Math.min(p.st.maxhp, p.hp + v);
     else p.mp = Math.min(p.st.maxmp, p.mp + v);
     fx.push(
       { t: 'msg', s: `${p.name} 使用${k === 'potion' ? '生命' : '魔力'}藥水` },
-      { t: 'heal', uid, v, mp: k === 'ether' }
+      { t: 'heal', who: uid, v, mp: k === 'ether' }
     );
     mpPush(fx);
     MBT = setTimeout(mpNext, 900);
@@ -500,186 +463,65 @@ function mpResolve(uid, k, auto) {
     sk = SKILLS.attack;
     k = 'attack';
   }
-  const pst = skSt(p.st, sk);
-  payCost(p, pst, sk);
+  payCost(p, p.st, sk);
   fx.push({ t: 'msg', s: auto ? `${p.name} 時間到，自動攻擊` : `${p.name}：${sk.name}` });
-  if (sk.kind === 'heal') {
-    const tg = MB.ps.filter(q => q.alive).sort((a, b) => a.hp / a.st.maxhp - b.hp / b.st.maxhp)[0],
-      v = Math.round(tg.st.maxhp * (sk.heal || 0.35) * (p.st.healMul || 1));
-    tg.hp = Math.min(tg.st.maxhp, tg.hp + v);
-    fx.push({ t: 'heal', uid: tg.uid, from: uid, v });
-    /* 群體治癒天賦：其他活著的隊友也回復一部分 */
-    if (p.st.healAll)
-      MB.ps
-        .filter(q => q.alive && q !== tg)
-        .forEach(q => {
-          const w = Math.round((v * p.st.healAll) / 100);
-          q.hp = Math.min(q.st.maxhp, q.hp + w);
-          fx.push({ t: 'heal', uid: q.uid, from: uid, v: w });
-        });
-  } else {
-    const hits = (sk.hits || 1) + extraHit(pst, sk) + (pst.legWrath && p.hp < p.st.maxhp / 2 ? 1 : 0);
-    for (let n = 0; n < hits && e.hp > 0; n++) {
-      const st = pst,
-        pk = heroPacket(st, sk, sk.mult * (1 + ((st.allyDmg || 0) * (MB.ps.filter(q => q.alive).length - 1)) / 100));
-      const { d, crit } = heroDmg(st, pk, e, ES.shock > 0, p);
-      e.hp = Math.max(0, e.hp - d);
-      const col =
-        pk.fire > pk.cold && pk.fire > pk.light && pk.fire > pk.phys * 0.5
-          ? '#ffb15a'
-          : pk.cold > pk.phys * 0.5 && pk.cold > pk.light
-            ? '#9fe7ff'
-            : pk.light > pk.phys * 0.5
-              ? '#fff27a'
-              : '#ffffff';
-      fx.push({
-        t: 'hit',
-        from: uid,
-        d,
-        crit,
-        col,
-        fx:
-          sk.kind === 'spell'
-            ? sk.fx
-            : sk.fx === 'whirl'
-              ? 'whirl'
-              : sk.fx === 'arrow' || p.wep === 'bow'
-                ? 'arrow'
-                : 'slash'
-      });
-      if (st.leech && d > 0) p.hp = Math.min(st.maxhp, p.hp + Math.max(1, Math.round((d * st.leech) / 100)));
-      if (e.hp > 0) heroAil(st, sk, pk, ES).forEach(([s, col]) => fx.push({ t: 'st', s, col }));
-      if (e.mods.includes('reflect')) {
-        const r = Math.max(1, Math.round(d * 0.15));
-        p.hp = Math.max(1, p.hp - r);
-        fx.push({ t: 'dmg', uid, d: r, col: '#ff8a8a' });
-      }
-    }
-    if (sk.guard) {
-      p.guard = sk.guard;
-      fx.push({ t: 'st', uid, s: '護甲↑', col: '#9fd4ef' });
-    }
-    if (sk.poison && e.hp > 0) {
-      ES.poison = sk.poison;
-      ES.pMul = p.st.poisonMul || 1;
-      fx.push({ t: 'st', s: '中毒', col: '#9be36b' });
-    }
-  }
+  const alive = MB.ps.filter(q => q.alive),
+    ev = actResolve(p, p.st, sk, MB.es, tg, alive, {
+      allyMul: 1 + ((p.st.allyDmg || 0) * (alive.length - 1)) / 100,
+      ew: MB.spec.eleweak ? 20 : 0
+    }),
+    end = ev.reduce((a, f) => Math.max(a, f.at || 0), 0),
+    pe = petsAct(p, p.st, MB.es).map(f => ({ ...f, at: (f.at || 0) + end + 150 })),
+    tot = pe.reduce((a, f) => Math.max(a, f.at || 0), end);
+  fx = fx.concat(ev, pe);
   mpPush(fx);
   clearTimeout(MBT);
-  MBT = setTimeout(
-    () => {
-      if (!MB) return;
-      if (MB.e.hp <= 0) mpRoomClear();
-      else mpNext();
-    },
-    700 + (sk.hits || 1) * 350
-  );
+  MBT = setTimeout(() => {
+    if (!MB) return;
+    if (MB.es.every(e => e.hp <= 0)) mpRoomClear();
+    else mpNext();
+  }, tot + 500);
 }
-/* 怪物行動：先結算中毒、燃燒，再隨機打一位活著的隊員 */
+/* 怪物行動：每隻活著的敵人依序結算（共用 enemyResolve） */
 function mpEnemy() {
   if (!MB) return;
-  const e = MB.e,
-    ES = MB.es,
-    fx = [];
-  if (ES.poison > 0) {
-    const d = poisonTick(e, ES);
-    e.hp = Math.max(0, e.hp - d);
-    fx.push({ t: 'hit', d, col: '#9be36b', dot: 1 });
-    ES.poison--;
+  let fx = [],
+    off = 0;
+  for (let i = 0; i < MB.es.length; i++) {
+    if (MB.es[i].hp <= 0) continue;
+    if (!MB.ps.some(p => p.alive)) break;
+    const ev = enemyResolve(MB.es, i, MB.ps, { ew: MB.spec.eleweak ? 20 : 0 }),
+      end = ev.reduce((a, f) => Math.max(a, f.at || 0), 0);
+    fx = fx.concat(ev.map(f => ({ ...f, at: (f.at || 0) + off })));
+    off += end + 150;
   }
-  if (ES.burn > 0) {
-    e.hp = Math.max(0, e.hp - ES.burnDmg);
-    fx.push({ t: 'hit', d: ES.burnDmg, col: '#ffb15a', dot: 1 });
-    ES.burn--;
-  }
-  if (ES.shock > 0) ES.shock--;
-  if (e.hp <= 0) {
-    mpPush(fx);
-    MBT = setTimeout(mpRoomClear, 700);
-    return;
-  }
-  if (ES.frozen) {
-    ES.frozen = 0;
-    fx.push({ t: 'msg', s: `${e.name} 被凍住，無法行動` });
-    mpPush(fx);
-    MBT = setTimeout(mpNext, 1000);
-    return;
-  }
-  const acts = e.mods.includes('swift') && Math.random() < 0.35 ? 2 : 1,
-    ew = MB.spec.eleweak ? 20 : 0;
-  for (let n = 0; n < acts; n++) {
-    const alive = MB.ps.filter(p => p.alive);
-    if (!alive.length) break;
-    /* 嘲諷：每 1% 嘲諷讓自己被選中的權重 +1% */
-    const wt = alive.map(q => 1 + (q.st.taunt || 0) / 100);
-    let x = Math.random() * wt.reduce((a, b) => a + b, 0),
-      pi = 0;
-    while (pi < alive.length - 1 && (x -= wt[pi]) >= 0) pi++;
-    const p = alive[pi],
-      strong = Math.random() < 0.15;
-    fx.push({ t: 'msg', s: strong ? `${e.name} 的猛力一擊！` : `${e.name} 攻擊 ${p.name}` });
-    if (Math.random() * 100 < p.st.dodge) {
-      fx.push({ t: 'dodge', uid: p.uid });
-      continue;
-    }
-    let atk = e.atk * (strong ? 1.5 : 1) * rnd(0.9, 1.1);
-    if (e.mods.includes('fury') && e.hp < e.maxhp / 2) atk *= 1.5;
-    const pk = { phys: 0, fire: 0, cold: 0, light: 0 };
-    pk[e.el] += atk;
-    if (e.mods.includes('fire')) pk.fire += atk * 0.4;
-    if (e.mods.includes('cold')) pk.cold += atk * 0.4;
-    if (e.mods.includes('shock')) pk.light += atk * 0.4;
-    const d = Math.round(
-      mitigate(
-        pk,
-        p.st.armor * (p.guard > 0 ? 2 : 1),
-        p.st.res.map(v => v - ew),
-        false
-      ) *
-        (1 - (p.st.dmgRed || 0) / 100)
-    );
-    takeDmg(p, p.st, d);
-    fx.push({
-      t: 'dmg',
-      uid: p.uid,
-      d,
-      strong,
-      col: pk.fire > pk.phys ? '#ffb15a' : pk.cold > pk.phys ? '#9fe7ff' : pk.light > pk.phys ? '#fff27a' : '#ff8a8a'
-    });
-    if (e.mods.includes('leech')) {
-      const hl = Math.round(d * 0.15);
-      if (hl > 0) e.hp = Math.min(e.maxhp, e.hp + hl);
-    }
-    if (pk.cold > 0 && !p.st.noFreeze && Math.random() < 0.12 && p.hp > 0) {
-      p.frozen = 1;
-      fx.push({ t: 'st', uid: p.uid, s: '凍結', col: '#9fe7ff' });
-    }
-    if (p.hp <= 0) {
-      p.alive = false;
-      fx.push({ t: 'msg', s: `${p.name} 倒下了！` });
-    }
-  }
+  for (const f of fx) if (f.t === 'down') f.s = `${(MB.ps.find(p => p.uid === f.who) || {}).name} 倒下了！`;
   mpPush(fx);
   clearTimeout(MBT);
-  MBT = setTimeout(
-    () => {
-      if (!MB) return;
-      if (!MB.ps.some(p => p.alive)) {
-        ptSend('wipe', {});
-        mpWipe();
-      } else mpNext();
-    },
-    900 + acts * 300
-  );
+  MBT = setTimeout(() => {
+    if (!MB) return;
+    if (!MB.ps.some(p => p.alive)) {
+      ptSend('wipe', {});
+      mpWipe();
+    } else if (MB.es.every(e => e.hp <= 0)) mpRoomClear();
+    else mpNext();
+  }, off + 400);
 }
-/* 打倒這層的怪物：大家各自領獎，倒下的隊員以 20% 生命復活，進下一層 */
+/* 打倒這層的怪物群：經驗大家平均分，金幣與掉寶各自結算；倒下的隊員以 20% 生命復活，進下一層 */
 function mpRoomClear() {
   if (!MB) return;
-  const e = MB.e,
-    info = { name: e.name, lv: e.lv, rar: e.rar, xp: e.xp, gold: e.gold, boss: MB.boss };
-  ptSend('roomclear', { e: info });
-  mpRoomReward(info);
+  const info = MB.es.map((e, i) => ({
+    name: e.name,
+    lv: e.lv,
+    rar: e.rar,
+    xp: e.xp,
+    gold: e.gold,
+    mods: e.mods,
+    minion: e.minion,
+    boss: MB.boss && i === 0
+  }));
+  ptSend('roomclear', { e: info, n: MB.n });
+  mpRoomReward(info, MB.n);
   MB.room++;
   if (MB.room >= MB.floors) {
     MBT = setTimeout(() => {
@@ -717,14 +559,15 @@ function mpEnter(mb) {
   MB.loot = [];
   MBFX.pops = [];
   MBFX.fx = [];
-  MBFX.en = { flash: 0, dying: 0 };
+  MBFX.en = [];
   MBFX.t0 = performance.now();
+  MB.tg = 0;
   $('battle').hidden = false;
   renderMBHud();
   sizeBattle();
   mpBG();
   renderMBHud();
-  playSong(MB.boss || (MB.e && MB.e.rar >= 2) ? 'boss' : 'battle');
+  playSong(MB.boss || (MB.es || []).some(e => e.rar >= 2) ? 'boss' : 'battle');
   sfx('encounter');
   ptPill();
   addLog(`組隊進入${dunName(MB.d)}（Lv${MB.d.lv}，${MB.n} 人）`);
@@ -737,7 +580,7 @@ function mpBG() {
 }
 function mpApply(mb, fx) {
   if (mb) {
-    const keep = MB ? { loot: MB.loot, sub: MB.sub, sent: MB.sent } : { loot: [] };
+    const keep = MB ? { loot: MB.loot, sub: MB.sub, sent: MB.sent, tg: MB.tg } : { loot: [] };
     MB = Object.assign(mb, keep);
     MB.dl = MB.left ? Date.now() + MB.left : 0;
   }
@@ -746,66 +589,76 @@ function mpApply(mb, fx) {
     S.hp = Math.max(1, me.hp);
     S.mp = me.mp;
   }
-  const now_ = performance.now();
-  for (const f of fx || []) {
-    if (f.t === 'msg') bmsg(f.s);
-    else if (f.t === 'turn') {
-      if (f.uid === CLOUD.uid) {
-        sfx('select');
-        buzz(60);
-      }
-    } else if (f.t === 'room') {
-      mpBG();
-      MBFX.en = { flash: 0, dying: 0 };
-      MBFX.t0 = now_;
-      sfx('encounter');
-      playSong(MB.boss ? 'boss' : 'battle');
-    } else if (f.t === 'hit') {
-      MBFX.en.flash = now_;
-      MBFX.pops.push({ text: f.crit ? f.d + '!' : String(f.d), who: 'E', col: f.crit ? '#ffd166' : f.col, t: now_ });
-      if (f.from) {
-        MBFX.lunge[f.from] = now_;
-        MBFX.fx.push({
-          type: f.fx === 'arrow' ? 'pierce' : f.fx,
-          t: now_,
-          dur: f.fx === 'fire' || f.fx === 'ice' ? 600 : 300,
-          from: f.from
-        });
-      }
-      if (f.crit) {
-        MBFX.shake = now_;
-        sfx('crit');
-      } else sfx(f.fx === 'fire' ? 'fire' : f.fx === 'ice' ? 'ice' : 'hit');
-      if (MB.e.hp <= 0) MBFX.en.dying = now_;
-    } else if (f.t === 'dmg') {
-      MBFX.hurt[f.uid] = now_;
-      MBFX.pops.push({ text: String(f.d), who: f.uid, col: f.col, t: now_ });
-      sfx('hurt');
-      if (f.uid === CLOUD.uid) {
-        MBFX.shake = now_;
-        buzz(f.strong ? 120 : 50);
-      }
-    } else if (f.t === 'heal') {
-      MBFX.pops.push({ text: '+' + f.v + (f.mp ? ' MP' : ''), who: f.uid, col: f.mp ? '#6ab8ff' : '#7bd36b', t: now_ });
-      MBFX.fx.push({ type: 'heal', t: now_, dur: 700, at: f.uid });
-      sfx('heal');
-    } else if (f.t === 'dodge') {
-      MBFX.pops.push({ text: '閃避', who: f.uid, col: '#d8d2c4', t: now_ });
-      sfx('tap');
-    } else if (f.t === 'st') {
-      MBFX.pops.push({ text: f.s, who: f.uid || 'E', col: f.col, t: now_, up: 20 });
-    }
-  }
+  for (const f of fx || []) setTimeout(() => MB && mpFx(f), f.at || 0);
   renderMBHud();
 }
-/* 自己的行動：隊長直接算，隊員送給隊長 */
+/* 播一個事件（跳數字、動畫、音效） */
+function mpFx(f) {
+  const now_ = performance.now(),
+    en = i => MBFX.en[i] || (MBFX.en[i] = {});
+  if (f.t === 'msg') bmsg(f.s);
+  else if (f.t === 'turn') {
+    if (f.uid === CLOUD.uid) {
+      sfx('select');
+      buzz(60);
+    }
+  } else if (f.t === 'room') {
+    mpBG();
+    MBFX.en = [];
+    MBFX.t0 = now_;
+    MB.tg = 0;
+    sfx('encounter');
+    playSong(MB.boss ? 'boss' : 'battle');
+  } else if (f.t === 'hit') {
+    en(f.i).flash = now_;
+    MBFX.pops.push({ text: f.crit ? f.d + '!' : String(f.d), who: 'E', i: f.i, col: f.col, t: now_ });
+    if (f.from && !f.dot && !f.pet) {
+      MBFX.lunge[f.from] = now_;
+      MBFX.fx.push({
+        type: f.fx === 'arrow' ? 'pierce' : f.fx,
+        t: now_,
+        dur: f.fx === 'fire' || f.fx === 'ice' ? 600 : 300,
+        from: f.from,
+        i: f.i
+      });
+    }
+    if (f.crit) {
+      MBFX.shake = now_;
+      sfx('crit');
+    } else sfx(f.fx === 'fire' ? 'fire' : f.fx === 'ice' ? 'ice' : 'hit');
+  } else if (f.t === 'kill') {
+    en(f.i).dying = now_;
+    sfx('win');
+  } else if (f.t === 'lunge') en(f.i).a = { type: 'lunge', t: now_, dur: 420 };
+  else if (f.t === 'dmg') {
+    MBFX.hurt[f.who] = now_;
+    MBFX.pops.push({ text: String(f.d), who: f.who, col: f.col, t: now_ });
+    sfx('hurt');
+    if (f.who === CLOUD.uid) {
+      MBFX.shake = now_;
+      buzz(f.strong ? 120 : 50);
+    }
+  } else if (f.t === 'heal') {
+    MBFX.pops.push({ text: '+' + f.v + (f.mp ? ' MP' : ''), who: f.who, col: f.mp ? '#6ab8ff' : '#7bd36b', t: now_ });
+    MBFX.fx.push({ type: 'heal', t: now_, dur: 700, at: f.who });
+    sfx('heal');
+  } else if (f.t === 'dodge') {
+    MBFX.pops.push({ text: '閃避', who: f.who, col: '#d8d2c4', t: now_ });
+    sfx('tap');
+  } else if (f.t === 'st') {
+    MBFX.pops.push({ text: f.s, who: f.who || 'E', i: f.i, col: f.col, t: now_, up: 20 });
+  } else if (f.t === 'down') bmsg(f.s || '有隊員倒下了！');
+  else if (f.t === 'fx') MBFX.fx.push({ type: f.type, t: now_, dur: 700, at: f.who });
+  renderMBHud();
+}
+/* 自己的行動：隊長直接算，隊員送給隊長；tg 是自己選的目標 */
 function mpMy(k) {
   if (!MB || MB.actor !== CLOUD.uid || MB.sent === MB.tok) return;
   const me = MB.ps.find(p => p.uid === CLOUD.uid);
   if (!me) return;
   if (k === 'potion' || k === 'ether') {
     const key = k === 'potion' ? 'potions' : 'ethers';
-    if (!S[key]) return;
+    if (!S[key] || (k === 'potion' && me.st.noPotion)) return;
     S[key]--;
   } else {
     const sk = skByKey(k, me.sks || []);
@@ -815,19 +668,28 @@ function mpMy(k) {
   MB.sub = null;
   sfx('select');
   renderMBHud();
-  if (amLeader()) mpOnAct(CLOUD.uid, k, MB.tok);
-  else ptSend('act', { uid: CLOUD.uid, k, tok: MB.tok });
+  const tg = MB.tg || 0;
+  if (amLeader()) mpOnAct(CLOUD.uid, k, MB.tok, tg);
+  else ptSend('act', { uid: CLOUD.uid, k, tok: MB.tok, tg });
 }
-function mpRoomReward(info) {
-  const e = { ...info },
-    xp = e.xp,
-    gold = Math.round(e.gold * rnd(0.8, 1.2) * stats().goldMul);
+/* 一層的獎勵：經驗是整群加總後依人數平均，金幣與掉寶各自結算 */
+function mpRoomReward(info, n = 1) {
+  const list = Array.isArray(info) ? info : [info],
+    xp = Math.round(list.reduce((a, e) => a + e.xp, 0) / Math.max(1, n));
+  let gold = 0;
+  const drops = [];
+  for (const e of list) {
+    gold += Math.round(e.gold * rnd(0.8, 1.2) * stats().goldMul);
+    drops.push(...dropLoot({ ...e }, e.boss, MB.spec, false, e.minion));
+    quest('kill');
+  }
   S.gold += gold;
-  const up = gainXP(xp),
-    drops = dropLoot(e, e.boss, MB.spec, false);
+  const up = gainXP(xp);
   MB.loot = (MB.loot || []).concat(drops);
-  addLog(`組隊擊敗 ${e.name} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);
-  bmsg(`擊敗 ${e.name}！+${xp} 經驗 +${gold} 金幣${drops.length ? `・${drops.length} 樣戰利品` : ''}`);
+  addLog(
+    `組隊擊敗 ${list[0].name}${list.length > 1 ? ` 等 ${list.length} 隻` : ''}，獲得 ${xp} 經驗（${n} 人平分）、${gold} 金幣`
+  );
+  bmsg(`擊敗！+${xp} 經驗 +${gold} 金幣${drops.length ? `・${drops.length} 樣戰利品` : ''}`);
   sfx('win');
   if (up) setTimeout(() => sfx('level'), 500);
   save();
@@ -848,8 +710,9 @@ function mpClear() {
   S.cleared[d.id] = hepoch();
   addLog(`組隊攻略${dunName(d)}（Lv${d.lv}）`);
   sfx('level');
-  const html = `<p><span style="color:var(--gold)">${rw.gold} 金幣</span>・<span style="color:#9fe7ff">${rw.cry} 魔晶</span></p>${rw.items.map(it => itemCard(it, '首領寶箱')).join('')}<div class="loot">${rw.curs
-    .concat(loot)
+  const html = `<p><span style="color:var(--gold)">${rw.gold} 金幣</span>・<span style="color:#9fe7ff">${rw.cry} 魔晶</span></p>${rw.items.map(it => itemCard(it, '首領寶箱')).join('')}<div class="loot">${lootList(
+    rw.curs.concat(loot)
+  )
     .map(c => `<span>${c}</span>`)
     .join('')}</div>`;
   mpStop();
@@ -942,61 +805,54 @@ function mpPos(i) {
 }
 function renderMBHud() {
   if (!MB) return;
-  const e = MB.e,
+  const es = MB.es || [],
     p = POS(),
     me = MB.ps.find(q => q.uid === CLOUD.uid),
     my = MB.actor === CLOUD.uid && MB.sent !== MB.tok && me && me.alive;
+  if (es.length && (!es[MB.tg || 0] || es[MB.tg || 0].hp <= 0)) MB.tg = Math.max(0, aliveIdx(es)[0] ?? 0);
+  const ti = MB.tg || 0,
+    e = es[ti];
   $('bname').innerHTML = e
-    ? `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>Lv${e.lv}${MB.boss ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`
+    ? `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>Lv${e.lv}${MB.boss && ti === 0 ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`
     : '';
-  placeBName(MB.boss);
+  if (e) placeBName(epos(ti, es, MB.boss));
   {
-    /* 行動順序：這一輪（目前輪到的人亮起來）＋下一輪預估 */
+    /* 行動順序：這一輪（目前輪到的人亮起來）＋下一輪預估；怪物回合列出每隻活著的敵人 */
+    const ens = on =>
+      es
+        .map(o => (o.hp > 0 ? { n: o.name, c: 'e', on, img: portrait(o.spr, o.pal) } : null))
+        .filter(Boolean)
+        .slice(0, 3);
     const row = (a, i) => {
-      if (a === 'E')
-        return {
-          n: e ? e.name : '怪物',
-          c: 'e',
-          on: MB.actor === 'E' && i === MB.ti,
-          img: e ? portrait(e.spr, e.pal) : ''
-        };
+      if (a === 'E') return ens(MB.actor === 'E' && i === MB.ti);
       const q = MB.ps.find(p => p.uid === a);
       return q
-        ? {
-            n: q.name,
-            c: a === CLOUD.uid ? 'me' : '',
-            on: i === MB.ti && MB.actor === a,
-            dead: !q.alive,
-            img: portrait('heroF', palFor(q))
-          }
-        : null;
+        ? [
+            {
+              n: q.name,
+              c: a === CLOUD.uid ? 'me' : '',
+              on: i === MB.ti && MB.actor === a,
+              dead: !q.alive,
+              img: portrait('heroF', palFor(q))
+            }
+          ]
+        : [];
     };
-    /* 只顯示這一輪還沒動的人（含目前），再補下一輪，總共最多 6 個 */
-    const cur = (MB.order || [])
-        .map(row)
-        .map((q, i) => (i >= Math.max(0, MB.ti) ? q : null))
-        .filter(Boolean),
-      nxt = [
-        ...MB.ps
-          .filter(p => p.alive)
-          .sort((a, b) => b.st.speed - a.st.speed)
-          .map(p => p.uid),
-        'E'
-      ].map(a => ({ ...row(a, -1), on: false }));
-    renderOrder([...cur, { h: '下一輪' }, ...nxt.slice(0, Math.max(1, 6 - cur.length))]);
+    const cur = (MB.order || []).flatMap((a, i) => (i >= Math.max(0, MB.ti) ? row(a, i) : [])),
+      nxt = MB.ps
+        .filter(p => p.alive)
+        .sort((a, b) => b.st.speed - a.st.speed)
+        .flatMap(p => row(p.uid, -1).map(q => ({ ...q, on: false })));
+    renderOrder([...cur, { h: '下一輪' }, ...nxt.slice(0, Math.max(1, 7 - cur.length))]);
   }
-  const ep = $('epills');
-  ep.style.left = p.ex + 'px';
-  ep.style.top = p.y + 14 + 'px';
-  const big = bossBar(e, MB.boss),
-    es = battleSc() + (MB.boss ? 2 : 1);
-  $('bname').hidden = big;
-  placeAil('eail', p.ex + 6 * es, p.y - 16 * es, e ? ailHTML(MB.es, AIL_E) : '');
+  const big = bossBar(
+    MB.boss ? es[0] : es.find(o => (o.rar || 0) >= 3 && o.hp > 0),
+    !!(MB.boss && es[0] && es[0].hp > 0)
+  );
+  $('bname').hidden = big && (ti === 0 || !MB.boss);
+  $('eail').innerHTML = '';
   $('hail').innerHTML = '';
-  ep.innerHTML =
-    e && !big
-      ? `<div class="hpanel en"><i class="hb hhp"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><em>${Math.max(0, Math.ceil(e.hp)).toLocaleString()} / ${e.maxhp.toLocaleString()}</em></i></div>`
-      : '';
+  $('epills').innerHTML = enemyBars(es, es.length > 1 ? ti : -1, MB.boss);
   $('hpills').innerHTML = '';
   $('mpills').innerHTML = MB.ps
     .map((q, i) => {
@@ -1012,7 +868,8 @@ function renderMBHud() {
     .join('');
   const sks = (me && me.sks) || mySkills(),
     sk = sks.map((q, i) => q && 's' + i).filter(Boolean),
-    dis = my ? '' : 'disabled';
+    dis = my ? '' : 'disabled',
+    noPot = me && me.st.noPotion;
   const cb = (label, icon, sub, data, disabled, extra = '') =>
     `<button class="cb ${extra}" data-act="mpAct" ${data} ${disabled || dis}><img src="${iconURL(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
   const slot = k => {
@@ -1027,14 +884,22 @@ function renderMBHud() {
   };
   let html =
     `<div class="mpturn" id="mpTurn"></div>` +
-    (sk[0] ? slot(sk[0]) : cb('生命藥水', 'heart', '×' + S.potions, 'data-k="potion"', S.potions ? '' : 'disabled')) +
+    (sk[0]
+      ? slot(sk[0])
+      : cb(
+          '生命藥水',
+          'heart',
+          noPot ? '無法使用' : '×' + S.potions,
+          'data-k="potion"',
+          S.potions && !noPot ? '' : 'disabled'
+        )) +
     cb('攻擊', 'axe', '', 'data-k="attack"', '') +
     (sk[1] ? slot(sk[1]) : cb('魔力藥水', 'ice', '×' + S.ethers, 'data-k="ether"', S.ethers ? '' : 'disabled')) +
     `<button class="cb" data-act="mpSub" data-k="skills" ${dis}><img src="${iconURL('book')}" alt="">技能</button><button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button><button class="cb" data-act="mpSub" data-k="items" ${dis}><img src="${iconURL('bag')}" alt="">物品</button>`;
   if (MB.sub === 'skills' && my)
     html += `<div class="bsub">${sk.map(slot).join('')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
   if (MB.sub === 'items' && my)
-    html += `<div class="bsub">${cb('生命藥水', 'heart', '×' + S.potions + '・恢復 40%', 'data-k="potion"', S.potions ? '' : 'disabled')}${cb('魔力藥水', 'ice', '×' + S.ethers + '・恢復 50%', 'data-k="ether"', S.ethers ? '' : 'disabled')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
+    html += `<div class="bsub">${cb('生命藥水', 'heart', noPot ? '昇華代價：無法使用' : '×' + S.potions + '・恢復 40%', 'data-k="potion"', S.potions && !noPot ? '' : 'disabled')}${cb('魔力藥水', 'ice', '×' + S.ethers + '・恢復 50%', 'data-k="ether"', S.ethers ? '' : 'disabled')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
   $('bcmd').innerHTML = html;
   mpTurnBar();
 }
@@ -1077,30 +942,9 @@ function renderMB(t) {
   }
   c.save();
   c.translate(sx, sy);
-  const sc = Math.max(3, Math.min(6, Math.round(BW / 90))),
-    e = MB.e,
-    es = MB.boss ? sc + 2 : sc + 1;
-  if (e && (!MBFX.en.dying || now_ - MBFX.en.dying < 850)) {
-    const alpha = MBFX.en.dying ? 1 - (now_ - MBFX.en.dying) / 850 : 1;
-    if (e.rar) glow(c, p.ex, p.y - 8 * es, (e.rar >= 2 ? 16 : 12) * es, RGLOW[e.rar], 0.35 + 0.12 * Math.sin(t / 300));
-    c.fillStyle = 'rgba(0,0,0,.3)';
-    c.beginPath();
-    c.ellipse(p.ex, p.y + 2, es * 6.5, es * 1.5, 0, 0, 6.28);
-    c.fill();
-    c.globalAlpha = Math.max(0, alpha);
-    const fl2 = now_ - MBFX.en.flash < 120;
-    drawSpr(
-      c,
-      e.spr,
-      e.pal,
-      p.ex + (fl2 ? rnd(-3, 3) : 0),
-      p.y + Math.sin(t / 260) * 2,
-      es,
-      e.spr === 'boar' || e.spr === 'wolf',
-      fl2
-    );
-    c.globalAlpha = 1;
-  }
+  const sc = battleSc(),
+    es = MB.es || [];
+  drawEnemies(c, t, es, MB.boss, MBFX.en, MB.tg || 0);
   const hs = sc - 1,
     where = {};
   MB.ps.forEach((q, i) => {
@@ -1117,6 +961,7 @@ function renderMB(t) {
     c.ellipse(ps.x, ps.y + 2, hs * 6, hs * 1.4, 0, 0, 6.28);
     c.fill();
     c.globalAlpha = q.alive ? 1 : 0.35;
+    drawPets(c, t, q.pets, ps.x, ps.y, hs);
     drawSpr(c, 'heroS', palFor(q), ps.x + ox, ps.y + Math.sin(t / 320 + i) * 1.5, hs, true);
     c.globalAlpha = 1;
   });
@@ -1127,8 +972,9 @@ function renderMB(t) {
       MBFX.fx.splice(i, 1);
       continue;
     }
-    const w = where[f.from || f.at] || { x: p.hx, y: p.y };
-    drawFx(c, f, q, { hx: w.x, ex: p.ex, y: p.y, hy: w.y }, hs);
+    const w = where[f.from || f.at] || { x: p.hx, y: p.y },
+      tq = f.i != null && es[f.i] ? epos(f.i, es, MB.boss) : { x: p.ex, y: p.y };
+    drawFx(c, f, q, { hx: w.x, ex: tq.x, y: tq.y, hy: w.y }, hs);
   }
   c.font = 'bold 22px DotGothic16, sans-serif';
   c.textAlign = 'center';
@@ -1139,12 +985,11 @@ function renderMB(t) {
       MBFX.pops.splice(i, 1);
       continue;
     }
-    const w =
-      q.who === 'E'
-        ? { x: p.ex, y: p.y - 60 }
-        : where[q.who]
-          ? { x: where[q.who].x, y: where[q.who].y - 70 }
-          : { x: p.hx, y: p.y - 70 };
+    let w;
+    if (q.who === 'E') {
+      const eq = es[q.i || 0] ? epos(q.i || 0, es, MB.boss) : { x: p.ex, y: p.y, s: sc };
+      w = { x: eq.x, y: etop(eq) + 24 };
+    } else w = where[q.who] ? { x: where[q.who].x, y: where[q.who].y - 70 } : { x: p.hx, y: p.y - 70 };
     const y = w.y - (q.up || 0) - k * 30;
     c.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
     c.lineWidth = 4;

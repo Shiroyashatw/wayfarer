@@ -421,7 +421,34 @@ const STAT0 = [
   'legWrath',
   'legGreed',
   'legGlut',
-  'legLust'
+  'legLust',
+  'echo',
+  'bleedCh',
+  'stunCh',
+  'exec',
+  'penRes',
+  'markFirst',
+  'dodgeCrit',
+  'counter',
+  'killStack',
+  'killMax',
+  'keepStacks',
+  'killHeal',
+  'killMana',
+  'noPotion',
+  'hpDrain',
+  'block',
+  'reflectPct',
+  'shieldPct',
+  'extraTurn',
+  'curseCh',
+  'curseP',
+  'spread',
+  'petPct',
+  'potPct',
+  'potBomb',
+  'ailDur',
+  'dotPct'
 ];
 function sumStats() {
   const t = {};
@@ -538,9 +565,44 @@ function stats() {
     legWrath: t.legWrath,
     legGreed: t.legGreed,
     legGlut: t.legGlut,
-    legLust: t.legLust
+    legLust: t.legLust,
+    /* 0.3：武器類別（昇華輔助與技能標籤用）、昇華輔助效果、昇華與新技能的機制 */
+    wtag: wt,
+    ranged: wt === 'bow',
+    sup: typeof ascSup === 'function' ? ascSup() : [],
+    ...Object.fromEntries(MECH.map(k => [k, t[k]])),
+    dotMul: 1 + t.dotPct / 100,
+    killMax: t.killMax || 10
   };
 }
+/* 0.3 新機制的屬性：直接照加總傳到戰鬥（數值意義見 STATN） */
+const MECH = [
+  'echo',
+  'bleedCh',
+  'stunCh',
+  'exec',
+  'penRes',
+  'markFirst',
+  'dodgeCrit',
+  'counter',
+  'killStack',
+  'keepStacks',
+  'killHeal',
+  'killMana',
+  'noPotion',
+  'hpDrain',
+  'block',
+  'reflectPct',
+  'shieldPct',
+  'extraTurn',
+  'curseCh',
+  'curseP',
+  'spread',
+  'petPct',
+  'potPct',
+  'potBomb',
+  'ailDur'
+];
 /* 升級曲線：Lv1→2 約 6 隻怪，Lv5 約 25 隻，Lv10 約 60 隻（同等級怪） */
 const xpNeed = lv => Math.round(40 * Math.pow(lv, 2.1) + 20 * lv);
 function fullHeal() {
@@ -627,6 +689,7 @@ function makeEnemy(b, lv, rar = 0, mods = [], dm) {
   const f = lv - 1,
     e = {
       name: b.name,
+      bn: b.name,
       lv,
       spr: b.spr,
       pal: b.pal,

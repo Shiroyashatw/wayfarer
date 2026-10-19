@@ -599,6 +599,7 @@ const A = {
       mist: e.mist,
       mistBase: e.mist && e.base.name,
       hunt: e.hunt,
+      pack: true,
       onsite: onSite(e)
     });
   },
