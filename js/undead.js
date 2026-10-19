@@ -599,21 +599,12 @@ Object.assign(A, {
     if (!inRange(a) || !(S.cur.kBone >= KING_NEED)) return;
     S.cur.kBone -= KING_NEED;
     closeSheet();
-    startBattle(
-      udBoss(
-        '亡靈王',
-        'lich',
-        { y: '#ff3a5a', h: '#0a0a12', w: '#c8d0c0', e: '#ff3a5a', r: '#1a2a1a', o: '#7fff7a' },
-        a.lv + 3,
-        5
-      ),
-      {
-        bg: 'cave',
-        boss: true,
-        king: true,
-        onsite: onSite(a)
-      }
-    );
+    startBattle(udBoss('亡靈王', 'b_lichking', BOSSPAL.b_lichking, a.lv + 3, 5), {
+      bg: 'cave',
+      boss: true,
+      king: true,
+      onsite: onSite(a)
+    });
     save();
   }
 });
