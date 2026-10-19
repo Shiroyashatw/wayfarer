@@ -101,6 +101,12 @@ function migrate(s) {
     s.cur.vaal = s.cur.vaal || 0;
     s.v = 9;
   }
+  if (s.v < 10) {
+    // 0.2.6：亡靈精華與亡靈區進度
+    s.ess = s.ess || {};
+    s.und = s.und || {};
+    s.v = 10;
+  }
   return s;
 }
 function start() {

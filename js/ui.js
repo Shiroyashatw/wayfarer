@@ -299,6 +299,7 @@ function renderSheet() {
     const tgt = it.slot === 'ring' ? (selItem.eq ? null : S.eq.ring1 ? S.eq.ring1 : null) : S.eq[it.slot];
     html = `<div class="ent"><img class="bigico" src="${slotIcon(it)}" alt=""><div class="sub">${selItem.eq ? '穿戴中' : '背包'}・可以用通貨改造</div></div>${itemCard(it, selItem.eq ? '穿戴中' : '')}${!selItem.eq && tgt ? itemCard(tgt, '目前穿戴') : ''}
     <h3>製作</h3><div class="crafts">${CUR.map(cu => `<button class="btn sm" data-act="craft" data-c="${cu.id}" ${craftable(it, cu.id) && S.cur[cu.id] > 0 ? '' : 'disabled'}>${curDot(cu.id)}${cu.n} <b>${S.cur[cu.id] || 0}</b><small>${cu.d}</small></button>`).join('')}</div>
+    ${undeadCraftHTML(it)}
     <div class="btns">${selItem.eq ? `<button class="btn" data-act="unequip" data-s="${selItem.eq}">卸下</button>` : it.slot === 'ring' ? `<button class="btn pri" data-act="equip" data-s="ring1">裝在戒指 1</button><button class="btn pri" data-act="equip" data-s="ring2">裝在戒指 2</button>` : `<button class="btn pri" data-act="equip" data-s="${it.slot}">裝備</button>`}
     ${selItem.eq ? '' : `<button class="btn" data-act="sell">賣出 ${sellVal(it)} 金</button>`}${selSlot ? `<button class="btn" data-act="eqslot" data-s="${selSlot}">返回${SLOTN[selSlot]}</button>` : `<button class="btn" data-act="sheet" data-s="bag">返回背包</button>`}</div>`;
   } else if (sheetName === 'base') {
@@ -436,6 +437,15 @@ function openEnt(id) {
   } else if (e.kind === 'flag') {
     desc = `你插下的冒險營旗，還有 ${Math.ceil((e.f.until - now()) / 60e3)} 分鐘。半徑 ${flagR()} 公尺內的東西不用在現場也能互動。`;
     act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
+  } else if (e.kind === 'ualtar') {
+    const p = udProg(e.zid),
+      used = isDone(e);
+    desc = used
+      ? '這座祭壇的軍團長已經打倒了。亡靈區每 3 小時重新出現。'
+      : `亡靈從地底爬出的祭壇。在這個亡靈區擊敗亡靈累積進度（目前 ${p}%），滿 100% 就能在這裡挑戰「亡靈軍團長」，打完進度歸 0；每座祭壇只能打一次。軍團長會掉亡靈王的骸骨，集滿 ${KING_NEED} 個可以在任一座祭壇召喚亡靈王（目前 ${S.cur.kBone || 0}/${KING_NEED}）。`;
+    act =
+      `<button class="btn pri" data-act="udBoss" data-id="${id}" ${inR && !used && p >= 100 ? '' : 'disabled'}>${used ? '已挑戰' : p >= 100 ? '挑戰亡靈軍團長' : `進度 ${p}%`}</button>` +
+      `<button class="btn" data-act="udKing" data-id="${id}" ${inR && S.cur.kBone >= KING_NEED ? '' : 'disabled'}>召喚亡靈王（骸骨 ${S.cur.kBone || 0}/${KING_NEED}）</button>`;
   } else if (e.kind === 'base') {
     desc = `你的${baseName(e.b)}，回到這裡會恢復全部狀態。`;
     act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
@@ -466,7 +476,7 @@ function openEnt(id) {
   $('entBig').getContext('2d').drawImage(entIcon(e), 0, 0);
 }
 /* 人實際在現場（不是靠據點、營旗、絲綢之路的遠端範圍） */
-const FIGHTK = new Set(['monster', 'dungeon', 'stele', 'circle', 'event', 'town']);
+const FIGHTK = new Set(['monster', 'dungeon', 'stele', 'circle', 'event', 'town', 'ualtar']);
 const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE);
 const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE) || inZone(e));
 
@@ -561,6 +571,8 @@ const A = {
       bg: e.base.bg,
       bounty: e.bounty,
       uw: e.uw,
+      ud: e.ud,
+      udBase: e.ud && e.base.name,
       onsite: onSite(e)
     });
   },

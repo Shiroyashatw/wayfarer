@@ -212,6 +212,7 @@ function endgameSpawns(out, cells, put, hp) {
     e.uw = o.id;
     e.name = makeEnemy(e.base, e.lv, e.rar, e.mods).name;
   }
+  undeadSpawns(out, cells);
   flagsOn().forEach(f => {
     const [x, y] = toM(f.lat, f.lng);
     out.set('f' + f.id, { id: 'f' + f.id, kind: 'flag', x, y, lat: f.lat, lng: f.lng, f, name: '冒險營旗' });
@@ -527,6 +528,7 @@ const MAT_TABS = [
   ['scroll', '卷軸', () => ((S.scrolls || {}).stele || 0) + ((S.scrolls || {}).circle || 0)]
 ];
 function matsHTML(tab) {
+  if (tab === 'ess') return essHTML();
   const drop = (k, id) => `<button class="btn sm" data-act="matDrop" data-k="${k}" data-id="${id}">丟棄</button>`,
     go = '<button class="btn" data-act="sheet" data-s="stele">前往「冒險 → 石碑」使用</button>';
   if (tab === 'insc') {

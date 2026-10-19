@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 9,
+    v: 10,
     cls: 'novice',
     lv: 1,
     xp: 0,
@@ -24,6 +24,8 @@ function newGame() {
     frags: [],
     obel: {},
     caravan: {},
+    ess: {},
+    und: {},
     sk: [null, null, null, null],
     autoHp: 0,
     autoMp: 0,
@@ -82,9 +84,10 @@ const baseOf = it => BASES[it.slot][it.bi];
 const affFits = (a, it) => a.slots.includes(it.slot) || (!!baseOf(it).k && a.slots.includes(baseOf(it).k));
 /* 物品能不能放進某個裝備欄：戒指兩格都可以 */
 const fitsSlot = (it, sl) => it.slot === sl.replace(/\d$/, '');
-function rollAffix(it, type, r = Math.random) {
+/* only：只從這些詞綴 id 裡抽（亡靈製作的定向加入用） */
+function rollAffix(it, type, r = Math.random, only) {
   const have = new Set(it.aff.map(a => a.id));
-  const pool = AFF.filter(a => a.t === type && affFits(a, it) && !have.has(a.id));
+  const pool = AFF.filter(a => a.t === type && affFits(a, it) && !have.has(a.id) && (!only || only.includes(a.id)));
   if (!pool.length) return false;
   const a = pool[fl(r() * pool.length)],
     ok = a.tiers.map((t, i) => ({ t, i })).filter(o => o.t[0] <= it.ilvl);
@@ -156,6 +159,8 @@ function itemCard(it, title) {
   if (it.imp) base.push(STATN[it.imp[0]](it.imp[1]));
   if (it.lure) base.push(STATN.lure(it.lure));
   if (base.length) h += `<div class="ibase">${base.map(esc).join('<br>')}</div>`;
+  if (it.sh)
+    h += `<div class="isub" style="color:${it.sh >= 100 ? '#e5484d' : '#8fd18a'}">屍化 ${it.sh}/100${it.sh >= 100 ? '・已鎖定' : ''}</div>`;
   if (it.aff.length)
     h += `<div class="iaff">${[...it.aff]
       .sort((a, b) => (AFFI[a.id].t < AFFI[b.id].t ? -1 : 1))
@@ -191,7 +196,7 @@ function rollCur(boost = 1) {
 const curDot = id => `<img class="cico" src="${curIcon(id)}" alt="">`;
 /* PoE2 式製作：沒有改造石，魔法裝備用增幅石補滿、富豪石升稀有，稀有裝備用崇高石加詞綴、混沌石一次換一條 */
 function craftable(it, id) {
-  if (!it) return false;
+  if (!it || (it.sh || 0) >= 100) return false;
   return {
     trans: it.r === 0,
     aug: it.r === 1 && it.aff.length < 2,

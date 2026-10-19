@@ -1030,6 +1030,9 @@ function winBattle() {
   }
   if (onsiteNow()) bonus += `<p class="sub" style="color:var(--gold)">✦ 現場加成：掉寶 +${ONSITE_BONUS}%</p>`;
   if (B.uw) bonus += obeliskCharge(B.uw);
+  if (B.ud) bonus += undeadWin(B);
+  if (B.commander) bonus += commanderWin(B.commander);
+  if (B.king) bonus += kingWin();
   if (B.watcher) bonus += watcherWin(B.watcher);
   addLog(`擊敗 ${e.name} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);
   if (up) setTimeout(() => sfx('level'), 500);

@@ -34,6 +34,8 @@
 | 單人戰鬥流程 | `js/battle.js` | `startBattle`、`useSkill`、`playerHit`、`enemyTurn`、`winBattle`、`loseBattle` |
 | 戰鬥規則（單人＋多人共用） | `js/battle.js` | `skCost`、`canPay`、`payCost`、`heroPacket`、`heroDmg`、`heroAil`、`takeDmg`、`mitigate` |
 | 掉寶、地城獎勵 | `js/battle.js` | `dropLoot`、`dunReward`；靈魂碎片與刻印石 `gemLoot`；現場加成 `ONSITE_BONUS`、`onsiteNow`（判定現場用 `ui.js` 的 `onSite`） |
+| 亡靈區、亡靈怪、亡靈祭壇與軍團長、亡靈王 | `js/undead.js` | `undeadSpawns`（由 `endgameSpawns` 呼叫）、`UDZ`、`UNDEAD`、`drawUndead`、`undeadWin`、`commanderWin`、`kingWin`、`A.udBoss`、`A.udKing` |
+| 亡靈精華與亡靈製作（屍化值） | `js/undead.js` | `ESS`（精華對應的詞綴）、`UCUR`、`ucReroll`、`ucConv`、`ucAdd`、`ucAff`、`ucBlock`、`undeadCraftHTML`（裝備詳情頁）；屍化值存在裝備的 `sh`、次數 `uc` |
 | 石碑／魔法陣當場挑戰 | `js/endgame.js` | `A.siteGo` 設定 `SEL.site` 後打開石碑面板（`steleHTML` 的現場模式、`siteEnt`），開打走 `A.steleRun`／`A.circleOpen` |
 | 背包材料分頁（碑文碎片、石碑、冥府碎片、卷軸） | `js/endgame.js`、`js/ui.js` | `MAT_TABS`、`matsHTML`、`A.matTab`、`A.matDrop`；分頁列 `bagTabs`（`ui.js`），目前分頁 `SEL.bag` |
 | 戰鬥畫面（背景、特效、按鈕） | `js/battle.js` | `paintBG`、`renderBHud`、`renderBattle`、`drawFx`；怪物頭上名字 `placeBName`、左上角層數 `setFloor`、異常狀態圖示 `ailHTML`／`placeAil`（`AIL_E`、`AIL_H`）、頭目血條 `bossBar`、站位 `POS`（`y` 怪物、`hy` 玩家）、底部橫列行動順序 `renderOrder`（小頭像 `portrait`；多人在 `mp.js` 的 `renderMBHud`、倒數條 `mpTurnBar`、站位 `mpPos`） |
@@ -133,31 +135,31 @@
 - **audio**（3）
   `AU:4`、`audioInit:5`、`tone:30`、`noise:47`、`NS:65`、`nf:66`、`SONGS:71`、`PARSED:109`、`parse:110`、`playSong:122`、`schedule:128`、`SFX:147`、`sfx:213`、`buzz:216`
 
-### js/items.js（768 行）
+### js/items.js（773 行）
 
 - **player & items**（3）
-  `newGame:4`、`makeItem:63`、`baseOf:80`、`affFits:82`、`fitsSlot:84`、`rollAffix:85`、`cnt:106`、`addRandom:107`、`toMagic:117`、`rareName:124`、`toRare:125`、`itemTitle:131`、`itemName:141`、`itemSum:142`、`itemCard:150`、`sellVal:169`、`giveItem:170`、`giveCur:178`、`rollCur:181`、`curDot:191`、`craftable:193`、`craft:204`
-- **skill gems**（221）
-  `newGem:222`、`gemSlots:223`、`gemOpen:224`、`gemOf:225`、`GEMK:226`、`gemSkill:228`、`mySkills:250`、`rollGAff:251`、`gAffVal:261`、`gAffTxt:266`、`gemCraftable:267`、`gemCraft:280`、`corrupt:298`、`gemLvBlock:318`、`gemDustBack:325`、`giveGem:326`
-- **stats**（334）
-  `curSpec:336`、`STAT0:337`、`sumStats:404`、`HP_LV:423`、`stats:426`、`xpNeed:514`、`fullHeal:515`、`clampHP:520`、`autoPot:526`、`naturalRegen:547`、`addLog:555`、`gainXP:559`、`treePts:570`、`dayPhase:571`、`buffOn:577`
-- **enemies**（579）
-  `pickMon:580`、`makeEnemy:591`、`rollMods:638`、`modNames:647`、`uwApply:649`
-- **modal**（667）
-  `showModal:668`、`hideModal:674`、`busy:677`、`openShop:678`
+  `newGame:4`、`makeItem:65`、`baseOf:82`、`affFits:84`、`fitsSlot:86`、`rollAffix:88`、`cnt:109`、`addRandom:110`、`toMagic:120`、`rareName:127`、`toRare:128`、`itemTitle:134`、`itemName:144`、`itemSum:145`、`itemCard:153`、`sellVal:174`、`giveItem:175`、`giveCur:183`、`rollCur:186`、`curDot:196`、`craftable:198`、`craft:209`
+- **skill gems**（226）
+  `newGem:227`、`gemSlots:228`、`gemOpen:229`、`gemOf:230`、`GEMK:231`、`gemSkill:233`、`mySkills:255`、`rollGAff:256`、`gAffVal:266`、`gAffTxt:271`、`gemCraftable:272`、`gemCraft:285`、`corrupt:303`、`gemLvBlock:323`、`gemDustBack:330`、`giveGem:331`
+- **stats**（339）
+  `curSpec:341`、`STAT0:342`、`sumStats:409`、`HP_LV:428`、`stats:431`、`xpNeed:519`、`fullHeal:520`、`clampHP:525`、`autoPot:531`、`naturalRegen:552`、`addLog:560`、`gainXP:564`、`treePts:575`、`dayPhase:576`、`buffOn:582`
+- **enemies**（584）
+  `pickMon:585`、`makeEnemy:596`、`rollMods:643`、`modNames:652`、`uwApply:654`
+- **modal**（672）
+  `showModal:673`、`hideModal:679`、`busy:682`、`openShop:683`
 
-### js/battle.js（1377 行）
+### js/battle.js（1380 行）
 
 - **battle: painted backgrounds**（3）
   `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
 - **battle: logic**（238）
   `BFX:239`、`POS:241`、`enemyTop:246`、`placeBName:250`、`AIL_E:256`、`ailHTML:267`、`placeAil:275`、`battleSc:281`、`bossBar:283`、`setFloor:293`、`PORT:298`、`portrait:299`、`renderOrder:305`、`bmsg:314`、`pop:321`、`anim:324`、`animOff:327`、`later:341`、`startBattle:346`、`renderBHud:378`、`mitigate:441`、`skCost:450`、`canPay:451`、`payCost:452`、`costTxt:457`、`skSt:459`、`skByKey:472`、`extraHit:473`、`heroPacket:474`、`heroDmg:489`、`heroAil:497`、`poisonTick:520`、`takeDmg:522`、`playerHit:528`、`useSkill:563`、`bItem:630`、`flee:653`、`enemyDead:668`、`afterPlayer:673`、`enemyTurn:677`、`endEnemyTurn:772`
 - **dungeons (shared by solo and party)**（791）
-  `dunSpec:793`、`dunName:819`、`BIGBOSS:820`、`dunEnemy:822`、`dropLoot:886`、`gemLoot:956`、`ONSITE_BONUS:979`、`onsiteNow:980`、`dunReward:982`、`dunModsHTML:1005`、`winBattle:1010`、`loseBattle:1080`、`endBattle:1109`、`enterDungeon:1118`、`nextRoom:1136`、`dungeonClear:1159`
-- **battle: drawing**（1183）
-  `renderBattle:1184`、`drawFx:1297`
+  `dunSpec:793`、`dunName:819`、`BIGBOSS:820`、`dunEnemy:822`、`dropLoot:886`、`gemLoot:956`、`ONSITE_BONUS:979`、`onsiteNow:980`、`dunReward:982`、`dunModsHTML:1005`、`winBattle:1010`、`loseBattle:1083`、`endBattle:1112`、`enterDungeon:1121`、`nextRoom:1139`、`dungeonClear:1162`
+- **battle: drawing**（1186）
+  `renderBattle:1187`、`drawFx:1300`
 
-### js/map.js（1612 行）
+### js/map.js（1617 行）
 
 - **world coordinates: meters from 台中車站 (x 東, y 南)**（3）
   `O:4`、`KX:5`、`toM:7`、`toLL:8`、`TOWNS:10`
@@ -169,33 +171,33 @@
 - **fog of war (chunked)**（675）
   `CH:677`、`fogCount:682`、`fogReset:683`、`fogChunk:687`、`reveal:701`、`revealed:730`、`explKm2:738`、`MILES:739`、`trailStep:740`
 - **spawns**（760）
-  `spawnAt:761`、`MCELL:762`、`evEp:766`、`nearTown:767`、`dungeonAt:771`、`NOT_TEMPLE:792`、`genEntities:793`、`refreshEntities:961`、`VIS:977`、`MOBILE:978`、`visible:979`、`isDone:985`、`townLv:992`
-- **world rendering**（994）
-  `wv:995`、`VW:997`、`cam:1000`、`ZMIN:1001`、`sizeWorld:1003`、`SX:1010`、`BGPAT:1012`、`bgPattern:1013`、`glow:1026`、`label:1033`、`sprScale:1052`、`viewChunks:1054`、`camLoadT:1062`、`renderWorld:1063`、`arrows:1329`
-- **input**（1359）
-  `ptrs:1360`、`drag:1361`、`tapOK:1395`、`endPtr:1396`、`tapWorld:1417`
-- **movement**（1451）
-  `lastFrame:1452`、`SIM_SPEED:1454`、`setPos:1455`、`checkArrive:1483`
-- **GPS**（1511）
-  `GPS:1513`、`gpsStart:1514`、`gpsStop:1551`、`tick:1558`、`timeRegen:1583`、`mmss:1592`、`plT:1596`、`placeLabel:1597`
+  `spawnAt:761`、`MCELL:762`、`evEp:766`、`nearTown:767`、`dungeonAt:771`、`NOT_TEMPLE:792`、`genEntities:793`、`refreshEntities:961`、`VIS:977`、`MOBILE:978`、`visible:979`、`isDone:985`、`townLv:993`
+- **world rendering**（995）
+  `wv:996`、`VW:998`、`cam:1001`、`ZMIN:1002`、`sizeWorld:1004`、`SX:1011`、`BGPAT:1013`、`bgPattern:1014`、`glow:1027`、`label:1034`、`sprScale:1053`、`viewChunks:1055`、`camLoadT:1063`、`renderWorld:1064`、`arrows:1331`
+- **input**（1361）
+  `ptrs:1362`、`drag:1363`、`tapOK:1397`、`endPtr:1398`、`tapWorld:1419`
+- **movement**（1453）
+  `lastFrame:1454`、`SIM_SPEED:1456`、`setPos:1457`、`checkArrive:1485`
+- **GPS**（1513）
+  `GPS:1515`、`gpsStart:1516`、`gpsStop:1553`、`tick:1560`、`timeRegen:1585`、`mmss:1594`、`plT:1598`、`placeLabel:1599`
 
 ### js/tree.js（437 行）
 
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:278`、`classPicker:411`
 
-### js/ui.js（1233 行）
+### js/ui.js（1245 行）
 
 - **HUD & sheets**（3）
-  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:58`、`navG:76`、`navClose:77`、`navOpen:86`、`KIND:114`、`bar:123`、`entIcon:126`、`fmt1:154`、`curRow:155`、`bagTabs:159`、`curRowG:166`、`gemDesc:168`、`gemCell:175`、`dupGems:181`、`gemRow:189`、`prayed:193`、`renderSheet:194`、`nearTownE:357`
-- **entity interaction**（361）
-  `openEnt:362`、`FIGHTK:469`、`onSite:470`、`inRange:471`
-- **bases**（473）
-  `prodRate:474`、`stored:475`、`baseName:476`、`flagCheck:477`
-- **actions**（485）
-  `authForm:487`、`A:519`
+  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:58`、`navG:76`、`navClose:77`、`navOpen:86`、`KIND:114`、`bar:123`、`entIcon:126`、`fmt1:154`、`curRow:155`、`bagTabs:159`、`curRowG:166`、`gemDesc:168`、`gemCell:175`、`dupGems:181`、`gemRow:189`、`prayed:193`、`renderSheet:194`、`nearTownE:358`
+- **entity interaction**（362）
+  `openEnt:363`、`FIGHTK:479`、`onSite:480`、`inRange:481`
+- **bases**（483）
+  `prodRate:484`、`stored:485`、`baseName:486`、`flagCheck:487`
+- **actions**（495）
+  `authForm:497`、`A:529`
 
-### js/endgame.js（747 行）
+### js/endgame.js（749 行）
 
 - **map objects**（3）
   `pad16:4`、`ep2:74`
@@ -205,15 +207,27 @@
   `zoneXY:128`、`zoneAt:134`
 - **spawns**（136）
   `STCELL:137`、`endgameSpawns:142`
-- **scrolls, inscriptions, tablets**（221）
-  `INSC_MAX:222`、`rollInsc:226`、`makeTablet:235`、`modList:246`、`capMods:248`、`payDun:253`
-- **underworld**（269）
-  `obeliskCharge:270`、`watcherWin:279`、`makeFrag:285`、`WATCHERS:297`、`summonWatcher:327`
-- **silk road (Supabase)**（347）
-  `SILK:348`、`SILK_FREE:349`、`silkLoad:350`、`baseSync:363`、`SILK_MSG:373`、`silkCreate:383`、`silkRemove:390`、`specialty:397`、`caravans:398`、`silkView:418`
-- **sheets**（432）
-  `SEL:433`、`chip:434`、`baseHTML:436`、`silkHTML:462`、`siteEnt:483`、`steleHTML:488`、`MAT_TABS:523`、`matsHTML:529`、`ENTURL:573`、`entURL:574`、`portalPick:579`
-- **actions**（585）
+- **scrolls, inscriptions, tablets**（222）
+  `INSC_MAX:223`、`rollInsc:227`、`makeTablet:236`、`modList:247`、`capMods:249`、`payDun:254`
+- **underworld**（270）
+  `obeliskCharge:271`、`watcherWin:280`、`makeFrag:286`、`WATCHERS:298`、`summonWatcher:328`
+- **silk road (Supabase)**（348）
+  `SILK:349`、`SILK_FREE:350`、`silkLoad:351`、`baseSync:364`、`SILK_MSG:374`、`silkCreate:384`、`silkRemove:391`、`specialty:398`、`caravans:399`、`silkView:419`
+- **sheets**（433）
+  `SEL:434`、`chip:435`、`baseHTML:437`、`silkHTML:463`、`siteEnt:484`、`steleHTML:489`、`MAT_TABS:524`、`matsHTML:530`、`ENTURL:575`、`entURL:576`、`portalPick:581`
+- **actions**（587）
+
+### js/undead.js（592 行）
+
+- **data**（3）
+  `pad16u:4`、`UNDEAD:100`、`UNDEADN:177`、`ESS:179`、`ESSI:207`、`ESS_MAX:208`、`affCat:209`、`UCUR:211`、`UCURI:217`、`KING_NEED:218`
+- **zones**（233）
+  `UD_CELL:234`、`udEp:237`、`UDZ:238`、`undeadSpawns:240`、`udProg:290`、`udZoneAt:291`、`drawUndead:292`
+- **battle**（315）
+  `undeadWin:317`、`giveEss:335`、`udBoss:341`、`commanderWin:349`、`kingWin:368`
+- **undead crafting (at main base)**（381）
+  `atBase:382`、`ucCost:386`、`ucBlock:387`、`maxPS:394`、`rollCat:396`、`hasEss:406`、`payEss:407`、`UC_SH:408`、`ucDone:409`、`ucReroll:413`、`ucConv:425`、`ucAdd:442`、`ucAff:453`、`undeadCraftHTML:475`、`essHTML:512`
+- **actions**（520）
 
 ### js/gacha.js（155 行）
 
@@ -222,10 +236,10 @@
 - **ui**（79）
   `gemTile:80`、`openGacha:85`、`closeGacha:93`、`renderGacha:98`
 
-### js/tutor.js（133 行）
+### js/tutor.js（137 行）
 
 - **tutorial**（3）
-  `TUT:5`、`tutI:75`、`tutorStart:76`、`tutorEnd:83`、`tutorShow:89`
+  `TUT:5`、`tutI:79`、`tutorStart:80`、`tutorEnd:87`、`tutorShow:93`
 
 ### js/cloud.js（161 行）
 
@@ -255,8 +269,8 @@
 - **battle rendering**（931）
   `mpPos:933`、`renderMBHud:939`、`mpTurnT:1037`、`mpTurnBar:1038`、`renderMB:1056`
 
-### js/main.js（158 行）
+### js/main.js（164 行）
 
 - **boot**（3）
-  `load:4`、`save:12`、`rebuildWorld:25`、`migrate:34`、`start:106`
+  `load:4`、`save:12`、`rebuildWorld:25`、`migrate:34`、`start:112`
 <!-- index:end -->

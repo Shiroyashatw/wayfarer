@@ -986,7 +986,8 @@ function isDone(e) {
   return (
     (e.kind === 'dungeon' && S.cleared[e.id] === hepoch()) ||
     (e.kind === 'event' && S.cleared[e.id] === evEp()) ||
-    ((e.kind === 'stele' || e.kind === 'circle' || e.kind === 'vein') && !!S.defeated[e.id])
+    ((e.kind === 'stele' || e.kind === 'circle' || e.kind === 'vein') && !!S.defeated[e.id]) ||
+    (e.kind === 'ualtar' && S.cleared[e.id] === udEp())
   );
 }
 const townLv = t => S.lv + 1 + (t.big ? 1 : 0);
@@ -1142,6 +1143,7 @@ function renderWorld(t) {
   c.setLineDash([]);
   c.restore();
   drawZones(c);
+  drawUndead(c, t);
   const s = sprScale(),
     list = [];
   for (const e of ENT.values()) {
@@ -1605,6 +1607,9 @@ function placeLabel() {
   $('expl').innerHTML =
     `<span style="color:${dp.night > 0.5 ? '#9fb8ff' : '#ffd877'}">${dp.label}</span> ${hh}:${mm}・視野 ${stats().vision}m<br><span class="rf${left < 60e3 ? ' soon' : ''}">怪物 ${mmss(left)}</span>・<span class="rf${leftH < 60e3 ? ' soon' : ''}">地城 ${mmss(leftH)}</span>・探索 ${explKm2().toFixed(2)} km²` +
     `<br>區域：${zoneAt(S.lat, S.lng).m.n}` +
+    (uz => (uz ? `<br><span style="color:#8fe0a0">亡靈區 ${udProg(uz.id)}%</span>` : ''))(
+      udZoneAt(...toM(S.lat, S.lng))
+    ) +
     (SILK.view ? `<br><span style="color:#ffc878">正在看 ${esc(SILK.view.name)} 的據點</span>` : '') +
     (buffOn() ? `<br>祝福 ${Math.ceil((S.buff.until - now()) / 60e3)} 分` : '') +
     (mapLoading() ? '<br><span style="color:#9fe7ff">載入地圖中…</span>' : '');
