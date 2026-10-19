@@ -55,6 +55,8 @@ Object.assign(SPR, {
     '...kkkkkkkkkk...'
   ])
 });
+/* 冒險營旗沿用分支據點的營地圖 */
+SPR.flag = SPR.camp;
 Object.assign(PAL, {
   stele: { s: '#8a8796', l: '#b9b6c4', r: '#7fd6ff', g: '#5a5466' },
   circle: { p: '#9a6bff', w: '#e8dcff', y: '#ffd166' },

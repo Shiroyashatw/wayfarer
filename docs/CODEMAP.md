@@ -185,33 +185,33 @@
 ### js/ui.js（1207 行）
 
 - **HUD & sheets**（3）
-  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:58`、`navG:76`、`navClose:77`、`navOpen:86`、`KIND:114`、`bar:123`、`entIcon:126`、`fmt1:172`、`curRow:173`、`curRowG:176`、`gemDesc:178`、`gemCell:185`、`dupGems:191`、`gemRow:199`、`prayed:203`、`renderSheet:204`、`nearTownE:365`
-- **entity interaction**（369）
-  `openEnt:370`、`inRange:455`
+  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:58`、`navG:76`、`navClose:77`、`navOpen:86`、`KIND:114`、`bar:123`、`entIcon:126`、`fmt1:154`、`curRow:155`、`curRowG:158`、`gemDesc:160`、`gemCell:167`、`dupGems:173`、`gemRow:181`、`prayed:185`、`renderSheet:186`、`nearTownE:347`
+- **entity interaction**（351）
+  `openEnt:352`、`inRange:455`
 - **bases**（457）
   `prodRate:458`、`stored:459`、`baseName:460`、`flagCheck:461`
 - **actions**（469）
   `authForm:471`、`A:503`
 
-### js/endgame.js（643 行）
+### js/endgame.js（645 行）
 
 - **map objects**（3）
-  `pad16:4`、`ep2:72`
-- **zones: base radius, flags, silk-road view**（74）
-  `BASE_R:75`、`baseR:76`、`mainBase:77`、`flagR:78`、`flagMs:82`、`FLAG_MAX:83`、`flagsOn:85`、`zones:87`、`zonesKey:99`、`zoneOf:103`、`inZone:104`、`drawZones:105`
-- **zone modifiers**（125）
-  `zoneXY:126`、`zoneAt:132`
-- **spawns**（134）
-  `STCELL:135`、`endgameSpawns:140`
-- **scrolls, inscriptions, tablets**（219）
-  `INSC_MAX:220`、`rollInsc:224`、`makeTablet:233`、`modList:244`、`capMods:246`、`payDun:251`
-- **underworld**（265）
-  `obeliskCharge:266`、`watcherWin:275`、`makeFrag:281`、`WATCHERS:293`、`summonWatcher:323`
-- **silk road (Supabase)**（343）
-  `SILK:344`、`SILK_FREE:345`、`silkLoad:346`、`baseSync:359`、`SILK_MSG:369`、`silkCreate:379`、`silkRemove:386`、`specialty:393`、`caravans:394`、`silkView:414`
-- **sheets**（428）
-  `SEL:429`、`chip:430`、`baseHTML:432`、`silkHTML:458`、`steleHTML:478`、`ENTURL:500`、`entURL:501`、`portalPick:506`
-- **actions**（512）
+  `pad16:4`、`ep2:74`
+- **zones: base radius, flags, silk-road view**（76）
+  `BASE_R:77`、`baseR:78`、`mainBase:79`、`flagR:80`、`flagMs:84`、`FLAG_MAX:85`、`flagsOn:87`、`zones:89`、`zonesKey:101`、`zoneOf:105`、`inZone:106`、`drawZones:107`
+- **zone modifiers**（127）
+  `zoneXY:128`、`zoneAt:134`
+- **spawns**（136）
+  `STCELL:137`、`endgameSpawns:142`
+- **scrolls, inscriptions, tablets**（221）
+  `INSC_MAX:222`、`rollInsc:226`、`makeTablet:235`、`modList:246`、`capMods:248`、`payDun:253`
+- **underworld**（267）
+  `obeliskCharge:268`、`watcherWin:277`、`makeFrag:283`、`WATCHERS:295`、`summonWatcher:325`
+- **silk road (Supabase)**（345）
+  `SILK:346`、`SILK_FREE:347`、`silkLoad:348`、`baseSync:361`、`SILK_MSG:371`、`silkCreate:381`、`silkRemove:388`、`specialty:395`、`caravans:396`、`silkView:416`
+- **sheets**（430）
+  `SEL:431`、`chip:432`、`baseHTML:434`、`silkHTML:460`、`steleHTML:480`、`ENTURL:502`、`entURL:503`、`portalPick:508`
+- **actions**（514）
 
 ### js/gacha.js（155 行）
 
