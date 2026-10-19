@@ -34,7 +34,8 @@
 | 單人戰鬥流程 | `js/battle.js` | `startBattle`、`useSkill`、`playerHit`、`enemyTurn`、`winBattle`、`loseBattle` |
 | 戰鬥規則（單人＋多人共用） | `js/battle.js` | `skCost`、`canPay`、`payCost`、`heroPacket`、`heroDmg`、`heroAil`、`takeDmg`、`mitigate` |
 | 掉寶、地城獎勵 | `js/battle.js` | `dropLoot`、`dunReward`；靈魂碎片與刻印石 `gemLoot`；現場加成 `ONSITE_BONUS`、`onsiteNow`（判定現場用 `ui.js` 的 `onSite`） |
-| 石碑／魔法陣當場挑戰 | `js/endgame.js` | `A.steleNow`、`A.circleNow`、`onsiteMods`（面板在 `ui.js` 的 `openEnt`） |
+| 石碑／魔法陣當場挑戰 | `js/endgame.js` | `A.siteGo` 設定 `SEL.site` 後打開石碑面板（`steleHTML` 的現場模式、`siteEnt`），開打走 `A.steleRun`／`A.circleOpen` |
+| 背包材料分頁（碑文碎片、石碑、冥府碎片、卷軸） | `js/endgame.js`、`js/ui.js` | `MAT_TABS`、`matsHTML`、`A.matTab`、`A.matDrop`；分頁列 `bagTabs`（`ui.js`），目前分頁 `SEL.bag` |
 | 戰鬥畫面（背景、特效、按鈕） | `js/battle.js` | `paintBG`、`renderBHud`、`renderBattle`、`drawFx`；怪物頭上名字 `placeBName`、左上角層數 `setFloor`、異常狀態圖示 `ailHTML`／`placeAil`（`AIL_E`、`AIL_H`）、頭目血條 `bossBar`、站位 `POS`（`y` 怪物、`hy` 玩家）、底部橫列行動順序 `renderOrder`（小頭像 `portrait`；多人在 `mp.js` 的 `renderMBHud`、倒數條 `mpTurnBar`、站位 `mpPos`） |
 | 冥府看門人（牛頭、馬面、黑白無常） | `js/endgame.js` | `WATCHERS`、`summonWatcher` |
 | 地圖道路資料、圖磚快取 | `js/map.js` | `OpenStreetMap vector tiles` 區段 |
@@ -183,18 +184,18 @@
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:278`、`classPicker:411`
 
-### js/ui.js（1223 行）
+### js/ui.js（1233 行）
 
 - **HUD & sheets**（3）
-  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:58`、`navG:76`、`navClose:77`、`navOpen:86`、`KIND:114`、`bar:123`、`entIcon:126`、`fmt1:154`、`curRow:155`、`curRowG:158`、`gemDesc:160`、`gemCell:167`、`dupGems:173`、`gemRow:181`、`prayed:185`、`renderSheet:186`、`nearTownE:347`
-- **entity interaction**（351）
-  `openEnt:352`、`FIGHTK:460`、`onSite:461`、`inRange:462`
-- **bases**（464）
-  `prodRate:465`、`stored:466`、`baseName:467`、`flagCheck:468`
-- **actions**（476）
-  `authForm:478`、`A:510`
+  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:58`、`navG:76`、`navClose:77`、`navOpen:86`、`KIND:114`、`bar:123`、`entIcon:126`、`fmt1:154`、`curRow:155`、`bagTabs:159`、`curRowG:166`、`gemDesc:168`、`gemCell:175`、`dupGems:181`、`gemRow:189`、`prayed:193`、`renderSheet:194`、`nearTownE:357`
+- **entity interaction**（361）
+  `openEnt:362`、`FIGHTK:469`、`onSite:470`、`inRange:471`
+- **bases**（473）
+  `prodRate:474`、`stored:475`、`baseName:476`、`flagCheck:477`
+- **actions**（485）
+  `authForm:487`、`A:519`
 
-### js/endgame.js（695 行）
+### js/endgame.js（747 行）
 
 - **map objects**（3）
   `pad16:4`、`ep2:74`
@@ -211,9 +212,8 @@
 - **silk road (Supabase)**（347）
   `SILK:348`、`SILK_FREE:349`、`silkLoad:350`、`baseSync:363`、`SILK_MSG:373`、`silkCreate:383`、`silkRemove:390`、`specialty:397`、`caravans:398`、`silkView:418`
 - **sheets**（432）
-  `SEL:433`、`chip:434`、`baseHTML:436`、`silkHTML:462`、`steleHTML:482`、`ENTURL:504`、`entURL:505`、`portalPick:510`
-- **actions**（516）
-  `onsiteMods:518`、`steleNowMods:528`、`CIRCLE_NOW_FLOORS:529`
+  `SEL:433`、`chip:434`、`baseHTML:436`、`silkHTML:462`、`siteEnt:483`、`steleHTML:488`、`MAT_TABS:523`、`matsHTML:529`、`ENTURL:573`、`entURL:574`、`portalPick:579`
+- **actions**（585）
 
 ### js/gacha.js（155 行）
 
