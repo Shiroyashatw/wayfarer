@@ -2,7 +2,7 @@
 
 ## 溝通規則
 - **一律用繁體中文回覆**（包含進度說明與 commit 訊息）。
-- 版本號：目前是 0.2.x（0.3 保留給昇華系統；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
+- 版本號：目前是 0.3.x（0.3.0 是昇華系統；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。系統規則改了要同步更新。
 
@@ -20,9 +20,10 @@
 | `js/core.js` | `$`、`fl`、`m` 與共用工具（座標、繪圖輔助） |
 | `js/data.js` | 地點／城鎮、怪物、詞綴、通貨、天賦樹 `TREE`、`VER` |
 | `js/sprites.js` | 16x16 像素圖（自動描邊陰影）、8x8 圖示 |
+| `js/skills.js` | 0.3 技能石擴充（約 100 種，武器／元素標籤、召喚、增益）與新圖示（`sprites.js` 之後載入） |
 | `js/audio.js` | Web Audio 合成音樂與音效 |
 | `js/items.js` | `newGame`、裝備、詞綴、通貨製作、屬性計算 |
-| `js/battle.js` | 戰鬥背景、回合邏輯、繪製 |
+| `js/battle.js` | 戰鬥背景、多隻敵人的回合邏輯（`actResolve`／`enemyResolve` 單人與組隊共用）、繪製 |
 | `js/map.js` | 世界地圖（以台中車站為原點、公尺座標）、OpenFreeMap 向量圖磚（z14）解碼與 IndexedDB 快取、45 個地標城鎮、分塊迷霧、晝夜視野、生成（`dungeonAt`）、攝影機、GPS |
 | `js/tree.js` | 天賦樹全螢幕介面（縮放、拖曳、多節點路徑） |
 | `js/ui.js` | HUD、底部面板、互動、據點、`data-act` 動作表 |
@@ -31,6 +32,7 @@
 | `js/demon.js` | 魔霧封印、七宗罪雕像與 7 個王、傳奇裝備、惡魔珠寶與天賦盤珠寶槽、七宗罪之王（0.2.7～0.2.11，`undead.js` 之後載入） |
 | `js/hunt.js` | 狩獵墮落十二生肖：追蹤之血、墮落獸、惡魔結晶召喚事件、十二生肖首領（0.2.12，`demon.js` 之後載入） |
 | `js/daily.js` | 今日委託、「附近」面板分組、足跡（0.2.13，`hunt.js` 之後載入） |
+| `js/asc.js` | 0.3 昇華：昇華職業與 24 條分支資料、節點圖示、昇華面板、城鎮的昇華試煉、重選（`daily.js` 之後載入） |
 | `js/gacha.js` | 祈願（抽卡）：卡池、保底、十連、結果動畫 |
 | `js/tutor.js` | 新手引導：`TUT` 步驟清單，新增功能時順手補一步 |
 | `js/cloud.js` | Supabase 匿名登入、信箱註冊／登入、玩家編號、存檔上傳（每 15 秒／切到背景時） |

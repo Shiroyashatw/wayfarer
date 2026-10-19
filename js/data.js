@@ -1620,6 +1620,8 @@ const STATN = {
   potBomb: v => `喝藥水時對所有敵人丟藥瓶（物理傷害 ${v}% 的火焰）`,
   ailDur: v => `燃燒、中毒、流血、感電多持續 ${v} 回合`,
   dotPct: v => `持續傷害 +${v}%`,
+  anyWep: () => '技能不再需要特定武器',
+  petStart: v => `每場戰鬥開始時帶著 ${v} 隻野狼`,
   life: v => `最大生命 +${v}`,
   lifePct: v => `最大生命 +${v}%`,
   physPct: v => `物理傷害 +${v}%`,
@@ -2360,5 +2362,5 @@ const TREE = (() => {
   });
   return { N, E, byId };
 })();
-const VER = '0.2.13.1';
+const VER = '0.3.0';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

@@ -415,3 +415,23 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .eails{display:flex;gap:1px}
 .eails .ail{width:14px;height:14px}
 .eails .ail img{width:9px;height:9px}
+
+/* ---------- 0.3 ascendancy ---------- */
+.ascic{width:40px;height:40px;image-rendering:pixelated;flex:none}
+.asc-c.off{opacity:.55}
+.asc-b{display:flex;gap:8px;align-items:center;text-align:left}
+.asc-b img{width:30px;height:30px;image-rendering:pixelated;flex:none}
+.asc-b span{display:grid;gap:1px}.asc-b small{font-size:11px;color:var(--dim);font-weight:400}
+.atree{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(7,auto);gap:4px 6px;justify-items:center;align-items:center;background:#0004;border-radius:12px;padding:10px 6px}
+.an{position:relative;background:none;border:0;padding:0;display:grid;justify-items:center;gap:2px;color:var(--dim);font:inherit}
+.an img{width:42px;height:42px;image-rendering:pixelated;opacity:.55}
+.an span{font-size:10px;line-height:1.15;text-align:center;max-width:76px}
+.an-e img{width:46px;height:46px;opacity:1}.an-e span{font-size:12px;color:var(--ink)}
+.an-u img{width:48px;height:48px}
+.an-s i{display:block;width:14px;height:14px;border-radius:50%;background:#2a2430;border:2px solid #6a6070}
+.an-s{height:20px}
+.an.on img{opacity:1;filter:drop-shadow(0 0 5px #ffd16699)}.an.on span{color:var(--ink)}
+.an-s.on i{background:var(--gold);border-color:#fff}
+.an.can img{opacity:.9;animation:lglow 1.6s ease-in-out infinite}.an-s.can i{border-color:var(--gold)}
+.an.sel{outline:2px solid var(--gold);outline-offset:2px;border-radius:10px}
+.an-s::before,.an-b::before,.an-u::before{content:"";position:absolute;left:50%;top:-6px;width:2px;height:6px;background:#ffffff26}

@@ -938,6 +938,13 @@ function roundEnd(p) {
 function battleOpen(p) {
   const st = p.st;
   if (st.shieldPct) p.shield = Math.round((st.maxhp * st.shieldPct) / 100);
+  /* 馴獸師：戰鬥開始就帶著野狼 */
+  if (st.petStart) {
+    const w = MONS.find(m => m.spr === 'wolf');
+    p.pets = (p.pets || []).concat(
+      Array.from({ length: st.petStart }, () => ({ name: '野狼', spr: 'wolf', pal: w && w.pal, mult: 0.9, turns: 99 }))
+    );
+  }
   if (!st.keepStacks) p.stacks = 0;
 }
 
@@ -1343,7 +1350,14 @@ function dunSpec(t) {
     elite: has('elite')
   };
 }
-const dunName = t => (t.kind === 'rift' ? '魔物裂隙' : t.kind === 'landmark' ? t.dn : DTYPES[t.dt || 'normal'].n);
+const dunName = t =>
+  t.kind === 'rift'
+    ? '魔物裂隙'
+    : t.kind === 'landmark'
+      ? t.dn
+      : t.kind === 'asc'
+        ? '昇華試煉'
+        : DTYPES[t.dt || 'normal'].n;
 const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '冥府之主', stele: '石碑守衛' },
   BOSSSPR = { hell: 'b_hellord', circle: 'b_arcane', portal: 'b_hades', stele: 'b_stelekeeper' };
 /* 第 room 層的敵人群（0.3 起一層是一群，最多 5 隻）。boss 在最後一層；extra 是組隊多出來的隻數 */
@@ -1400,10 +1414,18 @@ function dunEnemy(D, room, extra = 0) {
     bg = b.bg;
     n = boss ? 1 : 1 + (r % 2);
   } else if (boss) {
-    const hell = !!BIGBOSS[sp.dt] && sp.dt !== 'stele',
-      bn = D.lm ? `${D.lm.dn}守護者` : BIGBOSS[sp.dt] || (sp.dt === 'party' ? '深淵看守' : '洞窟守護者'),
+    const hell = (!!BIGBOSS[sp.dt] && sp.dt !== 'stele') || D.kind === 'asc',
+      bn = D.lm
+        ? `${D.lm.dn}守護者`
+        : D.kind === 'asc'
+          ? '昇華試煉守衛'
+          : BIGBOSS[sp.dt] || (sp.dt === 'party' ? '深淵看守' : '洞窟守護者'),
       /* 首領專屬圖：地標是石獅、組隊是深淵之眼、地獄／魔法陣／冥府／石碑各自一張 */
-      bspr = D.lm ? 'b_lion' : BOSSSPR[sp.dt] || (sp.dt === 'party' ? 'b_abyss' : 'b_golem');
+      bspr = D.lm
+        ? 'b_lion'
+        : D.kind === 'asc'
+          ? 'b_arcane'
+          : BOSSSPR[sp.dt] || (sp.dt === 'party' ? 'b_abyss' : 'b_golem');
     e = makeEnemy(
       {
         name: bn,
@@ -1765,15 +1787,16 @@ function dungeonClear() {
   const kind = D.kind,
     rw = dunReward(D);
   S.cleared[D.id] = kind === 'rift' ? evEp() : hepoch();
+  const ascMsg = kind === 'asc' ? ascTrialDone() : '';
   quest('dun');
-  const nm = kind === 'rift' ? '魔物裂隙' : D.lm ? D.lm.dn : DTYPES[D.spec.dt].n,
+  const nm = kind === 'rift' ? '魔物裂隙' : D.lm ? D.lm.dn : kind === 'asc' ? '昇華試煉' : DTYPES[D.spec.dt].n,
     rem = D.remote;
   addLog(`攻略${nm}（Lv${D.lv}）`);
   sfx('level');
   D = null;
   showModal(
     '攻略完成！',
-    `<p><span style="color:var(--gold)">${rw.gold} 金幣</span>${rw.cry ? `・<span style="color:#9fe7ff">${rw.cry} 魔晶</span>` : ''}</p>${rw.items.map(it => itemCard(it, '首領寶箱')).join('')}<div class="loot">${rw.curs.map(c => `<span>${c}</span>`).join('')}</div>${rem ? '<p class="sub">遠征獎勵為實地攻略的 80%。</p>' : ''}`,
+    `<p><span style="color:var(--gold)">${rw.gold} 金幣</span>${rw.cry ? `・<span style="color:#9fe7ff">${rw.cry} 魔晶</span>` : ''}</p>${rw.items.map(it => itemCard(it, '首領寶箱')).join('')}<div class="loot">${rw.curs.map(c => `<span>${c}</span>`).join('')}</div>${ascMsg}${rem ? '<p class="sub">遠征獎勵為實地攻略的 80%。</p>' : ''}`,
     [
       {
         label: '返回地圖',

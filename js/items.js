@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 13,
+    v: 14,
     cls: 'novice',
     lv: 1,
     xp: 0,
@@ -31,6 +31,7 @@ function newGame() {
     summons: [],
     daily: null,
     foot: {},
+    asc: { cls: null, br: null, trials: 0, nodes: [] },
     sins: {},
     jewels: [],
     jsock: {},
@@ -461,7 +462,9 @@ const STAT0 = [
   'potPct',
   'potBomb',
   'ailDur',
-  'dotPct'
+  'dotPct',
+  'anyWep',
+  'petStart'
 ];
 function sumStats() {
   const t = {};
@@ -482,6 +485,7 @@ function sumStats() {
   }
   jewelStats(A);
   zodStats(A);
+  if (typeof ascStats === 'function') ascStats(A);
   return t;
 }
 /* 升級只成長生命與魔力（所有人相同），其他數值靠裝備、天賦與技能石 */
@@ -590,6 +594,8 @@ function stats() {
 }
 /* 0.3 新機制的屬性：直接照加總傳到戰鬥（數值意義見 STATN） */
 const MECH = [
+  'anyWep',
+  'petStart',
   'echo',
   'bleedCh',
   'stunCh',
@@ -631,10 +637,10 @@ function clampHP() {
 /* 自動喝水：戰鬥結束後生命／魔力低於設定的百分比，就自動喝藥水直到超過門檻（每種最多 3 瓶），回傳要顯示的文字 */
 function autoPot() {
   const st = stats(),
-    hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1),
+    hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1) * (1 + (st.potPct || 0) / 100),
     out = [];
   let n = 0;
-  while (S.autoHp && S.potions > 0 && n < 3 && (S.hp / st.maxhp) * 100 < S.autoHp) {
+  while (S.autoHp && !st.noPotion && S.potions > 0 && n < 3 && (S.hp / st.maxhp) * 100 < S.autoHp) {
     S.potions--;
     S.hp = Math.min(st.maxhp, S.hp + Math.round(st.maxhp * 0.4 * hm));
     if (st.legGlut) S.mp = Math.min(st.maxmp, S.mp + Math.round(st.maxhp * 0.4 * hm));

@@ -53,7 +53,8 @@ const TITLES = {
   skills: '技能',
   stele: '石碑與傳送門',
   gem: '技能石',
-  seal: '印記兌換'
+  seal: '印記兌換',
+  asc: '昇華'
 };
 /* 底部導覽：群組按鈕點了往上展開 2～3 個功能，再點一次或點地圖就收起來 */
 const NAVG = {
@@ -234,7 +235,7 @@ function renderSheet() {
   if (sheetName === 'hero') {
     const avg = (st.physLo + st.physHi) / 2 + st.fire + st.cold + st.light * 1;
     html = `<div class="card"><div class="ent"><canvas id="heroBig" width="18" height="18"></canvas><div style="flex:1;display:grid;gap:6px;min-width:0"><b style="font-family:var(--f-pix);font-size:18px;font-weight:400">${esc(S.name || '旅人')} <span style="color:${c.color};font-size:14px">${c.name}</span> Lv${S.lv}</b><small class="sub">玩家編號 ${playerTag()}</small>${bar('生命', S.hp, st.maxhp, 'var(--hp)')}${bar('魔力', S.mp, st.maxmp, 'var(--mp)')}${bar('經驗', S.xp, xpNeed(S.lv), 'var(--xp)')}</div></div></div>
-    <button class="btn pri" data-act="openTree">天賦樹${treePts() > 0 ? `（剩 ${treePts()} 點未分配）` : ''}</button>${(() => {
+    <button class="btn pri" data-act="openTree">天賦樹${treePts() > 0 ? `（剩 ${treePts()} 點未分配）` : ''}</button><button class="btn" data-act="asc">昇華${S.asc && S.asc.br ? `・${ASCB[S.asc.br].n}` : ''}${ascPts() > ascUsed() ? `（剩 ${ascPts() - ascUsed()} 點）` : ''}</button>${(() => {
       const k = treeTotals().keys;
       return k.length
         ? `<div class="sub" style="text-align:center">基石：<span style="color:#e8873a">${k.map(n => n.n).join('、')}</span></div>`
@@ -371,6 +372,8 @@ function renderSheet() {
     if (!CLOUD.anon && !SOC.loaded) friendsLoad();
   } else if (sheetName === 'party') {
     html = partyHTML();
+  } else if (sheetName === 'asc') {
+    html = ascHTML();
   } else if (sheetName === 'hunt') {
     html = huntHTML();
   } else if (sheetName === 'seal') {
@@ -517,7 +520,8 @@ function openEnt(id) {
         (t.svc.includes('shop')
           ? `<button class="btn" data-act="shop" data-id="${id}" ${inR ? '' : 'disabled'}>商店</button>`
           : '') +
-        `<button class="btn pri" data-act="trial" data-id="${id}" ${inR && !done ? '' : 'disabled'}>${done ? '試煉已完成（整點重開）' : `地標試煉「${esc(t.dn)}」Lv${lv}`}</button>`;
+        `<button class="btn pri" data-act="trial" data-id="${id}" ${inR && !done ? '' : 'disabled'}>${done ? '試煉已完成（整點重開）' : `地標試煉「${esc(t.dn)}」Lv${lv}`}</button>` +
+        ascTownHTML(e, inR);
   }
   const title = e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name;
   $('sbody').innerHTML =
