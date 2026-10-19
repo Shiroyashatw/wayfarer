@@ -590,7 +590,44 @@ const PAL = {
 };
 const FIXED = { k: '#120e1a' },
   SPC = new Map();
+/* ---------- PNG 像素圖（art/monsters → js/art.js，圖名 a_檔名）：比 16×16 精細，畫的時候每個像素是 s × ART_U ---------- */
+const ART_U = 0.36,
+  ARTIMG = {};
+function artImg(k) {
+  if (!ARTIMG[k] && typeof ART !== 'undefined' && ART[k]) {
+    const im = new Image();
+    im.src = ART[k];
+    ARTIMG[k] = im;
+  }
+  return ARTIMG[k];
+}
+/* 回傳正方形畫布（圖貼底置中、留 1 格邊），c.art 標記給 drawSpr 換算大小；還沒載好時回傳空白（不快取） */
+function artSprite(name, white) {
+  const key = name + (white ? '|w' : '');
+  let c = SPC.get(key);
+  if (c) return c;
+  const im = artImg(name.slice(2));
+  c = document.createElement('canvas');
+  if (!im || !im.complete || !im.naturalWidth) {
+    c.width = c.height = 18;
+    c.pending = true;
+    return c;
+  }
+  const N = Math.max(im.naturalWidth, im.naturalHeight) + 2;
+  c.width = c.height = N;
+  c.art = true;
+  const x = c.getContext('2d');
+  x.drawImage(im, fl((N - im.naturalWidth) / 2), N - 1 - im.naturalHeight);
+  if (white) {
+    x.globalCompositeOperation = 'source-in';
+    x.fillStyle = '#fff';
+    x.fillRect(0, 0, N, N);
+  }
+  SPC.set(key, c);
+  return c;
+}
 function sprite(name, pal, white) {
+  if (name.startsWith('a_')) return artSprite(name, white);
   const key = name + '|' + JSON.stringify(pal) + (white ? 'w' : '');
   let c = SPC.get(key);
   if (c) return c;
@@ -643,7 +680,16 @@ function drawSpr(c, name, pal, x, y, s, flip, white) {
   const sp = sprite(name, pal, white);
   c.save();
   c.imageSmoothingEnabled = false;
-  if (flip) {
+  if (sp.art) {
+    /* PNG 圖：腳底對齊 y */
+    const u = s * ART_U,
+      z = sp.width * u;
+    if (flip) {
+      c.translate(x, 0);
+      c.scale(-1, 1);
+      c.drawImage(sp, -z / 2, y - z + u, z, z);
+    } else c.drawImage(sp, x - z / 2, y - z + u, z, z);
+  } else if (flip) {
     c.translate(x, 0);
     c.scale(-1, 1);
     c.drawImage(sp, -9 * s, y - 17 * s, 18 * s, 18 * s);

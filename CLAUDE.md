@@ -21,6 +21,7 @@
 | `js/data.js` | 地點／城鎮、怪物、詞綴、通貨、天賦樹 `TREE`、`VER` |
 | `js/sprites.js` | 16x16 像素圖（自動描邊陰影）、8x8 圖示 |
 | `js/gear.js` | 0.3.1 裝備外觀：每種底材的 12×12 圖示 `GEAR`、材質階級 `tierOf`、`gearIcon`、角色外觀疊圖 `heroLook`／`heroSpr`／`heroPal`（`sprites.js` 之後載入） |
+| `js/art.js` | 自動產生（`tools/art.py`）：`art/monsters/*.png` 的 PNG 怪物圖（base64），圖名 `a_檔名`；不要手改 |
 | `js/skills.js` | 0.3 技能石擴充（約 100 種，武器／元素標籤、召喚、增益）與新圖示（`sprites.js` 之後載入） |
 | `js/audio.js` | Web Audio 合成音樂與音效 |
 | `js/items.js` | `newGame`、裝備、詞綴、通貨製作、屬性計算 |
@@ -41,6 +42,7 @@
 | `js/mp.js` | 隊伍（6 碼代碼、Realtime 廣播頻道 `wf-party-代碼`）與多人戰鬥；隊長的裝置計算、廣播 `state` |
 | `js/main.js` | `load`/`save`/`migrate`/`start`，最後執行 `start()` |
 | `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽 |
+| `tools/art.py` | `art/` 的 PNG 像素圖 → `js/art.js`（裁邊、內嵌）；新增怪物圖先用 skill `pixel-art` 產生 PixelLab 提示詞 |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的函式行號索引 |
 | `supabase/migrations/` | 資料庫結構 |
 

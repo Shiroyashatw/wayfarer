@@ -348,7 +348,11 @@ function setFloor(t) {
 const PORT = new Map();
 function portrait(spr, pal) {
   const k = spr + JSON.stringify(pal);
-  if (!PORT.has(k)) PORT.set(k, sprite(spr, pal).toDataURL());
+  if (!PORT.has(k)) {
+    const sp = sprite(spr, pal);
+    if (sp.pending) return sp.toDataURL();
+    PORT.set(k, sp.toDataURL());
+  }
   return PORT.get(k);
 }
 /* 行動順序（戰鬥畫面底部橫列）：list 是 [{n, c, on, dead, img}]，c 是 'me'／'e'／''；{h} 是分隔（下一輪） */

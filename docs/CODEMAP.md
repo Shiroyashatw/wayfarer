@@ -27,6 +27,7 @@
 | 回復規則（自然回復、自動喝水） | `js/items.js`、`js/map.js` | `naturalRegen`、`autoPot`；走路在 `setPos`、時間在 `timeRegen` |
 | 刷新週期 | `js/core.js` | `REFRESH`／`epoch`（怪物、事件 15 分鐘）、`REFRESH_H`／`hepoch`（地城、寶箱、商店、廟宇 1 小時） |
 | 角色外觀（跟著裝備） | `js/gear.js` | `heroLook`（外觀代碼，多人傳 `look`）、`heroSpr(view, look)`（組出 `heroF:…`／`heroS:…` 像素圖）、`heroPal`（材質階級配色）、`GLOOK`、正面武器 `WFRONT`、副手 `OFRONT`；側面武器 `battle.js` 的 `drawWeapon`（`mc` 刃色） |
+| PNG 怪物圖（0.3.1.3） | `art/monsters/`、`tools/art.py`、`js/art.js`、`js/sprites.js` | 原圖放 `art/monsters/檔名.png` → `python3 tools/art.py` → `ART`（圖名 `a_檔名`，怪物 `spr` 填這個）；載入 `artImg`、畫布 `artSprite`（`sprite` 遇到 `a_` 開頭時呼叫）、大小 `ART_U`（`drawSpr` 的 `sp.art`）；提示詞與流程見 skill `.claude/skills/pixel-art` |
 | 裝備圖示、材質階級（0.3.1） | `js/gear.js` | `GEAR`（每個底材一張 12×12，索引對應 `BASES`，新底材要補圖）、`MATC`／`BLADEC`／`TRIMC`／`GEMC`、`tierOf`／`TIERN`、`gearPal`、`gearIcon`（`slotIcon` 呼叫） |
 | 點地圖移動速度（0.3.1.1） | `js/map.js`、`js/ui.js` | `SIM_SPEED`、`simSpeed()`（乘上 `S.simSpd`）；設定面板 `A.simSpd` |
 | 背包批量賣出、上鎖（0.3.1） | `js/ui.js` | `canSell`（城鎮或據點）、`bagListHTML`、`worseThanEq`、`sellSel`、`A.sellMode`／`A.sellPick`／`A.sellQuick`／`A.sellMany`／`A.lock`、單件 `A.sell`；勾選狀態 `SEL.sell`、上鎖 `it.lock` |
@@ -143,19 +144,23 @@
 - **game data**（22）
   `CLASSES:24`、`SKILLS:36`、`RSTAR:53`、`GEM_MAX:55`、`GEM_DRAW:56`、`dustNeed:57`、`GAFF:59`、`GAFFI:141`、`GCUR:143`、`GCURI:153`、`EL:154`、`MONS:155`、`MIMIC:1171`、`EMODS:1184`、`DTYPES:1197`、`DMODS:1308`、`DMODI:1321`、`UMODS:1323`、`EMODI:1330`、`FRAG_PARTS:1332`、`ZONE_CELL:1334`、`ZMODS:1336`、`RCOL:1346`、`RGLOW:1348`、`RAREA:1349`、`SLOTS:1351`、`SLOTN:1352`、`BASES:1365`、`DROPS:1443`、`T5:1444`、`ARMOR:1451`、`AFF:1453`、`AFFI:1607`、`STATN:1608`、`sg:1662`、`CUR:1708`、`CURI:1716`、`TH:1719`、`SPOKES:2011`、`TREE:2118`、`VER:2379`、`START:2380`
 
-### js/sprites.js（1272 行）
+### js/sprites.js（1318 行）
 
 - **pixel sprites (original art)**（3）
-  `SPR:4`、`ICONS:560`、`ICOPAL:582`、`PAL:583`、`FIXED:591`、`sprite:593`、`spriteCanvas:630`、`drawSpr:642`、`ICC:653`、`iconURL:654`、`paintIcon:664`、`wepKind:677`、`wepType:679`、`twoHand:680`、`WTAGN:681`、`offType:682`
-- **icons: currency, item slots, passive nodes**（683）
-  `PIX:684`、`PIXC:868`、`pixURL:869`、`curIcon:903`、`slotIcon:904`、`ICIMG:918`、`nodeIcon:919`
-- **boss sprites**（927）
-  `BOSSPAL:1203`
+  `SPR:4`、`ICONS:560`、`ICOPAL:582`、`PAL:583`、`FIXED:591`、`ART_U:594`、`artImg:596`、`artSprite:605`、`sprite:629`、`spriteCanvas:667`、`drawSpr:679`、`ICC:699`、`iconURL:700`、`paintIcon:710`、`wepKind:723`、`wepType:725`、`twoHand:726`、`WTAGN:727`、`offType:728`
+- **icons: currency, item slots, passive nodes**（729）
+  `PIX:730`、`PIXC:914`、`pixURL:915`、`curIcon:949`、`slotIcon:950`、`ICIMG:964`、`nodeIcon:965`
+- **boss sprites**（973）
+  `BOSSPAL:1249`
 
 ### js/gear.js（685 行）
 
 - **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1）
   `GEAR:3`、`TIER_LV:244`、`tierOf:246`、`MATC:247`、`BLADEC:258`、`gearArt:261`、`gearPal:263`、`GIC:286`、`gearIcon:288`、`GLOOK:340`、`heroLook:347`、`WFRONT:355`、`OFRONT:502`、`put:508`、`stamp:513`、`heroSpr:518`、`heroPal:637`
+
+### js/art.js（6 行）
+
+  `ART:2`
 
 ### js/skills.js（689 行）
 
@@ -179,20 +184,20 @@
 - **modal**（785）
   `showModal:786`、`hideModal:792`、`busy:795`、`openShop:796`
 
-### js/battle.js（2161 行）
+### js/battle.js（2165 行）
 
 - **battle: painted backgrounds**（3）
   `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
 - **battle: logic**（238）
-  `BFX:239`、`POS:241`、`ESLOT:246`、`battleSc:271`、`epos:273`、`etop:285`、`placeBName:286`、`AIL_E:292`、`ailHTML:308`、`placeAil:316`、`bossBar:323`、`enemyBars:333`、`setFloor:343`、`PORT:348`、`portrait:349`、`renderOrder:355`、`bmsg:364`、`pop:371`、`anim:375`、`animOff:378`、`later:392`
-- **battle: rules（單人與組隊共用）**（398）
-  `eInit:400`、`packOf:406`、`skTag:450`、`supOf:452`、`bsum:461`、`mitigate:463`、`skCost:471`、`lifeCost:472`、`canPay:473`、`payCost:475`、`costTxt:481`、`skSt:486`、`skByKey:499`、`extraHit:500`、`heroPacket:501`、`heroDmg:516`、`heroAil:530`、`poisonTick:572`、`takeDmg:574`、`hitCol:585`、`aliveIdx:593`、`actResolve:596`、`addBuff:766`、`petsAct:774`、`enemyResolve:797`、`roundEnd:928`、`battleOpen:938`
-- **battle: solo**（951）
-  `heroMe:953`、`startBattle:983`、`pickTarget:1025`、`renderBHud:1055`、`playEv:1124`、`soloExt:1178`、`useSkill:1191`、`bItem:1217`、`flee:1262`、`allDead:1277`、`afterPlayer:1278`、`enemyPhase:1290`、`endRound:1306`
-- **dungeons (shared by solo and party)**（1321）
-  `dunSpec:1323`、`dunName:1353`、`BIGBOSS:1361`、`dunEnemy:1364`、`dropLoot:1465`、`gemLoot:1543`、`ONSITE_BONUS:1566`、`onsiteNow:1567`、`dunReward:1569`、`dunModsHTML:1593`、`lootList:1599`、`winBattle:1608`、`loseBattle:1708`、`endBattle:1737`、`enterDungeon:1746`、`nextRoom:1764`、`dungeonClear:1786`
-- **battle: drawing**（1812）
-  `drawEnemies:1814`、`selTrack:1855`、`drawSel:1866`、`drawPets:1901`、`renderBattle:1910`、`drawWeapon:1986`、`drawFx:2064`
+  `BFX:239`、`POS:241`、`ESLOT:246`、`battleSc:271`、`epos:273`、`etop:285`、`placeBName:286`、`AIL_E:292`、`ailHTML:308`、`placeAil:316`、`bossBar:323`、`enemyBars:333`、`setFloor:343`、`PORT:348`、`portrait:349`、`renderOrder:359`、`bmsg:368`、`pop:375`、`anim:379`、`animOff:382`、`later:396`
+- **battle: rules（單人與組隊共用）**（402）
+  `eInit:404`、`packOf:410`、`skTag:454`、`supOf:456`、`bsum:465`、`mitigate:467`、`skCost:475`、`lifeCost:476`、`canPay:477`、`payCost:479`、`costTxt:485`、`skSt:490`、`skByKey:503`、`extraHit:504`、`heroPacket:505`、`heroDmg:520`、`heroAil:534`、`poisonTick:576`、`takeDmg:578`、`hitCol:589`、`aliveIdx:597`、`actResolve:600`、`addBuff:770`、`petsAct:778`、`enemyResolve:801`、`roundEnd:932`、`battleOpen:942`
+- **battle: solo**（955）
+  `heroMe:957`、`startBattle:987`、`pickTarget:1029`、`renderBHud:1059`、`playEv:1128`、`soloExt:1182`、`useSkill:1195`、`bItem:1221`、`flee:1266`、`allDead:1281`、`afterPlayer:1282`、`enemyPhase:1294`、`endRound:1310`
+- **dungeons (shared by solo and party)**（1325）
+  `dunSpec:1327`、`dunName:1357`、`BIGBOSS:1365`、`dunEnemy:1368`、`dropLoot:1469`、`gemLoot:1547`、`ONSITE_BONUS:1570`、`onsiteNow:1571`、`dunReward:1573`、`dunModsHTML:1597`、`lootList:1603`、`winBattle:1612`、`loseBattle:1712`、`endBattle:1741`、`enterDungeon:1750`、`nextRoom:1768`、`dungeonClear:1790`
+- **battle: drawing**（1816）
+  `drawEnemies:1818`、`selTrack:1859`、`drawSel:1870`、`drawPets:1905`、`renderBattle:1914`、`drawWeapon:1990`、`drawFx:2068`
 
 ### js/map.js（1662 行）
 
