@@ -2,7 +2,7 @@
 
 ## 溝通規則
 - **一律用繁體中文回覆**（包含進度說明與 commit 訊息）。
-- 版本號：demo 目前是 0.1.x，每次更新 +1（0.1.4 → 0.1.5 …）。使用者明確說要進 0.2 才改。版本號在 `js/data.js` 的 `const VER`，同時更新 `CHANGELOG.md` 與 `README.md`。
+- 版本號：目前是 0.2.5.x（使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。系統規則改了要同步更新。
 
