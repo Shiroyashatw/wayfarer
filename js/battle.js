@@ -274,11 +274,12 @@ function epos(i, es, boss) {
   const n = es.length,
     s = (ESLOT[n] || ESLOT[5])[i] || [0.7, 0],
     p = POS(),
-    sc = battleSc();
+    sc = battleSc(),
+    solo = boss && i === 0 && n === 1;
   return {
-    /* 首領單獨一隻時往畫面水平中間靠 */
-    x: BW * (boss && i === 0 && n === 1 ? 0.58 : s[0]),
-    y: p.y + s[1] * Math.min(1, BH / 560),
+    /* 首領單獨一隻時：右半邊、垂直置中（頂部血條約 85px 到行動順序約 BH-55 的中間，腳底再往下半個身高） */
+    x: BW * (solo ? 0.72 : s[0]),
+    y: solo ? (BH + 30) / 2 + 10 * (sc + 2) : p.y + s[1] * Math.min(1, BH / 560),
     s: boss && i === 0 ? sc + 2 : n <= 2 ? sc + 1 : n === 3 ? sc : Math.max(2, sc - 1)
   };
 }

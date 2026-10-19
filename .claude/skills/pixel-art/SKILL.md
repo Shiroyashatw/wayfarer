@@ -17,7 +17,7 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 
    | 項目 | 一般怪物 | 首領 | 裝備圖示 |
    | --- | --- | --- | --- |
-   | Width／尺寸 | 64 | 128 | 32 |
+   | Width／尺寸 | 64 | 64 | 32 |
    | Transparent background | 勾選 | 勾選 | 勾選 |
    | Direction | West (facing left) | West (facing left) | None |
    | View | Side (Sidescroller) | Side (Sidescroller) | None |
@@ -52,7 +52,7 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 2. 放到 `art/monsters/英文小寫檔名.png`（例如 `jiangshi.png`）。
 3. 跑 `python3 tools/art.py`：裁掉透明邊、轉 base64 寫進 `js/art.js`，圖名是 `a_檔名`。
 4. 把怪物資料的 `spr` 改成 `'a_檔名'`（`MONS` 在 `js/data.js`、亡靈 `UNDEAD` 在 `js/undead.js`、魔霧 `MISTMON` 在 `js/demon.js`、首領 `BOSSSPR`／`SINSPR` 等）；`pal` 對 PNG 圖沒有作用，可保留。
-5. 大小：PNG 圖每個像素畫成 `s × ART_U`（`js/sprites.js`，目前 0.36）。一般怪 64 畫布、人物約 58 高時，跟原本 16×16 的怪差不多大、稍大一點；超過 64 格的圖（首領 128）會等比縮到跟 64 一樣大，所以首領用 128 只是細節加倍，不會變巨大。
+5. 大小：PNG 圖每個像素畫成 `s × ART_U`（`js/sprites.js`，目前 0.36）。一般怪 64 畫布、人物約 58 高時，跟原本 16×16 的怪差不多大、稍大一點；首領也用 64（試過 128，造型反而沒特色，不用）。首領單獨一隻時戰鬥中站在右半邊、垂直置中（`epos`）。
    - 檢查四邊有沒有不透明像素貼邊（被切掉）：有的話請使用者用「留白」提示詞重生。
 6. 用 Playwright 開戰鬥截圖確認（`startBattle(makeEnemy(...))`），也看受擊白閃、倒下動畫、行動順序的小頭像。
 7. 改完照 CLAUDE.md：prettier、`python3 tools/codemap.py`、版本與 CHANGELOG。
