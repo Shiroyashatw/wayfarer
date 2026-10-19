@@ -184,20 +184,20 @@
 - **modal**（785）
   `showModal:786`、`hideModal:792`、`busy:795`、`openShop:796`
 
-### js/battle.js（2165 行）
+### js/battle.js（2166 行）
 
 - **battle: painted backgrounds**（3）
   `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
 - **battle: logic**（238）
-  `BFX:239`、`POS:241`、`ESLOT:246`、`battleSc:271`、`epos:273`、`etop:285`、`placeBName:286`、`AIL_E:292`、`ailHTML:308`、`placeAil:316`、`bossBar:323`、`enemyBars:333`、`setFloor:343`、`PORT:348`、`portrait:349`、`renderOrder:359`、`bmsg:368`、`pop:375`、`anim:379`、`animOff:382`、`later:396`
-- **battle: rules（單人與組隊共用）**（402）
-  `eInit:404`、`packOf:410`、`skTag:454`、`supOf:456`、`bsum:465`、`mitigate:467`、`skCost:475`、`lifeCost:476`、`canPay:477`、`payCost:479`、`costTxt:485`、`skSt:490`、`skByKey:503`、`extraHit:504`、`heroPacket:505`、`heroDmg:520`、`heroAil:534`、`poisonTick:576`、`takeDmg:578`、`hitCol:589`、`aliveIdx:597`、`actResolve:600`、`addBuff:770`、`petsAct:778`、`enemyResolve:801`、`roundEnd:932`、`battleOpen:942`
-- **battle: solo**（955）
-  `heroMe:957`、`startBattle:987`、`pickTarget:1029`、`renderBHud:1059`、`playEv:1128`、`soloExt:1182`、`useSkill:1195`、`bItem:1221`、`flee:1266`、`allDead:1281`、`afterPlayer:1282`、`enemyPhase:1294`、`endRound:1310`
-- **dungeons (shared by solo and party)**（1325）
-  `dunSpec:1327`、`dunName:1357`、`BIGBOSS:1365`、`dunEnemy:1368`、`dropLoot:1469`、`gemLoot:1547`、`ONSITE_BONUS:1570`、`onsiteNow:1571`、`dunReward:1573`、`dunModsHTML:1597`、`lootList:1603`、`winBattle:1612`、`loseBattle:1712`、`endBattle:1741`、`enterDungeon:1750`、`nextRoom:1768`、`dungeonClear:1790`
-- **battle: drawing**（1816）
-  `drawEnemies:1818`、`selTrack:1859`、`drawSel:1870`、`drawPets:1905`、`renderBattle:1914`、`drawWeapon:1990`、`drawFx:2068`
+  `BFX:239`、`POS:241`、`ESLOT:246`、`battleSc:271`、`epos:273`、`etop:286`、`placeBName:287`、`AIL_E:293`、`ailHTML:309`、`placeAil:317`、`bossBar:324`、`enemyBars:334`、`setFloor:344`、`PORT:349`、`portrait:350`、`renderOrder:360`、`bmsg:369`、`pop:376`、`anim:380`、`animOff:383`、`later:397`
+- **battle: rules（單人與組隊共用）**（403）
+  `eInit:405`、`packOf:411`、`skTag:455`、`supOf:457`、`bsum:466`、`mitigate:468`、`skCost:476`、`lifeCost:477`、`canPay:478`、`payCost:480`、`costTxt:486`、`skSt:491`、`skByKey:504`、`extraHit:505`、`heroPacket:506`、`heroDmg:521`、`heroAil:535`、`poisonTick:577`、`takeDmg:579`、`hitCol:590`、`aliveIdx:598`、`actResolve:601`、`addBuff:771`、`petsAct:779`、`enemyResolve:802`、`roundEnd:933`、`battleOpen:943`
+- **battle: solo**（956）
+  `heroMe:958`、`startBattle:988`、`pickTarget:1030`、`renderBHud:1060`、`playEv:1129`、`soloExt:1183`、`useSkill:1196`、`bItem:1222`、`flee:1267`、`allDead:1282`、`afterPlayer:1283`、`enemyPhase:1295`、`endRound:1311`
+- **dungeons (shared by solo and party)**（1326）
+  `dunSpec:1328`、`dunName:1358`、`BIGBOSS:1366`、`dunEnemy:1369`、`dropLoot:1470`、`gemLoot:1548`、`ONSITE_BONUS:1571`、`onsiteNow:1572`、`dunReward:1574`、`dunModsHTML:1598`、`lootList:1604`、`winBattle:1613`、`loseBattle:1713`、`endBattle:1742`、`enterDungeon:1751`、`nextRoom:1769`、`dungeonClear:1791`
+- **battle: drawing**（1817）
+  `drawEnemies:1819`、`selTrack:1860`、`drawSel:1871`、`drawPets:1906`、`renderBattle:1915`、`drawWeapon:1991`、`drawFx:2069`
 
 ### js/map.js（1662 行）
 

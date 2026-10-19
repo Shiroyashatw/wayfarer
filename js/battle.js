@@ -276,7 +276,8 @@ function epos(i, es, boss) {
     p = POS(),
     sc = battleSc();
   return {
-    x: BW * s[0],
+    /* 首領單獨一隻時往畫面水平中間靠 */
+    x: BW * (boss && i === 0 && n === 1 ? 0.58 : s[0]),
     y: p.y + s[1] * Math.min(1, BH / 560),
     s: boss && i === 0 ? sc + 2 : n <= 2 ? sc + 1 : n === 3 ? sc : Math.max(2, sc - 1)
   };
