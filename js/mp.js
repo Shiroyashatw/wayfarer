@@ -339,9 +339,9 @@ function mpStart() {
     room: 0,
     floors: spec.floors,
     n: mem.length,
-    round: 0,
+    av: {},
     tok: 0,
-    ti: -1,
+    ea: -1,
     order: [],
     actor: null,
     leader: CLOUD.uid,
@@ -387,36 +387,39 @@ function mpSpawn() {
   MB.bg = bg;
   MB.boss = boss;
 }
+/* 0.3.10 行動值：每位隊員與每隻敵人依速度輪流行動（共用 battle.js 的 avNext） */
+const mpUnits = () => [
+  ...MB.ps.filter(p => p.alive).map(p => ({ id: p.uid, spd: avSpd(p) })),
+  ...aliveIdx(MB.es).map(i => ({ id: 'e' + i, spd: avSpd(MB.es[i]) }))
+];
+/* 每層重新累積行動值 */
 function mpRound() {
   if (!MB) return;
-  MB.round++;
-  MB.order = MB.ps
-    .filter(p => p.alive)
-    .sort((a, b) => b.st.speed - a.st.speed)
-    .map(p => p.uid);
-  MB.order.push('E');
-  MB.ti = -1;
+  MB.av = {};
+  for (const p of MB.ps) p.turns = 0;
   mpNext();
 }
 function mpNext() {
   if (!MB) return;
-  MB.ti++;
-  if (MB.ti >= MB.order.length) {
-    mpEndRound();
-    return mpRound();
-  }
-  const a = MB.order[MB.ti];
+  const a = avNext(MB.av || (MB.av = {}), mpUnits());
+  if (a == null) return;
+  /* 廣播接下來 6 次行動的預測，給每個人的行動順序橫列 */
+  MB.order = avPreview(MB.av, mpUnits(), 6);
   MB.tok++;
-  if (a === 'E') {
+  MB.ea = -1;
+  if (a[0] === 'e' && !MB.ps.some(p => p.uid === a)) {
     MB.actor = 'E';
+    MB.ea = +a.slice(1);
     MB.dl = 0;
     mpPush();
     clearTimeout(MBT);
-    MBT = setTimeout(mpEnemy, 850);
+    MBT = setTimeout(mpEnemy, 650);
     return;
   }
   const p = MB.ps.find(q => q.uid === a);
   if (!p || !p.alive) return mpNext();
+  /* 上一次行動之後的回復、防禦與增益倒數 */
+  if (p.turns++) roundEnd(p);
   if (p.frozen) {
     p.frozen = 0;
     MB.actor = a;
@@ -429,9 +432,6 @@ function mpNext() {
   MB.actor = a;
   mpArm(p.gone ? 1500 : TURN_MS);
   mpPush([{ t: 'turn', uid: a }]);
-}
-function mpEndRound() {
-  for (const p of MB.ps) roundEnd(p);
 }
 function mpOnAct(uid, k, tok, tg) {
   if (!MB || MB.actor !== uid || tok !== MB.tok) return;
@@ -483,18 +483,15 @@ function mpResolve(uid, k, auto, tg = 0) {
     else mpNext();
   }, tot + 500);
 }
-/* 怪物行動：每隻活著的敵人依序結算（共用 enemyResolve） */
+/* 怪物行動：輪到的那一隻敵人結算（共用 enemyResolve） */
 function mpEnemy() {
   if (!MB) return;
+  const i = MB.ea;
   let fx = [],
     off = 0;
-  for (let i = 0; i < MB.es.length; i++) {
-    if (MB.es[i].hp <= 0) continue;
-    if (!MB.ps.some(p => p.alive)) break;
-    const ev = enemyResolve(MB.es, i, MB.ps, { ew: MB.spec.eleweak ? 20 : 0 }),
-      end = ev.reduce((a, f) => Math.max(a, f.at || 0), 0);
-    fx = fx.concat(ev.map(f => ({ ...f, at: (f.at || 0) + off })));
-    off += end + 150;
+  if (MB.es[i] && MB.es[i].hp > 0 && MB.ps.some(p => p.alive)) {
+    fx = enemyResolve(MB.es, i, MB.ps, { ew: MB.spec.eleweak ? 20 : 0 });
+    off = fx.reduce((a, f) => Math.max(a, f.at || 0), 0) + 150;
   }
   for (const f of fx) if (f.t === 'down') f.s = `${(MB.ps.find(p => p.uid === f.who) || {}).name} 倒下了！`;
   mpPush(fx);
@@ -676,7 +673,7 @@ function mpMy(k) {
 /* 一層的獎勵：經驗是整群加總後依人數平均，金幣與掉寶各自結算 */
 function mpRoomReward(info, n = 1) {
   const list = Array.isArray(info) ? info : [info],
-    xp = Math.round(list.reduce((a, e) => a + e.xp, 0) / Math.max(1, n));
+    xp = Math.round((list.reduce((a, e) => a + e.xp, 0) / Math.max(1, n)) * (1 + pactMech('xp') / 100));
   let gold = 0;
   const drops = [];
   for (const e of list) {
@@ -818,33 +815,23 @@ function renderMBHud() {
     : '';
   if (e) placeBName(epos(ti, es, MB.boss));
   {
-    /* 行動順序：這一輪（目前輪到的人亮起來）＋下一輪預估；怪物回合列出每隻活著的敵人 */
-    const ens = on =>
-      es
-        .map(o => (o.hp > 0 ? { n: o.name, c: 'e', on, img: portrait(o.spr, o.pal) } : null))
-        .filter(Boolean)
-        .slice(0, 3);
-    const row = (a, i) => {
-      if (a === 'E') return ens(MB.actor === 'E' && i === MB.ti);
+    /* 0.3.10 行動順序：目前行動的（亮起來）＋隊長算好的接下來 6 次行動 */
+    const row = (a, on) => {
+      if (a == null) return null;
       const q = MB.ps.find(p => p.uid === a);
-      return q
-        ? [
-            {
-              n: q.name,
-              c: a === CLOUD.uid ? 'me' : '',
-              on: i === MB.ti && MB.actor === a,
-              dead: !q.alive,
-              img: portrait(heroSpr('F', q.look || '.....'), palFor(q))
-            }
-          ]
-        : [];
+      if (q)
+        return {
+          n: q.name,
+          c: a === CLOUD.uid ? 'me' : '',
+          on,
+          dead: !q.alive,
+          img: portrait(heroSpr('F', q.look || '.....'), palFor(q))
+        };
+      const o = a[0] === 'e' && es[+a.slice(1)];
+      return o && o.hp > 0 ? { n: o.name, c: 'e', on, img: portrait(o.spr, o.pal) } : null;
     };
-    const cur = (MB.order || []).flatMap((a, i) => (i >= Math.max(0, MB.ti) ? row(a, i) : [])),
-      nxt = MB.ps
-        .filter(p => p.alive)
-        .sort((a, b) => b.st.speed - a.st.speed)
-        .flatMap(p => row(p.uid, -1).map(q => ({ ...q, on: false })));
-    renderOrder([...cur, { h: '下一輪' }, ...nxt.slice(0, Math.max(1, 7 - cur.length))]);
+    const cur = row(MB.actor === 'E' ? 'e' + MB.ea : MB.actor, true);
+    renderOrder([cur, ...(MB.order || []).map(a => row(a, false))].filter(Boolean));
   }
   const big = bossBar(
     MB.boss ? es[0] : es.find(o => (o.rar || 0) >= 3 && o.hp > 0),

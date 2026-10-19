@@ -392,7 +392,7 @@ function demonSpawns(out, cells, hp) {
       lng: ln,
       name: `魔霧 ${ROMAN[z.tier]}`,
       tier: z.tier,
-      lv: S.lv + z.tier,
+      lv: aLv() + z.tier,
       gl: '176,107,255',
       lbl: `魔霧 ${ROMAN[z.tier]} ${mistProg(z.id)}%`,
       lc: '#d8b8ff'
@@ -422,7 +422,7 @@ function demonSpawns(out, cells, hp) {
         lng: ln,
         sin: sin.k,
         name: `${sin.n}的雕像`,
-        lv: S.lv + 3,
+        lv: aLv() + 3,
         pal: sin.pal,
         gl: '255,58,90',
         lbl: sin.n,
@@ -454,7 +454,7 @@ function demonSpawns(out, cells, hp) {
         [x, y] = p;
         const q = r >>> 4,
           rar = q % 100 < 6 ? 2 : q % 100 < 30 ? 1 : 0,
-          lv = Math.max(1, S.lv + ((r >>> 3) % 3) - 1),
+          lv = Math.max(1, aLv() + ((r >>> 3) % 3) - 1),
           e = {
             kind: 'monster',
             x,
@@ -599,8 +599,9 @@ function mistWin(b) {
     z = MZ.find(q => q.id === b.mist);
   if (!z) return '';
   const inc =
-    (([4, 7, 12, 12, 18][e.rar || 0] + (MISTMON.some(m => m.name === b.mistBase) ? 2 : 0)) * (b.ud ? 1.5 : 1)) /
-    (1 + 0.15 * z.tier);
+    ((([4, 7, 12, 12, 18][e.rar || 0] + (MISTMON.some(m => m.name === b.mistBase) ? 2 : 0)) * (b.ud ? 1.5 : 1)) /
+      (1 + 0.15 * z.tier)) *
+    pactK('mist');
   S.mistp = S.mistp || { _ep: ep2() };
   const p = Math.min(100, Math.round(mistProg(z.id) + inc));
   S.mistp[z.id] = p;
@@ -714,16 +715,22 @@ function sinReward(sp) {
     S.sins = S.sins || {};
     S.sins[s.k] = (S.sins[s.k] || 0) + 1;
     out.push(`${s.n}的殘魂`);
-    if (Math.random() < 0.1 + 0.05 * (sp.xk || 0)) {
+    if (Math.random() < (0.1 + 0.05 * (sp.xk || 0)) * tierBoss() * pactK('sin')) {
       const it = makeLegend(s.k);
       giveItem(it);
       out.push(itemName(it));
     }
-    if (Math.random() < 0.35) out.push(giveJewel(1 + fl(Math.random() * 3)));
+    if (Math.random() < 0.35 * tierBoss() * pactK('sin')) out.push(giveJewel(1 + fl(Math.random() * 3)));
   } else if (sp.dt === 'sinking') {
-    const it = makeLegend(SINS[fl(Math.random() * 7)].k, S.lv + 5);
+    const it = makeLegend(SINS[fl(Math.random() * 7)].k, aLv() + 5);
     giveItem(it);
     out.push(itemName(it), giveJewel(3));
+    /* 0.3.10：高 T 有機會多一件傳奇 */
+    if (Math.random() < tierBoss() - 1) {
+      const it2 = makeLegend(SINS[fl(Math.random() * 7)].k, aLv() + 5);
+      giveItem(it2);
+      out.push(itemName(it2));
+    }
     S.title = '七宗罪之王討伐者';
     out.push('稱號「七宗罪之王討伐者」');
   }
@@ -737,7 +744,7 @@ function sinHTML(e) {
     have = S.cur.mfrag || 0,
     need = SIN_COST + x,
     ms = sinMods(e);
-  return `<b style="color:#ff8a9a">${s.boss}</b><br>${s.d}。<br>挑戰需要 ${SIN_COST} 片魔霧碎片，3 層，怪物 Lv${S.lv + 3}，自帶 6 條詞綴：${ms.map(m => DMODI[m].n).join('、')}。每多放 1 片加 1 條魔霧詞綴（最多 +${SIN_EXTRA}），掉寶數量與稀有度各 +15%。<br>固定掉${s.n}的殘魂，${Math.round((0.1 + 0.05 * x) * 100)}% 掉傳奇裝備「${LEGI[s.k].n}」，35% 掉惡魔珠寶。<br><span class="sub">魔霧碎片：${have}・這次放 ${need} 片</span>`;
+  return `<b style="color:#ff8a9a">${s.boss}</b><br>${s.d}。<br>挑戰需要 ${SIN_COST} 片魔霧碎片，3 層，怪物 Lv${aLv() + 3}，自帶 6 條詞綴：${ms.map(m => DMODI[m].n).join('、')}。每多放 1 片加 1 條魔霧詞綴（最多 +${SIN_EXTRA}），掉寶數量與稀有度各 +15%。<br>固定掉${s.n}的殘魂，${Math.round((0.1 + 0.05 * x) * 100)}% 掉傳奇裝備「${LEGI[s.k].n}」，35% 掉惡魔珠寶。<br><span class="sub">魔霧碎片：${have}・這次放 ${need} 片</span>`;
 }
 const sinMods = e => {
   const pool = DMODS.map(m => m.id),
@@ -817,7 +824,7 @@ Object.assign(A, {
       mods: sinMods(e),
       umods: um,
       xk: x,
-      lv: S.lv + 3,
+      lv: aLv() + 3,
       lat: e.lat,
       lng: e.lng,
       floors: 3,
@@ -832,7 +839,7 @@ Object.assign(A, {
       id: 'sk' + uid(),
       dt: 'sinking',
       mods: [],
-      lv: S.lv + 5,
+      lv: aLv() + 5,
       lat: S.lat,
       lng: S.lng,
       name: '七宗罪之王',

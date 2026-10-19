@@ -145,6 +145,21 @@ function migrate(s) {
     if (s.hunt) Object.assign(s.hunt, { heat: 0, tAt: 0 });
     s.v = 15;
   }
+  if (s.v < 16) {
+    // 0.3.10：T 級；舊存檔依目前等級直接給到對應的 T
+    s.tmax = s.tier = tierOfLv(s.lv || 1);
+    s.v = 16;
+  }
+  if (s.v < 17) {
+    // 0.3.11：技能石改成商店購買、靈魂（打怪）升級；粉塵併進靈魂，舊的靈魂碎片每 10 個換 1 個祈願石（另送 10 個），祈願改抽契靈
+    const c = (s.cur = s.cur || {});
+    c.wish = (c.wish || 0) + fl((c.soul || 0) / 10) + 10;
+    c.soul = c.dust || 0;
+    delete c.dust;
+    s.pity = {};
+    s.pact = { have: {}, eq: { fight: [], drop: [] }, board: {}, follow: null };
+    s.v = 17;
+  }
   return s;
 }
 function start() {

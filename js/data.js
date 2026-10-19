@@ -32,7 +32,7 @@ const CLASSES = {
   ranger: { name: '遊俠之魂', color: '#3f9a52', gem: 'double', desc: '起點在右下，敏捷路線：暴擊、閃避、連擊與毒' },
   mage: { name: '術士之魂', color: '#5865d6', gem: 'fire', desc: '起點在上方，智力路線：法術、魔力、抗性' }
 };
-/* r 是技能石星級（祈願的稀有度）：3★ 常見、4★ 少見、5★ 稀有 */
+/* r 是技能的強度分組（0.3.11 起只用來排商店的需求等級，見 items.js 的 gemReq） */
 const SKILLS = {
   attack: { name: '攻擊', mp: 0, kind: 'attack', mult: 1, icon: 'axe' },
   power: { name: '強力一擊', mp: 4, kind: 'attack', mult: 1.6, icon: 'sword', r: 3 },
@@ -61,11 +61,11 @@ const SKILLS = {
   cleave: { name: '裂地斬', mp: 14, kind: 'attack', mult: 1.7, tg: 'all', fx: 'whirl', icon: 'axe', r: 5 },
   sanct: { name: '聖域', mp: 14, kind: 'heal', heal: 0.6, healAll: 40, icon: 'heart', r: 5 }
 };
-const RSTAR = { 3: '#7fb4ff', 4: '#c58cff', 5: '#ffcf5a' };
 /* 技能石：等級上限 30，每 5 級開 1 個空的刻印槽，要用刻印石點下去才會抽出詞綴 */
 const GEM_MAX = 30;
-const GEM_DRAW = 10;
-const dustNeed = lv => Math.round(8 * Math.pow(lv, 1.5));
+/* 0.3.11：技能石在城鎮商店購買，用擊殺怪物得到的靈魂升級（取代粉塵）；祈願每抽 1 個祈願石 */
+const GEM_DRAW = 1;
+const soulNeed = lv => Math.round(8 * Math.pow(lv, 1.5));
 /* 刻印詞綴：t 是 T1～T3 的數值範圍（T1 最高、最少見），k 是可以出現的技能種類 */
 const GAFF = [
   {
@@ -152,8 +152,8 @@ const GAFF = [
 const GAFFI = Object.fromEntries(GAFF.map(a => [a.id, a]));
 /* 技能石專用通貨（存在 S.cur，但不列在裝備製作） */
 const GCUR = [
-  { id: 'soul', n: '靈魂碎片', d: `祈願用，每抽 ${GEM_DRAW} 個`, c: '#b7a6ff' },
-  { id: 'dust', n: '靈魂粉塵', d: '分解技能石得到，用來替技能石升級', c: '#d8d0ff' },
+  { id: 'soul', n: '靈魂', d: '擊殺怪物得到，用來替技能石升級', c: '#b7a6ff' },
+  { id: 'wish', n: '祈願石', d: `契靈祈願用，每抽 ${GEM_DRAW} 個`, c: '#ffd66a' },
   { id: 'eng', n: '刻印石', d: '在空的刻印槽抽一條隨機詞綴', c: '#9fd4ef' },
   { id: 'engC', n: '混沌刻印石', d: '隨機重洗一條刻印詞綴', c: '#e58a3a' },
   { id: 'engX', n: '崇高刻印石', d: '在空的刻印槽抽一條 T1～T2 詞綴', c: '#fff2b0' },
@@ -1193,7 +1193,7 @@ const MIMIC = {
   gold: 30
 };
 const EMODS = [
-  { id: 'swift', n: '迅捷', d: '有機率行動兩次' },
+  { id: 'swift', n: '迅捷', d: '速度大幅提升，更常輪到行動' },
   { id: 'tough', n: '堅韌', d: '生命 +60%' },
   { id: 'fire', n: '烈焰', d: '攻擊附帶火焰傷害' },
   { id: 'cold', n: '冰霜', d: '攻擊附帶冰冷傷害，可能凍結你' },
@@ -1323,7 +1323,7 @@ const DMODS = [
   { id: 'fire', n: '灼熱之地', d: '怪物攻擊附帶火焰傷害', q: 8, r: 6, em: 'fire' },
   { id: 'cold', n: '冰封之地', d: '怪物攻擊附帶冰冷傷害，可能凍結你', q: 8, r: 6, em: 'cold' },
   { id: 'shock', n: '雷霆之地', d: '怪物攻擊附帶閃電傷害', q: 8, r: 6, em: 'shock' },
-  { id: 'swift', n: '迅捷怪物', d: '怪物有機率行動兩次', q: 10, r: 8, em: 'swift' },
+  { id: 'swift', n: '迅捷怪物', d: '怪物速度大幅提升，更常輪到行動', q: 10, r: 8, em: 'swift' },
   { id: 'leech', n: '吸血怪物', d: '怪物造成傷害時回復生命', q: 6, r: 5, em: 'leech' },
   { id: 'eleweak', n: '元素削弱', d: '你的全部抗性 -20%', q: 12, r: 10 },
   { id: 'noregen', n: '枯竭之地', d: '藥水效果減半', q: 10, r: 8 },
@@ -1348,7 +1348,7 @@ const ZMODS = [
   { n: '魔物潮', d: '稀有與魔法怪出現率 +40%', rare: 1.4 },
   { n: '豐收', d: '物品數量 +30%', q: 30 },
   { n: '寶光', d: '物品稀有度 +30%', r: 30 },
-  { n: '靈魂共鳴', d: '靈魂碎片掉落加倍', soul: 2 },
+  { n: '靈魂共鳴', d: '靈魂掉落加倍', soul: 2 },
   { n: '刻印之風', d: '刻印石掉落率 +50%', eng: 1.5 },
   { n: '金脈', d: '金幣 +50%', gold: 1.5 },
   { n: '修羅場', d: '經驗 +30%，怪物等級 +1', xp: 1.3, mlv: 1 },
@@ -2390,5 +2390,5 @@ const TREE = (() => {
   });
   return { N, E, byId };
 })();
-const VER = '0.3.1.9';
+const VER = '0.3.11';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

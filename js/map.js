@@ -786,7 +786,18 @@ function soloDunAt(i, j, ep = hepoch()) {
     mods = [];
   for (let a = 0; a < n; a++) mods.push(pool.splice((q >>> (10 + a * 4)) % pool.length, 1)[0]);
   const [la, ln] = toLL(x, y);
-  return { id: `ds${i}_${j}`, kind: 'dungeon', x, y, lat: la, lng: ln, dt: 'normal', mods, lv: S.lv + T.lv, name: T.n };
+  return {
+    id: `ds${i}_${j}`,
+    kind: 'dungeon',
+    x,
+    y,
+    lat: la,
+    lng: ln,
+    dt: 'normal',
+    mods,
+    lv: dunLv(q >>> 24, T.lv),
+    name: T.n
+  };
 }
 function dungeonAt(i, j, ep = hepoch()) {
   const r = h(i, j, 41);
@@ -806,7 +817,7 @@ function dungeonAt(i, j, ep = hepoch()) {
     mods = [];
   for (let a = 0; a < n; a++) mods.push(pool.splice((q >>> (10 + a * 4)) % pool.length, 1)[0]);
   const [la, ln] = toLL(x, y);
-  return { id: `d${i}_${j}`, kind: 'dungeon', x, y, lat: la, lng: ln, dt, mods, lv: S.lv + T.lv, name: T.n };
+  return { id: `d${i}_${j}`, kind: 'dungeon', x, y, lat: la, lng: ln, dt, mods, lv: dunLv(q >>> 24, T.lv), name: T.n };
 }
 /* 只把廟宇當成參拜點；教會、清真寺等不算。同一個 350 公尺格子只放一座，避免市區太密 */
 const NOT_TEMPLE = /教會|教堂|聖母|基督|浸信|天主|長老|禮拜|清真|福音|聚會所|召會|摩門|耶穌/;
@@ -855,12 +866,12 @@ function genEntities() {
     const q = h(i, j, ep + 5) % 100,
       danger = S.lv >= 4 && h(i, j, ep + 13) % 1000 < 7,
       zm = zoneXY(x, y).m,
-      zr = (zm.rare || 1) * footRare(fv);
-    let lv = Math.max(1, S.lv + ((r >>> 4) % 3) - 1 + (zm.mlv || 0)),
+      zr = (zm.rare || 1) * footRare(fv) * (1 + tierBonus().rare / 100);
+    let lv = Math.max(1, aLv() + ((r >>> 4) % 3) - 1 + (zm.mlv || 0)),
       rar = q < (S.lv >= 3 ? 4 : 0) * zr ? 2 : q < (S.lv >= 3 ? 20 : 8) * zr ? 1 : 0;
     if (danger) {
       rar = 4;
-      lv = S.lv + 3;
+      lv = aLv() + 3;
     }
     const base = pickMon(r >>> 12, lv),
       mods = rar
@@ -928,17 +939,17 @@ function genEntities() {
   const mkEv = (id, type, x, y, r, town) => {
     if (S.cleared[id] === ee) return;
     if (type === 'bounty') {
-      const base = pickMon(r, S.lv + 1);
+      const base = pickMon(r, aLv() + 1);
       put(id, {
         kind: 'monster',
         x,
         y,
-        lv: S.lv + 1,
+        lv: aLv() + 1,
         base,
         rar: 2,
         mods: rollMods(r >>> 3, 3),
         bounty: id,
-        name: makeEnemy(base, S.lv + 1, 2, rollMods(r >>> 3, 3)).name,
+        name: makeEnemy(base, aLv() + 1, 2, rollMods(r >>> 3, 3)).name,
         ph: 1,
         ev: true
       });
@@ -948,7 +959,7 @@ function genEntities() {
         sub: type,
         x,
         y,
-        lv: S.lv + 1,
+        lv: aLv() + 1,
         town,
         name: { merchant: '流浪商人', rift: '魔物裂隙', fountain: '祝福泉' }[type],
         ev: true
@@ -1000,6 +1011,8 @@ function refreshEntities(force) {
     chunkVer * 1e9 +
     '|' +
     zonesKey() +
+    '|T' +
+    tierNow() +
     (S.lv >= 5 ? '|' + mistEp() : '');
   if (!force && spawnAt && dist(S.lat, S.lng, spawnAt[0], spawnAt[1]) < 120 && spawnAt[2] === ep) return;
   spawnAt = [S.lat, S.lng, ep];
@@ -1043,7 +1056,7 @@ function isDone(e) {
     (e.kind === 'mseal' && !!S.defeated[e.id])
   );
 }
-const townLv = t => S.lv + 1 + (t.big ? 1 : 0);
+const townLv = t => aLv() + 1 + (t.big ? 1 : 0);
 
 /* ================= world rendering ================= */
 const wv = $('world'),
@@ -1324,6 +1337,13 @@ function renderWorld(t) {
       drawSpr(c, heroSpr('F'), heroPal(), hx, hy - (walking ? Math.abs(Math.sin(t / 90)) * 3 : 0), s + 0.3);
     }
   });
+  /* 0.3.11：跟隨的契靈在左後方飄著 */
+  const fo = pactFollow();
+  if (fo)
+    list.push({
+      y: hy - 1,
+      draw: () => drawSpr(c, PACTI[fo].spr, pactPal(fo), hx - 15 * s, hy - 6 * s + Math.sin(t / 300) * 2 * s, s * 0.75)
+    });
   list.sort((a, b) => a.y - b.y).forEach(o => o.draw());
   drawUndeadMark(c, t);
   drawSealMark(c, t);
