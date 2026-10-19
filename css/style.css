@@ -342,3 +342,20 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 #tutBox h3{margin:0;font-family:var(--f-pix);font-weight:400;font-size:19px;color:var(--gold);text-transform:none;letter-spacing:0}
 #tutBox p{margin:0;font-size:14px;line-height:1.6}
 #tutBox .btns{justify-content:flex-end}
+
+/* ---------- battle: status icons & boss bar ---------- */
+.ailbox{position:absolute;display:flex;gap:2px;pointer-events:none;z-index:2}
+.ail{position:relative;width:18px;height:18px;border-radius:5px;background:#000c;border:1px solid #fff4;display:grid;place-items:center;animation:ailin .25s ease-out}
+.ail img{width:12px;height:12px;image-rendering:pixelated}
+.ail b{position:absolute;right:-4px;bottom:-5px;font-size:9px;font-family:var(--f-pix);font-weight:400;color:#fff;text-shadow:0 1px 1px #000,0 0 2px #000}
+.ail-flame{border-color:#ff8a3a;box-shadow:0 0 6px #ff8a3a88}.ail-ice{border-color:#7fe0ff;box-shadow:0 0 6px #7fe0ff88}
+.ail-bolt{border-color:#fff27a;box-shadow:0 0 6px #fff27a88}.ail-leaf{border-color:#7bd36b;box-shadow:0 0 6px #7bd36b88}
+.ail-shield{border-color:#9fd4ef}
+@keyframes ailin{from{transform:scale(1.6);opacity:0}}
+.bboss{position:absolute;top:calc(42px + var(--sat));left:calc(14px + var(--sal));right:calc(14px + var(--sar));display:grid;gap:3px;pointer-events:none;z-index:2}
+.bbname{text-align:center;font-family:var(--f-pix);font-size:16px;text-shadow:0 1px 0 #000,0 0 8px #000}
+.bbname small{font-family:var(--f-ui);font-size:10px;color:#ddd}
+.bbar{position:relative;height:14px;border-radius:7px;background:#1a0e10;border:1px solid #000;box-shadow:0 0 0 1px #c9a45c88,0 4px 12px #0008;overflow:hidden}
+.bbar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(#ff5a4a,#a01a24);transition:width .35s}
+.bbar span{position:absolute;inset:0;text-align:center;font-family:var(--f-pix);font-size:10px;line-height:14px;text-shadow:0 1px 1px #000}
+.bossmode .bmsg{top:calc(96px + var(--sat))}

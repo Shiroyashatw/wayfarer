@@ -923,7 +923,7 @@ function mpPos(i) {
   const p = POS(),
     col = i % 2,
     row = fl(i / 2);
-  return { x: BW * (col ? 0.13 : 0.35) - row * 4, y: p.y - row * 112 - col * 50 };
+  return { x: BW * (col ? 0.13 : 0.35) - row * 4, y: p.hy - row * 112 - col * 50 };
 }
 function renderMBHud() {
   if (!MB) return;
@@ -973,9 +973,15 @@ function renderMBHud() {
   const ep = $('epills');
   ep.style.left = p.ex + 'px';
   ep.style.top = p.y + 14 + 'px';
-  ep.innerHTML = e
-    ? `<div class="bp hp"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><span>${Math.ceil(e.hp).toLocaleString()}</span></div>`
-    : '';
+  const big = bossBar(e, MB.boss),
+    es = battleSc() + (MB.boss ? 2 : 1);
+  $('bname').hidden = big;
+  placeAil('eail', p.ex + 6 * es, p.y - 16 * es, e ? ailHTML(MB.es, AIL_E) : '');
+  $('hail').innerHTML = '';
+  ep.innerHTML =
+    e && !big
+      ? `<div class="bp hp"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><span>${Math.ceil(e.hp).toLocaleString()}</span></div>`
+      : '';
   $('hpills').innerHTML = '';
   $('mpills').innerHTML = MB.ps
     .map((q, i) => {
@@ -983,7 +989,10 @@ function renderMBHud() {
       const hp = Math.max(0, Math.ceil(q.hp)),
         hr = hp / q.st.maxhp,
         low = q.alive && hr < 0.3;
-      return `<div class="mp ${q.uid === MB.actor ? 'on' : ''} ${q.alive ? '' : 'down'} ${low ? 'low' : ''} ${q.uid === CLOUD.uid ? 'mine' : ''}" style="left:${ps.x}px;top:${ps.y + 8}px"><b>${esc(q.name)}${q.gone ? '（離線）' : q.alive ? '' : '（倒下）'}</b><i class="mh"><i style="width:${hr * 100}%"></i><em>${hp}/${q.st.maxhp}</em></i><i class="mm"><i style="width:${(q.mp / q.st.maxmp) * 100}%"></i><em>${Math.max(0, Math.round(q.mp))}</em></i></div>`;
+      return (
+        `<div class="mp ${q.uid === MB.actor ? 'on' : ''} ${q.alive ? '' : 'down'} ${low ? 'low' : ''} ${q.uid === CLOUD.uid ? 'mine' : ''}" style="left:${ps.x}px;top:${ps.y + 8}px"><b>${esc(q.name)}${q.gone ? '（離線）' : q.alive ? '' : '（倒下）'}</b><i class="mh"><i style="width:${hr * 100}%"></i><em>${hp}/${q.st.maxhp}</em></i><i class="mm"><i style="width:${(q.mp / q.st.maxmp) * 100}%"></i><em>${Math.max(0, Math.round(q.mp))}</em></i></div>` +
+        `<div class="ailbox" style="left:${ps.x + 5 * (battleSc() - 1)}px;top:${ps.y - 16 * (battleSc() - 1)}px">${ailHTML(q, AIL_H)}</div>`
+      );
     })
     .join('');
   const sks = (me && me.sks) || mySkills(),
@@ -1031,15 +1040,7 @@ function mpTurnBar() {
       : p
         ? `<i style="width:${(left / TURN_MS) * 100}%"></i><span>${mine ? '<b>輪到你了</b>' : `輪到 ${esc(p.name)}`}</span><span>${Math.ceil(left / 1000)} 秒</span>`
         : '<span>準備中…</span>';
-  $('bstat').textContent = [
-    MB.es.poison ? `中毒 ${MB.es.poison}` : '',
-    MB.es.burn ? `燃燒 ${MB.es.burn}` : '',
-    MB.es.shock ? `感電 ${MB.es.shock}` : '',
-    MB.es.frozen ? '凍結' : ''
-  ]
-    .filter(Boolean)
-    .join('・');
-  $('bstat').hidden = !$('bstat').textContent;
+  $('bstat').hidden = true;
 }
 function renderMB(t) {
   const c = bctx,
@@ -1112,7 +1113,7 @@ function renderMB(t) {
       continue;
     }
     const w = where[f.from || f.at] || { x: p.hx, y: p.y };
-    drawFx(c, f, q, { hx: w.x, ex: p.ex, y: f.type === 'heal' ? w.y : p.y }, hs);
+    drawFx(c, f, q, { hx: w.x, ex: p.ex, y: p.y, hy: w.y }, hs);
   }
   c.font = 'bold 22px DotGothic16, sans-serif';
   c.textAlign = 'center';
