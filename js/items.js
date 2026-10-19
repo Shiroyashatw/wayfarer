@@ -3,9 +3,11 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 15,
+    v: 17,
     cls: 'novice',
     lv: 1,
+    tier: 1,
+    tmax: 1,
     xp: 0,
     gold: 80,
     crystal: 0,
@@ -15,7 +17,8 @@ function newGame() {
     ethers: 1,
     inv: [],
     eq: {},
-    cur: { trans: 4, aug: 4, regal: 2, alch: 1, chaos: 1, exalt: 0, soul: 0, dust: 0, eng: 1 },
+    cur: { trans: 4, aug: 4, regal: 2, alch: 1, chaos: 1, exalt: 0, soul: 0, wish: 10, eng: 1 },
+    pact: { have: {}, eq: { fight: [], drop: [] }, board: {}, follow: null },
     gems: [],
     flags: [],
     scrolls: { stele: 0, circle: 0 },
@@ -357,15 +360,42 @@ function corrupt(g) {
   g.lv--;
   return '劣化：等級 -1';
 }
-/* 升級：要粉塵，而且技能石等級不能超過角色等級 */
+/* 升級：要靈魂（擊殺怪物得到），而且技能石等級不能超過角色等級 */
 function gemLvBlock(g) {
   if (g.cor) return '已腐化';
   if (g.lv >= GEM_MAX) return '已滿級';
   if (g.lv + 1 > S.lv) return `需要角色 Lv${g.lv + 1}`;
-  if ((S.cur.dust || 0) < dustNeed(g.lv)) return '粉塵不足';
+  if ((S.cur.soul || 0) < soulNeed(g.lv)) return '靈魂不足';
   return '';
 }
-const gemDustBack = g => ({ 3: 20, 4: 60, 5: 200 })[SKILLS[g.k].r || 3] + Math.round(g.dust * 0.7);
+/* 分解：退回升級花掉的靈魂的 70%（g.dust 是累積投入的靈魂） */
+const gemSoulBack = g => Math.round((g.dust || 0) * 0.7);
+/* 0.3.11 技能石商店：每種技能有需求等級（開局技能 Lv1，其餘依強度分組平均分散到 Lv1～28，也就是 T1～T5），
+   城鎮商店只賣已解鎖 T 的技能石；買下來是 Lv1，每種技能只能有一顆 */
+const GEM_START = ['power', 'bash', 'double', 'fire', 'heal'];
+let GEMREQ = null;
+function gemReq(k) {
+  if (!GEMREQ) {
+    const ks = GEMK(),
+      ord = [
+        ...GEM_START,
+        ...ks.filter(q => !GEM_START.includes(q)).sort((a, b) => (SKILLS[a].r || 3) - (SKILLS[b].r || 3))
+      ];
+    GEMREQ = {};
+    ord.forEach((q, i) => (GEMREQ[q] = GEM_START.includes(q) ? 1 : 1 + Math.round((27 * i) / (ord.length - 1))));
+  }
+  return GEMREQ[k] || 1;
+}
+const gemTier = k => tierOfLv(gemReq(k));
+const gemPrice = k => Math.round(30 + 8 * Math.pow(gemReq(k), 1.6));
+const hasGem = k => S.gems.some(g => g.k === k);
+function gemBuyBlock(k) {
+  if (hasGem(k)) return '已擁有';
+  if (gemTier(k) > tierMax()) return `T${gemTier(k)} 解鎖`;
+  if (S.lv < gemReq(k)) return `需要 Lv${gemReq(k)}`;
+  if (S.gold < gemPrice(k)) return '金幣不足';
+  return '';
+}
 function giveGem(k) {
   const g = newGem(k);
   S.gems.push(g);
@@ -498,6 +528,7 @@ function sumStats() {
   }
   jewelStats(A);
   zodStats(A);
+  if (typeof pactStats === 'function') pactStats(A);
   if (typeof ascStats === 'function') ascStats(A);
   return t;
 }
@@ -695,7 +726,9 @@ function gainXP(n) {
     S.xp -= xpNeed(S.lv);
     S.lv++;
     up = true;
-    addLog(`升級了！現在是 Lv${S.lv}，獲得 1 天賦點`);
+    /* 0.3.11：每升一級送 2 個祈願石 */
+    giveCur('wish', 2);
+    addLog(`升級了！現在是 Lv${S.lv}，獲得 1 天賦點、2 個祈願石`);
   }
   return up;
 }
@@ -710,6 +743,50 @@ function dayPhase() {
 const buffOn = () => S.buff && S.buff.until > now();
 
 /* ================= enemies ================= */
+/* 0.3.10 T 級（比照 PoE 的地圖階級）：T1～T16 各有一段怪物等級，你所在的 T 決定整張地圖的怪物、地城、事件等級。
+   要往上突破得打過城鎮的「突破試煉」；T 越高怪物越強，但稀有怪變多、掉寶數量與稀有度提高、機制王掉得更好 */
+const TIERS = [
+  [1, 6],
+  [7, 12],
+  [13, 18],
+  [19, 24],
+  [25, 30],
+  [31, 36],
+  [37, 42],
+  [43, 48],
+  [49, 54],
+  [55, 60],
+  [61, 67],
+  [68, 74],
+  [75, 81],
+  [82, 88],
+  [89, 94],
+  [95, 100]
+];
+const T_MAX = TIERS.length;
+/* 依等級對應的 T（舊存檔轉換用） */
+const tierOfLv = lv => Math.max(1, TIERS.findIndex(([lo, hi]) => lv <= hi) + 1 || T_MAX);
+const tierMax = () => Math.max(1, Math.min(T_MAX, S.tmax || 1));
+const tierNow = () => Math.max(1, Math.min(tierMax(), S.tier || tierMax()));
+const tierRange = (t = tierNow()) => TIERS[t - 1];
+/* 地圖的基準等級：玩家等級夾在目前 T 的範圍內（等級超過上限時怪物停在上限，要突破才會變強） */
+function aLv() {
+  const [lo, hi] = tierRange();
+  return Math.max(lo, Math.min(hi, S.lv));
+}
+/* 地城等級：不再固定比你高一級，依位置與刷新週期在基準等級 -2～+2 之間（不超出 T 的範圍），難的地城再往上加 */
+function dunLv(q, add = 1) {
+  const [lo, hi] = tierRange();
+  return Math.max(lo, Math.min(hi, aLv() - 2 + (q % 5))) + Math.max(0, add - 1);
+}
+/* 高 T 的加成（%）：怪物生命與攻擊、稀有怪機率、掉寶數量、掉寶稀有度、機制王（七宗罪、亡靈軍團長與亡靈王、十二生肖…）的掉落 */
+function tierBonus(t = tierNow()) {
+  const k = t - 1;
+  return { mon: k * 6, rare: k * 5, q: k * 5, r: k * 5, boss: k * 6 };
+}
+const tierBoss = () => 1 + tierBonus().boss / 100;
+/* 突破試煉：要先把等級練到目前 T 的上限；試煉的等級是下一個 T 的下限 +1 */
+const tierNeed = () => tierRange(tierMax())[1];
 function pickMon(r, lv) {
   const pool = MONS.filter(q => !q.min || q.min <= lv + 1);
   let tot = pool.reduce((a, q) => a + q.w, 0),
@@ -753,6 +830,10 @@ function makeEnemy(b, lv, rar = 0, mods = [], dm) {
     e.res = e.res.map(v => v + 20);
     e.speed = 14;
   }
+  /* 0.3.10：T 越高怪物越強 */
+  const tm = 1 + tierBonus().mon / 100;
+  e.maxhp = Math.round(e.maxhp * tm);
+  e.atk = Math.round(e.atk * tm);
   if (dm) {
     e.maxhp = Math.round(e.maxhp * (dm.hp || 1));
     e.atk = Math.round(e.atk * (dm.atk || 1));
@@ -813,7 +894,7 @@ const busy = () => !$('modal').hidden || !!B || !!MB;
 function openShop(e, merchant) {
   const he = hepoch(),
     r = rng(h(fl(e.lat * 1e4), fl(e.lng * 1e4), he)),
-    lv = S.lv + (merchant ? 2 : 0);
+    lv = aLv() + (merchant ? 2 : 0);
   const stock = Array.from({ length: merchant ? 6 : 10 }, () =>
     makeItem(DROPS[fl(r() * DROPS.length)], lv, merchant ? 2 : r() < 0.3 ? 2 : 1, undefined, r)
   );

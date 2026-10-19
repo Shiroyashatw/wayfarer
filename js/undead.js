@@ -264,7 +264,7 @@ function undeadSpawns(out, cells) {
         lng: ln,
         name: '亡靈祭壇',
         zid: id,
-        lv: S.lv + 2,
+        lv: aLv() + 2,
         gl: '120,220,140'
       });
     }
@@ -349,9 +349,9 @@ function undeadWin(b) {
   S.und = S.und || {};
   for (const k in S.und) if (!k.endsWith('_' + udEp())) delete S.und[k];
   /* 霧中亡靈：精華 +1、進度 ×1.5 */
-  const n = ([1, 2, 3, 3, 5][r] || 1) + (b.mist ? 1 : 0),
+  const n = Math.round((([1, 2, 3, 3, 5][r] || 1) + (b.mist ? 1 : 0)) * pactK('ud')),
     got = giveEss(u.ess, n);
-  S.und[b.ud] = Math.min(100, udProg(b.ud) + Math.round([5, 8, 14, 14, 20][r] * (b.mist ? 1.5 : 1)));
+  S.und[b.ud] = Math.min(100, udProg(b.ud) + Math.round([5, 8, 14, 14, 20][r] * (b.mist ? 1.5 : 1) * pactK('ud')));
   let extra = '';
   if (r >= 2 && Math.random() < 0.1) {
     const c = Math.random() < 0.5 ? 'boneRm' : 'boneSw';
@@ -381,13 +381,13 @@ function commanderWin(aid) {
   S.und[zid] = 0;
   const got = [];
   ESS.forEach(e => {
-    const n = giveEss(e.id, 2 + fl(Math.random() * 3));
+    const n = giveEss(e.id, Math.round((2 + fl(Math.random() * 3)) * tierBoss()));
     if (n) got.push(`${e.n} ×${n}`);
   });
   giveCur('kBone');
   got.push('亡靈王的骸骨');
   for (const c of ['boneRm', 'boneSw'])
-    if (Math.random() < 0.4) {
+    if (Math.random() < 0.4 * tierBoss()) {
       giveCur(c);
       got.push(UCURI[c].n);
     }
@@ -396,7 +396,7 @@ function commanderWin(aid) {
 function kingWin() {
   const got = [];
   ESS.forEach(e => {
-    const n = giveEss(e.id, 5 + fl(Math.random() * 4));
+    const n = giveEss(e.id, Math.round((5 + fl(Math.random() * 4)) * tierBoss()));
     if (n) got.push(`${e.n} ×${n}`);
   });
   giveCur('kHeart');

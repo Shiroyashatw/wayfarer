@@ -16,9 +16,9 @@ function renderHud() {
   const xr = Math.min(1, S.xp / xpNeed(S.lv));
   $('xpArc').style.strokeDasharray = `${xr * 100} 100`;
   $('xpArc').classList.toggle('near', xr >= 0.9);
-  $('gaDot').hidden = (S.cur.soul || 0) < GEM_DRAW * 10;
+  $('gaDot').hidden = (S.cur.wish || 0) < GEM_DRAW * 10;
 }
-/* 0.3.1.8：主畫面最上方的資訊條：金幣、魔晶、祈願（靈魂碎片）、背包空間、藥水、目前的區域特性（點了看說明） */
+/* 0.3.1.8：主畫面最上方的資訊條：金幣、魔晶、祈願（0.3.11 起是祈願石）、背包空間、藥水、目前的區域特性（點了看說明） */
 const ZICON = {
   魔物潮: 'fang',
   豐收: 'bag',
@@ -42,12 +42,13 @@ function ibarRender() {
     chip(
       'gacha',
       '',
-      `<img src="${curIcon('soul')}" alt="">`,
-      S.cur.soul || 0,
-      (S.cur.soul || 0) >= GEM_DRAW * 10 ? 'hot' : ''
+      `<img src="${curIcon('wish')}" alt="">`,
+      S.cur.wish || 0,
+      (S.cur.wish || 0) >= GEM_DRAW * 10 ? 'hot' : ''
     ) +
     chip('sheet', 'data-s="bag"', `<img src="${iconURL('bag')}" alt="">`, `${S.inv.length}/30`, full ? 'warn' : '') +
     chip('sheet', 'data-s="bag"', `<img src="${iconURL('heart')}" alt="">`, S.potions) +
+    chip('tierInfo', '', '<i>T</i>', tierNow() + (tierNow() < tierMax() ? '/' + tierMax() : ''), 'tier') +
     chip('zoneInfo', '', `<img src="${iconURL(ZICON[z.n] || 'leaf')}" alt="">`, z.n, 'zone');
 }
 let toastT;
@@ -86,6 +87,9 @@ const TITLES = {
   skills: '技能',
   stele: '石碑與傳送門',
   gem: '技能石',
+  gemshop: '技能石商店',
+  pact: '契靈',
+  pboard: '契約板',
   seal: '印記兌換',
   asc: '昇華'
 };
@@ -264,31 +268,41 @@ function skfOk(g) {
   if (f === 'sup') return !dmg;
   return true;
 }
-/* 技能石圖示：星級底色、左上等級、右上刻印槽（亮的是已刻印）、右下「裝」表示在技能欄 */
+/* 技能石圖示：左上等級、右上刻印槽（亮的是已刻印）、右下「裝」表示在技能欄；底色依種類（攻擊、法術、輔助），0.3.11 起沒有星級 */
+const gemKc = k => (SKILLS[k].kind === 'spell' ? 'ks' : SKILLS[k].kind === 'attack' ? 'ka' : 'ku');
 const gemCell = (g, noEq) => {
-  const r = SKILLS[g.k].r || 3,
-    n = gemSlots(g);
-  return `<span class="gtile r${r}${g.cor ? ' gcor' : ''}"><img src="${iconURL(SKILLS[g.k].icon)}" alt=""><i class="glv">${g.lv}</i>${n ? `<span class="gen">${Array.from({ length: n }, (_, i) => `<i class="${i < g.en.length ? 'f' : ''}"></i>`).join('')}</span>` : ''}${!noEq && S.sk.includes(g.id) ? '<i class="geq">裝</i>' : ''}<i class="gst">${'★'.repeat(r)}</i></span>`;
+  const n = gemSlots(g);
+  return `<span class="gtile ${gemKc(g.k)}${g.cor ? ' gcor' : ''}"><img src="${iconURL(SKILLS[g.k].icon)}" alt=""><i class="glv">${g.lv}</i>${n ? `<span class="gen">${Array.from({ length: n }, (_, i) => `<i class="${i < g.en.length ? 'f' : ''}"></i>`).join('')}</span>` : ''}${!noEq && S.sk.includes(g.id) ? '<i class="geq">裝</i>' : ''}</span>`;
 };
-/* 可以一鍵分解的重複技能石：同一種技能保留等級最高（刻印最多）的一顆，其餘沒裝備、Lv1、沒刻印、沒腐化的分解 */
-function dupGems() {
-  const best = {};
-  for (const g of S.gems) {
-    const b = best[g.k];
-    if (!b || g.lv > b.lv || (g.lv === b.lv && g.en.length > b.en.length) || S.sk.includes(g.id)) best[g.k] = g;
-  }
-  return S.gems.filter(g => best[g.k] !== g && !S.sk.includes(g.id) && g.lv === 1 && !g.en.length && !g.cor);
-}
 const gemRow = (g, tag) => {
   const q = gemSkill(g);
   return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q)}・刻印 ${g.en.length}/${gemSlots(g)}${gemOpen(g) > 0 ? ' <span style="color:var(--gold)">◇可刻印</span>' : ''}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
 };
+/* 0.3.11 技能石商店：依 T 分頁（T1～T5），未解鎖的 T 只能看 */
+function gemShopHTML() {
+  const mx = tierMax(),
+    cur = Math.min(5, SEL.gtier || 1),
+    ks = GEMK()
+      .filter(k => gemTier(k) === cur)
+      .sort((a, b) => gemReq(a) - gemReq(b) || a.localeCompare(b));
+  return `<p class="sub" style="margin:0">金幣 <b style="color:var(--gold)">${S.gold}</b>・目前解鎖到 T${mx}。買下的技能石是 Lv1，每種只能有一顆；用擊殺怪物得到的靈魂升級。</p>
+    <div class="seg gst5">${[1, 2, 3, 4, 5].map(t => `<button data-act="gshopTier" data-v="${t}" aria-pressed="${t === cur}">T${t}${t > mx ? '🔒' : ''}</button>`).join('')}</div>
+    ${cur > mx ? `<p class="sub" style="color:#ffb27a">T${cur} 還沒解鎖：到城鎮挑戰突破試煉。</p>` : ''}
+    <div class="card">${ks
+      .map(k => {
+        const q = SKILLS[k],
+          blk = gemBuyBlock(k);
+        return `<div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} <span class="sub">需要 Lv${gemReq(k)}</span></b>${skTagHTML(q, 3)}<small>${gemDesc(gemSkill(newGem(k)))}</small></div><button class="btn sm ${blk ? '' : 'pri'}" data-act="gemBuy" data-k="${k}" ${blk ? 'disabled' : ''}>${blk || `${gemPrice(k)} 金`}</button></div>`;
+      })
+      .join('')}</div>`;
+}
 const prayed = id => !!S.prayed && S.prayed[id] === hepoch();
 /* 0.3.1.8：子頁面在右上角有「‹ 返回」（裝備詳情 → 背包或該部位、部位 → 背包、技能石 → 技能、印記兌換 → 狩獵、背包的材料分頁 → 裝備） */
 function sheetParent() {
   if (sheetName === 'item') return selSlot ? ['slot', SLOTN[selSlot]] : ['bag'];
   if (sheetName === 'slot') return ['bag'];
   if (sheetName === 'gem') return ['skills'];
+  if (sheetName === 'pboard') return ['pact'];
   if (sheetName === 'seal') return ['hunt'];
   if (sheetName === 'bag' && (SEL.bag !== 'eq' || SEL.sell)) return ['bagHome'];
   return null;
@@ -306,7 +320,13 @@ function renderSheet() {
   if (sheetName === 'hero') {
     const avg = (st.physLo + st.physHi) / 2 + st.fire + st.cold + st.light * 1;
     html = `<div class="card"><div class="ent"><canvas id="heroBig" width="18" height="18"></canvas><div style="flex:1;display:grid;gap:6px;min-width:0"><b style="font-family:var(--f-pix);font-size:18px;font-weight:400">${esc(S.name || '旅人')} <span style="color:${c.color};font-size:14px">${c.name}</span> Lv${S.lv}</b><small class="sub">玩家編號 ${playerTag()}</small>${bar('生命', S.hp, st.maxhp, 'var(--hp)')}${bar('魔力', S.mp, st.maxmp, 'var(--mp)')}${bar('經驗', S.xp, xpNeed(S.lv), 'var(--xp)')}</div></div></div>
-    <button class="btn pri" data-act="openTree">天賦樹${treePts() > 0 ? `（剩 ${treePts()} 點未分配）` : ''}</button><button class="btn" data-act="asc">昇華${S.asc && S.asc.br ? `・${ASCB[S.asc.br].n}` : ''}${ascPts() > ascUsed() ? `（剩 ${ascPts() - ascUsed()} 點）` : ''}</button>${(() => {
+    <button class="btn pri" data-act="openTree">天賦樹${treePts() > 0 ? `（剩 ${treePts()} 點未分配）` : ''}</button><button class="btn" data-act="sheet" data-s="pact">契靈${
+      pactsOn().length
+        ? `・${pactsOn()
+            .map(id => PACTI[id].n)
+            .join('、')}`
+        : ''
+    }</button><button class="btn" data-act="asc">昇華${S.asc && S.asc.br ? `・${ASCB[S.asc.br].n}` : ''}${ascPts() > ascUsed() ? `（剩 ${ascPts() - ascUsed()} 點）` : ''}</button>${(() => {
       const k = treeTotals().keys;
       return k.length
         ? `<div class="sub" style="text-align:center">基石：<span style="color:#e8873a">${k.map(n => n.n).join('、')}</span></div>`
@@ -324,14 +344,7 @@ function renderSheet() {
 `;
   } else if (sheetName === 'skills') {
     const eqd = new Set(S.sk),
-      list = [...S.gems].sort(
-        (a, b) =>
-          eqd.has(b.id) - eqd.has(a.id) ||
-          (SKILLS[b.k].r || 3) - (SKILLS[a.k].r || 3) ||
-          b.lv - a.lv ||
-          a.k.localeCompare(b.k)
-      ),
-      dup = dupGems();
+      list = [...S.gems].sort((a, b) => eqd.has(b.id) - eqd.has(a.id) || b.lv - a.lv || a.k.localeCompare(b.k));
     html = `<div class="gslots">${S.sk
       .map((id, i) => {
         const g = gemOf(id);
@@ -341,7 +354,7 @@ function renderSheet() {
       })
       .join('')}</div>
     <p class="sub" style="margin:0">另外有固定的普通攻擊。技能石每 5 級開 1 個空的刻印槽，用刻印石點下去才會抽出詞綴。</p>
-    <div class="btns"><button class="btn pri" data-act="gacha">${curDot('soul')}祈願（${S.cur.soul || 0}）</button><button class="btn" data-act="gemDup" ${dup.length ? '' : 'disabled'}>一鍵分解重複（${dup.length}）</button></div>
+    <p class="sub" style="margin:0">技能石在城鎮的「技能石商店」購買（依 T 級解鎖），用擊殺怪物得到的${curDot('soul')}靈魂（${S.cur.soul || 0}）升級。</p>
     ${curRowG()}
     <h3>技能石（${S.gems.length}）</h3><div class="seg skf">${SKF.map(([k, n]) => `<button data-act="skFilter" data-k="${k}" aria-pressed="${(SEL.skf || 'all') === k}">${n}</button>`).join('')}</div>
     <div class="ggrid">${
@@ -351,8 +364,14 @@ function renderSheet() {
           g =>
             `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span>${skTagHTML(SKILLS[g.k], 2)}</button>`
         )
-        .join('') || `<p class="sub">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石，去祈願吧'}</p>`
+        .join('') || `<p class="sub">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石，到城鎮的技能石商店買吧'}</p>`
     }</div>`;
+  } else if (sheetName === 'pboard') {
+    html = pboardHTML();
+  } else if (sheetName === 'pact') {
+    html = pactHTML();
+  } else if (sheetName === 'gemshop') {
+    html = gemShopHTML();
   } else if (sheetName === 'gem') {
     const g = gemOf(selGem);
     if (!g) {
@@ -363,7 +382,7 @@ function renderSheet() {
       at = S.sk.indexOf(g.id),
       blk = gemLvBlock(g),
       n = gemSlots(g);
-    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span> <span style="color:${RSTAR[SKILLS[g.k].r || 3]}">${'★'.repeat(SKILLS[g.k].r || 3)}</span></b>${skTagHTML(q)}<small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
+    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span></b>${skTagHTML(q)}<small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
     <h3>刻印槽 ${g.en.length}/${n}${g.lv < GEM_MAX ? `<small class="sub">・下一個在 Lv${(fl(g.lv / 5) + 1) * 5}</small>` : ''}</h3><div class="card">${
       n
         ? [
@@ -382,9 +401,9 @@ function renderSheet() {
           `<button class="btn sm" data-act="gemCraft" data-c="${cu.id}" ${gemCraftable(g, cu.id) && S.cur[cu.id] > 0 ? '' : 'disabled'}>${curDot(cu.id)}${cu.n} <b>${S.cur[cu.id] || 0}</b><small>${cu.d}</small></button>`
       )
       .join('')}</div>
-    <h3>升級</h3><div class="card"><div class="rowx"><div class="t"><b>${g.lv < GEM_MAX ? `Lv${g.lv} → Lv${g.lv + 1}` : '已滿級'}</b><small>${g.lv < GEM_MAX ? `需要 ${dustNeed(g.lv)} 靈魂粉塵（你有 ${S.cur.dust || 0}）・技能石等級不能超過角色等級` : ''}</small></div><button class="btn pri sm" data-act="gemLv" ${blk ? 'disabled' : ''}>${blk || '升級'}</button></div></div>
+    <h3>升級</h3><div class="card"><div class="rowx"><div class="t"><b>${g.lv < GEM_MAX ? `Lv${g.lv} → Lv${g.lv + 1}` : '已滿級'}</b><small>${g.lv < GEM_MAX ? `需要 ${soulNeed(g.lv)} 靈魂（你有 ${S.cur.soul || 0}）・技能石等級不能超過角色等級` : ''}</small></div><button class="btn pri sm" data-act="gemLv" ${blk ? 'disabled' : ''}>${blk || '升級'}</button></div></div>
     <h3>技能欄</h3><div class="btns">${S.sk.map((id, i) => `<button class="btn sm ${id === g.id ? '' : 'pri'}" data-act="gemEquip" data-i="${i}" ${id === g.id ? 'disabled' : ''}>${id === g.id ? '裝在' : '裝到'}第 ${i + 1} 格${id && id !== g.id && gemOf(id) ? `<small>（換下${SKILLS[gemOf(id).k].name}）</small>` : ''}</button>`).join('')}${at >= 0 ? '<button class="btn sm" data-act="gemOff">卸下</button>' : ''}</div>
-    <div class="btns"><button class="btn" data-act="gemBreak">分解（得 ${gemDustBack(g)} 粉塵）</button><button class="btn" data-act="sheet" data-s="skills">返回技能</button></div>`;
+    <div class="btns"><button class="btn" data-act="gemBreak">分解（退回 ${gemSoulBack(g)} 靈魂）</button><button class="btn" data-act="sheet" data-s="skills">返回技能</button></div>`;
   } else if (sheetName === 'bag' && SEL.bag !== 'eq') {
     html = bagTabs() + matsHTML(SEL.bag);
   } else if (sheetName === 'bag' && SEL.sell) {
@@ -657,7 +676,9 @@ function openEnt(id) {
           ? `<button class="btn" data-act="pray" data-id="${id}" ${inR && !prayed(id) ? '' : 'disabled'}>${prayed(id) ? '已參拜（每小時一次）' : '參拜'}</button>`
           : '') +
         `<button class="btn" data-act="shop" data-id="${id}" ${inR ? '' : 'disabled'}>商店（購買・出售裝備）</button>` +
+        `<button class="btn" data-act="gemShop" data-id="${id}" ${inR ? '' : 'disabled'}>技能石商店</button>` +
         `<button class="btn pri" data-act="trial" data-id="${id}" ${inR && !done ? '' : 'disabled'}>${done ? '試煉已完成（整點重開）' : `地標試煉「${esc(t.dn)}」Lv${lv}`}</button>` +
+        tierTownHTML(e, inR) +
         ascTownHTML(e, inR);
   }
   const title = e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name;
@@ -685,6 +706,36 @@ function lineupHTML(e) {
     card = (b, name, lvl, col, big) =>
       `<div class="lu${big ? ' big' : ''}"${big ? ` style="border-color:${col}"` : ''}><img src="${portrait(b.spr, b.pal)}" alt=""><b style="color:${col}">${esc(name)}</b><small>Lv${lvl}</small></div>`;
   return `<div class="lineup"><div class="luh">⚔ 本次戰鬥 <b>${n + 1}</b> 隻${n ? '<span>（成群）</span>' : ''}</div><div class="lurow">${card(e.base, e.name, lv, RCOL[e.rar || 0], 1)}${mates.map(m => card(m.b, pf + m.b.name, m.lv, '#d8d0c4')).join('')}</div>${L ? `<div class="luhunt">🩸 獵殺 ${c.n}：全部等級 +${c.lv}、生命 +${c.hp}%、攻擊 +${c.atk}%</div>` : ''}</div>`;
+}
+/* 0.3.10 T 級：城鎮的突破試煉按鈕（打過就解鎖下一個 T） */
+function tierTownHTML(e, inR) {
+  const t = tierMax();
+  if (t >= T_MAX) return '';
+  const need = tierNeed(),
+    ok = inR && S.lv >= need && !D;
+  return `<button class="btn" data-act="tierTrial" data-id="${e.id}" ${ok ? '' : 'disabled'}>突破試煉 T${t} → T${t + 1}${S.lv < need ? `（需要 Lv${need}）` : `・Lv${TIERS[t][0] + 1}・4 層`}</button>`;
+}
+/* 突破試煉通關（dungeonClear 呼叫） */
+function tierUpDone() {
+  const t = Math.min(T_MAX, tierMax() + 1);
+  S.tmax = S.tier = t;
+  addLog(`突破到 T${t}`);
+  refreshEntities(true);
+  const [lo, hi] = tierRange(t),
+    b = tierBonus(t);
+  return `<p style="color:var(--gold)">突破成功！解鎖 T${t}：地圖怪物 Lv${lo}～${hi}，怪物強度 +${b.mon}%、稀有怪 +${b.rare}%、掉寶數量與稀有度 +${b.q}%、機制王掉落 +${b.boss}%。</p>`;
+}
+/* T 級說明與切換：可以回到比較低的 T 練功 */
+function tierInfoHTML() {
+  const cur = tierNow(),
+    mx = tierMax(),
+    [lo, hi] = tierRange(),
+    b = tierBonus();
+  return `<p>目前在 <b style="color:var(--gold)">T${cur}</b>（已解鎖到 T${mx}）：整張地圖的怪物、地城與事件都在 <b>Lv${lo}～${hi}</b> 之間，跟著你的等級在範圍內調整；等級超過上限，怪物就停在 Lv${hi}。</p>
+    <p class="sub">目前加成：怪物生命與攻擊 +${b.mon}%・稀有怪機率 +${b.rare}%・掉寶數量 +${b.q}%・掉寶稀有度 +${b.r}%・機制王（地城首領、七宗罪、亡靈軍團長與亡靈王、十二生肖）掉落 +${b.boss}%</p>
+    <p class="sub">${mx < T_MAX ? `要往上突破：等級練到 Lv${tierNeed()}，到任一城鎮挑戰「突破試煉」。` : '已經解鎖全部 16 個 T。'}</p>
+    <div class="tlist">${TIERS.map(([a, z], i) => `<button class="tl${i + 1 === cur ? ' on' : ''}" data-act="tierSet" data-v="${i + 1}" ${i + 1 <= mx && i + 1 !== cur && !B && !D && !MB ? '' : 'disabled'}><b>T${i + 1}</b><small>Lv${a}～${z}</small></button>`).join('')}</div>
+    <p class="sub">點已解鎖的 T 可以切換（戰鬥與地城中不能換）。</p>`;
 }
 /* 人實際在現場（不是靠據點、營旗、絲綢之路的遠端範圍） */
 const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e);
@@ -793,6 +844,40 @@ const A = {
     toast(
       d.k === 'gold' ? `金幣 ${S.gold}：買東西、住旅店、升級據點` : `魔晶 ${S.crystal}：升級據點用，打菁英怪與事件取得`
     ),
+  tierInfo: () => {
+    sfx('tap');
+    showModal('T 級', tierInfoHTML(), [{ label: '知道了', pri: 1, fn: hideModal }]);
+  },
+  tierSet: d => {
+    const t = +d.v;
+    if (B || D || MB || t < 1 || t > tierMax() || t === tierNow()) return;
+    S.tier = t;
+    sfx('select');
+    toast(`切換到 T${t}（Lv${tierRange(t).join('～')}）`);
+    refreshEntities(true);
+    renderHud();
+    save();
+    hideModal();
+  },
+  tierTrial: d => {
+    const e = ENT.get(d.id),
+      t = tierMax();
+    if (!e || t >= T_MAX || S.lv < tierNeed() || !inRange(e) || D) return;
+    closeSheet();
+    enterDungeon(
+      {
+        id: `tier${t}_${e.id}`,
+        kind: 'tier',
+        dt: 'normal',
+        lat: e.lat,
+        lng: e.lng,
+        lv: TIERS[t][0] + 1,
+        floors: 4,
+        onsite: siteBonus(e)
+      },
+      false
+    );
+  },
   zoneInfo: () => {
     const z = zoneAt(S.lat, S.lng).m;
     sfx('tap');
@@ -922,7 +1007,7 @@ const A = {
     quest('chest');
     if (e.mimic) {
       toast('寶箱張開了嘴——是寶箱怪！');
-      startBattle(makeEnemy(MIMIC, S.lv + 1, 1, ['leech']), { bg: 'city' });
+      startBattle(makeEnemy(MIMIC, aLv() + 1, 1, ['leech']), { bg: 'city' });
       return;
     }
     const got = [],
@@ -941,7 +1026,8 @@ const A = {
       got.push(itemName(it));
     }
     giveCur('soul', 9);
-    got.push(curDot('soul') + '靈魂碎片 ×9');
+    giveCur('wish');
+    got.push(curDot('soul') + '靈魂 ×9', curDot('wish') + '祈願石');
     if (Math.random() < 0.2) {
       giveCur('eng');
       got.push(curDot('eng') + '刻印石');
@@ -994,8 +1080,8 @@ const A = {
   gemLv: () => {
     const g = gemOf(selGem);
     if (!g || gemLvBlock(g)) return;
-    const n = dustNeed(g.lv);
-    S.cur.dust -= n;
+    const n = soulNeed(g.lv);
+    S.cur.soul -= n;
     g.dust += n;
     g.lv++;
     sfx(g.lv % 5 ? 'select' : 'level');
@@ -1025,50 +1111,54 @@ const A = {
   gemBreak: () => {
     const g = gemOf(selGem);
     if (!g) return;
-    const v = gemDustBack(g);
-    showModal('分解技能石', `<p>把 ${SKILLS[g.k].name} Lv${g.lv} 分解成 ${v} 個靈魂粉塵？刻印詞綴會一起消失。</p>`, [
-      {
-        label: '分解',
-        pri: 1,
-        fn: () => {
-          S.gems = S.gems.filter(q => q !== g);
-          S.sk = S.sk.map(id => (id === g.id ? null : id));
-          giveCur('dust', v);
-          hideModal();
-          sfx('select');
-          toast(`得到 ${v} 個靈魂粉塵`);
-          openSheet('skills');
-          save();
-        }
-      },
-      { label: '取消', fn: hideModal }
-    ]);
-  },
-  gemDup: () => {
-    const list = dupGems(),
-      v = list.reduce((a, g) => a + gemDustBack(g), 0);
-    if (!list.length) return;
+    const v = gemSoulBack(g);
     showModal(
-      '一鍵分解重複',
-      `<p>分解 ${list.length} 顆重複的 Lv1 技能石，得到 ${v} 個靈魂粉塵？每種技能都會留下一顆。</p>`,
+      '分解技能石',
+      `<p>分解 ${SKILLS[g.k].name} Lv${g.lv}，退回 ${v} 個靈魂（升級花掉的 70%）？刻印詞綴會一起消失，之後可以再到商店買。</p>`,
       [
         {
           label: '分解',
           pri: 1,
           fn: () => {
-            const ids = new Set(list.map(g => g.id));
-            S.gems = S.gems.filter(g => !ids.has(g.id));
-            giveCur('dust', v);
+            S.gems = S.gems.filter(q => q !== g);
+            S.sk = S.sk.map(id => (id === g.id ? null : id));
+            giveCur('soul', v);
             hideModal();
-            sfx('coin');
-            toast(`得到 ${v} 個靈魂粉塵`);
-            renderSheet();
+            sfx('select');
+            toast(`退回 ${v} 個靈魂`);
+            openSheet('skills');
             save();
           }
         },
         { label: '取消', fn: hideModal }
       ]
     );
+  },
+  /* 0.3.11 技能石商店（城鎮） */
+  gemShop: d => {
+    const e = ENT.get(d.id);
+    if (!inRange(e)) return;
+    SEL.gshop = e.id;
+    SEL.gtier = SEL.gtier || Math.min(tierMax(), 5);
+    openSheet('gemshop');
+  },
+  gshopTier: d => {
+    SEL.gtier = +d.v;
+    sfx('tap');
+    renderSheet();
+  },
+  gemBuy: d => {
+    const k = d.k,
+      e = ENT.get(SEL.gshop);
+    if (!SKILLS[k] || !inRange(e) || gemBuyBlock(k)) return;
+    S.gold -= gemPrice(k);
+    giveGem(k);
+    sfx('coin');
+    toast(`買下 ${SKILLS[k].name}`);
+    addLog(`在${e.name}買下技能石：${SKILLS[k].name}`);
+    renderSheet();
+    renderHud();
+    save();
   },
 
   bitem: d => bItem(d.k),

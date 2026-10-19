@@ -835,7 +835,8 @@ function enemyResolve(es, i, party, ext = {}) {
     return ev;
   }
   if (e.sin && ext.sinTurn) ext.sinTurn(e, i);
-  const acts = e.mods && e.mods.includes('swift') && Math.random() < 0.35 ? 2 : 1,
+  /* 0.3.10：迅捷改成靠速度（行動值）多行動，不再另外骰行動兩次 */
+  const acts = 1,
     ew = ext.ew || 0;
   for (let n = 0; n < acts; n++) {
     const alive = party.filter(p => p.alive !== false && p.hp > 0);
@@ -931,7 +932,32 @@ function enemyResolve(es, i, party, ext = {}) {
   ev.push({ t: 'end', at: at + 200 });
   return ev;
 }
-/* 每輪結束：回復、防禦與增益倒數、昇華的扣血代價 */
+/* 0.3.10 行動值：每個單位依速度累積行動值，先滿 AV_MAX 的先行動（滿了扣掉 AV_MAX 繼續累積）。
+   速度是對方兩倍就能連續行動兩次；units 是 [{id, spd}]，av 是 {id: 目前的行動值}（同時滿的照 units 的順序） */
+const AV_MAX = 100;
+const avSpd = u => Math.max(1, (u.st ? u.st.speed : u.speed) || 10);
+function avNext(av, units) {
+  let best = null,
+    bt = Infinity;
+  for (const u of units) {
+    const t = (AV_MAX - (av[u.id] || 0)) / u.spd;
+    if (t < bt - 1e-9) {
+      bt = t;
+      best = u;
+    }
+  }
+  if (!best) return null;
+  bt = Math.max(0, bt);
+  for (const u of units) av[u.id] = (av[u.id] || 0) + u.spd * bt;
+  av[best.id] -= AV_MAX;
+  return best.id;
+}
+/* 接下來 n 次行動的預測（行動順序橫列用，不改動 av） */
+const avPreview = (av, units, n) => {
+  const c = { ...av };
+  return Array.from({ length: n }, () => avNext(c, units));
+};
+/* 每輪結束：回復、防禦與增益倒數、昇華的扣血代價（0.3.10 起是自己每次輪到行動之前） */
 function roundEnd(p) {
   const st = p.st;
   if (p.alive === false || p.hp <= 0) return;
@@ -994,7 +1020,7 @@ function startBattle(e, opts = {}) {
   const es = (
     Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0, opts.packN || 0, opts.packSeed) : [])]
   ).map(eInit);
-  B = { ...opts, e: es[0], es, ti: 0, me: heroMe(), busy: true, sub: null, act: -1 };
+  B = { ...opts, e: es[0], es, ti: 0, me: heroMe(), busy: true, sub: null, act: -1, av: {}, turns: 0 };
   battleOpen(B.me);
   simTarget = null;
   BFX.pops = [];
@@ -1023,12 +1049,7 @@ function startBattle(e, opts = {}) {
         ? `${RNAME[es[0].rar]}怪物：${es[0].name}`
         : `${es[0].name} 出現了！`
   );
-  setTimeout(() => {
-    if (B) {
-      B.busy = false;
-      renderBHud();
-    }
-  }, 700);
+  later(700, nextTurn);
 }
 /* 點畫面上的敵人換目標（單人與組隊共用） */
 function pickTarget(x, y) {
@@ -1073,12 +1094,12 @@ function renderBHud() {
     `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>Lv${e.lv}${B.boss && B.ti === 0 ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`;
   placeBName(q);
   {
-    /* 單人：你先，再來是每隻還活著的敵人 */
+    /* 0.3.10：依行動值預測接下來的 7 次行動；正在行動的放最前面 */
     const me = { n: S.name || '你', c: 'me', img: portrait(heroSpr('F'), heroPal()) },
-      ens = es
-        .map((o, i) => (o.hp > 0 ? { n: o.name, c: 'e', img: portrait(o.spr, o.pal), on: B.act === i } : null))
-        .filter(Boolean);
-    renderOrder([{ ...me, on: B.act < 0 && !B.busy }, ...ens, { h: '下一輪' }, me]);
+      eo = i => ({ n: es[i].name, c: 'e', img: portrait(es[i].spr, es[i].pal) }),
+      cur = B.act >= 0 ? { ...eo(B.act), on: 1 } : { ...me, on: !B.busy },
+      nx = avPreview(B.av || {}, soloUnits(), 6).map(id => (id === 'me' ? me : eo(+id.slice(1))));
+    renderOrder([cur, ...nx]);
   }
   setFloor(
     D ? `${D.kind === 'rift' ? '裂隙' : ''}第 ${D.room + 1}/${D.spec.floors} ${D.kind === 'rift' ? '波' : '層'}` : ''
@@ -1310,38 +1331,46 @@ function afterPlayer() {
     renderBHud();
     return;
   }
-  later(250, () => enemyPhase(0));
+  later(250, nextTurn);
 }
-/* 敵人依序行動 */
-function enemyPhase(i) {
+/* 0.3.10 行動值：單人戰鬥裡的你（id 'me'）與每隻活著的敵人（'e' + 索引） */
+const soloUnits = () => [
+  { id: 'me', spd: avSpd(B.me) },
+  ...aliveIdx(B.es).map(i => ({ id: 'e' + i, spd: avSpd(B.es[i]) }))
+];
+/* 下一個行動的是誰：速度快的可以在對方行動前連續行動 */
+function nextTurn() {
+  if (!B) return;
+  B.me.st = stats();
+  const id = avNext(B.av, soloUnits());
+  if (id !== 'me') return enemyAct(+id.slice(1));
+  B.act = -1;
+  /* 上一次行動之後的回復、防禦與增益倒數 */
+  if (B.turns++) roundEnd(B.me);
+  if (B.me.frozen) {
+    B.me.frozen = 0;
+    bmsg('你被凍住了，跳過這回合');
+    renderBHud();
+    later(900, nextTurn);
+    return;
+  }
+  B.busy = false;
+  renderBHud();
+}
+/* 一隻敵人行動 */
+function enemyAct(i) {
   const es = B.es;
-  while (i < es.length && es[i].hp <= 0) i++;
-  if (i >= es.length) return endRound();
+  B.busy = true;
   B.act = i;
   renderBHud();
-  B.me.st = stats();
   const ev = enemyResolve(es, i, [B.me], soloExt()),
     t = playEv(ev);
   later(t + 150, () => {
     B.act = -1;
     if (S.hp <= 0) return later(400, loseBattle);
     if (allDead(es)) return later(500, winBattle);
-    enemyPhase(i + 1);
+    nextTurn();
   });
-}
-function endRound() {
-  if (!B) return;
-  B.act = -1;
-  roundEnd(B.me);
-  if (B.me.frozen) {
-    B.me.frozen = 0;
-    bmsg('你被凍住了，跳過這回合');
-    renderBHud();
-    later(900, () => enemyPhase(0));
-    return;
-  }
-  B.busy = false;
-  renderBHud();
 }
 
 /* ================= dungeons (shared by solo and party) ================= */
@@ -1383,7 +1412,9 @@ const dunName = t =>
       ? t.dn
       : t.kind === 'asc'
         ? '昇華試煉'
-        : DTYPES[t.dt || 'normal'].n;
+        : t.kind === 'tier'
+          ? '突破試煉'
+          : DTYPES[t.dt || 'normal'].n;
 const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '冥府之主', stele: '石碑守衛' },
   BOSSSPR = { hell: 'b_hellord', circle: 'b_arcane', portal: 'b_hades', stele: 'b_stelekeeper' };
 /* 第 room 層的敵人群（0.3 起一層是一群，最多 5 隻）。boss 在最後一層；extra 是組隊多出來的隻數 */
@@ -1395,6 +1426,7 @@ function dunEnemy(D, room, extra = 0) {
       for (const m of sp.em)
         if (!e.mods.includes(m)) {
           e.mods.push(m);
+          if (m === 'swift') e.speed = Math.max(e.speed || 10, 18);
           uwApply(e, m);
         }
       if (sp.em.some(m => EMODI[m] && EMODI[m].uw) && !e.name.startsWith('冥府')) e.name = '冥府・' + e.name;
@@ -1440,18 +1472,22 @@ function dunEnemy(D, room, extra = 0) {
     bg = b.bg;
     n = boss ? 1 : 1 + (r % 2);
   } else if (boss) {
-    const hell = (!!BIGBOSS[sp.dt] && sp.dt !== 'stele') || D.kind === 'asc',
+    const hell = (!!BIGBOSS[sp.dt] && sp.dt !== 'stele') || D.kind === 'asc' || D.kind === 'tier',
       bn = D.lm
         ? `${D.lm.dn}守護者`
-        : D.kind === 'asc'
-          ? '昇華試煉守衛'
+        : D.kind === 'asc' || D.kind === 'tier'
+          ? D.kind === 'tier'
+            ? '突破之門守衛'
+            : '昇華試煉守衛'
           : BIGBOSS[sp.dt] || (sp.dt === 'party' ? '深淵看守' : '洞窟守護者'),
       /* 首領專屬圖：地標是石獅、組隊是深淵之眼、地獄／魔法陣／冥府／石碑各自一張 */
       bspr = D.lm
         ? 'b_lion'
         : D.kind === 'asc'
           ? 'b_arcane'
-          : BOSSSPR[sp.dt] || (sp.dt === 'party' ? 'b_abyss' : 'b_golem');
+          : D.kind === 'tier'
+            ? 'b_hellord'
+            : BOSSSPR[sp.dt] || (sp.dt === 'party' ? 'b_abyss' : 'b_golem');
     e = makeEnemy(
       {
         name: bn,
@@ -1495,8 +1531,11 @@ function dropLoot(e, boss, sp, remote, minion) {
     r = e.rar || 0,
     zm = zoneAt(S.lat, S.lng).m,
     os = onsiteNow() ? ONSITE_BONUS : 0,
-    Q = 1 + ((sp ? sp.q : 0) + (zm.q || 0) + os) / 100,
-    R = 1 + ((sp ? sp.r : 0) + (zm.r || 0) + os) / 100;
+    /* 0.3.10：T 級的掉寶數量與稀有度；首領與災厄另外加上機制王的加成 */
+    tb = tierBonus(),
+    tk = boss || r >= 3 ? tb.boss : 0,
+    Q = 1 + ((sp ? sp.q : 0) + (zm.q || 0) + os + tb.q + tk + pactMech('q')) / 100,
+    R = 1 + ((sp ? sp.r : 0) + (zm.r || 0) + os + tb.r + tk + pactMech('r')) / 100;
   const mm = minion ? 0.5 : 1,
     itemCh = ([0.22, 0.5, 1, 1, 1][r] || 0.22) * buf * rem * Q * mm,
     curN =
@@ -1564,9 +1603,9 @@ function dropLoot(e, boss, sp, remote, minion) {
   }
   return out;
 }
-/* 技能石材料：靈魂碎片與刻印石系列（昇華稜鏡、神聖刻印石在冥府內容出來前先由紅名怪掉落） */
-/* 靈魂碎片隨怪物強度增加：稀有度底數 + 每條詞綴 2（冥府詞綴 3）+ 每 4 級 1，首領再加 */
-/* 0.3.1.8：祈願（靈魂碎片）全部來源 ×1.5 */
+/* 技能石材料：靈魂與刻印石系列（昇華稜鏡、神聖刻印石在冥府內容出來前先由紅名怪掉落） */
+/* 靈魂隨怪物強度增加：稀有度底數 + 每條詞綴 2（冥府詞綴 3）+ 每 4 級 1，首領再加 */
+/* 0.3.1.8：靈魂全部來源 ×1.5（0.3.11 起靈魂拿來升級技能石） */
 const SOUL_MUL = 1.5;
 function gemLoot(e, boss, hell, rem, out) {
   const r = e.rar || 0,
@@ -1577,13 +1616,17 @@ function gemLoot(e, boss, hell, rem, out) {
       fl((e.lv || 1) / 4) +
       (boss ? 6 + (hell ? 6 : 0) : 0),
     z = zoneAt(S.lat, S.lng).m,
-    ch = p => Math.random() < p * rem * (z.eng || 1),
+    ch = p => Math.random() < p * rem * (z.eng || 1) * pactK('eng'),
     add = (id, n = 1) => {
       if (n <= 0) return;
       giveCur(id, n);
       out.push(curDot(id) + GCURI[id].n + (n > 1 ? ' ×' + n : ''));
     };
-  add('soul', Math.round(soul * rem * (z.soul || 1) * SOUL_MUL));
+  add('soul', Math.round(soul * rem * (z.soul || 1) * SOUL_MUL * (1 + pactMech('soul') / 100)));
+  /* 0.3.11 祈願石：菁英與首領比較常掉（契靈「機制」可以提高） */
+  const wm = rem * (1 + pactMech('wish') / 100);
+  if (boss) add('wish', Math.round((1 + (hell ? 1 : 0)) * wm) || 1);
+  else if (Math.random() < [0.01, 0.04, 0.12, 0.12, 0.4][r] * wm) add('wish');
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
   if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
   if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');
@@ -1597,7 +1640,8 @@ const onsiteNow = () => (D ? !!D.onsite : B ? !!B.onsite : MB ? !!(MB.d && MB.d.
 function dunReward(D) {
   const sp = D.spec,
     mult = D.remote ? 0.8 : 1,
-    Q = 1 + (sp.q + (D.onsite ? ONSITE_BONUS : 0)) / 100,
+    tb = tierBonus(),
+    Q = 1 + (sp.q + (D.onsite ? ONSITE_BONUS : 0) + tb.q + tb.boss + pactMech('q') + pactMech('dun')) / 100,
     bonus = (D.lm ? 1.6 : 1) * Q,
     gold = Math.round((40 + D.lv * 25) * mult * bonus),
     cry = D.kind === 'rift' ? 0 : Math.max(1, Math.round((2 + fl(D.lv / 2)) * mult * bonus));
@@ -1638,12 +1682,13 @@ function winBattle() {
     e = es[0],
     zm = zoneAt(S.lat, S.lng).m,
     st = stats(),
-    mult = (D && D.remote ? 0.8 : 1) * (buffOn() ? 1.2 : 1);
+    mult = (D && D.remote ? 0.8 : 1) * (buffOn() ? 1.2 : 1),
+    xm = 1 + pactMech('xp') / 100;
   let xp = 0,
     gold = 0;
   const drops = [];
   es.forEach((o, i) => {
-    xp += Math.round(o.xp * mult * (zm.xp || 1));
+    xp += Math.round(o.xp * mult * xm * (zm.xp || 1));
     gold += Math.round(o.gold * rnd(0.8, 1.2) * mult * st.goldMul * (zm.gold || 1));
     drops.push(...dropLoot(o, B.boss && i === 0, D && D.spec, D && D.remote, o.minion));
   });
@@ -1799,21 +1844,26 @@ function nextRoom() {
     renderBHud();
     bmsg(es.length > 1 ? `${es[0].name} 等 ${es.length} 隻出現了！` : `${es[0].name} 出現了！`);
     sfx('encounter');
-    setTimeout(() => {
-      if (B) {
-        B.busy = false;
-        renderBHud();
-      }
-    }, 800);
+    /* 每層重新累積行動值 */
+    B.av = {};
+    B.turns = 0;
+    later(800, nextTurn);
   } else startBattle(es, { boss, bg });
 }
 function dungeonClear() {
   const kind = D.kind,
     rw = dunReward(D);
   S.cleared[D.id] = kind === 'rift' ? evEp() : hepoch();
-  const ascMsg = kind === 'asc' ? ascTrialDone() : '';
+  const ascMsg = kind === 'asc' ? ascTrialDone() : kind === 'tier' ? tierUpDone() : '';
   quest('dun');
-  const nm = kind === 'rift' ? '魔物裂隙' : D.lm ? D.lm.dn : kind === 'asc' ? '昇華試煉' : DTYPES[D.spec.dt].n,
+  const nm =
+      kind === 'rift'
+        ? '魔物裂隙'
+        : D.lm
+          ? D.lm.dn
+          : kind === 'asc' || kind === 'tier'
+            ? dunName(D)
+            : DTYPES[D.spec.dt].n,
     rem = D.remote;
   addLog(`攻略${nm}（Lv${D.lv}）`);
   sfx('level');
@@ -1923,17 +1973,19 @@ function bossPicks(lv) {
       },
       {
         n: '靈魂寶藏',
-        d: `靈魂碎片 ×${15 + lv}、刻印石 ×2`,
-        ic: curIcon('soul'),
+        d: `靈魂 ×${30 + lv * 2}、祈願石 ×2、刻印石 ×2`,
+        ic: curIcon('wish'),
         give: () =>
           curs([
-            ['soul', 15 + lv],
+            ['soul', 30 + lv * 2],
+            ['wish', 2],
             ['eng', 2]
           ])
       }
     ];
   const out = [];
-  while (out.length < 3) {
+  /* 0.3.11：裝著掉落契靈「地城」時尾王四選一 */
+  while (out.length < (pactMech('dun') ? 4 : 3)) {
     const p = pool.splice(fl(Math.random() * pool.length), 1)[0];
     out.push(p);
   }

@@ -743,9 +743,9 @@ const PIX = {
     r: ['...pp...', '..plwp..', '.plwwlp.', '.pllllp.', '..pllp..', '...pp...', '..p..p..', '.p....p.'],
     p: { p: '#7f6bd6', l: '#b7a6ff', w: '#efeaff' }
   },
-  cur_dust: {
-    r: ['.l...w..', '....l..l', 'w.l.....', '...ll.w.', '.l.lwl..', '..wlll.l', 'l.lllll.', '.llllll.'],
-    p: { l: '#b7a6ff', w: '#ffffff' }
+  cur_wish: {
+    r: ['...ww...', '...yy...', 'wyyyyyyw', '.yyowyy.', '..yyyy..', '.yyoyyy.', '.yy..yy.', 'y......y'],
+    p: { y: '#ffd66a', w: '#fff8d8', o: '#c8902a' }
   },
   cur_eng: {
     r: ['..kkkk..', '.kbbbbk.', 'kbbwbbbk', 'kbwwwbbk', 'kbbwbbbk', 'kbbwbbbk', '.kbbbbk.', '..kkkk..'],

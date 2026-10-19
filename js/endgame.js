@@ -237,7 +237,7 @@ function endgameSpawns(out, cells, put, hp) {
       x,
       y,
       name: '冥府侵蝕柱',
-      lv: S.lv + 3,
+      lv: aLv() + 3,
       gl: '255,58,90',
       lbl: `侵蝕 ${n}/${OB_NEED}`,
       lc: '#ff8a9a'
@@ -261,7 +261,7 @@ function endgameSpawns(out, cells, put, hp) {
         [x, y] = p;
         const q = r >>> 4,
           rar = q % 100 < 8 ? 2 : q % 100 < 35 ? 1 : 0,
-          lv = Math.max(1, S.lv + ((r >>> 3) % 3) - 1),
+          lv = Math.max(1, aLv() + ((r >>> 3) % 3) - 1),
           [la, ln] = toLL(x, y);
         out.set(id, {
           id,
@@ -303,7 +303,7 @@ const INSC_MAX = 40,
   FRAG_MAX = 20;
 /* 碑文碎片：菁英怪掉落，帶一條地城詞綴 */
 function rollInsc(r, boss) {
-  if (!(Math.random() < (boss ? 0.5 : [0, 0.12, 0.35, 0.35, 1][r]))) return '';
+  if (!(Math.random() < (boss ? 0.5 : [0, 0.12, 0.35, 0.35, 1][r]) * pactK('stele'))) return '';
   S.insc = S.insc || [];
   if (S.insc.length >= INSC_MAX) return '';
   const m = DMODS[fl(Math.random() * DMODS.length)].id;
@@ -351,7 +351,8 @@ function payDun(pay) {
 function obeliskCharge(id) {
   S.obel = S.obel || {};
   for (const k in S.obel) if (!k.endsWith('_' + ep2())) delete S.obel[k];
-  S.obel[id] = Math.min(OB_NEED, (S.obel[id] || 0) + 1);
+  /* 0.3.11：掉落契靈「冥府」有機率多充能一次 */
+  S.obel[id] = Math.min(OB_NEED, (S.obel[id] || 0) + 1 + (Math.random() * 100 < pactMech('uw') ? 1 : 0));
   quest('obel');
   const n = S.obel[id];
   const e = ENT.get(id);
@@ -362,7 +363,7 @@ function watcherWin(id) {
   S.cleared[id] = ep2();
   delete (S.obel || {})[id];
   ENT.delete(id);
-  return `<p style="color:#ff8a9a">侵蝕解除！得到 ${makeFrag(S.lv + 3)}</p>`;
+  return `<p style="color:#ff8a9a">侵蝕解除！得到 ${makeFrag(aLv() + 3)}</p>`;
 }
 function makeFrag(lv) {
   S.frags = S.frags || [];
@@ -475,7 +476,7 @@ async function silkRemove(other) {
   if (SILK.view && SILK.view.user_id === other) silkView(null);
   silkLoad();
 }
-/* 商隊：每條商路每天帶回一次對方地區的特產（依對方據點位置決定的一種通貨）與金幣、靈魂碎片 */
+/* 商隊：每條商路每天帶回一次對方地區的特產（依對方據點位置決定的一種通貨）與金幣、靈魂、祈願石 */
 const specialty = r => GCUR.slice(2, 5)[h(fl(r.base_lat * 100), fl(r.base_lng * 100), 5) % 3].id;
 function caravans() {
   const day = fl((now() + 8 * 3600e3) / 864e5),
@@ -488,8 +489,9 @@ function caravans() {
       sp = specialty(r);
     S.gold += g;
     giveCur('soul', 15);
+    giveCur('wish');
     giveCur(sp);
-    got.push(`${esc(r.name)}：${g} 金幣、靈魂碎片 ×15、${GCURI[sp].n}`);
+    got.push(`${esc(r.name)}：${g} 金幣、靈魂 ×15、祈願石、${GCURI[sp].n}`);
   }
   if (got.length) {
     addLog('商隊回來了：' + got.join('；'));
@@ -588,13 +590,13 @@ function steleHTML() {
     const st = site.kind === 'stele';
     return `<div class="card" style="border:1px solid var(--gild)"><b>現場：${site.name}</b><small class="sub" style="display:block">當場挑戰不用卷軸，開打後這座${st ? '石碑' : '魔法陣'}就會消失。${onSite(site) ? `人在現場，掉寶 +${ONSITE_BONUS}%。` : '（遠端範圍內，沒有現場加成）'}</small></div>
     ${st ? stele : circle}
-    <button class="btn pri" data-act="${st ? 'steleRun' : 'circleOpen'}" ${st ? (ni <= 3 ? '' : 'disabled') : nt >= 4 && nt <= 6 ? '' : 'disabled'}>${st ? `當場開打（${fl_} 層・Lv${S.lv + 2}）` : `當場組隊開打（已選 ${nt}/4～6）`}</button>
+    <button class="btn pri" data-act="${st ? 'steleRun' : 'circleOpen'}" ${st ? (ni <= 3 ? '' : 'disabled') : nt >= 4 && nt <= 6 ? '' : 'disabled'}>${st ? `當場開打（${fl_} 層・Lv${aLv() + 2}）` : `當場組隊開打（已選 ${nt}/4～6）`}</button>
     <button class="btn" data-act="siteCancel">取消</button>`;
   }
   return `<p class="sub">路上的空白石碑與魔法陣可以「壓縮封印」收成卷軸帶回家，也可以「當場挑戰」。兩種都要自己放入碑文碎片或石碑。菁英怪會掉碑文碎片，冥府侵蝕柱的看門人會掉冥府碎片。所有材料在「背包」的分頁裡。</p>
   <div class="curs"><span><img class="cico lg" src="${entURL('stele')}" alt=""><span>空白石碑卷<b>${sc.stele || 0}</b></span></span><span><img class="cico lg" src="${entURL('circle')}" alt=""><span>空白魔法陣卷<b>${sc.circle || 0}</b></span></span><span><img class="cico lg" src="${entURL('obelisk')}" alt=""><span>冥府碎片<b>${frags.length}</b></span></span></div>
   ${stele}
-  <button class="btn pri" data-act="steleRun" ${sc.stele > 0 && ni <= 3 ? '' : 'disabled'}>用卷軸開啟單人石碑（${fl_} 層・Lv${S.lv + 2}）</button>
+  <button class="btn pri" data-act="steleRun" ${sc.stele > 0 && ni <= 3 ? '' : 'disabled'}>用卷軸開啟單人石碑（${fl_} 層・Lv${aLv() + 2}）</button>
   ${circle}
   <button class="btn pri" data-act="circleOpen" ${sc.circle > 0 && nt >= 4 && nt <= 6 ? '' : 'disabled'}>用卷軸組隊開啟魔法陣（已選 ${nt}/4～6）</button>
   <h3>冥府傳送門</h3><p class="sub">集滿 4 個不同部位的冥府碎片（${FRAG_PARTS.join('、')}）就能組成傳送門，8 層、詞綴全部疊加，首領保證掉冥府之血。</p>
@@ -714,7 +716,7 @@ Object.assign(A, {
     const got = ['刻印石'];
     giveCur('eng');
     giveCur('soul', 12);
-    got.push('靈魂碎片 ×12');
+    got.push('靈魂 ×12');
     if (Math.random() < 0.3) {
       giveCur('engC');
       got.push('混沌刻印石');
@@ -764,7 +766,7 @@ Object.assign(A, {
     if (site && site.kind !== 'stele') return;
     if ((!site && !((S.scrolls || {}).stele > 0)) || SEL.insc.size > 3) return;
     const mods = S.insc.filter(q => SEL.insc.has(q.id)).map(q => q.m),
-      lv = S.lv + 2;
+      lv = aLv() + 2;
     if (site) S.defeated[site.id] = 1;
     else S.scrolls.stele--;
     SEL.site = null;

@@ -65,4 +65,6 @@ function dirName(lat1, lng1, lat2, lng2) {
 /* 互動半徑（公尺）：0.3.1.5 從 80 加大到 150，城鎮 120 → 200 */
 const RANGE = 150,
   TOWN_R = 200;
-const reachOf = e => (e && e.kind === 'town' ? TOWN_R : RANGE);
+/* 0.3.11：有契靈跟隨時再 +30 公尺（gacha.js 的 pactFollow） */
+const reachOf = e =>
+  (e && e.kind === 'town' ? TOWN_R : RANGE) + (typeof pactFollow === 'function' && pactFollow() ? PFOLLOW_R : 0);

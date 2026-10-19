@@ -62,8 +62,11 @@ function questReward(m) {
   if (m > 1) {
     giveCur('chaos');
     giveCur('soul', 30);
-    got.push('混沌石', '靈魂碎片 ×30');
+    got.push('混沌石', '靈魂 ×30');
   }
+  /* 0.3.11：每個委託都給祈願石 */
+  giveCur('wish', m);
+  got.push(`祈願石 ×${m}`);
   return got;
 }
 function dailyHTML() {

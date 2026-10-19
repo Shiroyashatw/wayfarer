@@ -408,7 +408,8 @@ const huntCfg = () => HUNT_LV[huntLv() - 1];
 function addBlood(n) {
   const h = H(),
     before = h.blood;
-  h.blood = Math.min(BLOOD_MAX, h.blood + n);
+  /* 0.3.11：掉落契靈「狩獵」加追蹤之血 */
+  h.blood = Math.min(BLOOD_MAX, h.blood + Math.round(n * pactK('hunt')));
   quest('blood', h.blood - before);
   if (before < RITE_COST && h.blood >= RITE_COST) toast('追蹤之血滿 100 了，可以血祭引出墮落獸');
   huntHud();
@@ -513,7 +514,7 @@ const zodActive = () => (S.summons || []).find(s => s.e.kind === 'zodiac' && s.u
 
 /* ================= enemies ================= */
 function makeBeast() {
-  const lv = S.lv + 1,
+  const lv = aLv() + 1,
     b0 = pickMon(fl(Math.random() * 1e6), lv),
     base = { ...b0, pal: corruptPal(b0.pal), res: [...b0.res] };
   return { kind: 'monster', base, lv, rar: 2, mods: rollMods(fl(Math.random() * 1e6), 3), hunt: 'beast' };
@@ -553,7 +554,7 @@ function makeZodiac(k, lv, mods) {
 function huntWin(b) {
   const h = H();
   if (b.hunt === 'beast') {
-    const n = 1 + fl(Math.random() * 3);
+    const n = Math.round((1 + fl(Math.random() * 3)) * pactK('hunt'));
     giveCur('dcrys', n);
     addLog(`擊敗墮落獸，得到惡魔結晶 ×${n}`);
     return `<p style="color:#ff8a9a">${curDot('dcrys')}惡魔結晶 ×${n}（共 ${S.cur.dcrys}）</p>`;
@@ -565,15 +566,15 @@ function huntWin(b) {
   h.slain = h.slain || {};
   h.slain[z.k] = 1;
   const got = [`${z.t}之印${m > 1 ? ' ×2' : ''}`];
-  for (let i = 0; i < 3 * m; i++) {
+  for (let i = 0; i < Math.round(3 * m * tierBoss()); i++) {
     const c = rollCur(2);
     giveCur(c);
     got.push(CURI[c].n);
   }
   giveCur('dcrys', 2 * m);
   got.push(`惡魔結晶 ×${2 * m}`);
-  if (Math.random() < 0.3 * m) got.push(giveJewel(1 + fl(Math.random() * (z.k === 'dragon' ? 3 : 2))));
-  if (Math.random() < (z.k === 'dragon' ? 0.2 : 0.08) * m) {
+  if (Math.random() < 0.3 * m * tierBoss()) got.push(giveJewel(1 + fl(Math.random() * (z.k === 'dragon' ? 3 : 2))));
+  if (Math.random() < (z.k === 'dragon' ? 0.2 : 0.08) * m * tierBoss()) {
     const it = makeLegend(SINS[fl(Math.random() * 7)].k);
     giveItem(it);
     got.push(itemName(it));
@@ -781,7 +782,7 @@ Object.assign(A, {
         mods = [];
       for (let a = T.mods[0] + fl(Math.random() * (T.mods[1] - T.mods[0] + 1)); a > 0; a--)
         mods.push(pool.splice(fl(Math.random() * pool.length), 1)[0]);
-      e = { kind: 'dungeon', x, y, dt, mods, lv: S.lv + T.lv, name: T.n };
+      e = { kind: 'dungeon', x, y, dt, mods, lv: dunLv(fl(Math.random() * 1e6), T.lv), name: T.n };
     } else if (s.k === 'stele') e = { kind: 'stele', x, y, name: '空白石碑', gl: '127,214,255' };
     else if (s.k === 'vein') e = { kind: 'vein', x, y, name: '靈脈', gl: '110,220,255' };
     else {
@@ -792,7 +793,7 @@ Object.assign(A, {
         x,
         y,
         tier,
-        lv: S.lv + tier,
+        lv: aLv() + tier,
         name: `魔霧 ${ROMAN[tier]}`,
         gl: '176,107,255',
         lbl: `魔霧 ${ROMAN[tier]}`,
@@ -824,7 +825,7 @@ Object.assign(A, {
         z: z.k,
         spr: z.spr,
         pal: zodPal(z),
-        lv: S.lv + 4,
+        lv: aLv() + 4,
         mods,
         name: (ob ? '冥府・' : '') + z.t,
         gl: '255,42,74',
