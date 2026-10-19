@@ -248,17 +248,27 @@ function placeBName(boss) {
   el.style.left = POS().ex + 'px';
   el.style.top = enemyTop(boss) + 'px';
 }
-/* 行動順序（右上角直列）：list 是 [{n, c, on, dead}]，c 是 'me'／'e'／'' */
+/* 左上角層數（不在地城就隱藏） */
+function setFloor(t) {
+  $('bfloor').textContent = t;
+  $('bfloor').hidden = !t;
+}
+/* 小頭像：用像素圖轉成圖片，快取起來 */
+const PORT = new Map();
+function portrait(spr, pal) {
+  const k = spr + JSON.stringify(pal);
+  if (!PORT.has(k)) PORT.set(k, sprite(spr, pal).toDataURL());
+  return PORT.get(k);
+}
+/* 行動順序（戰鬥畫面底部橫列）：list 是 [{n, c, on, dead, img}]，c 是 'me'／'e'／''；{h} 是分隔（下一輪） */
 function renderOrder(list) {
-  $('border').innerHTML =
-    '<b>行動順序</b>' +
-    list
-      .map(q =>
-        q.h
-          ? `<b>${q.h}</b>`
-          : `<div class="${q.c ? 'bo-' + q.c : ''}${q.on ? ' on' : ''}${q.dead ? ' dead' : ''}">${esc(q.n)}</div>`
-      )
-      .join('');
+  $('border').innerHTML = list
+    .map(q =>
+      q.h
+        ? `<span class="bo-sep">${q.h}</span>`
+        : `<div class="bo${q.c ? ' bo-' + q.c : ''}${q.on ? ' on' : ''}${q.dead ? ' dead' : ''}"><img src="${q.img}" alt=""><span>${esc(q.n)}</span></div>`
+    )
+    .join('');
 }
 function bmsg(t) {
   const el = $('bmsg');
@@ -334,13 +344,15 @@ function renderBHud() {
   placeBName(B.boss);
   {
     /* 單人：你先、怪物後；怪物迅捷時可能連動兩次 */
-    const me = { n: S.name || '你', c: 'me' },
-      en = { n: e.name, c: 'e' },
+    const me = { n: S.name || '你', c: 'me', img: portrait('heroF', heroPal()) },
+      en = { n: e.name, c: 'e', img: portrait(e.spr, e.pal) },
       et = B.turn === 'E';
-    renderOrder([{ ...me, on: !et }, { ...en, on: et }, { ...me }, { ...en }]);
+    renderOrder([{ ...me, on: !et }, { ...en, on: et }, { h: '下一輪' }, me, en]);
   }
+  setFloor(
+    D ? `${D.kind === 'rift' ? '裂隙' : ''}第 ${D.room + 1}/${D.spec.floors} ${D.kind === 'rift' ? '波' : '層'}` : ''
+  );
   $('bstat').textContent = [
-    D ? `${D.kind === 'rift' ? '裂隙第' : '第'} ${D.room + 1}/${D.spec.floors} ${D.kind === 'rift' ? '波' : '層'}` : '',
     B.poison ? `中毒 ${B.poison}` : '',
     B.burn ? `燃燒 ${B.burn}` : '',
     B.shock ? `感電 ${B.shock}` : '',

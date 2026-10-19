@@ -34,7 +34,7 @@
 | 單人戰鬥流程 | `js/battle.js` | `startBattle`、`useSkill`、`playerHit`、`enemyTurn`、`winBattle`、`loseBattle` |
 | 戰鬥規則（單人＋多人共用） | `js/battle.js` | `skCost`、`canPay`、`payCost`、`heroPacket`、`heroDmg`、`heroAil`、`takeDmg`、`mitigate` |
 | 掉寶、地城獎勵 | `js/battle.js` | `dropLoot`、`dunReward`；靈魂碎片與刻印石 `gemLoot` |
-| 戰鬥畫面（背景、特效、按鈕） | `js/battle.js` | `paintBG`、`renderBHud`、`renderBattle`、`drawFx`；怪物頭上名字 `placeBName`、右上角行動順序 `renderOrder`（多人在 `mp.js` 的 `renderMBHud`） |
+| 戰鬥畫面（背景、特效、按鈕） | `js/battle.js` | `paintBG`、`renderBHud`、`renderBattle`、`drawFx`；怪物頭上名字 `placeBName`、左上角層數 `setFloor`、底部橫列行動順序 `renderOrder`（小頭像 `portrait`；多人在 `mp.js` 的 `renderMBHud`、倒數條 `mpTurnBar`、站位 `mpPos`） |
 | 冥府看門人（牛頭、馬面、黑白無常） | `js/endgame.js` | `WATCHERS`、`summonWatcher` |
 | 地圖道路資料、圖磚快取 | `js/map.js` | `OpenStreetMap vector tiles` 區段 |
 | 地標城鎮清單 | `js/map.js` | `TOWNS`（前 11 個 id 不能改） |
@@ -144,16 +144,16 @@
 - **modal**（667）
   `showModal:668`、`hideModal:674`、`busy:677`、`openShop:678`
 
-### js/battle.js（1317 行）
+### js/battle.js（1329 行）
 
 - **battle: painted backgrounds**（3）
   `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
 - **battle: logic**（238）
-  `BFX:239`、`POS:240`、`enemyTop:242`、`placeBName:246`、`renderOrder:252`、`bmsg:263`、`pop:270`、`anim:273`、`animOff:276`、`later:290`、`startBattle:295`、`renderBHud:327`、`mitigate:389`、`skCost:398`、`canPay:399`、`payCost:400`、`costTxt:405`、`skSt:407`、`skByKey:420`、`extraHit:421`、`heroPacket:422`、`heroDmg:437`、`heroAil:445`、`poisonTick:468`、`takeDmg:470`、`playerHit:476`、`useSkill:511`、`bItem:578`、`flee:601`、`enemyDead:616`、`afterPlayer:621`、`enemyTurn:625`、`endEnemyTurn:720`
-- **dungeons (shared by solo and party)**（739）
-  `dunSpec:741`、`dunName:767`、`BIGBOSS:768`、`dunEnemy:770`、`dropLoot:834`、`gemLoot:903`、`dunReward:926`、`dunModsHTML:949`、`winBattle:954`、`loseBattle:1023`、`endBattle:1052`、`enterDungeon:1059`、`nextRoom:1076`、`dungeonClear:1099`
-- **battle: drawing**（1123）
-  `renderBattle:1124`、`drawFx:1237`
+  `BFX:239`、`POS:240`、`enemyTop:242`、`placeBName:246`、`setFloor:252`、`PORT:257`、`portrait:258`、`renderOrder:264`、`bmsg:273`、`pop:280`、`anim:283`、`animOff:286`、`later:300`、`startBattle:305`、`renderBHud:337`、`mitigate:401`、`skCost:410`、`canPay:411`、`payCost:412`、`costTxt:417`、`skSt:419`、`skByKey:432`、`extraHit:433`、`heroPacket:434`、`heroDmg:449`、`heroAil:457`、`poisonTick:480`、`takeDmg:482`、`playerHit:488`、`useSkill:523`、`bItem:590`、`flee:613`、`enemyDead:628`、`afterPlayer:633`、`enemyTurn:637`、`endEnemyTurn:732`
+- **dungeons (shared by solo and party)**（751）
+  `dunSpec:753`、`dunName:779`、`BIGBOSS:780`、`dunEnemy:782`、`dropLoot:846`、`gemLoot:915`、`dunReward:938`、`dunModsHTML:961`、`winBattle:966`、`loseBattle:1035`、`endBattle:1064`、`enterDungeon:1071`、`nextRoom:1088`、`dungeonClear:1111`
+- **battle: drawing**（1135）
+  `renderBattle:1136`、`drawFx:1249`
 
 ### js/map.js（1612 行）
 
@@ -241,7 +241,7 @@
 - **friends sheet**（148）
   `friendsHTML:149`
 
-### js/mp.js（1141 行）
+### js/mp.js（1159 行）
 
   `PT:6`、`TURN_MS:7`、`ptMax:10`、`allReady:11`、`genCode:12`、`amLeader:14`、`mySnap:15`、`palFor:65`
 - **party / lobby**（67）
@@ -251,7 +251,7 @@
 - **battle (every client)**（701）
   `mpEnter:702`、`mpBG:724`、`mpApply:730`、`mpMy:794`、`mpRoomReward:813`、`mpClear:828`、`mpWipe:853`、`mpEnd:877`、`mpStop:894`、`mpLeave:905`
 - **battle rendering**（920）
-  `mpPos:922`、`renderMBHud:928`、`mpTurnT:1002`、`mpTurnBar:1003`、`renderMB:1026`
+  `mpPos:922`、`renderMBHud:928`、`mpTurnT:1017`、`mpTurnBar:1018`、`renderMB:1044`
 
 ### js/main.js（158 行）
 
