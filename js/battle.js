@@ -889,8 +889,9 @@ function dropLoot(e, boss, sp, remote) {
     out = [],
     r = e.rar || 0,
     zm = zoneAt(S.lat, S.lng).m,
-    Q = 1 + ((sp ? sp.q : 0) + (zm.q || 0)) / 100,
-    R = 1 + ((sp ? sp.r : 0) + (zm.r || 0)) / 100;
+    os = onsiteNow() ? ONSITE_BONUS : 0,
+    Q = 1 + ((sp ? sp.q : 0) + (zm.q || 0) + os) / 100,
+    R = 1 + ((sp ? sp.r : 0) + (zm.r || 0) + os) / 100;
   const itemCh = ([0.22, 0.5, 1, 1, 1][r] || 0.22) * buf * rem * Q,
     curN =
       (boss
@@ -974,11 +975,14 @@ function gemLoot(e, boss, hell, rem, out) {
   if (r === 4 && ch(0.08)) add('prism');
   if (r === 4 && ch(0.08)) add('engD');
 }
+/* 現場加成：人實際走到 80 公尺內打（不是靠據點、營旗、絲綢之路遠端），掉寶數量與稀有度 +20% */
+const ONSITE_BONUS = 20;
+const onsiteNow = () => (D ? !!D.onsite : B ? !!B.onsite : MB ? !!(MB.d && MB.d.onsite && amLeader()) : false);
 /* 地城通關獎勵 */
 function dunReward(D) {
   const sp = D.spec,
     mult = D.remote ? 0.8 : 1,
-    Q = 1 + sp.q / 100,
+    Q = 1 + (sp.q + (D.onsite ? ONSITE_BONUS : 0)) / 100,
     bonus = (D.lm ? 1.6 : 1) * Q,
     gold = Math.round((40 + D.lv * 25) * mult * bonus),
     cry = D.kind === 'rift' ? 0 : Math.max(1, Math.round((2 + fl(D.lv / 2)) * mult * bonus));
@@ -1024,6 +1028,7 @@ function winBattle() {
     bonus += `<p style="color:var(--gold)">懸賞完成！額外 ${g} 金幣與 1 個混沌石</p>`;
     S.cleared[B.bounty] = evEp();
   }
+  if (onsiteNow()) bonus += `<p class="sub" style="color:var(--gold)">✦ 現場加成：掉寶 +${ONSITE_BONUS}%</p>`;
   if (B.uw) bonus += obeliskCharge(B.uw);
   if (B.watcher) bonus += watcherWin(B.watcher);
   addLog(`擊敗 ${e.name} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);
@@ -1119,6 +1124,7 @@ function enterDungeon(t, remote) {
     lv: t.lv,
     room: 0,
     remote,
+    onsite: !!t.onsite,
     lm: t.kind === 'landmark' ? t : null,
     seed: h(fl(t.lat * 1e4), fl(t.lng * 1e4), hepoch()),
     spec: dunSpec(t)

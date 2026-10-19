@@ -257,6 +257,8 @@ function payDun(pay) {
   if (pay.scroll && !((S.scrolls || {})[pay.scroll] > 0)) return false;
   if ((pay.tabs || []).some(id => !tabs.some(t => t.id === id))) return false;
   if ((pay.frags || []).some(id => !frags.some(t => t.id === id))) return false;
+  if (pay.ent && S.defeated[pay.ent]) return false;
+  if (pay.ent) S.defeated[pay.ent] = 1;
   if (pay.scroll) S.scrolls[pay.scroll]--;
   S.tabs = tabs.filter(t => !(pay.tabs || []).includes(t.id));
   S.frags = frags.filter(t => !(pay.frags || []).includes(t.id));
@@ -512,7 +514,55 @@ function portalPick() {
 }
 
 /* ================= actions ================= */
+/* 路上的石碑／魔法陣當場挑戰：詞綴由位置決定（石碑 1～2 條、魔法陣 3 條），打完或開打後這座就消失 */
+function onsiteMods(e, n) {
+  const pool = DMODS.map(m => m.id),
+    out = [];
+  let r = h(fl(e.x), fl(e.y), 97);
+  for (let i = 0; i < n; i++) {
+    out.push(pool.splice(r % pool.length, 1)[0]);
+    r = h(r, i, 13);
+  }
+  return out;
+}
+const steleNowMods = e => onsiteMods(e, 1 + (h(fl(e.x), fl(e.y), 5) % 2));
+const CIRCLE_NOW_FLOORS = 10;
 Object.assign(A, {
+  steleNow: d => {
+    const e = ENT.get(d.id);
+    if (!inRange(e) || isDone(e) || e.kind !== 'stele') return;
+    const mods = steleNowMods(e);
+    S.defeated[e.id] = 1;
+    closeSheet();
+    enterDungeon({
+      id: 'sn' + uid(),
+      kind: 'dungeon',
+      dt: 'stele',
+      mods,
+      lv: S.lv + 2,
+      lat: e.lat,
+      lng: e.lng,
+      floors: mods.length + 1,
+      onsite: onSite(e)
+    });
+    save();
+  },
+  circleNow: d => {
+    const e = ENT.get(d.id);
+    if (!inRange(e) || isDone(e) || e.kind !== 'circle') return;
+    partyCreate({
+      id: 'cn' + uid(),
+      dt: 'circle',
+      mods: onsiteMods(e, 3),
+      lv: S.lv + 3,
+      lat: e.lat,
+      lng: e.lng,
+      name: '石碑魔法陣',
+      floors: CIRCLE_NOW_FLOORS,
+      onsite: onSite(e),
+      pay: { ent: e.id }
+    });
+  },
   seal: d => {
     const e = ENT.get(d.id);
     if (!inRange(e) || isDone(e)) return;
