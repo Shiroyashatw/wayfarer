@@ -971,6 +971,8 @@ function ascCan(id) {
   return true;
 }
 const ascResetCost = () => 300 + S.lv * 60;
+/* 紅點提示：有沒用的昇華點數，或等級已經可以挑戰下一場試煉 */
+const ascAlert = () => ascPts() > ascUsed() || (ascNext() != null && S.lv >= ascNext());
 
 /* ================= icons ================= */
 /* 節點圖示：分支顏色的圓底＋效果圖示；終極是金框，入口是分支徽章 */
@@ -1069,7 +1071,7 @@ function ascTrialDone() {
   const a = ASCD();
   a.trials = Math.min(ASC_LV.length, a.trials + 1);
   addLog(`通過昇華試煉 ${a.trials}/${ASC_LV.length}`);
-  return `<p style="color:var(--gold)">通過昇華試煉 ${a.trials}/${ASC_LV.length}：獲得 2 點昇華點數！${a.br ? '' : '到「角色 → 昇華」選擇你的昇華。'}</p>`;
+  return `<p style="color:var(--gold)">通過昇華試煉 ${a.trials}/${ASC_LV.length}：獲得 2 點昇華點數！${a.br ? '' : '點下方頭像 →「昇華」選擇你的昇華。'}</p>`;
 }
 
 /* ================= actions ================= */
