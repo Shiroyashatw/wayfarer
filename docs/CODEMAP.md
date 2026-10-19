@@ -144,16 +144,16 @@
 - **modal**（667）
   `showModal:668`、`hideModal:674`、`busy:677`、`openShop:678`
 
-### js/battle.js（1368 行）
+### js/battle.js（1371 行）
 
 - **battle: painted backgrounds**（3）
   `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
 - **battle: logic**（238）
-  `BFX:239`、`POS:241`、`enemyTop:246`、`placeBName:250`、`AIL_E:256`、`ailHTML:267`、`placeAil:275`、`battleSc:281`、`bossBar:283`、`setFloor:293`、`PORT:298`、`portrait:299`、`renderOrder:305`、`bmsg:314`、`pop:321`、`anim:324`、`animOff:327`、`later:341`、`startBattle:346`、`renderBHud:378`、`mitigate:438`、`skCost:447`、`canPay:448`、`payCost:449`、`costTxt:454`、`skSt:456`、`skByKey:469`、`extraHit:470`、`heroPacket:471`、`heroDmg:486`、`heroAil:494`、`poisonTick:517`、`takeDmg:519`、`playerHit:525`、`useSkill:560`、`bItem:627`、`flee:650`、`enemyDead:665`、`afterPlayer:670`、`enemyTurn:674`、`endEnemyTurn:769`
-- **dungeons (shared by solo and party)**（788）
-  `dunSpec:790`、`dunName:816`、`BIGBOSS:817`、`dunEnemy:819`、`dropLoot:883`、`gemLoot:952`、`dunReward:975`、`dunModsHTML:998`、`winBattle:1003`、`loseBattle:1072`、`endBattle:1101`、`enterDungeon:1110`、`nextRoom:1127`、`dungeonClear:1150`
-- **battle: drawing**（1174）
-  `renderBattle:1175`、`drawFx:1288`
+  `BFX:239`、`POS:241`、`enemyTop:246`、`placeBName:250`、`AIL_E:256`、`ailHTML:267`、`placeAil:275`、`battleSc:281`、`bossBar:283`、`setFloor:293`、`PORT:298`、`portrait:299`、`renderOrder:305`、`bmsg:314`、`pop:321`、`anim:324`、`animOff:327`、`later:341`、`startBattle:346`、`renderBHud:378`、`mitigate:441`、`skCost:450`、`canPay:451`、`payCost:452`、`costTxt:457`、`skSt:459`、`skByKey:472`、`extraHit:473`、`heroPacket:474`、`heroDmg:489`、`heroAil:497`、`poisonTick:520`、`takeDmg:522`、`playerHit:528`、`useSkill:563`、`bItem:630`、`flee:653`、`enemyDead:668`、`afterPlayer:673`、`enemyTurn:677`、`endEnemyTurn:772`
+- **dungeons (shared by solo and party)**（791）
+  `dunSpec:793`、`dunName:819`、`BIGBOSS:820`、`dunEnemy:822`、`dropLoot:886`、`gemLoot:955`、`dunReward:978`、`dunModsHTML:1001`、`winBattle:1006`、`loseBattle:1075`、`endBattle:1104`、`enterDungeon:1113`、`nextRoom:1130`、`dungeonClear:1153`
+- **battle: drawing**（1177）
+  `renderBattle:1178`、`drawFx:1291`
 
 ### js/map.js（1612 行）
 
@@ -182,16 +182,16 @@
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:278`、`classPicker:411`
 
-### js/ui.js（1203 行）
+### js/ui.js（1207 行）
 
 - **HUD & sheets**（3）
-  `renderHud:4`、`toast:19`、`openSheet:26`、`closeSheet:33`、`TITLES:38`、`NAVG:54`、`navG:72`、`navClose:73`、`navOpen:82`、`KIND:110`、`bar:119`、`entIcon:122`、`fmt1:168`、`curRow:169`、`curRowG:172`、`gemDesc:174`、`gemCell:181`、`dupGems:187`、`gemRow:195`、`prayed:199`、`renderSheet:200`、`nearTownE:361`
-- **entity interaction**（365）
-  `openEnt:366`、`inRange:451`
-- **bases**（453）
-  `prodRate:454`、`stored:455`、`baseName:456`、`flagCheck:457`
-- **actions**（465）
-  `authForm:467`、`A:499`
+  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:58`、`navG:76`、`navClose:77`、`navOpen:86`、`KIND:114`、`bar:123`、`entIcon:126`、`fmt1:172`、`curRow:173`、`curRowG:176`、`gemDesc:178`、`gemCell:185`、`dupGems:191`、`gemRow:199`、`prayed:203`、`renderSheet:204`、`nearTownE:365`
+- **entity interaction**（369）
+  `openEnt:370`、`inRange:455`
+- **bases**（457）
+  `prodRate:458`、`stored:459`、`baseName:460`、`flagCheck:461`
+- **actions**（469）
+  `authForm:471`、`A:503`
 
 ### js/endgame.js（643 行）
 

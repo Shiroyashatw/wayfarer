@@ -980,7 +980,7 @@ function renderMBHud() {
   $('hail').innerHTML = '';
   ep.innerHTML =
     e && !big
-      ? `<div class="bp hp"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><span>${Math.ceil(e.hp).toLocaleString()}</span></div>`
+      ? `<div class="hpanel en"><i class="hb hhp"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><em>${Math.max(0, Math.ceil(e.hp)).toLocaleString()} / ${e.maxhp.toLocaleString()}</em></i></div>`
       : '';
   $('hpills').innerHTML = '';
   $('mpills').innerHTML = MB.ps

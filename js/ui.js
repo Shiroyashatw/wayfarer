@@ -13,6 +13,10 @@ function renderHud() {
   a.clearRect(0, 0, 18, 18);
   a.drawImage(sprite('heroF', heroPal()), 0, 0);
   $('ptDot').hidden = treePts() <= 0;
+  /* 頭像上方的經驗值圓弧，快升級時發光 */
+  const xr = Math.min(1, S.xp / xpNeed(S.lv));
+  $('xpArc').style.strokeDasharray = `${xr * 100} 100`;
+  $('xpArc').classList.toggle('near', xr >= 0.9);
   $('gaDot').hidden = (S.cur.soul || 0) < GEM_DRAW * 10;
 }
 let toastT;

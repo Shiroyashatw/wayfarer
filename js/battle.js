@@ -400,16 +400,19 @@ function renderBHud() {
   $('bname').hidden = big;
   placeAil('eail', p.ex + 6 * es, p.y - 16 * es, ailHTML(B, AIL_E));
   placeAil('hail', p.hx + 6 * sc, p.hy - 16 * sc, ailHTML(B, AIL_H));
-  const pill = (cls, v, max, txt) =>
-    `<div class="bp ${cls}"><i style="width:${Math.max(0, (v / max) * 100)}%"></i><span>${txt ?? Math.ceil(v).toLocaleString()}</span></div>`;
   const hp = $('hpills');
   hp.style.left = p.hx + 'px';
   hp.style.top = p.hy + 14 + 'px';
-  hp.innerHTML = pill('hp', S.hp, st.maxhp) + pill('mp', S.mp, st.maxmp) + pill('xp', S.xp, xpNeed(S.lv), `Lv${S.lv}`);
+  /* 單人的玩家面板：名字與等級、生命（數值）、魔力（數值）、經驗細條 */
+  const bar = (cls, v, max, txt) =>
+    `<i class="hb ${cls}"><i style="width:${Math.max(0, Math.min(100, (v / max) * 100))}%"></i>${txt ? `<em>${txt}</em>` : ''}</i>`;
+  hp.innerHTML = `<div class="hpanel${S.hp < st.maxhp * 0.3 ? ' low' : ''}"><div class="hrow"><b>${esc(S.name || '你')}</b><span>Lv${S.lv}</span></div>${bar('hhp', S.hp, st.maxhp, `${Math.max(0, Math.ceil(S.hp))} / ${st.maxhp}`)}${bar('hmp', S.mp, st.maxmp, `${Math.max(0, Math.round(S.mp))} / ${st.maxmp}`)}${bar('hxp', S.xp, xpNeed(S.lv))}</div>`;
   const ep = $('epills');
   ep.style.left = p.ex + 'px';
   ep.style.top = p.y + 14 + 'px';
-  ep.innerHTML = big ? '' : pill('hp', e.hp, e.maxhp);
+  ep.innerHTML = big
+    ? ''
+    : `<div class="hpanel en">${bar('hhp', e.hp, e.maxhp, `${Math.max(0, Math.ceil(e.hp)).toLocaleString()} / ${e.maxhp.toLocaleString()}`)}</div>`;
   const sks = mySkills(),
     sk = sks.map((q, i) => q && 's' + i).filter(Boolean),
     dis = B.busy ? 'disabled' : '';
