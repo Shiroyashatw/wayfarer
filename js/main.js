@@ -132,6 +132,12 @@ function migrate(s) {
     if (s.hunt) s.hunt.slain = s.hunt.slain || Object.fromEntries(Object.keys(s.hunt.marks || {}).map(k => [k, 1]));
     s.v = 13;
   }
+  if (s.v < 14) {
+    // 0.3.0：昇華、多隻敵人（疊層存在 S.stacks）
+    s.asc = s.asc || { cls: null, br: null, trials: 0, nodes: [] };
+    s.stacks = 0;
+    s.v = 14;
+  }
   return s;
 }
 function start() {

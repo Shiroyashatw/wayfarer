@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 13,
+    v: 14,
     cls: 'novice',
     lv: 1,
     xp: 0,
@@ -31,6 +31,7 @@ function newGame() {
     summons: [],
     daily: null,
     foot: {},
+    asc: { cls: null, br: null, trials: 0, nodes: [] },
     sins: {},
     jewels: [],
     jsock: {},
@@ -163,7 +164,12 @@ function itemCard(it, title) {
   const b = baseOf(it);
   let h = `<div class="icard" style="border-color:${RCOL[it.r]}88"><div class="ihead" style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</div><div class="isub">${it.r === 2 ? esc(b.n) + '・' : ''}${RNAME[it.r]}${SLOTN[it.slot]}・物品等級 ${it.ilvl}${title ? '・' + title : ''}</div>`;
   const base = [];
-  if (it.phys) base.push(`物理傷害 ${it.phys[0]}–${it.phys[1]}`, `暴擊率 ${it.crit}%`);
+  if (it.phys)
+    base.push(
+      `${WTAGN[b.t] || ''}${b.th ? '・雙手武器（不能裝副手）' : '・單手武器'}`,
+      `物理傷害 ${it.phys[0]}–${it.phys[1]}`,
+      `暴擊率 ${it.crit}%`
+    );
   if (it.arm) base.push(`護甲 ${it.arm}`);
   if (it.imp) base.push(STATN[it.imp[0]](it.imp[1]));
   if (it.lure) base.push(STATN.lure(it.lure));
@@ -259,7 +265,15 @@ function gemSkill(g) {
     sk.sb = 9 + 4 * L;
   }
   if (b.kind === 'heal') sk.heal = (b.heal || 0.35) * (1 + 0.06 * L) * (1 + (t.heal || 0) / 100);
-  ['crit', 'ail', 'brk', 'leech', 'dbl'].forEach(k => (sk[k] = t[k] || 0));
+  ['crit', 'ail', 'brk', 'leech', 'dbl'].forEach(k => (sk[k] = (b[k] || 0) + (t[k] || 0)));
+  /* 召喚物與增益也隨等級變強（每級 +4%，回合數不變） */
+  if (b.pet) sk.pet = { ...b.pet, mult: b.pet.mult * (1 + 0.06 * L) * (1 + (t.dmg || 0) / 100) };
+  if (b.buff)
+    sk.buff = Object.fromEntries(
+      Object.entries(b.buff).map(([k, v]) =>
+        typeof v === 'number' && k !== 'turns' ? [k, Math.round(v * (1 + 0.04 * L) * 100) / 100] : [k, v]
+      )
+    );
   return sk;
 }
 /* 目前技能欄的 4 個技能（空格是 null），戰鬥用 's0'～'s3' 指定 */
@@ -421,7 +435,36 @@ const STAT0 = [
   'legWrath',
   'legGreed',
   'legGlut',
-  'legLust'
+  'legLust',
+  'echo',
+  'bleedCh',
+  'stunCh',
+  'exec',
+  'penRes',
+  'markFirst',
+  'dodgeCrit',
+  'counter',
+  'killStack',
+  'killMax',
+  'keepStacks',
+  'killHeal',
+  'killMana',
+  'noPotion',
+  'hpDrain',
+  'block',
+  'reflectPct',
+  'shieldPct',
+  'extraTurn',
+  'curseCh',
+  'curseP',
+  'spread',
+  'petPct',
+  'potPct',
+  'potBomb',
+  'ailDur',
+  'dotPct',
+  'anyWep',
+  'petStart'
 ];
 function sumStats() {
   const t = {};
@@ -429,7 +472,7 @@ function sumStats() {
   const A = (k, v) => (t[k] = (t[k] || 0) + v);
   for (const s of SLOTS) {
     const it = S.eq[s];
-    if (!it) continue;
+    if (!it || (s === 'offhand' && twoHand())) continue;
     if (it.arm) t.armor += it.arm;
     if (it.imp) A(it.imp[0], it.imp[1]);
     if (it.lure) t.lure += it.lure;
@@ -442,6 +485,7 @@ function sumStats() {
   }
   jewelStats(A);
   zodStats(A);
+  if (typeof ascStats === 'function') ascStats(A);
   return t;
 }
 /* 升級只成長生命與魔力（所有人相同），其他數值靠裝備、天賦與技能石 */
@@ -538,9 +582,46 @@ function stats() {
     legWrath: t.legWrath,
     legGreed: t.legGreed,
     legGlut: t.legGlut,
-    legLust: t.legLust
+    legLust: t.legLust,
+    /* 0.3：武器類別（昇華輔助與技能標籤用）、昇華輔助效果、昇華與新技能的機制 */
+    wtag: wt,
+    ranged: wt === 'bow',
+    sup: typeof ascSup === 'function' ? ascSup() : [],
+    ...Object.fromEntries(MECH.map(k => [k, t[k]])),
+    dotMul: 1 + t.dotPct / 100,
+    killMax: t.killMax || 10
   };
 }
+/* 0.3 新機制的屬性：直接照加總傳到戰鬥（數值意義見 STATN） */
+const MECH = [
+  'anyWep',
+  'petStart',
+  'echo',
+  'bleedCh',
+  'stunCh',
+  'exec',
+  'penRes',
+  'markFirst',
+  'dodgeCrit',
+  'counter',
+  'killStack',
+  'keepStacks',
+  'killHeal',
+  'killMana',
+  'noPotion',
+  'hpDrain',
+  'block',
+  'reflectPct',
+  'shieldPct',
+  'extraTurn',
+  'curseCh',
+  'curseP',
+  'spread',
+  'petPct',
+  'potPct',
+  'potBomb',
+  'ailDur'
+];
 /* 升級曲線：Lv1→2 約 6 隻怪，Lv5 約 25 隻，Lv10 約 60 隻（同等級怪） */
 const xpNeed = lv => Math.round(40 * Math.pow(lv, 2.1) + 20 * lv);
 function fullHeal() {
@@ -556,10 +637,10 @@ function clampHP() {
 /* 自動喝水：戰鬥結束後生命／魔力低於設定的百分比，就自動喝藥水直到超過門檻（每種最多 3 瓶），回傳要顯示的文字 */
 function autoPot() {
   const st = stats(),
-    hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1),
+    hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1) * (1 + (st.potPct || 0) / 100),
     out = [];
   let n = 0;
-  while (S.autoHp && S.potions > 0 && n < 3 && (S.hp / st.maxhp) * 100 < S.autoHp) {
+  while (S.autoHp && !st.noPotion && S.potions > 0 && n < 3 && (S.hp / st.maxhp) * 100 < S.autoHp) {
     S.potions--;
     S.hp = Math.min(st.maxhp, S.hp + Math.round(st.maxhp * 0.4 * hm));
     if (st.legGlut) S.mp = Math.min(st.maxmp, S.mp + Math.round(st.maxhp * 0.4 * hm));
@@ -627,6 +708,7 @@ function makeEnemy(b, lv, rar = 0, mods = [], dm) {
   const f = lv - 1,
     e = {
       name: b.name,
+      bn: b.name,
       lv,
       spr: b.spr,
       pal: b.pal,

@@ -674,16 +674,12 @@ function paintIcon(c, n) {
     }
 }
 /* 外觀跟著裝備：武器決定手上拿的東西，胸甲／頭盔／腰帶／鞋子決定衣服、頭頂、腰帶與鞋子的顏色，主色看天賦盤起點 */
-const wepKind = (w = S.eq.weapon) => {
-  const n = w ? BASES.weapon[w.bi].n : '短劍';
-  return n.includes('弓') ? 'bow' : n.includes('杖') ? 'staff' : 'sword';
-};
-/* 武器專精天賦用：劍（短劍、長劍）、斧、弓、法杖；副手是盾牌、法珠或提燈 */
-const wepType = (w = S.eq.weapon) => {
-  const n = w ? BASES.weapon[w.bi].n : '短劍';
-  return n.includes('斧') ? 'axe' : wepKind(w);
-};
-const offType = () => (S.eq.offhand ? BASES.offhand[S.eq.offhand.bi].k : '');
+const wepKind = (w = S.eq.weapon) => (w ? BASES.weapon[w.bi].k : 'sword');
+/* 武器類別（天賦專精、技能標籤、昇華用）：劍、斧鎚、矛、弓弩、匕首爪、法杖；副手是盾牌、法珠、符咒或提燈 */
+const wepType = (w = S.eq.weapon) => (w ? BASES.weapon[w.bi].t : 'sword');
+const twoHand = (w = S.eq.weapon) => !!(w && BASES.weapon[w.bi].th);
+const WTAGN = { sword: '劍', axe: '斧鎚', spear: '矛', bow: '弓弩', dagger: '匕首爪', staff: '法杖' };
+const offType = () => (S.eq.offhand && !twoHand() ? BASES.offhand[S.eq.offhand.bi].k : '');
 const GEARC = {
   皮甲: '#8a5a2f',
   鎖子甲: '#9aa3ad',

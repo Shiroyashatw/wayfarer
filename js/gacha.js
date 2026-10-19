@@ -13,7 +13,7 @@ const BANNERS = [
     cost: 'soul',
     per: GEM_DRAW,
     on: true,
-    feat: ['meteor', 'blizzard', 'cleave', 'sanct'],
+    feat: ['inferno', 'deadeye', 'summongod', 'battlecry'],
     bg: ['#2a1f4a', '#5a2f6a', '#c9a45c'],
     d: '用靈魂碎片祈願，抽到 Lv1 技能石。重複的技能石可以分解成粉塵，替喜歡的技能石升級。'
   },
@@ -123,7 +123,7 @@ function renderGacha() {
     html += `<div class="gaRes r${top}" data-act="gaSkip"><div class="gaGrid${GA.res.length > 1 ? ' ten' : ''}" id="gaRes">${GA.res
       .map(
         (q, i) =>
-          `<div class="gcard r${q.r}${i < GA.shown ? ' on' : ''}" style="--d:${i}"><div class="gback"></div><div class="gface">${q.isNew ? '<i class="gnew">NEW</i>' : ''}${gemTile(q.k)}<b>${SKILLS[q.k].name}</b><small>${{ attack: '攻擊', spell: '法術', heal: '回復' }[SKILLS[q.k].kind]}</small></div></div>`
+          `<div class="gcard r${q.r}${i < GA.shown ? ' on' : ''}" style="--d:${i}"><div class="gback"></div><div class="gface">${q.isNew ? '<i class="gnew">NEW</i>' : ''}${gemTile(q.k)}<b>${SKILLS[q.k].name}</b><small>${SKKIND[SKILLS[q.k].kind]}</small></div></div>`
       )
       .join(
         ''
