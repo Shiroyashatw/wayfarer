@@ -95,7 +95,18 @@ function partyCreate(e) {
   PT = {
     code: genCode(),
     leader: CLOUD.uid,
-    dun: { id: e.id, kind: 'dungeon', dt: e.dt, mods: e.mods, lv: e.lv, lat: e.lat, lng: e.lng, name: e.name },
+    dun: {
+      id: e.id,
+      kind: 'dungeon',
+      dt: e.dt,
+      mods: e.mods,
+      umods: e.umods,
+      lv: e.lv,
+      lat: e.lat,
+      lng: e.lng,
+      name: e.name,
+      pay: e.pay
+    },
     members: new Map([[CLOUD.uid, mySnap()]]),
     started: false
   };
@@ -325,13 +336,30 @@ function mpStart() {
   if (!amLeader() || PT.started || MB || !allReady()) return;
   const d = PT.dun,
     mem = [...PT.members.values()];
+  /* 魔法陣與冥府傳送門：出發時才扣掉隊長的卷軸、石碑或碎片 */
+  if (d.pay && !payDun(d.pay)) {
+    toast('卷軸、石碑或碎片不見了，不能出發');
+    return;
+  }
   PT.started = true;
   ptLobby();
   const seed = h(fl(d.lat * 1e4), fl(d.lng * 1e4), hepoch()),
     spec = dunSpec(d);
   MB = {
     spec,
-    d: { id: d.id, kind: 'dungeon', dt: d.dt, mods: d.mods, lv: d.lv, lat: d.lat, lng: d.lng, seed, spec, lm: null },
+    d: {
+      id: d.id,
+      kind: 'dungeon',
+      dt: d.dt,
+      mods: d.mods,
+      umods: d.umods,
+      lv: d.lv,
+      lat: d.lat,
+      lng: d.lng,
+      seed,
+      spec,
+      lm: null
+    },
     room: 0,
     floors: spec.floors,
     n: mem.length,
@@ -633,7 +661,7 @@ function mpRoomClear() {
     return;
   }
   for (const p of MB.ps) {
-    if (!p.alive) {
+    if (!p.alive && !MB.spec.norevive) {
       p.alive = true;
       p.hp = Math.round(p.st.maxhp * 0.2);
     }

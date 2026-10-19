@@ -501,6 +501,10 @@ const heroPal = (cls = S.cls, eq = S.eq) => {
 
 /* ================= icons: currency, item slots, passive nodes ================= */
 const PIX = {
+  cur_vaal: {
+    r: ['...rr...', '...rr...', '..rrrr..', '.rrwrrr.', '.rwrrrr.', '.rrrrdr.', '..rrdd..', '...dd...'],
+    p: { r: '#e5304a', w: '#ffb0bc', d: '#7a1020' }
+  },
   cur_soul: {
     r: ['...pp...', '..plwp..', '.plwwlp.', '.pllllp.', '..pllp..', '...pp...', '..p..p..', '.p....p.'],
     p: { p: '#7f6bd6', l: '#b7a6ff', w: '#efeaff' }

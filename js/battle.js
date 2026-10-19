@@ -715,25 +715,32 @@ function dunSpec(t) {
   const has = id => mods.some(m => m.id === id);
   return {
     dt: t.dt || 'normal',
-    floors: t.kind === 'rift' || t.kind === 'landmark' ? 3 : dt.floors,
+    floors: t.floors || (t.kind === 'rift' || t.kind === 'landmark' ? 3 : dt.floors),
     mods: mods.map(m => m.id),
     q,
     r,
     dm,
-    em: mods.filter(m => m.em).map(m => m.em),
+    em: [...new Set([...mods.filter(m => m.em).map(m => m.em), ...(t.umods || [])])],
+    norevive: !!dt.norevive,
     noregen: has('noregen'),
     eleweak: has('eleweak'),
     elite: has('elite')
   };
 }
 const dunName = t => (t.kind === 'rift' ? '魔物裂隙' : t.kind === 'landmark' ? t.dn : DTYPES[t.dt || 'normal'].n);
+const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '冥府之主', stele: '石碑守衛' };
 /* 第 room 層的敵人。boss 在最後一層 */
 function dunEnemy(D, room) {
   const sp = D.spec,
     boss = room === sp.floors - 1,
     r = h(D.seed, room, 9),
     addEm = e => {
-      for (const m of sp.em) if (!e.mods.includes(m)) e.mods.push(m);
+      for (const m of sp.em)
+        if (!e.mods.includes(m)) {
+          e.mods.push(m);
+          uwApply(e, m);
+        }
+      if (sp.em.some(m => EMODI[m] && EMODI[m].uw) && !e.name.startsWith('冥府')) e.name = '冥府・' + e.name;
       return e;
     };
   let e, bg;
@@ -744,8 +751,8 @@ function dunEnemy(D, room) {
       : makeEnemy(b, D.lv, 1, rollMods(r, 1 + (r % 2)), sp.dm);
     bg = b.bg;
   } else if (boss) {
-    const hell = sp.dt === 'hell',
-      bn = D.lm ? `${D.lm.dn}守護者` : hell ? '地獄領主' : sp.dt === 'party' ? '深淵看守' : '洞窟守護者';
+    const hell = !!BIGBOSS[sp.dt] && sp.dt !== 'stele',
+      bn = D.lm ? `${D.lm.dn}守護者` : BIGBOSS[sp.dt] || (sp.dt === 'party' ? '深淵看守' : '洞窟守護者');
     e = makeEnemy(
       {
         name: bn,
@@ -792,8 +799,9 @@ function dropLoot(e, boss, sp, remote) {
     rem = remote ? 0.8 : 1,
     out = [],
     r = e.rar || 0,
-    Q = 1 + (sp ? sp.q : 0) / 100,
-    R = 1 + (sp ? sp.r : 0) / 100;
+    zm = zoneAt(S.lat, S.lng).m,
+    Q = 1 + ((sp ? sp.q : 0) + (zm.q || 0)) / 100,
+    R = 1 + ((sp ? sp.r : 0) + (zm.r || 0)) / 100;
   const itemCh = ([0.22, 0.5, 1, 1, 1][r] || 0.22) * buf * rem * Q,
     curN =
       (boss
@@ -829,7 +837,24 @@ function dropLoot(e, boss, sp, remote) {
     giveCur(c);
     out.push(curDot(c) + CURI[c].n);
   }
-  gemLoot(r, boss, sp && sp.dt === 'hell', rem, out);
+  gemLoot(r, boss, sp && sp.dt !== 'normal' && sp.dt !== 'party' && sp.dt !== 'stele', rem, out);
+  if (boss && sp && sp.dt === 'circle') {
+    giveCur('engX', 1 + (Math.random() < 0.5 ? 1 : 0));
+    out.push(curDot('engX') + '崇高刻印石');
+  }
+  if (boss && sp && sp.dt === 'portal') {
+    giveCur('vaal');
+    out.push(curDot('vaal') + '冥府之血');
+    for (const id of ['prism', 'engD'])
+      if (Math.random() < 0.5) {
+        giveCur(id);
+        out.push(curDot(id) + GCURI[id].n);
+      }
+  }
+  if (r >= 1 || boss) {
+    const ins = rollInsc(r, boss);
+    if (ins) out.push(ins);
+  }
   if (Math.random() < 0.12) {
     S.potions++;
     out.push('生命藥水');
@@ -838,13 +863,14 @@ function dropLoot(e, boss, sp, remote) {
 }
 /* 技能石材料：靈魂碎片與刻印石系列（昇華稜鏡、神聖刻印石在冥府內容出來前先由紅名怪掉落） */
 function gemLoot(r, boss, hell, rem, out) {
-  const ch = p => Math.random() < p * rem,
+  const z = zoneAt(S.lat, S.lng).m,
+    ch = p => Math.random() < p * rem * (z.eng || 1),
     add = (id, n = 1) => {
       if (n <= 0) return;
       giveCur(id, n);
       out.push(curDot(id) + GCURI[id].n + (n > 1 ? ' ×' + n : ''));
     };
-  add('soul', Math.round(([ch(0.5) ? 1 : 0, 2, 4, 4, 10][r] + (boss ? 5 : 0)) * rem));
+  add('soul', Math.round(([Math.random() < 0.5 ? 1 : 0, 2, 4, 4, 10][r] + (boss ? 5 : 0)) * rem * (z.soul || 1)));
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
   if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
   if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');
@@ -872,6 +898,7 @@ function dunReward(D) {
     giveCur(c);
     curs.push(curDot(c) + CURI[c].n);
   }
+  if (sp.dt === 'stele') curs.push(makeTablet(D.lv, sp.mods));
   return { gold, cry, items, curs };
 }
 function dunModsHTML(sp) {
@@ -881,9 +908,10 @@ function dunModsHTML(sp) {
 }
 function winBattle() {
   const e = B.e,
+    zm = zoneAt(S.lat, S.lng).m,
     mult = (D && D.remote ? 0.8 : 1) * (buffOn() ? 1.2 : 1),
-    xp = Math.round(e.xp * mult),
-    gold = Math.round(e.gold * rnd(0.8, 1.2) * mult * stats().goldMul);
+    xp = Math.round(e.xp * mult * (zm.xp || 1)),
+    gold = Math.round(e.gold * rnd(0.8, 1.2) * mult * stats().goldMul * (zm.gold || 1));
   S.gold += gold;
   const up = gainXP(xp);
   if (B.entId) {
@@ -896,9 +924,11 @@ function winBattle() {
     const g = 100 + S.lv * 30;
     S.gold += g;
     giveCur('chaos');
-    bonus = `<p style="color:var(--gold)">懸賞完成！額外 ${g} 金幣與 1 個混沌石</p>`;
+    bonus += `<p style="color:var(--gold)">懸賞完成！額外 ${g} 金幣與 1 個混沌石</p>`;
     S.cleared[B.bounty] = evEp();
   }
+  if (B.uw) bonus += obeliskCharge(B.uw);
+  if (B.watcher) bonus += watcherWin(B.watcher);
   addLog(`擊敗 ${e.name} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);
   if (up) setTimeout(() => sfx('level'), 500);
   renderBHud();

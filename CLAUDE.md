@@ -26,6 +26,7 @@
 | `js/map.js` | 世界地圖（以台中車站為原點、公尺座標）、OpenFreeMap 向量圖磚（z14）解碼與 IndexedDB 快取、45 個地標城鎮、分塊迷霧、晝夜視野、生成（`dungeonAt`）、攝影機、GPS |
 | `js/tree.js` | 天賦樹全螢幕介面（縮放、拖曳、多節點路徑） |
 | `js/ui.js` | HUD、底部面板、互動、據點、`data-act` 動作表 |
+| `js/endgame.js` | 0.2 終局：據點半徑與冒險營旗、空白石碑／魔法陣、靈脈、區域特性、冥府侵蝕柱與碎片、絲綢之路（`ui.js` 之後載入） |
 | `js/cloud.js` | Supabase 匿名登入、信箱註冊／登入、玩家編號、存檔上傳（每 15 秒／切到背景時） |
 | `js/social.js` | 好友（`friend_*` RPC）、名字同步到 `profiles`、組隊邀請（`party_invites` + Realtime） |
 | `js/mp.js` | 隊伍（6 碼代碼、Realtime 廣播頻道 `wf-party-代碼`）與多人戰鬥；隊長的裝置計算、廣播 `state` |

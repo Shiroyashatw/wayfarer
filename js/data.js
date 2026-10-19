@@ -139,7 +139,8 @@ const GCUR = [
   { id: 'engC', n: '混沌刻印石', d: '隨機重洗一條刻印詞綴', c: '#e58a3a' },
   { id: 'engX', n: '崇高刻印石', d: '在空的刻印槽抽一條 T1～T2 詞綴', c: '#fff2b0' },
   { id: 'prism', n: '昇華稜鏡', d: '重洗階級最低的那條刻印詞綴', c: '#ff8fd8' },
-  { id: 'engD', n: '神聖刻印石', d: '不換詞綴種類，重骰所有刻印詞綴的數值', c: '#ffe27a' }
+  { id: 'engD', n: '神聖刻印石', d: '不換詞綴種類，重骰所有刻印詞綴的數值', c: '#ffe27a' },
+  { id: 'vaal', n: '冥府之血', d: '腐化 Lv30 技能石：超限、擴槽、毀滅或降等（各 25%）', c: '#ff3a5a' }
 ];
 const GCURI = Object.fromEntries(GCUR.map(c => [c.id, c]));
 const EL = { phys: '物理', fire: '火焰', cold: '冰冷', light: '閃電' };
@@ -956,6 +957,48 @@ const DTYPES = {
     col: '#ff4a4a',
     pal: { x: '#6a2a2a', m: '#3a1414', r: '#ffb040' },
     desc: '非常危險。首領是災厄級，最多 4 人，建議等級夠高再組滿隊伍挑戰。'
+  },
+  /* 以下三種不會在路邊出現，由背包裡的卷軸、石碑、冥府碎片組成；norevive：倒下不會在下一層復活 */
+  stele: {
+    n: '單人石碑',
+    max: 1,
+    floors: 3,
+    lv: 2,
+    mods: [0, 0],
+    q: 20,
+    r: 20,
+    hp: 1.3,
+    col: '#b9b6c4',
+    pal: { x: '#8a8796', m: '#5a5466', r: '#7fd6ff' },
+    desc: '空白石碑卷注入碑文碎片做成的短副本，失敗就沒了。'
+  },
+  circle: {
+    n: '石碑魔法陣',
+    max: 4,
+    floors: 20,
+    lv: 3,
+    mods: [0, 0],
+    q: 60,
+    r: 50,
+    hp: 1.6,
+    norevive: true,
+    col: '#b89aff',
+    pal: { x: '#4a3a6a', m: '#2a2040', r: '#b89aff' },
+    desc: '4～6 個石碑合成的 20 層地城，倒下不會復活，全隊倒下就失敗。'
+  },
+  portal: {
+    n: '冥府傳送門',
+    max: 4,
+    floors: 8,
+    lv: 5,
+    mods: [0, 0],
+    q: 120,
+    r: 100,
+    hp: 2.2,
+    norevive: true,
+    col: '#ff3a5a',
+    pal: { x: '#3a1a2e', m: '#1a0a14', r: '#ff3a5a' },
+    desc: '4 片冥府碎片組成的傳送門，首領保證掉落冥府之血。倒下不會復活。'
   }
 };
 /* 地城詞綴（參考 PoE 地圖詞綴）：讓地城更難，但提高掉落數量與稀有度。em 會加到每隻怪物身上，dm 是怪物數值倍率 */
@@ -973,6 +1016,30 @@ const DMODS = [
   { id: 'elite', n: '精英巢穴', d: '魔法怪與稀有怪大幅增加', q: 15, r: 12 }
 ];
 const DMODI = Object.fromEntries(DMODS.map(m => [m.id, m]));
+/* 冥府詞綴：侵蝕柱附近的怪物與冥府傳送門的怪物身上才有，效果在 uwApply */
+const UMODS = [
+  { id: 'uw_body', n: '冥府之軀', d: '生命 +120%', uw: 1 },
+  { id: 'uw_flame', n: '冥火', d: '攻擊 +40%，改為火焰傷害', uw: 1 },
+  { id: 'uw_ward', n: '幽冥護體', d: '全部抗性 +40%、護甲 +50%', uw: 1 },
+  { id: 'uw_rage', n: '怨念', d: '攻擊 +20%、速度大幅提高', uw: 1 },
+  { id: 'uw_soul', n: '噬魂', d: '生命 +40%，攻擊時吸血', uw: 1 }
+];
+const EMODI = Object.fromEntries([...EMODS, ...UMODS].map(m => [m.id, m]));
+/* 冥府碎片的 4 個部位 */
+const FRAG_PARTS = ['冥府之眼', '冥府之心', '冥府之手', '冥府之足'];
+/* 區域特性：地圖每 2 公里一格，每 2 小時重骰 */
+const ZONE_CELL = 2000,
+  ZONE_MS = 2 * 3600e3;
+const ZMODS = [
+  { n: '魔物潮', d: '稀有與魔法怪出現率 +40%', rare: 1.4 },
+  { n: '豐收', d: '物品數量 +30%', q: 30 },
+  { n: '寶光', d: '物品稀有度 +30%', r: 30 },
+  { n: '靈魂共鳴', d: '靈魂碎片掉落加倍', soul: 2 },
+  { n: '刻印之風', d: '刻印石掉落率 +50%', eng: 1.5 },
+  { n: '金脈', d: '金幣 +50%', gold: 1.5 },
+  { n: '修羅場', d: '經驗 +30%，怪物等級 +1', xp: 1.3, mlv: 1 },
+  { n: '寧靜', d: '沒有特殊效果' }
+];
 const RCOL = ['#e8e2d4', '#7fa8ff', '#f2d25e', '#e8873a', '#ff4a4a'],
   RNAME = ['普通', '魔法', '稀有', '傳奇', '危險'];
 const RGLOW = ['', '110,160,255', '242,210,94', '232,135,58', '255,60,60'];
@@ -1741,5 +1808,5 @@ const TREE = (() => {
   }
   return { N, E, byId };
 })();
-const VER = '0.2.0';
+const VER = '0.2.3';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };
