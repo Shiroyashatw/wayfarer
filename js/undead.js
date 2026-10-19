@@ -289,26 +289,53 @@ function undeadSpawns(out, cells) {
 }
 const udProg = id => (S.und && S.und[id]) || 0;
 const udZoneAt = (x, y) => UDZ.find(z => Math.hypot(z.x - x, z.y - y) <= z.r);
+/* 亡靈區：綠色地塊、發光邊緣、中間大大的骷髏標誌 */
 function drawUndead(c, t) {
   for (const z of UDZ) {
     const x = SX(z.x),
       y = SY(z.y),
       r = Math.abs(SX(z.x + z.r) - x);
     if (x < -r || x > VW + r || y < -r || y > VH + r) continue;
+    const pu = 0.5 + 0.5 * Math.sin(t / 600);
     c.save();
-    const g = c.createRadialGradient(x, y, r * 0.2, x, y, r);
-    g.addColorStop(0, 'rgba(40,90,50,.05)');
-    g.addColorStop(1, `rgba(60,140,70,${0.16 + 0.04 * Math.sin(t / 700)})`);
+    const g = c.createRadialGradient(x, y, r * 0.15, x, y, r);
+    g.addColorStop(0, 'rgba(40,160,70,.16)');
+    g.addColorStop(0.75, 'rgba(50,200,90,.24)');
+    g.addColorStop(1, `rgba(80,255,120,${0.34 + 0.08 * pu})`);
     c.fillStyle = g;
-    c.strokeStyle = 'rgba(120,220,140,.55)';
-    c.lineWidth = 1.5;
-    c.setLineDash([8, 6]);
     c.beginPath();
     c.arc(x, y, r, 0, 6.28);
     c.fill();
+    c.shadowColor = '#4dff7a';
+    c.shadowBlur = 14 + 8 * pu;
+    c.strokeStyle = `rgba(110,255,150,${0.75 + 0.2 * pu})`;
+    c.lineWidth = 3;
+    c.stroke();
+    c.shadowBlur = 0;
+    c.strokeStyle = 'rgba(190,255,200,.5)';
+    c.lineWidth = 1.2;
+    c.setLineDash([6, 10]);
+    c.lineDashOffset = -t / 60;
+    c.beginPath();
+    c.arc(x, y, r * 0.94, 0, 6.28);
     c.stroke();
     c.restore();
-    if (cam.z > 0.15) label(c, `亡靈區 ${udProg(z.id)}%`, x, y - r - 6, 11, '#8fe0a0');
+  }
+}
+/* 亡靈區標誌：骷髏＋字，畫在怪物上層，地圖縮小時也看得到 */
+function drawUndeadMark(c, t) {
+  for (const z of UDZ) {
+    const x = SX(z.x),
+      y = SY(z.y),
+      r = Math.abs(SX(z.x + z.r) - x);
+    if (x < -r || x > VW + r || y < -r || y > VH + r) continue;
+    const sz = Math.max(22, Math.min(60, r * 0.25)),
+      pu = 0.5 + 0.5 * Math.sin(t / 600);
+    c.globalAlpha = 0.9;
+    glow(c, x, y - sz * 0.45, sz * 1.5, '80,255,120', 0.4 + 0.2 * pu);
+    drawSpr(c, 'skeleton', UNDEAD[0].pal, x, y, sz / 9);
+    c.globalAlpha = 1;
+    label(c, `亡靈區 ${udProg(z.id)}%`, x, y + 12, Math.max(12, Math.min(16, sz * 0.35)), '#8fffa8', true);
   }
 }
 

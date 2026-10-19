@@ -382,3 +382,15 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .bagtabs{display:flex;overflow-x:auto;gap:4px}
 .bagtabs button{flex:0 0 auto;font-size:13px;padding:7px 10px}
 .bagtabs b{font-family:var(--f-pix);font-weight:400;color:var(--gold);font-size:12px}
+
+/* ---------- hunt ---------- */
+.lfab.hunt i{background:radial-gradient(circle at 35% 30%,#ff9aa8,#a01a30 50%,#3a0610);box-shadow:0 0 10px #ff2a4a44,0 4px 12px #0008;animation:none}
+.lfab.hunt.on i{box-shadow:0 0 18px #ff2a4acc,0 4px 12px #0008;animation:hglow 1.2s ease-in-out infinite}
+@keyframes hglow{50%{box-shadow:0 0 6px #ff2a4a66,0 4px 12px #0008}}
+.hbadge{position:absolute;bottom:-4px;right:-6px;min-width:18px;padding:0 4px;border-radius:9px;background:#1a0a10;border:1px solid #ff6a7a;color:#ffb0b8;font-size:10px;line-height:15px;font-style:normal;font-weight:400}
+.zgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.zcell{display:grid;justify-items:center;gap:2px;padding:6px 2px;border-radius:10px;border:1px solid #ff6a7a55;background:#2a0a14;color:var(--ink);font:inherit}
+.zcell:disabled{opacity:.55}
+.zcell canvas{width:40px;height:40px;image-rendering:pixelated}
+.zcell b{font-size:13px;font-weight:400}
+.zcell small{font-size:10px;color:var(--dim);text-align:center;line-height:1.2}

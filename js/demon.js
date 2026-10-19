@@ -427,44 +427,112 @@ function demonSpawns(out, cells, hp) {
   for (const e of out.values()) {
     if (e.kind !== 'monster' || e.ev) continue;
     if (Math.hypot(e.x - MISTZ.x, e.y - MISTZ.y) > MISTZ.r) continue;
-    const q = h(fl(e.x), fl(e.y), 71);
-    if (q % 3 === 0) e.base = MISTMON[(q >>> 3) % MISTMON.length];
-    const ids = MMODS.map(m => m.id),
-      add = [ids.splice((q >>> 5) % ids.length, 1)[0]];
-    if (MISTZ.tier >= 2 && (q >>> 9) % 2) add.push(ids[(q >>> 11) % ids.length]);
-    e.mods = [...e.mods.filter(m => !m.startsWith('mi_')), ...add];
-    e.lv += MISTZ.tier;
-    e.mist = true;
-    e.name = '魔霧・' + (e.rar ? makeEnemy(e.base, e.lv, e.rar, e.mods).name.replace(/^魔霧・/, '') : e.base.name);
+    mistify(e, h(fl(e.x), fl(e.y), 71), 3);
   }
+  /* 魔霧專屬刷新：每 4 分鐘一輪，範圍內每 120 公尺方格約 55% 冒出一隻魔霧怪 */
+  const me = mistEp(),
+    Z = MISTZ;
+  for (let i = fl((Z.x - Z.r) / MQ_CELL); i <= fl((Z.x + Z.r) / MQ_CELL); i++)
+    for (let j = fl((Z.y - Z.r) / MQ_CELL); j <= fl((Z.y + Z.r) / MQ_CELL); j++) {
+      const r = h(i, j, me * 7 + 977);
+      if (r % 100 >= 55) continue;
+      const id = `q${i}_${j}_${me}`;
+      if (S.defeated[id]) continue;
+      let x = (i + ((r >>> 8) % 100) / 100) * MQ_CELL,
+        y = (j + ((r >>> 16) % 100) / 100) * MQ_CELL;
+      if (Math.hypot(x - Z.x, y - Z.y) > Z.r || nearTown(x, y, 100)) continue;
+      const p = snapRoad(x, y, 70);
+      if (!p) continue;
+      [x, y] = p;
+      const q = r >>> 4,
+        rar = q % 100 < 6 ? 2 : q % 100 < 30 ? 1 : 0,
+        lv = Math.max(1, S.lv + ((r >>> 3) % 3) - 1),
+        e = {
+          kind: 'monster',
+          x,
+          y,
+          lv,
+          base: pickMon(r >>> 12, lv),
+          rar,
+          mods: rar ? rollMods(h(i, j, me + 9), rar === 2 ? 3 : 1 + (q % 2)) : [],
+          ph: (r % 628) / 100
+        };
+      mistify(e, q, 2);
+      const [la, ln] = toLL(x, y);
+      out.set(id, { id, lat: la, lng: ln, ...e });
+    }
 }
+const MQ_CELL = 120,
+  MIST_MS = 4 * 60e3,
+  mistEp = () => fl(now() / MIST_MS);
+/* 把怪物變成魔霧怪：加魔霧詞綴、等級 +階級，1/k 換成魔霧專屬怪 */
+function mistify(e, q, k) {
+  if (q % k === 0) e.base = MISTMON[(q >>> 3) % MISTMON.length];
+  const ids = MMODS.map(m => m.id),
+    add = [ids.splice((q >>> 5) % ids.length, 1)[0]];
+  if (MISTZ.tier >= 2 && (q >>> 9) % 2) add.push(ids[(q >>> 11) % ids.length]);
+  e.mods = [...e.mods.filter(m => !m.startsWith('mi_')), ...add];
+  e.lv += MISTZ.tier;
+  e.mist = true;
+  e.name = '魔霧・' + (e.rar ? makeEnemy(e.base, e.lv, e.rar, e.mods).name.replace(/^魔霧・/, '') : e.base.name);
+}
+/* 魔霧：紫色霧氣，邊緣是一圈旋轉的漩渦 */
 function drawMist(c, t) {
   const z = S.mist;
   if (!z) return;
   const x = SX(z.x),
     y = SY(z.y),
-    r = Math.abs(SX(z.x + z.r) - x);
+    r = Math.abs(SX(z.x + z.r) - x),
+    rot = t / 1400;
   c.save();
   const g = c.createRadialGradient(x, y, r * 0.1, x, y, r);
-  g.addColorStop(0, `rgba(120,70,180,${0.1 + 0.04 * Math.sin(t / 900)})`);
-  g.addColorStop(1, 'rgba(90,40,140,.28)');
+  g.addColorStop(0, `rgba(120,70,180,${0.12 + 0.05 * Math.sin(t / 900)})`);
+  g.addColorStop(0.8, 'rgba(110,50,170,.26)');
+  g.addColorStop(1, 'rgba(150,70,230,.42)');
   c.fillStyle = g;
-  c.strokeStyle = 'rgba(200,150,255,.6)';
-  c.lineWidth = 2;
-  c.setLineDash([10, 6]);
   c.beginPath();
   c.arc(x, y, r, 0, 6.28);
   c.fill();
+  c.shadowColor = '#b06bff';
+  c.shadowBlur = 16;
+  c.strokeStyle = 'rgba(210,160,255,.85)';
+  c.lineWidth = 3;
+  c.stroke();
+  /* 漩渦臂：從邊緣往內捲的弧線，整圈旋轉 */
+  c.lineCap = 'round';
+  for (let k = 0; k < 10; k++) {
+    const a0 = rot + (k * Math.PI * 2) / 10;
+    c.strokeStyle = `rgba(${k % 2 ? '190,120,255' : '230,200,255'},${0.55 + 0.25 * Math.sin(t / 500 + k)})`;
+    c.lineWidth = k % 2 ? 2.5 : 1.5;
+    c.beginPath();
+    for (let s = 0; s <= 1.0001; s += 0.1) {
+      const rr = r * (1.04 - 0.22 * s),
+        aa = a0 + s * 1.3,
+        px = x + Math.cos(aa) * rr,
+        py = y + Math.sin(aa) * rr;
+      s ? c.lineTo(px, py) : c.moveTo(px, py);
+    }
+    c.stroke();
+  }
+  /* 反向旋轉的外圈虛線 */
+  c.shadowBlur = 0;
+  c.setLineDash([14, 10]);
+  c.lineDashOffset = t / 40;
+  c.strokeStyle = 'rgba(240,220,255,.5)';
+  c.lineWidth = 1.5;
+  c.beginPath();
+  c.arc(x, y, r * 1.06, 0, 6.28);
   c.stroke();
   c.restore();
-  if (cam.z > 0.12)
+  if (cam.z > 0.08)
     label(
       c,
       `魔霧 ${ROMAN[z.tier]} ${z.prog}%・剩 ${Math.max(0, Math.ceil((z.until - now()) / 60e3))} 分`,
       x,
-      y - r - 6,
-      11,
-      '#e0c8ff'
+      y - r - 10,
+      12,
+      '#e0c8ff',
+      true
     );
 }
 /* 打倒魔霧裡的怪：累積進度，滿了碎裂得碎片 */
