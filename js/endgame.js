@@ -141,7 +141,7 @@ function endgameSpawns(out, cells, put, hp) {
   /* 空白石碑：每小時刷新，約 1/5 是石碑魔法陣 */
   cells(STCELL, 1000, (i, j) => {
     const r = h(i, j, hp * 13 + 907);
-    if (r % 100 >= 32) return;
+    if (r % 100 >= 48) return;
     const circ = (r >>> 9) % 5 === 0,
       id = `${circ ? 'o' : 's'}${i}_${j}_${hp}`;
     let x = (i + ((r >>> 12) % 100) / 100) * STCELL,
@@ -160,7 +160,7 @@ function endgameSpawns(out, cells, put, hp) {
   /* 靈脈：每小時刷新，採集得刻印石 */
   cells(VCELL, 1000, (i, j) => {
     const r = h(i, j, hp * 17 + 433);
-    if (r % 100 >= 30) return;
+    if (r % 100 >= 42) return;
     const id = `v${i}_${j}_${hp}`;
     let x = (i + ((r >>> 8) % 100) / 100) * VCELL,
       y = (j + ((r >>> 16) % 100) / 100) * VCELL;
@@ -289,22 +289,54 @@ function makeFrag(lv) {
   S.frags.push(f);
   return `${FRAG_PARTS[part]} Lv${lv}`;
 }
-function summonWatcher(e) {
-  const b = {
-    name: '冥府看門人',
-    bg: 'cave',
-    spr: 'golem',
-    pal: { r: '#3a1a2e', y: '#ff3a5a' },
-    hp: 80,
-    atk: 14,
-    arm: 30,
+/* 冥府看門人：牛頭、馬面、黑無常、白無常隨機一位，各自的屬性與冥府詞綴不同 */
+const WATCHERS = [
+  {
+    n: '牛頭',
+    spr: 'oxhead',
+    el: 'phys',
+    pal: { b: '#6a3a2a', w: '#e8e2d4', r: '#ff3a3a', n: '#c88a7a', a: '#3a2a3a' },
+    mods: ['uw_body', 'fury']
+  },
+  {
+    n: '馬面',
+    spr: 'horseface',
     el: 'fire',
-    res: [30, 30, 30],
-    xp: 40,
-    gold: 40
-  };
-  const en = makeEnemy(b, e.lv, 4, ['uw_body', 'uw_flame', 'fury']);
-  en.name = '冥府看門人';
+    pal: { g: '#5a7a6a', m: '#2a2a2a', r: '#ff3a3a', n: '#2a3a30', a: '#3a2a3a' },
+    mods: ['uw_flame', 'swift']
+  },
+  {
+    n: '黑無常',
+    spr: 'wuchang',
+    el: 'cold',
+    pal: { h: '#1a1a22', t: '#e8e8e8', f: '#cfd8cf', e: '#111111', r: '#c0202a', c: '#24242c' },
+    mods: ['uw_rage', 'cold']
+  },
+  {
+    n: '白無常',
+    spr: 'wuchang',
+    el: 'light',
+    pal: { h: '#f0f0f0', t: '#c0202a', f: '#f4f4f4', e: '#111111', r: '#e03040', c: '#e4e4ec' },
+    mods: ['uw_soul', 'shock']
+  }
+];
+function summonWatcher(e) {
+  const w = WATCHERS[fl(Math.random() * WATCHERS.length)],
+    b = {
+      name: w.n,
+      bg: 'cave',
+      spr: w.spr,
+      pal: w.pal,
+      hp: 80,
+      atk: 14,
+      arm: 30,
+      el: w.el,
+      res: [30, 30, 30],
+      xp: 40,
+      gold: 40
+    };
+  const en = makeEnemy(b, e.lv, 4, [...w.mods, 'uw_ward']);
+  en.name = `冥府看門人・${w.n}`;
   startBattle(en, { bg: 'cave', boss: true, watcher: e.id });
 }
 
@@ -369,9 +401,9 @@ function caravans() {
     const g = 60 + S.lv * 10,
       sp = specialty(r);
     S.gold += g;
-    giveCur('soul', 3);
+    giveCur('soul', 10);
     giveCur(sp);
-    got.push(`${esc(r.name)}：${g} 金幣、靈魂碎片 ×3、${GCURI[sp].n}`);
+    got.push(`${esc(r.name)}：${g} 金幣、靈魂碎片 ×10、${GCURI[sp].n}`);
   }
   if (got.length) {
     addLog('商隊回來了：' + got.join('；'));
@@ -498,8 +530,8 @@ Object.assign(A, {
     S.defeated[e.id] = 1;
     const got = ['刻印石'];
     giveCur('eng');
-    giveCur('soul', 3);
-    got.push('靈魂碎片 ×3');
+    giveCur('soul', 8);
+    got.push('靈魂碎片 ×8');
     if (Math.random() < 0.3) {
       giveCur('engC');
       got.push('混沌刻印石');

@@ -13,6 +13,10 @@ function renderHud() {
   a.clearRect(0, 0, 18, 18);
   a.drawImage(sprite('heroF', heroPal()), 0, 0);
   $('ptDot').hidden = treePts() <= 0;
+  /* 頭像上方的經驗值圓弧，快升級時發光 */
+  const xr = Math.min(1, S.xp / xpNeed(S.lv));
+  $('xpArc').style.strokeDasharray = `${xr * 100} 100`;
+  $('xpArc').classList.toggle('near', xr >= 0.9);
   $('gaDot').hidden = (S.cur.soul || 0) < GEM_DRAW * 10;
 }
 let toastT;
@@ -328,7 +332,7 @@ function renderSheet() {
       )
       .join('')}</div>
     <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps ? '開' : '關'}</b><small>${S.gps ? GPS.err || '用手機定位實際走路移動，點地圖不會再走過去' : '目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm ${S.gps ? '' : 'pri'}" data-act="gps">${S.gps ? '關閉' : '開啟'}</button></div></div>
-    <h3>模擬傳送（測試用）</h3><div class="btns">${['台中車站', '台北車站', '台北101', '九份老街', '日月潭', '赤崁樓', '駁二藝術特區', '墾丁大街', '花蓮車站', '宜蘭車站'].map(n => `<button class="btn sm" data-act="warp" data-n="${n}">${n}</button>`).join('')}</div>
+    <h3>新手教學</h3><div class="card"><div class="rowx"><div class="t"><b>重看新手教學</b><small>一步步介紹畫面上的按鈕與玩法</small></div><button class="btn sm" data-act="tutor">開始</button></div></div>
     <h3>名字</h3><div class="card"><div class="srow"><input class="inp" id="nameInp" maxlength="12" value="${esc(S.name || '旅人')}"><button class="btn" data-act="setName">儲存</button></div><p class="sub" style="margin-top:6px">好友列表和組隊時顯示的名字，最多 12 個字。</p></div>
     <h3>帳號</h3><div class="card"><div class="rowx"><div class="t"><b>玩家編號 <span style="color:var(--gold)">${playerTag()}</span></b><small>${CLOUD.anon ? '目前是遊客，存檔綁在這台裝置。註冊後會拿到玩家編號，換手機也能登入，之後的多人地城、副本也需要帳號。' : esc(CLOUD.email || '')}</small></div>${CLOUD.anon ? '' : `<button class="btn sm" data-act="logout">登出</button>`}</div>
       ${
@@ -414,7 +418,8 @@ function openEnt(id) {
         merchant: '流浪商人只在這裡停留到下次地圖刷新，賣比較好的稀有裝備，還有混沌石。',
         rift: '裂隙裡會連續湧出 3 波魔法怪物，最後一波是稀有怪物。完成可得大量通貨。',
         fountain: '喝下泉水，30 分鐘內經驗與掉落提高 20%。'
-      }[e.sub] + `<br><span class="sub">出現在${esc(e.town)}附近，地圖刷新（每 15 分鐘）前有效。</span>`;
+      }[e.sub] +
+      `<br><span class="sub">${e.town === '路邊' ? '路邊的限時事件' : `出現在${esc(e.town)}附近`}，怪物刷新（每 15 分鐘）前有效。</span>`;
     act = isDone(e)
       ? '<button class="btn" disabled>已完成</button>'
       : `<button class="btn pri" data-act="event" data-id="${id}" ${inR ? '' : 'disabled'}>${{ merchant: '交易', rift: '進入裂隙', fountain: '喝下泉水' }[e.sub]}</button>`;
@@ -614,8 +619,8 @@ const A = {
       giveItem(it);
       got.push(itemName(it));
     }
-    giveCur('soul', 2);
-    got.push(curDot('soul') + '靈魂碎片 ×2');
+    giveCur('soul', 6);
+    got.push(curDot('soul') + '靈魂碎片 ×6');
     if (Math.random() < 0.2) {
       giveCur('eng');
       got.push(curDot('eng') + '刻印石');
@@ -1132,19 +1137,6 @@ const A = {
     }
     save();
     renderSheet();
-  },
-  warp: d => {
-    const t = TOWNS.find(t => t.n === d.n);
-    simTarget = null;
-    S.lat = t.lat - 0.0009;
-    S.lng = t.lng;
-    follow = true;
-    [cam.x, cam.y] = toM(S.lat, S.lng);
-    trailStep(true);
-    refreshEntities(true);
-    checkArrive();
-    closeSheet();
-    toast(`模擬傳送：${t.n}`);
   },
   autoPot: d => {
     S[d.k] = +d.v;

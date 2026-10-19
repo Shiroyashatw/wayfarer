@@ -923,7 +923,7 @@ function mpPos(i) {
   const p = POS(),
     col = i % 2,
     row = fl(i / 2);
-  return { x: BW * (col ? 0.15 : 0.3) - row * 4, y: p.y - row * 58 - col * 30 };
+  return { x: BW * (col ? 0.13 : 0.35) - row * 4, y: p.hy - row * 112 - col * 50 };
 }
 function renderMBHud() {
   if (!MB) return;
@@ -932,19 +932,67 @@ function renderMBHud() {
     me = MB.ps.find(q => q.uid === CLOUD.uid),
     my = MB.actor === CLOUD.uid && MB.sent !== MB.tok && me && me.alive;
   $('bname').innerHTML = e
-    ? `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>等級 ${e.lv}${MB.boss ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`
+    ? `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>Lv${e.lv}${MB.boss ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`
     : '';
+  placeBName(MB.boss);
+  {
+    /* 行動順序：這一輪（目前輪到的人亮起來）＋下一輪預估 */
+    const row = (a, i) => {
+      if (a === 'E')
+        return {
+          n: e ? e.name : '怪物',
+          c: 'e',
+          on: MB.actor === 'E' && i === MB.ti,
+          img: e ? portrait(e.spr, e.pal) : ''
+        };
+      const q = MB.ps.find(p => p.uid === a);
+      return q
+        ? {
+            n: q.name,
+            c: a === CLOUD.uid ? 'me' : '',
+            on: i === MB.ti && MB.actor === a,
+            dead: !q.alive,
+            img: portrait('heroF', palFor(q))
+          }
+        : null;
+    };
+    /* 只顯示這一輪還沒動的人（含目前），再補下一輪，總共最多 6 個 */
+    const cur = (MB.order || [])
+        .map(row)
+        .map((q, i) => (i >= Math.max(0, MB.ti) ? q : null))
+        .filter(Boolean),
+      nxt = [
+        ...MB.ps
+          .filter(p => p.alive)
+          .sort((a, b) => b.st.speed - a.st.speed)
+          .map(p => p.uid),
+        'E'
+      ].map(a => ({ ...row(a, -1), on: false }));
+    renderOrder([...cur, { h: '下一輪' }, ...nxt.slice(0, Math.max(1, 6 - cur.length))]);
+  }
   const ep = $('epills');
   ep.style.left = p.ex + 'px';
   ep.style.top = p.y + 14 + 'px';
-  ep.innerHTML = e
-    ? `<div class="bp hp"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><span>${Math.ceil(e.hp).toLocaleString()}</span></div>`
-    : '';
+  const big = bossBar(e, MB.boss),
+    es = battleSc() + (MB.boss ? 2 : 1);
+  $('bname').hidden = big;
+  placeAil('eail', p.ex + 6 * es, p.y - 16 * es, e ? ailHTML(MB.es, AIL_E) : '');
+  $('hail').innerHTML = '';
+  ep.innerHTML =
+    e && !big
+      ? `<div class="hpanel en"><i class="hb hhp"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><em>${Math.max(0, Math.ceil(e.hp)).toLocaleString()} / ${e.maxhp.toLocaleString()}</em></i></div>`
+      : '';
   $('hpills').innerHTML = '';
   $('mpills').innerHTML = MB.ps
     .map((q, i) => {
       const ps = mpPos(i);
-      return `<div class="mp ${q.uid === MB.actor ? 'on' : ''} ${q.alive ? '' : 'down'}" style="left:${ps.x}px;top:${ps.y + 10}px"><b>${esc(q.name)}${q.gone ? '（離線）' : ''}</b><i class="mh"><i style="width:${(q.hp / q.st.maxhp) * 100}%"></i></i><i class="mm"><i style="width:${(q.mp / q.st.maxmp) * 100}%"></i></i></div>`;
+      const hp = Math.max(0, Math.ceil(q.hp)),
+        hr = hp / q.st.maxhp,
+        low = q.alive && hr < 0.3;
+      return (
+        `<div class="mp ${q.uid === MB.actor ? 'on' : ''} ${q.alive ? '' : 'down'} ${low ? 'low' : ''} ${q.uid === CLOUD.uid ? 'mine' : ''}" style="left:${ps.x}px;top:${ps.y + 8}px"><b>${esc(q.name)}${q.gone ? '（離線）' : q.alive ? '' : '（倒下）'}</b><i class="mh"><i style="width:${hr * 100}%"></i><em>${hp}/${q.st.maxhp}</em></i><i class="mm"><i style="width:${(q.mp / q.st.maxmp) * 100}%"></i><em>${Math.max(0, Math.round(q.mp))}</em></i></div>` +
+        `<div class="ailbox" style="left:${ps.x + 5 * (battleSc() - 1)}px;top:${ps.y - 16 * (battleSc() - 1)}px">${ailHTML(q, AIL_H)}</div>`
+      );
     })
     .join('');
   const sks = (me && me.sks) || mySkills(),
@@ -982,22 +1030,17 @@ function mpTurnBar() {
   const a = MB.actor,
     p = MB.ps.find(q => q.uid === a),
     left = MB.dl ? Math.max(0, MB.dl - Date.now()) : 0,
-    fl_ = `第 ${Math.min(MB.room + 1, MB.floors)}/${MB.floors} 層`;
+    mine = p && p.uid === CLOUD.uid;
+  setFloor(`第 ${Math.min(MB.room + 1, MB.floors)}/${MB.floors} 層`);
+  /* 倒數條：一開始是滿的，從右往左縮短；輪到自己是金色，剩 5 秒變紅 */
+  el.className = `mpturn${mine ? ' mine' : ''}${left && left < 5000 ? ' hurry' : ''}`;
   el.innerHTML =
     a === 'E'
-      ? `<span>${fl_}・怪物行動中</span>`
+      ? '<span>怪物行動中…</span>'
       : p
-        ? `<span>${fl_}・${p.uid === CLOUD.uid ? '<b style="color:var(--gold)">輪到你了</b>' : `輪到 ${esc(p.name)}`}</span><span>${Math.ceil(left / 1000)} 秒</span><i style="width:${(left / TURN_MS) * 100}%"></i>`
-        : `<span>${fl_}</span>`;
-  $('bstat').textContent = [
-    MB.es.poison ? `中毒 ${MB.es.poison}` : '',
-    MB.es.burn ? `燃燒 ${MB.es.burn}` : '',
-    MB.es.shock ? `感電 ${MB.es.shock}` : '',
-    MB.es.frozen ? '凍結' : ''
-  ]
-    .filter(Boolean)
-    .join('・');
-  $('bstat').hidden = !$('bstat').textContent;
+        ? `<i style="width:${(left / TURN_MS) * 100}%"></i><span>${mine ? '<b>輪到你了</b>' : `輪到 ${esc(p.name)}`}</span><span>${Math.ceil(left / 1000)} 秒</span>`
+        : '<span>準備中…</span>';
+  $('bstat').hidden = true;
 }
 function renderMB(t) {
   const c = bctx,
@@ -1070,7 +1113,7 @@ function renderMB(t) {
       continue;
     }
     const w = where[f.from || f.at] || { x: p.hx, y: p.y };
-    drawFx(c, f, q, { hx: w.x, ex: p.ex, y: f.type === 'heal' ? w.y : p.y }, hs);
+    drawFx(c, f, q, { hx: w.x, ex: p.ex, y: p.y, hy: w.y }, hs);
   }
   c.font = 'bold 22px DotGothic16, sans-serif';
   c.textAlign = 'center';

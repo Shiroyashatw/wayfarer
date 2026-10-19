@@ -237,7 +237,80 @@ function paintBG(kind) {
 
 /* ================= battle: logic ================= */
 const BFX = { pops: [], fx: [], shake: 0, hero: { a: null }, en: { a: null, flash: 0 }, t0: 0, motes: [] };
-const POS = () => ({ hx: BW * 0.27, ex: BW * 0.72, y: Math.min(BH * 0.6, BH - 118) });
+/* 戰鬥站位：y 是怪物腳下，hy 是玩家腳下（比怪物低一點） */
+const POS = () => {
+  const y = Math.min(BH * 0.6, BH - 118);
+  return { hx: BW * 0.27, ex: BW * 0.7, y, hy: Math.min(y + 22, BH - 128) };
+};
+/* 怪物頭頂（名字放在這裡），怪物大小跟 renderBattle 一樣 */
+function enemyTop(boss) {
+  const sc = Math.max(3, Math.min(6, Math.round(BW / 90)));
+  return POS().y - 16 * (boss ? sc + 2 : sc + 1) - 8;
+}
+function placeBName(boss) {
+  const el = $('bname');
+  el.style.left = POS().ex + 'px';
+  el.style.top = enemyTop(boss) + 'px';
+}
+/* 異常狀態圖示：o 是有狀態回合數的物件（B、MB.es 或隊員），keys 選要顯示哪些 */
+const AIL_E = [
+    ['burn', 'flame', '燃燒'],
+    ['frozen', 'ice', '凍結'],
+    ['shock', 'bolt', '感電'],
+    ['poison', 'leaf', '中毒']
+  ],
+  AIL_H = [
+    ['pFrozen', 'ice', '凍結'],
+    ['frozen', 'ice', '凍結'],
+    ['guard', 'shield', '防禦']
+  ];
+const ailHTML = (o, keys) =>
+  keys
+    .filter(([k]) => o && o[k] > 0)
+    .map(
+      ([k, ic, n]) =>
+        `<span class="ail ail-${ic}" title="${n}"><img src="${iconURL(ic)}" alt="${n}">${o[k] > 1 ? `<b>${o[k]}</b>` : ''}</span>`
+    )
+    .join('');
+function placeAil(id, x, y, html) {
+  const el = $(id);
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.innerHTML = html;
+}
+const battleSc = () => Math.max(3, Math.min(6, Math.round(BW / 90)));
+/* 頭目（地城首領、看門人、紅名危險怪）：名字與血條放到畫面最上方 */
+function bossBar(e, boss) {
+  const on = !!e && (boss || (e.rar || 0) >= 3),
+    el = $('bboss');
+  el.hidden = !on;
+  $('bview').classList.toggle('bossmode', on);
+  if (!on) return false;
+  el.innerHTML = `<div class="bbname" style="color:${RCOL[e.rar || 3]}">${esc(e.name)} <small>Lv${e.lv}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small></div><div class="bbar"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><span>${Math.max(0, Math.ceil(e.hp)).toLocaleString()} / ${e.maxhp.toLocaleString()}</span></div>`;
+  return true;
+}
+/* 左上角層數（不在地城就隱藏） */
+function setFloor(t) {
+  $('bfloor').textContent = t;
+  $('bfloor').hidden = !t;
+}
+/* 小頭像：用像素圖轉成圖片，快取起來 */
+const PORT = new Map();
+function portrait(spr, pal) {
+  const k = spr + JSON.stringify(pal);
+  if (!PORT.has(k)) PORT.set(k, sprite(spr, pal).toDataURL());
+  return PORT.get(k);
+}
+/* 行動順序（戰鬥畫面底部橫列）：list 是 [{n, c, on, dead, img}]，c 是 'me'／'e'／''；{h} 是分隔（下一輪） */
+function renderOrder(list) {
+  $('border').innerHTML = list
+    .map(q =>
+      q.h
+        ? `<span class="bo-sep">${q.h}</span>`
+        : `<div class="bo${q.c ? ' bo-' + q.c : ''}${q.on ? ' on' : ''}${q.dead ? ' dead' : ''}"><img src="${q.img}" alt=""><span>${esc(q.n)}</span></div>`
+    )
+    .join('');
+}
 function bmsg(t) {
   const el = $('bmsg');
   el.textContent = t;
@@ -308,29 +381,38 @@ function renderBHud() {
     e = B.e,
     p = POS();
   $('bname').innerHTML =
-    `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>等級 ${e.lv}${B.boss ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`;
-  $('bstat').textContent = [
-    D ? `${D.kind === 'rift' ? '裂隙第' : '第'} ${D.room + 1}/${D.spec.floors} ${D.kind === 'rift' ? '波' : '層'}` : '',
-    B.poison ? `中毒 ${B.poison}` : '',
-    B.burn ? `燃燒 ${B.burn}` : '',
-    B.shock ? `感電 ${B.shock}` : '',
-    B.frozen ? '凍結' : '',
-    B.guard ? `防禦 ${B.guard}` : '',
-    B.pFrozen ? '你被凍結' : ''
-  ]
-    .filter(Boolean)
-    .join('・');
-  $('bstat').hidden = !$('bstat').textContent;
-  const pill = (cls, v, max, txt) =>
-    `<div class="bp ${cls}"><i style="width:${Math.max(0, (v / max) * 100)}%"></i><span>${txt ?? Math.ceil(v).toLocaleString()}</span></div>`;
+    `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>Lv${e.lv}${B.boss ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`;
+  placeBName(B.boss);
+  {
+    /* 單人：你先、怪物後；怪物迅捷時可能連動兩次 */
+    const me = { n: S.name || '你', c: 'me', img: portrait('heroF', heroPal()) },
+      en = { n: e.name, c: 'e', img: portrait(e.spr, e.pal) },
+      et = B.turn === 'E';
+    renderOrder([{ ...me, on: !et }, { ...en, on: et }, { h: '下一輪' }, me, en]);
+  }
+  setFloor(
+    D ? `${D.kind === 'rift' ? '裂隙' : ''}第 ${D.room + 1}/${D.spec.floors} ${D.kind === 'rift' ? '波' : '層'}` : ''
+  );
+  $('bstat').hidden = true;
+  const sc = battleSc(),
+    es = B.boss ? sc + 2 : sc + 1,
+    big = bossBar(e, B.boss);
+  $('bname').hidden = big;
+  placeAil('eail', p.ex + 6 * es, p.y - 16 * es, ailHTML(B, AIL_E));
+  placeAil('hail', p.hx + 6 * sc, p.hy - 16 * sc, ailHTML(B, AIL_H));
   const hp = $('hpills');
   hp.style.left = p.hx + 'px';
-  hp.style.top = p.y + 14 + 'px';
-  hp.innerHTML = pill('hp', S.hp, st.maxhp) + pill('mp', S.mp, st.maxmp) + pill('xp', S.xp, xpNeed(S.lv), `Lv${S.lv}`);
+  hp.style.top = p.hy + 14 + 'px';
+  /* 單人的玩家面板：名字與等級、生命（數值）、魔力（數值）、經驗細條 */
+  const bar = (cls, v, max, txt) =>
+    `<i class="hb ${cls}"><i style="width:${Math.max(0, Math.min(100, (v / max) * 100))}%"></i>${txt ? `<em>${txt}</em>` : ''}</i>`;
+  hp.innerHTML = `<div class="hpanel${S.hp < st.maxhp * 0.3 ? ' low' : ''}"><div class="hrow"><b>${esc(S.name || '你')}</b><span>Lv${S.lv}</span></div>${bar('hhp', S.hp, st.maxhp, `${Math.max(0, Math.ceil(S.hp))} / ${st.maxhp}`)}${bar('hmp', S.mp, st.maxmp, `${Math.max(0, Math.round(S.mp))} / ${st.maxmp}`)}${bar('hxp', S.xp, xpNeed(S.lv))}</div>`;
   const ep = $('epills');
   ep.style.left = p.ex + 'px';
   ep.style.top = p.y + 14 + 'px';
-  ep.innerHTML = pill('hp', e.hp, e.maxhp);
+  ep.innerHTML = big
+    ? ''
+    : `<div class="hpanel en">${bar('hhp', e.hp, e.maxhp, `${Math.max(0, Math.ceil(e.hp)).toLocaleString()} / ${e.maxhp.toLocaleString()}`)}</div>`;
   const sks = mySkills(),
     sk = sks.map((q, i) => q && 's' + i).filter(Boolean),
     dis = B.busy ? 'disabled' : '';
@@ -474,7 +556,7 @@ function playerHit(sk, mult) {
   if (e.mods && e.mods.includes('reflect')) {
     const r = Math.max(1, Math.round(d * 0.15));
     S.hp = Math.max(1, S.hp - r);
-    pop('-' + r, p.hx, p.y - 90, '#ff8a8a');
+    pop('-' + r, p.hx, p.hy - 90, '#ff8a8a');
   }
   renderBHud();
 }
@@ -512,7 +594,7 @@ function useSkill(k) {
           playerHit(sk, sk.mult);
           if (sk.guard) {
             B.guard = sk.guard;
-            pop('護甲↑', p.hx, p.y - 90, '#9fd4ef');
+            pop('護甲↑', p.hx, p.hy - 90, '#9fd4ef');
           }
           if (sk.poison && B.e.hp > 0) {
             B.poison = sk.poison;
@@ -539,7 +621,7 @@ function useSkill(k) {
       const st = stats(),
         v = Math.round(st.maxhp * (sk.heal || 0.35) * st.healMul);
       S.hp = Math.min(st.maxhp, S.hp + v);
-      pop('+' + v, p.hx, p.y - 90, '#7bd36b');
+      pop('+' + v, p.hx, p.hy - 90, '#7bd36b');
       renderBHud();
     });
     later(1000, afterPlayer);
@@ -557,11 +639,11 @@ function bItem(k) {
   if (k === 'potions') {
     const v = Math.round(st.maxhp * 0.4 * hm);
     S.hp = Math.min(st.maxhp, S.hp + v);
-    pop('+' + v, p.hx, p.y - 90, '#7bd36b');
+    pop('+' + v, p.hx, p.hy - 90, '#7bd36b');
   } else {
     const v = Math.round(st.maxmp * 0.5 * hm);
     S.mp = Math.min(st.maxmp, S.mp + v);
-    pop('+' + v + ' MP', p.hx, p.y - 90, '#6ab8ff');
+    pop('+' + v + ' MP', p.hx, p.hy - 90, '#6ab8ff');
   }
   BFX.fx.push({ type: 'heal', t: performance.now(), dur: 700 });
   bmsg(k === 'potions' ? '生命藥水' : '魔力藥水');
@@ -593,6 +675,8 @@ function afterPlayer() {
   later(250, enemyTurn);
 }
 function enemyTurn() {
+  B.turn = 'E';
+  renderBHud();
   const e = B.e,
     p = POS(),
     st = stats();
@@ -632,7 +716,7 @@ function enemyTurn() {
       anim('en', 'lunge', 420);
       later(210, () => {
         if (Math.random() * 100 < st.dodge) {
-          pop('閃避', p.hx, p.y - 90, '#d8d2c4');
+          pop('閃避', p.hx, p.hy - 90, '#d8d2c4');
           sfx('tap');
         } else {
           let atk = e.atk * (strong ? 1.5 : 1) * rnd(0.9, 1.1);
@@ -653,11 +737,11 @@ function enemyTurn() {
           BFX.shake = performance.now();
           sfx('hurt');
           buzz(strong ? 120 : 50);
-          if (toMp) pop(toMp + ' MP', p.hx + 30, p.y - 70, '#6ab8ff');
+          if (toMp) pop(toMp + ' MP', p.hx + 30, p.hy - 70, '#6ab8ff');
           pop(
             String(d - toMp),
             p.hx,
-            p.y - 90,
+            p.hy - 90,
             pk.fire > pk.phys ? '#ffb15a' : pk.cold > pk.phys ? '#9fe7ff' : pk.light > pk.phys ? '#fff27a' : '#ff8a8a'
           );
           if (e.mods && e.mods.includes('leech')) {
@@ -669,7 +753,7 @@ function enemyTurn() {
           }
           if (pk.cold > 0 && !st.noFreeze && Math.random() < 0.12) {
             B.pFrozen = 1;
-            pop('你被凍結', p.hx, p.y - 110, '#9fe7ff');
+            pop('你被凍結', p.hx, p.hy - 110, '#9fe7ff');
           }
         }
         renderBHud();
@@ -687,6 +771,7 @@ function enemyTurn() {
 }
 function endEnemyTurn() {
   if (!B) return;
+  B.turn = 'P';
   const st = stats();
   if (B.guard > 0) B.guard--;
   if (st.regen && S.hp > 0) {
@@ -841,7 +926,7 @@ function dropLoot(e, boss, sp, remote) {
     giveCur(c);
     out.push(curDot(c) + CURI[c].n);
   }
-  gemLoot(r, boss, sp && sp.dt !== 'normal' && sp.dt !== 'party' && sp.dt !== 'stele', rem, out);
+  gemLoot(e, boss, sp && sp.dt !== 'normal' && sp.dt !== 'party' && sp.dt !== 'stele', rem, out);
   if (boss && sp && sp.dt === 'circle') {
     giveCur('engX', 1 + (Math.random() < 0.5 ? 1 : 0));
     out.push(curDot('engX') + '崇高刻印石');
@@ -866,15 +951,23 @@ function dropLoot(e, boss, sp, remote) {
   return out;
 }
 /* 技能石材料：靈魂碎片與刻印石系列（昇華稜鏡、神聖刻印石在冥府內容出來前先由紅名怪掉落） */
-function gemLoot(r, boss, hell, rem, out) {
-  const z = zoneAt(S.lat, S.lng).m,
+/* 靈魂碎片隨怪物強度增加：稀有度底數 + 每條詞綴 2（冥府詞綴 3）+ 每 4 級 1，首領再加 */
+function gemLoot(e, boss, hell, rem, out) {
+  const r = e.rar || 0,
+    mods = e.mods || [],
+    soul =
+      [2, 4, 7, 8, 15][r] +
+      mods.reduce((a, m) => a + (EMODI[m] && EMODI[m].uw ? 3 : 2), 0) +
+      fl((e.lv || 1) / 4) +
+      (boss ? 6 + (hell ? 6 : 0) : 0),
+    z = zoneAt(S.lat, S.lng).m,
     ch = p => Math.random() < p * rem * (z.eng || 1),
     add = (id, n = 1) => {
       if (n <= 0) return;
       giveCur(id, n);
       out.push(curDot(id) + GCURI[id].n + (n > 1 ? ' ×' + n : ''));
     };
-  add('soul', Math.round(([Math.random() < 0.5 ? 1 : 0, 2, 4, 4, 10][r] + (boss ? 5 : 0)) * rem * (z.soul || 1)));
+  add('soul', Math.round(soul * rem * (z.soul || 1)));
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
   if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
   if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');
@@ -1010,6 +1103,8 @@ function loseBattle() {
 }
 function endBattle() {
   $('battle').hidden = true;
+  $('eail').innerHTML = $('hail').innerHTML = '';
+  bossBar(null);
   B = null;
   playSong('field');
   renderHud();
@@ -1116,11 +1211,11 @@ function renderBattle(t) {
   }
   const [hox, hoy] = animOff('hero'),
     hx = p.hx + hox,
-    hy = p.y + hoy + Math.sin(t / 320) * 1.5,
+    hy = p.hy + hoy + Math.sin(t / 320) * 1.5,
     hs = sc;
   c.fillStyle = 'rgba(0,0,0,.3)';
   c.beginPath();
-  c.ellipse(p.hx + hox, p.y + 2, hs * 6.5, hs * 1.5, 0, 0, 6.28);
+  c.ellipse(p.hx + hox, p.hy + 2, hs * 6.5, hs * 1.5, 0, 0, 6.28);
   c.fill();
   const wep = wepKind(),
     u = hs;
@@ -1217,7 +1312,7 @@ function drawFx(c, f, q, p, u) {
       const a = (k / 6) * 6.28;
       c.fillRect(ex + Math.cos(a) * q * 34, ey + Math.sin(a) * q * 34, 3, 3);
     }
-  } else if (f.type === 'charge') blob(c, p.hx + 5 * u, p.y - 18 * u, 10 + 40 * q, 'rgba(170,200,255,.6)');
+  } else if (f.type === 'charge') blob(c, p.hx + 5 * u, p.hy - 18 * u, 10 + 40 * q, 'rgba(170,200,255,.6)');
   else if (f.type === 'fire') {
     for (let k = 0; k < 26; k++) {
       const a = k * 2.39,
@@ -1259,7 +1354,7 @@ function drawFx(c, f, q, p, u) {
   } else if (f.type === 'heal') {
     for (let k = 0; k < 14; k++) {
       const x = p.hx - 26 + ((k * 37) % 52),
-        y = p.y - 10 - q * 80 - (k % 4) * 8;
+        y = (p.hy ?? p.y) - 10 - q * 80 - (k % 4) * 8;
       c.fillStyle = `rgba(140,255,150,${1 - q})`;
       c.fillRect(x, y, 3, 3);
     }
