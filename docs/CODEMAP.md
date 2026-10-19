@@ -44,7 +44,7 @@
 | 多隻敵人戰鬥（0.3） | `js/battle.js`、`js/mp.js` | 結算核心 `actResolve`（玩家行動→事件）、`enemyResolve`（敵人行動）、`petsAct`（召喚物）、`roundEnd`／`battleOpen`；單人 `startBattle`（`pack` 帶小怪 `packOf`）、`useSkill`、`playEv`（播事件）、`enemyPhase`；站位 `epos`／`ESLOT`、`drawEnemies`、`enemyBars`、點敵人換目標 `pickTarget`；地城一層一群 `dunEnemy(D, room, extra)`；組隊 `mpResolve`／`mpEnemy`／`mpFx`、經驗平均 `mpRoomReward` |
 | 武器種類、雙手武器 | `js/data.js`、`js/sprites.js`、`js/battle.js` | `BASES.weapon`（`k` 外觀、`t` 類別、`th` 雙手；只能加在最後）、`wepKind`／`wepType`／`twoHand`、`WTAGN`；裝備衝突在 `A.equip`；手上武器圖 `drawWeapon` |
 | 技能石資料與效果 | `js/skills.js`、`js/items.js`、`js/battle.js` | `SKILLS` 擴充欄位（`w`、`tg`、`hits`、`chain`、`proj`、`addEl`、`bleed`、`stun`、`mark`、`curse`、`exec`、`pet`、`buff`、`lifeCost`）；等級成長 `gemSkill`；說明 `gemDesc`（`ui.js`） |
-| 昇華（0.3） | `js/asc.js`、`js/items.js` | 資料 `ASC`（職業→分支→`t1`／`t2`／`u`）、節點表 `ASCN`／`ASCB`、輔助效果文字 `SUPN`；屬性 `ascStats`（`sumStats`）、`ascSup`（`stats` 的 `sup`，戰鬥用 `supOf`）；面板 `ascHTML`、圖示 `ascIcon`；試煉 `ascTownHTML`（城鎮面板）、`A.ascTrial`、`ascTrialDone`（`dungeonClear`）；狀態 `S.asc` |
+| 昇華（0.3） | `js/asc.js`、`js/items.js` | 資料 `ASC`（職業→分支→`t1`／`t2`／`u`）、節點表 `ASCN`／`ASCB`、輔助效果文字 `SUPN`；屬性 `ascStats`（`sumStats`）、`ascSup`（`stats` 的 `sup`，戰鬥用 `supOf`）；昇華盤 `openAsc`／`drawAsc`／`renderAscCard`（座標 `ascXY`、視角 `AV`、`ascFit`）、小點圖示 `SMG`、圖示 `ascIcon`、換分支 `A.ascSwitch`；試煉 `ascTownHTML`（城鎮面板）、`A.ascTrial`、`ascTrialDone`（`dungeonClear`）；狀態 `S.asc` |
 | 首領專屬圖（0.2.13.1） | `js/sprites.js`、`js/demon.js`、`js/battle.js`、`js/undead.js` | `SPR.b_*` 與 `BOSSPAL`（sprites.js 結尾）；七宗罪 `SINSPR`（`makeSinLord`）、`makeSinKing`、地城首領 `BOSSSPR`（`dunEnemy`）、亡靈王 `A.udKing` |
 | 印記兌換、生肖傳奇（0.2.13） | `js/hunt.js`、`js/items.js` | `ZLEG`（加進 `LEGENDS`／`LEGI`，`k` 是 `z_生肖`）、`zodStats`（`sumStats` 呼叫，生肖共鳴）、`sealHTML`（`seal` 面板）、`A.sealLeg`／`A.sealJewel`、`spendMarks`；`S.hunt.marks`（可消耗）、`S.hunt.slain`（稱號） |
 | 地圖事件連動（0.2.13） | `js/demon.js`、`js/undead.js`、`js/hunt.js` | 霧中亡靈：`mistify`（`e.ud`）、`mistWin`／`undeadWin`（×1.5）；冥府生肖：`A.huntZod`（`ZOD_UW_R`、`uwz`）、`huntWin`；夜晚：`undeadSpawns` 半徑、魔霧刷新機率 |
@@ -213,16 +213,16 @@
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:290`、`classPicker:423`
 
-### js/ui.js（1319 行）
+### js/ui.js（1321 行）
 
 - **HUD & sheets**（3）
-  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:60`、`navG:79`、`navClose:80`、`navOpen:89`、`KIND:118`、`bar:127`、`entIcon:130`、`fmt1:161`、`curRow:162`、`bagTabs:166`、`curRowG:173`、`BUFFN:176`、`gemDesc:177`、`gemCell:212`、`dupGems:218`、`gemRow:226`、`prayed:230`、`renderSheet:231`、`nearTownE:397`
-- **entity interaction**（401）
-  `openEnt:402`、`FIGHTK:536`、`onSite:537`、`inRange:538`
-- **bases**（540）
-  `prodRate:541`、`stored:542`、`baseName:543`、`flagCheck:544`
-- **actions**（552）
-  `authForm:554`、`A:586`
+  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:60`、`navG:79`、`navClose:80`、`navOpen:89`、`KIND:118`、`bar:127`、`entIcon:130`、`fmt1:161`、`curRow:162`、`bagTabs:166`、`curRowG:173`、`BUFFN:176`、`gemDesc:177`、`gemCell:212`、`dupGems:218`、`gemRow:226`、`prayed:230`、`renderSheet:231`、`nearTownE:395`
+- **entity interaction**（399）
+  `openEnt:400`、`FIGHTK:534`、`onSite:535`、`inRange:536`
+- **bases**（538）
+  `prodRate:539`、`stored:540`、`baseName:541`、`flagCheck:542`
+- **actions**（550）
+  `authForm:552`、`A:584`
 
 ### js/endgame.js（801 行）
 
@@ -292,19 +292,19 @@
 - **足跡**（167）
   `FOOT_CELL:169`、`FOOTA:173`、`footKey:174`、`footN2Lv:175`、`footLv:176`、`footStep:181`、`footDens:206`、`drawFoot:209`
 
-### js/asc.js（1203 行）
+### js/asc.js（1497 行）
 
 - **data**（67）
-  `ASC_LV:68`、`N:71`、`ASC:72`、`TAGN:857`、`SUPN:875`、`ASCN:898`、`ASCB:899`
-- **state & stats**（929）
-  `ASCD:930`、`ascPts:931`、`ascUsed:932`、`ascNext:933`、`ascOn:934`、`ascStats:939`、`ascSup:946`、`ascTxt:948`、`ascCostTxt:960`、`ascCan:962`、`ascResetCost:973`、`ascAlert:975`
-- **icons**（977）
-  `ASCI:979`、`ascIcon:980`
-- **sheet**（1005）
-  `ascTreeHTML:1007`、`ascHead:1041`、`ascMine:1043`、`ascHTML:1044`
-- **trials**（1083）
-  `ascTownHTML:1085`、`ascTrialDone:1092`
-- **actions**（1099）
+  `ASC_LV:68`、`N:71`、`ASC:72`、`TAGN:857`、`SUPN:875`、`SMG:899`、`ASCN:928`、`ASCB:929`
+- **state & stats**（959）
+  `ASCD:960`、`ascPts:961`、`ascUsed:962`、`ascNext:963`、`ascOn:964`、`ascStats:969`、`ascSup:976`、`ascTxt:978`、`ascCostTxt:990`、`ascCan:992`、`ascResetCost:1003`、`ascAlert:1005`
+- **icons**（1007）
+  `ASCI:1009`、`ascIcon:1010`
+- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1035）
+  `AV:1037`、`ascMine:1038`、`AV_ANG:1039`、`ascXY:1042`、`AIMG:1050`、`ascImg:1051`、`AX:1061`、`openAsc:1063`、`closeAsc:1075`、`sizeAsc:1080`、`ascFit:1089`、`ascState:1105`、`drawAsc:1110`、`renderAscCard:1208`
+- **trials**（1343）
+  `ascTownHTML:1345`、`ascTrialDone:1352`
+- **actions**（1359）
 
 ### js/gacha.js（155 行）
 
