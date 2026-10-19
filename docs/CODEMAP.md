@@ -45,7 +45,7 @@
 | 傳奇裝備 | `js/demon.js`、`js/items.js` | `LEGENDS`、`makeLegend`；屬性在 `sumStats`（`it.leg`），特效旗標 `legPride` 等在 `heroDmg`／`heroAil`／`useSkill`／`bItem` |
 | 惡魔珠寶與天賦盤珠寶槽 | `js/demon.js`、`js/data.js`、`js/tree.js` | `JAFF`、`makeJewel`、`jewelCap`、`jewelStats`、`socketCardHTML`、`A.jIn`／`A.jOut`；槽位在 `TREE` 結尾（`type: 'socket'`），鑲嵌狀態 `S.jsock` |
 | 今日委託、附近面板分組、足跡（0.2.13） | `js/daily.js` | `QUESTS`、`daily`、`quest(k, n)`（各處呼叫：`winBattle`、`dungeonClear`、`pray`、`openChest`、`gather`、`obeliskCharge`、`mistWin`、`huntWalk`、`setPos`）、`dailyHTML`、`nearHTML`／`ngroup`／`nearProg`（`near` 面板）、`footStep`（`trailStep`）、`footLv`／`footDens`／`footRare`（`genEntities` 怪物生成）、`drawFoot`；狀態 `S.daily`、`S.foot` |
-| 多隻敵人戰鬥（0.3） | `js/battle.js`、`js/mp.js` | 野外群體隻數 `packN`（機率表 `PACK_P`，`openEnt` 說明與 `A.fight` 共用）、`packOf(lead, extra, n)`；互動範圍 `RANGE`／`TOWN_R`／`reachOf`（core.js）；結算核心 `actResolve`（玩家行動→事件）、`enemyResolve`（敵人行動）、`petsAct`（召喚物）、`roundEnd`／`battleOpen`；單人 `startBattle`（`pack` 帶小怪 `packOf`）、`useSkill`、`playEv`（播事件）、`enemyPhase`；站位 `epos`／`ESLOT`、`drawEnemies`（選取特效 `drawSel`、換目標名字淡出 `selTrack`）、`enemyBars`、點敵人換目標 `pickTarget`；地城一層一群 `dunEnemy(D, room, extra)`；組隊 `mpResolve`／`mpEnemy`／`mpFx`、經驗平均 `mpRoomReward` |
+| 多隻敵人戰鬥（0.3） | `js/battle.js`、`js/mp.js` | 野外群體隻數 `packN`（機率表 `PACK_P`）、同伴種類 `packBases`＋`packSeed`（位置與週期固定）、`packOf(lead, extra, n, seed)`；開打前陣容 `lineupHTML`（`ui.js`，`openEnt` 呼叫）；互動範圍 `RANGE`／`TOWN_R`／`reachOf`（core.js）；結算核心 `actResolve`（玩家行動→事件）、`enemyResolve`（敵人行動）、`petsAct`（召喚物）、`roundEnd`／`battleOpen`；單人 `startBattle`（`pack` 帶小怪 `packOf`）、`useSkill`、`playEv`（播事件）、`enemyPhase`；站位 `epos`／`ESLOT`、`drawEnemies`（選取特效 `drawSel`、換目標名字淡出 `selTrack`）、`enemyBars`、點敵人換目標 `pickTarget`；地城一層一群 `dunEnemy(D, room, extra)`；組隊 `mpResolve`／`mpEnemy`／`mpFx`、經驗平均 `mpRoomReward` |
 | 武器種類、雙手武器 | `js/data.js`、`js/sprites.js`、`js/battle.js` | `BASES.weapon`（`k` 外觀、`t` 類別、`th` 雙手；只能加在最後）、`wepKind`／`wepType`／`twoHand`、`WTAGN`；裝備衝突在 `A.equip`；手上武器圖 `drawWeapon` |
 | 技能石資料與效果 | `js/skills.js`、`js/items.js`、`js/battle.js` | `SKILLS` 擴充欄位（`w`、`tg`、`hits`、`chain`、`proj`、`addEl`、`bleed`、`stun`、`mark`、`curse`、`exec`、`pet`、`buff`、`lifeCost`）；等級成長 `gemSkill`；說明 `gemDesc`（`ui.js`） |
 | 昇華（0.3） | `js/asc.js`、`js/items.js` | 資料 `ASC`（職業→分支→`t1`／`t2`／`u`）、節點表 `ASCN`／`ASCB`、輔助效果文字 `SUPN`；屬性 `ascStats`（`sumStats`）、`ascSup`（`stats` 的 `sup`，戰鬥用 `supOf`）；昇華盤 `openAsc`／`drawAsc`／`renderAscCard`（座標 `ascXY`、視角 `AV`、`ascFit`）、小點圖示 `SMG`、圖示 `ascIcon`、換分支 `A.ascSwitch`；試煉 `ascTownHTML`（城鎮面板）、`A.ascTrial`、`ascTrialDone`（`dungeonClear`）；狀態 `S.asc` |
@@ -172,33 +172,33 @@
 - **audio**（3）
   `AU:4`、`audioInit:5`、`tone:30`、`noise:47`、`NS:65`、`nf:66`、`SONGS:71`、`PARSED:109`、`parse:110`、`playSong:122`、`schedule:128`、`SFX:147`、`sfx:213`、`buzz:216`
 
-### js/items.js（886 行）
+### js/items.js（890 行）
 
 - **player & items**（3）
   `newGame:4`、`makeItem:74`、`baseOf:91`、`affFits:93`、`fitsSlot:95`、`rollAffix:97`、`cnt:118`、`addRandom:119`、`toMagic:129`、`rareName:136`、`toRare:137`、`itemTitle:143`、`itemName:154`、`itemSum:155`、`itemCard:163`、`sellVal:191`、`giveItem:192`、`giveCur:200`、`rollCur:203`、`curDot:213`、`craftable:215`、`craft:226`
 - **skill gems**（243）
   `newGem:244`、`gemSlots:245`、`gemOpen:246`、`gemOf:247`、`GEMK:248`、`gemSkill:250`、`mySkills:280`、`rollGAff:281`、`gAffVal:291`、`gAffTxt:296`、`gemCraftable:297`、`gemCraft:310`、`corrupt:328`、`gemLvBlock:348`、`gemDustBack:355`、`giveGem:356`
 - **stats**（364）
-  `curSpec:366`、`STAT0:367`、`sumStats:469`、`HP_LV:492`、`stats:495`、`MECH:596`、`xpNeed:626`、`fullHeal:627`、`clampHP:632`、`autoPot:638`、`naturalRegen:660`、`addLog:668`、`gainXP:672`、`LV_MAX:685`、`treePts:686`、`dayPhase:687`、`buffOn:693`
-- **enemies**（695）
-  `pickMon:696`、`makeEnemy:707`、`rollMods:755`、`modNames:764`、`uwApply:766`
-- **modal**（785）
-  `showModal:786`、`hideModal:792`、`busy:795`、`openShop:796`
+  `curSpec:366`、`STAT0:367`、`sumStats:469`、`HP_LV:492`、`stats:495`、`MECH:596`、`xpNeed:627`、`fullHeal:631`、`clampHP:636`、`autoPot:642`、`naturalRegen:664`、`addLog:672`、`gainXP:676`、`LV_MAX:689`、`treePts:690`、`dayPhase:691`、`buffOn:697`
+- **enemies**（699）
+  `pickMon:700`、`makeEnemy:711`、`rollMods:759`、`modNames:768`、`uwApply:770`
+- **modal**（789）
+  `showModal:790`、`hideModal:796`、`busy:799`、`openShop:800`
 
-### js/battle.js（2159 行）
+### js/battle.js（2166 行）
 
 - **battle: painted backgrounds**（3）
   `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
 - **battle: logic**（238）
   `BFX:239`、`POS:241`、`ESLOT:246`、`battleSc:271`、`epos:273`、`etop:287`、`placeBName:288`、`AIL_E:294`、`ailHTML:310`、`placeAil:318`、`bossBar:325`、`enemyBars:335`、`setFloor:345`、`PORT:350`、`portrait:351`、`renderOrder:361`、`bmsg:370`、`pop:377`、`anim:381`、`animOff:384`、`later:398`
 - **battle: rules（單人與組隊共用）**（404）
-  `eInit:406`、`PACK_P:413`、`packN:414`、`packOf:423`、`skTag:447`、`supOf:449`、`bsum:458`、`mitigate:460`、`skCost:468`、`lifeCost:469`、`canPay:470`、`payCost:472`、`costTxt:478`、`skSt:483`、`skByKey:496`、`extraHit:497`、`heroPacket:498`、`heroDmg:513`、`heroAil:527`、`poisonTick:569`、`takeDmg:571`、`hitCol:582`、`aliveIdx:590`、`actResolve:593`、`addBuff:763`、`petsAct:771`、`enemyResolve:794`、`roundEnd:925`、`battleOpen:935`
-- **battle: solo**（948）
-  `heroMe:950`、`startBattle:980`、`pickTarget:1022`、`renderBHud:1052`、`playEv:1121`、`soloExt:1175`、`useSkill:1188`、`bItem:1214`、`flee:1259`、`allDead:1274`、`afterPlayer:1275`、`enemyPhase:1287`、`endRound:1303`
-- **dungeons (shared by solo and party)**（1318）
-  `dunSpec:1320`、`dunName:1350`、`BIGBOSS:1358`、`dunEnemy:1361`、`dropLoot:1462`、`gemLoot:1540`、`ONSITE_BONUS:1563`、`onsiteNow:1564`、`dunReward:1566`、`dunModsHTML:1590`、`lootList:1596`、`winBattle:1605`、`loseBattle:1706`、`endBattle:1735`、`enterDungeon:1744`、`nextRoom:1762`、`dungeonClear:1784`
-- **battle: drawing**（1810）
-  `drawEnemies:1812`、`selTrack:1853`、`drawSel:1864`、`drawPets:1899`、`renderBattle:1908`、`drawWeapon:1984`、`drawFx:2062`
+  `eInit:406`、`PACK_P:413`、`packN:414`、`packSeed:424`、`packBases:425`、`packOf:439`、`skTag:457`、`supOf:459`、`bsum:468`、`mitigate:470`、`skCost:478`、`lifeCost:479`、`canPay:480`、`payCost:482`、`costTxt:488`、`skSt:493`、`skByKey:506`、`extraHit:507`、`heroPacket:508`、`heroDmg:523`、`heroAil:537`、`poisonTick:579`、`takeDmg:581`、`hitCol:592`、`aliveIdx:600`、`actResolve:603`、`addBuff:773`、`petsAct:781`、`enemyResolve:804`、`roundEnd:935`、`battleOpen:945`
+- **battle: solo**（958）
+  `heroMe:960`、`startBattle:990`、`pickTarget:1034`、`renderBHud:1064`、`playEv:1133`、`soloExt:1187`、`useSkill:1200`、`bItem:1226`、`flee:1271`、`allDead:1286`、`afterPlayer:1287`、`enemyPhase:1299`、`endRound:1315`
+- **dungeons (shared by solo and party)**（1330）
+  `dunSpec:1332`、`dunName:1362`、`BIGBOSS:1370`、`dunEnemy:1373`、`dropLoot:1474`、`gemLoot:1552`、`ONSITE_BONUS:1575`、`onsiteNow:1576`、`dunReward:1578`、`dunModsHTML:1602`、`lootList:1608`、`winBattle:1617`、`loseBattle:1718`、`endBattle:1742`、`enterDungeon:1751`、`nextRoom:1769`、`dungeonClear:1791`
+- **battle: drawing**（1817）
+  `drawEnemies:1819`、`selTrack:1860`、`drawSel:1871`、`drawPets:1906`、`renderBattle:1915`、`drawWeapon:1991`、`drawFx:2069`
 
 ### js/map.js（1674 行）
 
@@ -227,16 +227,16 @@
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:290`、`classPicker:423`
 
-### js/ui.js（1435 行）
+### js/ui.js（1444 行）
 
 - **HUD & sheets**（3）
   `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:43`、`NAVG:61`、`navG:80`、`navClose:81`、`navOpen:90`、`KIND:119`、`bar:128`、`entIcon:131`、`fmt1:165`、`curRow:166`、`bagTabs:170`、`curRowG:177`、`BUFFN:180`、`gemDesc:181`、`gemCell:216`、`dupGems:222`、`gemRow:230`、`prayed:234`、`renderSheet:235`、`nearTownE:402`、`canSell:406`、`worseThanEq:412`、`sellSel:417`、`bagListHTML:419`
 - **entity interaction**（437）
-  `openEnt:438`、`onSite:586`、`ONSITE_K:588`、`siteBonus:589`、`inRange:590`
-- **bases**（592）
-  `prodRate:593`、`stored:594`、`baseName:595`、`flagCheck:596`
-- **actions**（604）
-  `authForm:606`、`A:638`
+  `openEnt:438`、`lineupHTML:582`、`onSite:594`、`ONSITE_K:596`、`siteBonus:597`、`inRange:598`
+- **bases**（600）
+  `prodRate:601`、`stored:602`、`baseName:603`、`flagCheck:604`
+- **actions**（612）
+  `authForm:614`、`A:646`
 
 ### js/endgame.js（801 行）
 

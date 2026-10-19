@@ -2376,5 +2376,5 @@ const TREE = (() => {
   });
   return { N, E, byId };
 })();
-const VER = '0.3.1.6';
+const VER = '0.3.1.7';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };
