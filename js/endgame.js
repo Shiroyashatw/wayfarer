@@ -257,6 +257,8 @@ function payDun(pay) {
   if (pay.scroll && !((S.scrolls || {})[pay.scroll] > 0)) return false;
   if ((pay.tabs || []).some(id => !tabs.some(t => t.id === id))) return false;
   if ((pay.frags || []).some(id => !frags.some(t => t.id === id))) return false;
+  if (pay.ent && S.defeated[pay.ent]) return false;
+  if (pay.ent) S.defeated[pay.ent] = 1;
   if (pay.scroll) S.scrolls[pay.scroll]--;
   S.tabs = tabs.filter(t => !(pay.tabs || []).includes(t.id));
   S.frags = frags.filter(t => !(pay.frags || []).includes(t.id));
@@ -428,7 +430,7 @@ function silkView(r) {
 }
 
 /* ================= sheets ================= */
-const SEL = { insc: new Set(), tabs: new Set() };
+const SEL = { insc: new Set(), tabs: new Set(), site: null, bag: 'eq' };
 const chip = (on, act, id, txt) =>
   `<button class="btn sm${on ? ' pri' : ''}" data-act="${act}" data-id="${id}" style="text-align:left">${txt}</button>`;
 function baseHTML() {
@@ -477,27 +479,96 @@ function silkHTML() {
   if (SILK.err) html += `<p class="sub" style="color:#ffb27a">${esc(SILK.err)}</p>`;
   return html;
 }
+/* 現場挑戰的對象（從地圖上的石碑／魔法陣按「當場挑戰」進來），已經不在範圍或用掉了就取消 */
+function siteEnt() {
+  const e = SEL.site && ENT.get(SEL.site);
+  if (!e || isDone(e) || !inRange(e)) SEL.site = null;
+  return SEL.site ? e : null;
+}
 function steleHTML() {
   const sc = S.scrolls || {},
     ins = S.insc || [],
     tabs = S.tabs || [],
-    frags = S.frags || [];
+    frags = S.frags || [],
+    site = siteEnt();
   SEL.insc.forEach(id => ins.some(q => q.id === id) || SEL.insc.delete(id));
   SEL.tabs.forEach(id => tabs.some(q => q.id === id) || SEL.tabs.delete(id));
   const ni = SEL.insc.size,
     nt = SEL.tabs.size,
-    best = portalPick();
-  return `<p class="sub">路上的空白石碑與魔法陣按「壓縮封印」收成卷軸，回家再組裝成地城。菁英怪會掉碑文碎片，冥府侵蝕柱的看門人會掉冥府碎片。</p>
+    best = portalPick(),
+    fl_ = Math.max(1, Math.min(3, ni)),
+    stele = `<h3>單人石碑</h3><p class="sub">選 0～3 個碑文碎片注入詞綴（每個 +1 層，最多 3 層）。怪物等級是你 +2，失敗就沒了；通關掉出帶 2～4 條詞綴的石碑。</p>
+  <div class="btns" style="flex-wrap:wrap">${ins.map(q => chip(SEL.insc.has(q.id), 'selI', q.id, DMODI[q.m].n)).join('') || '<span class="sub">沒有碑文碎片（打菁英怪取得）</span>'}</div>`,
+    circle = `<h3>4 人石碑魔法陣</h3><p class="sub">選 4～6 個石碑，詞綴全部疊加（同一種最多 3 次），合成 20 層地城。倒下不會復活，全隊倒下就失敗；首領掉崇高刻印石。</p>
+  <div style="display:grid;gap:6px">${tabs.map(t => chip(SEL.tabs.has(t.id), 'selT', t.id, `石碑 Lv${t.lv}・${modList(t.mods)}`)).join('') || '<span class="sub">沒有石碑（通關單人石碑取得）</span>'}</div>`;
+  /* 現場模式：只顯示對應的那一段，不用卷軸，開打後地上那座就用掉 */
+  if (site) {
+    const st = site.kind === 'stele';
+    return `<div class="card" style="border:1px solid var(--gild)"><b>現場：${site.name}</b><small class="sub" style="display:block">當場挑戰不用卷軸，開打後這座${st ? '石碑' : '魔法陣'}就會消失。${onSite(site) ? `人在現場，掉寶 +${ONSITE_BONUS}%。` : '（遠端範圍內，沒有現場加成）'}</small></div>
+    ${st ? stele : circle}
+    <button class="btn pri" data-act="${st ? 'steleRun' : 'circleOpen'}" ${st ? (ni <= 3 ? '' : 'disabled') : nt >= 4 && nt <= 6 ? '' : 'disabled'}>${st ? `當場開打（${fl_} 層・Lv${S.lv + 2}）` : `當場組隊開打（已選 ${nt}/4～6）`}</button>
+    <button class="btn" data-act="siteCancel">取消</button>`;
+  }
+  return `<p class="sub">路上的空白石碑與魔法陣可以「壓縮封印」收成卷軸帶回家，也可以「當場挑戰」。兩種都要自己放入碑文碎片或石碑。菁英怪會掉碑文碎片，冥府侵蝕柱的看門人會掉冥府碎片。所有材料在「背包」的分頁裡。</p>
   <div class="curs"><span><img class="cico lg" src="${entURL('stele')}" alt=""><span>空白石碑卷<b>${sc.stele || 0}</b></span></span><span><img class="cico lg" src="${entURL('circle')}" alt=""><span>空白魔法陣卷<b>${sc.circle || 0}</b></span></span><span><img class="cico lg" src="${entURL('obelisk')}" alt=""><span>冥府碎片<b>${frags.length}</b></span></span></div>
-  <h3>單人石碑</h3><p class="sub">選 0～3 個碑文碎片注入詞綴（每個 +1 層，最多 3 層）。怪物等級是你 +2，失敗就沒了；通關掉出帶 2～4 條詞綴的石碑。</p>
-  <div class="btns" style="flex-wrap:wrap">${ins.map(q => chip(SEL.insc.has(q.id), 'selI', q.id, DMODI[q.m].n)).join('') || '<span class="sub">沒有碑文碎片</span>'}</div>
-  <button class="btn pri" data-act="steleRun" ${sc.stele > 0 && ni <= 3 ? '' : 'disabled'}>開啟單人石碑（${Math.max(1, Math.min(3, ni))} 層・Lv${S.lv + 2}）</button>
-  <h3>4 人石碑魔法陣</h3><p class="sub">選 4～6 個石碑，詞綴全部疊加（同一種最多 3 次），合成 20 層地城。倒下不會復活，全隊倒下就失敗；首領掉崇高刻印石。</p>
-  <div style="display:grid;gap:6px">${tabs.map(t => chip(SEL.tabs.has(t.id), 'selT', t.id, `石碑 Lv${t.lv}・${modList(t.mods)}`)).join('') || '<span class="sub">沒有石碑（通關單人石碑取得）</span>'}</div>
-  <button class="btn pri" data-act="circleOpen" ${sc.circle > 0 && nt >= 4 && nt <= 6 ? '' : 'disabled'}>組隊開啟魔法陣（已選 ${nt}/4～6）</button>
+  ${stele}
+  <button class="btn pri" data-act="steleRun" ${sc.stele > 0 && ni <= 3 ? '' : 'disabled'}>用卷軸開啟單人石碑（${fl_} 層・Lv${S.lv + 2}）</button>
+  ${circle}
+  <button class="btn pri" data-act="circleOpen" ${sc.circle > 0 && nt >= 4 && nt <= 6 ? '' : 'disabled'}>用卷軸組隊開啟魔法陣（已選 ${nt}/4～6）</button>
   <h3>冥府傳送門</h3><p class="sub">集滿 4 個不同部位的冥府碎片（${FRAG_PARTS.join('、')}）就能組成傳送門，8 層、詞綴全部疊加，首領保證掉冥府之血。</p>
   <div style="display:grid;gap:6px">${frags.map(f => `<div class="card"><b>${FRAG_PARTS[f.part]} Lv${f.lv}</b><small class="sub" style="display:block">${modList(f.mods)}・<span style="color:#ff8a9a">${modList(f.um)}</span></small></div>`).join('') || '<span class="sub">沒有冥府碎片</span>'}</div>
   <button class="btn pri" data-act="portalOpen" ${best ? '' : 'disabled'}>組隊開啟冥府傳送門${best ? '' : `（還缺 ${FRAG_PARTS.filter((_, i) => !frags.some(f => f.part === i)).join('、')}）`}</button>`;
+}
+/* 背包的材料分頁：碑文碎片、石碑、冥府碎片、卷軸 */
+const MAT_TABS = [
+  ['insc', '碑文碎片', () => (S.insc || []).length],
+  ['tabs', '石碑', () => (S.tabs || []).length],
+  ['frags', '冥府碎片', () => (S.frags || []).length],
+  ['scroll', '卷軸', () => ((S.scrolls || {}).stele || 0) + ((S.scrolls || {}).circle || 0)]
+];
+function matsHTML(tab) {
+  const drop = (k, id) => `<button class="btn sm" data-act="matDrop" data-k="${k}" data-id="${id}">丟棄</button>`,
+    go = '<button class="btn" data-act="sheet" data-s="stele">前往「冒險 → 石碑」使用</button>';
+  if (tab === 'insc') {
+    const ins = S.insc || [],
+      g = {};
+    ins.forEach(q => (g[q.m] = g[q.m] || []).push(q));
+    return `<p class="sub">打菁英怪掉落（魔法 12%、稀有 35%、紅名必掉、首領 50%），每片帶一條地城詞綴。開單人石碑時放 0～3 片，每片 +1 層。最多 ${INSC_MAX} 片（目前 ${ins.length}）。</p>${
+      Object.entries(g)
+        .map(
+          ([m, l]) =>
+            `<div class="card"><div class="rowx"><div class="t"><b>${DMODI[m].n} ×${l.length}</b><small>${DMODI[m].d}・數量 +${DMODI[m].q}%、稀有度 +${DMODI[m].r}%</small></div>${drop('insc', l[0].id)}</div></div>`
+        )
+        .join('') || '<p class="sub">還沒有碑文碎片</p>'
+    }${go}`;
+  }
+  if (tab === 'tabs') {
+    const t = S.tabs || [];
+    return `<p class="sub">通關單人石碑取得，帶 2～4 條地城詞綴。放 4～6 個進魔法陣組成 20 層地城。最多 ${TAB_MAX} 個（目前 ${t.length}）。</p>${
+      t
+        .map(
+          q =>
+            `<div class="card"><div class="rowx"><div class="t"><b>石碑 Lv${q.lv}</b><small>${modList(q.mods)}</small></div>${drop('tabs', q.id)}</div></div>`
+        )
+        .join('') || '<p class="sub">還沒有石碑</p>'
+    }${go}`;
+  }
+  if (tab === 'frags') {
+    const f = S.frags || [];
+    return `<p class="sub">冥府侵蝕柱的看門人掉落，4 個部位各帶 2 條地城詞綴＋2 條冥府詞綴。集滿 4 個不同部位可以開冥府傳送門。最多 ${FRAG_MAX} 片（目前 ${f.length}）。</p>
+    <div class="curs">${FRAG_PARTS.map((n, i) => `<span><span>${n}<b>${f.filter(q => q.part === i).length}</b></span></span>`).join('')}</div>${
+      f
+        .map(
+          q =>
+            `<div class="card"><div class="rowx"><div class="t"><b>${FRAG_PARTS[q.part]} Lv${q.lv}</b><small>${modList(q.mods)}・<span style="color:#ff8a9a">${modList(q.um)}</span></small></div>${drop('frags', q.id)}</div></div>`
+        )
+        .join('') || '<p class="sub">還沒有冥府碎片</p>'
+    }${go}`;
+  }
+  const sc = S.scrolls || {};
+  return `<p class="sub">路上的空白石碑、石碑魔法陣按「壓縮封印」得到，可以堆疊。回家放入碑文碎片或石碑就能開啟。</p>
+  <div class="card"><div class="rowx"><div class="t"><b>空白石碑卷（單人） ×${sc.stele || 0}</b><small>放 0～3 個碑文碎片，開 1～3 層單人石碑</small></div></div></div>
+  <div class="card"><div class="rowx"><div class="t"><b>空白魔法陣卷（4 人） ×${sc.circle || 0}</b><small>放 4～6 個石碑，組隊開 20 層魔法陣</small></div></div></div>${go}`;
 }
 const ENTURL = new Map();
 function entURL(k) {
@@ -512,7 +583,29 @@ function portalPick() {
 }
 
 /* ================= actions ================= */
+/* 路上的石碑／魔法陣「當場挑戰」：一樣要自己放入碑文碎片或石碑，只是不用卷軸、用掉地上那座 */
 Object.assign(A, {
+  siteGo: d => {
+    const e = ENT.get(d.id);
+    if (!inRange(e) || isDone(e)) return;
+    SEL.site = e.id;
+    openSheet('stele', e.kind === 'stele' ? '當場挑戰・單人石碑' : '當場挑戰・石碑魔法陣');
+  },
+  siteCancel: () => {
+    SEL.site = null;
+    closeSheet();
+  },
+  matTab: d => {
+    SEL.bag = d.k;
+    renderSheet();
+  },
+  matDrop: d => {
+    const k = d.k;
+    S[k] = (S[k] || []).filter(q => q.id !== d.id);
+    sfx('tap');
+    renderSheet();
+    save();
+  },
   seal: d => {
     const e = ENT.get(d.id);
     if (!inRange(e) || isDone(e)) return;
@@ -579,10 +672,14 @@ Object.assign(A, {
     renderSheet();
   },
   steleRun: () => {
-    if (!((S.scrolls || {}).stele > 0) || SEL.insc.size > 3) return;
+    const site = siteEnt();
+    if (site && site.kind !== 'stele') return;
+    if ((!site && !((S.scrolls || {}).stele > 0)) || SEL.insc.size > 3) return;
     const mods = S.insc.filter(q => SEL.insc.has(q.id)).map(q => q.m),
       lv = S.lv + 2;
-    S.scrolls.stele--;
+    if (site) S.defeated[site.id] = 1;
+    else S.scrolls.stele--;
+    SEL.site = null;
     S.insc = S.insc.filter(q => !SEL.insc.has(q.id));
     SEL.insc.clear();
     closeSheet();
@@ -592,15 +689,18 @@ Object.assign(A, {
       dt: 'stele',
       mods,
       lv,
-      lat: S.lat,
-      lng: S.lng,
-      floors: Math.max(1, Math.min(3, mods.length))
+      lat: site ? site.lat : S.lat,
+      lng: site ? site.lng : S.lng,
+      floors: Math.max(1, Math.min(3, mods.length)),
+      onsite: !!site && onSite(site)
     });
     save();
   },
   circleOpen: () => {
-    const tabs = (S.tabs || []).filter(t => SEL.tabs.has(t.id));
-    if (!((S.scrolls || {}).circle > 0) || tabs.length < 4 || tabs.length > 6) return;
+    const tabs = (S.tabs || []).filter(t => SEL.tabs.has(t.id)),
+      site = siteEnt();
+    if (site && site.kind !== 'circle') return;
+    if ((!site && !((S.scrolls || {}).circle > 0)) || tabs.length < 4 || tabs.length > 6) return;
     const lv = Math.round(tabs.reduce((a, t) => a + t.lv, 0) / tabs.length) + 2;
     partyCreate({
       id: 'mc' + uid(),
@@ -610,9 +710,11 @@ Object.assign(A, {
       lat: S.lat,
       lng: S.lng,
       name: '石碑魔法陣',
-      pay: { scroll: 'circle', tabs: tabs.map(t => t.id) }
+      onsite: !!site && onSite(site),
+      pay: site ? { ent: site.id, tabs: tabs.map(t => t.id) } : { scroll: 'circle', tabs: tabs.map(t => t.id) }
     });
     SEL.tabs.clear();
+    SEL.site = null;
   },
   portalOpen: () => {
     const fr = portalPick();

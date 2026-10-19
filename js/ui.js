@@ -155,6 +155,14 @@ const fmt1 = v => Math.round(v);
 function curRow() {
   return `<div class="curs">${CUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>`;
 }
+/* 背包上方分頁：裝備與各種地城材料 */
+const bagTabs = () =>
+  `<div class="seg bagtabs">${[['eq', '裝備', () => S.inv.length], ...MAT_TABS]
+    .map(
+      ([k, n, c]) =>
+        `<button data-act="matTab" data-k="${k}" aria-pressed="${SEL.bag === k}">${n}${k === 'eq' ? '' : ` <b>${c()}</b>`}</button>`
+    )
+    .join('')}</div>`;
 const curRowG = () =>
   `<div class="curs">${GCUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>`;
 const gemDesc = q =>
@@ -262,12 +270,14 @@ function renderSheet() {
     <h3>升級</h3><div class="card"><div class="rowx"><div class="t"><b>${g.lv < GEM_MAX ? `Lv${g.lv} → Lv${g.lv + 1}` : '已滿級'}</b><small>${g.lv < GEM_MAX ? `需要 ${dustNeed(g.lv)} 靈魂粉塵（你有 ${S.cur.dust || 0}）・技能石等級不能超過角色等級` : ''}</small></div><button class="btn pri sm" data-act="gemLv" ${blk ? 'disabled' : ''}>${blk || '升級'}</button></div></div>
     <h3>技能欄</h3><div class="btns">${S.sk.map((id, i) => `<button class="btn sm ${id === g.id ? '' : 'pri'}" data-act="gemEquip" data-i="${i}" ${id === g.id ? 'disabled' : ''}>${id === g.id ? '裝在' : '裝到'}第 ${i + 1} 格${id && id !== g.id && gemOf(id) ? `<small>（換下${SKILLS[gemOf(id).k].name}）</small>` : ''}</button>`).join('')}${at >= 0 ? '<button class="btn sm" data-act="gemOff">卸下</button>' : ''}</div>
     <div class="btns"><button class="btn" data-act="gemBreak">分解（得 ${gemDustBack(g)} 粉塵）</button><button class="btn" data-act="sheet" data-s="skills">返回技能</button></div>`;
+  } else if (sheetName === 'bag' && SEL.bag !== 'eq') {
+    html = bagTabs() + matsHTML(SEL.bag);
   } else if (sheetName === 'bag') {
     const cell = (sl, area) => {
       const it = S.eq[sl];
       return `<button class="doll-s" style="grid-area:${area};${it ? `border-color:${RCOL[it.r]};box-shadow:0 0 10px ${RCOL[it.r]}44 inset` : ''}" data-act="eqslot" data-s="${sl}" aria-label="${SLOTN[sl]}"><img src="${slotIcon(it, sl)}" alt=""><small>${it ? esc(itemTitle(it)) : SLOTN[sl]}</small></button>`;
     };
-    html = `<div class="doll"><canvas id="dollHero" width="18" height="18"></canvas>${cell('weapon', 'w')}${cell('helm', 'h')}${cell('amulet', 'a')}${cell('offhand', 'o')}${cell('ring1', 'r1')}${cell('chest', 'c')}${cell('ring2', 'r2')}${cell('gloves', 'g')}${cell('belt', 'bt')}${cell('boots', 'b')}</div>
+    html = `${bagTabs()}<div class="doll"><canvas id="dollHero" width="18" height="18"></canvas>${cell('weapon', 'w')}${cell('helm', 'h')}${cell('amulet', 'a')}${cell('offhand', 'o')}${cell('ring1', 'r1')}${cell('chest', 'c')}${cell('ring2', 'r2')}${cell('gloves', 'g')}${cell('belt', 'bt')}${cell('boots', 'b')}</div>
     <h3>通貨</h3>${curRow()}
     <h3>消耗品</h3><div class="card"><div class="rowx"><div class="t"><b>生命藥水 ×${S.potions}</b></div><button class="btn sm" data-act="use" data-k="potions" ${S.potions ? '' : 'disabled'}>使用</button></div><div class="rowx"><div class="t"><b>魔力藥水 ×${S.ethers}</b></div><button class="btn sm" data-act="use" data-k="ethers" ${S.ethers ? '' : 'disabled'}>使用</button></div></div>
     <h3>背包 ${S.inv.length}/30</h3>${S.inv.length ? `<div class="list">${S.inv.map((it, i) => `<button class="irow" data-act="pick" data-i="${i}" style="border-left-color:${RCOL[it.r]}"><img src="${slotIcon(it)}" alt=""><span><b>${itemName(it)}</b><small>${SLOTN[it.slot]}・iLv${it.ilvl}・${esc(itemSum(it))}</small></span></button>`).join('')}</div>` : '<p class="sub">背包是空的。</p>'}`;
@@ -408,10 +418,13 @@ function openEnt(id) {
   } else if (e.kind === 'stele' || e.kind === 'circle') {
     const done = isDone(e),
       nm = e.kind === 'stele' ? '空白石碑卷（單人）' : '空白魔法陣卷（4 人）';
+    const st = e.kind === 'stele';
     desc = done
-      ? '已經封印過了，每小時整點會出現新的。'
-      : `按「壓縮封印」把它收進背包，變成【${nm}】，回家再到「冒險 → 石碑」${e.kind === 'stele' ? '注入碑文碎片開啟單人石碑' : '放入 4～6 個石碑，組隊開啟 20 層魔法陣'}。`;
-    act = `<button class="btn pri" data-act="seal" data-id="${id}" ${inR && !done ? '' : 'disabled'}>壓縮封印</button>`;
+      ? '已經封印或挑戰過了，每小時整點會出現新的。'
+      : `兩種用法，都要自己放入${st ? '碑文碎片（0～3 片）' : '石碑（4～6 個）'}：<br>・<b>當場挑戰</b>：不用卷軸，直接在這裡${st ? '開打單人石碑（每片碎片 +1 層，怪物 Lv 玩家 +2，通關得到石碑）' : '組隊開打 20 層魔法陣（倒下不會復活）'}，這座會被用掉。<br>・<b>壓縮封印</b>：收進背包變成【${nm}】，之後再到「冒險 → 石碑」開啟。`;
+    act =
+      `<button class="btn pri" data-act="siteGo" data-id="${id}" ${inR && !done ? '' : 'disabled'}>當場挑戰（選擇${st ? '碑文碎片' : '石碑'}）</button>` +
+      `<button class="btn" data-act="seal" data-id="${id}" ${inR && !done ? '' : 'disabled'}>壓縮封印</button>`;
   } else if (e.kind === 'vein') {
     const done = isDone(e);
     desc = done ? '靈脈已經枯竭，每小時整點會恢復。' : '湧出靈氣的地脈。採集可以得到刻印石，偶爾有混沌刻印石。';
@@ -448,10 +461,13 @@ function openEnt(id) {
   const title = e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name;
   $('sbody').innerHTML =
     `<div class="ent"><canvas id="entBig" width="18" height="18" style="width:84px;height:84px"></canvas><div style="flex:1;min-width:0;display:grid;gap:4px"><b style="font-family:var(--f-pix);font-size:19px;font-weight:400;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(title)}${e.lv && e.kind !== 'town' ? ` <span class="sub">Lv${e.lv}</span>` : ''}</b><span class="sub">${d < 5 ? '就在這裡' : dirName(S.lat, S.lng, e.lat, e.lng) + '方 ' + fmtD(d)}</span></div></div>
-    <p class="sub" style="color:var(--ink)">${desc}</p>${zn ? `<p class="sub" style="color:var(--good)">在${esc(zn.name)}的範圍內，不用走過去就能互動。</p>` : ''}${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
+    <p class="sub" style="color:var(--ink)">${desc}</p>${onSite(e) && FIGHTK.has(e.kind) ? `<p class="sub" style="color:var(--gold)">✦ 現場加成：人在這裡打，掉寶數量與稀有度 +${ONSITE_BONUS}%</p>` : ''}${zn ? `<p class="sub" style="color:var(--good)">在${esc(zn.name)}的範圍內，不用走過去就能互動（遠端沒有現場加成）。</p>` : ''}${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
     <div class="btns" style="flex-direction:column">${act}${!inR ? `<button class="btn" data-act="walkto" data-id="${id}">走過去</button>` : ''}</div>`;
   $('entBig').getContext('2d').drawImage(entIcon(e), 0, 0);
 }
+/* 人實際在現場（不是靠據點、營旗、絲綢之路的遠端範圍） */
+const FIGHTK = new Set(['monster', 'dungeon', 'stele', 'circle', 'event', 'town']);
+const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE);
 const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE) || inZone(e));
 
 /* ================= bases ================= */
@@ -508,6 +524,7 @@ const A = {
       openTree();
       return;
     }
+    if (d.s === 'stele') SEL.site = null;
     openSheet(d.s);
   },
   closeSheet: () => closeSheet(),
@@ -539,13 +556,19 @@ const A = {
   fight: d => {
     const e = ENT.get(d.id);
     if (!inRange(e)) return;
-    startBattle(makeEnemy(e.base, e.lv, e.rar, e.mods), { entId: e.id, bg: e.base.bg, bounty: e.bounty, uw: e.uw });
+    startBattle(makeEnemy(e.base, e.lv, e.rar, e.mods), {
+      entId: e.id,
+      bg: e.base.bg,
+      bounty: e.bounty,
+      uw: e.uw,
+      onsite: onSite(e)
+    });
   },
   enter: d => {
     const e = ENT.get(d.id);
     if (!inRange(e) || isDone(e)) return;
     closeSheet();
-    enterDungeon(e, false);
+    enterDungeon({ ...e, onsite: onSite(e) }, false);
   },
   trial: d => {
     const e = ENT.get(d.id);
@@ -553,7 +576,10 @@ const A = {
     const t = e.t;
     if (S.cleared[t.id] === hepoch()) return;
     closeSheet();
-    enterDungeon({ id: t.id, kind: 'landmark', dn: t.dn, lat: t.lat, lng: t.lng, lv: townLv(t) }, false);
+    enterDungeon(
+      { id: t.id, kind: 'landmark', dn: t.dn, lat: t.lat, lng: t.lng, lv: townLv(t), onsite: onSite(e) },
+      false
+    );
   },
   inn: () => {
     if (S.gold < 15) {
@@ -649,7 +675,7 @@ const A = {
       sfx('bless');
       toast('祝福生效！30 分鐘內經驗與掉落 +20%');
       addLog('喝下祝福泉');
-    } else enterDungeon({ id: e.id, kind: 'rift', lat: e.lat, lng: e.lng, lv: e.lv }, false);
+    } else enterDungeon({ id: e.id, kind: 'rift', lat: e.lat, lng: e.lng, lv: e.lv, onsite: onSite(e) }, false);
   },
   skill: d => useSkill(d.k),
   gem: d => {
@@ -1080,7 +1106,7 @@ const A = {
     const e = ENT.get(d.id);
     if (!inRange(e) || isDone(e)) return;
     sfx('select');
-    partyCreate(e);
+    partyCreate({ ...e, onsite: onSite(e) });
     friendsLoad();
   },
   ptJoin: () => {

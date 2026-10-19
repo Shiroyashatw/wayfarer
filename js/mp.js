@@ -110,7 +110,9 @@ function partyCreate(e) {
       lat: e.lat,
       lng: e.lng,
       name: e.name,
-      pay: e.pay
+      pay: e.pay,
+      floors: e.floors,
+      onsite: !!e.onsite
     },
     members: new Map([[CLOUD.uid, mySnap()]]),
     started: false
@@ -361,6 +363,8 @@ function mpStart() {
       lv: d.lv,
       lat: d.lat,
       lng: d.lng,
+      floors: d.floors,
+      onsite: d.onsite,
       seed,
       spec,
       lm: null
@@ -828,7 +832,14 @@ function mpRoomReward(info) {
 function mpClear() {
   if (!MB) return;
   const d = MB.d,
-    rw = dunReward({ spec: MB.spec, lv: d.lv, kind: 'dungeon', lm: null, remote: false }),
+    rw = dunReward({
+      spec: MB.spec,
+      lv: d.lv,
+      kind: 'dungeon',
+      lm: null,
+      remote: false,
+      onsite: d.onsite && amLeader()
+    }),
     loot = MB.loot || [];
   S.cleared[d.id] = hepoch();
   addLog(`組隊攻略${dunName(d)}（Lv${d.lv}）`);
