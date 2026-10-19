@@ -5,9 +5,9 @@ Artifact 環境會擋外部連線，所以雲端存檔在預覽裡不會連線�
 import re, sys, pathlib
 root = pathlib.Path(__file__).resolve().parent.parent
 html = (root / 'index.html').read_text(encoding='utf-8')
-html = re.sub(r'<link rel="stylesheet" href="css/style.css">',
+html = re.sub(r'<link rel="stylesheet" href="css/style.css(?:\?v=[^"]*)?">',
               lambda _: '<style>\n' + (root / 'css/style.css').read_text(encoding='utf-8') + '</style>', html)
-html = re.sub(r'<script src="(js/[^"]+)"></script>',
+html = re.sub(r'<script src="(js/[^"?]+)(?:\?v=[^"]*)?"></script>',
               lambda mo: '<script>\n' + (root / mo.group(1)).read_text(encoding='utf-8') + '</script>', html)
 out = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'dist/wayfarer_artifact.html'
 out.parent.mkdir(parents=True, exist_ok=True)
