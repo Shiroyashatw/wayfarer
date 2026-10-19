@@ -33,6 +33,9 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
      ```
    - 四足動物把 `standing ... legs and feet visible` 換成 `full body side view, all four legs visible`。
    - 首領加 `imposing pose, large and powerful, detailed armor/ornaments`。
+   - 有翅膀、長武器、尾巴等很寬的造型容易被畫布切邊，開頭再加：
+     `the entire character including wings and weapon fits completely inside the canvas with wide empty margins on all sides, nothing cut off at the edges, character occupies about 75 percent of the canvas`；
+     翅膀寫 `half-spread close to the body`、長武器寫 `held upright`，結尾補 `facing left`。
    - 裝備圖示（一律畫灰色金屬，材質階級的換色由程式處理）：
      ```
      single {裝備名稱} item icon, made of plain grey iron with brown wood or leather parts, simple readable shape, centered, diagonal from bottom-left to top-right
@@ -49,7 +52,8 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 2. 放到 `art/monsters/英文小寫檔名.png`（例如 `jiangshi.png`）。
 3. 跑 `python3 tools/art.py`：裁掉透明邊、轉 base64 寫進 `js/art.js`，圖名是 `a_檔名`。
 4. 把怪物資料的 `spr` 改成 `'a_檔名'`（`MONS` 在 `js/data.js`、亡靈 `UNDEAD` 在 `js/undead.js`、魔霧 `MISTMON` 在 `js/demon.js`、首領 `BOSSSPR`／`SINSPR` 等）；`pal` 對 PNG 圖沒有作用，可保留。
-5. 大小：PNG 圖每個像素畫成 `s × ART_U`（`js/sprites.js`，目前 0.36）。一般怪 64 畫布、人物約 58 高時，跟原本 16×16 的怪差不多大、稍大一點。
+5. 大小：PNG 圖每個像素畫成 `s × ART_U`（`js/sprites.js`，目前 0.36）。一般怪 64 畫布、人物約 58 高時，跟原本 16×16 的怪差不多大、稍大一點；超過 64 格的圖（首領 128）會等比縮到跟 64 一樣大，所以首領用 128 只是細節加倍，不會變巨大。
+   - 檢查四邊有沒有不透明像素貼邊（被切掉）：有的話請使用者用「留白」提示詞重生。
 6. 用 Playwright 開戰鬥截圖確認（`startBattle(makeEnemy(...))`），也看受擊白閃、倒下動畫、行動順序的小頭像。
 7. 改完照 CLAUDE.md：prettier、`python3 tools/codemap.py`、版本與 CHANGELOG。
 

@@ -590,7 +590,7 @@ const PAL = {
 };
 const FIXED = { k: '#120e1a' },
   SPC = new Map();
-/* ---------- PNG 像素圖（art/monsters → js/art.js，圖名 a_檔名）：比 16×16 精細，畫的時候每個像素是 s × ART_U ---------- */
+/* ---------- PNG 像素圖（art/monsters → js/art.js，圖名 a_檔名）：比 16×16 精細，畫的時候每個像素是 s × ART_U（大於 64 格的圖等比縮到 64 的大小） ---------- */
 const ART_U = 0.36,
   ARTIMG = {};
 function artImg(k) {
@@ -681,8 +681,8 @@ function drawSpr(c, name, pal, x, y, s, flip, white) {
   c.save();
   c.imageSmoothingEnabled = false;
   if (sp.art) {
-    /* PNG 圖：腳底對齊 y */
-    const u = s * ART_U,
+    /* PNG 圖：腳底對齊 y；超過 64 格的圖（例如 128 的首領）縮成跟 64 一樣大，細節加倍 */
+    const u = s * ART_U * Math.min(1, 64 / (sp.width - 2)),
       z = sp.width * u;
     if (flip) {
       c.translate(x, 0);
