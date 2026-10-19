@@ -1003,6 +1003,44 @@ function ascIcon(n, on) {
 }
 
 /* ================= sheet ================= */
+/* 分支的節點圖與選中節點的說明；preview 是還沒昇華時的預覽（只能看不能點） */
+function ascTreeHTML(b, preview) {
+  const a = ASCD(),
+    cells = [];
+  /* 節點圖：7 列 × 4 欄 */
+  for (const id in ASCN) {
+    const n = ASCN[id];
+    if (n.br !== b.k) continue;
+    const on = n.kind === 'e' || (!preview && a.nodes.includes(id)),
+      can = !preview && ascCan(id);
+    cells.push(
+      `<button class="an an-${n.kind}${on ? ' on' : ''}${can ? ' can' : ''}${SEL.ascN === id ? ' sel' : ''}" style="grid-row:${n.row + 1};grid-column:${n.kind === 'e' ? '1 / span 4' : n.col + 1}" data-act="ascSel" data-id="${id}">${n.kind === 's' ? '<i></i>' : `<img src="${ascIcon(n, on || preview)}" alt="">`}${n.kind !== 's' ? `<span>${n.n}</span>` : ''}</button>`
+    );
+  }
+  let h = `<div class="atree">${cells.join('')}</div>`;
+  const sn = SEL.ascN && ASCN[SEL.ascN];
+  if (sn && sn.br === b.k) {
+    const on = sn.kind === 'e' || (!preview && a.nodes.includes(sn.id)),
+      can = !preview && ascCan(sn.id);
+    h += `<div class="card"><b>${sn.kind === 'u' ? '終極・' : sn.kind === 'b' ? '' : sn.kind === 'e' ? '入口・' : '小點・'}${sn.n}</b>${ascTxt(
+      sn
+    )
+      .map(t => `<small class="sub" style="display:block;color:var(--ink)">・${esc(t)}</small>`)
+      .join('')}${ascCostTxt(sn)
+      .map(t => `<small style="display:block;color:#ff8a8a">代價：${esc(t)}</small>`)
+      .join('')}${sn.kind === 'u' ? '<small class="sub">兩個終極只能選一個。</small>' : ''}${
+      preview
+        ? `<small class="sub">${sn.kind === 'e' ? '選定這條分支就會得到入口的效果。' : '預覽中：選定這條分支後才能點。'}</small>`
+        : on
+          ? '<small style="color:var(--good)">已點亮</small>'
+          : `<button class="btn pri" data-act="ascTake" data-id="${sn.id}" ${can ? '' : 'disabled'}>${can ? '點亮（1 點）' : ascUsed() >= ascPts() ? '沒有昇華點數' : '還不能點（先點前一個節點）'}</button>`
+    }</div>`;
+  } else h += '<p class="sub">點節點看說明。大的是改變玩法的大點，小的是數值；一小一大交錯點下去。</p>';
+  return h;
+}
+const ascHead = (c, b, extra) =>
+  `<div class="card"><div class="rowx"><img class="ascic" src="${ascIcon(ASCN[b.k + '_e'], true)}" alt=""><div class="t"><b>${c.n}・${b.n}</b><small>${b.d}。輔助型大點套用到「${TAGN[b.tag]}」技能。${extra || ''}</small></div></div></div>`;
+const ascMine = c => S.cls === 'novice' || c.soul === S.cls || c.soul === 'novice';
 function ascHTML() {
   const a = ASCD(),
     nx = ascNext(),
@@ -1010,16 +1048,26 @@ function ascHTML() {
     used = ascUsed();
   let h = `<div class="card"><div class="rowx"><div class="t"><b>昇華點數 ${pts - used}/${pts}（共 ${ASC_MAX}）</b><small>${nx ? `下一場昇華試煉：Lv${nx}（到任一城鎮挑戰，通關得 2 點）` : '四場試煉都完成了'}${S.lv < (nx || 0) ? `・目前 Lv${S.lv}` : ''}</small></div></div></div>`;
   if (!a.br) {
+    /* 預覽某條分支 */
+    const vb = SEL.ascView && ASCB[SEL.ascView];
+    if (vb) {
+      const c = ASC.find(q => q.k === vb.cls),
+        ok = ascMine(c);
+      h += `<div class="btns"><button class="btn sm" data-act="ascView" data-k="">← 返回昇華一覽</button></div>`;
+      h += ascHead(c, vb, ok ? '' : `（${CLASSES[c.soul].name}的昇華，你的起點不能選）`);
+      h += ascTreeHTML(vb, true);
+      h += `<button class="btn pri" data-act="ascPick" data-k="${vb.k}" ${ok && pts ? '' : 'disabled'}>${!ok ? '起點不同，不能選這個昇華' : pts ? `選擇${vb.n}` : `先通過昇華試煉（Lv${ASC_LV[0]} 起，在城鎮）才能選擇`}</button>`;
+      return h;
+    }
     if (!pts)
-      h += `<p class="sub">Lv${ASC_LV[0]} 起可以到任一城鎮挑戰「昇華試煉」，通關後選一個昇華職業和其中一條分支。8 點只能點在選定的分支裡，一小一大交錯，最深處有兩個互斥的終極。</p>`;
-    const mine = ASC.filter(c => S.cls === 'novice' || c.soul === S.cls || c.soul === 'novice');
-    h += `<h3>${pts ? '選擇昇華（選定後要花金幣才能重選）' : '昇華職業一覽'}</h3>`;
+      h += `<p class="sub">Lv${ASC_LV[0]} 起可以到任一城鎮挑戰「昇華試煉」，通關後選一個昇華職業和其中一條分支。8 點只能點在選定的分支裡，一小一大交錯，最深處有兩個互斥的終極。點分支可以先看裡面的節點。</p>`;
+    h += `<h3>${pts ? '選擇昇華（點分支查看節點，選定後要花金幣才能重選）' : '昇華職業一覽（點分支查看節點）'}</h3>`;
     for (const c of ASC) {
-      const ok = mine.includes(c);
+      const ok = ascMine(c);
       h += `<div class="card asc-c${ok ? '' : ' off'}"><div class="rowx"><img class="ascic" src="${ascIcon({ id: 'c_' + c.k, br: c.br[0].k, kind: 'e', g: c.ic }, ok)}" alt=""><div class="t"><b>${c.n}</b><small>${c.d}${ok ? '' : `（${CLASSES[c.soul].name}的昇華）`}</small></div></div>${c.br
         .map(
           b =>
-            `<button class="btn sm asc-b" data-act="ascPick" data-k="${b.k}" ${ok && pts ? '' : 'disabled'}><img src="${ascIcon(ASCN[b.k + '_e'], true)}" alt=""><span><b>${b.n}</b><small>${b.d}</small></span></button>`
+            `<button class="btn sm asc-b" data-act="ascView" data-k="${b.k}"><img src="${ascIcon(ASCN[b.k + '_e'], true)}" alt=""><span><b>${b.n}</b><small>${b.d}</small></span><em class="asc-go">查看 ›</em></button>`
         )
         .join('')}</div>`;
     }
@@ -1027,33 +1075,7 @@ function ascHTML() {
   }
   const b = ASCB[a.br],
     c = ASC.find(q => q.k === a.cls);
-  h += `<div class="card"><div class="rowx"><img class="ascic" src="${ascIcon(ASCN[b.k + '_e'], true)}" alt=""><div class="t"><b>${c.n}・${b.n}</b><small>${b.d}。輔助型大點套用到「${TAGN[b.tag]}」技能。</small></div></div></div>`;
-  /* 節點圖：7 列 × 4 欄 */
-  const cells = [];
-  for (const id in ASCN) {
-    const n = ASCN[id];
-    if (n.br !== b.k) continue;
-    const on = n.kind === 'e' || a.nodes.includes(id),
-      can = ascCan(id);
-    cells.push(
-      `<button class="an an-${n.kind}${on ? ' on' : ''}${can ? ' can' : ''}${SEL.ascN === id ? ' sel' : ''}" style="grid-row:${n.row + 1};grid-column:${n.kind === 'e' ? '1 / span 4' : n.col + 1}" data-act="ascSel" data-id="${id}">${n.kind === 's' ? '<i></i>' : `<img src="${ascIcon(n, on)}" alt="">`}${n.kind !== 's' ? `<span>${n.n}</span>` : ''}</button>`
-    );
-  }
-  h += `<div class="atree">${cells.join('')}</div>`;
-  const sn = SEL.ascN && ASCN[SEL.ascN];
-  if (sn && sn.br === b.k) {
-    const on = sn.kind === 'e' || a.nodes.includes(sn.id),
-      can = ascCan(sn.id);
-    h += `<div class="card"><b>${sn.kind === 'u' ? '終極・' : sn.kind === 'b' ? '' : sn.kind === 'e' ? '入口・' : '小點・'}${sn.n}</b>${ascTxt(
-      sn
-    )
-      .map(t => `<small class="sub" style="display:block;color:var(--ink)">・${esc(t)}</small>`)
-      .join('')}${ascCostTxt(sn)
-      .map(t => `<small style="display:block;color:#ff8a8a">代價：${esc(t)}</small>`)
-      .join(
-        ''
-      )}${sn.kind === 'u' ? '<small class="sub">兩個終極只能選一個。</small>' : ''}${on ? '<small style="color:var(--good)">已點亮</small>' : `<button class="btn pri" data-act="ascTake" data-id="${sn.id}" ${can ? '' : 'disabled'}>${can ? '點亮（1 點）' : ascUsed() >= ascPts() ? '沒有昇華點數' : '還不能點（先點前一個節點）'}</button>`}</div>`;
-  } else h += '<p class="sub">點節點看說明。大的是改變玩法的大點，小的是數值；一小一大交錯點下去。</p>';
+  h += ascHead(c, b) + ascTreeHTML(b, false);
   h += `<button class="btn" data-act="ascReset">重選昇華（${ascResetCost()} 金幣，要在城鎮）</button>`;
   return h;
 }
@@ -1078,13 +1100,22 @@ function ascTrialDone() {
 Object.assign(A, {
   asc: () => {
     SEL.ascN = null;
+    SEL.ascView = null;
     openSheet('asc', '昇華');
+  },
+  /* 還沒昇華前預覽分支；k 空字串是回到一覽 */
+  ascView: d => {
+    SEL.ascView = d.k || null;
+    SEL.ascN = d.k ? d.k + '_e' : null;
+    renderSheet();
+    $('sbody').scrollTop = 0;
   },
   ascPick: d => {
     const b = ASCB[d.k],
       a = ASCD();
     if (!b || a.br || !ascPts()) return;
     const c = ASC.find(q => q.k === b.cls);
+    if (!ascMine(c)) return;
     showModal(
       '選擇昇華',
       `<p>確定選擇 <b>${c.n}・${b.n}</b>？</p><p class="sub">${b.d}。選定後 8 點只能點在這條分支裡；之後重選要花 ${ascResetCost()} 金幣並在城鎮。</p>`,
@@ -1096,6 +1127,7 @@ Object.assign(A, {
           fn: () => {
             hideModal();
             Object.assign(a, { cls: c.k, br: b.k, nodes: [] });
+            SEL.ascView = null;
             SEL.ascN = b.k + '_a0s';
             sfx('level');
             toast(`昇華為${b.n}！`);

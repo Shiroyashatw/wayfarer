@@ -435,3 +435,4 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .an.can img{opacity:.9;animation:lglow 1.6s ease-in-out infinite}.an-s.can i{border-color:var(--gold)}
 .an.sel{outline:2px solid var(--gold);outline-offset:2px;border-radius:10px}
 .an-s::before,.an-b::before,.an-u::before{content:"";position:absolute;left:50%;top:-6px;width:2px;height:6px;background:#ffffff26}
+.asc-b span{flex:1}.asc-go{font-style:normal;font-size:12px;color:var(--gold);flex:none}

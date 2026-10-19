@@ -292,7 +292,7 @@
 - **足跡**（167）
   `FOOT_CELL:169`、`FOOTA:173`、`footKey:174`、`footN2Lv:175`、`footLv:176`、`footStep:181`、`footDens:206`、`drawFoot:209`
 
-### js/asc.js（1171 行）
+### js/asc.js（1203 行）
 
 - **data**（67）
   `ASC_LV:68`、`N:71`、`ASC:72`、`TAGN:857`、`SUPN:875`、`ASCN:898`、`ASCB:899`
@@ -301,10 +301,10 @@
 - **icons**（977）
   `ASCI:979`、`ascIcon:980`
 - **sheet**（1005）
-  `ascHTML:1006`
-- **trials**（1061）
-  `ascTownHTML:1063`、`ascTrialDone:1070`
-- **actions**（1077）
+  `ascTreeHTML:1007`、`ascHead:1041`、`ascMine:1043`、`ascHTML:1044`
+- **trials**（1083）
+  `ascTownHTML:1085`、`ascTrialDone:1092`
+- **actions**（1099）
 
 ### js/gacha.js（155 行）
 
