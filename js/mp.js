@@ -932,8 +932,32 @@ function renderMBHud() {
     me = MB.ps.find(q => q.uid === CLOUD.uid),
     my = MB.actor === CLOUD.uid && MB.sent !== MB.tok && me && me.alive;
   $('bname').innerHTML = e
-    ? `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>等級 ${e.lv}${MB.boss ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`
+    ? `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>Lv${e.lv}${MB.boss ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`
     : '';
+  placeBName(MB.boss);
+  {
+    /* 行動順序：這一輪（目前輪到的人亮起來）＋下一輪預估 */
+    const row = (a, i) => {
+      if (a === 'E') return { n: e ? e.name : '怪物', c: 'e', on: MB.actor === 'E' && i === MB.ti };
+      const q = MB.ps.find(p => p.uid === a);
+      return q
+        ? { n: q.name, c: a === CLOUD.uid ? 'me' : '', on: i === MB.ti && MB.actor === a, dead: !q.alive }
+        : null;
+    };
+    /* 只顯示這一輪還沒動的人（含目前），再補下一輪，總共最多 6 個 */
+    const cur = (MB.order || [])
+        .map(row)
+        .map((q, i) => (i >= Math.max(0, MB.ti) ? q : null))
+        .filter(Boolean),
+      nxt = [
+        ...MB.ps
+          .filter(p => p.alive)
+          .sort((a, b) => b.st.speed - a.st.speed)
+          .map(p => p.uid),
+        'E'
+      ].map(a => ({ ...row(a, -1), on: false }));
+    renderOrder([...cur, { h: '下一輪' }, ...nxt.slice(0, Math.max(1, 6 - cur.length))]);
+  }
   const ep = $('epills');
   ep.style.left = p.ex + 'px';
   ep.style.top = p.y + 14 + 'px';

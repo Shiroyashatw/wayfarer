@@ -760,7 +760,7 @@ function trailStep(force) {
 /* ================= spawns ================= */
 let spawnAt = null;
 const MCELL = 130,
-  DCELL = 450,
+  DCELL = 400,
   CCELL = 260,
   EVMS = REFRESH;
 const evEp = () => fl(now() / EVMS);
@@ -770,7 +770,7 @@ function nearTown(x, y, r) {
 /* 格子 (i,j) 上的地城：位置固定，種類與詞綴每次地圖刷新重骰。要在道路附近才會出現 */
 function dungeonAt(i, j, ep = hepoch()) {
   const r = h(i, j, 41);
-  if (r % 100 >= 30) return null;
+  if (r % 100 >= 48) return null;
   let x = (i + 0.15 + ((r >>> 8) % 70) / 100) * DCELL,
     y = (j + 0.15 + ((r >>> 16) % 70) / 100) * DCELL;
   if (nearTown(x, y, 160)) return null;
@@ -885,7 +885,7 @@ function genEntities() {
     }
   cells(CCELL, R, (i, j) => {
     const r = h(i, j, hp + 311);
-    if (r % 100 >= 20) return;
+    if (r % 100 >= 28) return;
     const id = `c${i}_${j}_${hp}`;
     if (S.defeated[id]) return;
     let x = (i + ((r >>> 8) % 100) / 100) * CCELL,
@@ -896,20 +896,7 @@ function genEntities() {
     [x, y] = p;
     put(id, { kind: 'chest', x, y, name: '寶箱', mimic: (r >>> 20) % 100 < 12 });
   });
-  TOWNS.forEach(t => {
-    if (Math.abs(t.x - px) > 6000 || Math.abs(t.y - py) > 6000) return;
-    out.set(t.id, { id: t.id, kind: 'town', x: t.x, y: t.y, lat: t.lat, lng: t.lng, name: t.n, t });
-    const r = h(t.i, ee, 131);
-    if (r % 100 >= 55) return;
-    const types = ['merchant', 'rift', 'fountain', 'bounty'],
-      type = types[(r >>> 8) % 4],
-      a = (((r >>> 12) % 360) * Math.PI) / 180,
-      d = 180 + ((r >>> 20) % 140);
-    let x = t.x + Math.cos(a) * d,
-      y = t.y + Math.sin(a) * d;
-    const p = snapRoad(x, y, 120);
-    if (p) [x, y] = p;
-    const id = `e${t.i}_${ee}`;
+  const mkEv = (id, type, x, y, r, town) => {
     if (S.cleared[id] === ee) return;
     if (type === 'bounty') {
       const base = pickMon(r, S.lv + 1);
@@ -933,10 +920,36 @@ function genEntities() {
         x,
         y,
         lv: S.lv + 1,
-        town: t.n,
+        town,
         name: { merchant: '流浪商人', rift: '魔物裂隙', fountain: '祝福泉' }[type],
         ev: true
       });
+  };
+  TOWNS.forEach(t => {
+    if (Math.abs(t.x - px) > 6000 || Math.abs(t.y - py) > 6000) return;
+    out.set(t.id, { id: t.id, kind: 'town', x: t.x, y: t.y, lat: t.lat, lng: t.lng, name: t.n, t });
+    const r = h(t.i, ee, 131);
+    if (r % 100 >= 55) return;
+    const types = ['merchant', 'rift', 'fountain', 'bounty'],
+      type = types[(r >>> 8) % 4],
+      a = (((r >>> 12) % 360) * Math.PI) / 180,
+      d = 180 + ((r >>> 20) % 140);
+    let x = t.x + Math.cos(a) * d,
+      y = t.y + Math.sin(a) * d;
+    const p = snapRoad(x, y, 120);
+    if (p) [x, y] = p;
+    mkEv(`e${t.i}_${ee}`, type, x, y, r, t.n);
+  });
+  /* 路邊限時事件：不在城鎮附近也會出現（約每 700 公尺方格 30%） */
+  cells(700, R, (i, j) => {
+    const r = h(i, j, ee * 11 + 517);
+    if (r % 100 >= 30) return;
+    let x = (i + ((r >>> 8) % 100) / 100) * 700,
+      y = (j + ((r >>> 16) % 100) / 100) * 700;
+    if (nearTown(x, y, 400)) return;
+    const p = snapRoad(x, y, 150);
+    if (!p) return;
+    mkEv(`ew${i}_${j}_${ee}`, ['merchant', 'rift', 'fountain', 'bounty', 'rift'][(r >>> 4) % 5], p[0], p[1], r, '路邊');
   });
   S.bases.forEach(b => {
     const [x, y] = toM(b.lat, b.lng);

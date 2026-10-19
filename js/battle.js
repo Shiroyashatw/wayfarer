@@ -237,7 +237,29 @@ function paintBG(kind) {
 
 /* ================= battle: logic ================= */
 const BFX = { pops: [], fx: [], shake: 0, hero: { a: null }, en: { a: null, flash: 0 }, t0: 0, motes: [] };
-const POS = () => ({ hx: BW * 0.27, ex: BW * 0.72, y: Math.min(BH * 0.6, BH - 118) });
+const POS = () => ({ hx: BW * 0.27, ex: BW * 0.66, y: Math.min(BH * 0.6, BH - 118) });
+/* 怪物頭頂（名字放在這裡），怪物大小跟 renderBattle 一樣 */
+function enemyTop(boss) {
+  const sc = Math.max(3, Math.min(6, Math.round(BW / 90)));
+  return POS().y - 16 * (boss ? sc + 2 : sc + 1) - 8;
+}
+function placeBName(boss) {
+  const el = $('bname');
+  el.style.left = POS().ex + 'px';
+  el.style.top = enemyTop(boss) + 'px';
+}
+/* 行動順序（右上角直列）：list 是 [{n, c, on, dead}]，c 是 'me'／'e'／'' */
+function renderOrder(list) {
+  $('border').innerHTML =
+    '<b>行動順序</b>' +
+    list
+      .map(q =>
+        q.h
+          ? `<b>${q.h}</b>`
+          : `<div class="${q.c ? 'bo-' + q.c : ''}${q.on ? ' on' : ''}${q.dead ? ' dead' : ''}">${esc(q.n)}</div>`
+      )
+      .join('');
+}
 function bmsg(t) {
   const el = $('bmsg');
   el.textContent = t;
@@ -308,7 +330,15 @@ function renderBHud() {
     e = B.e,
     p = POS();
   $('bname').innerHTML =
-    `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>等級 ${e.lv}${B.boss ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`;
+    `<span style="color:${RCOL[e.rar || 0]}">${esc(e.name)}</span><small>Lv${e.lv}${B.boss ? '・首領' : ''}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small>`;
+  placeBName(B.boss);
+  {
+    /* 單人：你先、怪物後；怪物迅捷時可能連動兩次 */
+    const me = { n: S.name || '你', c: 'me' },
+      en = { n: e.name, c: 'e' },
+      et = B.turn === 'E';
+    renderOrder([{ ...me, on: !et }, { ...en, on: et }, { ...me }, { ...en }]);
+  }
   $('bstat').textContent = [
     D ? `${D.kind === 'rift' ? '裂隙第' : '第'} ${D.room + 1}/${D.spec.floors} ${D.kind === 'rift' ? '波' : '層'}` : '',
     B.poison ? `中毒 ${B.poison}` : '',
@@ -593,6 +623,8 @@ function afterPlayer() {
   later(250, enemyTurn);
 }
 function enemyTurn() {
+  B.turn = 'E';
+  renderBHud();
   const e = B.e,
     p = POS(),
     st = stats();
@@ -687,6 +719,7 @@ function enemyTurn() {
 }
 function endEnemyTurn() {
   if (!B) return;
+  B.turn = 'P';
   const st = stats();
   if (B.guard > 0) B.guard--;
   if (st.regen && S.hp > 0) {
@@ -841,7 +874,7 @@ function dropLoot(e, boss, sp, remote) {
     giveCur(c);
     out.push(curDot(c) + CURI[c].n);
   }
-  gemLoot(r, boss, sp && sp.dt !== 'normal' && sp.dt !== 'party' && sp.dt !== 'stele', rem, out);
+  gemLoot(e, boss, sp && sp.dt !== 'normal' && sp.dt !== 'party' && sp.dt !== 'stele', rem, out);
   if (boss && sp && sp.dt === 'circle') {
     giveCur('engX', 1 + (Math.random() < 0.5 ? 1 : 0));
     out.push(curDot('engX') + '崇高刻印石');
@@ -866,15 +899,23 @@ function dropLoot(e, boss, sp, remote) {
   return out;
 }
 /* 技能石材料：靈魂碎片與刻印石系列（昇華稜鏡、神聖刻印石在冥府內容出來前先由紅名怪掉落） */
-function gemLoot(r, boss, hell, rem, out) {
-  const z = zoneAt(S.lat, S.lng).m,
+/* 靈魂碎片隨怪物強度增加：稀有度底數 + 每條詞綴 2（冥府詞綴 3）+ 每 4 級 1，首領再加 */
+function gemLoot(e, boss, hell, rem, out) {
+  const r = e.rar || 0,
+    mods = e.mods || [],
+    soul =
+      [2, 4, 7, 8, 15][r] +
+      mods.reduce((a, m) => a + (EMODI[m] && EMODI[m].uw ? 3 : 2), 0) +
+      fl((e.lv || 1) / 4) +
+      (boss ? 6 + (hell ? 6 : 0) : 0),
+    z = zoneAt(S.lat, S.lng).m,
     ch = p => Math.random() < p * rem * (z.eng || 1),
     add = (id, n = 1) => {
       if (n <= 0) return;
       giveCur(id, n);
       out.push(curDot(id) + GCURI[id].n + (n > 1 ? ' ×' + n : ''));
     };
-  add('soul', Math.round(([Math.random() < 0.5 ? 1 : 0, 2, 4, 4, 10][r] + (boss ? 5 : 0)) * rem * (z.soul || 1)));
+  add('soul', Math.round(soul * rem * (z.soul || 1)));
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
   if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
   if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');

@@ -414,7 +414,8 @@ function openEnt(id) {
         merchant: '流浪商人只在這裡停留到下次地圖刷新，賣比較好的稀有裝備，還有混沌石。',
         rift: '裂隙裡會連續湧出 3 波魔法怪物，最後一波是稀有怪物。完成可得大量通貨。',
         fountain: '喝下泉水，30 分鐘內經驗與掉落提高 20%。'
-      }[e.sub] + `<br><span class="sub">出現在${esc(e.town)}附近，地圖刷新（每 15 分鐘）前有效。</span>`;
+      }[e.sub] +
+      `<br><span class="sub">${e.town === '路邊' ? '路邊的限時事件' : `出現在${esc(e.town)}附近`}，怪物刷新（每 15 分鐘）前有效。</span>`;
     act = isDone(e)
       ? '<button class="btn" disabled>已完成</button>'
       : `<button class="btn pri" data-act="event" data-id="${id}" ${inR ? '' : 'disabled'}>${{ merchant: '交易', rift: '進入裂隙', fountain: '喝下泉水' }[e.sub]}</button>`;
@@ -614,8 +615,8 @@ const A = {
       giveItem(it);
       got.push(itemName(it));
     }
-    giveCur('soul', 2);
-    got.push(curDot('soul') + '靈魂碎片 ×2');
+    giveCur('soul', 6);
+    got.push(curDot('soul') + '靈魂碎片 ×6');
     if (Math.random() < 0.2) {
       giveCur('eng');
       got.push(curDot('eng') + '刻印石');
