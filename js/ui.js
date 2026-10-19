@@ -135,24 +135,6 @@ function entIcon(e) {
   } else if (e.kind === 'town') {
     n = e.t.svc.includes('temple') ? 'shrine' : 'crystal';
     p = e.t.svc.includes('temple') ? PAL.shrine : PAL.crystal;
-  } else if (e.kind === 'stele' || e.kind === 'circle') {
-    const done = isDone(e),
-      nm = e.kind === 'stele' ? '空白石碑卷（單人）' : '空白魔法陣卷（4 人）';
-    desc = done
-      ? '已經封印過了，每小時整點會出現新的。'
-      : `按「壓縮封印」把它收進背包，變成【${nm}】，回家再到「冒險 → 石碑」${e.kind === 'stele' ? '注入碑文碎片開啟單人石碑' : '放入 4～6 個石碑，組隊開啟 20 層魔法陣'}。`;
-    act = `<button class="btn pri" data-act="seal" data-id="${id}" ${inR && !done ? '' : 'disabled'}>壓縮封印</button>`;
-  } else if (e.kind === 'vein') {
-    const done = isDone(e);
-    desc = done ? '靈脈已經枯竭，每小時整點會恢復。' : '湧出靈氣的地脈。採集可以得到刻印石，偶爾有混沌刻印石。';
-    act = `<button class="btn pri" data-act="gather" data-id="${id}" ${inR && !done ? '' : 'disabled'}>採集</button>`;
-  } else if (e.kind === 'obelisk') {
-    const n = (S.obel && S.obel[e.id]) || 0;
-    desc = `冥府之力從地底湧出，方圓 ${OB_R} 公尺內的怪物帶著冥府詞綴（名字前有「冥府・」，非常危險）。在範圍內擊敗被侵蝕的怪物替柱子充能（${n}/${OB_NEED}），滿了就能召喚「冥府看門人」，打倒它可以解除侵蝕並得到冥府碎片。`;
-    act = `<button class="btn pri" data-act="summon" data-id="${id}" ${inR && n >= OB_NEED ? '' : 'disabled'}>${n >= OB_NEED ? '召喚冥府看門人' : `充能 ${n}/${OB_NEED}`}</button>`;
-  } else if (e.kind === 'flag') {
-    desc = `你插下的冒險營旗，還有 ${Math.ceil((e.f.until - now()) / 60e3)} 分鐘。半徑 ${flagR()} 公尺內的東西不用在現場也能互動。`;
-    act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
   } else if (e.kind === 'base') {
     n = e.b.type === 'main' ? 'castle' : 'camp';
     p = PAL[n];
@@ -423,6 +405,24 @@ function openEnt(id) {
     act = isDone(e)
       ? '<button class="btn" disabled>已完成</button>'
       : `<button class="btn pri" data-act="event" data-id="${id}" ${inR ? '' : 'disabled'}>${{ merchant: '交易', rift: '進入裂隙', fountain: '喝下泉水' }[e.sub]}</button>`;
+  } else if (e.kind === 'stele' || e.kind === 'circle') {
+    const done = isDone(e),
+      nm = e.kind === 'stele' ? '空白石碑卷（單人）' : '空白魔法陣卷（4 人）';
+    desc = done
+      ? '已經封印過了，每小時整點會出現新的。'
+      : `按「壓縮封印」把它收進背包，變成【${nm}】，回家再到「冒險 → 石碑」${e.kind === 'stele' ? '注入碑文碎片開啟單人石碑' : '放入 4～6 個石碑，組隊開啟 20 層魔法陣'}。`;
+    act = `<button class="btn pri" data-act="seal" data-id="${id}" ${inR && !done ? '' : 'disabled'}>壓縮封印</button>`;
+  } else if (e.kind === 'vein') {
+    const done = isDone(e);
+    desc = done ? '靈脈已經枯竭，每小時整點會恢復。' : '湧出靈氣的地脈。採集可以得到刻印石，偶爾有混沌刻印石。';
+    act = `<button class="btn pri" data-act="gather" data-id="${id}" ${inR && !done ? '' : 'disabled'}>採集</button>`;
+  } else if (e.kind === 'obelisk') {
+    const n = (S.obel && S.obel[e.id]) || 0;
+    desc = `冥府之力從地底湧出，方圓 ${OB_R} 公尺內的怪物帶著冥府詞綴（名字前有「冥府・」，非常危險）。在範圍內擊敗被侵蝕的怪物替柱子充能（${n}/${OB_NEED}），滿了就能召喚「冥府看門人」，打倒它可以解除侵蝕並得到冥府碎片。`;
+    act = `<button class="btn pri" data-act="summon" data-id="${id}" ${inR && n >= OB_NEED ? '' : 'disabled'}>${n >= OB_NEED ? '召喚冥府看門人' : `充能 ${n}/${OB_NEED}`}</button>`;
+  } else if (e.kind === 'flag') {
+    desc = `你插下的冒險營旗，還有 ${Math.ceil((e.f.until - now()) / 60e3)} 分鐘。半徑 ${flagR()} 公尺內的東西不用在現場也能互動。`;
+    act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
   } else if (e.kind === 'base') {
     desc = `你的${baseName(e.b)}，回到這裡會恢復全部狀態。`;
     act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
