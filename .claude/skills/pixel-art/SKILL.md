@@ -9,6 +9,8 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 
 ## 1. 產出提示詞
 
+**先讀 `docs/怪物提示詞.md`**：共用設定、固定句型、世界觀方向，以及已採用的提示詞。新提示詞要沿用同系列的句型與用字（例如七宗罪的王對照路西法那份），畫風才會一致。
+
 先確認要做什麼（怪物名稱、外觀方向、用在哪裡：一般怪、亡靈、魔霧、冥府、首領、裝備）。使用者沒講外觀就依遊戲世界觀補：台灣在地元素（廟宇、民俗、山林動物、都市傳說）＋奇幻 RPG。
 
 輸出給使用者的格式（繁體中文說明＋英文提示詞放在 code block，方便複製）：
@@ -17,7 +19,7 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 
    | 項目 | 一般怪物 | 首領 | 裝備圖示 |
    | --- | --- | --- | --- |
-   | Width／尺寸 | 64 | 128 | 32 |
+   | Width／尺寸 | 64 | 64 | 32 |
    | Transparent background | 勾選 | 勾選 | 勾選 |
    | Direction | West (facing left) | West (facing left) | None |
    | View | Side (Sidescroller) | Side (Sidescroller) | None |
@@ -33,6 +35,9 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
      ```
    - 四足動物把 `standing ... legs and feet visible` 換成 `full body side view, all four legs visible`。
    - 首領加 `imposing pose, large and powerful, detailed armor/ornaments`。
+   - 有翅膀、長武器、尾巴等很寬的造型容易被畫布切邊，開頭再加：
+     `the entire character including wings and weapon fits completely inside the canvas with wide empty margins on all sides, nothing cut off at the edges, character occupies about 75 percent of the canvas`；
+     翅膀寫 `half-spread close to the body`、長武器寫 `held upright`，結尾補 `facing left`。
    - 裝備圖示（一律畫灰色金屬，材質階級的換色由程式處理）：
      ```
      single {裝備名稱} item icon, made of plain grey iron with brown wood or leather parts, simple readable shape, centered, diagonal from bottom-left to top-right
@@ -49,9 +54,11 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 2. 放到 `art/monsters/英文小寫檔名.png`（例如 `jiangshi.png`）。
 3. 跑 `python3 tools/art.py`：裁掉透明邊、轉 base64 寫進 `js/art.js`，圖名是 `a_檔名`。
 4. 把怪物資料的 `spr` 改成 `'a_檔名'`（`MONS` 在 `js/data.js`、亡靈 `UNDEAD` 在 `js/undead.js`、魔霧 `MISTMON` 在 `js/demon.js`、首領 `BOSSSPR`／`SINSPR` 等）；`pal` 對 PNG 圖沒有作用，可保留。
-5. 大小：PNG 圖每個像素畫成 `s × ART_U`（`js/sprites.js`，目前 0.36）。一般怪 64 畫布、人物約 58 高時，跟原本 16×16 的怪差不多大、稍大一點。
+5. 大小：PNG 圖每個像素畫成 `s × ART_U`（`js/sprites.js`，目前 0.36）。一般怪 64 畫布、人物約 58 高時，跟原本 16×16 的怪差不多大、稍大一點；首領也用 64（試過 128，造型反而沒特色，不用）。首領單獨一隻時戰鬥中站在右半邊、垂直置中（`epos`）。
+   - 檢查四邊有沒有不透明像素貼邊（被切掉）：有的話請使用者用「留白」提示詞重生。
 6. 用 Playwright 開戰鬥截圖確認（`startBattle(makeEnemy(...))`），也看受擊白閃、倒下動畫、行動順序的小頭像。
-7. 改完照 CLAUDE.md：prettier、`python3 tools/codemap.py`、版本與 CHANGELOG。
+7. 把這隻採用的提示詞（含設定、檔名、系列）補進 `docs/怪物提示詞.md` 的「已採用」。
+8. 改完照 CLAUDE.md：prettier、`python3 tools/codemap.py`、版本與 CHANGELOG。
 
 ## 注意
 

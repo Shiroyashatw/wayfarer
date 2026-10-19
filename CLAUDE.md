@@ -5,6 +5,7 @@
 - 版本號：目前是 0.3.x（0.3.0 是昇華系統；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。系統規則改了要同步更新。
+- 怪物／首領的 PixelLab 提示詞：`docs/怪物提示詞.md`（新增怪物圖用 skill `pixel-art`，採用後把提示詞記進去）。
 
 ## 專案結構
 純靜態網頁，沒有建置步驟。所有 JS 是一般 `<script>`（非 module），依序載入、共用全域；`main.js` 必須最後。

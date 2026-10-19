@@ -590,7 +590,7 @@ const PAL = {
 };
 const FIXED = { k: '#120e1a' },
   SPC = new Map();
-/* ---------- PNG 像素圖（art/monsters → js/art.js，圖名 a_檔名）：比 16×16 精細，畫的時候每個像素是 s × ART_U ---------- */
+/* ---------- PNG 像素圖（art/monsters → js/art.js，圖名 a_檔名）：比 16×16 精細，畫的時候每個像素是 s × ART_U（首領也用 64 格） ---------- */
 const ART_U = 0.36,
   ARTIMG = {};
 function artImg(k) {
