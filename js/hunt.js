@@ -7,29 +7,250 @@ const HUNT_STEP = 10,
   ZOD_COST = 10,
   SUM_MS = 3600e3,
   BEAST_MS = 30 * 60e3;
-/* 十二生肖：沿用現有怪物圖，換成墮落配色（龍用金色的蛇） */
+/* 十二生肖專屬像素圖：b 身體、d 暗部、h 角、e 發紅的眼、r 血紋、p 紫色腐化、w 獠牙骨刺、m 血口、f 火焰、g 金、l 臉 */
+const pad16z = rows => rows.map(r => (r + '................').slice(0, 16));
+Object.assign(SPR, {
+  z_rat: pad16z([
+    '..pp........pp..',
+    '.pbbp......pbbp.',
+    '.pbbbp....pbbbp.',
+    '..pbbbbbbbbbbp..',
+    '...bbbbbbbbbb...',
+    '..bbebbbbbbebb..',
+    '..bbbbbddbbbbb..',
+    '...bbbwmmwbbb...',
+    '....bbwmmwbb....',
+    '...rbbbbbbbbr...',
+    '..rbbbrbbrbbbr..',
+    '..bbbbbrrbbbbb.w',
+    '..bbbbbbbbbbbbww',
+    '...dd......ddww.',
+    '..ww........ww..'
+  ]),
+  z_ox: pad16z([
+    'hh............hh',
+    '.hh..........hh.',
+    '..hh........hh..',
+    '...hhbbbbbbhh...',
+    '....bbbbbbbb....',
+    '...bbebbbbebb...',
+    '...bbbbbbbbbb...',
+    '....bbrrrrbb....',
+    '....bmmggmmb....',
+    '..bbbbbggbbbbb..',
+    '.bbbrbbbbbbrbbb.',
+    '.bbbbrrbbrrbbbb.',
+    '.bbbbbbbbbbbbbb.',
+    '..dd.dd..dd.dd..',
+    '..kk.kk..kk.kk..'
+  ]),
+  z_tiger: pad16z([
+    '.hb..........bh.',
+    '.bbb........bbb.',
+    '.bbbbbbbbbbbbbb.',
+    '.bdbbdbbbbdbbdb.',
+    '.bbeebbbbbbeebb.',
+    '.bbbbbbddbbbbbb.',
+    '..bdbbbmmbbbdb..',
+    '..bbbwmmmmwbbb..',
+    '...bbwbmmbwbb...',
+    '...dbwbbbbwbd...',
+    '..bbbbbbbbbbbb..',
+    '.bdbbdbbbbdbbdb.',
+    '.bbbbbbbbbbbbbb.',
+    '.bb.bb....bb.bb.',
+    '.ww.ww....ww.ww.'
+  ]),
+  z_rabbit: pad16z([
+    '...pp....pp.....',
+    '...pbp...pbp....',
+    '...pbp...pbp....',
+    '....bp...pb.....',
+    '....bb...bb.....',
+    '...bbbbbbbbb....',
+    '..bbebbbbbebb...',
+    '..bbbbbbbbbbb...',
+    '..bwmwmwmwmwb...',
+    '...bbbbbbbbb....',
+    '..rbbbbbbbbbr...',
+    '.ww.bbbbbbb.ww..',
+    '....bbrrrbb.....',
+    '....bb...bb.....',
+    '...ddd...ddd....'
+  ]),
+  z_dragon: pad16z([
+    '.hh.hh..........',
+    '..hhh...........',
+    '.bbbbbb.........',
+    'bbebbbbr........',
+    'wbbbbbbrr.......',
+    'mwmbbbbbrr......',
+    'wm..gbbbbr......',
+    '......gbbbr.....',
+    '.......bbbbrrr..',
+    '..rrr..gbbbbbrr.',
+    '.rbbbrr.gbbbbbr.',
+    'rbbbbbbbbbbbbb..',
+    'gbbgggbbbbgbb...',
+    '.w.w..gggg..w.w.'
+  ]),
+  z_snake: pad16z([
+    '....bbbbbbbb....',
+    '...bbpbbbbpbb...',
+    '..bbpebbbbepbb..',
+    '..bbbbbbbbbbbb..',
+    '..bpbbmmmmbbpb..',
+    '...bbbwmmwbbb...',
+    '....bbbwwbbb....',
+    '....rbbbbbbr....',
+    '.....rbbbbr.....',
+    '......bbbb......',
+    '.......bbb......',
+    '...bbbbbbbb.....',
+    '..bbrbbrbbrbb...',
+    '.bbbbbbbbbbbbbb.',
+    '..dddddddddddd..'
+  ]),
+  z_horse: pad16z([
+    '.....f.f.f......',
+    '....frfrfrf.....',
+    '..hbbfrfrff.....',
+    '.bebbbbfrf......',
+    'bbbbbbbbfrf.....',
+    'wmbbdbbbbff.....',
+    'mm...bbbbbbbbbf.',
+    '.....bbbbbbbbbff',
+    '.....bbrbbbrbbff',
+    '.....dbbbbbbbbf.',
+    '.....bb.....bb..',
+    '.....bb.....bb..',
+    '....ff......ff..',
+    '....ff.....ff...'
+  ]),
+  z_goat: pad16z([
+    'hh............hh',
+    'h.h..........h.h',
+    'h..hh.pppp.hh..h',
+    '.h..hbbbbbbh..h.',
+    '..hhbbbbbbbbhh..',
+    '....beebbeeb....',
+    '....bbbbbbbb....',
+    '.....bbbbbb.....',
+    '.....bbwwbb.....',
+    '......bmmb......',
+    '......wwww......',
+    '.....rwwwwr.....',
+    '....r..ww..r....',
+    '.....r....r.....',
+    '......rrrr......'
+  ]),
+  z_monkey: pad16z([
+    '.....bbbbbb.....',
+    '....bbhbbhbb....',
+    '..lbbllllllbbl..',
+    '..lblellllelbl..',
+    '...bllllllllb...',
+    '....blwmmwlb....',
+    '.....bbbbbb.....',
+    '...bbbbbbbbbb...',
+    '..bb.bbrrbb.bb..',
+    '.bb..bbbbbb..bb.',
+    '.ww..bbbbbb..ww.',
+    '.....bb..bb...b.',
+    '....bbb..bbb.b..',
+    '.............bb.'
+  ]),
+  z_rooster: pad16z([
+    '....ff..........',
+    '...frff.........',
+    '...rrrr.........',
+    '..bbbbbb........',
+    '.bebbbbb........',
+    'gggbbbbb.....ff.',
+    '.gg.rbbbb...frf.',
+    '.....rbbbbbbrff.',
+    '.....bbbbbbbbrf.',
+    '....bbbbbbbbbb..',
+    '....bbrbbrbbbb..',
+    '.....bbbbbbbb...',
+    '.......g..g.....',
+    '......wg..gw....',
+    '......gg.gg.....'
+  ]),
+  z_dog: pad16z([
+    '..h.............',
+    '.hbh............',
+    '.bbbb...........',
+    'bebbbb.........f',
+    'bbbbbbbb......ff',
+    'wmwbbbbbbbbbbbf.',
+    'mw.wwwwbbbbbbb..',
+    '....bbbbbbbbbbb.',
+    '....bbrbbbrbbbb.',
+    '....bbbbbbbbbbb.',
+    '....bb.dbbbd.bb.',
+    '....bb......bb..',
+    '...ff......ff...'
+  ]),
+  z_pig: pad16z([
+    '...w.w....w.w...',
+    '..hwwbbbbbbwwh..',
+    '..hbbbbbbbbbbh..',
+    '..bbebbbbbbebb..',
+    '..bbbbbbbbbbbb..',
+    '..bbbllllllbbb..',
+    '.wbbllkllkllbbw.',
+    '.wwbbllllllbbww.',
+    '..wbbbmmmmbbbw..',
+    '.bbbbbbbbbbbbbb.',
+    'bbbrbbbbbbbbrbbb',
+    'bbbbrrbbbbrrbbbb',
+    'bbbbbbbbbbbbbbbb',
+    '.dd.dd....dd.dd.',
+    '.kk.kk....kk.kk.'
+  ])
+});
+/* 共用的墮落配色，各生肖再換身體色 */
+const ZBASE = {
+  d: '#14080e',
+  h: '#cfc2a8',
+  e: '#ff2a4a',
+  r: '#d0203a',
+  p: '#8a3ad0',
+  w: '#efe6d8',
+  m: '#4a0610',
+  f: '#ff7a2a',
+  g: '#d8a838',
+  l: '#8a5a6a'
+};
 const ZODIAC = [
-  { k: 'rat', n: '子鼠', spr: 'pangolin', el: 'phys', mods: ['swift', 'leech'], d: '速度快，偷你的血' },
-  { k: 'ox', n: '丑牛', spr: 'oxhead', el: 'phys', mods: ['tough', 'armored'], d: '又硬又厚' },
-  { k: 'tiger', n: '寅虎', spr: 'tiger', el: 'phys', mods: ['fury', 'swift'], d: '越打越兇' },
-  { k: 'rabbit', n: '卯兔', spr: 'cat', el: 'cold', mods: ['swift', 'cold'], d: '冰冷的連擊' },
+  { k: 'rat', n: '子鼠', el: 'phys', mods: ['swift', 'leech'], d: '速度快，偷你的血', pal: { b: '#4a3a4a' } },
+  { k: 'ox', n: '丑牛', el: 'phys', mods: ['tough', 'armored'], d: '又硬又厚', pal: { b: '#4a1a1a', h: '#2a2228' } },
+  { k: 'tiger', n: '寅虎', el: 'phys', mods: ['fury', 'swift'], d: '越打越兇', pal: { b: '#a04a1a' } },
+  { k: 'rabbit', n: '卯兔', el: 'cold', mods: ['swift', 'cold'], d: '冰冷的連擊', pal: { b: '#c8b8d0', p: '#6a2a8a' } },
   {
     k: 'dragon',
     n: '辰龍',
-    spr: 'snake',
     el: 'fire',
     mods: ['fire', 'tough', 'fury'],
     d: '十二生肖之首，最難纏',
-    pal: { s: '#c9a43a', e: '#ff2a4a', w: '#fff2b0', b: '#7a1a1a' }
+    pal: { b: '#4a2468', r: '#ff4a3a' }
   },
-  { k: 'snake', n: '巳蛇', spr: 'snake', el: 'cold', mods: ['leech', 'cold'], d: '纏住吸血' },
-  { k: 'horse', n: '午馬', spr: 'horseface', el: 'fire', mods: ['swift', 'fire'], d: '烈火奔馳' },
-  { k: 'goat', n: '未羊', spr: 'deer', el: 'light', mods: ['reflect', 'shock'], d: '雷光與反射' },
-  { k: 'monkey', n: '申猴', spr: 'monkey', el: 'light', mods: ['swift', 'shock'], d: '雷電亂竄' },
-  { k: 'rooster', n: '酉雞', spr: 'bird', el: 'fire', mods: ['fire', 'reflect'], d: '火焰反射' },
-  { k: 'dog', n: '戌狗', spr: 'wolf', el: 'phys', mods: ['fury', 'leech'], d: '咬住不放' },
-  { k: 'pig', n: '亥豬', spr: 'boar', el: 'phys', mods: ['tough', 'fury'], d: '橫衝直撞' }
-];
+  { k: 'snake', n: '巳蛇', el: 'cold', mods: ['leech', 'cold'], d: '纏住吸血', pal: { b: '#1e3a2a' } },
+  { k: 'horse', n: '午馬', el: 'fire', mods: ['swift', 'fire'], d: '烈火奔馳', pal: { b: '#1e1824', h: '#3a2a2a' } },
+  {
+    k: 'goat',
+    n: '未羊',
+    el: 'light',
+    mods: ['reflect', 'shock'],
+    d: '雷光與反射',
+    pal: { b: '#3a2a2a', e: '#ffd23a' }
+  },
+  { k: 'monkey', n: '申猴', el: 'light', mods: ['swift', 'shock'], d: '雷電亂竄', pal: { b: '#4a2a1a' } },
+  { k: 'rooster', n: '酉雞', el: 'fire', mods: ['fire', 'reflect'], d: '火焰反射', pal: { b: '#2a1a1a' } },
+  { k: 'dog', n: '戌狗', el: 'phys', mods: ['fury', 'leech'], d: '咬住不放', pal: { b: '#342834', w: '#c0b0a0' } },
+  { k: 'pig', n: '亥豬', el: 'phys', mods: ['tough', 'fury'], d: '橫衝直撞', pal: { b: '#5a2a2a', l: '#a06070' } }
+].map(z => ({ ...z, spr: 'z_' + z.k }));
 const ZODI = Object.fromEntries(ZODIAC.map(z => [z.k, z]));
 /* 用結晶在身邊召喚的事件 */
 const HSUM = [
@@ -38,6 +259,42 @@ const HSUM = [
   { k: 'vein', n: '靈脈', c: 2, d: '採集刻印石' },
   { k: 'mseal', n: '魔霧封印', c: 4, d: 'Lv5 起', lv: 5 }
 ];
+/* 地圖上的墮落生肖：腳下一圈旋轉的血色符文陣與黑紅氣場 */
+function drawZodiacs(c, t) {
+  for (const e of ENT.values()) {
+    if (e.kind !== 'zodiac' || !visible(e)) continue;
+    const x = SX(e.x),
+      y = SY(e.y),
+      s = sprScale() * 1.3,
+      r = 20 * s,
+      pu = 0.5 + 0.5 * Math.sin(t / 300);
+    if (x < -r * 2 || x > VW + r * 2 || y < -r * 3 || y > VH + r * 2) continue;
+    glow(c, x, y - 10 * s, r * 1.8, '120,0,30', 0.55 + 0.2 * pu);
+    c.save();
+    c.translate(x, y);
+    c.scale(1, 0.45);
+    c.shadowColor = '#ff2a4a';
+    c.shadowBlur = 10;
+    c.strokeStyle = `rgba(255,50,80,${0.6 + 0.3 * pu})`;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(0, 0, r, 0, 6.28);
+    c.stroke();
+    c.rotate(t / 1500);
+    c.beginPath();
+    for (let k = 0; k <= 5; k++) {
+      const a = (k * 4 * Math.PI) / 5 - Math.PI / 2;
+      k ? c.lineTo(Math.cos(a) * r, Math.sin(a) * r) : c.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    c.stroke();
+    c.rotate(-t / 750);
+    c.setLineDash([3, 5]);
+    c.beginPath();
+    c.arc(0, 0, r * 1.25, 0, 6.28);
+    c.stroke();
+    c.restore();
+  }
+}
 /* 墮落配色：整體偏暗紅紫、眼睛發紅 */
 function corruptPal(p) {
   const out = {},
@@ -54,8 +311,7 @@ function corruptPal(p) {
   out.e = '#ff2a4a';
   return out;
 }
-const sprPal = spr => (MONS.find(m => m.spr === spr) || WATCHERS.find(w => w.spr === spr) || {}).pal || {};
-const zodPal = z => z.pal || corruptPal(sprPal(z.spr));
+const zodPal = z => ({ ...ZBASE, ...z.pal });
 (() => {
   PIX.cur_dcrys = {
     r: ['...rr...', '..rwrr..', '.rwrrrr.', 'rrrrrrdr', '.rrrrdd.', '..rrdd..', '...dd...', '........'],

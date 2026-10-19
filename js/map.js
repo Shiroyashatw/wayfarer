@@ -1170,6 +1170,7 @@ function renderWorld(t) {
   drawUndead(c, t);
   drawMist(c, t);
   drawObelisks(c, t);
+  drawZodiacs(c, t);
   const s = sprScale(),
     list = [];
   for (const e of ENT.values()) {

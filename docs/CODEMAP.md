@@ -40,7 +40,7 @@
 | 七宗罪雕像、7 個王的機制、殘魂 | `js/demon.js`、`js/battle.js` | `SINS`、`makeSinLord`、`sinTurn`（`enemyTurn` 開頭）、`sinHit`（`playerHit`）、`sinReward`（`dunReward`）、`A.sinGo`；`dunEnemy` 的七宗罪段落 |
 | 傳奇裝備 | `js/demon.js`、`js/items.js` | `LEGENDS`、`makeLegend`；屬性在 `sumStats`（`it.leg`），特效旗標 `legPride` 等在 `heroDmg`／`heroAil`／`useSkill`／`bItem` |
 | 惡魔珠寶與天賦盤珠寶槽 | `js/demon.js`、`js/data.js`、`js/tree.js` | `JAFF`、`makeJewel`、`jewelCap`、`jewelStats`、`socketCardHTML`、`A.jIn`／`A.jOut`；槽位在 `TREE` 結尾（`type: 'socket'`），鑲嵌狀態 `S.jsock` |
-| 狩獵墮落十二生肖（0.2.12） | `js/hunt.js` | `huntWalk`（`setPos` 呼叫）、`huntSpawns`（`genEntities` 最後）、`ZODIAC`、`HSUM`、`makeBeast`、`makeZodiac`、`huntWin`（`winBattle`）、`huntHTML`（`hunt` 面板）、`zodEntHTML`（`openEnt`）；狀態 `S.hunt`、`S.summons`（id 以 `z` 開頭） |
+| 狩獵墮落十二生肖（0.2.12） | `js/hunt.js` | `huntWalk`（`setPos` 呼叫）、`huntSpawns`（`genEntities` 最後）、`ZODIAC`（圖 `SPR.z_*`、配色 `ZBASE`）、`drawZodiacs`、`HSUM`、`makeBeast`、`makeZodiac`、`huntWin`（`winBattle`）、`huntHTML`（`hunt` 面板）、`zodEntHTML`（`openEnt`）；狀態 `S.hunt`、`S.summons`（id 以 `z` 開頭） |
 | 魔霧刷新、亡靈區／魔霧／侵蝕柱的地圖繪製 | `js/demon.js`、`js/undead.js`、`js/endgame.js` | `mistEp`／`mistify`（`q` 開頭的魔霧怪）、`drawMist`、`drawUndead`／`drawUndeadMark`、`drawObelisks`；遠距離顯示 `FAR`（`map.js`） |
 | 七宗罪之王（4 人，0.2.11） | `js/demon.js`、`js/data.js` | `makeSinKing`、`A.sinKing`、`DTYPES.sinking`；付出殘魂在 `payDun` 的 `souls` |
 | 等級上限 | `js/items.js` | `LV_MAX`（`gainXP`） |
@@ -168,7 +168,7 @@
 - **battle: drawing**（1219）
   `renderBattle:1220`、`drawFx:1333`
 
-### js/map.js（1647 行）
+### js/map.js（1648 行）
 
 - **world coordinates: meters from 台中車站 (x 東, y 南)**（3）
   `O:4`、`KX:5`、`toM:7`、`toLL:8`、`TOWNS:10`
@@ -182,13 +182,13 @@
 - **spawns**（760）
   `spawnAt:761`、`MCELL:762`、`evEp:766`、`nearTown:767`、`dungeonAt:771`、`NOT_TEMPLE:792`、`genEntities:793`、`refreshEntities:962`、`VIS:979`、`MOBILE:980`、`LANDMARK:982`、`LM_VIS:994`、`FAR:996`、`visible:998`、`isDone:1007`、`townLv:1017`
 - **world rendering**（1019）
-  `wv:1020`、`VW:1022`、`cam:1025`、`ZMIN:1026`、`sizeWorld:1028`、`SX:1035`、`BGPAT:1037`、`bgPattern:1038`、`glow:1051`、`label:1058`、`sprScale:1077`、`viewChunks:1079`、`camLoadT:1087`、`renderWorld:1088`、`arrows:1359`
-- **input**（1389）
-  `ptrs:1390`、`drag:1391`、`tapOK:1425`、`endPtr:1426`、`tapWorld:1447`
-- **movement**（1481）
-  `lastFrame:1482`、`SIM_SPEED:1484`、`setPos:1485`、`checkArrive:1514`
-- **GPS**（1542）
-  `GPS:1544`、`gpsStart:1545`、`gpsStop:1582`、`tick:1589`、`timeRegen:1614`、`mmss:1623`、`plT:1627`、`placeLabel:1628`
+  `wv:1020`、`VW:1022`、`cam:1025`、`ZMIN:1026`、`sizeWorld:1028`、`SX:1035`、`BGPAT:1037`、`bgPattern:1038`、`glow:1051`、`label:1058`、`sprScale:1077`、`viewChunks:1079`、`camLoadT:1087`、`renderWorld:1088`、`arrows:1360`
+- **input**（1390）
+  `ptrs:1391`、`drag:1392`、`tapOK:1426`、`endPtr:1427`、`tapWorld:1448`
+- **movement**（1482）
+  `lastFrame:1483`、`SIM_SPEED:1485`、`setPos:1486`、`checkArrive:1515`
+- **GPS**（1543）
+  `GPS:1545`、`gpsStart:1546`、`gpsStop:1583`、`tick:1590`、`timeRegen:1615`、`mmss:1624`、`plT:1628`、`placeLabel:1629`
 
 ### js/tree.js（449 行）
 
@@ -250,18 +250,18 @@
   `sinHTML:671`、`sinMods:679`、`demonHTML:689`、`jewelHTML:696`、`socketCardHTML:709`
 - **actions**（731）
 
-### js/hunt.js（335 行）
+### js/hunt.js（591 行）
 
 - **data**（3）
-  `HUNT_STEP:4`、`ZODIAC:11`、`ZODI:33`、`HSUM:35`、`corruptPal:42`、`sprPal:57`、`zodPal:58`
-- **state**（72）
-  `H:73`、`huntWalk:75`、`huntHud:87`、`nearSpot:95`、`addSummon:105`、`huntSpawns:113`、`zodActive:123`
-- **enemies**（125）
-  `makeBeast:126`、`makeZodiac:132`、`huntWin:154`
-- **sheet**（187）
-  `huntHTML:188`、`huntPaint:211`
-- **actions**（218）
-  `zodEntHTML:327`
+  `HUNT_STEP:4`、`pad16z:11`、`ZBASE:214`、`ZODIAC:226`、`ZODI:254`、`HSUM:256`、`drawZodiacs:263`、`corruptPal:299`、`zodPal:314`
+- **state**（328）
+  `H:329`、`huntWalk:331`、`huntHud:343`、`nearSpot:351`、`addSummon:361`、`huntSpawns:369`、`zodActive:379`
+- **enemies**（381）
+  `makeBeast:382`、`makeZodiac:388`、`huntWin:410`
+- **sheet**（443）
+  `huntHTML:444`、`huntPaint:467`
+- **actions**（474）
+  `zodEntHTML:583`
 
 ### js/gacha.js（155 行）
 
