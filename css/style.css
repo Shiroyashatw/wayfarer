@@ -488,3 +488,47 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .lu.big img{width:72px;height:72px}
 .lu.big b{font-size:12.5px}
 .luhunt{margin-top:6px;padding:4px 8px;border-radius:8px;background:#c8141e33;color:#ff9a9a;font-size:12px}
+/* 0.3.1.8 技能標籤 */
+.sktags{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:2px 0}
+.skt{font-style:normal;font-size:10px;line-height:1;padding:3px 5px;border-radius:5px;background:#ffffff1a;color:#e8e2d4;white-space:nowrap}
+.skt.tg{background:#5a6a8a55;color:#cfe0ff}
+.skt.tg.all{background:#c9a45c55;color:#ffe2a0}
+.skt.tg.rand{background:#7a5aa055;color:#e0c8ff}
+.skt.el.phys{background:#8a8a9a44;color:#e0e0e8}
+.skt.el.fire{background:#e5484d44;color:#ffb0a0}
+.skt.el.cold{background:#3a8ae044;color:#a8d8ff}
+.skt.el.light{background:#f2d25e44;color:#fff0a0}
+.skt.ail{background:#a0202a44;color:#ffa0a8}
+.skt.buf,.skt.heal{background:#3a9a5a44;color:#a8f0b8}
+.skt.pet{background:#6a4a2a55;color:#f0d0a0}
+.skt.w{background:#ffffff12;color:var(--dim)}
+.gcell .sktags,.gslot .sktags{margin-top:1px}
+.card .sktags{justify-content:flex-start;margin:4px 0}
+.skf{grid-template-columns:repeat(6,1fr);margin-bottom:8px}
+.skf button{font-size:12px;padding:6px 0}
+/* 0.3.1.8 右上角返回 */
+.sacts{display:flex;gap:6px;align-items:center}
+.x.back{font-size:22px;line-height:1;padding-bottom:3px}
+/* 0.3.1.8 商店出售頁 */
+.shoptab{margin-bottom:8px}
+.shoptab b{color:var(--gold);font-weight:500}
+.stile i.ok{background:#f2d25e;color:#14101c;font-style:normal}
+/* 0.3.1.8 頂部資訊條 */
+.ibar{pointer-events:auto;display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:100%}
+.ib{display:flex;align-items:center;gap:4px;background:var(--card);border:0;border-radius:999px;padding:3px 9px 3px 7px;font-family:var(--f-pix);font-size:12.5px;color:var(--ink);box-shadow:0 3px 10px #0007;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ib i{font-style:normal}
+.ib img{width:14px;height:14px;image-rendering:pixelated}
+.ib b{font-weight:400}
+.ib.hot{box-shadow:0 0 0 1px #b7a6ff,0 0 10px #b7a6ff88}
+.ib.warn b{color:#ff8a6a}
+.ib.zone{background:#2a2238f2;color:#e0d0ff}
+.zinfo{display:flex;gap:12px;align-items:center;margin-bottom:6px}
+.zinfo img{width:40px;height:40px;image-rendering:pixelated}
+.zinfo b{font-family:var(--f-pix);font-size:18px;color:var(--gold)}
+.zinfo p{margin:2px 0 0}
+.zlist{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.zlist>div{display:grid;grid-template-columns:20px 1fr;column-gap:6px;align-items:center;padding:6px;border-radius:8px;background:#0004;font-size:12px}
+.zlist img{width:18px;height:18px;image-rendering:pixelated;grid-row:span 2}
+.zlist small{color:var(--dim);font-size:11px}
+.zlist .on{outline:1px solid var(--gold);background:#c9a45c22}
+.topbar{flex-direction:column;align-items:flex-end;padding-left:58px}

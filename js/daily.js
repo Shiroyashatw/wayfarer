@@ -61,8 +61,8 @@ function questReward(m) {
   giveCur('dcrys', m);
   if (m > 1) {
     giveCur('chaos');
-    giveCur('soul', 20);
-    got.push('混沌石', '靈魂碎片 ×20');
+    giveCur('soul', 30);
+    got.push('混沌石', '靈魂碎片 ×30');
   }
   return got;
 }

@@ -1650,6 +1650,7 @@ let plT = 0;
 function placeLabel() {
   if (performance.now() - plT < 500) return;
   plT = performance.now();
+  ibarRender();
   const dp = dayPhase(),
     hh = String(fl(dp.hr)).padStart(2, '0'),
     mm = String(fl((dp.hr % 1) * 60)).padStart(2, '0'),
@@ -1657,7 +1658,6 @@ function placeLabel() {
     leftH = REFRESH_H - (now() % REFRESH_H);
   $('expl').innerHTML =
     `<span style="color:${dp.night > 0.5 ? '#9fb8ff' : '#ffd877'}">${dp.label}</span> ${hh}:${mm}・視野 ${stats().vision}m<br><span class="rf${left < 60e3 ? ' soon' : ''}">怪物 ${mmss(left)}</span>・<span class="rf${leftH < 60e3 ? ' soon' : ''}">地城 ${mmss(leftH)}</span>・探索 ${explKm2().toFixed(2)} km²` +
-    `<br>區域：${zoneAt(S.lat, S.lng).m.n}` +
     (fv => (fv ? `<br><span style="color:#ffd877">足跡 Lv${fv}：怪物 +${footDens(fv)}%</span>` : ''))(
       footLv(...toM(S.lat, S.lng))
     ) +

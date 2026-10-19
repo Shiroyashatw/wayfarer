@@ -1106,7 +1106,14 @@ function renderBHud() {
   const slot = k => {
     const q = k && sks[+k.slice(1)];
     return q
-      ? cb(q.name, q.icon, costTxt(st, q), 'skill', `data-k="${k}"`, canPay(S, st, q) ? '' : 'disabled')
+      ? cb(
+          q.name,
+          q.icon,
+          [costTxt(st, q), skShort(q)].filter(Boolean).join('・'),
+          'skill',
+          `data-k="${k}"`,
+          canPay(S, st, q) ? '' : 'disabled'
+        )
       : cb(
           '生命藥水',
           'heart',
@@ -1549,6 +1556,8 @@ function dropLoot(e, boss, sp, remote, minion) {
 }
 /* 技能石材料：靈魂碎片與刻印石系列（昇華稜鏡、神聖刻印石在冥府內容出來前先由紅名怪掉落） */
 /* 靈魂碎片隨怪物強度增加：稀有度底數 + 每條詞綴 2（冥府詞綴 3）+ 每 4 級 1，首領再加 */
+/* 0.3.1.8：祈願（靈魂碎片）全部來源 ×1.5 */
+const SOUL_MUL = 1.5;
 function gemLoot(e, boss, hell, rem, out) {
   const r = e.rar || 0,
     mods = e.mods || [],
@@ -1564,7 +1573,7 @@ function gemLoot(e, boss, hell, rem, out) {
       giveCur(id, n);
       out.push(curDot(id) + GCURI[id].n + (n > 1 ? ' ×' + n : ''));
     };
-  add('soul', Math.round(soul * rem * (z.soul || 1)));
+  add('soul', Math.round(soul * rem * (z.soul || 1) * SOUL_MUL));
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
   if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
   if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');

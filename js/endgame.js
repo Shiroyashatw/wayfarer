@@ -138,6 +138,7 @@ const STCELL = 380,
   VCELL = 520,
   OBCELL = 1000,
   OB_R = 200,
+  OB_MCELL = 70,
   OB_NEED = 8;
 /* 冥府侵蝕柱：紅色光柱＋侵蝕範圍的脈動紅圈，遠遠就看得到 */
 function drawObelisks(c, t) {
@@ -243,6 +244,39 @@ function endgameSpawns(out, cells, put, hp) {
     });
     obs.push(out.get(id));
   });
+  /* 0.3.1.8：侵蝕範圍內怪物比較密（每 15 分鐘一輪，70 公尺方格約 45% 多一隻），繞一圈就能替柱子充滿能量 */
+  const ep = epoch();
+  for (const o of obs)
+    for (let i = fl((o.x - OB_R) / OB_MCELL); i <= fl((o.x + OB_R) / OB_MCELL); i++)
+      for (let j = fl((o.y - OB_R) / OB_MCELL); j <= fl((o.y + OB_R) / OB_MCELL); j++) {
+        const r = h(i, j, ep * 11 + 1777);
+        if (r % 100 >= 45) continue;
+        const id = `w${i}_${j}_${ep}`;
+        if (S.defeated[id] || out.has(id)) continue;
+        let x = (i + ((r >>> 8) % 100) / 100) * OB_MCELL,
+          y = (j + ((r >>> 16) % 100) / 100) * OB_MCELL;
+        if (Math.hypot(x - o.x, y - o.y) > OB_R - 10) continue;
+        const p = snapRoad(x, y, 50);
+        if (!p) continue;
+        [x, y] = p;
+        const q = r >>> 4,
+          rar = q % 100 < 8 ? 2 : q % 100 < 35 ? 1 : 0,
+          lv = Math.max(1, S.lv + ((r >>> 3) % 3) - 1),
+          [la, ln] = toLL(x, y);
+        out.set(id, {
+          id,
+          kind: 'monster',
+          x,
+          y,
+          lat: la,
+          lng: ln,
+          lv,
+          base: pickMon(r >>> 12, lv),
+          rar,
+          mods: rar ? rollMods(h(i, j, ep + 5), rar === 2 ? 3 : 1) : [],
+          ph: (r % 628) / 100
+        });
+      }
   for (const e of out.values()) {
     if (e.kind !== 'monster' || e.ev) continue;
     const o = obs.find(o => Math.hypot(o.x - e.x, o.y - e.y) <= OB_R);
@@ -453,9 +487,9 @@ function caravans() {
     const g = 60 + S.lv * 10,
       sp = specialty(r);
     S.gold += g;
-    giveCur('soul', 10);
+    giveCur('soul', 15);
     giveCur(sp);
-    got.push(`${esc(r.name)}：${g} 金幣、靈魂碎片 ×10、${GCURI[sp].n}`);
+    got.push(`${esc(r.name)}：${g} 金幣、靈魂碎片 ×15、${GCURI[sp].n}`);
   }
   if (got.length) {
     addLog('商隊回來了：' + got.join('；'));
@@ -679,8 +713,8 @@ Object.assign(A, {
     quest('vein');
     const got = ['刻印石'];
     giveCur('eng');
-    giveCur('soul', 8);
-    got.push('靈魂碎片 ×8');
+    giveCur('soul', 12);
+    got.push('靈魂碎片 ×12');
     if (Math.random() < 0.3) {
       giveCur('engC');
       got.push('混沌刻印石');

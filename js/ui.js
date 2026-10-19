@@ -7,8 +7,7 @@ function renderHud() {
   $('hpb').style.width = (S.hp / st.maxhp) * 100 + '%';
   $('mpb').style.width = (S.mp / st.maxmp) * 100 + '%';
   $('lvTag').textContent = 'Lv' + S.lv;
-  $('gold').innerHTML = `<span style="color:var(--gold)">●</span> ${S.gold}`;
-  $('cry').innerHTML = `<span style="color:#9fe7ff">◆</span> ${S.crystal}`;
+  ibarRender();
   const a = $('ava').getContext('2d');
   a.clearRect(0, 0, 18, 18);
   a.drawImage(sprite(heroSpr('F'), heroPal()), 0, 0);
@@ -19,6 +18,38 @@ function renderHud() {
   $('xpArc').classList.toggle('near', xr >= 0.9);
   $('gaDot').hidden = (S.cur.soul || 0) < GEM_DRAW * 10;
 }
+/* 0.3.1.8：主畫面最上方的資訊條：金幣、魔晶、祈願（靈魂碎片）、背包空間、藥水、目前的區域特性（點了看說明） */
+const ZICON = {
+  魔物潮: 'fang',
+  豐收: 'bag',
+  寶光: 'star',
+  靈魂共鳴: 'ghost',
+  刻印之風: 'wind',
+  金脈: 'crown',
+  修羅場: 'swords',
+  寧靜: 'leaf'
+};
+function ibarRender() {
+  const el = $('ibar');
+  if (!el || !S) return;
+  const z = zoneAt(S.lat, S.lng).m,
+    full = S.inv.length >= 27,
+    chip = (act, data, ic, v, cls = '') =>
+      `<button class="ib ${cls}" data-act="${act}" ${data}>${ic}<b>${v}</b></button>`;
+  el.innerHTML =
+    chip('ibInfo', 'data-k="gold"', '<i style="color:var(--gold)">●</i>', S.gold) +
+    chip('ibInfo', 'data-k="cry"', '<i style="color:#9fe7ff">◆</i>', S.crystal) +
+    chip(
+      'gacha',
+      '',
+      `<img src="${curIcon('soul')}" alt="">`,
+      S.cur.soul || 0,
+      (S.cur.soul || 0) >= GEM_DRAW * 10 ? 'hot' : ''
+    ) +
+    chip('sheet', 'data-s="bag"', `<img src="${iconURL('bag')}" alt="">`, `${S.inv.length}/30`, full ? 'warn' : '') +
+    chip('sheet', 'data-s="bag"', `<img src="${iconURL('heart')}" alt="">`, S.potions) +
+    chip('zoneInfo', '', `<img src="${iconURL(ZICON[z.n] || 'leaf')}" alt="">`, z.n, 'zone');
+}
 let toastT;
 function toast(t) {
   const el = $('toast');
@@ -28,6 +59,7 @@ function toast(t) {
   toastT = setTimeout(() => (el.style.opacity = 0), 2400);
 }
 function openSheet(name, title) {
+  if (name !== sheetName) $('sbody').scrollTop = 0;
   sheetName = name;
   $('stitle').textContent = title || TITLES[name];
   $('scrim').hidden = false;
@@ -212,6 +244,26 @@ function gemDesc(q) {
   if (q.w) out.push(`需要${WTAGN[q.w]}（不符傷害 -40%）`);
   return out.join('・');
 }
+/* 技能頁的篩選：全部、全體、單體、物理、元素、輔助（增益、治癒、召喚） */
+const SKF = [
+  ['all', '全部'],
+  ['aoe', '全體'],
+  ['one', '單體'],
+  ['phys', '物理'],
+  ['ele', '元素'],
+  ['sup', '輔助']
+];
+function skfOk(g) {
+  const q = SKILLS[g.k],
+    f = (typeof SEL !== 'undefined' && SEL.skf) || 'all',
+    dmg = !q.pet && (q.kind === 'attack' || q.kind === 'spell');
+  if (f === 'aoe') return dmg && (q.tg === 'all' || q.tg === 'rand' || !!q.chain || !!q.proj);
+  if (f === 'one') return dmg && !q.tg && !q.chain && !q.proj;
+  if (f === 'phys') return dmg && (q.kind === 'attack' || (q.el || 'phys') === 'phys');
+  if (f === 'ele') return dmg && ((q.kind === 'spell' && q.el && q.el !== 'phys') || !!q.addEl);
+  if (f === 'sup') return !dmg;
+  return true;
+}
 /* 技能石圖示：星級底色、左上等級、右上刻印槽（亮的是已刻印）、右下「裝」表示在技能欄 */
 const gemCell = (g, noEq) => {
   const r = SKILLS[g.k].r || 3,
@@ -232,7 +284,20 @@ const gemRow = (g, tag) => {
   return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q)}・刻印 ${g.en.length}/${gemSlots(g)}${gemOpen(g) > 0 ? ' <span style="color:var(--gold)">◇可刻印</span>' : ''}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
 };
 const prayed = id => !!S.prayed && S.prayed[id] === hepoch();
+/* 0.3.1.8：子頁面在右上角有「‹ 返回」（裝備詳情 → 背包或該部位、部位 → 背包、技能石 → 技能、印記兌換 → 狩獵、背包的材料分頁 → 裝備） */
+function sheetParent() {
+  if (sheetName === 'item') return selSlot ? ['slot', SLOTN[selSlot]] : ['bag'];
+  if (sheetName === 'slot') return ['bag'];
+  if (sheetName === 'gem') return ['skills'];
+  if (sheetName === 'seal') return ['hunt'];
+  if (sheetName === 'bag' && (SEL.bag !== 'eq' || SEL.sell)) return ['bagHome'];
+  return null;
+}
 function renderSheet() {
+  {
+    const b = $('sback');
+    if (b) b.hidden = !sheetName || sheetName === 'ent' || !sheetParent();
+  }
   if (!sheetName || sheetName === 'ent') return;
   const el = $('sbody'),
     st = stats(),
@@ -271,14 +336,23 @@ function renderSheet() {
       .map((id, i) => {
         const g = gemOf(id);
         return g
-          ? `<button class="gslot" data-act="gem" data-id="${g.id}">${gemCell(g, true)}<span>${SKILLS[g.k].name}</span></button>`
+          ? `<button class="gslot" data-act="gem" data-id="${g.id}">${gemCell(g, true)}<span>${SKILLS[g.k].name}</span>${skTagHTML(gemSkill(g), 2)}</button>`
           : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>第 ${i + 1} 格</span></div>`;
       })
       .join('')}</div>
     <p class="sub" style="margin:0">另外有固定的普通攻擊。技能石每 5 級開 1 個空的刻印槽，用刻印石點下去才會抽出詞綴。</p>
     <div class="btns"><button class="btn pri" data-act="gacha">${curDot('soul')}祈願（${S.cur.soul || 0}）</button><button class="btn" data-act="gemDup" ${dup.length ? '' : 'disabled'}>一鍵分解重複（${dup.length}）</button></div>
     ${curRowG()}
-    <h3>技能石（${S.gems.length}）</h3><div class="ggrid">${list.map(g => `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span></button>`).join('') || '<p class="sub">還沒有技能石，去祈願吧</p>'}</div>`;
+    <h3>技能石（${S.gems.length}）</h3><div class="seg skf">${SKF.map(([k, n]) => `<button data-act="skFilter" data-k="${k}" aria-pressed="${(SEL.skf || 'all') === k}">${n}</button>`).join('')}</div>
+    <div class="ggrid">${
+      list
+        .filter(g => skfOk(g))
+        .map(
+          g =>
+            `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span>${skTagHTML(SKILLS[g.k], 2)}</button>`
+        )
+        .join('') || `<p class="sub">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石，去祈願吧'}</p>`
+    }</div>`;
   } else if (sheetName === 'gem') {
     const g = gemOf(selGem);
     if (!g) {
@@ -289,7 +363,7 @@ function renderSheet() {
       at = S.sk.indexOf(g.id),
       blk = gemLvBlock(g),
       n = gemSlots(g);
-    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span> <span style="color:${RSTAR[SKILLS[g.k].r || 3]}">${'★'.repeat(SKILLS[g.k].r || 3)}</span></b><small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
+    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span> <span style="color:${RSTAR[SKILLS[g.k].r || 3]}">${'★'.repeat(SKILLS[g.k].r || 3)}</span></b>${skTagHTML(q)}<small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
     <h3>刻印槽 ${g.en.length}/${n}${g.lv < GEM_MAX ? `<small class="sub">・下一個在 Lv${(fl(g.lv / 5) + 1) * 5}</small>` : ''}</h3><div class="card">${
       n
         ? [
@@ -402,6 +476,25 @@ function renderSheet() {
 function nearTownE() {
   return TOWNS.some(t => dist(S.lat, S.lng, t.lat, t.lng) < 230);
 }
+/* 商店的出售頁：背包裝備排成格子，點一下勾選，快速選取＋一次賣出（跟背包的批量賣出共用勾選狀態 SEL.sell） */
+function shopSellHTML() {
+  if (!SEL.sell) SEL.sell = new Set();
+  S.inv.forEach(it => it.id || (it.id = uid()));
+  if (!S.inv.length) return '<p class="sub">背包裡沒有裝備可以賣。</p>';
+  const sel = sellSel(),
+    gold = sel.reduce((n, it) => n + sellVal(it), 0),
+    ok = canSell(),
+    q = (k, n) => `<button class="btn sm" data-act="shopQuick" data-k="${k}">${n}</button>`;
+  return `<div class="sellbar">${q('r0', '普通')}${q('r1', '魔法')}${q('r2', '稀有')}${q('worse', '比穿戴的差')}${q('all', '全選')}${q('none', '清除')}</div>
+  <div class="sgrid">${S.inv
+    .map((it, i) => {
+      const on = SEL.sell.has(it.id) && !it.lock;
+      return `<button class="stile${on ? ' on' : ''}${it.lock ? ' sold' : ''}" data-act="shopPick" data-i="${i}" style="border-color:${RCOL[it.r]}${on ? '' : '88'}" aria-label="${esc(itemTitle(it))}"><img src="${slotIcon(it)}" alt="">${on ? '<i class="ok">✓</i>' : it.lock ? '<i>鎖</i>' : ''}<small>${sellVal(it)} 金</small></button>`;
+    })
+    .join('')}</div>
+  <p class="sub">${ok ? `點裝備勾選；上鎖的不會被選到。背包 ${S.inv.length}/30` : '⚠ 要在城鎮或據點才能賣出裝備。'}</p>
+  <button class="btn pri" data-act="shopSellGo" style="width:100%" ${ok && sel.length ? '' : 'disabled'}>賣出 ${sel.length} 件　+${gold} 金</button>`;
+}
 /* 0.3.1 賣裝備：只有在城鎮或據點（主據點半徑內、分支據點旁）才能賣 */
 function canSell() {
   return (
@@ -442,10 +535,15 @@ function openEnt(id) {
     lim = reachOf(e),
     zn = d > lim && e.kind !== 'base' && zoneOf(e),
     inR = d <= lim || e.kind === 'base' || !!zn;
+  /* 從別的頁面切過來時，把上一頁留下的狀態清乾淨（返回鍵、捲動位置、背包的賣出模式、展開的導覽） */
   sheetName = 'ent';
+  if (SEL.sell) SEL.sell = null;
+  navClose();
+  $('sback').hidden = true;
   $('stitle').textContent = e.bounty ? '懸賞目標' : KIND[e.kind];
   $('scrim').hidden = false;
   $('sheet').classList.remove('off');
+  $('sbody').scrollTop = 0;
   let desc = '',
     act = '',
     pre = '';
@@ -558,9 +656,7 @@ function openEnt(id) {
         (t.svc.includes('temple')
           ? `<button class="btn" data-act="pray" data-id="${id}" ${inR && !prayed(id) ? '' : 'disabled'}>${prayed(id) ? '已參拜（每小時一次）' : '參拜'}</button>`
           : '') +
-        (t.svc.includes('shop')
-          ? `<button class="btn" data-act="shop" data-id="${id}" ${inR ? '' : 'disabled'}>商店</button>`
-          : '') +
+        `<button class="btn" data-act="shop" data-id="${id}" ${inR ? '' : 'disabled'}>商店（購買・出售裝備）</button>` +
         `<button class="btn pri" data-act="trial" data-id="${id}" ${inR && !done ? '' : 'disabled'}>${done ? '試煉已完成（整點重開）' : `地標試煉「${esc(t.dn)}」Lv${lv}`}</button>` +
         ascTownHTML(e, inR);
   }
@@ -659,6 +755,60 @@ const A = {
     openSheet(d.s);
   },
   closeSheet: () => closeSheet(),
+  sheetBack: () => {
+    const p = sheetParent();
+    if (!p) return;
+    sfx('tap');
+    if (p[0] === 'bagHome') {
+      SEL.bag = 'eq';
+      SEL.sell = null;
+      renderSheet();
+    } else openSheet(p[0], p[1]);
+    $('sbody').scrollTop = 0;
+  },
+  shopTab: d => {
+    SHOP.mode = d.k;
+    SEL.sell = d.k === 'sell' ? new Set() : null;
+    sfx('tap');
+    SHOP.render && SHOP.render();
+  },
+  shopPick: d => {
+    const it = S.inv[+d.i];
+    if (!it || !SEL.sell) return;
+    if (it.lock) return toast('這件已上鎖，先到裝備詳情解鎖');
+    SEL.sell.has(it.id) ? SEL.sell.delete(it.id) : SEL.sell.add(it.id);
+    sfx('tap');
+    SHOP.render && SHOP.render();
+  },
+  shopQuick: d => {
+    A.sellQuick(d);
+    SHOP.render && SHOP.render();
+  },
+  shopSellGo: () => {
+    A.sellMany();
+    SEL.sell = new Set();
+    SHOP.render && SHOP.render();
+  },
+  ibInfo: d =>
+    toast(
+      d.k === 'gold' ? `金幣 ${S.gold}：買東西、住旅店、升級據點` : `魔晶 ${S.crystal}：升級據點用，打菁英怪與事件取得`
+    ),
+  zoneInfo: () => {
+    const z = zoneAt(S.lat, S.lng).m;
+    sfx('tap');
+    showModal(
+      `區域特性：${z.n}`,
+      `<div class="zinfo"><img src="${iconURL(ZICON[z.n] || 'leaf')}" alt=""><div><b>${z.n}</b><p>${z.d}</p></div></div>
+      <p class="sub">地圖分成一格一格的區域（約 ${ZONE_CELL / 1000} 公里見方），每 2 小時各自重新抽一種特性，影響在這一格裡打怪的獎勵。走到別的區域，上方資訊條的特性就會跟著換。</p>
+      <div class="zlist">${ZMODS.map(m => `<div class="${m.n === z.n ? 'on' : ''}"><img src="${iconURL(ZICON[m.n] || 'leaf')}" alt=""><b>${m.n}</b><small>${m.d}</small></div>`).join('')}</div>`,
+      [{ label: '知道了', pri: 1, fn: hideModal }]
+    );
+  },
+  skFilter: d => {
+    SEL.skf = d.k;
+    sfx('tap');
+    renderSheet();
+  },
   openEnt: d => {
     sfx('tap');
     openEnt(d.id);
@@ -790,8 +940,8 @@ const A = {
       giveItem(it);
       got.push(itemName(it));
     }
-    giveCur('soul', 6);
-    got.push(curDot('soul') + '靈魂碎片 ×6');
+    giveCur('soul', 9);
+    got.push(curDot('soul') + '靈魂碎片 ×9');
     if (Math.random() < 0.2) {
       giveCur('eng');
       got.push(curDot('eng') + '刻印石');

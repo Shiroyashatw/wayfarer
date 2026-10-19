@@ -622,11 +622,11 @@ const MECH = [
   'potBomb',
   'ailDur'
 ];
-/* 升級曲線（0.3.1.7 前期放緩）：原本的 40·lv^2.1＋20·lv 乘上前期折扣，Lv1 打 3 折，往後平滑回到 Lv25 的原值。
-   以同等級一般怪估算：Lv1→2 約 2 隻、Lv5 約 14 隻、Lv10 約 42 隻、Lv15 約 90 隻、Lv19 約 150 隻（到 Lv20 總共約 1000 隻，原本約 1850） */
+/* 升級曲線（0.3.1.7／0.3.1.8 前期放緩）：原本的 40·lv^2.1＋20·lv 乘上前期折扣，Lv1 打 2 折，往後平滑回到 Lv25 的原值。
+   以同等級一般怪估算：Lv1→2 約 1 隻、Lv5 約 10 隻、Lv10 約 32 隻、Lv15 約 76 隻、Lv20 約 150 隻（到 Lv10 共約 100 隻、到 Lv20 共約 860 隻） */
 const xpNeed = lv => {
   const base = 40 * Math.pow(lv, 2.1) + 20 * lv;
-  return Math.round(lv >= 25 ? base : base * (0.3 + 0.7 * Math.pow((lv - 1) / 24, 1.6)));
+  return Math.round(lv >= 25 ? base : base * (0.2 + 0.8 * Math.pow((lv - 1) / 24, 1.8)));
 };
 function fullHeal() {
   const st = stats();
@@ -842,23 +842,29 @@ function openShop(e, merchant) {
     return `${itemCard(it)}<div class="sub scmp">${cur ? `目前穿戴：${itemName(cur)}<br>${esc(itemSum(cur))}` : `${SLOTN[it.slot]}欄目前是空的`}</div>
       <button class="btn pri" data-act="mbtn" data-i="1" ${sold || S.gold < g.p ? 'disabled' : ''}>${sold ? '已售出' : S.gold < g.p ? `金幣不足（${g.p} 金）` : `購買 ${g.p} 金`}</button>`;
   };
+  /* 0.3.1.8：商店分「購買／出售」兩頁；出售頁可以勾選多件一次賣（在城鎮或據點才能賣） */
   const render = () => {
-    const g = sel == null ? null : goods[sel];
+    const g = sel == null ? null : goods[sel],
+      tabs = `<div class="seg shoptab"><button data-act="shopTab" data-k="buy" aria-pressed="${SHOP.mode === 'buy'}">購買</button><button data-act="shopTab" data-k="sell" aria-pressed="${SHOP.mode === 'sell'}">出售裝備 <b>${S.inv.length}</b></button></div>`;
     showModal(
       esc(e.name),
-      `<div class="sgrid">${goods
-        .map((q, i) => {
-          const sold = q.it && S.bought[key(q.i)];
-          return `<button class="stile ${i === sel ? 'on' : ''} ${sold ? 'sold' : ''}" data-act="mbtn" data-i="${2 + i}" style="${q.it ? `border-color:${RCOL[q.it.r]}88;` : ''}" aria-label="${esc(q.it ? itemTitle(q.it) : q.n)}">
+      SHOP.mode === 'sell'
+        ? tabs + shopSellHTML()
+        : `${tabs}<div class="sgrid">${goods
+            .map((q, i) => {
+              const sold = q.it && S.bought[key(q.i)];
+              return `<button class="stile ${i === sel ? 'on' : ''} ${sold ? 'sold' : ''}" data-act="mbtn" data-i="${2 + i}" style="${q.it ? `border-color:${RCOL[q.it.r]}88;` : ''}" aria-label="${esc(q.it ? itemTitle(q.it) : q.n)}">
         <img src="${q.ic}" alt="">${q.it ? '' : `<i>${q.have()}</i>`}<small class="${S.gold < q.p && !sold ? 'poor' : ''}">${sold ? '售出' : q.p + ' 金'}</small></button>`;
-        })
-        .join('')}</div>
+            })
+            .join('')}</div>
       <div class="sdet">${detail(g)}</div><p class="sub">持有 <span style="color:var(--gold)">${S.gold}</span> 金・商品每 15 分鐘更換</p>`,
       [
         {
           label: '離開',
           fn: () => {
             hideModal();
+            SHOP.render = null;
+            SEL.sell = null;
             renderHud();
           }
         }
@@ -884,6 +890,9 @@ function openShop(e, merchant) {
       })
     );
   };
+  SHOP.mode = 'buy';
+  SHOP.render = render;
   sfx('door');
   render();
 }
+const SHOP = { mode: 'buy', render: null };
