@@ -831,7 +831,8 @@ function dunSpec(t) {
   };
 }
 const dunName = t => (t.kind === 'rift' ? '魔物裂隙' : t.kind === 'landmark' ? t.dn : DTYPES[t.dt || 'normal'].n);
-const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '冥府之主', stele: '石碑守衛' };
+const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '冥府之主', stele: '石碑守衛' },
+  BOSSSPR = { hell: 'b_hellord', circle: 'b_arcane', portal: 'b_hades', stele: 'b_stelekeeper' };
 /* 第 room 層的敵人。boss 在最後一層 */
 function dunEnemy(D, room) {
   const sp = D.spec,
@@ -865,7 +866,9 @@ function dunEnemy(D, room) {
     bg = b.bg;
   } else if (boss) {
     const hell = !!BIGBOSS[sp.dt] && sp.dt !== 'stele',
-      bn = D.lm ? `${D.lm.dn}守護者` : BIGBOSS[sp.dt] || (sp.dt === 'party' ? '深淵看守' : '洞窟守護者');
+      bn = D.lm ? `${D.lm.dn}守護者` : BIGBOSS[sp.dt] || (sp.dt === 'party' ? '深淵看守' : '洞窟守護者'),
+      /* 首領專屬圖：地標是石獅、組隊是深淵之眼、地獄／魔法陣／冥府／石碑各自一張 */
+      bspr = D.lm ? 'b_lion' : BOSSSPR[sp.dt] || (sp.dt === 'party' ? 'b_abyss' : 'b_golem');
     e = makeEnemy(
       {
         name: bn,
@@ -877,14 +880,8 @@ function dunEnemy(D, room) {
         res: [25, 25, 25],
         xp: 30,
         gold: 30,
-        spr: D.lm ? 'spirit' : hell ? 'golem' : sp.dt === 'party' ? 'bear' : 'golem',
-        pal: D.lm
-          ? { v: '#ffd166', e: '#3a1a00', m: '#c0392b' }
-          : hell
-            ? { r: '#4a0e0e', y: '#ff3a3a' }
-            : sp.dt === 'party'
-              ? { b: '#3a4a66', e: '#7fd6ff', n: '#8aa0c0', w: '#dff4ff' }
-              : { r: '#b0392b', y: '#ffd166' }
+        spr: bspr,
+        pal: BOSSPAL[bspr]
       },
       D.lv + 1,
       0,
