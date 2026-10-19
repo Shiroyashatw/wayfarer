@@ -1176,6 +1176,7 @@ function renderWorld(t) {
   drawMist(c, t);
   drawObelisks(c, t);
   drawZodiacs(c, t);
+  drawSeals(c, t);
   const s = sprScale(),
     list = [];
   for (const e of ENT.values()) {
@@ -1292,6 +1293,7 @@ function renderWorld(t) {
   });
   list.sort((a, b) => a.y - b.y).forEach(o => o.draw());
   drawUndeadMark(c, t);
+  drawSealMark(c, t);
   // fog：走過的方格畫迷霧圖，沒走過的方格整塊蓋住
   c.save();
   c.globalAlpha = 0.62;
