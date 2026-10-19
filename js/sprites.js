@@ -468,19 +468,67 @@ function paintIcon(c, n) {
       x.fillRect(i, j, 1, 1);
     }
 }
-const heroPal = () => ({
-  h: '#6b3324',
-  s: '#f1c27d',
-  e: '#1a1626',
-  c: CLASSES[S.cls].color,
-  a: shade(CLASSES[S.cls].color, -0.35),
-  b: '#d9a441',
-  l: '#3b3550',
-  f: '#5a3a26'
-});
+/* 外觀跟著裝備：武器決定手上拿的東西，胸甲／頭盔／腰帶／鞋子決定衣服、頭頂、腰帶與鞋子的顏色，主色看天賦盤起點 */
+const wepKind = (w = S.eq.weapon) => {
+  const n = w ? BASES.weapon[w.bi].n : '短劍';
+  return n.includes('弓') ? 'bow' : n.includes('杖') ? 'staff' : 'sword';
+};
+const GEARC = {
+  皮甲: '#8a5a2f',
+  鎖子甲: '#9aa3ad',
+  皮帽: '#7a5230',
+  鐵盔: '#b8bfc8',
+  皮腰帶: '#6b4426',
+  重腰帶: '#4a4450',
+  鏈腰帶: '#a8adb5',
+  皮靴: '#5a3a26',
+  鐵靴: '#8d949c'
+};
+const gearC = (eq, sl) => eq && eq[sl] && GEARC[BASES[sl][eq[sl].bi].n];
+const heroPal = (cls = S.cls, eq = S.eq) => {
+  const c = (CLASSES[cls] || CLASSES.novice).color;
+  return {
+    h: gearC(eq, 'helm') || '#6b3324',
+    s: '#f1c27d',
+    e: '#1a1626',
+    c: gearC(eq, 'chest') || c,
+    a: gearC(eq, 'chest') ? c : shade(c, -0.35),
+    b: gearC(eq, 'belt') || '#d9a441',
+    l: '#3b3550',
+    f: gearC(eq, 'boots') || '#5a3a26'
+  };
+};
 
 /* ================= icons: currency, item slots, passive nodes ================= */
 const PIX = {
+  cur_soul: {
+    r: ['...pp...', '..plwp..', '.plwwlp.', '.pllllp.', '..pllp..', '...pp...', '..p..p..', '.p....p.'],
+    p: { p: '#7f6bd6', l: '#b7a6ff', w: '#efeaff' }
+  },
+  cur_dust: {
+    r: ['.l...w..', '....l..l', 'w.l.....', '...ll.w.', '.l.lwl..', '..wlll.l', 'l.lllll.', '.llllll.'],
+    p: { l: '#b7a6ff', w: '#ffffff' }
+  },
+  cur_eng: {
+    r: ['..kkkk..', '.kbbbbk.', 'kbbwbbbk', 'kbwwwbbk', 'kbbwbbbk', 'kbbwbbbk', '.kbbbbk.', '..kkkk..'],
+    p: { b: '#5fa8d0', w: '#e8f6ff', k: '#2a4a60' }
+  },
+  cur_engC: {
+    r: ['..kkkk..', '.kbbbbk.', 'kbwbbwbk', 'kbbwwbbk', 'kbbwwbbk', 'kbwbbwbk', '.kbbbbk.', '..kkkk..'],
+    p: { b: '#e58a3a', w: '#fff0d8', k: '#6a3a14' }
+  },
+  cur_engX: {
+    r: ['..kkkk..', '.kbbbbk.', 'kbbwwbbk', 'kbwwwwbk', 'kbbwwbbk', 'kbwbbwbk', '.kbbbbk.', '..kkkk..'],
+    p: { b: '#e8c860', w: '#ffffff', k: '#806020' }
+  },
+  cur_prism: {
+    r: ['...w....', '..wll...', '.wllpp..', 'wllpppp.', '.llpppp.', '..pppp..', '...pp...', '........'],
+    p: { l: '#ffd0f0', p: '#ff8fd8', w: '#ffffff' }
+  },
+  cur_engD: {
+    r: ['..kkkk..', '.kbbbbk.', 'kbbwwbbk', 'kwwwwwwk', 'kbbwwbbk', 'kbbwwbbk', '.kbbbbk.', '..kkkk..'],
+    p: { b: '#ffe27a', w: '#ffffff', k: '#a07818' }
+  },
   cur_trans: {
     r: ['...ww...', '..wbbw..', '.wbbbbw.', 'wbbllbbw', 'wbbllbbw', '.wbbbbw.', '..wbbw..', '...ww...'],
     p: { w: '#dfe8ff', b: '#5f8fff', l: '#bcd2ff' }

@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 7,
+    v: 8,
     cls: 'novice',
     lv: 1,
     xp: 0,
@@ -15,7 +15,12 @@ function newGame() {
     ethers: 1,
     inv: [],
     eq: {},
-    cur: { trans: 4, aug: 4, regal: 2, alch: 1, chaos: 1, exalt: 0 },
+    cur: { trans: 4, aug: 4, regal: 2, alch: 1, chaos: 1, exalt: 0, soul: 0, dust: 0, eng: 1 },
+    gems: [],
+    sk: [null, null, null, null],
+    autoHp: 0,
+    autoMp: 0,
+    regenAt: 0,
     tree: ['start_novice'],
     lat: START.lat - 0.0009,
     lng: START.lng,
@@ -28,7 +33,6 @@ function newGame() {
     found: {},
     log: [],
     timeOffset: 0,
-    classOffered: false,
     music: true,
     sfx: true,
     intro: true,
@@ -207,6 +211,89 @@ function craft(it, id) {
   return true;
 }
 
+/* ================= skill gems ================= */
+const newGem = k => ({ id: uid(), k, lv: 1, dust: 0, en: [] });
+const gemSlots = g => Math.min(6, fl(g.lv / 5)) + (g.xs || 0);
+const gemOpen = g => gemSlots(g) - g.en.length;
+const gemOf = id => S.gems.find(g => g.id === id);
+const GEMK = () => Object.keys(SKILLS).filter(k => k !== 'attack');
+/* 技能石換算成戰鬥用的技能：攻擊每級 +6% 倍率，法術的基礎傷害隨等級提高，治癒每級 +6%，消耗每級 +3% */
+function gemSkill(g) {
+  const b = SKILLS[g.k],
+    L = g.lv - 1,
+    t = {};
+  g.en.forEach(a => (t[a.id] = (t[a.id] || 0) + a.v));
+  const sk = { ...b, gid: g.id, lv: g.lv, mp: Math.round(b.mp * (1 + 0.03 * L) * (1 - (t.cost || 0) / 100)) };
+  if (b.kind === 'attack') sk.mult = b.mult * (1 + 0.06 * L) * (1 + (t.dmg || 0) / 100);
+  if (b.kind === 'spell') {
+    sk.mult = b.mult * (1 + (t.dmg || 0) / 100);
+    sk.sb = 9 + 4 * L;
+  }
+  if (b.kind === 'heal') sk.heal = 0.35 * (1 + 0.06 * L) * (1 + (t.heal || 0) / 100);
+  ['crit', 'ail', 'brk', 'leech', 'dbl'].forEach(k => (sk[k] = t[k] || 0));
+  return sk;
+}
+/* 目前技能欄的 4 個技能（空格是 null），戰鬥用 's0'～'s3' 指定 */
+const mySkills = () => S.sk.map(id => (gemOf(id) ? gemSkill(gemOf(id)) : null));
+function rollGAff(g, hi) {
+  const kind = SKILLS[g.k].kind,
+    have = g.en.map(a => a.id);
+  let pool = GAFF.filter(a => a.k.includes(kind) && !have.includes(a.id));
+  if (!pool.length) pool = GAFF.filter(a => a.k.includes(kind));
+  const a = pool[fl(Math.random() * pool.length)],
+    x = Math.random(),
+    t = hi ? (x < 0.35 ? 1 : 2) : x < 0.1 ? 1 : x < 0.4 ? 2 : 3;
+  return gAffVal({ id: a.id, t });
+}
+function gAffVal(e) {
+  const [lo, hi] = GAFFI[e.id].t[e.t - 1];
+  e.v = lo + fl(Math.random() * (hi - lo + 1));
+  return e;
+}
+const gAffTxt = e => `${GAFFI[e.id].n(e.v)} <span class="sub" style="font-weight:400">T${e.t}</span>`;
+function gemCraftable(g, id) {
+  if (!g || g.cor) return false;
+  return {
+    eng: gemOpen(g) > 0,
+    engX: gemOpen(g) > 0,
+    engC: g.en.length > 0,
+    prism: g.en.length > 0,
+    engD: g.en.length > 0
+  }[id];
+}
+function gemCraft(g, id) {
+  if (!gemCraftable(g, id) || !(S.cur[id] > 0)) return false;
+  S.cur[id]--;
+  if (id === 'eng' || id === 'engX') g.en.push(rollGAff(g, id === 'engX'));
+  else if (id === 'engC') {
+    const i = fl(Math.random() * g.en.length);
+    g.en.splice(i, 1);
+    g.en.splice(i, 0, rollGAff(g, false));
+  } else if (id === 'prism') {
+    let i = 0;
+    g.en.forEach((a, j) => a.t > g.en[i].t && (i = j));
+    g.en.splice(i, 1);
+    g.en.splice(i, 0, rollGAff(g, false));
+  } else if (id === 'engD') g.en.forEach(gAffVal);
+  return true;
+}
+/* 升級：要粉塵，而且技能石等級不能超過角色等級 */
+function gemLvBlock(g) {
+  if (g.cor) return '已腐化';
+  if (g.lv >= GEM_MAX) return '已滿級';
+  if (g.lv + 1 > S.lv) return `需要角色 Lv${g.lv + 1}`;
+  if ((S.cur.dust || 0) < dustNeed(g.lv)) return '粉塵不足';
+  return '';
+}
+const gemDustBack = g => 20 + Math.round(g.dust * 0.7);
+function giveGem(k) {
+  const g = newGem(k);
+  S.gems.push(g);
+  const i = S.sk.indexOf(null);
+  if (i >= 0 && !S.sk.some(id => gemOf(id) && gemOf(id).k === k)) S.sk[i] = g.id;
+  return g;
+}
+
 /* ================= stats ================= */
 /* 目前所在地城的規格（單人 D 或多人 MB） */
 const curSpec = () => (D && D.spec) || (MB && MB.spec) || null;
@@ -279,14 +366,16 @@ function sumStats() {
   }
   return t;
 }
+/* 升級只成長生命與魔力（所有人相同），其他數值靠裝備、天賦與技能石 */
+const HP_LV = 10,
+  MP_LV = 3;
 /* 天賦的基石會改變規則（血魔法、心靈凌駕、鋼鐵反射…），全部在這裡換算成數值，單人與多人戰鬥共用 */
 function stats() {
-  const g = CLASSES[S.cls].g,
-    L = S.lv - 1,
+  const L = S.lv - 1,
     t = sumStats(),
     w = S.eq.weapon,
     ph = w ? w.phys : [1, 3];
-  const flat = 4 + g.atk * L + t.flatPhys;
+  const flat = 4 + t.flatPhys;
   const sp = curSpec(),
     ew = sp && sp.eleweak ? 20 : 0,
     dm = 1 + t.dmgMore / 100,
@@ -303,11 +392,11 @@ function stats() {
   physLo *= 1 - cv;
   physHi *= 1 - cv;
   const dodgeRaw = t.speed * 1.5 + t.evade;
-  let armor = (15 + g.def * L * 4 + t.armor) * (1 + t.armorPct / 100) * (1 + t.armorMore / 100);
+  let armor = (15 + t.armor) * (1 + t.armorPct / 100) * (1 + t.armorMore / 100);
   if (t.ironReflex) armor *= 1 + (Math.max(0, dodgeRaw) * 3) / 100;
   return {
-    maxhp: Math.max(1, Math.round((80 + g.hp * L + t.life) * (1 + t.lifePct / 100) * (1 + t.lifeMore / 100))),
-    maxmp: Math.round(20 + g.mp * L + t.mana),
+    maxhp: Math.max(1, Math.round((80 + HP_LV * L + t.life) * (1 + t.lifePct / 100) * (1 + t.lifeMore / 100))),
+    maxmp: Math.round(20 + MP_LV * L + t.mana),
     armor: Math.round(armor),
     res: {
       fire: Math.min(75, t.resFire + t.resAll - ew),
@@ -319,7 +408,7 @@ function stats() {
     fire: t.addFire * elm.fire * dm + toFire,
     cold: t.addCold * elm.cold * dm,
     light: t.addLight * elm.light * dm,
-    spell: (9 + 3.4 * L + g.mag * L * 1.2) * (1 + t.spellPct / 100) * dm,
+    spellMul: (1 + t.spellPct / 100) * dm,
     elm,
     crit: t.noCrit ? 0 : Math.max(0, Math.min(75, (w ? w.crit : 5) + t.critPct)),
     critMulti: Math.max(110, 150 + t.critMulti),
@@ -355,6 +444,36 @@ function clampHP() {
   S.hp = Math.min(S.hp, st.maxhp);
   S.mp = Math.min(S.mp, st.maxmp);
 }
+/* 自動喝水：戰鬥結束後生命／魔力低於設定的百分比，就自動喝藥水直到超過門檻（每種最多 3 瓶），回傳要顯示的文字 */
+function autoPot() {
+  const st = stats(),
+    hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1),
+    out = [];
+  let n = 0;
+  while (S.autoHp && S.potions > 0 && n < 3 && (S.hp / st.maxhp) * 100 < S.autoHp) {
+    S.potions--;
+    S.hp = Math.min(st.maxhp, S.hp + Math.round(st.maxhp * 0.4 * hm));
+    n++;
+  }
+  if (n) out.push(`生命藥水 ×${n}`);
+  n = 0;
+  while (S.autoMp && S.ethers > 0 && n < 3 && (S.mp / st.maxmp) * 100 < S.autoMp) {
+    S.ethers--;
+    S.mp = Math.min(st.maxmp, S.mp + Math.round(st.maxmp * 0.5 * hm));
+    n++;
+  }
+  if (n) out.push(`魔力藥水 ×${n}`);
+  return out.length ? `<p class="sub">自動喝水：${out.join('、')}</p>` : '';
+}
+/* 自然回復：戰鬥外每走 100 公尺回 5%，靜止時每分鐘回 2%（生命與魔力） */
+function naturalRegen(pct) {
+  if (B || MB || pct <= 0) return;
+  const st = stats();
+  if (S.hp >= st.maxhp && S.mp >= st.maxmp) return;
+  S.hp = Math.min(st.maxhp, S.hp + Math.max(1, Math.round((st.maxhp * pct) / 100)));
+  S.mp = Math.min(st.maxmp, S.mp + Math.max(1, Math.round((st.maxmp * pct) / 100)));
+  renderHud();
+}
 function addLog(t) {
   S.log.unshift(t);
   if (S.log.length > 60) S.log.length = 60;
@@ -365,7 +484,6 @@ function gainXP(n) {
   while (S.xp >= xpNeed(S.lv)) {
     S.xp -= xpNeed(S.lv);
     S.lv++;
-    fullHeal();
     up = true;
     addLog(`升級了！現在是 Lv${S.lv}，獲得 1 天賦點`);
   }
@@ -459,48 +577,8 @@ function hideModal() {
   $('modal').hidden = true;
 }
 const busy = () => !$('modal').hidden || !!B || !!MB;
-function classModal(after) {
-  const opts = ['knight', 'mage', 'ranger'];
-  showModal(
-    '選擇進階職業',
-    `<p class="sub">職業決定技能；成長方向交給天賦樹。demo 中轉職後無法再更換。</p>${opts
-      .map(
-        (k, i) =>
-          `<button class="btn" style="text-align:left;display:grid;gap:2px" data-act="mbtn" data-i="${i + 1}"><span style="color:${CLASSES[k].color}">${CLASSES[k].name}</span><small class="sub">${CLASSES[k].desc}・技能：${CLASSES[
-            k
-          ].skills
-            .slice(1)
-            .map(s => SKILLS[s].name)
-            .join('、')}</small></button>`
-      )
-      .join('')}`,
-    [
-      {
-        label: '稍後再選',
-        fn: () => {
-          hideModal();
-          after && after();
-        }
-      }
-    ]
-  );
-  modalFns.push(
-    ...opts.map(k => () => {
-      S.cls = k;
-      S.tree = [startOf(k)];
-      fullHeal();
-      sfx('level');
-      addLog(`轉職為 ${CLASSES[k].name}！`);
-      toast(`成為 ${CLASSES[k].name}`);
-      hideModal();
-      renderHud();
-      after && after();
-    })
-  );
-}
-/* 商店：格子只顯示圖示和價格，點了才在下方顯示詳細資訊與購買按鈕 */
 function openShop(e, merchant) {
-  const he = epoch(),
+  const he = hepoch(),
     r = rng(h(fl(e.lat * 1e4), fl(e.lng * 1e4), he)),
     lv = S.lv + (merchant ? 2 : 0);
   const stock = Array.from({ length: merchant ? 6 : 10 }, () =>

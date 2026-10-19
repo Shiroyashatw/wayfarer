@@ -21,9 +21,11 @@ function rng(seed) {
 }
 const rnd = (a, b) => a + Math.random() * (b - a);
 const now = () => Date.now() + (S ? S.timeOffset : 0);
-/* 地圖刷新週期：怪物、寶箱、洞窟、城鎮試煉、限時事件、商店都每 15 分鐘換一輪 */
-const REFRESH = 15 * 60e3;
-const epoch = () => fl(now() / REFRESH);
+/* 地圖刷新週期：怪物與限時事件每 15 分鐘換一輪；地城、城鎮試煉、寶箱、商店、廟宇祝福每 1 小時 */
+const REFRESH = 15 * 60e3,
+  REFRESH_H = 60 * 60e3;
+const epoch = () => fl(now() / REFRESH),
+  hepoch = () => fl(now() / REFRESH_H);
 const uid = () => Math.random().toString(36).slice(2, 9);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 function hex2rgb(c) {

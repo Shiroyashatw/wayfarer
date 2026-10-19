@@ -13,8 +13,10 @@ function save() {
   CLOUD.dirty = true;
   S.savedAt = Date.now();
   try {
-    const ep = epoch();
-    for (const k in S.defeated) if ((k[0] === 'm' || k[0] === 'c') && !k.endsWith('_' + ep)) delete S.defeated[k];
+    const ep = epoch(),
+      hp = hepoch();
+    for (const k in S.defeated)
+      if ((k[0] === 'm' && !k.endsWith('_' + ep)) || (k[0] === 'c' && !k.endsWith('_' + hp))) delete S.defeated[k];
     if (S.trail.length > 4000) S.trail = S.trail.slice(-4000);
     localStorage.setItem(KEY, JSON.stringify(S));
   } catch (e) {}
@@ -62,6 +64,17 @@ function migrate(s) {
     delete s.cur.scour;
     s.v = 7;
   }
+  if (s.v < 8) {
+    // 0.2.0：技能改為技能石，職業只剩天賦盤起點；舊存檔補開局技能石
+    const g = k => ({ id: uid(), k, lv: 1, dust: 0, en: [] });
+    s.gems = [g(CLASSES[s.cls] ? CLASSES[s.cls].gem : 'power'), g('heal')];
+    s.sk = [s.gems[0].id, s.gems[1].id, null, null];
+    Object.assign(s.cur, { soul: 0, dust: 0, eng: 1 });
+    s.autoHp = s.autoHp || 0;
+    s.autoMp = s.autoMp || 0;
+    delete s.classOffered;
+    s.v = 8;
+  }
   return s;
 }
 function start() {
@@ -95,7 +108,7 @@ function start() {
       `<p>真實世界就是你的冒險地圖。道路跟著真實街道走，知名地點會變成城鎮。</p><p class="sub">一開始地圖被迷霧覆蓋，走過的地方才會揭開。點路面讓角色走過去，走進黃色圈內就能戰鬥、開寶箱、參拜。發光的怪物是菁英，掉寶更好；城鎮附近會出現限時事件。背包裡已經放了幾件裝備、一盞提燈（裝在副手）、一條腰帶和一些通貨，可以先試試改造裝備。晚上視野會縮小，提燈能照得更遠，但也會引來更多怪物。</p>`,
       [
         {
-          label: '選擇職業',
+          label: '選擇起點',
           pri: 1,
           fn: () => {
             hideModal();

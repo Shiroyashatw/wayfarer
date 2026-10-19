@@ -768,7 +768,7 @@ function nearTown(x, y, r) {
   return TOWNS.some(t => Math.abs(t.x - x) < r && Math.abs(t.y - y) < r && Math.hypot(t.x - x, t.y - y) < r);
 }
 /* 格子 (i,j) 上的地城：位置固定，種類與詞綴每次地圖刷新重骰。要在道路附近才會出現 */
-function dungeonAt(i, j, ep = epoch()) {
+function dungeonAt(i, j, ep = hepoch()) {
   const r = h(i, j, 41);
   if (r % 100 >= 30) return null;
   let x = (i + 0.15 + ((r >>> 8) % 70) / 100) * DCELL,
@@ -794,10 +794,11 @@ function genEntities() {
   const out = new Map(),
     [px, py] = toM(S.lat, S.lng),
     ep = epoch(),
+    hp = hepoch(),
     ee = evEp(),
     R = 950,
     st = stats(),
-    dens = Math.min(70, 42 * (1 + st.lure / 100) + (dayPhase().night > 0.5 ? 8 : 0));
+    dens = Math.min(85, 58 * (1 + st.lure / 100) + (dayPhase().night > 0.5 ? 8 : 0));
   const cells = (c, rad, fn) => {
     for (let i = fl((px - rad) / c); i <= fl((px + rad) / c); i++)
       for (let j = fl((py - rad) / c); j <= fl((py + rad) / c); j++) fn(i, j);
@@ -842,7 +843,7 @@ function genEntities() {
     });
   });
   cells(DCELL, R + 300, (i, j) => {
-    const d = dungeonAt(i, j, ep);
+    const d = dungeonAt(i, j, hp);
     if (d) out.set(d.id, d);
   });
   /* 廟宇：真實地圖上的宗教場所；生成道路的方格才用隨機福德祠 */
@@ -870,9 +871,9 @@ function genEntities() {
       }
     }
   cells(CCELL, R, (i, j) => {
-    const r = h(i, j, ep + 311);
-    if (r % 100 >= 16) return;
-    const id = `c${i}_${j}_${ep}`;
+    const r = h(i, j, hp + 311);
+    if (r % 100 >= 20) return;
+    const id = `c${i}_${j}_${hp}`;
     if (S.defeated[id]) return;
     let x = (i + ((r >>> 8) % 100) / 100) * CCELL,
       y = (j + ((r >>> 16) % 100) / 100) * CCELL;
@@ -952,7 +953,7 @@ const visible = e =>
       ? Math.hypot(e.x - VIS.x, e.y - VIS.y) <= VIS.r
       : revealed(e.x, e.y);
 function isDone(e) {
-  return (e.kind === 'dungeon' && S.cleared[e.id] === epoch()) || (e.kind === 'event' && S.cleared[e.id] === evEp());
+  return (e.kind === 'dungeon' && S.cleared[e.id] === hepoch()) || (e.kind === 'event' && S.cleared[e.id] === evEp());
 }
 const townLv = t => S.lv + 1 + (t.big ? 1 : 0);
 
@@ -1424,10 +1425,11 @@ function setPos(lat, lng, moved) {
     if (stepAcc > 14) {
       stepAcc = 0;
       sfx('step');
-      const st = stats();
-      S.hp = Math.min(st.maxhp, S.hp + 1);
-      if (fl(S.walked / 14) % 3 === 0) S.mp = Math.min(st.maxmp, S.mp + 1);
-      renderHud();
+    }
+    S.walkRegen = (S.walkRegen || 0) + moved;
+    if (S.walkRegen >= 100) {
+      naturalRegen(5 * fl(S.walkRegen / 100));
+      S.walkRegen %= 100;
     }
     if (S.walkCur >= 1000) {
       S.walkCur -= 1000;
@@ -1538,6 +1540,17 @@ function tick(t) {
   }
   renderWorld(t);
   placeLabel();
+  timeRegen();
+}
+/* 靜止時每分鐘回復 2%（戰鬥中不累積） */
+function timeRegen() {
+  const n = now();
+  if (!S.regenAt || B || MB) S.regenAt = n;
+  const k = fl((n - S.regenAt) / 60e3);
+  if (k > 0) {
+    S.regenAt += k * 60e3;
+    naturalRegen(2 * Math.min(k, 50));
+  }
 }
 const mmss = ms => {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -1550,9 +1563,10 @@ function placeLabel() {
   const dp = dayPhase(),
     hh = String(fl(dp.hr)).padStart(2, '0'),
     mm = String(fl((dp.hr % 1) * 60)).padStart(2, '0'),
-    left = REFRESH - (now() % REFRESH);
+    left = REFRESH - (now() % REFRESH),
+    leftH = REFRESH_H - (now() % REFRESH_H);
   $('expl').innerHTML =
-    `<span style="color:${dp.night > 0.5 ? '#9fb8ff' : '#ffd877'}">${dp.label}</span> ${hh}:${mm}・視野 ${stats().vision}m<br><span class="rf${left < 60e3 ? ' soon' : ''}">刷新 ${mmss(left)}</span>・探索 ${explKm2().toFixed(2)} km²` +
+    `<span style="color:${dp.night > 0.5 ? '#9fb8ff' : '#ffd877'}">${dp.label}</span> ${hh}:${mm}・視野 ${stats().vision}m<br><span class="rf${left < 60e3 ? ' soon' : ''}">怪物 ${mmss(left)}</span>・<span class="rf${leftH < 60e3 ? ' soon' : ''}">地城 ${mmss(leftH)}</span>・探索 ${explKm2().toFixed(2)} km²` +
     (buffOn() ? `<br>祝福 ${Math.ceil((S.buff.until - now()) / 60e3)} 分` : '') +
     (mapLoading() ? '<br><span style="color:#9fe7ff">載入地圖中…</span>' : '');
 }

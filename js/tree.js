@@ -108,7 +108,7 @@ function treeFit() {
 }
 const TX = x => (x - TV.x) * TV.s + TV.W / 2,
   TY = y => (y - TV.y) * TV.s + TV.H / 2;
-const CLSN = { novice: '冒險者', knight: '劍士', ranger: '遊俠', mage: '術士' };
+const CLSN = { novice: '冒險者之魂', knight: '戰士之魂', ranger: '遊俠之魂', mage: '術士之魂' };
 const NR = { start: 28, key: 17, notable: 13, small: 8 };
 function drawTree() {
   const cv = $('treeCv');
@@ -288,7 +288,7 @@ function renderTreeCard() {
     return;
   }
   if (!n) {
-    el.innerHTML = `<div class="rowx"><span class="sub">點節點看效果。從你的職業起點（金框圓盤）往外點；藍色線是要點亮的路徑。路線盡頭的六角形是<b style="color:#e8873a">基石</b>，會改變戰鬥規則。</span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="treeSum">總覽</button></div>`;
+    el.innerHTML = `<div class="rowx"><span class="sub">點節點看效果。從你的起點（金框圓盤）往外點；藍色線是要點亮的路徑。路線盡頭的六角形是<b style="color:#e8873a">基石</b>，會改變戰鬥規則。</span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="treeSum">總覽</button></div>`;
     drawTree();
     return;
   }
@@ -301,11 +301,11 @@ function renderTreeCard() {
   if (S.tree.includes(n.id))
     btn =
       n.type === 'start'
-        ? '<span class="sub" style="color:var(--good)">你的職業起點</span>'
+        ? '<span class="sub" style="color:var(--good)">你的起點</span>'
         : canRefund(n.id)
           ? `<div class="btns"><span class="sub" style="color:var(--good);align-self:center">已點亮</span><button class="btn sm" data-act="refund">退點</button></div>`
           : '<span class="sub" style="color:var(--good)">已點亮・要退點請先退掉更外面的節點</span>';
-  else if (blockedStart(n.id)) btn = '<span class="sub">其他職業的起點，無法點亮，但可以從旁邊的節點繞過去</span>';
+  else if (blockedStart(n.id)) btn = '<span class="sub">其他起點，無法點亮，但可以從旁邊的節點繞過去</span>';
   else if (!path) btn = '<span class="sub">無法到達</span>';
   else
     btn = `<button class="btn pri" data-act="alloc" ${cost <= treePts() ? '' : 'disabled'}>${cost <= treePts() ? `點亮（${cost} 點）` : `需要 ${cost} 點，目前 ${treePts()} 點`}</button>`;
@@ -409,24 +409,26 @@ function renderTreeCard() {
   });
 })();
 function classPicker(after) {
-  const opts = [
-    ['knight', '劍士', '起點在左下，力量路線：生命、護甲、物理傷害。技能：盾擊、旋風斬'],
-    ['ranger', '遊俠', '起點在右下，敏捷路線：暴擊、速度、吸血。技能：連射、毒箭'],
-    ['mage', '術士', '起點在上方，智力路線：法術、魔力、抗性。技能：火球術、冰矛、治癒'],
-    ['novice', '冒險者', '起點在正中央，離三條路線都一樣遠，但起始數值最平均。技能：強力一擊']
-  ];
+  const opts = ['knight', 'ranger', 'mage', 'novice'].map(k => [
+    k,
+    CLASSES[k].name,
+    `${CLASSES[k].desc}。開局技能石：${SKILLS[CLASSES[k].gem].name}、治癒`
+  ]);
   showModal(
-    '選擇職業',
-    `<p class="sub">職業決定技能和天賦樹的起點。天賦點從 0 開始，每升一級得 1 點。</p>${opts.map(([k, n, d], i) => `<button class="btn" style="text-align:left;display:grid;gap:2px" data-act="mbtn" data-i="${i}"><span style="color:${CLASSES[k].color};font-weight:500">${n}</span><small class="sub">${d}</small></button>`).join('')}`,
+    '選擇起點',
+    `<p class="sub">選擇天賦盤的起點，只影響起點位置、起點數值與開局的技能石；之後的技能全部來自技能石。天賦點從 0 開始，每升一級得 1 點。</p>${opts.map(([k, n, d], i) => `<button class="btn" style="text-align:left;display:grid;gap:2px" data-act="mbtn" data-i="${i}"><span style="color:${CLASSES[k].color};font-weight:500">${n}</span><small class="sub">${d}</small></button>`).join('')}`,
     []
   );
   modalFns = opts.map(([k]) => () => {
     S.cls = k;
     S.tree = [startOf(k)];
-    S.classOffered = true;
+    if (!S.gems.length) {
+      giveGem(CLASSES[k].gem);
+      giveGem('heal');
+    }
     fullHeal();
     sfx('level');
-    addLog(`選擇了職業：${CLASSES[k].name}`);
+    addLog(`選擇了起點：${CLASSES[k].name}`);
     hideModal();
     renderHud();
     after && after();
