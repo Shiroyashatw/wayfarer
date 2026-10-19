@@ -36,7 +36,7 @@
 | 掉寶、地城獎勵 | `js/battle.js` | `dropLoot`、`dunReward`；靈魂碎片與刻印石 `gemLoot`；現場加成 `ONSITE_BONUS`、`onsiteNow`（判定現場用 `ui.js` 的 `onSite`） |
 | 亡靈區、亡靈怪、亡靈祭壇與軍團長、亡靈王 | `js/undead.js` | `undeadSpawns`（由 `endgameSpawns` 呼叫）、`UDZ`、`UNDEAD`、`drawUndead`、`undeadWin`、`commanderWin`、`kingWin`、`A.udBoss`、`A.udKing` |
 | 亡靈精華與亡靈製作（屍化值） | `js/undead.js` | `ESS`（精華對應的詞綴）、`UCUR`、`ucReroll`、`ucConv`、`ucAdd`、`ucAff`、`ucBlock`、`undeadCraftHTML`（裝備詳情頁）；屍化值存在裝備的 `sh`、次數 `uc` |
-| 魔霧封印、魔霧詞綴與專屬怪、進度與碎片 | `js/demon.js` | `demonSpawns`（由 `endgameSpawns` 呼叫）、`MIST_TIERS`、`MMODS`／`mistApply`、`MISTMON`、`drawMist`、`drawSeals`／`drawSealMark`（封印的龍捲風與遠距離符號）、`mistWin`、`A.mistGo`；狀態 `S.mist` |
+| 魔霧封印、魔霧詞綴與專屬怪、進度與碎片 | `js/demon.js` | `demonSpawns`（由 `endgameSpawns` 呼叫）、`MIST_TIERS`、`MMODS`／`mistApply`、`MISTMON`、`drawMist`、`drawSeals`／`drawSealMark`（封印的法陣與遠距離符號）、`mistWin`、`A.mistGo`；狀態 `S.mist` |
 | 七宗罪雕像、7 個王的機制、殘魂 | `js/demon.js`、`js/battle.js` | `SINS`、`makeSinLord`、`sinTurn`（`enemyTurn` 開頭）、`sinHit`（`playerHit`）、`sinReward`（`dunReward`）、`A.sinGo`；`dunEnemy` 的七宗罪段落 |
 | 傳奇裝備 | `js/demon.js`、`js/items.js` | `LEGENDS`、`makeLegend`；屬性在 `sumStats`（`it.leg`），特效旗標 `legPride` 等在 `heroDmg`／`heroAil`／`useSkill`／`bItem` |
 | 惡魔珠寶與天賦盤珠寶槽 | `js/demon.js`、`js/data.js`、`js/tree.js` | `JAFF`、`makeJewel`、`jewelCap`、`jewelStats`、`socketCardHTML`、`A.jIn`／`A.jOut`；槽位在 `TREE` 結尾（`type: 'socket'`），鑲嵌狀態 `S.jsock` |
@@ -256,17 +256,17 @@
   `atBase:410`、`ucCost:414`、`ucBlock:415`、`maxPS:422`、`rollCat:424`、`hasEss:434`、`payEss:435`、`UC_SH:436`、`ucDone:437`、`ucReroll:441`、`ucConv:453`、`ucAdd:470`、`ucAff:481`、`undeadCraftHTML:503`、`essHTML:540`
 - **actions**（548）
 
-### js/demon.js（932 行）
+### js/demon.js（892 行）
 
 - **sprites & data**（3）
   `pad16d:4`、`MMODS:76`、`mistApply:84`、`MISTMON:100`、`MIST_TIERS:144`、`ROMAN:151`、`SINS:153`、`SINI:218`、`SIN_COST:219`、`LEGENDS:222`、`LEGI:280`、`makeLegend:281`、`JAFF:291`、`JEWEL_MAX:310`、`makeJewel:311`、`giveJewel:320`、`jewelTxt:327`、`jewelCap:329`、`jewelsIn:330`、`jewelStats:335`
 - **map: mist seals, active mist, sin statues**（342）
-  `MS_CELL:343`、`MISTZ:345`、`demonSpawns:346`、`MQ_CELL:470`、`mistify:474`、`drawSeals:488`、`drawSealMark:561`、`drawMist:600`、`mistWin:659`
-- **sin lords**（677）
-  `SINSPR:679`、`makeSinLord:688`、`makeSinKing:713`、`sinTurn:735`、`sinHit:753`、`sinBattleWin:764`、`sinReward:770`
-- **sheets**（793）
-  `sinHTML:794`、`sinMods:802`、`demonHTML:812`、`jewelHTML:819`、`socketCardHTML:832`
-- **actions**（854）
+  `MS_CELL:343`、`MISTZ:345`、`demonSpawns:346`、`MQ_CELL:470`、`mistify:474`、`drawSeals:488`、`drawSealMark:521`、`drawMist:560`、`mistWin:619`
+- **sin lords**（637）
+  `SINSPR:639`、`makeSinLord:648`、`makeSinKing:673`、`sinTurn:695`、`sinHit:713`、`sinBattleWin:724`、`sinReward:730`
+- **sheets**（753）
+  `sinHTML:754`、`sinMods:762`、`demonHTML:772`、`jewelHTML:779`、`socketCardHTML:792`
+- **actions**（814）
 
 ### js/hunt.js（779 行）
 
