@@ -101,6 +101,9 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .btop{position:absolute;top:calc(44px + var(--sat));left:calc(16px + var(--sal));right:calc(16px + var(--sar));display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
 .bname{position:absolute;transform:translate(-50%,-100%);text-align:center;max-width:62%;font-family:var(--f-pix);font-size:14px;line-height:1.2;text-shadow:0 1px 0 #000,0 0 6px #000;pointer-events:none}
 .bname small{display:block;font-size:10px;margin-top:2px;color:#ddd;font-family:var(--f-ui)}
+/* 0.3.1.2 名字不常駐：換目標時出現一下再淡出 */
+.bname{opacity:0;transition:opacity .45s;}
+.bname.on{opacity:1;transition:opacity .12s}
 .bfloor{position:absolute;top:calc(10px + var(--sat));left:calc(10px + var(--sal));font-family:var(--f-pix);font-size:14px;background:#000a;border:1px solid #c9a45c88;border-radius:8px;padding:3px 10px;pointer-events:none}
 .border{position:absolute;left:0;right:0;bottom:6px;display:flex;justify-content:center;align-items:flex-end;gap:4px;padding:0 8px;pointer-events:none;z-index:2}
 .bo{display:grid;justify-items:center;gap:1px;width:42px;opacity:.7;transition:transform .2s,opacity .2s}

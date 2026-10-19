@@ -1812,6 +1812,7 @@ function dungeonClear() {
 /* ================= battle: drawing ================= */
 /* 畫一群敵人（單人與組隊共用）：fx 是 BFX.en／MBFX.en，ti 是目前目標（-1 不畫箭頭） */
 function drawEnemies(c, t, es, boss, fx, ti) {
+  selTrack(fx, ti, es.length + ':' + (es[0] ? es[0].name : ''));
   const now_ = performance.now(),
     order = es.map((e, i) => i).sort((a, b) => epos(a, es, boss).y - epos(b, es, boss).y);
   for (const i of order) {
@@ -1819,7 +1820,12 @@ function drawEnemies(c, t, es, boss, fx, ti) {
       f = fx[i] || (fx[i] = {}),
       q = epos(i, es, boss),
       es_ = q.s;
-    if (e.hp <= 0 && (!f.dying || now_ - f.dying > 850)) continue;
+    /* 血量已歸零但擊倒動畫還沒播（結算比動畫早）：照常畫，等 kill 事件；太久沒等到就自己開始倒下 */
+    if (e.hp <= 0 && !f.dying) {
+      f.pend = f.pend || now_;
+      if (now_ - f.pend > 1500) f.dying = now_;
+    }
+    if (e.hp <= 0 && f.dying && now_ - f.dying > 850) continue;
     const [ox, oy] = animOff(f, -1),
       alpha = f.dying ? 1 - (now_ - f.dying) / 850 : 1;
     if (e.rar)
@@ -1841,20 +1847,55 @@ function drawEnemies(c, t, es, boss, fx, ti) {
       flash
     );
     c.globalAlpha = 1;
-    /* 目標箭頭 */
-    if (i === ti && e.hp > 0 && es.length > 1) {
-      const ay = q.y - 16 * es_ - 14 + Math.sin(t / 180) * 3;
-      c.fillStyle = '#ffd166';
-      c.beginPath();
-      c.moveTo(q.x - 7, ay - 8);
-      c.lineTo(q.x + 7, ay - 8);
-      c.lineTo(q.x, ay);
-      c.fill();
-      c.strokeStyle = '#000';
-      c.lineWidth = 1.5;
-      c.stroke();
-    }
+    /* 選取特效：腳下光圈＋四角框，剛選到時框從外面收進來 */
+    if (i === ti && e.hp > 0) drawSel(c, t, q, es_, now_ - (fx._ts || 0), es.length > 1);
   }
+}
+/* 目標選取：ti 換了就記下時間，名字顯示一下再淡出（ti 是 -1 表示動畫中，不算換目標） */
+function selTrack(fx, ti, key) {
+  if (ti < 0) return;
+  if (fx._ti === ti && fx._key === key) return;
+  fx._ti = ti;
+  fx._key = key;
+  fx._ts = performance.now();
+  const el = $('bname');
+  el.classList.add('on');
+  clearTimeout(selTrack.t);
+  selTrack.t = setTimeout(() => el.classList.remove('on'), 1800);
+}
+function drawSel(c, t, q, s, age, multi) {
+  const k = Math.max(0, 1 - age / 260),
+    pulse = 0.55 + 0.25 * Math.sin(t / 160);
+  c.save();
+  c.strokeStyle = `rgba(255,209,102,${pulse})`;
+  c.lineWidth = 2;
+  c.beginPath();
+  c.ellipse(q.x, q.y + 2, s * 8 + k * 14, s * 2.2 + k * 4, 0, 0, 6.28);
+  c.stroke();
+  if (multi || k > 0) {
+    const w = s * 9 + 6 + k * 18,
+      top = q.y - 16 * s - 4 - k * 14,
+      bot = q.y + 6 + k * 6,
+      L = Math.max(5, s * 3);
+    c.strokeStyle = `rgba(255,209,102,${multi ? 0.95 : k})`;
+    c.lineWidth = 2.5;
+    c.shadowColor = '#ffd166';
+    c.shadowBlur = 6;
+    [
+      [-1, top, 1],
+      [1, top, 1],
+      [-1, bot, -1],
+      [1, bot, -1]
+    ].forEach(([sx, y, sy]) => {
+      const x = q.x + sx * w;
+      c.beginPath();
+      c.moveTo(x - sx * L, y);
+      c.lineTo(x, y);
+      c.lineTo(x, y + sy * L);
+      c.stroke();
+    });
+  }
+  c.restore();
 }
 /* 召喚物：站在施放者後面的小隻像素圖 */
 function drawPets(c, t, pets, x, y, s) {
