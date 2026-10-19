@@ -1288,7 +1288,7 @@ function renderWorld(t) {
       c.beginPath();
       c.ellipse(hx, hy, 7 * s, 2.2 * s, 0, 0, 6.28);
       c.fill();
-      drawSpr(c, 'heroF', heroPal(), hx, hy - (walking ? Math.abs(Math.sin(t / 90)) * 3 : 0), s + 0.3);
+      drawSpr(c, heroSpr('F'), heroPal(), hx, hy - (walking ? Math.abs(Math.sin(t / 90)) * 3 : 0), s + 0.3);
     }
   });
   list.sort((a, b) => a.y - b.y).forEach(o => o.draw());

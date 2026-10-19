@@ -1383,37 +1383,51 @@ const BASES = {
     { n: '權杖', k: 'scepter', t: 'staff', phys: [3, 6], crit: 5, imp: ['spellPct', 12] },
     { n: '桃木劍', k: 'peach', t: 'sword', phys: [4, 8], crit: 5, imp: ['spellPct', 10] }
   ],
+  /* 防具與飾品一樣只能往後加（存檔用索引）；外觀與圖示在 gear.js */
   helm: [
     { n: '皮帽', arm: 1 },
-    { n: '鐵盔', arm: 1.6 }
+    { n: '鐵盔', arm: 1.6 },
+    { n: '兜帽', arm: 0.7, imp: ['mana', 15] },
+    { n: '角盔', arm: 1.9 },
+    { n: '王冠', arm: 0.8, imp: ['critPct', 2] }
   ],
   chest: [
     { n: '皮甲', arm: 2 },
-    { n: '鎖子甲', arm: 3 }
+    { n: '鎖子甲', arm: 3 },
+    { n: '法袍', arm: 1.4, imp: ['spellPct', 10] },
+    { n: '板甲', arm: 4 },
+    { n: '鱗甲', arm: 3.4, imp: ['resAll', 5] }
   ],
   gloves: [
     { n: '皮手套', arm: 0.8 },
-    { n: '鐵手甲', arm: 1.2 }
+    { n: '鐵手甲', arm: 1.2 },
+    { n: '法術手套', arm: 0.6, imp: ['spellPct', 6] },
+    { n: '臂鎧', arm: 1.6 }
   ],
   boots: [
     { n: '皮靴', arm: 0.8, imp: ['speed', 2] },
-    { n: '鐵靴', arm: 1.2 }
+    { n: '鐵靴', arm: 1.2 },
+    { n: '法師鞋', arm: 0.6, imp: ['mana', 10] },
+    { n: '戰靴', arm: 1.5, imp: ['life', 15] }
   ],
   ring: [
     { n: '紅寶石戒指', imp: ['resFire', 12] },
     { n: '藍寶石戒指', imp: ['resCold', 12] },
     { n: '黃玉戒指', imp: ['resLight', 12] },
-    { n: '鐵戒指', imp: ['flatPhys', 2] }
+    { n: '鐵戒指', imp: ['flatPhys', 2] },
+    { n: '月石戒指', imp: ['mana', 12] }
   ],
   amulet: [
     { n: '琥珀護身符', imp: ['life', 20] },
     { n: '翡翠護身符', imp: ['critPct', 2] },
-    { n: '青金護身符', imp: ['mana', 15] }
+    { n: '青金護身符', imp: ['mana', 15] },
+    { n: '骨護身符', imp: ['leech', 1] }
   ],
   belt: [
     { n: '皮腰帶', imp: ['life', 15] },
     { n: '重腰帶', arm: 0.6 },
-    { n: '鏈腰帶', imp: ['regen', 2] }
+    { n: '鏈腰帶', imp: ['regen', 2] },
+    { n: '符文腰帶', imp: ['spellPct', 6] }
   ],
   /* 副手：k 是副手種類，詞綴可以只開放給某一種（例如誘引只出現在提燈） */
   offhand: [
@@ -2362,5 +2376,5 @@ const TREE = (() => {
   });
   return { N, E, byId };
 })();
-const VER = '0.3.0.6';
+const VER = '0.3.1';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

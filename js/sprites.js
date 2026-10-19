@@ -673,39 +673,13 @@ function paintIcon(c, n) {
       x.fillRect(i, j, 1, 1);
     }
 }
-/* 外觀跟著裝備：武器決定手上拿的東西，胸甲／頭盔／腰帶／鞋子決定衣服、頭頂、腰帶與鞋子的顏色，主色看天賦盤起點 */
+/* 武器外觀種類；角色外觀與配色（heroPal、heroSpr）在 gear.js */
 const wepKind = (w = S.eq.weapon) => (w ? BASES.weapon[w.bi].k : 'sword');
 /* 武器類別（天賦專精、技能標籤、昇華用）：劍、斧鎚、矛、弓弩、匕首爪、法杖；副手是盾牌、法珠、符咒或提燈 */
 const wepType = (w = S.eq.weapon) => (w ? BASES.weapon[w.bi].t : 'sword');
 const twoHand = (w = S.eq.weapon) => !!(w && BASES.weapon[w.bi].th);
 const WTAGN = { sword: '劍', axe: '斧鎚', spear: '矛', bow: '弓弩', dagger: '匕首爪', staff: '法杖' };
 const offType = () => (S.eq.offhand && !twoHand() ? BASES.offhand[S.eq.offhand.bi].k : '');
-const GEARC = {
-  皮甲: '#8a5a2f',
-  鎖子甲: '#9aa3ad',
-  皮帽: '#7a5230',
-  鐵盔: '#b8bfc8',
-  皮腰帶: '#6b4426',
-  重腰帶: '#4a4450',
-  鏈腰帶: '#a8adb5',
-  皮靴: '#5a3a26',
-  鐵靴: '#8d949c'
-};
-const gearC = (eq, sl) => eq && eq[sl] && GEARC[BASES[sl][eq[sl].bi].n];
-const heroPal = (cls = S.cls, eq = S.eq) => {
-  const c = (CLASSES[cls] || CLASSES.novice).color;
-  return {
-    h: gearC(eq, 'helm') || '#6b3324',
-    s: '#f1c27d',
-    e: '#1a1626',
-    c: gearC(eq, 'chest') || c,
-    a: gearC(eq, 'chest') ? c : shade(c, -0.35),
-    b: gearC(eq, 'belt') || '#d9a441',
-    l: '#3b3550',
-    f: gearC(eq, 'boots') || '#5a3a26'
-  };
-};
-
 /* ================= icons: currency, item slots, passive nodes ================= */
 const PIX = {
   cur_vaal: {
@@ -928,6 +902,10 @@ function pixURL(key, tint) {
 }
 const curIcon = id => pixURL('cur_' + id);
 function slotIcon(it, slot) {
+  if (it && typeof gearIcon === 'function') {
+    const u = gearIcon(it);
+    if (u) return u;
+  }
   const s = it ? it.slot : slot.replace(/\d/, '');
   let key = 'sl_' + s;
   if (s === 'weapon') {
