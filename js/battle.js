@@ -1901,32 +1901,79 @@ function renderBattle(t) {
     c.fillRect(0, 0, BW, BH);
   }
 }
-/* 手上的武器（單人戰鬥；kind 是 wepKind） */
+/* 手上的武器（kind 是 wepKind；玩家面向右邊，hx/hy 是腳下，u 是像素大小） */
 function drawWeapon(c, wep, hx, hy, u) {
-  if (wep === 'sword') {
-    c.fillStyle = '#d8dde6';
-    c.fillRect(hx + 5 * u, hy - 15 * u, u, 9 * u);
-    c.fillStyle = '#f6f8fb';
-    c.fillRect(hx + 5 * u, hy - 15 * u, u * 0.4, 9 * u);
-    c.fillStyle = '#b8862e';
-    c.fillRect(hx + 3.5 * u, hy - 6 * u, 4 * u, u);
-  } else if (wep === 'staff') {
-    c.fillStyle = '#7a5230';
-    c.fillRect(hx + 5 * u, hy - 17 * u, u, 16 * u);
-    c.fillStyle = '#7fe0ff';
-    c.fillRect(hx + 4 * u, hy - 19 * u, 3 * u, 3 * u);
-  } else {
+  const R = (col, x, y, w, h) => {
+    c.fillStyle = col;
+    c.fillRect(hx + x * u, hy + y * u, w * u, h * u);
+  };
+  const bowArc = (r, x) => {
     c.strokeStyle = '#8a5a2f';
     c.lineWidth = u;
     c.beginPath();
-    c.arc(hx + 3 * u, hy - 9 * u, 6 * u, -Math.PI * 0.4, Math.PI * 0.4);
+    c.arc(hx + x * u, hy - 9 * u, r * u, -Math.PI * 0.42, Math.PI * 0.42);
     c.stroke();
     c.strokeStyle = '#eee';
     c.lineWidth = 1;
     c.beginPath();
-    c.moveTo(hx + 4.8 * u, hy - 14.5 * u);
-    c.lineTo(hx + 4.8 * u, hy - 3.5 * u);
+    c.moveTo(hx + (x + r * 0.3) * u, hy - (9 + r * 0.92) * u);
+    c.lineTo(hx + (x + r * 0.3) * u, hy - (9 - r * 0.92) * u);
     c.stroke();
+  };
+  if (wep === 'sword' || wep === 'gsword' || wep === 'peach') {
+    const g = wep === 'gsword',
+      wood = wep === 'peach';
+    R(wood ? '#b8743a' : '#d8dde6', 5, g ? -20 : -15, g ? 1.6 : 1, g ? 14 : 9);
+    if (!wood) R('#f6f8fb', 5, g ? -20 : -15, 0.4, g ? 14 : 9);
+    R(wood ? '#c0392b' : '#b8862e', g ? 3 : 3.5, -6, g ? 5.6 : 4, 1);
+    if (wood) R('#e5484d', 4.5, -5, 1, 3);
+  } else if (wep === 'axe' || wep === 'gaxe') {
+    const g = wep === 'gaxe';
+    R('#7a5230', 5, g ? -19 : -15, 1, g ? 17 : 11);
+    R('#aab2bc', 6, g ? -19 : -15, g ? 4 : 3, g ? 5 : 3.5);
+    if (g) R('#aab2bc', 2, -19, 3, 5);
+    R('#e8edf2', g ? 9.4 : 8.4, g ? -19 : -15, 0.6, g ? 5 : 3.5);
+  } else if (wep === 'mace' || wep === 'gmace') {
+    const g = wep === 'gmace';
+    R('#7a5230', 5, g ? -17 : -13, 1, g ? 15 : 9);
+    R('#8a929c', g ? 3.5 : 4, g ? -21 : -16, g ? 4 : 3, g ? 4 : 3);
+    if (g) {
+      R('#c8ced6', 5, -22, 1, 1);
+      R('#c8ced6', 2.5, -20, 1, 1);
+      R('#c8ced6', 7.5, -20, 1, 1);
+    }
+  } else if (wep === 'spear' || wep === 'halberd') {
+    R('#7a5230', 5, -21, 0.8, 21);
+    R('#d8dde6', 4.5, -25, 1.8, 4);
+    R('#f6f8fb', 5.1, -26, 0.6, 1);
+    if (wep === 'halberd') {
+      R('#aab2bc', 5.8, -21, 3, 3);
+      R('#aab2bc', 2.5, -20.5, 2.5, 1.2);
+    }
+  } else if (wep === 'bow' || wep === 'lbow') bowArc(wep === 'lbow' ? 8 : 6, 3);
+  else if (wep === 'xbow') {
+    R('#7a5230', 2, -9, 8, 1.2);
+    R('#5a3a26', 9, -12, 1, 7);
+    c.strokeStyle = '#eee';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(hx + 9.5 * u, hy - 12 * u);
+    c.lineTo(hx + 4 * u, hy - 8.6 * u);
+    c.lineTo(hx + 9.5 * u, hy - 5 * u);
+    c.stroke();
+  } else if (wep === 'dagger') {
+    R('#d8dde6', 6, -11, 0.8, 4.5);
+    R('#b8862e', 5.2, -6.5, 2.4, 0.8);
+  } else if (wep === 'claw') {
+    for (let k = 0; k < 3; k++) R('#e8edf2', 6 + k * 0.2, -10 + k * 1.6, 3, 0.6);
+    R('#5a3a26', 5, -9, 1.2, 4);
+  } else if (wep === 'scepter') {
+    R('#d8a838', 5, -14, 0.9, 10);
+    R('#c86aff', 4.2, -16.5, 2.5, 2.5);
+    R('#ffd166', 4.6, -17.5, 1.7, 0.8);
+  } else {
+    R('#7a5230', 5, -17, 1, 16);
+    R('#7fe0ff', 4, -19, 3, 3);
   }
 }
 function drawFx(c, f, q, p, u) {

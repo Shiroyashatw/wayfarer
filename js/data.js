@@ -1363,12 +1363,25 @@ const SLOTN = {
   amulet: '護身符'
 };
 const BASES = {
+  /* 武器：k 是外觀種類，t 是武器類別（技能標籤、昇華、天賦專精用），th 是雙手（不能裝副手）；新武器只能加在最後面（存檔用索引） */
   weapon: [
-    { n: '短劍', phys: [3, 7], crit: 6 },
-    { n: '長劍', phys: [5, 11], crit: 5 },
-    { n: '戰斧', phys: [8, 15], crit: 4 },
-    { n: '獵弓', phys: [4, 10], crit: 6 },
-    { n: '法杖', phys: [2, 5], crit: 5, imp: ['spellPct', 20] }
+    { n: '短劍', k: 'sword', t: 'sword', phys: [3, 7], crit: 6 },
+    { n: '長劍', k: 'sword', t: 'sword', phys: [5, 11], crit: 5 },
+    { n: '戰斧', k: 'axe', t: 'axe', phys: [8, 15], crit: 4 },
+    { n: '獵弓', k: 'bow', t: 'bow', th: 1, phys: [5, 12], crit: 6 },
+    { n: '法杖', k: 'staff', t: 'staff', th: 1, phys: [2, 5], crit: 5, imp: ['spellPct', 24] },
+    { n: '雙手大劍', k: 'gsword', t: 'sword', th: 1, phys: [9, 18], crit: 5 },
+    { n: '巨斧', k: 'gaxe', t: 'axe', th: 1, phys: [11, 21], crit: 4 },
+    { n: '巨鎚', k: 'gmace', t: 'axe', th: 1, phys: [12, 19], crit: 3, imp: ['stunCh', 8] },
+    { n: '單手錘', k: 'mace', t: 'axe', phys: [6, 12], crit: 4, imp: ['stunCh', 4] },
+    { n: '矛', k: 'spear', t: 'spear', th: 1, phys: [8, 16], crit: 6 },
+    { n: '戟', k: 'halberd', t: 'spear', th: 1, phys: [10, 19], crit: 5 },
+    { n: '長弓', k: 'lbow', t: 'bow', th: 1, phys: [7, 15], crit: 7 },
+    { n: '弩', k: 'xbow', t: 'bow', th: 1, phys: [10, 17], crit: 6, imp: ['penRes', 8] },
+    { n: '匕首', k: 'dagger', t: 'dagger', phys: [3, 7], crit: 9 },
+    { n: '爪', k: 'claw', t: 'dagger', phys: [4, 8], crit: 7, imp: ['leech', 2] },
+    { n: '權杖', k: 'scepter', t: 'staff', phys: [3, 6], crit: 5, imp: ['spellPct', 12] },
+    { n: '桃木劍', k: 'peach', t: 'sword', phys: [4, 8], crit: 5, imp: ['spellPct', 10] }
   ],
   helm: [
     { n: '皮帽', arm: 1 },
@@ -1408,7 +1421,9 @@ const BASES = {
     { n: '聖光提燈', k: 'lantern', imp: ['vision', 45], lure: 35 },
     { n: '木盾', k: 'shield', arm: 1.4 },
     { n: '塔盾', k: 'shield', arm: 2.2 },
-    { n: '符文法珠', k: 'focus', imp: ['spellPct', 15] }
+    { n: '符文法珠', k: 'focus', imp: ['spellPct', 15] },
+    { n: '月光法器', k: 'focus', imp: ['spellPct', 20] },
+    { n: '符咒', k: 'talisman', imp: ['elePct', 14] }
   ]
 };
 const DROPS = ['weapon', 'offhand', 'helm', 'chest', 'gloves', 'boots', 'belt', 'ring', 'amulet'];
@@ -1577,6 +1592,34 @@ const AFF = [
 ];
 const AFFI = Object.fromEntries(AFF.map(a => [a.id, a]));
 const STATN = {
+  /* 0.3：新武器與昇華的機制 */
+  echo: v => `技能 ${v}% 機率再放一次`,
+  bleedCh: v => `命中有 ${v}% 機率使敵人流血`,
+  stunCh: v => `命中有 ${v}% 機率使敵人暈眩`,
+  exec: v => `對生命低於 35% 的敵人傷害 +${v}%`,
+  penRes: v => `穿透 ${v}% 敵人抗性`,
+  markFirst: v => `第一擊標記敵人，標記中的敵人受傷 +${v}%`,
+  dodgeCrit: () => '閃避成功後，下一擊必定暴擊',
+  counter: v => `閃避成功時反擊（普通攻擊 ${v}% 傷害）`,
+  killStack: v => `每擊倒一隻敵人疊 1 層，每層傷害 +${v}%`,
+  killMax: v => `疊層上限 ${v} 層`,
+  keepStacks: () => '疊層在戰鬥結束後保留',
+  killHeal: v => `擊倒敵人回復 ${v}% 生命`,
+  killMana: v => `擊倒敵人回復 ${v}% 魔力`,
+  noPotion: () => '無法使用生命藥水',
+  hpDrain: v => `每回合失去 ${v}% 最大生命`,
+  block: v => `${v}% 機率格擋（受到的傷害 -70%）`,
+  reflectPct: v => `受到攻擊時反彈 ${v}% 傷害`,
+  shieldPct: v => `戰鬥開始時獲得 ${v}% 最大生命的護盾`,
+  extraTurn: v => `行動後 ${v}% 機率再行動一次`,
+  curseCh: v => `命中有 ${v}% 機率詛咒敵人（3 回合）`,
+  curseP: v => `詛咒中的敵人受傷 +${v}%`,
+  spread: () => '敵人死亡時，身上的燃燒、中毒、流血擴散給其他敵人',
+  petPct: v => `召喚物傷害 +${v}%`,
+  potPct: v => `藥水效果 +${v}%`,
+  potBomb: v => `喝藥水時對所有敵人丟藥瓶（物理傷害 ${v}% 的火焰）`,
+  ailDur: v => `燃燒、中毒、流血、感電多持續 ${v} 回合`,
+  dotPct: v => `持續傷害 +${v}%`,
   life: v => `最大生命 +${v}`,
   lifePct: v => `最大生命 +${v}%`,
   physPct: v => `物理傷害 +${v}%`,

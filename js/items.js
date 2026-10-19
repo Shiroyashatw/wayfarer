@@ -163,7 +163,12 @@ function itemCard(it, title) {
   const b = baseOf(it);
   let h = `<div class="icard" style="border-color:${RCOL[it.r]}88"><div class="ihead" style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</div><div class="isub">${it.r === 2 ? esc(b.n) + '・' : ''}${RNAME[it.r]}${SLOTN[it.slot]}・物品等級 ${it.ilvl}${title ? '・' + title : ''}</div>`;
   const base = [];
-  if (it.phys) base.push(`物理傷害 ${it.phys[0]}–${it.phys[1]}`, `暴擊率 ${it.crit}%`);
+  if (it.phys)
+    base.push(
+      `${WTAGN[b.t] || ''}${b.th ? '・雙手武器（不能裝副手）' : '・單手武器'}`,
+      `物理傷害 ${it.phys[0]}–${it.phys[1]}`,
+      `暴擊率 ${it.crit}%`
+    );
   if (it.arm) base.push(`護甲 ${it.arm}`);
   if (it.imp) base.push(STATN[it.imp[0]](it.imp[1]));
   if (it.lure) base.push(STATN.lure(it.lure));
@@ -456,7 +461,7 @@ function sumStats() {
   const A = (k, v) => (t[k] = (t[k] || 0) + v);
   for (const s of SLOTS) {
     const it = S.eq[s];
-    if (!it) continue;
+    if (!it || (s === 'offhand' && twoHand())) continue;
     if (it.arm) t.armor += it.arm;
     if (it.imp) A(it.imp[0], it.imp[1]);
     if (it.lure) t.lure += it.lure;

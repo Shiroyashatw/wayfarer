@@ -962,6 +962,7 @@ function renderMB(t) {
     c.fill();
     c.globalAlpha = q.alive ? 1 : 0.35;
     drawPets(c, t, q.pets, ps.x, ps.y, hs);
+    drawWeapon(c, q.wep || 'sword', ps.x + ox, ps.y + Math.sin(t / 320 + i) * 1.5, hs);
     drawSpr(c, 'heroS', palFor(q), ps.x + ox, ps.y + Math.sin(t / 320 + i) * 1.5, hs, true);
     c.globalAlpha = 1;
   });

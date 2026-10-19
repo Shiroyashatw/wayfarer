@@ -884,10 +884,19 @@ const A = {
     }
   },
   equip: d => {
+    const nit = S.inv[selItem.i],
+      /* 雙手武器和副手不能同時裝：裝上一邊時另一邊收回背包 */
+      clash = d.s === 'weapon' && twoHand(nit) ? 'offhand' : d.s === 'offhand' && twoHand() ? 'weapon' : null;
+    if (clash && S.eq[clash] && S.inv.length >= 30 && !S.eq[d.s]) return toast('背包已滿，先騰出空間');
     const it = S.inv.splice(selItem.i, 1)[0],
       cur = S.eq[d.s];
     S.eq[d.s] = it;
     if (cur) S.inv.push(cur);
+    if (clash && S.eq[clash]) {
+      S.inv.push(S.eq[clash]);
+      S.eq[clash] = null;
+      toast(clash === 'offhand' ? '雙手武器：副手收回背包' : '裝上副手：雙手武器收回背包');
+    }
     sfx('select');
     toast(`裝備了 ${itemTitle(it)}`);
     selItem = { eq: d.s };
