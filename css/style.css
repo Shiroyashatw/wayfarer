@@ -547,3 +547,9 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .brow3 .cb{min-height:46px!important;display:flex!important;align-items:center;justify-content:center;gap:6px;font-size:15px}
 .brow3 .cb img{width:20px!important;height:20px!important}
 .brow3 .cb small{display:none}
+/* 普攻在右上角，物品／逃跑擠在右下一格 */
+.brow2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.brow2 .cb{min-height:62px!important;font-size:13px!important;padding:4px!important}
+.brow2 .cb img{width:20px!important;height:20px!important}
+.brow2 .cb small{display:none}
+.bcmd>.cb.atk{background:linear-gradient(#5a4630,#3a2c20);border-color:#c9a45c88}

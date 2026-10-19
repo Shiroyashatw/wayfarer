@@ -1123,21 +1123,23 @@ function renderBHud() {
           S.potions && !noPot ? '' : 'disabled'
         );
   };
-  /* 0.3.1.9：四個技能欄都直接放在面板上（空的欄位放藥水），下面一排是攻擊、物品、逃跑 */
-  const four = [0, 1, 2, 3]
-    .map(i =>
-      sks[i]
-        ? slot('s' + i)
-        : i === 1
-          ? cb('魔力藥水', 'ice', '×' + S.ethers, 'bitem', 'data-k="ethers"', S.ethers ? '' : 'disabled')
-          : i === 0
-            ? slot(null)
-            : `<button class="cb empty" data-act="bsub" data-k="items" ${dis}><img src="${iconURL('book')}" alt="">空的技能欄<small>到「角色 → 技能」裝備</small></button>`
-    )
-    .join('');
+  /* 0.3.1.9：四個技能欄都直接放在面板上（空的欄位放藥水）；普攻固定在右上角最好點，物品與逃跑擠在右下一格 */
+  const four = [0, 1, 2, 3].map(i =>
+    sks[i]
+      ? slot('s' + i)
+      : i === 1
+        ? cb('魔力藥水', 'ice', '×' + S.ethers, 'bitem', 'data-k="ethers"', S.ethers ? '' : 'disabled')
+        : i === 0
+          ? slot(null)
+          : `<button class="cb empty" data-act="bsub" data-k="items" ${dis}><img src="${iconURL('book')}" alt="">空的技能欄<small>到「角色 → 技能」裝備</small></button>`
+  );
   let html =
-    four +
-    `<div class="brow3">${cb('攻擊', 'axe', '', 'skill', 'data-k="attack"', '')}${cb('物品', 'bag', '', 'bsub', 'data-k="items"', '')}${cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D ? 'disabled' : '', 'run')}</div>`;
+    four[0] +
+    cb('攻擊', 'axe', '', 'skill', 'data-k="attack"', '', 'atk') +
+    four[1] +
+    four[2] +
+    four[3] +
+    `<div class="brow2">${cb('物品', 'bag', '', 'bsub', 'data-k="items"', '')}${cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D ? 'disabled' : '', 'run')}</div>`;
   if (B.sub === 'skills')
     html += `<div class="bsub">${sk.length ? sk.map(slot).join('') : '<p class="sub">技能欄是空的，到「角色 → 技能」裝上技能石</p>'}${cb('返回', 'run', '', 'bsub', 'data-k=""', '')}</div>`;
   if (B.sub === 'items')

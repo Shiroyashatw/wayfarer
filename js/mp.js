@@ -883,28 +883,30 @@ function renderMBHud() {
       me && canPay(me, skSt(me.st, q), q) ? '' : 'disabled'
     );
   };
-  /* 0.3.1.9：四個技能欄都直接放在面板上，下面一排是攻擊、物品、撤退 */
-  const four = [0, 1, 2, 3]
-    .map(i =>
-      sks[i]
-        ? slot('s' + i)
-        : i === 0
-          ? cb(
-              '生命藥水',
-              'heart',
-              noPot ? '無法使用' : '×' + S.potions,
-              'data-k="potion"',
-              S.potions && !noPot ? '' : 'disabled'
-            )
-          : i === 1
-            ? cb('魔力藥水', 'ice', '×' + S.ethers, 'data-k="ether"', S.ethers ? '' : 'disabled')
-            : `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
-    )
-    .join('');
+  /* 0.3.1.9：四個技能欄都直接放在面板上；普攻固定在右上角，物品與撤退擠在右下一格 */
+  const four = [0, 1, 2, 3].map(i =>
+    sks[i]
+      ? slot('s' + i)
+      : i === 0
+        ? cb(
+            '生命藥水',
+            'heart',
+            noPot ? '無法使用' : '×' + S.potions,
+            'data-k="potion"',
+            S.potions && !noPot ? '' : 'disabled'
+          )
+        : i === 1
+          ? cb('魔力藥水', 'ice', '×' + S.ethers, 'data-k="ether"', S.ethers ? '' : 'disabled')
+          : `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
+  );
   let html =
     `<div class="mpturn" id="mpTurn"></div>` +
-    four +
-    `<div class="brow3">${cb('攻擊', 'axe', '', 'data-k="attack"', '')}<button class="cb" data-act="mpSub" data-k="items" ${dis}><img src="${iconURL('bag')}" alt="">物品</button><button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button></div>`;
+    four[0] +
+    cb('攻擊', 'axe', '', 'data-k="attack"', '', 'atk') +
+    four[1] +
+    four[2] +
+    four[3] +
+    `<div class="brow2"><button class="cb" data-act="mpSub" data-k="items" ${dis}><img src="${iconURL('bag')}" alt="">物品</button><button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button></div>`;
   if (MB.sub === 'skills' && my)
     html += `<div class="bsub">${sk.map(slot).join('')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
   if (MB.sub === 'items' && my)
