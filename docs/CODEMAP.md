@@ -213,16 +213,16 @@
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:290`、`classPicker:423`
 
-### js/ui.js（1317 行）
+### js/ui.js（1319 行）
 
 - **HUD & sheets**（3）
-  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:60`、`navG:78`、`navClose:79`、`navOpen:88`、`KIND:116`、`bar:125`、`entIcon:128`、`fmt1:159`、`curRow:160`、`bagTabs:164`、`curRowG:171`、`BUFFN:174`、`gemDesc:175`、`gemCell:210`、`dupGems:216`、`gemRow:224`、`prayed:228`、`renderSheet:229`、`nearTownE:395`
-- **entity interaction**（399）
-  `openEnt:400`、`FIGHTK:534`、`onSite:535`、`inRange:536`
-- **bases**（538）
-  `prodRate:539`、`stored:540`、`baseName:541`、`flagCheck:542`
-- **actions**（550）
-  `authForm:552`、`A:584`
+  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:60`、`navG:79`、`navClose:80`、`navOpen:89`、`KIND:118`、`bar:127`、`entIcon:130`、`fmt1:161`、`curRow:162`、`bagTabs:166`、`curRowG:173`、`BUFFN:176`、`gemDesc:177`、`gemCell:212`、`dupGems:218`、`gemRow:226`、`prayed:230`、`renderSheet:231`、`nearTownE:397`
+- **entity interaction**（401）
+  `openEnt:402`、`FIGHTK:536`、`onSite:537`、`inRange:538`
+- **bases**（540）
+  `prodRate:541`、`stored:542`、`baseName:543`、`flagCheck:544`
+- **actions**（552）
+  `authForm:554`、`A:586`
 
 ### js/endgame.js（801 行）
 
@@ -292,19 +292,19 @@
 - **足跡**（167）
   `FOOT_CELL:169`、`FOOTA:173`、`footKey:174`、`footN2Lv:175`、`footLv:176`、`footStep:181`、`footDens:206`、`drawFoot:209`
 
-### js/asc.js（1169 行）
+### js/asc.js（1171 行）
 
 - **data**（67）
   `ASC_LV:68`、`N:71`、`ASC:72`、`TAGN:857`、`SUPN:875`、`ASCN:898`、`ASCB:899`
 - **state & stats**（929）
-  `ASCD:930`、`ascPts:931`、`ascUsed:932`、`ascNext:933`、`ascOn:934`、`ascStats:939`、`ascSup:946`、`ascTxt:948`、`ascCostTxt:960`、`ascCan:962`、`ascResetCost:973`
-- **icons**（975）
-  `ASCI:977`、`ascIcon:978`
-- **sheet**（1003）
-  `ascHTML:1004`
-- **trials**（1059）
-  `ascTownHTML:1061`、`ascTrialDone:1068`
-- **actions**（1075）
+  `ASCD:930`、`ascPts:931`、`ascUsed:932`、`ascNext:933`、`ascOn:934`、`ascStats:939`、`ascSup:946`、`ascTxt:948`、`ascCostTxt:960`、`ascCan:962`、`ascResetCost:973`、`ascAlert:975`
+- **icons**（977）
+  `ASCI:979`、`ascIcon:980`
+- **sheet**（1005）
+  `ascHTML:1006`
+- **trials**（1061）
+  `ascTownHTML:1063`、`ascTrialDone:1070`
+- **actions**（1077）
 
 ### js/gacha.js（155 行）
 

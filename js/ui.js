@@ -12,7 +12,7 @@ function renderHud() {
   const a = $('ava').getContext('2d');
   a.clearRect(0, 0, 18, 18);
   a.drawImage(sprite('heroF', heroPal()), 0, 0);
-  $('ptDot').hidden = treePts() <= 0;
+  $('ptDot').hidden = treePts() <= 0 && !(typeof ascAlert === 'function' && ascAlert());
   /* 頭像上方的經驗值圓弧，快升級時發光 */
   const xr = Math.min(1, S.xp / xpNeed(S.lv));
   $('xpArc').style.strokeDasharray = `${xr * 100} 100`;
@@ -72,7 +72,8 @@ const NAVG = {
   me: [
     ['hero', '角色', 'shield'],
     ['skills', '技能', 'book'],
-    ['tree', '天賦樹', 'star']
+    ['tree', '天賦樹', 'star'],
+    ['asc', '昇華', 'crown']
   ]
 };
 let navG = null;
@@ -98,6 +99,7 @@ function navOpen(g) {
   btn.setAttribute('aria-expanded', 'true');
   const dot = s =>
     (s === 'tree' && treePts() > 0) ||
+    (s === 'asc' && ascAlert()) ||
     (s === 'skills' && S.cur.eng > 0 && S.gems.some(g => gemOpen(g) > 0)) ||
     (s === 'party' && PT) ||
     (s === 'friends' && SOC.friends.some(f => f.status === 'pending' && f.incoming));
