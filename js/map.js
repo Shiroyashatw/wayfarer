@@ -770,7 +770,7 @@ function nearTown(x, y, r) {
 /* 格子 (i,j) 上的地城：位置固定，種類與詞綴每次地圖刷新重骰。要在道路附近才會出現 */
 function dungeonAt(i, j, ep = hepoch()) {
   const r = h(i, j, 41);
-  if (r % 100 >= 48) return null;
+  if (r % 100 >= 60) return null;
   let x = (i + 0.15 + ((r >>> 8) % 70) / 100) * DCELL,
     y = (j + 0.15 + ((r >>> 16) % 70) / 100) * DCELL;
   if (nearTown(x, y, 160)) return null;
@@ -885,7 +885,7 @@ function genEntities() {
     }
   cells(CCELL, R, (i, j) => {
     const r = h(i, j, hp + 311);
-    if (r % 100 >= 28) return;
+    if (r % 100 >= 34) return;
     const id = `c${i}_${j}_${hp}`;
     if (S.defeated[id]) return;
     let x = (i + ((r >>> 8) % 100) / 100) * CCELL,
@@ -943,7 +943,7 @@ function genEntities() {
   /* 路邊限時事件：不在城鎮附近也會出現（約每 700 公尺方格 30%） */
   cells(700, R, (i, j) => {
     const r = h(i, j, ee * 11 + 517);
-    if (r % 100 >= 30) return;
+    if (r % 100 >= 40) return;
     let x = (i + ((r >>> 8) % 100) / 100) * 700,
       y = (j + ((r >>> 16) % 100) / 100) * 700;
     if (nearTown(x, y, 400)) return;
@@ -976,12 +976,17 @@ function refreshEntities(force) {
 }
 let VIS = { x: 0, y: 0, r: 600 };
 const MOBILE = new Set(['monster', 'chest', 'event']);
+/* 地圖事件（地城、石碑、魔法陣、靈脈、封印、祭壇、雕像、侵蝕柱、廟宇）：在視野內就顯示，至少 500 公尺，晚上也看得到；不用先揭開迷霧 */
+const LANDMARK = new Set(['dungeon', 'stele', 'circle', 'vein', 'mseal', 'ualtar', 'sinst', 'obelisk', 'shrine']);
+const LM_VIS = 500;
 const visible = e =>
   e.kind === 'town' || e.kind === 'base' || e.kind === 'flag' || inZone(e)
     ? true
     : MOBILE.has(e.kind)
       ? Math.hypot(e.x - VIS.x, e.y - VIS.y) <= VIS.r
-      : revealed(e.x, e.y);
+      : LANDMARK.has(e.kind)
+        ? Math.hypot(e.x - VIS.x, e.y - VIS.y) <= Math.max(VIS.r, LM_VIS) || revealed(e.x, e.y)
+        : revealed(e.x, e.y);
 function isDone(e) {
   return (
     (e.kind === 'dungeon' && S.cleared[e.id] === hepoch()) ||

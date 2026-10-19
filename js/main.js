@@ -108,7 +108,7 @@ function migrate(s) {
     s.v = 10;
   }
   if (s.v < 11) {
-    // 0.2.7～0.3.0：魔霧、七宗罪殘魂、惡魔珠寶與珠寶槽
+    // 0.2.7～0.2.11：魔霧、七宗罪殘魂、惡魔珠寶與珠寶槽
     Object.assign(s, { mist: null, sins: s.sins || {}, jewels: s.jewels || [], jsock: s.jsock || {} });
     s.v = 11;
   }

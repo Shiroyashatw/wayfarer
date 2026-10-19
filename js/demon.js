@@ -1,4 +1,4 @@
-/* 漫步勇者 · 魔霧與七宗罪（0.2.7～0.3.0）：魔霧封印、魔霧怪、七宗罪雕像與 7 個王、殘魂、傳奇裝備、惡魔珠寶與天賦盤珠寶槽、七宗罪之王 */
+/* 漫步勇者 · 魔霧與七宗罪（0.2.7～0.2.11）：魔霧封印、魔霧怪、七宗罪雕像與 7 個王、殘魂、傳奇裝備、惡魔珠寶與天賦盤珠寶槽、七宗罪之王 */
 'use strict';
 /* ================= sprites & data ================= */
 const pad16d = rows => rows.map(r => (r + '................').slice(0, 16));
@@ -355,7 +355,7 @@ function demonSpawns(out, cells, hp) {
   if (S.lv >= 5)
     cells(MS_CELL, 1000, (i, j) => {
       const r = h(i, j, hp * 23 + 1301);
-      if (r % 100 >= 26) return;
+      if (r % 100 >= 40) return;
       const ok = MIST_TIERS.map((t, k) => k).filter(k => MIST_TIERS[k].lv <= S.lv),
         w = [40, 25, 18, 11, 6],
         tot = ok.reduce((a, k) => a + w[k], 0);
