@@ -331,22 +331,17 @@ function renderBHud() {
   ep.style.left = p.ex + 'px';
   ep.style.top = p.y + 14 + 'px';
   ep.innerHTML = pill('hp', e.hp, e.maxhp);
-  const c = CLASSES[S.cls],
-    sk = c.skills.filter(k => k !== 'attack'),
+  const sks = mySkills(),
+    sk = sks.map((q, i) => q && 's' + i).filter(Boolean),
     dis = B.busy ? 'disabled' : '';
   const cb = (label, icon, sub, act, data, disabled, extra = '') =>
     `<button class="cb ${extra}" data-act="${act}" ${data} ${disabled || dis}><img src="${iconURL(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
-  const slot = k =>
-    k
-      ? cb(
-          SKILLS[k].name,
-          SKILLS[k].icon,
-          costTxt(st, SKILLS[k]),
-          'skill',
-          `data-k="${k}"`,
-          canPay(S, st, SKILLS[k]) ? '' : 'disabled'
-        )
+  const slot = k => {
+    const q = k && sks[+k.slice(1)];
+    return q
+      ? cb(q.name, q.icon, costTxt(st, q), 'skill', `data-k="${k}"`, canPay(S, st, q) ? '' : 'disabled')
       : cb('生命藥水', 'heart', '×' + S.potions, 'bitem', 'data-k="potions"', S.potions ? '' : 'disabled');
+  };
   let html =
     slot(sk[0]) +
     cb('攻擊', 'axe', '', 'skill', 'data-k="attack"', '') +
@@ -355,7 +350,7 @@ function renderBHud() {
     cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D ? 'disabled' : '', 'run') +
     cb('物品', 'bag', '', 'bsub', 'data-k="items"', '');
   if (B.sub === 'skills')
-    html += `<div class="bsub">${c.skills.map(k => cb(SKILLS[k].name, SKILLS[k].icon, costTxt(st, SKILLS[k]), 'skill', `data-k="${k}"`, canPay(S, st, SKILLS[k]) ? '' : 'disabled')).join('')}${cb('返回', 'run', '', 'bsub', 'data-k=""', '')}</div>`;
+    html += `<div class="bsub">${sk.length ? sk.map(slot).join('') : '<p class="sub">技能欄是空的，到「角色 → 技能」裝上技能石</p>'}${cb('返回', 'run', '', 'bsub', 'data-k=""', '')}</div>`;
   if (B.sub === 'items')
     html += `<div class="bsub">${cb('生命藥水', 'heart', '×' + S.potions + '・恢復 40%', 'bitem', 'data-k="potions"', S.potions ? '' : 'disabled')}${cb('魔力藥水', 'ice', '×' + S.ethers + '・恢復 50%', 'bitem', 'data-k="ethers"', S.ethers ? '' : 'disabled')}${cb('返回', 'run', '', 'bsub', 'data-k=""', '')}</div>`;
   $('bcmd').innerHTML = html;
@@ -378,11 +373,25 @@ function payCost(o, st, sk) {
   else o.mp -= n;
 }
 const costTxt = (st, sk) => (sk.mp ? skCost(st, sk) + (st.blood ? ' 生命' : ' 魔力') : '');
+/* 技能石的刻印詞綴只在用那個技能時生效 */
+const skSt = (st, sk) =>
+  sk.gid
+    ? {
+        ...st,
+        crit: st.crit ? Math.min(75, st.crit + sk.crit) : 0,
+        ail: (st.ail || 1) * (1 + sk.ail / 100),
+        leech: (st.leech || 0) + sk.leech,
+        dbl: Math.min(60, (st.dbl || 0) + sk.dbl),
+        brk: sk.brk
+      }
+    : st;
+/* 依代號取技能：'attack' 是固定的普通攻擊，'s0'～'s3' 是技能欄（list 是 mySkills() 或隊員快照的 sks） */
+const skByKey = (k, list) => (k === 'attack' ? SKILLS.attack : (k && k[0] === 's' && list[+k.slice(1)]) || null);
 const extraHit = (st, sk) => (sk.kind === 'attack' && st.dbl && Math.random() * 100 < st.dbl ? 1 : 0);
 function heroPacket(st, sk, mult) {
   if (sk.kind === 'spell') {
     const pk = { phys: 0, fire: 0, cold: 0, light: 0 };
-    pk[sk.el] = st.spell * ((st.elm && st.elm[sk.el]) || 1) * mult * rnd(0.85, 1.15);
+    pk[sk.el] = (sk.sb || 9) * (st.spellMul || 1) * ((st.elm && st.elm[sk.el]) || 1) * mult * rnd(0.85, 1.15);
     return pk;
   }
   return {
@@ -393,7 +402,7 @@ function heroPacket(st, sk, mult) {
   };
 }
 function heroDmg(st, pk, e, shock, o) {
-  let d = mitigate(pk, e.arm, e.res, shock);
+  let d = mitigate(pk, e.arm * (1 - (st.brk || 0) / 100), e.res, shock);
   const crit = Math.random() * 100 < st.crit;
   if (crit) d *= st.critMulti / 100;
   if (st.lowLife && o.hp < st.maxhp / 2) d *= 1 + st.lowLife / 100;
@@ -432,7 +441,7 @@ function takeDmg(o, st, d) {
   return m;
 }
 function playerHit(sk, mult) {
-  const st = stats(),
+  const st = skSt(stats(), sk),
     e = B.e,
     p = POS(),
     pk = heroPacket(st, sk, mult);
@@ -467,9 +476,9 @@ function playerHit(sk, mult) {
   renderBHud();
 }
 function useSkill(k) {
-  const sk = SKILLS[k],
-    st0 = stats();
-  if (!B || B.busy || !canPay(S, st0, sk)) return;
+  const sk = skByKey(k, mySkills()),
+    st0 = sk && skSt(stats(), sk);
+  if (!B || B.busy || !sk || !canPay(S, st0, sk)) return;
   B.busy = true;
   B.sub = null;
   payCost(S, st0, sk);
@@ -478,7 +487,7 @@ function useSkill(k) {
   renderBHud();
   const p = POS();
   if (sk.kind === 'attack') {
-    const ranged = sk.fx === 'arrow' || CLASSES[S.cls].wep === 'bow',
+    const ranged = sk.fx === 'arrow' || wepKind() === 'bow',
       hits = (sk.hits || 1) + extraHit(st0, sk);
     for (let n = 0; n < hits; n++)
       later(n * 380, () => {
@@ -525,7 +534,7 @@ function useSkill(k) {
       sfx('heal');
       BFX.fx.push({ type: 'heal', t: performance.now(), dur: 700 });
       const st = stats(),
-        v = Math.round(st.maxhp * 0.35 * st.healMul);
+        v = Math.round(st.maxhp * (sk.heal || 0.35) * st.healMul);
       S.hp = Math.min(st.maxhp, S.hp + v);
       pop('+' + v, p.hx, p.y - 90, '#7bd36b');
       renderBHud();
@@ -539,14 +548,15 @@ function bItem(k) {
   B.sub = null;
   sfx('heal');
   const st = stats(),
-    p = POS();
+    p = POS(),
+    hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1);
   S[k]--;
   if (k === 'potions') {
-    const v = Math.round(st.maxhp * 0.4 * st.healMul);
+    const v = Math.round(st.maxhp * 0.4 * hm);
     S.hp = Math.min(st.maxhp, S.hp + v);
     pop('+' + v, p.hx, p.y - 90, '#7bd36b');
   } else {
-    const v = Math.round(st.maxmp * 0.5 * st.healMul);
+    const v = Math.round(st.maxmp * 0.5 * hm);
     S.mp = Math.min(st.maxmp, S.mp + v);
     pop('+' + v + ' MP', p.hx, p.y - 90, '#6ab8ff');
   }
@@ -819,11 +829,27 @@ function dropLoot(e, boss, sp, remote) {
     giveCur(c);
     out.push(curDot(c) + CURI[c].n);
   }
+  gemLoot(r, boss, sp && sp.dt === 'hell', rem, out);
   if (Math.random() < 0.12) {
     S.potions++;
     out.push('生命藥水');
   }
   return out;
+}
+/* 技能石材料：靈魂碎片與刻印石系列（昇華稜鏡、神聖刻印石在冥府內容出來前先由紅名怪掉落） */
+function gemLoot(r, boss, hell, rem, out) {
+  const ch = p => Math.random() < p * rem,
+    add = (id, n = 1) => {
+      if (n <= 0) return;
+      giveCur(id, n);
+      out.push(curDot(id) + GCURI[id].n + (n > 1 ? ' ×' + n : ''));
+    };
+  add('soul', Math.round(([ch(0.5) ? 1 : 0, 2, 4, 4, 10][r] + (boss ? 5 : 0)) * rem));
+  if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
+  if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
+  if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');
+  if (r === 4 && ch(0.08)) add('prism');
+  if (r === 4 && ch(0.08)) add('engD');
 }
 /* 地城通關獎勵 */
 function dunReward(D) {
@@ -860,17 +886,12 @@ function winBattle() {
     gold = Math.round(e.gold * rnd(0.8, 1.2) * mult * stats().goldMul);
   S.gold += gold;
   const up = gainXP(xp);
-  {
-    const st0 = stats();
-    S.hp = Math.min(st0.maxhp, S.hp + Math.round(st0.maxhp * 0.2));
-    S.mp = Math.min(st0.maxmp, S.mp + Math.round(st0.maxmp * 0.2));
-  }
   if (B.entId) {
     S.defeated[B.entId] = 1;
     ENT.delete(B.entId);
   }
   const drops = dropLoot(e, B.boss, D && D.spec, D && D.remote);
-  let bonus = '';
+  let bonus = autoPot();
   if (B.bounty) {
     const g = 100 + S.lv * 30;
     S.gold += g;
@@ -889,13 +910,9 @@ function winBattle() {
       const F = D.spec.floors;
       if (D.room >= F) return dungeonClear();
       const st = stats();
-      if (!D.spec.noregen) {
-        S.hp = Math.min(st.maxhp, S.hp + Math.round(st.maxhp * 0.15));
-        S.mp = Math.min(st.maxmp, S.mp + Math.round(st.maxmp * 0.15));
-      }
       showModal(
         D.kind === 'rift' ? `裂隙第 ${D.room + 1}/${F} 波` : `第 ${D.room + 1}/${F} 層`,
-        `<p>${D.room === F - 1 ? (D.kind === 'rift' ? '裂隙深處湧出一隻稀有怪物。' : '更深處傳來強大的氣息，首領就在前方。') : '下一波敵人正在逼近。'}</p><p class="sub">生命 ${S.hp}/${st.maxhp}・魔力 ${S.mp}/${st.maxmp}${D.spec.noregen ? '・無法喘息：不會回復' : ''}</p>`,
+        `<p>${D.room === F - 1 ? (D.kind === 'rift' ? '裂隙深處湧出一隻稀有怪物。' : '更深處傳來強大的氣息，首領就在前方。') : '下一波敵人正在逼近。'}</p><p class="sub">生命 ${S.hp}/${st.maxhp}・魔力 ${S.mp}/${st.maxmp}</p>`,
         [
           {
             label: '撤退',
@@ -921,15 +938,10 @@ function winBattle() {
       endBattle();
     }
   };
-  const cont = () => {
-    if (S.cls === 'novice' && S.lv >= 5 && !S.classOffered) {
-      S.classOffered = true;
-      classModal(next);
-    } else next();
-  };
+  const cont = next;
   showModal(
     '勝利！',
-    `<p>獲得 <span style="color:var(--good)">${xp} 經驗</span>、<span style="color:var(--gold)">${gold} 金幣</span></p>${drops.length ? `<div class="loot">${drops.map(d => `<span>${d}</span>`).join('')}</div>` : ''}${bonus}${up ? `<p style="color:var(--gold)">升級到 Lv${S.lv}！狀態全滿，獲得 1 天賦點</p>` : ''}`,
+    `<p>獲得 <span style="color:var(--good)">${xp} 經驗</span>、<span style="color:var(--gold)">${gold} 金幣</span></p>${drops.length ? `<div class="loot">${drops.map(d => `<span>${d}</span>`).join('')}</div>` : ''}${bonus}${up ? `<p style="color:var(--gold)">升級到 Lv${S.lv}！獲得 1 天賦點</p>` : ''}`,
     [{ label: '繼續', pri: 1, fn: cont }]
   );
 }
@@ -979,7 +991,7 @@ function enterDungeon(t, remote) {
     room: 0,
     remote,
     lm: t.kind === 'landmark' ? t : null,
-    seed: h(fl(t.lat * 1e4), fl(t.lng * 1e4), epoch()),
+    seed: h(fl(t.lat * 1e4), fl(t.lng * 1e4), hepoch()),
     spec: dunSpec(t)
   };
   sfx('door');
@@ -1012,7 +1024,7 @@ function nextRoom() {
 function dungeonClear() {
   const kind = D.kind,
     rw = dunReward(D);
-  S.cleared[D.id] = kind === 'rift' ? evEp() : epoch();
+  S.cleared[D.id] = kind === 'rift' ? evEp() : hepoch();
   const nm = kind === 'rift' ? '魔物裂隙' : D.lm ? D.lm.dn : DTYPES[D.spec.dt].n,
     rem = D.remote;
   addLog(`攻略${nm}（Lv${D.lv}）`);
@@ -1076,7 +1088,7 @@ function renderBattle(t) {
   c.beginPath();
   c.ellipse(p.hx + hox, p.y + 2, hs * 6.5, hs * 1.5, 0, 0, 6.28);
   c.fill();
-  const wep = CLASSES[S.cls].wep,
+  const wep = wepKind(),
     u = hs;
   if (wep === 'sword') {
     c.fillStyle = '#d8dde6';

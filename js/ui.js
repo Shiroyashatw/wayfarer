@@ -44,7 +44,9 @@ const TITLES = {
   settings: '設定',
   log: '冒險日誌',
   friends: '好友',
-  party: '組隊'
+  party: '組隊',
+  skills: '技能',
+  gem: '技能石'
 };
 /* 底部導覽：群組按鈕點了往上展開 2～3 個功能，再點一次或點地圖就收起來 */
 const NAVG = {
@@ -60,6 +62,7 @@ const NAVG = {
   ],
   me: [
     ['hero', '角色', 'shield'],
+    ['skills', '技能', 'book'],
     ['tree', '天賦樹', 'star']
   ]
 };
@@ -86,6 +89,7 @@ function navOpen(g) {
   btn.setAttribute('aria-expanded', 'true');
   const dot = s =>
     (s === 'tree' && treePts() > 0) ||
+    (s === 'skills' && S.cur.eng > 0 && S.gems.some(g => gemOpen(g) > 0)) ||
     (s === 'party' && PT) ||
     (s === 'friends' && SOC.friends.some(f => f.status === 'pending' && f.incoming));
   el.innerHTML = NAVG[g]
@@ -144,11 +148,25 @@ const fmt1 = v => Math.round(v);
 function curRow() {
   return `<div class="curs">${CUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>`;
 }
+const curRowG = () =>
+  `<div class="curs">${GCUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>`;
+const gemDesc = q =>
+  q.kind === 'spell'
+    ? `${EL[q.el]}法術・基礎傷害 ${Math.round(q.sb * q.mult)}`
+    : q.kind === 'attack'
+      ? `攻擊・武器傷害 ${Math.round(q.mult * 100)}%${q.hits > 1 ? ` × ${q.hits} 下` : ''}`
+      : `回復 ${Math.round(q.heal * 100)}% 生命`;
+const gemRow = (g, tag) => {
+  const q = gemSkill(g);
+  return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q)}・刻印 ${g.en.length}/${gemSlots(g)}${gemOpen(g) > 0 ? ' <span style="color:var(--gold)">◇可刻印</span>' : ''}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
+};
+const prayed = id => !!S.prayed && S.prayed[id] === hepoch();
+const nearBase = () => S.bases.some(b => dist(S.lat, S.lng, b.lat, b.lng) <= RANGE);
 function renderSheet() {
   if (!sheetName || sheetName === 'ent') return;
   const el = $('sbody'),
     st = stats(),
-    c = CLASSES[S.cls];
+    c = CLASSES[S.cls] || CLASSES.novice;
   let html = '';
   if (sheetName === 'hero') {
     const avg = (st.physLo + st.physHi) / 2 + st.fire + st.cold + st.light * 1;
@@ -159,10 +177,69 @@ function renderSheet() {
         ? `<div class="sub" style="text-align:center">基石：<span style="color:#e8873a">${k.map(n => n.n).join('、')}</span></div>`
         : '';
     })()}
-    <h3>攻擊</h3><div class="kv"><div><span>物理傷害</span><b>${fmt1(st.physLo)}–${fmt1(st.physHi)}</b></div><div><span>元素附加</span><b>${fmt1(st.fire + st.cold + st.light)}</b></div><div><span>法術基礎</span><b>${fmt1(st.spell)}</b></div><div><span>暴擊率</span><b>${st.crit}%</b></div><div><span>暴擊傷害</span><b>${st.critMulti}%</b></div><div><span>吸血</span><b>${st.leech}%</b></div></div>
+    <h3>攻擊</h3><div class="kv"><div><span>物理傷害</span><b>${fmt1(st.physLo)}–${fmt1(st.physHi)}</b></div><div><span>元素附加</span><b>${fmt1(st.fire + st.cold + st.light)}</b></div><div><span>法術加成</span><b>${Math.round((st.spellMul - 1) * 100)}%</b></div><div><span>暴擊率</span><b>${st.crit}%</b></div><div><span>暴擊傷害</span><b>${st.critMulti}%</b></div><div><span>吸血</span><b>${st.leech}%</b></div></div>
     <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>視線範圍</span><b>${st.vision}m</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div></div>
-    <h3>技能</h3><div class="card">${c.skills.map(k => `<div class="rowx"><div class="t"><b>${SKILLS[k].name}</b><small>${SKILLS[k].kind === 'spell' ? EL[SKILLS[k].el] + '法術，吃法術傷害' : SKILLS[k].kind === 'attack' ? '攻擊，吃武器與附加傷害' : '回復'}</small></div><small style="color:${st.blood ? 'var(--hp)' : 'var(--mp)'}">${costTxt(st, SKILLS[k]) || '—'}</small></div>`).join('')}</div>
+    <h3>技能</h3><div class="card">${mySkills()
+      .map((q, i) =>
+        q
+          ? `<div class="rowx"><div class="t"><b>${q.name} Lv${q.lv}</b><small>${gemDesc(q)}</small></div><small style="color:${st.blood ? 'var(--hp)' : 'var(--mp)'}">${costTxt(st, q) || '—'}</small></div>`
+          : `<div class="rowx"><div class="t"><small class="sub">第 ${i + 1} 格：空</small></div></div>`
+      )
+      .join('')}</div><button class="btn" data-act="sheet" data-s="skills">管理技能石</button>
 `;
+  } else if (sheetName === 'skills') {
+    const nb = nearBase(),
+      eqd = new Set(S.sk),
+      list = [...S.gems].sort((a, b) => eqd.has(b.id) - eqd.has(a.id) || b.lv - a.lv || a.k.localeCompare(b.k));
+    html = `<p class="sub">技能全部來自技能石。技能欄 4 格，另外有固定的普通攻擊。技能石每 5 級開 1 個空的刻印槽，用刻印石點下去才會抽出詞綴。</p>
+    <h3>技能欄</h3>${S.sk
+      .map((id, i) => {
+        const g = gemOf(id);
+        return g
+          ? gemRow(g, `第 ${i + 1} 格`)
+          : `<div class="card"><div class="rowx"><div class="t"><b class="sub">第 ${i + 1} 格：空</b><small>從下方的技能石選一顆裝上</small></div></div></div>`;
+      })
+      .join('')}
+    <h3>靈魂祭壇</h3><div class="card"><div class="rowx"><div class="t"><b>${curDot('soul')}靈魂碎片 ${S.cur.soul || 0}</b><small>${nb ? `用 ${GEM_DRAW} 個抽 1 顆 Lv1 技能石` : '要在自己的據點 80 公尺內才能使用祭壇'}</small></div><button class="btn pri sm" data-act="altar" ${nb && (S.cur.soul || 0) >= GEM_DRAW ? '' : 'disabled'}>抽取</button></div></div>
+    <h3>技能通貨</h3>${curRowG()}
+    <h3>技能石（${S.gems.length}）</h3>${
+      list
+        .filter(g => !eqd.has(g.id))
+        .map(g => gemRow(g))
+        .join('') || '<p class="sub">沒有其他技能石</p>'
+    }`;
+  } else if (sheetName === 'gem') {
+    const g = gemOf(selGem);
+    if (!g) {
+      openSheet('skills');
+      return;
+    }
+    const q = gemSkill(g),
+      at = S.sk.indexOf(g.id),
+      blk = gemLvBlock(g),
+      n = gemSlots(g);
+    html = `<div class="card"><div class="rowx"><div class="t"><b style="font-size:17px"><img class="cico lg" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span></b><small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
+    <h3>刻印槽 ${g.en.length}/${n}${g.lv < GEM_MAX ? `<small class="sub">・下一個在 Lv${(fl(g.lv / 5) + 1) * 5}</small>` : ''}</h3><div class="card">${
+      n
+        ? [
+            ...g.en.map(a => `<div class="rowx"><div class="t"><b>${gAffTxt(a)}</b></div></div>`),
+            ...Array.from(
+              { length: gemOpen(g) },
+              () =>
+                '<div class="rowx"><div class="t"><small class="sub">◇ 空的刻印槽：用刻印石點下去</small></div></div>'
+            )
+          ].join('')
+        : '<p class="sub">Lv5 開第一個刻印槽</p>'
+    }</div>
+    <h3>刻印</h3><div class="crafts">${GCUR.slice(2)
+      .map(
+        cu =>
+          `<button class="btn sm" data-act="gemCraft" data-c="${cu.id}" ${gemCraftable(g, cu.id) && S.cur[cu.id] > 0 ? '' : 'disabled'}>${curDot(cu.id)}${cu.n} <b>${S.cur[cu.id] || 0}</b><small>${cu.d}</small></button>`
+      )
+      .join('')}</div>
+    <h3>升級</h3><div class="card"><div class="rowx"><div class="t"><b>${g.lv < GEM_MAX ? `Lv${g.lv} → Lv${g.lv + 1}` : '已滿級'}</b><small>${g.lv < GEM_MAX ? `需要 ${dustNeed(g.lv)} 靈魂粉塵（你有 ${S.cur.dust || 0}）・技能石等級不能超過角色等級` : ''}</small></div><button class="btn pri sm" data-act="gemLv" ${blk ? 'disabled' : ''}>${blk || '升級'}</button></div></div>
+    <h3>技能欄</h3><div class="btns">${S.sk.map((id, i) => `<button class="btn sm ${id === g.id ? '' : 'pri'}" data-act="gemEquip" data-i="${i}" ${id === g.id ? 'disabled' : ''}>${id === g.id ? '裝在' : '裝到'}第 ${i + 1} 格${id && id !== g.id && gemOf(id) ? `<small>（換下${SKILLS[gemOf(id).k].name}）</small>` : ''}</button>`).join('')}${at >= 0 ? '<button class="btn sm" data-act="gemOff">卸下</button>' : ''}</div>
+    <div class="btns"><button class="btn" data-act="gemBreak">分解（得 ${gemDustBack(g)} 粉塵）</button><button class="btn" data-act="sheet" data-s="skills">返回技能</button></div>`;
   } else if (sheetName === 'bag') {
     const cell = (sl, area) => {
       const it = S.eq[sl];
@@ -216,9 +293,18 @@ function renderSheet() {
       .map(e => ({ ...e, d: dist(S.lat, S.lng, e.lat, e.lng) }))
       .sort((a, b) => (b.ev ? 1 : 0) - (a.ev ? 1 : 0) || a.d - b.d)
       .slice(0, 30);
-    html = `<p class="sub">探索面積 ${explKm2().toFixed(2)} 平方公里・下次地圖刷新在 ${mmss(REFRESH - (now() % REFRESH))} 後。迷霧裡的東西要走近才看得到；限時事件排在最前面。</p>${list.map(e => `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="openEnt" data-id="${e.id}"><div class="ent"><canvas data-ent="${e.id}" width="18" height="18" style="width:44px;height:44px"></canvas><div style="flex:1;min-width:0"><b style="font-weight:500;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(e.kind === 'monster' ? `${e.name} Lv${e.lv}` : e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name)}</b><small class="sub" style="display:block">${e.bounty ? '懸賞目標' : KIND[e.kind]}・${dirName(S.lat, S.lng, e.lat, e.lng)}方 ${fmtD(e.d)}${e.d <= (e.kind === 'town' ? 120 : RANGE) ? '・<span style="color:var(--good)">可互動</span>' : ''}</small></div></div></button>`).join('')}`;
+    html = `<p class="sub">探索面積 ${explKm2().toFixed(2)} 平方公里・怪物在 ${mmss(REFRESH - (now() % REFRESH))} 後刷新，地城、寶箱、商店在 ${mmss(REFRESH_H - (now() % REFRESH_H))} 後刷新。迷霧裡的東西要走近才看得到；限時事件排在最前面。</p>${list.map(e => `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="openEnt" data-id="${e.id}"><div class="ent"><canvas data-ent="${e.id}" width="18" height="18" style="width:44px;height:44px"></canvas><div style="flex:1;min-width:0"><b style="font-weight:500;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(e.kind === 'monster' ? `${e.name} Lv${e.lv}` : e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name)}</b><small class="sub" style="display:block">${e.bounty ? '懸賞目標' : KIND[e.kind]}・${dirName(S.lat, S.lng, e.lat, e.lng)}方 ${fmtD(e.d)}${e.d <= (e.kind === 'town' ? 120 : RANGE) ? '・<span style="color:var(--good)">可互動</span>' : ''}</small></div></div></button>`).join('')}`;
   } else if (sheetName === 'settings') {
     html = `<h3>聲音</h3><div class="seg"><button data-act="toggle" data-k="music" aria-pressed="${S.music}">音樂 ${S.music ? '開' : '關'}</button><button data-act="toggle" data-k="sfx" aria-pressed="${S.sfx}">音效・震動 ${S.sfx ? '開' : '關'}</button></div>
+    <h3>自動喝水</h3><div class="card"><p class="sub" style="margin-bottom:6px">戰鬥結束後低於門檻就自動喝藥水（每種最多 3 瓶）。戰鬥勝利不會自動回復。</p>${[
+      ['autoHp', '生命藥水', S.potions],
+      ['autoMp', '魔力藥水', S.ethers]
+    ]
+      .map(
+        ([k, n, c]) =>
+          `<div style="margin-top:8px"><b>${n}（剩 ${c}）</b><small class="sub">・${S[k] ? `低於 ${S[k]}% 時喝` : '關閉'}</small><div class="seg" style="margin-top:6px">${[0, 30, 50, 70].map(v => `<button data-act="autoPot" data-k="${k}" data-v="${v}" aria-pressed="${(S[k] || 0) === v}">${v ? v + '%' : '關'}</button>`).join('')}</div></div>`
+      )
+      .join('')}</div>
     <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps ? '開' : '關'}</b><small>${S.gps ? GPS.err || '用手機定位實際走路移動，點地圖不會再走過去' : '目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm ${S.gps ? '' : 'pri'}" data-act="gps">${S.gps ? '關閉' : '開啟'}</button></div></div>
     <h3>模擬傳送（測試用）</h3><div class="btns">${['台中車站', '台北車站', '台北101', '九份老街', '日月潭', '赤崁樓', '駁二藝術特區', '墾丁大街', '花蓮車站', '宜蘭車站'].map(n => `<button class="btn sm" data-act="warp" data-n="${n}">${n}</button>`).join('')}</div>
     <h3>名字</h3><div class="card"><div class="srow"><input class="inp" id="nameInp" maxlength="12" value="${esc(S.name || '旅人')}"><button class="btn" data-act="setName">儲存</button></div><p class="sub" style="margin-top:6px">好友列表和組隊時顯示的名字，最多 12 個字。</p></div>
@@ -286,13 +372,16 @@ function openEnt(id) {
       T = DTYPES[e.dt],
       ok = inR && !isDone(e);
     desc = isDone(e)
-      ? '這座地城已被攻略，地圖刷新（每 15 分鐘）後會換成新的地城。'
-      : `<b style="color:${T.col}">${T.n}</b>・共 ${sp.floors} 層，最深處有首領。${T.desc}${sp.noregen ? '' : '每過一層恢復 15% 生命與魔力。'}
+      ? '這座地城已被攻略，每小時整點刷新後會換成新的地城。'
+      : `<b style="color:${T.col}">${T.n}</b>・共 ${sp.floors} 層，最深處有首領。${T.desc}
       <h3 style="margin-top:10px">地城詞綴</h3>${dunModsHTML(sp)}<div class="kv" style="margin-top:6px"><div><span>物品數量</span><b>+${sp.q}%</b></div><div><span>物品稀有度</span><b>+${sp.r}%</b></div></div>`;
     act = `<button class="btn ${e.dt === 'normal' ? 'pri' : ''}" data-act="enter" data-id="${id}" ${ok ? '' : 'disabled'}>單人進入</button><button class="btn ${e.dt === 'normal' ? '' : 'pri'}" data-act="partyOpen" data-id="${id}" ${ok ? '' : 'disabled'}>組隊進入（好友或隊伍代碼）</button>`;
   } else if (e.kind === 'shrine') {
-    desc = '誠心參拜可以恢復全部生命與魔力，偶爾會得到通貨。';
-    act = `<button class="btn pri" data-act="pray" data-id="${id}" ${inR ? '' : 'disabled'}>參拜</button>`;
+    const pd = prayed(e.id);
+    desc = pd
+      ? '這座廟宇的祝福已經用過了，每小時整點會恢復。'
+      : '誠心參拜可以恢復全部生命與魔力，偶爾會得到通貨。每座廟宇每小時一次。';
+    act = `<button class="btn pri" data-act="pray" data-id="${id}" ${inR && !pd ? '' : 'disabled'}>參拜</button>`;
   } else if (e.kind === 'chest') {
     desc = '路邊的寶箱。裡面通常有通貨，偶爾是裝備……也可能是寶箱怪。';
     act = `<button class="btn pri" data-act="openChest" data-id="${id}" ${inR ? '' : 'disabled'}>打開</button>`;
@@ -311,7 +400,7 @@ function openEnt(id) {
     act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
   } else if (e.kind === 'town') {
     const t = e.t,
-      done = S.cleared[t.id] === epoch(),
+      done = S.cleared[t.id] === hepoch(),
       lv = townLv(t),
       known = S.found[t.id];
     desc = known ? `以真實地標「${esc(t.n)}」為中心的城鎮。` : '還沒探索過的城鎮。走到這裡就能解鎖，並獲得發現獎勵。';
@@ -321,7 +410,7 @@ function openEnt(id) {
           ? `<button class="btn" data-act="inn" ${inR ? '' : 'disabled'}>旅店休息・15 金</button>`
           : '') +
         (t.svc.includes('temple')
-          ? `<button class="btn" data-act="pray" data-id="${id}" ${inR ? '' : 'disabled'}>參拜</button>`
+          ? `<button class="btn" data-act="pray" data-id="${id}" ${inR && !prayed(id) ? '' : 'disabled'}>${prayed(id) ? '已參拜（每小時一次）' : '參拜'}</button>`
           : '') +
         (t.svc.includes('shop')
           ? `<button class="btn" data-act="shop" data-id="${id}" ${inR ? '' : 'disabled'}>商店</button>`
@@ -364,13 +453,13 @@ function baseTarget(b) {
   for (let i = fl((bx - 1500) / DCELL); i <= fl((bx + 1500) / DCELL); i++)
     for (let j = fl((by - 1500) / DCELL); j <= fl((by + 1500) / DCELL); j++) {
       const g = dungeonAt(i, j);
-      if (!g || g.dt === 'hell' || S.cleared[g.id] === epoch()) continue;
+      if (!g || g.dt === 'hell' || S.cleared[g.id] === hepoch()) continue;
       const d = Math.hypot(g.x - bx, g.y - by);
       if (d <= 1500 && (!best || d < best.d)) best = { ...g, d };
     }
   for (const t of TOWNS) {
     const d = Math.hypot(t.x - bx, t.y - by);
-    if (d < 1500 && S.found[t.id] && S.cleared[t.id] !== epoch() && (!best || d < best.d))
+    if (d < 1500 && S.found[t.id] && S.cleared[t.id] !== hepoch() && (!best || d < best.d))
       best = { id: t.id, name: t.dn, lat: t.lat, lng: t.lng, d, lv: townLv(t), kind: 'landmark', dn: t.dn };
   }
   return best;
@@ -469,7 +558,7 @@ const A = {
     const e = ENT.get(d.id);
     if (!inRange(e)) return;
     const t = e.t;
-    if (S.cleared[t.id] === epoch()) return;
+    if (S.cleared[t.id] === hepoch()) return;
     closeSheet();
     enterDungeon({ id: t.id, kind: 'landmark', dn: t.dn, lat: t.lat, lng: t.lng, lv: townLv(t) }, false);
   },
@@ -488,7 +577,10 @@ const A = {
   },
   pray: d => {
     const e = ENT.get(d.id);
-    if (!inRange(e)) return;
+    if (!inRange(e) || prayed(e.id)) return;
+    S.prayed = S.prayed || {};
+    for (const k in S.prayed) if (S.prayed[k] !== hepoch()) delete S.prayed[k];
+    S.prayed[e.id] = hepoch();
     fullHeal();
     sfx('bless');
     let gift = '';
@@ -534,6 +626,12 @@ const A = {
       giveItem(it);
       got.push(itemName(it));
     }
+    giveCur('soul', 2);
+    got.push(curDot('soul') + '靈魂碎片 ×2');
+    if (Math.random() < 0.2) {
+      giveCur('eng');
+      got.push(curDot('eng') + '刻印石');
+    }
     sfx('coin');
     showModal('打開寶箱', `<div class="loot">${got.map(x => `<span>${x}</span>`).join('')}</div>`, [
       {
@@ -561,6 +659,87 @@ const A = {
     } else enterDungeon({ id: e.id, kind: 'rift', lat: e.lat, lng: e.lng, lv: e.lv }, false);
   },
   skill: d => useSkill(d.k),
+  gem: d => {
+    selGem = d.id;
+    sfx('tap');
+    openSheet('gem');
+  },
+  gemEquip: d => {
+    const i = +d.i;
+    S.sk = S.sk.map(id => (id === selGem ? null : id));
+    S.sk[i] = selGem;
+    sfx('select');
+    renderSheet();
+    save();
+  },
+  gemOff: () => {
+    S.sk = S.sk.map(id => (id === selGem ? null : id));
+    renderSheet();
+    save();
+  },
+  gemLv: () => {
+    const g = gemOf(selGem);
+    if (!g || gemLvBlock(g)) return;
+    const n = dustNeed(g.lv);
+    S.cur.dust -= n;
+    g.dust += n;
+    g.lv++;
+    sfx(g.lv % 5 ? 'select' : 'level');
+    toast(g.lv % 5 ? `${SKILLS[g.k].name} 升到 Lv${g.lv}` : `${SKILLS[g.k].name} Lv${g.lv}：開了一個新的刻印槽！`);
+    renderSheet();
+    save();
+  },
+  gemCraft: d => {
+    const g = gemOf(selGem);
+    if (gemCraft(g, d.c)) {
+      sfx(d.c === 'eng' ? 'select' : 'level');
+      buzz(30);
+      addLog(`使用${GCURI[d.c].n}：${SKILLS[g.k].name} Lv${g.lv}`);
+      renderSheet();
+      save();
+    }
+  },
+  gemBreak: () => {
+    const g = gemOf(selGem);
+    if (!g) return;
+    const v = gemDustBack(g);
+    showModal('分解技能石', `<p>把 ${SKILLS[g.k].name} Lv${g.lv} 分解成 ${v} 個靈魂粉塵？刻印詞綴會一起消失。</p>`, [
+      {
+        label: '分解',
+        pri: 1,
+        fn: () => {
+          S.gems = S.gems.filter(q => q !== g);
+          S.sk = S.sk.map(id => (id === g.id ? null : id));
+          giveCur('dust', v);
+          hideModal();
+          sfx('select');
+          toast(`得到 ${v} 個靈魂粉塵`);
+          openSheet('skills');
+          save();
+        }
+      },
+      { label: '取消', fn: hideModal }
+    ]);
+  },
+  altar: () => {
+    if (!nearBase() || (S.cur.soul || 0) < GEM_DRAW) return;
+    S.cur.soul -= GEM_DRAW;
+    const ks = GEMK(),
+      g = giveGem(ks[fl(Math.random() * ks.length)]);
+    sfx('level');
+    buzz(40);
+    addLog(`靈魂祭壇：抽到 ${SKILLS[g.k].name}`);
+    showModal(
+      '靈魂祭壇',
+      `<p style="text-align:center"><img class="bigico" src="${iconURL(SKILLS[g.k].icon)}" alt=""></p><p style="text-align:center">抽到 <b>${SKILLS[g.k].name}</b> Lv1${S.sk.includes(g.id) ? '，已自動裝進技能欄' : ''}</p>`,
+      [
+        { label: '再抽一次', pri: 1, dis: (S.cur.soul || 0) < GEM_DRAW, fn: () => (hideModal(), A.altar()) },
+        { label: '好', fn: () => (hideModal(), renderSheet()) }
+      ]
+    );
+    renderSheet();
+    save();
+  },
   bitem: d => bItem(d.k),
   flee: () => flee(),
   bsub: d => {
@@ -992,6 +1171,11 @@ const A = {
     checkArrive();
     closeSheet();
     toast(`模擬傳送：${t.n}`);
+  },
+  autoPot: d => {
+    S[d.k] = +d.v;
+    save();
+    renderSheet();
   },
   toggle: d => {
     S[d.k] = !S[d.k];

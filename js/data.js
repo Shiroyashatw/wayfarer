@@ -14,44 +14,23 @@ let S,
   follow = true,
   resetArm = false,
   selItem = null,
+  selGem = null,
   selSlot = null,
   selNode = null,
   MB = null;
 
 /* ================= game data ================= */
+/* 天賦盤起點（0.2 起職業不再決定技能與成長，只決定起點、起點數值、角色主色與開局技能石） */
 const CLASSES = {
   novice: {
-    name: '冒險者',
+    name: '冒險者之魂',
     color: '#a9a3b8',
-    g: { hp: 8, mp: 2, atk: 1.2, mag: 1, def: 1 },
-    skills: ['attack', 'power', 'heal'],
-    desc: '平衡型，起點在天賦樹中央，能往任何方向發展',
-    wep: 'sword'
+    gem: 'power',
+    desc: '起點在天賦盤正中央，往任何方向都一樣近，起點數值最平均'
   },
-  knight: {
-    name: '劍士',
-    color: '#c94a4a',
-    g: { hp: 12, mp: 2, atk: 1.6, mag: 0.4, def: 2 },
-    skills: ['attack', 'bash', 'whirl'],
-    desc: '高血量高護甲，正面硬戰',
-    wep: 'sword'
-  },
-  mage: {
-    name: '術士',
-    color: '#5865d6',
-    g: { hp: 6, mp: 5, atk: 0.6, mag: 3.2, def: 0.6 },
-    skills: ['attack', 'fire', 'ice', 'heal'],
-    desc: '法術傷害吃「法術傷害」詞綴',
-    wep: 'staff'
-  },
-  ranger: {
-    name: '遊俠',
-    color: '#3f9a52',
-    g: { hp: 9, mp: 3, atk: 1.4, mag: 0.8, def: 1.1 },
-    skills: ['attack', 'double', 'poison'],
-    desc: '連擊與毒傷，配暴擊很強',
-    wep: 'bow'
-  }
+  knight: { name: '戰士之魂', color: '#c94a4a', gem: 'bash', desc: '起點在左下，力量路線：生命、護甲、近戰' },
+  ranger: { name: '遊俠之魂', color: '#3f9a52', gem: 'double', desc: '起點在右下，敏捷路線：暴擊、閃避、連擊與毒' },
+  mage: { name: '術士之魂', color: '#5865d6', gem: 'fire', desc: '起點在上方，智力路線：法術、魔力、抗性' }
 };
 const SKILLS = {
   attack: { name: '攻擊', mp: 0, kind: 'attack', mult: 1, icon: 'axe' },
@@ -64,6 +43,105 @@ const SKILLS = {
   double: { name: '連射', mp: 6, kind: 'attack', mult: 1.05, hits: 2, fx: 'arrow', icon: 'arrow' },
   poison: { name: '毒箭', mp: 5, kind: 'attack', mult: 1.1, poison: 3, fx: 'arrow', icon: 'leaf' }
 };
+/* 技能石：等級上限 30，每 5 級開 1 個空的刻印槽，要用刻印石點下去才會抽出詞綴 */
+const GEM_MAX = 30;
+const GEM_DRAW = 10;
+const dustNeed = lv => Math.round(8 * Math.pow(lv, 1.5));
+/* 刻印詞綴：t 是 T1～T3 的數值範圍（T1 最高、最少見），k 是可以出現的技能種類 */
+const GAFF = [
+  {
+    id: 'dmg',
+    n: v => `技能傷害 +${v}%`,
+    k: ['attack', 'spell'],
+    t: [
+      [24, 32],
+      [14, 20],
+      [8, 12]
+    ]
+  },
+  {
+    id: 'cost',
+    n: v => `魔力消耗 -${v}%`,
+    k: ['attack', 'spell', 'heal'],
+    t: [
+      [18, 25],
+      [12, 16],
+      [6, 10]
+    ]
+  },
+  {
+    id: 'crit',
+    n: v => `暴擊率 +${v}%`,
+    k: ['attack', 'spell'],
+    t: [
+      [5, 7],
+      [3, 4],
+      [1, 2]
+    ]
+  },
+  {
+    id: 'ail',
+    n: v => `燃燒、凍結、感電機率 +${v}%`,
+    k: ['attack', 'spell'],
+    t: [
+      [50, 70],
+      [30, 45],
+      [15, 25]
+    ]
+  },
+  {
+    id: 'brk',
+    n: v => `碎甲：無視敵人 ${v}% 護甲`,
+    k: ['attack'],
+    t: [
+      [30, 40],
+      [18, 25],
+      [10, 15]
+    ]
+  },
+  {
+    id: 'leech',
+    n: v => `吸血 +${v}%`,
+    k: ['attack'],
+    t: [
+      [3, 4],
+      [2, 2],
+      [1, 1]
+    ]
+  },
+  {
+    id: 'dbl',
+    n: v => `${v}% 機率多打一下`,
+    k: ['attack'],
+    t: [
+      [16, 22],
+      [10, 14],
+      [5, 8]
+    ]
+  },
+  {
+    id: 'heal',
+    n: v => `治癒量 +${v}%`,
+    k: ['heal'],
+    t: [
+      [30, 40],
+      [18, 25],
+      [10, 15]
+    ]
+  }
+];
+const GAFFI = Object.fromEntries(GAFF.map(a => [a.id, a]));
+/* 技能石專用通貨（存在 S.cur，但不列在裝備製作） */
+const GCUR = [
+  { id: 'soul', n: '靈魂碎片', d: `在據點的靈魂祭壇用 ${GEM_DRAW} 個抽 1 顆 Lv1 技能石`, c: '#b7a6ff' },
+  { id: 'dust', n: '靈魂粉塵', d: '分解技能石得到，用來替技能石升級', c: '#d8d0ff' },
+  { id: 'eng', n: '刻印石', d: '在空的刻印槽抽一條隨機詞綴', c: '#9fd4ef' },
+  { id: 'engC', n: '混沌刻印石', d: '隨機重洗一條刻印詞綴', c: '#e58a3a' },
+  { id: 'engX', n: '崇高刻印石', d: '在空的刻印槽抽一條 T1～T2 詞綴', c: '#fff2b0' },
+  { id: 'prism', n: '昇華稜鏡', d: '重洗階級最低的那條刻印詞綴', c: '#ff8fd8' },
+  { id: 'engD', n: '神聖刻印石', d: '不換詞綴種類，重骰所有刻印詞綴的數值', c: '#ffe27a' }
+];
+const GCURI = Object.fromEntries(GCUR.map(c => [c.id, c]));
 const EL = { phys: '物理', fire: '火焰', cold: '冰冷', light: '閃電' };
 const MONS = [
   {
@@ -891,7 +969,7 @@ const DMODS = [
   { id: 'swift', n: '迅捷怪物', d: '怪物有機率行動兩次', q: 10, r: 8, em: 'swift' },
   { id: 'leech', n: '吸血怪物', d: '怪物造成傷害時回復生命', q: 6, r: 5, em: 'leech' },
   { id: 'eleweak', n: '元素削弱', d: '你的全部抗性 -20%', q: 12, r: 10 },
-  { id: 'noregen', n: '無法喘息', d: '每層之間不會回復生命與魔力', q: 10, r: 8 },
+  { id: 'noregen', n: '枯竭之地', d: '藥水效果減半', q: 10, r: 8 },
   { id: 'elite', n: '精英巢穴', d: '魔法怪與稀有怪大幅增加', q: 15, r: 12 }
 ];
 const DMODI = Object.fromEntries(DMODS.map(m => [m.id, m]));
@@ -1529,18 +1607,18 @@ const TREE = (() => {
       return L[i % L.length];
     };
   const CLS = {
-    knight: { a: 150, name: '劍士', st: { life: 20, armorPct: 10 }, ic: 'shield' },
+    knight: { a: 150, name: '戰士', st: { life: 20, armorPct: 10 }, ic: 'shield' },
     ranger: { a: 30, name: '遊俠', st: { critPct: 1, speed: 2 }, ic: 'target' },
     mage: { a: -90, name: '術士', st: { spellPct: 10, mana: 10 }, ic: 'book' }
   };
   const R0 = 125,
     RS = 210,
     STEP = 42;
-  add('start_novice', 0, 0, ['冒險者起點', { life: 8, physPct: 4, spellPct: 4 }, 'star'], 'start', { cls: 'novice' });
+  add('start_novice', 0, 0, ['冒險者之魂', { life: 8, physPct: 4, spellPct: 4 }, 'star'], 'start', { cls: 'novice' });
   const fork = {};
   for (const [c, v] of Object.entries(CLS)) {
     const [x, y] = P(R0, v.a);
-    add('start_' + c, x, y, [v.name + '起點', v.st, v.ic], 'start', { cls: c });
+    add('start_' + c, x, y, [v.name + '之魂', v.st, v.ic], 'start', { cls: c });
     const [fx, fy] = P(168, v.a),
       f = add('f_' + c, fx, fy, [...TH[{ knight: 'life', ranger: 'crit', mage: 'spell' }[c]].s], 'small');
     ln('start_' + c, f);
@@ -1663,5 +1741,5 @@ const TREE = (() => {
   }
   return { N, E, byId };
 })();
-const VER = '0.1.9';
+const VER = '0.2.0';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

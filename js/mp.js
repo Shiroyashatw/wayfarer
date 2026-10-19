@@ -22,6 +22,9 @@ function mySnap() {
     lv: S.lv,
     hp: S.hp,
     mp: S.mp,
+    sks: mySkills(),
+    pal: heroPal(),
+    wep: wepKind(),
     st: {
       maxhp: st.maxhp,
       maxmp: st.maxmp,
@@ -32,7 +35,7 @@ function mySnap() {
       fire: st.fire,
       cold: st.cold,
       light: st.light,
-      spell: st.spell,
+      spellMul: st.spellMul,
       crit: st.crit,
       critMulti: st.critMulti,
       leech: st.leech,
@@ -54,16 +57,7 @@ function mySnap() {
     }
   };
 }
-const palFor = cls => ({
-  h: '#6b3324',
-  s: '#f1c27d',
-  e: '#1a1626',
-  c: (CLASSES[cls] || CLASSES.novice).color,
-  a: shade((CLASSES[cls] || CLASSES.novice).color, -0.35),
-  b: '#d9a441',
-  l: '#3b3550',
-  f: '#5a3a26'
-});
+const palFor = q => q.pal || heroPal(q.cls, {});
 
 /* ================= party / lobby ================= */
 function ptSend(ev, payload) {
@@ -333,7 +327,7 @@ function mpStart() {
     mem = [...PT.members.values()];
   PT.started = true;
   ptLobby();
-  const seed = h(fl(d.lat * 1e4), fl(d.lng * 1e4), epoch()),
+  const seed = h(fl(d.lat * 1e4), fl(d.lng * 1e4), hepoch()),
     spec = dunSpec(d);
   MB = {
     spec,
@@ -355,6 +349,9 @@ function mpStart() {
       hp: Math.max(1, Math.min(m.hp, m.st.maxhp)),
       mp: Math.min(m.mp, m.st.maxmp),
       st: m.st,
+      sks: m.sks || [],
+      pal: m.pal,
+      wep: m.wep,
       alive: true,
       gone: false,
       guard: 0,
@@ -444,9 +441,9 @@ function mpResolve(uid, k, auto) {
   MB.tok++;
   MB.actor = null;
   MB.dl = 0;
-  let sk = SKILLS[k];
+  let sk = skByKey(k, p.sks || []);
   if (k === 'potion' || k === 'ether') {
-    const hm = p.st.healMul || 1,
+    const hm = (p.st.healMul || 1) * (MB.spec.noregen ? 0.5 : 1),
       v = k === 'potion' ? Math.round(p.st.maxhp * 0.4 * hm) : Math.round(p.st.maxmp * 0.5 * hm);
     if (k === 'potion') p.hp = Math.min(p.st.maxhp, p.hp + v);
     else p.mp = Math.min(p.st.maxmp, p.mp + v);
@@ -458,21 +455,22 @@ function mpResolve(uid, k, auto) {
     MBT = setTimeout(mpNext, 900);
     return;
   }
-  if (!sk || !(CLASSES[p.cls] || CLASSES.novice).skills.includes(k) || !canPay(p, p.st, sk)) {
+  if (!sk || !canPay(p, skSt(p.st, sk), sk)) {
     sk = SKILLS.attack;
     k = 'attack';
   }
-  payCost(p, p.st, sk);
+  const pst = skSt(p.st, sk);
+  payCost(p, pst, sk);
   fx.push({ t: 'msg', s: auto ? `${p.name} 時間到，自動攻擊` : `${p.name}：${sk.name}` });
   if (sk.kind === 'heal') {
     const tg = MB.ps.filter(q => q.alive).sort((a, b) => a.hp / a.st.maxhp - b.hp / b.st.maxhp)[0],
-      v = Math.round(tg.st.maxhp * 0.35 * (p.st.healMul || 1));
+      v = Math.round(tg.st.maxhp * (sk.heal || 0.35) * (p.st.healMul || 1));
     tg.hp = Math.min(tg.st.maxhp, tg.hp + v);
     fx.push({ t: 'heal', uid: tg.uid, from: uid, v });
   } else {
-    const hits = (sk.hits || 1) + extraHit(p.st, sk);
+    const hits = (sk.hits || 1) + extraHit(pst, sk);
     for (let n = 0; n < hits && e.hp > 0; n++) {
-      const st = p.st,
+      const st = pst,
         pk = heroPacket(st, sk, sk.mult);
       const { d, crit } = heroDmg(st, pk, e, ES.shock > 0, p);
       e.hp = Math.max(0, e.hp - d);
@@ -495,7 +493,7 @@ function mpResolve(uid, k, auto) {
             ? sk.fx
             : sk.fx === 'whirl'
               ? 'whirl'
-              : sk.fx === 'arrow' || p.cls === 'ranger'
+              : sk.fx === 'arrow' || p.wep === 'bow'
                 ? 'arrow'
                 : 'slash'
       });
@@ -638,9 +636,6 @@ function mpRoomClear() {
     if (!p.alive) {
       p.alive = true;
       p.hp = Math.round(p.st.maxhp * 0.2);
-    } else if (!MB.spec.noregen) {
-      p.hp = Math.min(p.st.maxhp, p.hp + Math.round(p.st.maxhp * 0.15));
-      p.mp = Math.min(p.st.maxmp, p.mp + Math.round(p.st.maxmp * 0.15));
     }
   }
   MBT = setTimeout(() => {
@@ -756,7 +751,10 @@ function mpMy(k) {
     const key = k === 'potion' ? 'potions' : 'ethers';
     if (!S[key]) return;
     S[key]--;
-  } else if (SKILLS[k] && !canPay(me, me.st, SKILLS[k])) return;
+  } else {
+    const sk = skByKey(k, me.sks || []);
+    if (!sk || !canPay(me, skSt(me.st, sk), sk)) return;
+  }
   MB.sent = MB.tok;
   MB.sub = null;
   sfx('select');
@@ -784,7 +782,7 @@ function mpClear() {
   const d = MB.d,
     rw = dunReward({ spec: MB.spec, lv: d.lv, kind: 'dungeon', lm: null, remote: false }),
     loot = MB.loot || [];
-  S.cleared[d.id] = epoch();
+  S.cleared[d.id] = hepoch();
   addLog(`組隊攻略${dunName(d)}（Lv${d.lv}）`);
   sfx('level');
   const html = `<p><span style="color:var(--gold)">${rw.gold} 金幣</span>・<span style="color:#9fe7ff">${rw.cry} 魔晶</span></p>${rw.items.map(it => itemCard(it, '首領寶箱')).join('')}<div class="loot">${rw.curs
@@ -792,7 +790,8 @@ function mpClear() {
     .map(c => `<span>${c}</span>`)
     .join('')}</div>`;
   mpStop();
-  showModal('組隊攻略完成！', html, [
+  const ap = autoPot();
+  showModal('組隊攻略完成！', html + ap, [
     {
       label: '返回地圖',
       pri: 1,
@@ -900,19 +899,21 @@ function renderMBHud() {
       return `<div class="mp ${q.uid === MB.actor ? 'on' : ''} ${q.alive ? '' : 'down'}" style="left:${ps.x}px;top:${ps.y + 10}px"><b>${esc(q.name)}${q.gone ? '（離線）' : ''}</b><i class="mh"><i style="width:${(q.hp / q.st.maxhp) * 100}%"></i></i><i class="mm"><i style="width:${(q.mp / q.st.maxmp) * 100}%"></i></i></div>`;
     })
     .join('');
-  const c = CLASSES[(me && me.cls) || S.cls],
-    sk = c.skills.filter(k => k !== 'attack'),
+  const sks = (me && me.sks) || mySkills(),
+    sk = sks.map((q, i) => q && 's' + i).filter(Boolean),
     dis = my ? '' : 'disabled';
   const cb = (label, icon, sub, data, disabled, extra = '') =>
     `<button class="cb ${extra}" data-act="mpAct" ${data} ${disabled || dis}><img src="${iconURL(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
-  const slot = k =>
-    cb(
-      SKILLS[k].name,
-      SKILLS[k].icon,
-      costTxt(me ? me.st : stats(), SKILLS[k]),
+  const slot = k => {
+    const q = sks[+k.slice(1)];
+    return cb(
+      q.name,
+      q.icon,
+      costTxt(me ? me.st : stats(), q),
       `data-k="${k}"`,
-      me && canPay(me, me.st, SKILLS[k]) ? '' : 'disabled'
+      me && canPay(me, skSt(me.st, q), q) ? '' : 'disabled'
     );
+  };
   let html =
     `<div class="mpturn" id="mpTurn"></div>` +
     (sk[0] ? slot(sk[0]) : cb('生命藥水', 'heart', '×' + S.potions, 'data-k="potion"', S.potions ? '' : 'disabled')) +
@@ -920,7 +921,7 @@ function renderMBHud() {
     (sk[1] ? slot(sk[1]) : cb('魔力藥水', 'ice', '×' + S.ethers, 'data-k="ether"', S.ethers ? '' : 'disabled')) +
     `<button class="cb" data-act="mpSub" data-k="skills" ${dis}><img src="${iconURL('book')}" alt="">技能</button><button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button><button class="cb" data-act="mpSub" data-k="items" ${dis}><img src="${iconURL('bag')}" alt="">物品</button>`;
   if (MB.sub === 'skills' && my)
-    html += `<div class="bsub">${c.skills.map(k => (SKILLS[k].mp ? slot(k) : cb(SKILLS[k].name, SKILLS[k].icon, '', `data-k="${k}"`, ''))).join('')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
+    html += `<div class="bsub">${sk.map(slot).join('')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
   if (MB.sub === 'items' && my)
     html += `<div class="bsub">${cb('生命藥水', 'heart', '×' + S.potions + '・恢復 40%', 'data-k="potion"', S.potions ? '' : 'disabled')}${cb('魔力藥水', 'ice', '×' + S.ethers + '・恢復 50%', 'data-k="ether"', S.ethers ? '' : 'disabled')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
   $('bcmd').innerHTML = html;
@@ -1010,7 +1011,7 @@ function renderMB(t) {
     c.ellipse(ps.x, ps.y + 2, hs * 6, hs * 1.4, 0, 0, 6.28);
     c.fill();
     c.globalAlpha = q.alive ? 1 : 0.35;
-    drawSpr(c, 'heroS', palFor(q.cls), ps.x + ox, ps.y + Math.sin(t / 320 + i) * 1.5, hs, true);
+    drawSpr(c, 'heroS', palFor(q), ps.x + ox, ps.y + Math.sin(t / 320 + i) * 1.5, hs, true);
     c.globalAlpha = 1;
   });
   for (let i = MBFX.fx.length - 1; i >= 0; i--) {

@@ -134,13 +134,11 @@ setInterval(nextInvite, 3000);
 async function inviteFriend(f) {
   if (!PT || !CLOUD.sb) return;
   const d = PT.dun;
-  const { error } = await CLOUD.sb
-    .from('party_invites')
-    .insert({
-      to_id: f.user_id,
-      party: PT.code,
-      info: { from: S.name || '旅人', no: CLOUD.no, dn: d ? dunName(d) : '地城', dt: d && d.dt, lv: d && d.lv }
-    });
+  const { error } = await CLOUD.sb.from('party_invites').insert({
+    to_id: f.user_id,
+    party: PT.code,
+    info: { from: S.name || '旅人', no: CLOUD.no, dn: d ? dunName(d) : '地城', dt: d && d.dt, lv: d && d.lv }
+  });
   toast(error ? '邀請失敗：' + error.message : `已邀請 ${f.name}`);
 }
 
