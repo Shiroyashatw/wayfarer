@@ -359,7 +359,8 @@ function renderSheet() {
           `<div style="margin-top:8px"><b>${n}（剩 ${c}）</b><small class="sub">・${S[k] ? `低於 ${S[k]}% 時喝` : '關閉'}</small><div class="seg" style="margin-top:6px">${[0, 30, 50, 70].map(v => `<button data-act="autoPot" data-k="${k}" data-v="${v}" aria-pressed="${(S[k] || 0) === v}">${v ? v + '%' : '關'}</button>`).join('')}</div></div>`
       )
       .join('')}</div>
-    <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps ? '開' : '關'}</b><small>${S.gps ? GPS.err || '用手機定位實際走路移動，點地圖不會再走過去' : '目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm ${S.gps ? '' : 'pri'}" data-act="gps">${S.gps ? '關閉' : '開啟'}</button></div></div>
+    <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps ? '開' : '關'}</b><small>${S.gps ? GPS.err || '用手機定位實際走路移動，點地圖不會再走過去' : '目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm ${S.gps ? '' : 'pri'}" data-act="gps">${S.gps ? '關閉' : '開啟'}</button></div>
+      <div style="margin-top:10px"><b>點地圖移動速度</b><small class="sub">・測試用，GPS 開啟時不影響</small><div class="seg" style="margin-top:6px;grid-template-columns:repeat(3,1fr)">${[1, 1.5, 2].map(v => `<button data-act="simSpd" data-v="${v}" aria-pressed="${(S.simSpd || 1) === v}">×${v}</button>`).join('')}</div></div></div>
     <h3>新手教學</h3><div class="card"><div class="rowx"><div class="t"><b>重看新手教學</b><small>一步步介紹畫面上的按鈕與玩法</small></div><button class="btn sm" data-act="tutor">開始</button></div></div>
     <h3>名字</h3><div class="card"><div class="srow"><input class="inp" id="nameInp" maxlength="12" value="${esc(S.name || '旅人')}"><button class="btn" data-act="setName">儲存</button></div><p class="sub" style="margin-top:6px">好友列表和組隊時顯示的名字，最多 12 個字。</p></div>
     <h3>帳號</h3><div class="card"><div class="rowx"><div class="t"><b>玩家編號 <span style="color:var(--gold)">${playerTag()}</span></b><small>${CLOUD.anon ? '目前是遊客，存檔綁在這台裝置。註冊後會拿到玩家編號，換手機也能登入，之後的多人地城、副本也需要帳號。' : esc(CLOUD.email || '')}</small></div>${CLOUD.anon ? '' : `<button class="btn sm" data-act="logout">登出</button>`}</div>
@@ -1335,6 +1336,11 @@ const A = {
       S.gps = true;
       toast('GPS 定位中…');
     }
+    save();
+    renderSheet();
+  },
+  simSpd: d => {
+    S.simSpd = +d.v;
     save();
     renderSheet();
   },

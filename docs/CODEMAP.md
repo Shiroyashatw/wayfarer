@@ -28,6 +28,7 @@
 | 刷新週期 | `js/core.js` | `REFRESH`／`epoch`（怪物、事件 15 分鐘）、`REFRESH_H`／`hepoch`（地城、寶箱、商店、廟宇 1 小時） |
 | 角色外觀（跟著裝備） | `js/gear.js` | `heroLook`（外觀代碼，多人傳 `look`）、`heroSpr(view, look)`（組出 `heroF:…`／`heroS:…` 像素圖）、`heroPal`（材質階級配色）、`GLOOK`、正面武器 `WFRONT`、副手 `OFRONT`；側面武器 `battle.js` 的 `drawWeapon`（`mc` 刃色） |
 | 裝備圖示、材質階級（0.3.1） | `js/gear.js` | `GEAR`（每個底材一張 12×12，索引對應 `BASES`，新底材要補圖）、`MATC`／`BLADEC`／`TRIMC`／`GEMC`、`tierOf`／`TIERN`、`gearPal`、`gearIcon`（`slotIcon` 呼叫） |
+| 點地圖移動速度（0.3.1.1） | `js/map.js`、`js/ui.js` | `SIM_SPEED`、`simSpeed()`（乘上 `S.simSpd`）；設定面板 `A.simSpd` |
 | 背包批量賣出、上鎖（0.3.1） | `js/ui.js` | `canSell`（城鎮或據點）、`bagListHTML`、`worseThanEq`、`sellSel`、`A.sellMode`／`A.sellPick`／`A.sellQuick`／`A.sellMany`／`A.lock`、單件 `A.sell`；勾選狀態 `SEL.sell`、上鎖 `it.lock` |
 | 裝備生成、詞綴、通貨製作 | `js/items.js` | `makeItem`、`rollAffix`、`craftable`、`craft` |
 | 商店 | `js/items.js` | `openShop` |
@@ -193,7 +194,7 @@
 - **battle: drawing**（1812）
   `drawEnemies:1814`、`drawPets:1860`、`renderBattle:1869`、`drawWeapon:1945`、`drawFx:2023`
 
-### js/map.js（1659 行）
+### js/map.js（1662 行）
 
 - **world coordinates: meters from 台中車站 (x 東, y 南)**（3）
   `O:4`、`KX:5`、`toM:7`、`toLL:8`、`TOWNS:10`
@@ -211,25 +212,25 @@
 - **input**（1397）
   `ptrs:1398`、`drag:1399`、`tapOK:1433`、`endPtr:1434`、`tapWorld:1455`
 - **movement**（1489）
-  `lastFrame:1490`、`SIM_SPEED:1492`、`setPos:1493`、`checkArrive:1523`
-- **GPS**（1551）
-  `GPS:1553`、`gpsStart:1554`、`gpsStop:1591`、`tick:1598`、`timeRegen:1623`、`mmss:1632`、`plT:1636`、`placeLabel:1637`
+  `lastFrame:1490`、`SIM_SPEED:1493`、`simSpeed:1494`、`setPos:1495`、`checkArrive:1525`
+- **GPS**（1553）
+  `GPS:1555`、`gpsStart:1556`、`gpsStop:1593`、`tick:1600`、`timeRegen:1626`、`mmss:1635`、`plT:1639`、`placeLabel:1640`
 
 ### js/tree.js（449 行）
 
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:290`、`classPicker:423`
 
-### js/ui.js（1407 行）
+### js/ui.js（1413 行）
 
 - **HUD & sheets**（3）
-  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:43`、`NAVG:61`、`navG:80`、`navClose:81`、`navOpen:90`、`KIND:119`、`bar:128`、`entIcon:131`、`fmt1:162`、`curRow:163`、`bagTabs:167`、`curRowG:174`、`BUFFN:177`、`gemDesc:178`、`gemCell:213`、`dupGems:219`、`gemRow:227`、`prayed:231`、`renderSheet:232`、`nearTownE:398`、`canSell:402`、`worseThanEq:408`、`sellSel:413`、`bagListHTML:415`
-- **entity interaction**（433）
-  `openEnt:434`、`FIGHTK:568`、`onSite:569`、`inRange:570`
-- **bases**（572）
-  `prodRate:573`、`stored:574`、`baseName:575`、`flagCheck:576`
-- **actions**（584）
-  `authForm:586`、`A:618`
+  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:43`、`NAVG:61`、`navG:80`、`navClose:81`、`navOpen:90`、`KIND:119`、`bar:128`、`entIcon:131`、`fmt1:162`、`curRow:163`、`bagTabs:167`、`curRowG:174`、`BUFFN:177`、`gemDesc:178`、`gemCell:213`、`dupGems:219`、`gemRow:227`、`prayed:231`、`renderSheet:232`、`nearTownE:399`、`canSell:403`、`worseThanEq:409`、`sellSel:414`、`bagListHTML:416`
+- **entity interaction**（434）
+  `openEnt:435`、`FIGHTK:569`、`onSite:570`、`inRange:571`
+- **bases**（573）
+  `prodRate:574`、`stored:575`、`baseName:576`、`flagCheck:577`
+- **actions**（585）
+  `authForm:587`、`A:619`
 
 ### js/endgame.js（801 行）
 
