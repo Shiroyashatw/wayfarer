@@ -224,32 +224,98 @@ const ZBASE = {
   l: '#8a5a6a'
 };
 const ZODIAC = [
-  { k: 'rat', n: '子鼠', el: 'phys', mods: ['swift', 'leech'], d: '速度快，偷你的血', pal: { b: '#4a3a4a' } },
-  { k: 'ox', n: '丑牛', el: 'phys', mods: ['tough', 'armored'], d: '又硬又厚', pal: { b: '#4a1a1a', h: '#2a2228' } },
-  { k: 'tiger', n: '寅虎', el: 'phys', mods: ['fury', 'swift'], d: '越打越兇', pal: { b: '#a04a1a' } },
-  { k: 'rabbit', n: '卯兔', el: 'cold', mods: ['swift', 'cold'], d: '冰冷的連擊', pal: { b: '#c8b8d0', p: '#6a2a8a' } },
+  {
+    k: 'rat',
+    t: '瘟噬鼠皇',
+    n: '子鼠',
+    el: 'phys',
+    mods: ['swift', 'leech'],
+    d: '速度快，偷你的血',
+    pal: { b: '#4a3a4a' }
+  },
+  {
+    k: 'ox',
+    t: '獄鎖魔牛',
+    n: '丑牛',
+    el: 'phys',
+    mods: ['tough', 'armored'],
+    d: '又硬又厚',
+    pal: { b: '#4a1a1a', h: '#2a2228' }
+  },
+  { k: 'tiger', t: '血牙虎煞', n: '寅虎', el: 'phys', mods: ['fury', 'swift'], d: '越打越兇', pal: { b: '#a04a1a' } },
+  {
+    k: 'rabbit',
+    t: '月蝕狂兔',
+    n: '卯兔',
+    el: 'cold',
+    mods: ['swift', 'cold'],
+    d: '冰冷的連擊',
+    pal: { b: '#c8b8d0', p: '#6a2a8a' }
+  },
   {
     k: 'dragon',
+    t: '天墜邪龍',
     n: '辰龍',
     el: 'fire',
     mods: ['fire', 'tough', 'fury'],
     d: '十二生肖之首，最難纏',
     pal: { b: '#4a2468', r: '#ff4a3a' }
   },
-  { k: 'snake', n: '巳蛇', el: 'cold', mods: ['leech', 'cold'], d: '纏住吸血', pal: { b: '#1e3a2a' } },
-  { k: 'horse', n: '午馬', el: 'fire', mods: ['swift', 'fire'], d: '烈火奔馳', pal: { b: '#1e1824', h: '#3a2a2a' } },
+  { k: 'snake', t: '毒涎蛇姬', n: '巳蛇', el: 'cold', mods: ['leech', 'cold'], d: '纏住吸血', pal: { b: '#1e3a2a' } },
+  {
+    k: 'horse',
+    t: '焚魂夢魘',
+    n: '午馬',
+    el: 'fire',
+    mods: ['swift', 'fire'],
+    d: '烈火奔馳',
+    pal: { b: '#1e1824', h: '#3a2a2a' }
+  },
   {
     k: 'goat',
+    t: '魔羊祭司',
     n: '未羊',
     el: 'light',
     mods: ['reflect', 'shock'],
     d: '雷光與反射',
     pal: { b: '#3a2a2a', e: '#ffd23a' }
   },
-  { k: 'monkey', n: '申猴', el: 'light', mods: ['swift', 'shock'], d: '雷電亂竄', pal: { b: '#4a2a1a' } },
-  { k: 'rooster', n: '酉雞', el: 'fire', mods: ['fire', 'reflect'], d: '火焰反射', pal: { b: '#2a1a1a' } },
-  { k: 'dog', n: '戌狗', el: 'phys', mods: ['fury', 'leech'], d: '咬住不放', pal: { b: '#342834', w: '#c0b0a0' } },
-  { k: 'pig', n: '亥豬', el: 'phys', mods: ['tough', 'fury'], d: '橫衝直撞', pal: { b: '#5a2a2a', l: '#a06070' } }
+  {
+    k: 'monkey',
+    t: '雷魘猴王',
+    n: '申猴',
+    el: 'light',
+    mods: ['swift', 'shock'],
+    d: '雷電亂竄',
+    pal: { b: '#4a2a1a' }
+  },
+  {
+    k: 'rooster',
+    t: '業火冥雞',
+    n: '酉雞',
+    el: 'fire',
+    mods: ['fire', 'reflect'],
+    d: '火焰反射',
+    pal: { b: '#2a1a1a' }
+  },
+  {
+    k: 'dog',
+    t: '冥府獄犬',
+    n: '戌狗',
+    el: 'phys',
+    mods: ['fury', 'leech'],
+    d: '咬住不放',
+    pal: { b: '#342834', w: '#c0b0a0' }
+  },
+  {
+    k: 'pig',
+    t: '屠野魔豬',
+    n: '亥豬',
+    el: 'phys',
+    mods: ['tough', 'fury'],
+    d: '橫衝直撞',
+    pal: { b: '#5a2a2a', l: '#a06070' }
+  }
 ].map(z => ({ ...z, spr: 'z_' + z.k }));
 const ZODI = Object.fromEntries(ZODIAC.map(z => [z.k, z]));
 /* 用結晶在身邊召喚的事件 */
@@ -388,7 +454,7 @@ function makeBeast() {
 function makeZodiac(k, lv) {
   const z = ZODI[k],
     b = {
-      name: '墮落' + z.n,
+      name: z.t,
       bg: 'cave',
       spr: z.spr,
       pal: zodPal(z),
@@ -418,7 +484,7 @@ function huntWin(b) {
   const z = ZODI[b.zod];
   if (!z) return '';
   h.marks[z.k] = (h.marks[z.k] || 0) + 1;
-  const got = [`${z.n}印記`];
+  const got = [`${z.t}之印`];
   for (let i = 0; i < 3; i++) {
     const c = rollCur(2);
     giveCur(c);
@@ -436,8 +502,8 @@ function huntWin(b) {
     S.title = '十二生肖獵人';
     got.push('稱號「十二生肖獵人」');
   }
-  addLog(`討伐墮落${z.n}：${got.join('、')}`);
-  return `<p style="color:#ff8a9a">討伐墮落${z.n}！得到 ${got.join('、')}（生肖 ${ZODIAC.filter(q => h.marks[q.k]).length}/12）</p>`;
+  addLog(`討伐${z.t}：${got.join('、')}`);
+  return `<p style="color:#ff8a9a">討伐${z.t}！得到 ${got.join('、')}（生肖 ${ZODIAC.filter(q => h.marks[q.k]).length}/12）</p>`;
 }
 
 /* ================= sheet ================= */
@@ -457,10 +523,10 @@ function huntHTML() {
       `<button class="btn sm" data-act="huntSum" data-k="${s.k}" ${cr >= s.c && S.lv >= (s.lv || 0) ? '' : 'disabled'}>${s.n}（${s.c}）<br><small class="sub">${s.d}</small></button>`
   ).join('')}</div>
   <h3>墮落十二生肖（每隻 ${ZOD_COST} 個結晶）</h3>
-  <p class="sub">召喚後會出現在 100～250 公尺內，1 小時內要走過去打倒。Lv 你 +4 的首領，掉印記、通貨，有機會掉惡魔珠寶或傳奇裝備；集齊 12 種印記得到稱號。${za ? `<br><span style="color:#ff8a9a">目前已經召喚了墮落${ZODI[za.e.z].n}，先打倒它。</span>` : ''}</p>
+  <p class="sub">召喚後會出現在 100～250 公尺內，1 小時內要走過去打倒。Lv 你 +4 的首領，掉印記、通貨，有機會掉惡魔珠寶或傳奇裝備；集齊 12 種印記得到稱號。${za ? `<br><span style="color:#ff8a9a">目前已經召喚了${ZODI[za.e.z].t}，先打倒它。</span>` : ''}</p>
   <div class="zgrid">${ZODIAC.map(
     z =>
-      `<button class="zcell" data-act="huntZod" data-k="${z.k}" ${cr >= ZOD_COST && !za ? '' : 'disabled'} title="${z.d}"><canvas data-zod="${z.k}" width="18" height="18"></canvas><b>${z.n}</b><small>${h.marks[z.k] ? `印記 ×${h.marks[z.k]}` : z.d}</small></button>`
+      `<button class="zcell" data-act="huntZod" data-k="${z.k}" ${cr >= ZOD_COST && !za ? '' : 'disabled'} title="${z.d}"><canvas data-zod="${z.k}" width="18" height="18"></canvas><b>${z.t}</b><small>${z.n}・${h.marks[z.k] ? `之印 ×${h.marks[z.k]}` : z.d}</small></button>`
   ).join('')}</div>
   ${list.length ? `<h3>召喚中</h3><div class="card">${list.map(s => `<div class="rowx"><div class="t"><b>${esc(s.e.name)}</b><small>${fmtD(dist(S.lat, S.lng, ...toLL(s.e.x, s.e.y)))}・剩 ${Math.ceil((s.until - now()) / 60e3)} 分</small></div><button class="btn sm" data-act="openEnt" data-id="${s.id}">查看</button></div>`).join('')}</div>` : ''}`;
 }
@@ -552,16 +618,16 @@ Object.assign(A, {
         spr: z.spr,
         pal: zodPal(z),
         lv: S.lv + 4,
-        name: '墮落' + z.n,
+        name: z.t,
         gl: '255,42,74',
-        lbl: '墮落' + z.n,
+        lbl: z.t,
         lc: '#ff8a9a'
       },
       SUM_MS
     );
     sfx('encounter');
-    toast(`墮落${z.n}出現在附近了！`);
-    addLog(`用 ${ZOD_COST} 個惡魔結晶召喚墮落${z.n}`);
+    toast(`${z.t}出現在附近了！`);
+    addLog(`用 ${ZOD_COST} 個惡魔結晶召喚${z.t}`);
     save();
     renderSheet();
   },
@@ -583,8 +649,8 @@ Object.assign(A, {
 function zodEntHTML(e, inR) {
   const z = ZODI[e.z];
   return {
-    desc: `墮落的十二生肖之一（${z.d}）。Lv${e.lv} 首領，帶 ${z.mods.map(id => `<b>${EMODS.find(q => q.id === id).n}</b>`).join('、')}，生命是一般首領的 ${e.z === 'dragon' ? '2.2' : '1.6'} 倍。剩 ${Math.max(0, Math.ceil((e.until - now()) / 60e3))} 分鐘就會離開。`,
-    act: `<button class="btn pri" data-act="zodGo" data-id="${e.id}" ${inR ? '' : 'disabled'}>討伐墮落${z.n}</button>`
+    desc: `墮落的十二生肖「${z.n}」（${z.d}）。Lv${e.lv} 首領，帶 ${z.mods.map(id => `<b>${EMODS.find(q => q.id === id).n}</b>`).join('、')}，生命是一般首領的 ${e.z === 'dragon' ? '2.2' : '1.6'} 倍。剩 ${Math.max(0, Math.ceil((e.until - now()) / 60e3))} 分鐘就會離開。`,
+    act: `<button class="btn pri" data-act="zodGo" data-id="${e.id}" ${inR ? '' : 'disabled'}>討伐${z.t}</button>`
   };
 }
 setInterval(huntHud, 2000);

@@ -250,18 +250,18 @@
   `sinHTML:671`、`sinMods:679`、`demonHTML:689`、`jewelHTML:696`、`socketCardHTML:709`
 - **actions**（731）
 
-### js/hunt.js（591 行）
+### js/hunt.js（657 行）
 
 - **data**（3）
-  `HUNT_STEP:4`、`pad16z:11`、`ZBASE:214`、`ZODIAC:226`、`ZODI:254`、`HSUM:256`、`drawZodiacs:263`、`corruptPal:299`、`zodPal:314`
-- **state**（328）
-  `H:329`、`huntWalk:331`、`huntHud:343`、`nearSpot:351`、`addSummon:361`、`huntSpawns:369`、`zodActive:379`
-- **enemies**（381）
-  `makeBeast:382`、`makeZodiac:388`、`huntWin:410`
-- **sheet**（443）
-  `huntHTML:444`、`huntPaint:467`
-- **actions**（474）
-  `zodEntHTML:583`
+  `HUNT_STEP:4`、`pad16z:11`、`ZBASE:214`、`ZODIAC:226`、`ZODI:320`、`HSUM:322`、`drawZodiacs:329`、`corruptPal:365`、`zodPal:380`
+- **state**（394）
+  `H:395`、`huntWalk:397`、`huntHud:409`、`nearSpot:417`、`addSummon:427`、`huntSpawns:435`、`zodActive:445`
+- **enemies**（447）
+  `makeBeast:448`、`makeZodiac:454`、`huntWin:476`
+- **sheet**（509）
+  `huntHTML:510`、`huntPaint:533`
+- **actions**（540）
+  `zodEntHTML:649`
 
 ### js/gacha.js（155 行）
 
