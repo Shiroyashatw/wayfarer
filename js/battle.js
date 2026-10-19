@@ -1123,13 +1123,23 @@ function renderBHud() {
           S.potions && !noPot ? '' : 'disabled'
         );
   };
+  /* 0.3.1.9：四個技能欄都直接放在面板上（空的欄位放藥水）；普攻固定在右上角最好點，物品與逃跑擠在右下一格 */
+  const four = [0, 1, 2, 3].map(i =>
+    sks[i]
+      ? slot('s' + i)
+      : i === 1
+        ? cb('魔力藥水', 'ice', '×' + S.ethers, 'bitem', 'data-k="ethers"', S.ethers ? '' : 'disabled')
+        : i === 0
+          ? slot(null)
+          : `<button class="cb empty" data-act="bsub" data-k="items" ${dis}><img src="${iconURL('book')}" alt="">空的技能欄<small>到「角色 → 技能」裝備</small></button>`
+  );
   let html =
-    slot(sk[0]) +
-    cb('攻擊', 'axe', '', 'skill', 'data-k="attack"', '') +
-    slot(sk[1]) +
-    cb('技能', 'book', '', 'bsub', 'data-k="skills"', '') +
-    cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D ? 'disabled' : '', 'run') +
-    cb('物品', 'bag', '', 'bsub', 'data-k="items"', '');
+    four[0] +
+    cb('攻擊', 'axe', '', 'skill', 'data-k="attack"', '', 'atk') +
+    four[1] +
+    four[2] +
+    four[3] +
+    `<div class="brow2">${cb('物品', 'bag', '', 'bsub', 'data-k="items"', '')}${cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D ? 'disabled' : '', 'run')}</div>`;
   if (B.sub === 'skills')
     html += `<div class="bsub">${sk.length ? sk.map(slot).join('') : '<p class="sub">技能欄是空的，到「角色 → 技能」裝上技能石</p>'}${cb('返回', 'run', '', 'bsub', 'data-k=""', '')}</div>`;
   if (B.sub === 'items')
@@ -1807,21 +1817,127 @@ function dungeonClear() {
     rem = D.remote;
   addLog(`攻略${nm}（Lv${D.lv}）`);
   sfx('level');
+  const lv = D.lv;
   D = null;
-  showModal(
-    '攻略完成！',
-    `<p><span style="color:var(--gold)">${rw.gold} 金幣</span>${rw.cry ? `・<span style="color:#9fe7ff">${rw.cry} 魔晶</span>` : ''}</p>${rw.items.map(it => itemCard(it, '首領寶箱')).join('')}<div class="loot">${rw.curs.map(c => `<span>${c}</span>`).join('')}</div>${ascMsg}${rem ? '<p class="sub">遠征獎勵為實地攻略的 80%。</p>' : ''}`,
-    [
+  /* 0.3.1.9：打倒尾王後三選一（昇華試煉除外）；選完才能離開 */
+  const picks = kind === 'asc' ? [] : bossPicks(lv),
+    head = `<p><span style="color:var(--gold)">${rw.gold} 金幣</span>${rw.cry ? `・<span style="color:#9fe7ff">${rw.cry} 魔晶</span>` : ''}</p>${rw.items.map(it => itemCard(it, '首領寶箱')).join('')}<div class="loot">${rw.curs.map(c => `<span>${c}</span>`).join('')}</div>${ascMsg}${rem ? '<p class="sub">遠征獎勵為實地攻略的 80%。</p>' : ''}`;
+  let got = null;
+  const render = () =>
+    showModal(
+      '攻略完成！',
+      head +
+        (picks.length
+          ? got
+            ? `<h3>首領的獎勵</h3><div class="loot">${got.map(t => `<span>${t}</span>`).join('')}</div>`
+            : `<h3>首領的獎勵：三選一</h3><div class="bpick">${picks.map((p, i) => `<button class="bpk" data-act="mbtn" data-i="${i + 1}"><img src="${p.ic}" alt=""><b>${p.n}</b><small>${p.d}</small></button>`).join('')}</div>`
+          : ''),
+      [
+        {
+          label: picks.length && !got ? '先選一個獎勵' : '返回地圖',
+          pri: 1,
+          dis: picks.length && !got,
+          fn: () => {
+            if (picks.length && !got) return;
+            hideModal();
+            endBattle();
+          }
+        },
+        ...picks.map(p => () => {
+          if (got) return;
+          got = p.give();
+          sfx('coin');
+          addLog(`首領獎勵：${p.n}`);
+          save();
+          render();
+        })
+      ].map(f => (typeof f === 'function' ? { label: '', fn: f, hide: 1 } : f))
+    );
+  render();
+}
+/* 尾王三選一的獎勵池：稀有裝備、通貨、或一批高品質的普通裝備（品質超過一般上限 20%，拿來自己做裝） */
+const BP_ARMOR = ['helm', 'chest', 'gloves', 'boots', 'belt'],
+  BP_QARM = ['helm', 'chest', 'gloves', 'boots'];
+function bossPicks(lv) {
+  const pick = a => a[fl(Math.random() * a.length)],
+    hiQ = it => ((it.q = 21 + fl(Math.random() * 10)), it),
+    gear = (slot, rar, n, q) =>
+      Array.from({ length: n }, () => {
+        const it = makeItem(typeof slot === 'function' ? slot() : slot, lv + 1, rar);
+        if (q && hasQ(it)) hiQ(it);
+        giveItem(it);
+        return itemName(it) + (it.q ? `（品質 ${it.q}%）` : '');
+      }),
+    curs = list =>
+      list.map(([id, n]) => {
+        giveCur(id, n);
+        return curDot(id) + (CURI[id] || GCURI[id]).n + (n > 1 ? ' ×' + n : '');
+      }),
+    pool = [
+      { n: '稀有武器', d: '1 把稀有武器', ic: slotIcon(null, 'weapon'), give: () => gear('weapon', 2, 1) },
+      { n: '稀有防具', d: '1 件稀有防具', ic: slotIcon(null, 'chest'), give: () => gear(() => pick(BP_ARMOR), 2, 1) },
       {
-        label: '返回地圖',
-        pri: 1,
-        fn: () => {
-          hideModal();
-          endBattle();
+        n: '稀有飾品',
+        d: '1 個稀有戒指或護身符',
+        ic: slotIcon(null, 'ring1'),
+        give: () => gear(() => pick(['ring', 'amulet']), 2, 1)
+      },
+      {
+        n: '精良武器 ×3',
+        d: '3 把普通武器，品質 21～30%（超過一般上限），自己做裝',
+        ic: curIcon('whet'),
+        give: () => gear('weapon', 0, 3, 1)
+      },
+      {
+        n: '精良防具 ×3',
+        d: '3 件普通防具，品質 21～30%（超過一般上限），自己做裝',
+        ic: curIcon('scrap'),
+        give: () => gear(() => pick(BP_QARM), 0, 3, 1)
+      },
+      {
+        n: '通貨包',
+        d: '5 個隨機通貨（容易出點金、混沌）',
+        ic: curIcon('chaos'),
+        give: () => {
+          const out = [];
+          for (let i = 0; i < 5; i++) {
+            const c = rollCur(4);
+            giveCur(c);
+            out.push(curDot(c) + CURI[c].n);
+          }
+          return lootList(out);
         }
+      },
+      {
+        n: '製作材料',
+        d: '蛻變石 ×3、增幅石 ×2、富豪石、磨刀石 ×2、護甲片 ×2',
+        ic: curIcon('regal'),
+        give: () =>
+          curs([
+            ['trans', 3],
+            ['aug', 2],
+            ['regal', 1],
+            ['whet', 2],
+            ['scrap', 2]
+          ])
+      },
+      {
+        n: '靈魂寶藏',
+        d: `靈魂碎片 ×${15 + lv}、刻印石 ×2`,
+        ic: curIcon('soul'),
+        give: () =>
+          curs([
+            ['soul', 15 + lv],
+            ['eng', 2]
+          ])
       }
-    ]
-  );
+    ];
+  const out = [];
+  while (out.length < 3) {
+    const p = pool.splice(fl(Math.random() * pool.length), 1)[0];
+    out.push(p);
+  }
+  return out;
 }
 /* ================= battle: drawing ================= */
 /* 畫一群敵人（單人與組隊共用）：fx 是 BFX.en／MBFX.en，ti 是目前目標（-1 不畫箭頭） */

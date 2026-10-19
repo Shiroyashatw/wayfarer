@@ -787,6 +787,14 @@ const PIX = {
     r: ['..oooo..', '.oorroo.', 'oor..roo', 'or.oo.ro', 'or.o.rro', 'oorr.roo', '.oorroo.', '..oooo..'],
     p: { o: '#e58a3a', r: '#9a2f7a' }
   },
+  cur_whet: {
+    r: ['......ww', '.....wlw', '....wlw.', '...wlw..', '..wlw...', '.wlw....', 'bbw.....', 'bb......'],
+    p: { w: '#9aa2ae', l: '#eef3fa', b: '#6a5a4a' }
+  },
+  cur_scrap: {
+    r: ['.mmmmmm.', 'mhhmmmmm', 'mhmmmmmd', 'mmmmmmdd', '.mmmmdd.', '..mmdd..', '...dd...', '........'],
+    p: { m: '#b8a07a', h: '#f0e0b8', d: '#7a6448' }
+  },
   cur_exalt: {
     r: ['...ww...', '...yy...', 'wwyyyyww', '.wyyyyw.', '..wyyw..', '.wy..yw.', 'wy....yw', '........'],
     p: { w: '#ffffff', y: '#fff0a0' }

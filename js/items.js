@@ -84,11 +84,19 @@ function makeItem(slot, ilvl, rar, baseIdx, r = Math.random) {
   if (b.arm) it.arm = Math.round(b.arm * (6 + ilvl * 2.5));
   if (b.imp) it.imp = b.imp;
   if (b.lure) it.lure = b.lure;
+  /* 0.3.1.9 品質：武器（物理傷害）與有護甲的裝備（護甲）才有；掉落時約 30% 帶 1～10% */
+  if (hasQ(it) && r() < 0.3) it.q = 1 + fl(r() * 10);
   if (rar === 1) toMagic(it, r);
   else if (rar === 2) toRare(it, r);
   return it;
 }
 const baseOf = it => BASES[it.slot][it.bi];
+/* 品質：武器加物理傷害、防具加護甲，每 1% 加 1%。一般手段（掉落、磨刀石、護甲片）最多 20%，地城首領的精良裝備可以超過 */
+const Q_CAP = 20;
+const hasQ = it => !!it && (!!it.phys || !!it.arm);
+const qMul = it => 1 + (it.q || 0) / 100;
+const qPhys = it => (it.q ? [Math.round(it.phys[0] * qMul(it)), Math.round(it.phys[1] * qMul(it))] : it.phys);
+const qArm = it => (it.q ? Math.round(it.arm * qMul(it)) : it.arm);
 /* 詞綴可以開放給整個部位（offhand），或只給某種底材（lantern、shield、focus） */
 const affFits = (a, it) => a.slots.includes(it.slot) || (!!baseOf(it).k && a.slots.includes(baseOf(it).k));
 /* 物品能不能放進某個裝備欄：戒指兩格都可以 */
@@ -154,8 +162,9 @@ function itemTitle(it) {
 const itemName = it => `<span style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</span>`;
 function itemSum(it) {
   const out = [];
-  if (it.phys) out.push(`物理 ${it.phys[0]}–${it.phys[1]}`);
-  if (it.arm) out.push(`護甲 ${it.arm}`);
+  if (it.phys) out.push(`物理 ${qPhys(it)[0]}–${qPhys(it)[1]}`);
+  if (it.arm) out.push(`護甲 ${qArm(it)}`);
+  if (it.q) out.push(`品質 ${it.q}%`);
   if (!it.aff.length && it.imp) out.push(STATN[it.imp[0]](it.imp[1]));
   it.aff.slice(0, 2).forEach(a => out.push(AFFI[a.id].f(a.v)));
   return out.join('・') + (it.aff.length > 2 ? `・另 ${it.aff.length - 2} 條` : '');
@@ -167,10 +176,11 @@ function itemCard(it, title) {
   if (it.phys)
     base.push(
       `${WTAGN[b.t] || ''}${b.th ? '・雙手武器（不能裝副手）' : '・單手武器'}`,
-      `物理傷害 ${it.phys[0]}–${it.phys[1]}`,
+      `物理傷害 ${qPhys(it)[0]}–${qPhys(it)[1]}${it.q ? `（品質 +${it.q}%）` : ''}`,
       `暴擊率 ${it.crit}%`
     );
-  if (it.arm) base.push(`護甲 ${it.arm}`);
+  if (it.arm) base.push(`護甲 ${qArm(it)}${it.q ? `（品質 +${it.q}%）` : ''}`);
+  if (hasQ(it) && !it.q) base.push('品質 0%');
   if (it.imp) base.push(STATN[it.imp[0]](it.imp[1]));
   if (it.lure) base.push(STATN.lure(it.lure));
   if (base.length) h += `<div class="ibase">${base.map(esc).join('<br>')}</div>`;
@@ -220,7 +230,9 @@ function craftable(it, id) {
     regal: it.r === 1,
     alch: it.r === 0,
     chaos: it.r === 2 && it.aff.length > 0,
-    exalt: it.r === 2 && it.aff.length < 6
+    exalt: it.r === 2 && it.aff.length < 6,
+    whet: !!it.phys && (it.q || 0) < Q_CAP,
+    scrap: !!it.arm && !it.phys && (it.q || 0) < Q_CAP
   }[id];
 }
 function craft(it, id) {
@@ -237,6 +249,7 @@ function craft(it, id) {
     const gone = it.aff.splice(fl(Math.random() * it.aff.length), 1)[0];
     if (!addRandom(it)) it.aff.push(gone);
   } else if (id === 'exalt') addRandom(it);
+  else if (id === 'whet' || id === 'scrap') it.q = Math.min(Q_CAP, (it.q || 0) + [5, 2, 1][Math.min(2, it.r)]);
   return true;
 }
 
@@ -473,7 +486,7 @@ function sumStats() {
   for (const s of SLOTS) {
     const it = S.eq[s];
     if (!it || (s === 'offhand' && twoHand())) continue;
-    if (it.arm) t.armor += it.arm;
+    if (it.arm) t.armor += qArm(it);
     if (it.imp) A(it.imp[0], it.imp[1]);
     if (it.lure) t.lure += it.lure;
     it.aff.forEach(a => A(a.id, a.v));
@@ -516,7 +529,7 @@ function stats() {
     t.resAll += t.shieldRes;
   } else if (ot === 'focus') t.spellPct += t.focusPct;
   const w = S.eq.weapon,
-    ph = w ? w.phys : [1, 3];
+    ph = w ? qPhys(w) : [1, 3];
   const flat = 4 + t.flatPhys;
   const sp = curSpec(),
     ew = sp && sp.eleweak ? 20 : 0,
@@ -790,7 +803,7 @@ function uwApply(e, id) {
 function showModal(title, html, btns) {
   modalFns = btns.map(b => b.fn);
   $('dlg').innerHTML =
-    `<h2>${title}</h2><div style="display:grid;gap:8px">${html}</div><div class="btns">${btns.map((b, i) => `<button class="btn ${b.pri ? 'pri' : ''}" data-act="mbtn" data-i="${i}" ${b.dis ? 'disabled' : ''}>${b.label}</button>`).join('')}</div>`;
+    `<h2>${title}</h2><div style="display:grid;gap:8px">${html}</div><div class="btns">${btns.map((b, i) => (b.hide ? '' : `<button class="btn ${b.pri ? 'pri' : ''}" data-act="mbtn" data-i="${i}" ${b.dis ? 'disabled' : ''}>${b.label}</button>`)).join('')}</div>`;
   $('modal').hidden = false;
 }
 function hideModal() {

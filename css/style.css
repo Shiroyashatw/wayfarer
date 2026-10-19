@@ -532,3 +532,24 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .zlist small{color:var(--dim);font-size:11px}
 .zlist .on{outline:1px solid var(--gold);background:#c9a45c22}
 .topbar{flex-direction:column;align-items:flex-end;padding-left:58px}
+/* 0.3.1.9 尾王三選一 */
+.bpick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.bpk{display:grid;justify-items:center;align-content:start;gap:4px;padding:10px 4px;border-radius:12px;background:#0005;border:1px solid var(--gild);color:var(--ink);font-family:inherit}
+.bpk img{width:36px;height:36px;image-rendering:pixelated}
+.bpk b{font-size:13px;color:var(--gold)}
+.bpk small{font-size:10.5px;color:var(--dim);line-height:1.35}
+.bpk:active{transform:scale(.97)}
+/* 0.3.1.9 戰鬥面板：四個技能＋下面一排攻擊／物品／逃跑 */
+.bcmd{gap:8px}
+.bcmd>.cb{min-height:62px;font-size:15px}
+.bcmd .cb.empty{opacity:.55;font-size:13px}
+.brow3{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.brow3 .cb{min-height:46px!important;display:flex!important;align-items:center;justify-content:center;gap:6px;font-size:15px}
+.brow3 .cb img{width:20px!important;height:20px!important}
+.brow3 .cb small{display:none}
+/* 普攻在右上角，物品／逃跑擠在右下一格 */
+.brow2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.brow2 .cb{min-height:62px!important;font-size:13px!important;padding:4px!important}
+.brow2 .cb img{width:20px!important;height:20px!important}
+.brow2 .cb small{display:none}
+.bcmd>.cb.atk{background:linear-gradient(#5a4630,#3a2c20);border-color:#c9a45c88}
