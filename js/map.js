@@ -743,6 +743,7 @@ function trailStep(force) {
   if (force || !last || Math.hypot(last[0] - x, last[1] - y) > 30) {
     S.trail.push([Math.round(x), Math.round(y)]);
     reveal(x, y);
+    footStep(x, y);
     const ms = MILES[S.explMs];
     if (ms && explKm2() >= ms) {
       S.explMs++;
@@ -820,7 +821,7 @@ function genEntities() {
   };
   cells(MCELL, R, (i, j) => {
     const r = h(i, j, ep + 77);
-    if (r % 100 >= dens) return;
+    if (r % 100 >= dens + footDens(5)) return;
     const id = `m${i}_${j}_${ep}`;
     if (S.defeated[id]) return;
     let x = (i + ((r >>> 8) % 100) / 100) * MCELL,
@@ -829,10 +830,13 @@ function genEntities() {
     const p = snapRoad(x, y, 80);
     if (!p) return;
     [x, y] = p;
+    /* 足跡：常走的路怪物比較多、比較容易出稀有 */
+    const fv = footLv(x, y);
+    if (r % 100 >= Math.min(95, dens + footDens(fv))) return;
     const q = h(i, j, ep + 5) % 100,
       danger = S.lv >= 4 && h(i, j, ep + 13) % 1000 < 7,
       zm = zoneXY(x, y).m,
-      zr = zm.rare || 1;
+      zr = (zm.rare || 1) * footRare(fv);
     let lv = Math.max(1, S.lv + ((r >>> 4) % 3) - 1 + (zm.mlv || 0)),
       rar = q < (S.lv >= 3 ? 4 : 0) * zr ? 2 : q < (S.lv >= 3 ? 20 : 8) * zr ? 1 : 0;
     if (danger) {
@@ -1165,6 +1169,7 @@ function renderWorld(t) {
     c.fill();
   }
   c.setLineDash([]);
+  drawFoot(c, t);
   c.restore();
   drawZones(c);
   drawUndead(c, t);
@@ -1495,6 +1500,7 @@ function setPos(lat, lng, moved) {
       sfx('step');
     }
     huntWalk(moved);
+    if (moved <= 200) quest('walk', moved);
     S.walkRegen = (S.walkRegen || 0) + moved;
     if (S.walkRegen >= 100) {
       naturalRegen(5 * fl(S.walkRegen / 100));
@@ -1637,6 +1643,9 @@ function placeLabel() {
   $('expl').innerHTML =
     `<span style="color:${dp.night > 0.5 ? '#9fb8ff' : '#ffd877'}">${dp.label}</span> ${hh}:${mm}・視野 ${stats().vision}m<br><span class="rf${left < 60e3 ? ' soon' : ''}">怪物 ${mmss(left)}</span>・<span class="rf${leftH < 60e3 ? ' soon' : ''}">地城 ${mmss(leftH)}</span>・探索 ${explKm2().toFixed(2)} km²` +
     `<br>區域：${zoneAt(S.lat, S.lng).m.n}` +
+    (fv => (fv ? `<br><span style="color:#ffd877">足跡 Lv${fv}：怪物 +${footDens(fv)}%</span>` : ''))(
+      footLv(...toM(S.lat, S.lng))
+    ) +
     (S.mist ? `<br><span style="color:#d8b8ff">魔霧 ${ROMAN[S.mist.tier]} ${S.mist.prog}%</span>` : '') +
     (uz => (uz ? `<br><span style="color:#8fe0a0">亡靈區 ${udProg(uz.id)}%</span>` : ''))(
       udZoneAt(...toM(S.lat, S.lng))

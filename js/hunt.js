@@ -373,6 +373,10 @@ const zodPal = z => ({ ...ZBASE, ...z.pal });
     r: ['...rr...', '..rwrr..', '.rwrrrr.', 'rrrrrrdr', '.rrrrdd.', '..rrdd..', '...dd...', '........'],
     p: { r: '#ff3a5a', w: '#ffd0d8', d: '#7a0a20' }
   };
+  PIX.cur_zmark = {
+    r: ['..rrrr..', '.rkrrkr.', 'rrkrrkrr', 'rrrkkrrr', 'rrrkkrrr', 'rrkrrkrr', '.rkrrkr.', '..rrrr..'],
+    p: { r: '#c0203a', k: '#ffd166' }
+  };
   PIX.cur_blood = {
     r: ['...r....', '...r....', '..rrr...', '.rrwrr..', '.rrrrr..', '.rrrrd..', '..rdd...', '........'],
     p: { r: '#e5484d', w: '#ffc0c0', d: '#7a1a1a' }
@@ -393,6 +397,7 @@ function huntWalk(m) {
     before = h.blood;
   h.acc -= n * HUNT_STEP;
   h.blood = Math.min(BLOOD_MAX, h.blood + n);
+  quest('blood', h.blood - before);
   if (before < RITE_COST && h.blood >= RITE_COST) toast('追蹤之血滿 100 了，可以血祭引出墮落獸');
   huntHud();
 }
@@ -442,7 +447,8 @@ function makeBeast() {
   return { kind: 'monster', base, lv, rar: 2, mods: rollMods(fl(Math.random() * 1e6), 3), hunt: 'beast' };
 }
 /* 十二生肖的詞綴：召喚時從一般、冥府、魔霧詞綴隨機抽 4 條 */
-const ZOD_MODS = 4;
+const ZOD_MODS = 4,
+  ZOD_UW_R = 400;
 function rollZodMods() {
   const pool = [...EMODS, ...UMODS, ...MMODS].map(m => m.id),
     out = [];
@@ -465,6 +471,7 @@ function makeZodiac(k, lv, mods) {
       gold: 80
     },
     e = makeEnemy(b, lv, 4, [...(mods || rollZodMods())]);
+  /* makeEnemy 會把有冥府詞綴的加上「冥府・」，這裡統一用召喚時的名字 */
   e.maxhp = Math.round(e.maxhp * (k === 'dragon' ? 1.9 : 1.4));
   e.hp = e.maxhp;
   e.name = b.name;
@@ -481,27 +488,30 @@ function huntWin(b) {
   }
   const z = ZODI[b.zod];
   if (!z) return '';
-  h.marks[z.k] = (h.marks[z.k] || 0) + 1;
-  const got = [`${z.t}之印`];
-  for (let i = 0; i < 3; i++) {
+  const m = b.uwz ? 2 : 1;
+  h.marks[z.k] = (h.marks[z.k] || 0) + m;
+  h.slain = h.slain || {};
+  h.slain[z.k] = 1;
+  const got = [`${z.t}之印${m > 1 ? ' ×2' : ''}`];
+  for (let i = 0; i < 3 * m; i++) {
     const c = rollCur(2);
     giveCur(c);
     got.push(CURI[c].n);
   }
-  giveCur('dcrys', 2);
-  got.push('惡魔結晶 ×2');
-  if (Math.random() < 0.3) got.push(giveJewel(1 + fl(Math.random() * (z.k === 'dragon' ? 3 : 2))));
-  if (Math.random() < (z.k === 'dragon' ? 0.2 : 0.08)) {
+  giveCur('dcrys', 2 * m);
+  got.push(`惡魔結晶 ×${2 * m}`);
+  if (Math.random() < 0.3 * m) got.push(giveJewel(1 + fl(Math.random() * (z.k === 'dragon' ? 3 : 2))));
+  if (Math.random() < (z.k === 'dragon' ? 0.2 : 0.08) * m) {
     const it = makeLegend(SINS[fl(Math.random() * 7)].k);
     giveItem(it);
     got.push(itemName(it));
   }
-  if (ZODIAC.every(q => h.marks[q.k]) && S.title !== '十二生肖獵人') {
+  if (ZODIAC.every(q => h.slain[q.k]) && S.title !== '十二生肖獵人') {
     S.title = '十二生肖獵人';
     got.push('稱號「十二生肖獵人」');
   }
   addLog(`討伐${z.t}：${got.join('、')}`);
-  return `<p style="color:#ff8a9a">討伐${z.t}！得到 ${got.join('、')}（生肖 ${ZODIAC.filter(q => h.marks[q.k]).length}/12）</p>`;
+  return `<p style="color:#ff8a9a">討伐${b.uwz ? '冥府・' : ''}${z.t}${b.uwz ? '（冥府侵蝕，獎勵加倍）' : ''}！得到 ${got.join('、')}（討伐過 ${ZODIAC.filter(q => h.slain[q.k]).length}/12 種）</p>`;
 }
 
 /* ================= sheet ================= */
@@ -521,11 +531,12 @@ function huntHTML() {
       `<button class="btn sm" data-act="huntSum" data-k="${s.k}" ${cr >= s.c && S.lv >= (s.lv || 0) ? '' : 'disabled'}>${s.n}（${s.c}）<br><small class="sub">${s.d}</small></button>`
   ).join('')}</div>
   <h3>墮落十二生肖（每隻 ${ZOD_COST} 個結晶）</h3>
-  <p class="sub">召喚後會出現在 100～250 公尺內，1 小時內要走過去打倒。Lv 你 +4 的首領，帶 4 條隨機詞綴，掉印記、通貨，有機會掉惡魔珠寶或傳奇裝備；集齊 12 種印記得到稱號。${za ? `<br><span style="color:#ff8a9a">目前已經召喚了${ZODI[za.e.z].t}，先打倒它。</span>` : ''}</p>
+  <p class="sub">召喚後會出現在 100～250 公尺內，1 小時內要走過去打倒。Lv 你 +4 的首領，帶 4 條隨機詞綴，掉印記、通貨，有機會掉惡魔珠寶或傳奇裝備；集齊 12 種印記得到稱號。<br>在冥府侵蝕柱 ${ZOD_UW_R} 公尺內召喚，生肖會被冥府侵蝕：必帶冥府詞綴、獎勵加倍。${za ? `<br><span style="color:#ff8a9a">目前已經召喚了${ZODI[za.e.z].t}，先打倒它。</span>` : ''}</p>
   <div class="zgrid">${ZODIAC.map(
     z =>
       `<button class="zcell" data-act="huntZod" data-k="${z.k}" ${cr >= ZOD_COST && !za ? '' : 'disabled'} title="${z.d}"><canvas data-zod="${z.k}" width="18" height="18"></canvas><b>${z.t}</b><small>${z.n}・${h.marks[z.k] ? `之印 ×${h.marks[z.k]}` : z.d}</small></button>`
   ).join('')}</div>
+  <button class="btn" data-act="sheet" data-s="seal">${curDot('zmark')}印記兌換（生肖傳奇、指定詞綴珠寶）</button>
   ${list.length ? `<h3>召喚中</h3><div class="card">${list.map(s => `<div class="rowx"><div class="t"><b>${esc(s.e.name)}</b><small>${fmtD(dist(S.lat, S.lng, ...toLL(s.e.x, s.e.y)))}・剩 ${Math.ceil((s.until - now()) / 60e3)} 分</small></div><button class="btn sm" data-act="openEnt" data-id="${s.id}">查看</button></div>`).join('')}</div>` : ''}`;
 }
 function huntPaint() {
@@ -535,10 +546,114 @@ function huntPaint() {
   });
 }
 
+/* ================= 印記兌換 ================= */
+/* 十二生肖傳奇：同一種印記 ×3 兌換，詞綴固定；穿越多件生肖傳奇，共鳴越強 */
+const ZLEG = [
+  ['rat', '鼠皇疫牙', 'weapon', 0, { physPct: 50, leech: 4, poisonCh: 25, poisonPct: 50 }],
+  ['ox', '獄鎖重鎧', 'chest', 1, { life: 100, armorPct: 60, dmgRed: 8, taunt: 30 }],
+  ['tiger', '虎煞血爪', 'gloves', 1, { physPct: 30, critPct: 4, critMulti: 40, lowLife: 25 }],
+  ['rabbit', '月蝕兔靴', 'boots', 0, { speed: 6, evade: 8, dbl: 8, coldPct: 30 }],
+  ['dragon', '邪龍之心', 'amulet', 1, { elePct: 40, resAll: 20, dmgMore: 12, life: 40 }],
+  ['snake', '蛇姬毒環', 'ring', 3, { poisonCh: 30, poisonPct: 60, ail: 25, leech: 2 }],
+  ['horse', '夢魘焚蹄', 'boots', 1, { speed: 4, conv: 50, firePct: 40, armor: 50 }],
+  ['goat', '祭司魔角', 'helm', 0, { spellPct: 50, mana: 40, mpCost: 15, manaRegen: 3 }],
+  ['monkey', '猴王雷杖', 'weapon', 4, { spellPct: 40, lightPct: 60, addLight: 8, dbl: 6 }],
+  ['rooster', '業火冥羽', 'offhand', 4, { firePct: 50, addFire: 8, ail: 30, critPct: 2 }],
+  ['dog', '獄犬鐵項圈', 'amulet', 0, { leech: 5, lowLife: 35, life: 40, physPct: 25 }],
+  ['pig', '魔豬獠牙腰帶', 'belt', 1, { life: 90, lifePct: 10, armor: 60, regen: 6 }]
+];
+const ZLEG_COST = 3,
+  ZJEWEL_COST = 2,
+  ZRES = { dmgMore: 4, lifeMore: 3 };
+ZLEG.forEach(([zk, n, slot, bi, st]) => {
+  const L = {
+    k: 'z_' + zk,
+    zod: zk,
+    n,
+    slot,
+    bi,
+    st,
+    lines: [
+      ...Object.entries(st).map(([k, v]) => STATN[k](v)),
+      `生肖共鳴：每穿 1 件生肖傳奇，傷害 +${ZRES.dmgMore}%、最大生命 +${ZRES.lifeMore}%（總乘）`
+    ]
+  };
+  LEGENDS.push(L);
+  LEGI[L.k] = L;
+});
+/* sumStats 呼叫：生肖共鳴 */
+function zodStats(A) {
+  const n = SLOTS.filter(s => S.eq[s] && S.eq[s].leg && LEGI[S.eq[s].leg] && LEGI[S.eq[s].leg].zod).length;
+  if (n) for (const k in ZRES) A(k, ZRES[k] * n);
+}
+const markTotal = () => ZODIAC.reduce((a, z) => a + (H().marks[z.k] || 0), 0);
+function sealHTML() {
+  const h = H(),
+    pick = SEL.jaff;
+  return `<p class="sub">討伐十二生肖得到的印記可以在這裡兌換。印記共 ${markTotal()} 個。</p>
+  <h3>生肖傳奇（同一種印記 ×${ZLEG_COST}）</h3>
+  <p class="sub">詞綴固定，不能用通貨改造。每穿 1 件生肖傳奇，傷害 +${ZRES.dmgMore}%、最大生命 +${ZRES.lifeMore}%（總乘），穿越多件越強。</p>
+  ${ZLEG.map(([zk, n, slot, , st]) => {
+    const z = ZODI[zk],
+      have = h.marks[zk] || 0;
+    return `<div class="card"><div class="rowx"><canvas data-zod="${zk}" width="18" height="18" style="width:40px;height:40px;image-rendering:pixelated"></canvas><div class="t"><b style="color:${RCOL[3]}">${n}</b><small>${SLOTN[slot]}・${Object.entries(
+      st
+    )
+      .map(([k, v]) => STATN[k](v))
+      .join(
+        '、'
+      )}</small><small>${z.t}之印 ${have}/${ZLEG_COST}</small></div><button class="btn sm ${have >= ZLEG_COST ? 'pri' : ''}" data-act="sealLeg" data-k="${zk}" ${have >= ZLEG_COST ? '' : 'disabled'}>兌換</button></div></div>`;
+  }).join('')}
+  <h3>指定詞綴的惡魔珠寶（任意印記 ×${ZJEWEL_COST}）</h3>
+  <p class="sub">選一條詞綴，保證出現而且是最高數值，另外再隨機 2 條。會先用掉數量最多的印記。</p>
+  <div class="jpick">${JAFF.map(([k, , hi]) => `<button class="btn sm${pick === k ? ' pri' : ''}" data-act="sealPick" data-k="${k}">${STATN[k](hi)}</button>`).join('')}</div>
+  <button class="btn pri" data-act="sealJewel" ${pick && markTotal() >= ZJEWEL_COST ? '' : 'disabled'}>${pick ? `兌換：${STATN[pick](JAFF.find(a => a[0] === pick)[2])} ＋ 2 條隨機` : '先選一條詞綴'}</button>`;
+}
+/* 用掉 n 個印記：先扣最多的 */
+function spendMarks(n) {
+  const m = H().marks;
+  for (let i = 0; i < n; i++) {
+    const k = ZODIAC.map(z => z.k).sort((a, b) => (m[b] || 0) - (m[a] || 0))[0];
+    m[k]--;
+  }
+}
+
 /* ================= actions ================= */
 Object.assign(A, {
   hunt: () => {
     openSheet('hunt', '狩獵墮落十二生肖');
+  },
+  sealLeg: d => {
+    const h = H(),
+      L = LEGI['z_' + d.k];
+    if (!L || (h.marks[d.k] || 0) < ZLEG_COST) return;
+    h.marks[d.k] -= ZLEG_COST;
+    const it = makeLegend(L.k);
+    giveItem(it);
+    sfx('level');
+    toast(`兌換了${L.n}`);
+    addLog(`用 ${ZLEG_COST} 個${ZODI[d.k].t}之印兌換${L.n}`);
+    save();
+    renderSheet();
+  },
+  sealPick: d => {
+    SEL.jaff = SEL.jaff === d.k ? null : d.k;
+    renderSheet();
+  },
+  sealJewel: () => {
+    const a = JAFF.find(a => a[0] === SEL.jaff);
+    if (!a || markTotal() < ZJEWEL_COST) return;
+    S.jewels = S.jewels || [];
+    if (S.jewels.length >= JEWEL_MAX) return toast(`惡魔珠寶最多 ${JEWEL_MAX} 個`);
+    spendMarks(ZJEWEL_COST);
+    const j = makeJewel(3);
+    j.aff = [{ k: a[0], v: a[2] }, ...j.aff.filter(x => x.k !== a[0]).slice(0, 2)];
+    S.jewels.push(j);
+    sfx('level');
+    toast('兌換了惡魔珠寶：' + jewelTxt(j));
+    addLog('印記兌換惡魔珠寶：' + jewelTxt(j));
+    save();
+    renderSheet();
   },
   huntOn: () => {
     const h = H();
@@ -606,26 +721,31 @@ Object.assign(A, {
     const z = ZODI[d.k];
     if (!z || (S.cur.dcrys || 0) < ZOD_COST || zodActive()) return;
     S.cur.dcrys -= ZOD_COST;
-    const [x, y] = nearSpot(100, 250);
+    const [x, y] = nearSpot(100, 250),
+      /* 在冥府侵蝕柱附近召喚：被冥府侵蝕，必帶冥府詞綴，獎勵加倍 */
+      ob = [...ENT.values()].some(o => o.kind === 'obelisk' && Math.hypot(o.x - x, o.y - y) <= ZOD_UW_R),
+      mods = rollZodMods();
+    if (ob && !mods.some(m => m.startsWith('uw_'))) mods[0] = UMODS[fl(Math.random() * UMODS.length)].id;
     addSummon(
       {
         kind: 'zodiac',
+        uwz: ob ? 1 : 0,
         x,
         y,
         z: z.k,
         spr: z.spr,
         pal: zodPal(z),
         lv: S.lv + 4,
-        mods: rollZodMods(),
-        name: z.t,
+        mods,
+        name: (ob ? '冥府・' : '') + z.t,
         gl: '255,42,74',
-        lbl: z.t,
+        lbl: (ob ? '冥府・' : '') + z.t,
         lc: '#ff8a9a'
       },
       SUM_MS
     );
     sfx('encounter');
-    toast(`${z.t}出現在附近了！`);
+    toast(ob ? `冥府侵蝕柱的力量侵蝕了${z.t}！獎勵加倍` : `${z.t}出現在附近了！`);
     addLog(`用 ${ZOD_COST} 個惡魔結晶召喚${z.t}`);
     save();
     renderSheet();
@@ -634,11 +754,14 @@ Object.assign(A, {
     const e = ENT.get(d.id);
     if (!inRange(e) || e.kind !== 'zodiac') return;
     closeSheet();
-    startBattle(makeZodiac(e.z, e.lv, e.mods), {
+    const en = makeZodiac(e.z, e.lv, e.mods);
+    en.name = e.name;
+    startBattle(en, {
       entId: e.id,
       bg: 'cave',
       boss: true,
       zod: e.z,
+      uwz: e.uwz,
       hunt: 'zod',
       onsite: onSite(e)
     });
@@ -648,7 +771,7 @@ Object.assign(A, {
 function zodEntHTML(e, inR) {
   const z = ZODI[e.z];
   return {
-    desc: `墮落的十二生肖「${z.n}」（${z.d}）。Lv${e.lv} 首領，帶 ${ZOD_MODS} 條隨機詞綴：${(e.mods || []).map(id => `<b>${EMODI[id].n}</b>（${EMODI[id].d}）`).join('、')}，生命是一般首領的 ${e.z === 'dragon' ? '1.9' : '1.4'} 倍。剩 ${Math.max(0, Math.ceil((e.until - now()) / 60e3))} 分鐘就會離開。`,
+    desc: `墮落的十二生肖「${z.n}」（${z.d}）。Lv${e.lv} 首領，帶 ${ZOD_MODS} 條隨機詞綴：${(e.mods || []).map(id => `<b>${EMODI[id].n}</b>（${EMODI[id].d}）`).join('、')}，生命是一般首領的 ${e.z === 'dragon' ? '1.9' : '1.4'} 倍。${e.uwz ? '<br><span style="color:#ff8a9a">被冥府侵蝕柱侵蝕：必帶冥府詞綴，打倒後印記、通貨、結晶加倍，珠寶與傳奇機率加倍。</span>' : ''}剩 ${Math.max(0, Math.ceil((e.until - now()) / 60e3))} 分鐘就會離開。`,
     act: `<button class="btn pri" data-act="zodGo" data-id="${e.id}" ${inR ? '' : 'disabled'}>討伐${z.t}</button>`
   };
 }

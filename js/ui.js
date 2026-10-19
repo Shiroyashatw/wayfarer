@@ -52,7 +52,8 @@ const TITLES = {
   party: '組隊',
   skills: '技能',
   stele: '石碑與傳送門',
-  gem: '技能石'
+  gem: '技能石',
+  seal: '印記兌換'
 };
 /* 底部導覽：群組按鈕點了往上展開 2～3 個功能，再點一次或點地圖就收起來 */
 const NAVG = {
@@ -310,12 +311,7 @@ function renderSheet() {
   } else if (sheetName === 'stele') {
     html = steleHTML();
   } else if (sheetName === 'near') {
-    const list = [...ENT.values()]
-      .filter(e => e.kind !== 'base' && visible(e))
-      .map(e => ({ ...e, d: dist(S.lat, S.lng, e.lat, e.lng) }))
-      .sort((a, b) => (b.ev ? 1 : 0) - (a.ev ? 1 : 0) || a.d - b.d)
-      .slice(0, 30);
-    html = `<p class="sub">探索面積 ${explKm2().toFixed(2)} 平方公里・怪物在 ${mmss(REFRESH - (now() % REFRESH))} 後刷新，地城、寶箱、商店在 ${mmss(REFRESH_H - (now() % REFRESH_H))} 後刷新。迷霧裡的東西要走近才看得到；限時事件排在最前面。</p>${list.map(e => `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="openEnt" data-id="${e.id}"><div class="ent"><canvas data-ent="${e.id}" width="18" height="18" style="width:44px;height:44px"></canvas><div style="flex:1;min-width:0"><b style="font-weight:500;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(e.kind === 'monster' ? `${e.name} Lv${e.lv}` : e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name)}</b><small class="sub" style="display:block">${e.bounty ? '懸賞目標' : KIND[e.kind]}・${dirName(S.lat, S.lng, e.lat, e.lng)}方 ${fmtD(e.d)}${inRange(ENT.get(e.id)) ? '・<span style="color:var(--good)">可互動</span>' : ''}</small></div></div></button>`).join('')}`;
+    html = nearHTML();
   } else if (sheetName === 'settings') {
     html = `<h3>聲音</h3><div class="seg"><button data-act="toggle" data-k="music" aria-pressed="${S.music}">音樂 ${S.music ? '開' : '關'}</button><button data-act="toggle" data-k="sfx" aria-pressed="${S.sfx}">音效・震動 ${S.sfx ? '開' : '關'}</button></div>
     <h3>自動喝水</h3><div class="card"><p class="sub" style="margin-bottom:6px">戰鬥結束後低於門檻就自動喝藥水（每種最多 3 瓶）。戰鬥勝利不會自動回復。</p>${[
@@ -347,6 +343,8 @@ function renderSheet() {
     html = partyHTML();
   } else if (sheetName === 'hunt') {
     html = huntHTML();
+  } else if (sheetName === 'seal') {
+    html = sealHTML();
   } else if (sheetName === 'log') {
     html = `<div class="log">${S.log.map(t => `<div>${esc(t)}</div>`).join('')}</div>`;
   }
@@ -357,7 +355,7 @@ function renderSheet() {
     const e = ENT.get(cv.dataset.ent);
     if (e) cv.getContext('2d').drawImage(entIcon(e), 0, 0);
   });
-  if (sheetName === 'hunt') huntPaint();
+  if (sheetName === 'hunt' || sheetName === 'seal') huntPaint();
   const dh = $('dollHero');
   if (dh) dh.getContext('2d').drawImage(sprite('heroF', heroPal()), 0, 0);
 }
@@ -640,6 +638,7 @@ const A = {
     S.prayed = S.prayed || {};
     for (const k in S.prayed) if (S.prayed[k] !== hepoch()) delete S.prayed[k];
     S.prayed[e.id] = hepoch();
+    quest('pray');
     fullHeal();
     sfx('bless');
     let gift = '';
@@ -665,6 +664,7 @@ const A = {
     closeSheet();
     S.defeated[e.id] = 1;
     ENT.delete(e.id);
+    quest('chest');
     if (e.mimic) {
       toast('寶箱張開了嘴——是寶箱怪！');
       startBattle(makeEnemy(MIMIC, S.lv + 1, 1, ['leech']), { bg: 'city' });
