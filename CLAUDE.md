@@ -2,7 +2,7 @@
 
 ## 溝通規則
 - **一律用繁體中文回覆**（包含進度說明與 commit 訊息）。
-- 版本號：目前是 0.2.5.x（使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
+- 版本號：目前是 0.3.x（使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。系統規則改了要同步更新。
 
@@ -27,6 +27,8 @@
 | `js/tree.js` | 天賦樹全螢幕介面（縮放、拖曳、多節點路徑） |
 | `js/ui.js` | HUD、底部面板、互動、據點、`data-act` 動作表 |
 | `js/endgame.js` | 0.2 終局：據點半徑與冒險營旗、空白石碑／魔法陣、靈脈、區域特性、冥府侵蝕柱與碎片、絲綢之路（`ui.js` 之後載入） |
+| `js/undead.js` | 亡靈軍團：亡靈區、亡靈怪、精華、亡靈祭壇與軍團長、亡靈王、據點的亡靈製作（屍化值）（`endgame.js` 之後載入） |
+| `js/demon.js` | 魔霧封印、七宗罪雕像與 7 個王、傳奇裝備、惡魔珠寶與天賦盤珠寶槽、七宗罪之王（`undead.js` 之後載入） |
 | `js/gacha.js` | 祈願（抽卡）：卡池、保底、十連、結果動畫 |
 | `js/tutor.js` | 新手引導：`TUT` 步驟清單，新增功能時順手補一步 |
 | `js/cloud.js` | Supabase 匿名登入、信箱註冊／登入、玩家編號、存檔上傳（每 15 秒／切到背景時） |

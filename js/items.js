@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 9,
+    v: 11,
     cls: 'novice',
     lv: 1,
     xp: 0,
@@ -24,6 +24,12 @@ function newGame() {
     frags: [],
     obel: {},
     caravan: {},
+    ess: {},
+    und: {},
+    mist: null,
+    sins: {},
+    jewels: [],
+    jsock: {},
     sk: [null, null, null, null],
     autoHp: 0,
     autoMp: 0,
@@ -82,9 +88,10 @@ const baseOf = it => BASES[it.slot][it.bi];
 const affFits = (a, it) => a.slots.includes(it.slot) || (!!baseOf(it).k && a.slots.includes(baseOf(it).k));
 /* 物品能不能放進某個裝備欄：戒指兩格都可以 */
 const fitsSlot = (it, sl) => it.slot === sl.replace(/\d$/, '');
-function rollAffix(it, type, r = Math.random) {
+/* only：只從這些詞綴 id 裡抽（亡靈製作的定向加入用） */
+function rollAffix(it, type, r = Math.random, only) {
   const have = new Set(it.aff.map(a => a.id));
-  const pool = AFF.filter(a => a.t === type && affFits(a, it) && !have.has(a.id));
+  const pool = AFF.filter(a => a.t === type && affFits(a, it) && !have.has(a.id) && (!only || only.includes(a.id)));
   if (!pool.length) return false;
   const a = pool[fl(r() * pool.length)],
     ok = a.tiers.map((t, i) => ({ t, i })).filter(o => o.t[0] <= it.ilvl);
@@ -130,6 +137,7 @@ function toRare(it, r = Math.random, n = 4) {
 }
 function itemTitle(it) {
   const b = baseOf(it);
+  if (it.r === 3 && it.leg) return LEGI[it.leg].n;
   if (it.r === 2) return it.rn;
   if (it.r === 1) {
     const p = it.aff.find(a => AFFI[a.id].t === 'P'),
@@ -156,6 +164,10 @@ function itemCard(it, title) {
   if (it.imp) base.push(STATN[it.imp[0]](it.imp[1]));
   if (it.lure) base.push(STATN.lure(it.lure));
   if (base.length) h += `<div class="ibase">${base.map(esc).join('<br>')}</div>`;
+  if (it.leg)
+    h += `<div class="iaff">${LEGI[it.leg].lines.map(l => `<div><span style="color:${RCOL[3]}">${esc(l)}</span><small>傳奇</small></div>`).join('')}</div>`;
+  if (it.sh)
+    h += `<div class="isub" style="color:${it.sh >= 100 ? '#e5484d' : '#8fd18a'}">屍化 ${it.sh}/100${it.sh >= 100 ? '・已鎖定' : ''}</div>`;
   if (it.aff.length)
     h += `<div class="iaff">${[...it.aff]
       .sort((a, b) => (AFFI[a.id].t < AFFI[b.id].t ? -1 : 1))
@@ -191,7 +203,7 @@ function rollCur(boost = 1) {
 const curDot = id => `<img class="cico" src="${curIcon(id)}" alt="">`;
 /* PoE2 式製作：沒有改造石，魔法裝備用增幅石補滿、富豪石升稀有，稀有裝備用崇高石加詞綴、混沌石一次換一條 */
 function craftable(it, id) {
-  if (!it) return false;
+  if (!it || (it.sh || 0) >= 100) return false;
   return {
     trans: it.r === 0,
     aug: it.r === 1 && it.aff.length < 2,
@@ -399,7 +411,13 @@ const STAT0 = [
   'taunt',
   'healAll',
   'allyDmg',
-  'engPct'
+  'engPct',
+  'legPride',
+  'legEnvy',
+  'legWrath',
+  'legGreed',
+  'legGlut',
+  'legLust'
 ];
 function sumStats() {
   const t = {};
@@ -412,11 +430,13 @@ function sumStats() {
     if (it.imp) A(it.imp[0], it.imp[1]);
     if (it.lure) t.lure += it.lure;
     it.aff.forEach(a => A(a.id, a.v));
+    if (it.leg) for (const k in LEGI[it.leg].st) A(k, LEGI[it.leg].st[k]);
   }
   for (const id of S.tree) {
     const n = TREE.byId[id];
     if (n) for (const k in n.st) A(k, n.st[k]);
   }
+  jewelStats(A);
   return t;
 }
 /* 升級只成長生命與魔力（所有人相同），其他數值靠裝備、天賦與技能石 */
@@ -507,7 +527,13 @@ function stats() {
     taunt: t.taunt,
     healAll: t.healAll,
     allyDmg: t.allyDmg,
-    engPct: t.engPct
+    engPct: t.engPct,
+    legPride: t.legPride,
+    legEnvy: t.legEnvy,
+    legWrath: t.legWrath,
+    legGreed: t.legGreed,
+    legGlut: t.legGlut,
+    legLust: t.legLust
   };
 }
 /* 升級曲線：Lv1→2 約 6 隻怪，Lv5 約 25 隻，Lv10 約 60 隻（同等級怪） */
@@ -531,6 +557,7 @@ function autoPot() {
   while (S.autoHp && S.potions > 0 && n < 3 && (S.hp / st.maxhp) * 100 < S.autoHp) {
     S.potions--;
     S.hp = Math.min(st.maxhp, S.hp + Math.round(st.maxhp * 0.4 * hm));
+    if (st.legGlut) S.mp = Math.min(st.maxmp, S.mp + Math.round(st.maxhp * 0.4 * hm));
     n++;
   }
   if (n) out.push(`生命藥水 ×${n}`);
@@ -559,7 +586,9 @@ function addLog(t) {
 function gainXP(n) {
   let up = false;
   S.xp += n;
-  while (S.xp >= xpNeed(S.lv)) {
+  /* 等級上限 Lv100 */
+  if (S.lv >= LV_MAX) S.xp = Math.min(S.xp, xpNeed(S.lv) - 1);
+  while (S.lv < LV_MAX && S.xp >= xpNeed(S.lv)) {
     S.xp -= xpNeed(S.lv);
     S.lv++;
     up = true;
@@ -567,6 +596,7 @@ function gainXP(n) {
   }
   return up;
 }
+const LV_MAX = 100;
 const treePts = () => S.lv - 1 + (S.bonusPts || 0) - (S.tree.length - 1);
 function dayPhase() {
   const d = new Date(now()),
@@ -660,7 +690,8 @@ function uwApply(e, id) {
   } else if (id === 'uw_soul') {
     e.maxhp = Math.round(e.maxhp * 1.4);
     if (!e.mods.includes('leech')) e.mods = [...e.mods, 'leech'];
-  } else return;
+  } else if (id.startsWith('mi_')) return mistApply(e, id);
+  else return;
   e.hp = e.maxhp;
 }
 

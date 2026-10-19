@@ -1275,6 +1275,33 @@ const DTYPES = {
     col: '#ff3a5a',
     pal: { x: '#3a1a2e', m: '#1a0a14', r: '#ff3a5a' },
     desc: '4 片冥府碎片組成的傳送門，首領保證掉落冥府之血。倒下不會復活。'
+  },
+  sin: {
+    n: '七宗罪挑戰',
+    max: 1,
+    floors: 3,
+    lv: 3,
+    mods: [0, 0],
+    q: 60,
+    r: 50,
+    hp: 1.6,
+    col: '#ff8a9a',
+    pal: { x: '#4a2a3a', m: '#2a1020', r: '#ff3a5a' },
+    desc: '七宗罪雕像的單人挑戰，最後一層是該宗罪的王。'
+  },
+  sinking: {
+    n: '七宗罪之王',
+    max: 4,
+    floors: 8,
+    lv: 5,
+    mods: [0, 0],
+    q: 150,
+    r: 120,
+    hp: 2.4,
+    norevive: true,
+    col: '#ff3a5a',
+    pal: { x: '#3a0a1a', m: '#1a0510', r: '#ff3a5a' },
+    desc: '集齊 7 種殘魂後挑戰。7 層依序是七宗罪的王，第 8 層是七宗罪之王。倒下不會復活。'
   }
 };
 /* 地城詞綴（參考 PoE 地圖詞綴）：讓地城更難，但提高掉落數量與稀有度。em 會加到每隻怪物身上，dm 是怪物數值倍率 */
@@ -2282,7 +2309,13 @@ const TREE = (() => {
       ln(prev, sp[k][i]);
     });
   }
+  /* 0.2.9 珠寶槽：最外圈每條路線一個（15）＋中圈 6 個，點亮後可以放惡魔珠寶 */
+  [...SPOKES.map((_, j) => `x${j}_1`), ...[1, 3, 6, 8, 11, 13].map(j => `m${j}_1`)].forEach(id => {
+    const n = byId[id];
+    if (!n) return;
+    Object.assign(n, { n: '珠寶槽', st: {}, ic: 'gem', type: 'socket' });
+  });
   return { N, E, byId };
 })();
-const VER = '0.2.5.8';
+const VER = '0.3.0';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

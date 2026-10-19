@@ -58,7 +58,11 @@ function mySnap() {
       taunt: st.taunt,
       healAll: st.healAll,
       allyDmg: st.allyDmg,
-      engPct: st.engPct
+      engPct: st.engPct,
+      legPride: st.legPride,
+      legEnvy: st.legEnvy,
+      legWrath: st.legWrath,
+      legLust: st.legLust
     }
   };
 }
@@ -514,7 +518,7 @@ function mpResolve(uid, k, auto) {
           fx.push({ t: 'heal', uid: q.uid, from: uid, v: w });
         });
   } else {
-    const hits = (sk.hits || 1) + extraHit(pst, sk);
+    const hits = (sk.hits || 1) + extraHit(pst, sk) + (pst.legWrath && p.hp < p.st.maxhp / 2 ? 1 : 0);
     for (let n = 0; n < hits && e.hp > 0; n++) {
       const st = pst,
         pk = heroPacket(st, sk, sk.mult * (1 + ((st.allyDmg || 0) * (MB.ps.filter(q => q.alive).length - 1)) / 100));
