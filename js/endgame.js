@@ -143,7 +143,7 @@ function endgameSpawns(out, cells, put, hp) {
   /* 空白石碑：每小時刷新，約 1/5 是石碑魔法陣 */
   cells(STCELL, 1000, (i, j) => {
     const r = h(i, j, hp * 13 + 907);
-    if (r % 100 >= 48) return;
+    if (r % 100 >= 58) return;
     const circ = (r >>> 9) % 5 === 0,
       id = `${circ ? 'o' : 's'}${i}_${j}_${hp}`;
     let x = (i + ((r >>> 12) % 100) / 100) * STCELL,
@@ -162,7 +162,7 @@ function endgameSpawns(out, cells, put, hp) {
   /* 靈脈：每小時刷新，採集得刻印石 */
   cells(VCELL, 1000, (i, j) => {
     const r = h(i, j, hp * 17 + 433);
-    if (r % 100 >= 42) return;
+    if (r % 100 >= 50) return;
     const id = `v${i}_${j}_${hp}`;
     let x = (i + ((r >>> 8) % 100) / 100) * VCELL,
       y = (j + ((r >>> 16) % 100) / 100) * VCELL;

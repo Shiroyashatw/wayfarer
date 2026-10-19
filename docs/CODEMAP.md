@@ -50,6 +50,7 @@
 | 地標城鎮清單 | `js/map.js` | `TOWNS`（前 11 個 id 不能改） |
 | 地圖上的怪物、寶箱、地城、廟宇生成 | `js/map.js` | `spawns` 區段、`dungeonAt` |
 | 迷霧、探索面積 | `js/map.js` | `fog of war` 區段、`explKm2` |
+| 地圖物件什麼時候看得到 | `js/map.js` | `visible`（`MOBILE` 跟視野、`LANDMARK` 至少 `LM_VIS` 公尺） |
 | 地圖繪製、右上角資訊 | `js/map.js` | `renderWorld`、`placeLabel` |
 | 點地圖、走路、GPS | `js/map.js` | `input`、`movement`、`GPS` 區段 |
 | 主畫面 HUD、底部導覽 | `js/ui.js` | `renderHud`、`NAVG`、`navOpen`；DOM 在 `index.html` 的 `#nav` |
@@ -165,7 +166,7 @@
 - **battle: drawing**（1218）
   `renderBattle:1219`、`drawFx:1332`
 
-### js/map.js（1621 行）
+### js/map.js（1626 行）
 
 - **world coordinates: meters from 台中車站 (x 東, y 南)**（3）
   `O:4`、`KX:5`、`toM:7`、`toLL:8`、`TOWNS:10`
@@ -177,15 +178,15 @@
 - **fog of war (chunked)**（675）
   `CH:677`、`fogCount:682`、`fogReset:683`、`fogChunk:687`、`reveal:701`、`revealed:730`、`explKm2:738`、`MILES:739`、`trailStep:740`
 - **spawns**（760）
-  `spawnAt:761`、`MCELL:762`、`evEp:766`、`nearTown:767`、`dungeonAt:771`、`NOT_TEMPLE:792`、`genEntities:793`、`refreshEntities:961`、`VIS:977`、`MOBILE:978`、`visible:979`、`isDone:985`、`townLv:995`
-- **world rendering**（997）
-  `wv:998`、`VW:1000`、`cam:1003`、`ZMIN:1004`、`sizeWorld:1006`、`SX:1013`、`BGPAT:1015`、`bgPattern:1016`、`glow:1029`、`label:1036`、`sprScale:1055`、`viewChunks:1057`、`camLoadT:1065`、`renderWorld:1066`、`arrows:1334`
-- **input**（1364）
-  `ptrs:1365`、`drag:1366`、`tapOK:1400`、`endPtr:1401`、`tapWorld:1422`
-- **movement**（1456）
-  `lastFrame:1457`、`SIM_SPEED:1459`、`setPos:1460`、`checkArrive:1488`
-- **GPS**（1516）
-  `GPS:1518`、`gpsStart:1519`、`gpsStop:1556`、`tick:1563`、`timeRegen:1588`、`mmss:1597`、`plT:1601`、`placeLabel:1602`
+  `spawnAt:761`、`MCELL:762`、`evEp:766`、`nearTown:767`、`dungeonAt:771`、`NOT_TEMPLE:792`、`genEntities:793`、`refreshEntities:961`、`VIS:977`、`MOBILE:978`、`LANDMARK:980`、`LM_VIS:981`、`visible:982`、`isDone:990`、`townLv:1000`
+- **world rendering**（1002）
+  `wv:1003`、`VW:1005`、`cam:1008`、`ZMIN:1009`、`sizeWorld:1011`、`SX:1018`、`BGPAT:1020`、`bgPattern:1021`、`glow:1034`、`label:1041`、`sprScale:1060`、`viewChunks:1062`、`camLoadT:1070`、`renderWorld:1071`、`arrows:1339`
+- **input**（1369）
+  `ptrs:1370`、`drag:1371`、`tapOK:1405`、`endPtr:1406`、`tapWorld:1427`
+- **movement**（1461）
+  `lastFrame:1462`、`SIM_SPEED:1464`、`setPos:1465`、`checkArrive:1493`
+- **GPS**（1521）
+  `GPS:1523`、`gpsStart:1524`、`gpsStop:1561`、`tick:1568`、`timeRegen:1593`、`mmss:1602`、`plT:1606`、`placeLabel:1607`
 
 ### js/tree.js（449 行）
 

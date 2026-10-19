@@ -355,7 +355,7 @@ function demonSpawns(out, cells, hp) {
   if (S.lv >= 5)
     cells(MS_CELL, 1000, (i, j) => {
       const r = h(i, j, hp * 23 + 1301);
-      if (r % 100 >= 26) return;
+      if (r % 100 >= 40) return;
       const ok = MIST_TIERS.map((t, k) => k).filter(k => MIST_TIERS[k].lv <= S.lv),
         w = [40, 25, 18, 11, 6],
         tot = ok.reduce((a, k) => a + w[k], 0);
