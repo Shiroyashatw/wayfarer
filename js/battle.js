@@ -409,30 +409,16 @@ function eInit(e) {
   return e;
 }
 /* 怪物群：地圖上的一隻怪代表一群，依稀有度帶 0～3 隻小怪（最多 5 隻）；小怪跟著帶頭的種族（亡靈、魔霧） */
-function packOf(lead, extra = 0) {
-  const r = lead.rar || 0,
-    q = Math.random(),
-    n =
-      S.lv < 3
-        ? 0
-        : r === 0
-          ? q < 0.45
-            ? 0
-            : q < 0.8
-              ? 1
-              : 2
-          : r === 1
-            ? 1 + (q < 0.5 ? 0 : 1)
-            : r === 2
-              ? 2 + (q < 0.5 ? 0 : 1)
-              : r === 4
-                ? q < 0.4
-                  ? 0
-                  : q < 0.8
-                    ? 1
-                    : 2
-                : 0,
-    out = [];
+/* 野外怪物帶幾隻同伴（0.3.1.5 調低）：依地圖上那隻怪的位置與刷新週期固定，開打前的說明就能顯示 */
+const PACK_P = { 0: [0.75, 0.95], 1: [0.45, 0.85], 2: [0.25, 0.7], 4: [0.6, 0.9] };
+function packN(e) {
+  if (S.lv < 3 || !PACK_P[e.rar || 0]) return 0;
+  const q = (h(fl(e.lat * 1e5), fl(e.lng * 1e5), epoch() + 77) % 1000) / 1000,
+    [a, b] = PACK_P[e.rar || 0];
+  return q < a ? 0 : q < b ? 1 : 2;
+}
+function packOf(lead, extra = 0, n = 0) {
+  const out = [];
   for (let k = 0; k < Math.min(4, n + extra); k++) {
     const lv = Math.max(1, (lead.lv || S.lv) - (Math.random() < 0.5 ? 1 : 0)),
       b = lead.ud
@@ -990,7 +976,7 @@ function startBattle(e, opts = {}) {
   if (B) return;
   closeSheet();
   if (!Array.isArray(e)) for (const k of ['ud', 'mist', 'uw']) if (opts[k]) e[k] = opts[k];
-  const es = (Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0) : [])]).map(eInit);
+  const es = (Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0, opts.packN || 0) : [])]).map(eInit);
   B = { ...opts, e: es[0], es, ti: 0, me: heroMe(), busy: true, sub: null, act: -1 };
   battleOpen(B.me);
   simTarget = null;
@@ -1568,7 +1554,7 @@ function gemLoot(e, boss, hell, rem, out) {
   if (r === 4 && ch(0.08)) add('prism');
   if (r === 4 && ch(0.08)) add('engD');
 }
-/* 現場加成：人實際走到 80 公尺內打（不是靠據點、營旗、絲綢之路遠端），掉寶數量與稀有度 +20% */
+/* 現場加成：人實際走到互動範圍內（150 公尺，城鎮 200）打（不是靠據點、營旗、絲綢之路遠端），掉寶數量與稀有度 +20% */
 const ONSITE_BONUS = 20;
 const onsiteNow = () => (D ? !!D.onsite : B ? !!B.onsite : MB ? !!(MB.d && MB.d.onsite && amLeader()) : false);
 /* 地城通關獎勵 */

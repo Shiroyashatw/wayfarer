@@ -436,7 +436,7 @@ function openEnt(id) {
   const e = ENT.get(id);
   if (!e) return;
   const d = dist(S.lat, S.lng, e.lat, e.lng),
-    lim = e.kind === 'town' ? 120 : RANGE,
+    lim = reachOf(e),
     zn = d > lim && e.kind !== 'base' && zoneOf(e),
     inR = d <= lim || e.kind === 'base' || !!zn;
   sheetName = 'ent';
@@ -458,6 +458,8 @@ function openEnt(id) {
       desc = `<span class="danger">⚠ 危險怪物</span> 比你高 ${e.lv - S.lv} 級，生命約一般怪的 3 倍、攻擊 1.6 倍，還帶 ${e.mods.length} 個詞綴：${e.mods.map(id => `<b>${EMODS.find(q => q.id === id).n}</b>`).join('、')}。打贏保證掉 2 件稀有裝備與大量通貨，但很可能會輸。`;
     desc += `<br><span class="sub">攻擊屬性：${EL[e.base.el]}${e.base.res.some(v => v) ? '・抗性 火' + e.base.res[0] + '% 冰' + e.base.res[1] + '% 雷' + e.base.res[2] + '%' : ''}</span>`;
     if (e.bounty) desc += '<br><span style="color:#ff8a6a">懸賞：擊敗可得額外金幣與混沌石。</span>';
+    const pn = packN(e);
+    desc += `<div class="packn${pn ? ' many' : ''}">${pn ? `⚔ 本次戰鬥共 <b>${pn + 1}</b> 隻：${esc(e.name)} ＋ ${pn} 隻同伴` : '⚔ 本次戰鬥只有 <b>1</b> 隻'}</div>`;
     act = `<button class="btn pri" data-act="fight" data-id="${id}" ${inR ? '' : 'disabled'}>戰鬥</button>`;
   } else if (e.kind === 'dungeon') {
     const sp = dunSpec(e),
@@ -567,8 +569,8 @@ function openEnt(id) {
 }
 /* 人實際在現場（不是靠據點、營旗、絲綢之路的遠端範圍） */
 const FIGHTK = new Set(['monster', 'dungeon', 'stele', 'circle', 'event', 'town', 'ualtar', 'sinst']);
-const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE);
-const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE) || inZone(e));
+const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e);
+const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e) || inZone(e));
 
 /* ================= bases ================= */
 const prodRate = b => 60 * b.lv;
@@ -650,7 +652,7 @@ const A = {
   walkto: d => {
     const e = ENT.get(d.id);
     if (!e) return;
-    const lim = (e.kind === 'town' ? 120 : RANGE) * 0.6,
+    const lim = reachOf(e) * 0.6,
       dd = dist(S.lat, S.lng, e.lat, e.lng),
       k = Math.max(0, 1 - lim / dd);
     simTarget = [S.lat + (e.lat - S.lat) * k, S.lng + (e.lng - S.lng) * k];
@@ -673,6 +675,7 @@ const A = {
       mistBase: e.mist && e.base.name,
       hunt: e.hunt,
       pack: true,
+      packN: packN(e),
       onsite: onSite(e)
     });
   },
