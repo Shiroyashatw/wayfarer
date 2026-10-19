@@ -117,7 +117,7 @@ const UNDEAD = [
     name: '殭屍',
     ess: 'flesh',
     bg: 'cave',
-    spr: 'zombie',
+    spr: 'a_jiangshi',
     pal: { g: '#7a9a6a', h: '#3a2a1a', e: '#ffe24a', m: '#3a1a1a', c: '#4a5a7a', p: '#3a3a4a' },
     hp: 60,
     atk: 9,
