@@ -144,6 +144,9 @@ function entIcon(e) {
   } else if (e.kind === 'dungeon') {
     n = 'dungeon';
     p = DTYPES[e.dt].pal;
+  } else if (e.spr) {
+    n = e.spr;
+    p = e.pal;
   } else {
     n = e.kind;
     p = PAL[e.kind];
@@ -342,6 +345,8 @@ function renderSheet() {
     if (!CLOUD.anon && !SOC.loaded) friendsLoad();
   } else if (sheetName === 'party') {
     html = partyHTML();
+  } else if (sheetName === 'hunt') {
+    html = huntHTML();
   } else if (sheetName === 'log') {
     html = `<div class="log">${S.log.map(t => `<div>${esc(t)}</div>`).join('')}</div>`;
   }
@@ -352,6 +357,7 @@ function renderSheet() {
     const e = ENT.get(cv.dataset.ent);
     if (e) cv.getContext('2d').drawImage(entIcon(e), 0, 0);
   });
+  if (sheetName === 'hunt') huntPaint();
   const dh = $('dollHero');
   if (dh) dh.getContext('2d').drawImage(sprite('heroF', heroPal()), 0, 0);
 }
@@ -461,6 +467,8 @@ function openEnt(id) {
     act = done
       ? ''
       : `<div class="btns"><button class="btn sm" data-act="sinX" data-id="${id}" data-v="-1" ${x > 0 ? '' : 'disabled'}>－ 少放 1 片</button><button class="btn sm" data-act="sinX" data-id="${id}" data-v="1" ${x < SIN_EXTRA ? '' : 'disabled'}>＋ 多放 1 片</button></div><button class="btn pri" data-act="sinGo" data-id="${id}" ${inR && (S.cur.mfrag || 0) >= need ? '' : 'disabled'}>放入 ${need} 片魔霧碎片挑戰</button>`;
+  } else if (e.kind === 'zodiac') {
+    ({ desc, act } = zodEntHTML(e, inR));
   } else if (e.kind === 'base') {
     desc = `你的${baseName(e.b)}，回到這裡會恢復全部狀態。`;
     act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
@@ -581,7 +589,9 @@ const A = {
   fight: d => {
     const e = ENT.get(d.id);
     if (!inRange(e)) return;
-    startBattle(makeEnemy(e.base, e.lv, e.rar, e.mods), {
+    const en = makeEnemy(e.base, e.lv, e.rar, e.mods);
+    if (e.hunt) en.name = e.name;
+    startBattle(en, {
       entId: e.id,
       bg: e.base.bg,
       bounty: e.bounty,
@@ -590,6 +600,7 @@ const A = {
       udBase: e.ud && e.base.name,
       mist: e.mist,
       mistBase: e.mist && e.base.name,
+      hunt: e.hunt,
       onsite: onSite(e)
     });
   },

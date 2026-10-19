@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 11,
+    v: 12,
     cls: 'novice',
     lv: 1,
     xp: 0,
@@ -27,6 +27,8 @@ function newGame() {
     ess: {},
     und: {},
     mist: null,
+    hunt: { on: false, blood: 0, acc: 0, marks: {} },
+    summons: [],
     sins: {},
     jewels: [],
     jsock: {},

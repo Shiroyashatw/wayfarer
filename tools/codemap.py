@@ -3,7 +3,7 @@
 只會改寫 <!-- index:start --> 和 <!-- index:end --> 之間的內容，其他手寫說明保留。"""
 import re, pathlib
 root = pathlib.Path(__file__).resolve().parent.parent
-order = ['core', 'data', 'sprites', 'audio', 'items', 'battle', 'map', 'tree', 'ui', 'endgame', 'undead', 'demon', 'gacha', 'tutor', 'cloud', 'social', 'mp', 'main']
+order = ['core', 'data', 'sprites', 'audio', 'items', 'battle', 'map', 'tree', 'ui', 'endgame', 'undead', 'demon', 'hunt', 'gacha', 'tutor', 'cloud', 'social', 'mp', 'main']
 pat = re.compile(r'^(?:async\s+)?function\s+([\w$]+)|^(?:const|let|var)\s+([\w$]+)\s*=')
 out = []
 for name in order:

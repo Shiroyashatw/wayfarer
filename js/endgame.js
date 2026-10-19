@@ -61,7 +61,7 @@ Object.assign(PAL, {
   stele: { s: '#8a8796', l: '#b9b6c4', r: '#7fd6ff', g: '#5a5466' },
   circle: { p: '#9a6bff', w: '#e8dcff', y: '#ffd166' },
   vein: { c: '#6fdcff', w: '#ffffff', d: '#2a8ab0', g: '#5a5466' },
-  obelisk: { o: '#2a1a2e', m: '#5a2a4a', r: '#ff3a5a' },
+  obelisk: { o: '#4a0a16', m: '#a01a30', r: '#ff4a6a' },
   flag: PAL.camp
 });
 Object.assign(KIND, {
@@ -136,9 +136,52 @@ const zoneAt = (lat, lng) => zoneXY(...toM(lat, lng));
 /* ================= spawns ================= */
 const STCELL = 380,
   VCELL = 520,
-  OBCELL = 2400,
+  OBCELL = 1600,
   OB_R = 150,
   OB_NEED = 8;
+/* 冥府侵蝕柱：紅色光柱＋侵蝕範圍的脈動紅圈，遠遠就看得到 */
+function drawObelisks(c, t) {
+  for (const e of ENT.values()) {
+    if (e.kind !== 'obelisk' || !visible(e)) continue;
+    const x = SX(e.x),
+      y = SY(e.y),
+      r = Math.abs(SX(e.x + OB_R) - x),
+      pu = 0.5 + 0.5 * Math.sin(t / 380);
+    if (x < -r - 40 || x > VW + r + 40 || y < -r - 200 || y > VH + r + 40) continue;
+    c.save();
+    const g = c.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(255,40,70,.05)');
+    g.addColorStop(1, `rgba(255,40,70,${0.18 + 0.1 * pu})`);
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(x, y, r, 0, 6.28);
+    c.fill();
+    c.shadowColor = '#ff2a4a';
+    c.shadowBlur = 12;
+    c.strokeStyle = `rgba(255,70,100,${0.6 + 0.3 * pu})`;
+    c.lineWidth = 2.5;
+    c.stroke();
+    /* 往外擴散的波紋 */
+    const w = (t / 1600) % 1;
+    c.shadowBlur = 0;
+    c.strokeStyle = `rgba(255,90,110,${0.6 * (1 - w)})`;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(x, y, r * w, 0, 6.28);
+    c.stroke();
+    /* 光柱 */
+    const bw = 10 + 4 * pu,
+      bh = 150,
+      lg = c.createLinearGradient(0, y - bh, 0, y);
+    lg.addColorStop(0, 'rgba(255,40,70,0)');
+    lg.addColorStop(1, `rgba(255,60,90,${0.55 + 0.25 * pu})`);
+    c.fillStyle = lg;
+    c.fillRect(x - bw / 2, y - bh, bw, bh);
+    c.fillStyle = `rgba(255,220,220,${0.5 + 0.3 * pu})`;
+    c.fillRect(x - 1.5, y - bh * 0.8, 3, bh * 0.8);
+    c.restore();
+  }
+}
 function endgameSpawns(out, cells, put, hp) {
   /* 空白石碑：每小時刷新，約 1/5 是石碑魔法陣 */
   cells(STCELL, 1000, (i, j) => {
@@ -178,7 +221,7 @@ function endgameSpawns(out, cells, put, hp) {
   cells(OBCELL, 2400, (i, j) => {
     if (S.lv < 5) return;
     const r = h(i, j, e2 * 7 + 1201);
-    if (r % 100 >= 45) return;
+    if (r % 100 >= 55) return;
     const id = `u${i}_${j}_${e2}`;
     if (S.cleared[id] === e2) return;
     let x = (i + 0.2 + ((r >>> 8) % 60) / 100) * OBCELL,

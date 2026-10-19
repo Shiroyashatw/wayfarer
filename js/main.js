@@ -16,7 +16,12 @@ function save() {
     const ep = epoch(),
       hp = hepoch();
     for (const k in S.defeated)
-      if ((k[0] === 'm' && !k.endsWith('_' + ep)) || ('csov'.includes(k[0]) && !k.endsWith('_' + hp)))
+      if (
+        (k[0] === 'm' && k[1] !== 's' && !k.endsWith('_' + ep)) ||
+        ((k.startsWith('ms') || 'csov'.includes(k[0])) && !k.endsWith('_' + hp)) ||
+        (k[0] === 'q' && !k.endsWith('_' + mistEp())) ||
+        (k[0] === 'z' && !(S.summons || []).some(z => z.id === k))
+      )
         delete S.defeated[k];
     if (S.trail.length > 4000) S.trail = S.trail.slice(-4000);
     localStorage.setItem(KEY, JSON.stringify(S));
@@ -111,6 +116,12 @@ function migrate(s) {
     // 0.2.7～0.2.11：魔霧、七宗罪殘魂、惡魔珠寶與珠寶槽
     Object.assign(s, { mist: null, sins: s.sins || {}, jewels: s.jewels || [], jsock: s.jsock || {} });
     s.v = 11;
+  }
+  if (s.v < 12) {
+    // 0.2.12：狩獵墮落十二生肖（追蹤之血、召喚）
+    s.hunt = s.hunt || { on: false, blood: 0, acc: 0, marks: {} };
+    s.summons = s.summons || [];
+    s.v = 12;
   }
   return s;
 }

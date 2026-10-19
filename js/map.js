@@ -956,6 +956,7 @@ function genEntities() {
     out.set('b' + b.id, { id: 'b' + b.id, kind: 'base', x, y, lat: b.lat, lng: b.lng, b, name: baseName(b) });
   });
   endgameSpawns(out, cells, put, hp);
+  huntSpawns(out);
   return out;
 }
 function refreshEntities(force) {
@@ -969,7 +970,8 @@ function refreshEntities(force) {
     fl(stats().lure / 5) * 100000 +
     chunkVer * 1e9 +
     '|' +
-    zonesKey();
+    zonesKey() +
+    (S.mist ? '|' + mistEp() : '');
   if (!force && spawnAt && dist(S.lat, S.lng, spawnAt[0], spawnAt[1]) < 120 && spawnAt[2] === ep) return;
   spawnAt = [S.lat, S.lng, ep];
   ENT = genEntities();
@@ -977,15 +979,30 @@ function refreshEntities(force) {
 let VIS = { x: 0, y: 0, r: 600 };
 const MOBILE = new Set(['monster', 'chest', 'event']);
 /* 地圖事件（地城、石碑、魔法陣、靈脈、封印、祭壇、雕像、侵蝕柱、廟宇）：在視野內就顯示，至少 500 公尺，晚上也看得到；不用先揭開迷霧 */
-const LANDMARK = new Set(['dungeon', 'stele', 'circle', 'vein', 'mseal', 'ualtar', 'sinst', 'obelisk', 'shrine']);
+const LANDMARK = new Set([
+  'dungeon',
+  'stele',
+  'circle',
+  'vein',
+  'mseal',
+  'ualtar',
+  'sinst',
+  'obelisk',
+  'shrine',
+  'zodiac'
+]);
 const LM_VIS = 500;
+/* 冥府侵蝕柱、七宗罪雕像、亡靈祭壇、墮落生肖：很顯眼，1.2 公里外就看得到 */
+const FAR = new Set(['obelisk', 'sinst', 'ualtar', 'zodiac']),
+  FAR_VIS = 1200;
 const visible = e =>
   e.kind === 'town' || e.kind === 'base' || e.kind === 'flag' || inZone(e)
     ? true
     : MOBILE.has(e.kind)
       ? Math.hypot(e.x - VIS.x, e.y - VIS.y) <= VIS.r
       : LANDMARK.has(e.kind)
-        ? Math.hypot(e.x - VIS.x, e.y - VIS.y) <= Math.max(VIS.r, LM_VIS) || revealed(e.x, e.y)
+        ? Math.hypot(e.x - VIS.x, e.y - VIS.y) <= Math.max(VIS.r, FAR.has(e.kind) ? FAR_VIS : LM_VIS) ||
+          revealed(e.x, e.y)
         : revealed(e.x, e.y);
 function isDone(e) {
   return (
@@ -1152,6 +1169,7 @@ function renderWorld(t) {
   drawZones(c);
   drawUndead(c, t);
   drawMist(c, t);
+  drawObelisks(c, t);
   const s = sprScale(),
     list = [];
   for (const e of ENT.values()) {
@@ -1194,8 +1212,9 @@ function renderWorld(t) {
       name = e.sub;
       pal = PAL[e.sub];
     } else {
-      name = e.kind;
-      pal = PAL[e.kind];
+      name = e.spr || e.kind;
+      pal = e.spr ? e.pal : PAL[e.kind];
+      if (FAR.has(e.kind)) sc = s * 1.3;
     }
     list.push({
       y,
@@ -1266,6 +1285,7 @@ function renderWorld(t) {
     }
   });
   list.sort((a, b) => a.y - b.y).forEach(o => o.draw());
+  drawUndeadMark(c, t);
   // fog：走過的方格畫迷霧圖，沒走過的方格整塊蓋住
   c.save();
   c.globalAlpha = 0.62;
@@ -1473,6 +1493,7 @@ function setPos(lat, lng, moved) {
       stepAcc = 0;
       sfx('step');
     }
+    huntWalk(moved);
     S.walkRegen = (S.walkRegen || 0) + moved;
     if (S.walkRegen >= 100) {
       naturalRegen(5 * fl(S.walkRegen / 100));

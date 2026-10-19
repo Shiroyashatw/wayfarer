@@ -1066,6 +1066,7 @@ function winBattle() {
   if (B.commander) bonus += commanderWin(B.commander);
   if (B.king) bonus += kingWin();
   if (B.watcher) bonus += watcherWin(B.watcher);
+  if (B.hunt) bonus += huntWin(B);
   addLog(`擊敗 ${e.name} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);
   if (up) setTimeout(() => sfx('level'), 500);
   renderBHud();
