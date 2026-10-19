@@ -447,7 +447,8 @@ function openEnt(id) {
   $('scrim').hidden = false;
   $('sheet').classList.remove('off');
   let desc = '',
-    act = '';
+    act = '',
+    pre = '';
   if (e.kind === 'monster') {
     desc = e.rar
       ? `<span style="color:${RCOL[e.rar]}">${RNAME[e.rar]}怪物</span>：${e.mods
@@ -461,12 +462,7 @@ function openEnt(id) {
       desc = `<span class="danger">⚠ 危險怪物</span> 比你高 ${e.lv - S.lv} 級，生命約一般怪的 3 倍、攻擊 1.6 倍，還帶 ${e.mods.length} 個詞綴：${e.mods.map(id => `<b>${EMODS.find(q => q.id === id).n}</b>`).join('、')}。打贏保證掉 2 件稀有裝備與大量通貨，但很可能會輸。`;
     desc += `<br><span class="sub">攻擊屬性：${EL[e.base.el]}${e.base.res.some(v => v) ? '・抗性 火' + e.base.res[0] + '% 冰' + e.base.res[1] + '% 雷' + e.base.res[2] + '%' : ''}</span>`;
     if (e.bounty) desc += '<br><span style="color:#ff8a6a">懸賞：擊敗可得額外金幣與混沌石。</span>';
-    const pn = packN(e);
-    if (huntLv()) {
-      const c = huntCfg();
-      desc += `<div class="packn many" style="background:#c8141e33;color:#ff9a9a">🩸 獵殺 ${c.n}：這場的怪物等級 +${c.lv}、生命 +${c.hp}%、攻擊 +${c.atk}%</div>`;
-    }
-    desc += `<div class="packn${pn ? ' many' : ''}">${pn ? `⚔ 本次戰鬥共 <b>${pn + 1}</b> 隻：${esc(e.name)} ＋ ${pn} 隻同伴` : '⚔ 本次戰鬥只有 <b>1</b> 隻'}</div>`;
+    pre = lineupHTML(e);
     act = `<button class="btn pri" data-act="fight" data-id="${id}" ${inR ? '' : 'disabled'}>戰鬥</button>`;
   } else if (e.kind === 'dungeon') {
     const sp = dunSpec(e),
@@ -570,10 +566,10 @@ function openEnt(id) {
   }
   const title = e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name;
   $('sbody').innerHTML =
-    `<div class="ent"><canvas id="entBig" width="18" height="18" style="width:84px;height:84px"></canvas><div style="flex:1;min-width:0;display:grid;gap:4px"><b style="font-family:var(--f-pix);font-size:19px;font-weight:400;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(title)}${e.lv && e.kind !== 'town' ? ` <span class="sub">Lv${e.lv}</span>` : ''}</b><span class="sub">${d < 5 ? '就在這裡' : dirName(S.lat, S.lng, e.lat, e.lng) + '方 ' + fmtD(d)}</span></div></div>
-    <p class="sub" style="color:var(--ink)">${desc}</p>${siteBonus(e) ? `<p class="sub" style="color:var(--gold)">✦ 現場加成：人在這裡當場挑戰，掉寶數量與稀有度 +${ONSITE_BONUS}%</p>` : ''}${zn ? `<p class="sub" style="color:var(--good)">在${esc(zn.name)}的範圍內，不用走過去就能互動（遠端沒有現場加成）。</p>` : ''}${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
+    `<div class="ent">${e.kind === 'monster' ? '' : '<canvas id="entBig" width="18" height="18" style="width:84px;height:84px"></canvas>'}<div style="flex:1;min-width:0;display:grid;gap:4px"><b style="font-family:var(--f-pix);font-size:19px;font-weight:400;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(title)}${e.lv && e.kind !== 'town' ? ` <span class="sub">Lv${e.lv}</span>` : ''}</b><span class="sub">${d < 5 ? '就在這裡' : dirName(S.lat, S.lng, e.lat, e.lng) + '方 ' + fmtD(d)}</span></div></div>
+    ${pre}<p class="sub" style="color:var(--ink)">${desc}</p>${siteBonus(e) ? `<p class="sub" style="color:var(--gold)">✦ 現場加成：人在這裡當場挑戰，掉寶數量與稀有度 +${ONSITE_BONUS}%</p>` : ''}${zn ? `<p class="sub" style="color:var(--good)">在${esc(zn.name)}的範圍內，不用走過去就能互動（遠端沒有現場加成）。</p>` : ''}${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
     <div class="btns" style="flex-direction:column">${act}${!inR ? `<button class="btn" data-act="walkto" data-id="${id}">走過去</button>` : ''}</div>`;
-  {
+  if ($('entBig')) {
     /* PNG 怪物圖比 18×18 大：畫布跟著圖的大小，CSS 一樣顯示 84px */
     const ic = entIcon(e),
       cv = $('entBig');
@@ -581,6 +577,18 @@ function openEnt(id) {
     cv.height = ic.height;
     cv.getContext('2d').drawImage(ic, 0, 0);
   }
+}
+/* 開打前的陣容：這場會遇到的每一隻怪（圖示、名字、等級），帶頭的放大、顏色是稀有度；狩獵中附上獵殺強化 */
+function lineupHTML(e) {
+  const n = packN(e),
+    L = huntLv(),
+    c = huntCfg(),
+    lv = e.lv + (L ? c.lv : 0),
+    pf = e.mist ? (e.ud ? '霧中亡靈・' : '魔霧・') : '',
+    mates = packBases({ ud: e.ud, mist: e.mist, lv }, n, packSeed(e)),
+    card = (b, name, lvl, col, big) =>
+      `<div class="lu${big ? ' big' : ''}"${big ? ` style="border-color:${col}"` : ''}><img src="${portrait(b.spr, b.pal)}" alt=""><b style="color:${col}">${esc(name)}</b><small>Lv${lvl}</small></div>`;
+  return `<div class="lineup"><div class="luh">⚔ 本次戰鬥 <b>${n + 1}</b> 隻${n ? '<span>（成群）</span>' : ''}</div><div class="lurow">${card(e.base, e.name, lv, RCOL[e.rar || 0], 1)}${mates.map(m => card(m.b, pf + m.b.name, m.lv, '#d8d0c4')).join('')}</div>${L ? `<div class="luhunt">🩸 獵殺 ${c.n}：全部等級 +${c.lv}、生命 +${c.hp}%、攻擊 +${c.atk}%</div>` : ''}</div>`;
 }
 /* 人實際在現場（不是靠據點、營旗、絲綢之路的遠端範圍） */
 const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e);
@@ -695,6 +703,7 @@ const A = {
       hunt: e.hunt,
       pack: true,
       packN: packN(e),
+      packSeed: packSeed(e),
       onsite: siteBonus(e)
     });
   },

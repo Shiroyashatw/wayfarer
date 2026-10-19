@@ -622,8 +622,12 @@ const MECH = [
   'potBomb',
   'ailDur'
 ];
-/* 升級曲線：Lv1→2 約 6 隻怪，Lv5 約 25 隻，Lv10 約 60 隻（同等級怪） */
-const xpNeed = lv => Math.round(40 * Math.pow(lv, 2.1) + 20 * lv);
+/* 升級曲線（0.3.1.7 前期放緩）：原本的 40·lv^2.1＋20·lv 乘上前期折扣，Lv1 打 3 折，往後平滑回到 Lv25 的原值。
+   以同等級一般怪估算：Lv1→2 約 2 隻、Lv5 約 14 隻、Lv10 約 42 隻、Lv15 約 90 隻、Lv19 約 150 隻（到 Lv20 總共約 1000 隻，原本約 1850） */
+const xpNeed = lv => {
+  const base = 40 * Math.pow(lv, 2.1) + 20 * lv;
+  return Math.round(lv >= 25 ? base : base * (0.3 + 0.7 * Math.pow((lv - 1) / 24, 1.6)));
+};
 function fullHeal() {
   const st = stats();
   S.hp = st.maxhp;

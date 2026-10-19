@@ -420,16 +420,26 @@ function packN(e) {
     b = PACK_P[e.rar || 0][1] - hp[1];
   return q < a ? 0 : q < b ? 1 : 2;
 }
-function packOf(lead, extra = 0, n = 0) {
-  const out = [];
-  for (let k = 0; k < Math.min(4, n + extra); k++) {
-    const lv = Math.max(1, (lead.lv || S.lv) - (Math.random() < 0.5 ? 1 : 0)),
+/* 同伴的種類與等級也依位置與刷新週期固定（packSeed），開打前的說明就能畫出這場會遇到的每一隻 */
+const packSeed = e => h(fl(e.lat * 1e5), fl(e.lng * 1e5), epoch() + 91);
+function packBases(lead, n, seed) {
+  const r = rng(seed),
+    out = [];
+  for (let k = 0; k < Math.min(4, n); k++) {
+    const lv = Math.max(1, (lead.lv || S.lv) - (r() < 0.5 ? 1 : 0)),
       b = lead.ud
-        ? UNDEAD[fl(Math.random() * UNDEAD.length)]
-        : lead.mist && Math.random() < 0.5
-          ? MISTMON[fl(Math.random() * MISTMON.length)]
-          : pickMon(fl(Math.random() * 1e6), lv),
-      m = makeEnemy(b, lv, 0, []);
+        ? UNDEAD[fl(r() * UNDEAD.length)]
+        : lead.mist && r() < 0.5
+          ? MISTMON[fl(r() * MISTMON.length)]
+          : pickMon(fl(r() * 1e6), lv);
+    out.push({ b, lv });
+  }
+  return out;
+}
+function packOf(lead, extra = 0, n = 0, seed) {
+  const out = [];
+  for (const { b, lv } of packBases(lead, n + extra, seed ?? fl(Math.random() * 1e9))) {
+    const m = makeEnemy(b, lv, 0, []);
     m.maxhp = m.hp = Math.round(m.maxhp * 0.6);
     m.atk = Math.round(m.atk * 0.7);
     m.xp = Math.round(m.xp * 0.6);
@@ -981,7 +991,9 @@ function startBattle(e, opts = {}) {
   if (B) return;
   closeSheet();
   if (!Array.isArray(e)) for (const k of ['ud', 'mist', 'uw']) if (opts[k]) e[k] = opts[k];
-  const es = (Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0, opts.packN || 0) : [])]).map(eInit);
+  const es = (
+    Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0, opts.packN || 0, opts.packSeed) : [])]
+  ).map(eInit);
   B = { ...opts, e: es[0], es, ti: 0, me: heroMe(), busy: true, sub: null, act: -1 };
   battleOpen(B.me);
   simTarget = null;
@@ -1710,22 +1722,17 @@ function loseBattle() {
   S.gold -= lost;
   fullHeal();
   D = null;
-  const main = S.bases.find(b => b.type === 'main');
   addLog(`戰敗，損失 ${lost} 金幣`);
+  /* 0.3.1.7 起一律原地復活（不再送回主據點） */
   showModal(
     '你倒下了……',
-    `<p>損失 ${lost} 金幣，狀態已恢復。${main ? '你被送回主據點。' : ''}</p><p class="sub">提示：看看角色頁的抗性，元素怪物對低抗性很痛。</p>`,
+    `<p>損失 ${lost} 金幣，在原地醒來，狀態已恢復。</p><p class="sub">提示：看看角色頁的抗性，元素怪物對低抗性很痛。</p>`,
     [
       {
         label: '重新出發',
         pri: 1,
         fn: () => {
           hideModal();
-          if (main) {
-            S.lat = main.lat;
-            S.lng = main.lng;
-            refreshEntities(true);
-          }
           endBattle();
         }
       }
