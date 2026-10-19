@@ -769,6 +769,25 @@ function nearTown(x, y, r) {
   return TOWNS.some(t => Math.abs(t.x - x) < r && Math.abs(t.y - y) < r && Math.hypot(t.x - x, t.y - y) < r);
 }
 /* 格子 (i,j) 上的地城：位置固定，種類與詞綴每次地圖刷新重骰。要在道路附近才會出現 */
+const SDCELL = 330;
+function soloDunAt(i, j, ep = hepoch()) {
+  const r = h(i, j, 4141);
+  if (r % 100 >= 65) return null;
+  let x = (i + 0.15 + ((r >>> 8) % 70) / 100) * SDCELL,
+    y = (j + 0.15 + ((r >>> 16) % 70) / 100) * SDCELL;
+  if (nearTown(x, y, 160)) return null;
+  const p = snapRoad(x, y, 200);
+  if (!p) return null;
+  [x, y] = [p[0] - 14, p[1] + 10];
+  const q = h(i, j, ep * 13 + 47),
+    T = DTYPES.normal,
+    n = T.mods[0] + ((q >>> 8) % (T.mods[1] - T.mods[0] + 1)),
+    pool = DMODS.map(m => m.id),
+    mods = [];
+  for (let a = 0; a < n; a++) mods.push(pool.splice((q >>> (10 + a * 4)) % pool.length, 1)[0]);
+  const [la, ln] = toLL(x, y);
+  return { id: `ds${i}_${j}`, kind: 'dungeon', x, y, lat: la, lng: ln, dt: 'normal', mods, lv: S.lv + T.lv, name: T.n };
+}
 function dungeonAt(i, j, ep = hepoch()) {
   const r = h(i, j, 41);
   if (r % 100 >= 60) return null;
@@ -862,6 +881,12 @@ function genEntities() {
   cells(DCELL, R + 300, (i, j) => {
     const d = dungeonAt(i, j, hp);
     if (d) out.set(d.id, d);
+  });
+  /* 0.3.1.9：另外一層單人地城（普通地城），密度大約多一倍半，練等時常常有地城可以打、拿首領的三選一獎勵 */
+  cells(SDCELL, R + 300, (i, j) => {
+    const d = soloDunAt(i, j, hp);
+    if (d && ![...out.values()].some(o => o.kind === 'dungeon' && Math.hypot(o.x - d.x, o.y - d.y) < 120))
+      out.set(d.id, d);
   });
   /* 廟宇：真實地圖上的宗教場所；生成道路的方格才用隨機福德祠 */
   const tcell = new Set();
