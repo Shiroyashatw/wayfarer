@@ -484,6 +484,118 @@ function mistify(e, q, k) {
     (e.ud ? '霧中亡靈・' : '魔霧・') +
     (e.rar ? makeEnemy(e.base, e.lv, e.rar, e.mods).name.replace(/^魔霧・/, '') : e.base.name);
 }
+/* 魔霧封印（還沒觸發）：地上旋轉的惡魔法陣＋往上捲的黑暗龍捲風，強度越高越大 */
+function drawSeals(c, t) {
+  for (const e of ENT.values()) {
+    if (e.kind !== 'mseal' || !visible(e) || isDone(e)) continue;
+    const x = SX(e.x),
+      y = SY(e.y),
+      s = sprScale() * (1 + e.tier * 0.15),
+      R = 26 * s;
+    if (x < -R * 3 || x > VW + R * 3 || y < -R * 5 || y > VH + R * 2) continue;
+    const rot = t / 900;
+    c.save();
+    /* 地上的惡魔法陣 */
+    glow(c, x, y, R * 2.2, '90,20,140', 0.45 + 0.15 * Math.sin(t / 400));
+    c.translate(x, y);
+    c.scale(1, 0.42);
+    c.shadowColor = '#b06bff';
+    c.shadowBlur = 10;
+    c.strokeStyle = 'rgba(190,120,255,.8)';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(0, 0, R * 1.5, 0, 6.28);
+    c.stroke();
+    c.rotate(-rot);
+    c.beginPath();
+    for (let k = 0; k <= 5; k++) {
+      const a = (k * 4 * Math.PI) / 5 - Math.PI / 2;
+      c[k ? 'lineTo' : 'moveTo'](Math.cos(a) * R * 1.5, Math.sin(a) * R * 1.5);
+    }
+    c.stroke();
+    c.setLineDash([4, 6]);
+    c.beginPath();
+    c.arc(0, 0, R * 1.85, 0, 6.28);
+    c.stroke();
+    c.restore();
+    /* 黑暗龍捲風：先畫漏斗狀的黑紫色本體，再畫一層層往上變寬、左右擺動並旋轉的亮紫色氣流 */
+    c.save();
+    const H = R * 3.4,
+      sway = Math.sin(t / 500) * R * 0.2,
+      lg = c.createLinearGradient(0, y - H, 0, y);
+    lg.addColorStop(0, 'rgba(60,20,90,.15)');
+    lg.addColorStop(0.5, 'rgba(40,10,60,.6)');
+    lg.addColorStop(1, 'rgba(20,5,30,.85)');
+    c.fillStyle = lg;
+    c.beginPath();
+    c.moveTo(x - R * 0.25, y);
+    c.quadraticCurveTo(x - R * 0.5 + sway, y - H * 0.5, x - R * 1.35 + sway * 1.5, y - H);
+    c.lineTo(x + R * 1.35 + sway * 1.5, y - H);
+    c.quadraticCurveTo(x + R * 0.5 + sway, y - H * 0.5, x + R * 0.25, y);
+    c.closePath();
+    c.fill();
+    for (let k = 0; k < 16; k++) {
+      const q = k / 15,
+        yy = y - q * H,
+        w = R * (0.25 + q * 1.1),
+        sw = Math.sin(t / 260 + k * 0.7) * R * 0.25 * q + sway * q * 1.5,
+        a = 0.55 - q * 0.25;
+      c.strokeStyle = k % 2 ? `rgba(120,50,190,${a + 0.2})` : `rgba(210,160,255,${a + 0.15})`;
+      c.lineWidth = Math.max(1.5, 3.2 * s * (1 - q * 0.4));
+      c.beginPath();
+      c.ellipse(x + sw, yy, w, w * 0.28, 0, rot * 3 + k, rot * 3 + k + Math.PI * 1.4);
+      c.stroke();
+    }
+    /* 被捲起來的碎片 */
+    for (let k = 0; k < 10; k++) {
+      const q = (t / 1800 + k / 10) % 1,
+        a = rot * 6 + k * 2.1,
+        rr = R * (0.3 + q * 1.1);
+      c.fillStyle = `rgba(${k % 2 ? '216,184,255' : '90,40,140'},${1 - q})`;
+      c.fillRect(x + Math.cos(a) * rr, y - q * H + Math.sin(a) * rr * 0.28, 2.5, 2.5);
+    }
+    c.restore();
+  }
+}
+/* 拉遠時：在封印位置畫大大的惡魔符號，遠遠就看得到 */
+function drawSealMark(c, t) {
+  if (cam.z > 0.5) return;
+  for (const e of ENT.values()) {
+    if (e.kind !== 'mseal' || !visible(e) || isDone(e)) continue;
+    const x = SX(e.x),
+      y = SY(e.y) - 18,
+      r = 18 + e.tier * 2,
+      pu = 0.5 + 0.5 * Math.sin(t / 350);
+    if (x < -30 || x > VW + 30 || y < -30 || y > VH + 30) continue;
+    c.save();
+    glow(c, x, y, r * 2.4, '176,107,255', 0.45 + 0.2 * pu);
+    c.fillStyle = 'rgba(20,8,30,.9)';
+    c.beginPath();
+    c.arc(x, y, r, 0, 6.28);
+    c.fill();
+    c.strokeStyle = '#d8b8ff';
+    c.lineWidth = 2;
+    c.stroke();
+    /* 惡魔角＋倒五芒星 */
+    c.strokeStyle = `rgba(200,140,255,${0.8 + 0.2 * pu})`;
+    c.lineWidth = 1.6;
+    c.beginPath();
+    for (let k = 0; k <= 5; k++) {
+      const a = (k * 4 * Math.PI) / 5 + Math.PI / 2;
+      c[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * r * 0.72, y + Math.sin(a) * r * 0.72);
+    }
+    c.stroke();
+    c.fillStyle = '#d8b8ff';
+    for (const sgn of [-1, 1]) {
+      c.beginPath();
+      c.moveTo(x + sgn * r * 0.55, y - r * 0.75);
+      c.lineTo(x + sgn * r * 1.05, y - r * 1.6);
+      c.lineTo(x + sgn * r * 0.2, y - r * 0.95);
+      c.fill();
+    }
+    c.restore();
+  }
+}
 /* 魔霧：紫色霧氣，邊緣是一圈旋轉的漩渦 */
 function drawMist(c, t) {
   const z = S.mist;

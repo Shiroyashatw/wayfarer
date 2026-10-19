@@ -136,8 +136,8 @@ const zoneAt = (lat, lng) => zoneXY(...toM(lat, lng));
 /* ================= spawns ================= */
 const STCELL = 380,
   VCELL = 520,
-  OBCELL = 1600,
-  OB_R = 150,
+  OBCELL = 1000,
+  OB_R = 200,
   OB_NEED = 8;
 /* 冥府侵蝕柱：紅色光柱＋侵蝕範圍的脈動紅圈，遠遠就看得到 */
 function drawObelisks(c, t) {
@@ -221,7 +221,7 @@ function endgameSpawns(out, cells, put, hp) {
   cells(OBCELL, 2400, (i, j) => {
     if (S.lv < 5) return;
     const r = h(i, j, e2 * 7 + 1201);
-    if (r % 100 >= 55) return;
+    if (r % 100 >= 70) return;
     const id = `u${i}_${j}_${e2}`;
     if (S.cleared[id] === e2) return;
     let x = (i + 0.2 + ((r >>> 8) % 60) / 100) * OBCELL,
