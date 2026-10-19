@@ -975,7 +975,7 @@ function refreshEntities(force) {
     chunkVer * 1e9 +
     '|' +
     zonesKey() +
-    (S.mist ? '|' + mistEp() : '');
+    (S.lv >= 5 ? '|' + mistEp() : '');
   if (!force && spawnAt && dist(S.lat, S.lng, spawnAt[0], spawnAt[1]) < 120 && spawnAt[2] === ep) return;
   spawnAt = [S.lat, S.lng, ep];
   ENT = genEntities();
@@ -1145,9 +1145,18 @@ function renderWorld(t) {
   c.strokeStyle = 'rgba(214,184,146,.72)';
   c.lineWidth = Math.max(17, 4 / z);
   for (const q of vc) c.stroke(q.P.M);
-  c.fillStyle = 'rgba(242,193,78,.09)';
-  c.strokeStyle = 'rgba(242,193,78,.85)';
-  c.lineWidth = 2 / z;
+  /* 玩家的互動範圍圈：狩獵中變成血紅色（比冥府的紅更深一點），獵殺等級越高越亮、會脈動 */
+  const hl = huntLv();
+  if (hl) {
+    const pu = 0.5 + 0.5 * Math.sin(performance.now() / (520 - hl * 90));
+    c.fillStyle = `rgba(200,20,30,${0.08 + 0.05 * hl + 0.04 * pu})`;
+    c.strokeStyle = `rgba(255,${60 - hl * 15},${50 - hl * 10},${0.7 + 0.1 * hl + 0.1 * pu})`;
+    c.lineWidth = (2 + hl * 0.8) / z;
+  } else {
+    c.fillStyle = 'rgba(242,193,78,.09)';
+    c.strokeStyle = 'rgba(242,193,78,.85)';
+    c.lineWidth = 2 / z;
+  }
   c.setLineDash([6 / z, 5 / z]);
   c.beginPath();
   c.arc(pmx, pmy, RANGE, 0, 6.28);
@@ -1173,7 +1182,6 @@ function renderWorld(t) {
   c.restore();
   drawZones(c);
   drawUndead(c, t);
-  drawMist(c, t);
   drawObelisks(c, t);
   drawZodiacs(c, t);
   drawSeals(c, t);
@@ -1622,6 +1630,7 @@ function tick(t) {
   renderWorld(t);
   placeLabel();
   timeRegen();
+  huntTick();
 }
 /* 靜止時每分鐘回復 2%（戰鬥中不累積） */
 function timeRegen() {
@@ -1652,7 +1661,9 @@ function placeLabel() {
     (fv => (fv ? `<br><span style="color:#ffd877">足跡 Lv${fv}：怪物 +${footDens(fv)}%</span>` : ''))(
       footLv(...toM(S.lat, S.lng))
     ) +
-    (S.mist ? `<br><span style="color:#d8b8ff">魔霧 ${ROMAN[S.mist.tier]} ${S.mist.prog}%</span>` : '') +
+    (mz => (mz ? `<br><span style="color:#d8b8ff">魔霧 ${ROMAN[mz.tier]} ${mistProg(mz.id)}%</span>` : ''))(
+      mistAt(...toM(S.lat, S.lng))
+    ) +
     (uz => (uz ? `<br><span style="color:#8fe0a0">亡靈區 ${udProg(uz.id)}%</span>` : ''))(
       udZoneAt(...toM(S.lat, S.lng))
     ) +

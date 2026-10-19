@@ -1,4 +1,4 @@
-/* 漫步勇者 · 魔霧與七宗罪（0.2.7～0.2.11）：魔霧封印、魔霧怪、七宗罪雕像與 7 個王、殘魂、傳奇裝備、惡魔珠寶與天賦盤珠寶槽、七宗罪之王 */
+/* 漫步勇者 · 魔霧與七宗罪（0.2.7～0.2.11）：魔霧區（0.3.1.6 起直接出現在地圖上）、魔霧怪、七宗罪雕像與 7 個王、殘魂、傳奇裝備、惡魔珠寶與天賦盤珠寶槽、七宗罪之王 */
 'use strict';
 /* ================= sprites & data ================= */
 const pad16d = rows => rows.map(r => (r + '................').slice(0, 16));
@@ -71,7 +71,7 @@ Object.assign(PAL, {
 /* 地圖依物件種類找圖：雕像用 sinstatue */
 SPR.sinst = SPR.sinstatue;
 PAL.sinst = PAL.sinstatue;
-Object.assign(KIND, { mseal: '魔霧封印', sinst: '七宗罪雕像' });
+Object.assign(KIND, { mseal: '魔霧', sinst: '七宗罪雕像' });
 /* 魔霧詞綴（效果在 mistApply） */
 const MMODS = [
   { id: 'mi_shroud', n: '霧罩', d: '護甲 +60%、全部抗性 +20%', mist: 1 },
@@ -141,12 +141,13 @@ const MISTMON = [
     w: 1
   }
 ];
+/* 魔霧區的強度（0.3.1.6 起直接出現在地圖上，不用觸發）：r 半徑、lv 開放等級 */
 const MIST_TIERS = [
-  { r: 200, min: 30, lv: 5 },
-  { r: 400, min: 45, lv: 8 },
-  { r: 600, min: 60, lv: 12 },
-  { r: 800, min: 90, lv: 16 },
-  { r: 1000, min: 120, lv: 20 }
+  { r: 200, lv: 5 },
+  { r: 240, lv: 8 },
+  { r: 280, lv: 12 },
+  { r: 320, lv: 16 },
+  { r: 360, lv: 20 }
 ];
 const ROMAN = ['Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ'];
 /* 七宗罪：王的名字、形象顏色、詞綴與機制 */
@@ -340,22 +341,21 @@ function jewelStats(A) {
 }
 
 /* ================= map: mist seals, active mist, sin statues ================= */
-const MS_CELL = 900,
+const MS_CELL = 1300,
   SIN_CELL = 2600;
-let MISTZ = null;
+/* 這一輪地圖上的魔霧區（demonSpawns 產生）：{ id, x, y, r, tier, until } */
+let MZ = [];
+const mistAt = (x, y) => MZ.find(z => Math.hypot(z.x - x, z.y - y) <= z.r);
+const mistProg = id => (S.mistp && S.mistp[id]) || 0;
 function demonSpawns(out, cells, hp) {
-  /* 魔霧消散 */
-  if (S.mist && now() > S.mist.until) {
-    toast('魔霧散去了，這次沒有碎裂');
-    addLog('魔霧時間到，散去了');
-    S.mist = null;
-  }
-  MISTZ = S.mist;
-  /* 魔霧封印：每小時刷新，強度依你的等級開放 */
+  MZ = [];
+  /* 魔霧區：每 2 小時換一輪，像冥府侵蝕柱一樣直接出現在地圖上（Lv5 起，強度依等級開放）；中心是魔霧標誌，點了看進度 */
+  const e2 = ep2();
+  if (S.mistp && S.mistp._ep !== e2) S.mistp = { _ep: e2 };
   if (S.lv >= 5)
-    cells(MS_CELL, 1000, (i, j) => {
-      const r = h(i, j, hp * 23 + 1301);
-      if (r % 100 >= 40) return;
+    cells(MS_CELL, 2400, (i, j) => {
+      const r = h(i, j, e2 * 23 + 1301);
+      if (r % 100 >= 45) return;
       const ok = MIST_TIERS.map((t, k) => k).filter(k => MIST_TIERS[k].lv <= S.lv),
         w = [40, 25, 18, 11, 6],
         tot = ok.reduce((a, k) => a + w[k], 0);
@@ -366,30 +366,38 @@ function demonSpawns(out, cells, hp) {
           tier = k;
           break;
         }
-      const id = `ms${i}_${j}_${hp}`;
+      const id = `ms${i}_${j}_${e2}`;
       if (S.defeated[id]) return;
       let x = (i + 0.2 + ((r >>> 12) % 60) / 100) * MS_CELL,
         y = (j + 0.2 + ((r >>> 18) % 60) / 100) * MS_CELL;
-      if (nearTown(x, y, 150)) return;
-      const p = snapRoad(x, y, 140);
+      if (nearTown(x, y, 250)) return;
+      const p = snapRoad(x, y, 160);
       if (!p) return;
       [x, y] = p;
-      const [la, ln] = toLL(x, y);
-      out.set(id, {
-        id,
-        kind: 'mseal',
-        x,
-        y,
-        lat: la,
-        lng: ln,
-        name: `魔霧封印 ${ROMAN[tier]}`,
-        tier,
-        lv: S.lv + tier,
-        gl: '176,107,255',
-        lbl: `魔霧 ${ROMAN[tier]}`,
-        lc: '#d8b8ff'
-      });
+      MZ.push({ id, x, y, r: MIST_TIERS[tier].r, tier, until: (e2 + 1) * ZONE_MS });
     });
+  /* 惡魔結晶召喚的魔霧也算一區 */
+  for (const q of S.summons || [])
+    if (q.e.kind === 'mseal' && q.until > now() && !S.defeated[q.id])
+      MZ.push({ id: q.id, x: q.e.x, y: q.e.y, r: MIST_TIERS[q.e.tier].r, tier: q.e.tier, until: q.until, sum: 1 });
+  for (const z of MZ) {
+    if (z.sum) continue;
+    const [la, ln] = toLL(z.x, z.y);
+    out.set(z.id, {
+      id: z.id,
+      kind: 'mseal',
+      x: z.x,
+      y: z.y,
+      lat: la,
+      lng: ln,
+      name: `魔霧 ${ROMAN[z.tier]}`,
+      tier: z.tier,
+      lv: S.lv + z.tier,
+      gl: '176,107,255',
+      lbl: `魔霧 ${ROMAN[z.tier]} ${mistProg(z.id)}%`,
+      lc: '#d8b8ff'
+    });
+  }
   /* 七宗罪雕像：每 2 小時換一輪，Lv8 起 */
   if (S.lv >= 8) {
     const e2 = ep2();
@@ -422,83 +430,102 @@ function demonSpawns(out, cells, hp) {
       });
     });
   }
-  /* 啟動中的魔霧：範圍內怪物加魔霧詞綴，約 1/3 換成魔霧專屬怪 */
-  if (!MISTZ) return;
+  if (!MZ.length) return;
+  /* 魔霧區裡的怪物加魔霧詞綴，約 1/3 換成魔霧專屬怪 */
   for (const e of out.values()) {
     if (e.kind !== 'monster' || e.ev) continue;
-    if (Math.hypot(e.x - MISTZ.x, e.y - MISTZ.y) > MISTZ.r) continue;
-    mistify(e, h(fl(e.x), fl(e.y), 71), 3);
+    const z = mistAt(e.x, e.y);
+    if (z) mistify(e, h(fl(e.x), fl(e.y), 71), 3, z);
   }
-  /* 魔霧專屬刷新：每 4 分鐘一輪，範圍內每 120 公尺方格約 55% 冒出一隻魔霧怪 */
-  const me = mistEp(),
-    Z = MISTZ;
-  for (let i = fl((Z.x - Z.r) / MQ_CELL); i <= fl((Z.x + Z.r) / MQ_CELL); i++)
-    for (let j = fl((Z.y - Z.r) / MQ_CELL); j <= fl((Z.y + Z.r) / MQ_CELL); j++) {
-      const r = h(i, j, me * 7 + 977);
-      if (r % 100 >= (dayPhase().night > 0.5 ? 70 : 55)) continue;
-      const id = `q${i}_${j}_${me}`;
-      if (S.defeated[id]) continue;
-      let x = (i + ((r >>> 8) % 100) / 100) * MQ_CELL,
-        y = (j + ((r >>> 16) % 100) / 100) * MQ_CELL;
-      if (Math.hypot(x - Z.x, y - Z.y) > Z.r || nearTown(x, y, 100)) continue;
-      const p = snapRoad(x, y, 70);
-      if (!p) continue;
-      [x, y] = p;
-      const q = r >>> 4,
-        rar = q % 100 < 6 ? 2 : q % 100 < 30 ? 1 : 0,
-        lv = Math.max(1, S.lv + ((r >>> 3) % 3) - 1),
-        e = {
-          kind: 'monster',
-          x,
-          y,
-          lv,
-          base: pickMon(r >>> 12, lv),
-          rar,
-          mods: rar ? rollMods(h(i, j, me + 9), rar === 2 ? 3 : 1 + (q % 2)) : [],
-          ph: (r % 628) / 100
-        };
-      const uz = udZoneAt(x, y);
-      if (uz) {
-        e.base = UNDEAD[q % UNDEAD.length];
-        e.ud = uz.id;
+  /* 魔霧專屬刷新：每 4 分鐘一輪，每區每 120 公尺方格約 55% 冒出一隻魔霧怪（晚上 70%） */
+  const me = mistEp();
+  for (const Z of MZ)
+    for (let i = fl((Z.x - Z.r) / MQ_CELL); i <= fl((Z.x + Z.r) / MQ_CELL); i++)
+      for (let j = fl((Z.y - Z.r) / MQ_CELL); j <= fl((Z.y + Z.r) / MQ_CELL); j++) {
+        const r = h(i, j, me * 7 + 977);
+        if (r % 100 >= (dayPhase().night > 0.5 ? 70 : 55)) continue;
+        const id = `q${i}_${j}_${me}`;
+        if (S.defeated[id] || out.has(id)) continue;
+        let x = (i + ((r >>> 8) % 100) / 100) * MQ_CELL,
+          y = (j + ((r >>> 16) % 100) / 100) * MQ_CELL;
+        if (Math.hypot(x - Z.x, y - Z.y) > Z.r || nearTown(x, y, 100)) continue;
+        const p = snapRoad(x, y, 70);
+        if (!p) continue;
+        [x, y] = p;
+        const q = r >>> 4,
+          rar = q % 100 < 6 ? 2 : q % 100 < 30 ? 1 : 0,
+          lv = Math.max(1, S.lv + ((r >>> 3) % 3) - 1),
+          e = {
+            kind: 'monster',
+            x,
+            y,
+            lv,
+            base: pickMon(r >>> 12, lv),
+            rar,
+            mods: rar ? rollMods(h(i, j, me + 9), rar === 2 ? 3 : 1 + (q % 2)) : [],
+            ph: (r % 628) / 100
+          };
+        const uz = udZoneAt(x, y);
+        if (uz) {
+          e.base = UNDEAD[q % UNDEAD.length];
+          e.ud = uz.id;
+        }
+        mistify(e, q, 2, Z);
+        const [la, ln] = toLL(x, y);
+        out.set(id, { id, lat: la, lng: ln, ...e });
       }
-      mistify(e, q, 2);
-      const [la, ln] = toLL(x, y);
-      out.set(id, { id, lat: la, lng: ln, ...e });
-    }
 }
 const MQ_CELL = 120,
   MIST_MS = 4 * 60e3,
   mistEp = () => fl(now() / MIST_MS);
-/* 把怪物變成魔霧怪：加魔霧詞綴、等級 +階級，1/k 換成魔霧專屬怪 */
-function mistify(e, q, k) {
+/* 把怪物變成魔霧怪：加魔霧詞綴、等級 +階級，1/k 換成魔霧專屬怪；e.mist 記住是哪一區 */
+function mistify(e, q, k, Z) {
   /* 魔霧蓋到亡靈區：亡靈不換成魔霧怪，變成「霧中亡靈」，同時算兩邊的進度 */
   if (q % k === 0 && !e.ud) e.base = MISTMON[(q >>> 3) % MISTMON.length];
   const ids = MMODS.map(m => m.id),
     add = [ids.splice((q >>> 5) % ids.length, 1)[0]];
-  if (MISTZ.tier >= 2 && (q >>> 9) % 2) add.push(ids[(q >>> 11) % ids.length]);
+  if (Z.tier >= 2 && (q >>> 9) % 2) add.push(ids[(q >>> 11) % ids.length]);
   e.mods = [...e.mods.filter(m => !m.startsWith('mi_')), ...add];
-  e.lv += MISTZ.tier;
-  e.mist = true;
+  e.lv += Z.tier;
+  e.mist = Z.id;
   e.name =
     (e.ud ? '霧中亡靈・' : '魔霧・') +
     (e.rar ? makeEnemy(e.base, e.lv, e.rar, e.mods).name.replace(/^魔霧・/, '') : e.base.name);
 }
-/* 魔霧封印（還沒觸發）：地上的惡魔法陣（五芒星不動，外圈虛線慢慢轉），強度越高越大 */
+/* 魔霧區：跟冥府侵蝕柱一樣的脈動圓圈＋往外擴散的波紋＋光柱，顏色是紫色；中心地上是惡魔法陣 */
 function drawSeals(c, t) {
-  for (const e of ENT.values()) {
-    if (e.kind !== 'mseal' || !visible(e) || isDone(e)) continue;
-    const x = SX(e.x),
-      y = SY(e.y),
-      R = 17 * sprScale() * (1 + e.tier * 0.12);
-    if (x < -R * 3 || x > VW + R * 3 || y < -R * 2 || y > VH + R * 2) continue;
+  for (const z of MZ) {
+    const x = SX(z.x),
+      y = SY(z.y),
+      r = Math.abs(SX(z.x + z.r) - x),
+      pu = 0.5 + 0.5 * Math.sin(t / 380);
+    if (x < -r - 40 || x > VW + r + 40 || y < -r - 200 || y > VH + r + 40) continue;
     c.save();
-    glow(c, x, y, R * 2, '90,20,140', 0.4 + 0.12 * Math.sin(t / 600));
+    const g = c.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(150,70,230,.06)');
+    g.addColorStop(1, `rgba(150,70,230,${0.2 + 0.1 * pu})`);
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(x, y, r, 0, 6.28);
+    c.fill();
+    c.shadowColor = '#b06bff';
+    c.shadowBlur = 12;
+    c.strokeStyle = `rgba(190,120,255,${0.6 + 0.3 * pu})`;
+    c.lineWidth = 2.5;
+    c.stroke();
+    const w = (t / 1600) % 1;
+    c.shadowBlur = 0;
+    c.strokeStyle = `rgba(200,140,255,${0.6 * (1 - w)})`;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(x, y, r * w, 0, 6.28);
+    c.stroke();
+    /* 中心的惡魔法陣（五芒星不動，外圈虛線慢慢轉） */
+    const R = 17 * sprScale() * (1 + z.tier * 0.12);
+    c.save();
     c.translate(x, y);
     c.scale(1, 0.42);
-    c.shadowColor = '#b06bff';
-    c.shadowBlur = 8;
-    c.strokeStyle = 'rgba(190,120,255,.8)';
+    c.strokeStyle = 'rgba(200,140,255,.85)';
     c.lineWidth = 2;
     c.beginPath();
     c.arc(0, 0, R * 1.5, 0, 6.28);
@@ -515,13 +542,23 @@ function drawSeals(c, t) {
     c.arc(0, 0, R * 1.85, 0, 6.28);
     c.stroke();
     c.restore();
+    /* 光柱 */
+    const bw = 10 + 4 * pu,
+      bh = 150,
+      lg = c.createLinearGradient(0, y - bh, 0, y);
+    lg.addColorStop(0, 'rgba(150,70,230,0)');
+    lg.addColorStop(1, `rgba(170,100,255,${0.5 + 0.25 * pu})`);
+    c.fillStyle = lg;
+    c.fillRect(x - bw / 2, y - bh, bw, bh);
+    c.fillStyle = `rgba(240,220,255,${0.5 + 0.3 * pu})`;
+    c.fillRect(x - 1.5, y - bh * 0.8, 3, bh * 0.8);
+    c.restore();
   }
 }
 /* 拉遠時：在封印位置畫大大的惡魔符號，遠遠就看得到 */
 function drawSealMark(c, t) {
   if (cam.z > 0.5) return;
-  for (const e of ENT.values()) {
-    if (e.kind !== 'mseal' || !visible(e) || isDone(e)) continue;
+  for (const e of MZ) {
     const x = SX(e.x),
       y = SY(e.y) - 18,
       r = 18 + e.tier * 2,
@@ -556,80 +593,23 @@ function drawSealMark(c, t) {
     c.restore();
   }
 }
-/* 魔霧：紫色霧氣，邊緣是一圈旋轉的漩渦 */
-function drawMist(c, t) {
-  const z = S.mist;
-  if (!z) return;
-  const x = SX(z.x),
-    y = SY(z.y),
-    r = Math.abs(SX(z.x + z.r) - x),
-    rot = t / 1400;
-  c.save();
-  const g = c.createRadialGradient(x, y, r * 0.1, x, y, r);
-  g.addColorStop(0, `rgba(120,70,180,${0.12 + 0.05 * Math.sin(t / 900)})`);
-  g.addColorStop(0.8, 'rgba(110,50,170,.26)');
-  g.addColorStop(1, 'rgba(150,70,230,.42)');
-  c.fillStyle = g;
-  c.beginPath();
-  c.arc(x, y, r, 0, 6.28);
-  c.fill();
-  c.shadowColor = '#b06bff';
-  c.shadowBlur = 16;
-  c.strokeStyle = 'rgba(210,160,255,.85)';
-  c.lineWidth = 3;
-  c.stroke();
-  /* 漩渦臂：從邊緣往內捲的弧線，整圈旋轉 */
-  c.lineCap = 'round';
-  for (let k = 0; k < 10; k++) {
-    const a0 = rot + (k * Math.PI * 2) / 10;
-    c.strokeStyle = `rgba(${k % 2 ? '190,120,255' : '230,200,255'},${0.55 + 0.25 * Math.sin(t / 500 + k)})`;
-    c.lineWidth = k % 2 ? 2.5 : 1.5;
-    c.beginPath();
-    for (let s = 0; s <= 1.0001; s += 0.1) {
-      const rr = r * (1.04 - 0.22 * s),
-        aa = a0 + s * 1.3,
-        px = x + Math.cos(aa) * rr,
-        py = y + Math.sin(aa) * rr;
-      s ? c.lineTo(px, py) : c.moveTo(px, py);
-    }
-    c.stroke();
-  }
-  /* 反向旋轉的外圈虛線 */
-  c.shadowBlur = 0;
-  c.setLineDash([14, 10]);
-  c.lineDashOffset = t / 40;
-  c.strokeStyle = 'rgba(240,220,255,.5)';
-  c.lineWidth = 1.5;
-  c.beginPath();
-  c.arc(x, y, r * 1.06, 0, 6.28);
-  c.stroke();
-  c.restore();
-  if (cam.z > 0.08)
-    label(
-      c,
-      `魔霧 ${ROMAN[z.tier]} ${z.prog}%・剩 ${Math.max(0, Math.ceil((z.until - now()) / 60e3))} 分`,
-      x,
-      y - r - 10,
-      12,
-      '#e0c8ff',
-      true
-    );
-}
 /* 打倒魔霧裡的怪：累積進度，滿了碎裂得碎片 */
 function mistWin(b) {
-  const z = S.mist,
-    e = b.e;
-  if (!z || !b.mist) return '';
+  const e = b.e,
+    z = MZ.find(q => q.id === b.mist);
+  if (!z) return '';
   const inc =
     (([4, 7, 12, 12, 18][e.rar || 0] + (MISTMON.some(m => m.name === b.mistBase) ? 2 : 0)) * (b.ud ? 1.5 : 1)) /
     (1 + 0.15 * z.tier);
-  z.prog = Math.min(100, Math.round(z.prog + inc));
-  if (z.prog < 100) return `<p style="color:#d8b8ff">魔霧進度 ${z.prog}%</p>`;
+  S.mistp = S.mistp || { _ep: ep2() };
+  const p = Math.min(100, Math.round(mistProg(z.id) + inc));
+  S.mistp[z.id] = p;
+  if (p < 100) return `<p style="color:#d8b8ff">魔霧 ${ROMAN[z.tier]} 進度 ${p}%</p>`;
   const n = z.tier + 1;
   giveCur('mfrag', n);
   quest('mist');
   addLog(`魔霧 ${ROMAN[z.tier]} 碎裂，得到 ${n} 片魔霧碎片`);
-  S.mist = null;
+  S.defeated[z.id] = 1;
   refreshEntities(true);
   return `<p style="color:#e0c8ff">魔霧碎裂了！得到 ${curDot('mfrag')}魔霧碎片 ×${n}</p>`;
 }
@@ -771,7 +751,7 @@ const sinMods = e => {
 };
 function demonHTML() {
   const sins = S.sins || {};
-  return `<p class="sub">魔霧封印碎裂得到魔霧碎片，放進七宗罪雕像挑戰各宗罪的王。集齊 7 種殘魂可以組隊挑戰七宗罪之王。</p>
+  return `<p class="sub">地圖上的魔霧區（紫色圓圈）打滿進度碎裂，得到魔霧碎片，放進七宗罪雕像挑戰各宗罪的王。集齊 7 種殘魂可以組隊挑戰七宗罪之王。</p>
   <div class="curs"><span><img class="cico lg" src="${curIcon('mfrag')}" alt=""><span>魔霧碎片<b>${S.cur.mfrag || 0}</b></span></span>${SINS.map(s => `<span title="${s.boss}"><span>${s.n}的殘魂<b style="color:${sins[s.k] ? 'var(--gold)' : 'var(--dim)'}">${sins[s.k] || 0}</b></span></span>`).join('')}</div>
   ${S.title ? `<p class="sub" style="color:var(--gold)">稱號：${S.title}</p>` : ''}
   <h3>傳奇裝備圖鑑</h3>${LEGENDS.map(l => `<div class="card"><b style="color:${RCOL[3]}">${l.n}</b><small class="sub" style="display:block">${SLOTN[l.slot]}・${l.lines.join('、')}・${l.zod ? `${ZODI[l.zod].t}之印 ×${ZLEG_COST} 兌換` : `${SINI[l.k].n}之王掉落`}</small></div>`).join('')}`;
@@ -813,20 +793,6 @@ MAT_TABS.push(['demon', '魔霧', () => S.cur.mfrag || 0], ['jewels', '珠寶', 
 
 /* ================= actions ================= */
 Object.assign(A, {
-  mistGo: d => {
-    const e = ENT.get(d.id);
-    if (!e || !onSite(e) || S.mist || S.lv < MIST_TIERS[e.tier].lv) return;
-    const t = MIST_TIERS[e.tier];
-    S.defeated[e.id] = 1;
-    S.mist = { id: e.id, x: e.x, y: e.y, r: t.r, tier: e.tier, prog: 0, until: now() + t.min * 60e3 };
-    closeSheet();
-    sfx('bless');
-    buzz(80);
-    toast(`魔霧 ${ROMAN[e.tier]} 擴散了！半徑 ${t.r} 公尺，${t.min} 分鐘內打滿進度`);
-    addLog(`觸發魔霧封印 ${ROMAN[e.tier]}`);
-    refreshEntities(true);
-    save();
-  },
   sinX: d => {
     SEL.sinX = Math.max(0, Math.min(SIN_EXTRA, (SEL.sinX || 0) + +d.v));
     openEnt(d.id);

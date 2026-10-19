@@ -116,7 +116,8 @@ function nearProg() {
   if (hu.on || hu.blood)
     out.push(`<span style="color:#ff8a9a">追蹤之血 ${hu.blood || 0}・結晶 ${S.cur.dcrys || 0}</span>`);
   if (uz) out.push(`<span style="color:#8fe0a0">亡靈區 ${udProg(uz.id)}%</span>`);
-  if (S.mist) out.push(`<span style="color:#d8b8ff">魔霧 ${ROMAN[S.mist.tier]} ${S.mist.prog}%</span>`);
+  const mz = mistAt(px, py);
+  if (mz) out.push(`<span style="color:#d8b8ff">魔霧 ${ROMAN[mz.tier]} ${mistProg(mz.id)}%</span>`);
   const ob = [...ENT.values()]
     .filter(e => e.kind === 'obelisk')
     .sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py))[0];

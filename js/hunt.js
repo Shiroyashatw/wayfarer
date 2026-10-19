@@ -313,7 +313,7 @@ const HSUM = [
   { k: 'dungeon', n: '地城', c: 3, d: '一般或組隊地城' },
   { k: 'stele', n: '空白石碑', c: 2, d: '當場挑戰或壓縮封印' },
   { k: 'vein', n: '靈脈', c: 2, d: '採集刻印石' },
-  { k: 'mseal', n: '魔霧封印', c: 4, d: 'Lv5 起', lv: 5 }
+  { k: 'mseal', n: '魔霧', c: 4, d: 'Lv5 起，在身邊籠罩', lv: 5 }
 ];
 /* 地圖上的墮落生肖：腳下一圈旋轉的血色符文陣與黑紅氣場 */
 function drawZodiacs(c, t) {
@@ -385,27 +385,100 @@ const zodPal = z => ({ ...ZBASE, ...z.pal });
 Object.assign(KIND, { zodiac: '墮落生肖' });
 
 /* ================= state ================= */
-const H = () => (S.hunt = S.hunt || { on: false, blood: 0, acc: 0, marks: {} });
-/* setPos 每次移動都會呼叫：開啟狩獵時每 10 公尺 +1 追蹤之血 */
-function huntWalk(m) {
-  const h = H();
-  if (!h.on || m > 200) return;
-  h.acc += m;
-  if (h.acc < HUNT_STEP) return;
-  const n = fl(h.acc / HUNT_STEP),
+const H = () => (S.hunt = S.hunt || { on: false, blood: 0, acc: 0, marks: {}, heat: 0, tAt: 0 });
+/* 獵殺等級（0.3.1.6）：狩獵開著時，時間與擊敗的怪物累積熱度，分三級。等級越高，身邊（玩家的紅圈內）的怪物越強、
+   越常成群，但追蹤之血累積越快；關掉狩獵後熱度歸 0，追蹤之血慢慢消退 */
+const HUNT_LV = [
+  { heat: 0, n: 'Ⅰ', lv: 1, hp: 15, atk: 10, pack: [0.12, 0.06], blood: 1.5 },
+  { heat: 40, n: 'Ⅱ', lv: 2, hp: 35, atk: 20, pack: [0.25, 0.14], blood: 2.5 },
+  { heat: 100, n: 'Ⅲ', lv: 4, hp: 60, atk: 35, pack: [0.38, 0.25], blood: 4 }
+];
+const HEAT_MIN = 1,
+  HEAT_KILL = 4,
+  BLOOD_DECAY = 1;
+/* 目前的獵殺等級：0 是沒開，1～3 */
+const huntLv = () => {
+  const h = S && S.hunt;
+  if (!h || !h.on) return 0;
+  let L = 1;
+  HUNT_LV.forEach((q, i) => (h.heat >= q.heat ? (L = i + 1) : 0));
+  return L;
+};
+const huntCfg = () => HUNT_LV[huntLv() - 1];
+function addBlood(n) {
+  const h = H(),
     before = h.blood;
-  h.acc -= n * HUNT_STEP;
   h.blood = Math.min(BLOOD_MAX, h.blood + n);
   quest('blood', h.blood - before);
   if (before < RITE_COST && h.blood >= RITE_COST) toast('追蹤之血滿 100 了，可以血祭引出墮落獸');
   huntHud();
 }
+/* setPos 每次移動都會呼叫：開啟狩獵時每 10 公尺 +1 追蹤之血 × 獵殺等級倍率 */
+function huntWalk(m) {
+  const h = H();
+  if (!h.on || m > 200) return;
+  h.acc += m * huntCfg().blood;
+  if (h.acc < HUNT_STEP) return;
+  const n = fl(h.acc / HUNT_STEP);
+  h.acc -= n * HUNT_STEP;
+  addBlood(n);
+}
+/* 每幀呼叫（timeRegen 旁）：開著時每分鐘熱度 +1；關著時追蹤之血每分鐘 -1 */
+function huntTick() {
+  const h = H(),
+    n = now();
+  if (!h.tAt || B || MB) h.tAt = n;
+  const k = fl((n - h.tAt) / 60e3);
+  if (k <= 0) return;
+  h.tAt += k * 60e3;
+  const L0 = huntLv();
+  if (h.on) h.heat = (h.heat || 0) + HEAT_MIN * Math.min(k, 120);
+  else if (h.blood > 0) h.blood = Math.max(0, h.blood - BLOOD_DECAY * k);
+  if (huntLv() > L0) huntUp();
+  huntHud();
+}
+/* 戰鬥勝利：每隻怪物增加熱度（菁英更多），也給追蹤之血 */
+function huntKills(es) {
+  const h = H();
+  if (!h.on) return '';
+  const L0 = huntLv(),
+    heat = es.reduce((a, o) => a + HEAT_KILL * (1 + (o.rar || 0)), 0),
+    blood = Math.round(es.length * 2 * huntCfg().blood);
+  h.heat = (h.heat || 0) + heat;
+  addBlood(blood);
+  if (huntLv() > L0) huntUp();
+  return `<p style="color:#ff6a6a">獵殺 ${huntCfg().n}：追蹤之血 +${blood}・熱度 ${h.heat}${huntLv() < 3 ? `/${HUNT_LV[huntLv()].heat}` : ''}</p>`;
+}
+function huntUp() {
+  const c = huntCfg();
+  sfx('encounter');
+  buzz(120);
+  toast(`獵殺等級提升到 ${c.n}！附近的怪物變強（等級 +${c.lv}），追蹤之血 ×${c.blood}`);
+  addLog(`獵殺等級提升到 ${c.n}`);
+  refreshEntities(true);
+}
+/* 開打時把獵殺等級的強化套在敵人身上（A.fight、packOf 呼叫）；keepLv 表示等級已經算進去了 */
+function huntBuff(e, keepLv) {
+  const c = huntCfg();
+  if (!c || e.hlv) return e;
+  e.hlv = huntLv();
+  if (!keepLv) e.lv += c.lv;
+  e.maxhp = e.hp = Math.round(e.maxhp * (1 + c.hp / 100));
+  e.atk = Math.round(e.atk * (1 + c.atk / 100));
+  e.xp = Math.round(e.xp * (1 + c.lv * 0.12));
+  return e;
+}
 function huntHud() {
   const b = $('huntN');
   if (!b || !S) return;
-  const h = H();
+  const h = H(),
+    L = huntLv();
   b.textContent = h.blood;
-  b.closest('.lfab').classList.toggle('on', !!h.on);
+  const f = b.closest('.lfab');
+  f.classList.toggle('on', !!h.on);
+  f.dataset.hl = L;
+  const sp = f.querySelector('span');
+  if (sp) sp.textContent = L ? `獵殺 ${HUNT_LV[L - 1].n}` : '狩獵';
 }
 /* 找身邊的路：距離 lo～hi 公尺，找不到路就放在身邊 */
 function nearSpot(lo, hi) {
@@ -519,8 +592,17 @@ function huntHTML() {
     cr = S.cur.dcrys || 0,
     za = zodActive(),
     list = (S.summons || []).filter(s => s.until > now() && !S.defeated[s.id]);
-  return `<div class="card"><div class="rowx"><div class="t"><b>狩獵模式：<span style="color:${h.on ? '#ff6a7a' : 'var(--dim)'}">${h.on ? '追蹤中' : '關閉'}</span></b><small>開啟後每走 ${HUNT_STEP} 公尺得到 1 滴追蹤之血（最多 ${BLOOD_MAX}）。</small></div><button class="btn sm ${h.on ? '' : 'pri'}" data-act="huntOn">${h.on ? '停止' : '開始狩獵'}</button></div>
-  ${bar('追蹤之血', h.blood, BLOOD_MAX, '#e5484d')}</div>
+  const L = huntLv(),
+    c = huntCfg(),
+    nx = L && L < 3 ? HUNT_LV[L] : null;
+  return `<div class="card"><div class="rowx"><div class="t"><b>狩獵模式：<span style="color:${h.on ? '#ff6a7a' : 'var(--dim)'}">${h.on ? `獵殺 ${c.n}` : '關閉'}</span></b><small>${h.on ? `走路每 ${HUNT_STEP} 公尺、每次打贏都會得到追蹤之血（×${c.blood}）。` : `關閉中：追蹤之血每分鐘 -${BLOOD_DECAY}。`}</small></div><button class="btn sm ${h.on ? '' : 'pri'}" data-act="huntOn">${h.on ? '停止' : '開始狩獵'}</button></div>
+  ${bar('追蹤之血', h.blood, BLOOD_MAX, '#e5484d')}
+  ${h.on ? bar(nx ? `獵殺熱度（到 ${nx.n}）` : '獵殺熱度（已到 Ⅲ）', nx ? h.heat : 1, nx ? nx.heat : 1, '#ff6a3a') : ''}</div>
+  <div class="card huntlv"><b>獵殺等級：高風險、高報酬</b><small class="sub">開啟狩獵後，地圖上你的範圍圈變成紅色。時間（每分鐘 +${HEAT_MIN}）與打倒的怪物（每隻 +${HEAT_KILL}，菁英更多）會累積熱度，熱度越高獵殺等級越高：紅圈內的怪物變強、更常成群出現，但追蹤之血累積得更快。停止狩獵後熱度歸 0，追蹤之血會慢慢消退。</small>
+  <div class="hlv">${HUNT_LV.map(
+    (q, i) =>
+      `<div class="${L === i + 1 ? 'on' : ''}"><b>${q.n}</b><small>熱度 ${q.heat}+</small><small>怪物等級 +${q.lv}・生命 +${q.hp}%・攻擊 +${q.atk}%</small><small>成群機率提高</small><small style="color:#ff8a8a">追蹤之血 ×${q.blood}</small></div>`
+  ).join('')}</div></div>
   <button class="btn pri" data-act="huntRite" ${h.blood >= RITE_COST ? '' : 'disabled'}>${curDot('blood')}血祭（${RITE_COST} 滴）：引出附近的墮落獸</button>
   <p class="sub">墮落獸會出現在 50～150 公尺內的路上（${BEAST_MS / 60e3} 分鐘內有效），打倒得到 1～3 個惡魔結晶。</p>
   <h3>${curDot('dcrys')}惡魔結晶 ${cr}</h3>
@@ -657,8 +739,11 @@ Object.assign(A, {
   huntOn: () => {
     const h = H();
     h.on = !h.on;
-    toast(h.on ? '開始狩獵：走路會累積追蹤之血' : '停止狩獵');
+    h.heat = 0;
+    h.tAt = now();
+    toast(h.on ? '開始狩獵：獵殺 Ⅰ，附近的怪物變強了' : '停止狩獵：追蹤之血會慢慢消退');
     huntHud();
+    refreshEntities(true);
     save();
     renderSheet();
   },
@@ -703,7 +788,7 @@ Object.assign(A, {
         y,
         tier,
         lv: S.lv + tier,
-        name: `魔霧封印 ${ROMAN[tier]}`,
+        name: `魔霧 ${ROMAN[tier]}`,
         gl: '176,107,255',
         lbl: `魔霧 ${ROMAN[tier]}`,
         lc: '#d8b8ff'
