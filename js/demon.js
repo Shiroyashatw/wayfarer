@@ -701,7 +701,7 @@ function demonHTML() {
   return `<p class="sub">魔霧封印碎裂得到魔霧碎片，放進七宗罪雕像挑戰各宗罪的王。集齊 7 種殘魂可以組隊挑戰七宗罪之王。</p>
   <div class="curs"><span><img class="cico lg" src="${curIcon('mfrag')}" alt=""><span>魔霧碎片<b>${S.cur.mfrag || 0}</b></span></span>${SINS.map(s => `<span title="${s.boss}"><span>${s.n}的殘魂<b style="color:${sins[s.k] ? 'var(--gold)' : 'var(--dim)'}">${sins[s.k] || 0}</b></span></span>`).join('')}</div>
   ${S.title ? `<p class="sub" style="color:var(--gold)">稱號：${S.title}</p>` : ''}
-  <h3>傳奇裝備圖鑑</h3>${LEGENDS.map(l => `<div class="card"><b style="color:${RCOL[3]}">${l.n}</b><small class="sub" style="display:block">${SLOTN[l.slot]}・${l.lines.join('、')}・${SINI[l.k].n}之王掉落</small></div>`).join('')}`;
+  <h3>傳奇裝備圖鑑</h3>${LEGENDS.map(l => `<div class="card"><b style="color:${RCOL[3]}">${l.n}</b><small class="sub" style="display:block">${SLOTN[l.slot]}・${l.lines.join('、')}・${l.zod ? `${ZODI[l.zod].t}之印 ×${ZLEG_COST} 兌換` : `${SINI[l.k].n}之王掉落`}</small></div>`).join('')}`;
 }
 function jewelHTML() {
   const js = S.jewels || [],

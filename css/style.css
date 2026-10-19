@@ -403,3 +403,5 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .qrow.ok i{background:var(--good)}
 .nprog{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;font-size:12px}
 .nprog span{padding:3px 8px;border-radius:10px;background:#0004}
+.jpick{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.jpick .btn{text-align:left;font-size:12px;min-height:36px}

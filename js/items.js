@@ -441,6 +441,7 @@ function sumStats() {
     if (n) for (const k in n.st) A(k, n.st[k]);
   }
   jewelStats(A);
+  zodStats(A);
   return t;
 }
 /* 升級只成長生命與魔力（所有人相同），其他數值靠裝備、天賦與技能石 */

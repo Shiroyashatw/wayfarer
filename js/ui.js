@@ -52,7 +52,8 @@ const TITLES = {
   party: '組隊',
   skills: '技能',
   stele: '石碑與傳送門',
-  gem: '技能石'
+  gem: '技能石',
+  seal: '印記兌換'
 };
 /* 底部導覽：群組按鈕點了往上展開 2～3 個功能，再點一次或點地圖就收起來 */
 const NAVG = {
@@ -342,6 +343,8 @@ function renderSheet() {
     html = partyHTML();
   } else if (sheetName === 'hunt') {
     html = huntHTML();
+  } else if (sheetName === 'seal') {
+    html = sealHTML();
   } else if (sheetName === 'log') {
     html = `<div class="log">${S.log.map(t => `<div>${esc(t)}</div>`).join('')}</div>`;
   }
@@ -352,7 +355,7 @@ function renderSheet() {
     const e = ENT.get(cv.dataset.ent);
     if (e) cv.getContext('2d').drawImage(entIcon(e), 0, 0);
   });
-  if (sheetName === 'hunt') huntPaint();
+  if (sheetName === 'hunt' || sheetName === 'seal') huntPaint();
   const dh = $('dollHero');
   if (dh) dh.getContext('2d').drawImage(sprite('heroF', heroPal()), 0, 0);
 }

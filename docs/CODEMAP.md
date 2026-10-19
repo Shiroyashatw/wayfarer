@@ -41,6 +41,7 @@
 | 傳奇裝備 | `js/demon.js`、`js/items.js` | `LEGENDS`、`makeLegend`；屬性在 `sumStats`（`it.leg`），特效旗標 `legPride` 等在 `heroDmg`／`heroAil`／`useSkill`／`bItem` |
 | 惡魔珠寶與天賦盤珠寶槽 | `js/demon.js`、`js/data.js`、`js/tree.js` | `JAFF`、`makeJewel`、`jewelCap`、`jewelStats`、`socketCardHTML`、`A.jIn`／`A.jOut`；槽位在 `TREE` 結尾（`type: 'socket'`），鑲嵌狀態 `S.jsock` |
 | 今日委託、附近面板分組、足跡（0.2.13） | `js/daily.js` | `QUESTS`、`daily`、`quest(k, n)`（各處呼叫：`winBattle`、`dungeonClear`、`pray`、`openChest`、`gather`、`obeliskCharge`、`mistWin`、`huntWalk`、`setPos`）、`dailyHTML`、`nearHTML`／`ngroup`／`nearProg`（`near` 面板）、`footStep`（`trailStep`）、`footLv`／`footDens`／`footRare`（`genEntities` 怪物生成）、`drawFoot`；狀態 `S.daily`、`S.foot` |
+| 印記兌換、生肖傳奇（0.2.13） | `js/hunt.js`、`js/items.js` | `ZLEG`（加進 `LEGENDS`／`LEGI`，`k` 是 `z_生肖`）、`zodStats`（`sumStats` 呼叫，生肖共鳴）、`sealHTML`（`seal` 面板）、`A.sealLeg`／`A.sealJewel`、`spendMarks`；`S.hunt.marks`（可消耗）、`S.hunt.slain`（稱號） |
 | 地圖事件連動（0.2.13） | `js/demon.js`、`js/undead.js`、`js/hunt.js` | 霧中亡靈：`mistify`（`e.ud`）、`mistWin`／`undeadWin`（×1.5）；冥府生肖：`A.huntZod`（`ZOD_UW_R`、`uwz`）、`huntWin`；夜晚：`undeadSpawns` 半徑、魔霧刷新機率 |
 | 狩獵墮落十二生肖（0.2.12） | `js/hunt.js` | `huntWalk`（`setPos` 呼叫）、`huntSpawns`（`genEntities` 最後）、`ZODIAC`（圖 `SPR.z_*`、配色 `ZBASE`）、`drawZodiacs`、`HSUM`、`makeBeast`、`makeZodiac`、`huntWin`（`winBattle`）、`huntHTML`（`hunt` 面板）、`zodEntHTML`（`openEnt`）；狀態 `S.hunt`、`S.summons`（id 以 `z` 開頭） |
 | 魔霧刷新、亡靈區／魔霧／侵蝕柱的地圖繪製 | `js/demon.js`、`js/undead.js`、`js/endgame.js` | `mistEp`／`mistify`（`q` 開頭的魔霧怪）、`drawMist`、`drawUndead`／`drawUndeadMark`、`drawObelisks`；遠距離顯示 `FAR`（`map.js`） |
@@ -146,18 +147,18 @@
 - **audio**（3）
   `AU:4`、`audioInit:5`、`tone:30`、`noise:47`、`NS:65`、`nf:66`、`SONGS:71`、`PARSED:109`、`parse:110`、`playSong:122`、`schedule:128`、`SFX:147`、`sfx:213`、`buzz:216`
 
-### js/items.js（803 行）
+### js/items.js（804 行）
 
 - **player & items**（3）
   `newGame:4`、`makeItem:73`、`baseOf:90`、`affFits:92`、`fitsSlot:94`、`rollAffix:96`、`cnt:117`、`addRandom:118`、`toMagic:128`、`rareName:135`、`toRare:136`、`itemTitle:142`、`itemName:153`、`itemSum:154`、`itemCard:162`、`sellVal:185`、`giveItem:186`、`giveCur:194`、`rollCur:197`、`curDot:207`、`craftable:209`、`craft:220`
 - **skill gems**（237）
   `newGem:238`、`gemSlots:239`、`gemOpen:240`、`gemOf:241`、`GEMK:242`、`gemSkill:244`、`mySkills:266`、`rollGAff:267`、`gAffVal:277`、`gAffTxt:282`、`gemCraftable:283`、`gemCraft:296`、`corrupt:314`、`gemLvBlock:334`、`gemDustBack:341`、`giveGem:342`
 - **stats**（350）
-  `curSpec:352`、`STAT0:353`、`sumStats:426`、`HP_LV:447`、`stats:450`、`xpNeed:544`、`fullHeal:545`、`clampHP:550`、`autoPot:556`、`naturalRegen:578`、`addLog:586`、`gainXP:590`、`LV_MAX:603`、`treePts:604`、`dayPhase:605`、`buffOn:611`
-- **enemies**（613）
-  `pickMon:614`、`makeEnemy:625`、`rollMods:672`、`modNames:681`、`uwApply:683`
-- **modal**（702）
-  `showModal:703`、`hideModal:709`、`busy:712`、`openShop:713`
+  `curSpec:352`、`STAT0:353`、`sumStats:426`、`HP_LV:448`、`stats:451`、`xpNeed:545`、`fullHeal:546`、`clampHP:551`、`autoPot:557`、`naturalRegen:579`、`addLog:587`、`gainXP:591`、`LV_MAX:604`、`treePts:605`、`dayPhase:606`、`buffOn:612`
+- **enemies**（614）
+  `pickMon:615`、`makeEnemy:626`、`rollMods:673`、`modNames:682`、`uwApply:684`
+- **modal**（703）
+  `showModal:704`、`hideModal:710`、`busy:713`、`openShop:714`
 
 ### js/battle.js（1418 行）
 
@@ -197,16 +198,16 @@
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:290`、`classPicker:423`
 
-### js/ui.js（1270 行）
+### js/ui.js（1273 行）
 
 - **HUD & sheets**（3）
-  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:58`、`navG:76`、`navClose:77`、`navOpen:86`、`KIND:114`、`bar:123`、`entIcon:126`、`fmt1:157`、`curRow:158`、`bagTabs:162`、`curRowG:169`、`gemDesc:171`、`gemCell:178`、`dupGems:184`、`gemRow:192`、`prayed:196`、`renderSheet:197`、`nearTownE:359`
-- **entity interaction**（363）
-  `openEnt:364`、`FIGHTK:497`、`onSite:498`、`inRange:499`
-- **bases**（501）
-  `prodRate:502`、`stored:503`、`baseName:504`、`flagCheck:505`
-- **actions**（513）
-  `authForm:515`、`A:547`
+  `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:42`、`NAVG:59`、`navG:77`、`navClose:78`、`navOpen:87`、`KIND:115`、`bar:124`、`entIcon:127`、`fmt1:158`、`curRow:159`、`bagTabs:163`、`curRowG:170`、`gemDesc:172`、`gemCell:179`、`dupGems:185`、`gemRow:193`、`prayed:197`、`renderSheet:198`、`nearTownE:362`
+- **entity interaction**（366）
+  `openEnt:367`、`FIGHTK:500`、`onSite:501`、`inRange:502`
+- **bases**（504）
+  `prodRate:505`、`stored:506`、`baseName:507`、`flagCheck:508`
+- **actions**（516）
+  `authForm:518`、`A:550`
 
 ### js/endgame.js（801 行）
 
@@ -252,18 +253,20 @@
   `sinHTML:681`、`sinMods:689`、`demonHTML:699`、`jewelHTML:706`、`socketCardHTML:719`
 - **actions**（741）
 
-### js/hunt.js（668 行）
+### js/hunt.js（779 行）
 
 - **data**（3）
   `HUNT_STEP:4`、`pad16z:11`、`ZBASE:214`、`ZODIAC:226`、`ZODI:310`、`HSUM:312`、`drawZodiacs:319`、`corruptPal:355`、`zodPal:370`
-- **state**（384）
-  `H:385`、`huntWalk:387`、`huntHud:400`、`nearSpot:408`、`addSummon:418`、`huntSpawns:426`、`zodActive:436`
-- **enemies**（438）
-  `makeBeast:439`、`ZOD_MODS:446`、`rollZodMods:448`、`makeZodiac:454`、`huntWin:477`
-- **sheet**（511）
-  `huntHTML:512`、`huntPaint:535`
-- **actions**（542）
-  `zodEntHTML:660`
+- **state**（388）
+  `H:389`、`huntWalk:391`、`huntHud:404`、`nearSpot:412`、`addSummon:422`、`huntSpawns:430`、`zodActive:440`
+- **enemies**（442）
+  `makeBeast:443`、`ZOD_MODS:450`、`rollZodMods:452`、`makeZodiac:458`、`huntWin:481`
+- **sheet**（517）
+  `huntHTML:518`、`huntPaint:542`
+- **印記兌換**（549）
+  `ZLEG:551`、`ZLEG_COST:565`、`zodStats:585`、`markTotal:589`、`sealHTML:590`、`spendMarks:613`
+- **actions**（621）
+  `zodEntHTML:771`
 
 ### js/daily.js（233 行）
 
@@ -314,8 +317,8 @@
 - **battle rendering**（935）
   `mpPos:937`、`renderMBHud:943`、`mpTurnT:1041`、`mpTurnBar:1042`、`renderMB:1060`
 
-### js/main.js（187 行）
+### js/main.js（189 行）
 
 - **boot**（3）
-  `load:4`、`save:12`、`rebuildWorld:30`、`migrate:40`、`start:135`
+  `load:4`、`save:12`、`rebuildWorld:30`、`migrate:40`、`start:137`
 <!-- index:end -->

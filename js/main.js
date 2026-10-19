@@ -128,6 +128,8 @@ function migrate(s) {
     // 0.2.13：今日委託、足跡
     s.daily = s.daily || null;
     s.foot = s.foot || {};
+    // 印記可以兌換後會被用掉，另外記錄討伐過哪些生肖（稱號用）
+    if (s.hunt) s.hunt.slain = s.hunt.slain || Object.fromEntries(Object.keys(s.hunt.marks || {}).map(k => [k, 1]));
     s.v = 13;
   }
   return s;
