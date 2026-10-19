@@ -282,7 +282,7 @@
   `sinHTML:734`、`sinMods:742`、`demonHTML:752`、`jewelHTML:759`、`socketCardHTML:772`
 - **actions**（794）
 
-### js/hunt.js（863 行）
+### js/hunt.js（868 行）
 
 - **data**（3）
   `HUNT_STEP:4`、`pad16z:11`、`ZBASE:214`、`ZODIAC:226`、`ZODI:310`、`HSUM:312`、`drawZodiacs:319`、`corruptPal:355`、`zodPal:370`
@@ -295,7 +295,7 @@
 - **印記兌換**（630）
   `ZLEG:632`、`ZLEG_COST:646`、`zodStats:666`、`markTotal:670`、`sealHTML:671`、`spendMarks:694`
 - **actions**（702）
-  `zodEntHTML:855`
+  `zodEntHTML:860`
 
 ### js/daily.js（234 行）
 

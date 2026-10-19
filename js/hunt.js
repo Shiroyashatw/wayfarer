@@ -395,7 +395,7 @@ const HUNT_LV = [
 ];
 const HEAT_MIN = 1,
   HEAT_KILL = 4,
-  BLOOD_DECAY = 1;
+  BLOOD_DECAY = 4;
 /* 目前的獵殺等級：0 是沒開，1～3 */
 const huntLv = () => {
   const h = S && S.hunt;
@@ -595,10 +595,10 @@ function huntHTML() {
   const L = huntLv(),
     c = huntCfg(),
     nx = L && L < 3 ? HUNT_LV[L] : null;
-  return `<div class="card"><div class="rowx"><div class="t"><b>狩獵模式：<span style="color:${h.on ? '#ff6a7a' : 'var(--dim)'}">${h.on ? `獵殺 ${c.n}` : '關閉'}</span></b><small>${h.on ? `走路每 ${HUNT_STEP} 公尺、每次打贏都會得到追蹤之血（×${c.blood}）。` : `關閉中：追蹤之血每分鐘 -${BLOOD_DECAY}。`}</small></div><button class="btn sm ${h.on ? '' : 'pri'}" data-act="huntOn">${h.on ? '停止' : '開始狩獵'}</button></div>
+  return `<div class="card"><div class="rowx"><div class="t"><b>狩獵模式：<span style="color:${h.on ? '#ff6a7a' : 'var(--dim)'}">${h.on ? `獵殺 ${c.n}` : '關閉'}</span></b><small>${h.on ? `走路每 ${HUNT_STEP} 公尺、每次打贏都會得到追蹤之血（×${c.blood}）。` : `關閉中：追蹤之血每分鐘 -${BLOOD_DECAY}。`}</small></div><button class="btn sm ${h.on ? '' : 'pri'}" data-act="huntOn">${h.on ? `停止<small style="display:block;font-size:10px">血流失一半</small>` : '開始狩獵'}</button></div>
   ${bar('追蹤之血', h.blood, BLOOD_MAX, '#e5484d')}
   ${h.on ? bar(nx ? `獵殺熱度（到 ${nx.n}）` : '獵殺熱度（已到 Ⅲ）', nx ? h.heat : 1, nx ? nx.heat : 1, '#ff6a3a') : ''}</div>
-  <div class="card huntlv"><b>獵殺等級：高風險、高報酬</b><small class="sub">開啟狩獵後，地圖上你的範圍圈變成紅色。時間（每分鐘 +${HEAT_MIN}）與打倒的怪物（每隻 +${HEAT_KILL}，菁英更多）會累積熱度，熱度越高獵殺等級越高：紅圈內的怪物變強、更常成群出現，但追蹤之血累積得更快。停止狩獵後熱度歸 0，追蹤之血會慢慢消退。</small>
+  <div class="card huntlv"><b>獵殺等級：高風險、高報酬</b><small class="sub">開啟狩獵後，地圖上你的範圍圈變成紅色。時間（每分鐘 +${HEAT_MIN}）與打倒的怪物（每隻 +${HEAT_KILL}，菁英更多）會累積熱度，熱度越高獵殺等級越高：紅圈內的怪物變強、更常成群出現，但追蹤之血累積得更快。停止狩獵時熱度歸 0、追蹤之血<b>立刻流失一半</b>，之後每分鐘再 -${BLOOD_DECAY}。</small>
   <div class="hlv">${HUNT_LV.map(
     (q, i) =>
       `<div class="${L === i + 1 ? 'on' : ''}"><b>${q.n}</b><small>熱度 ${q.heat}+</small><small>怪物等級 +${q.lv}・生命 +${q.hp}%・攻擊 +${q.atk}%</small><small>成群機率提高</small><small style="color:#ff8a8a">追蹤之血 ×${q.blood}</small></div>`
@@ -741,7 +741,12 @@ Object.assign(A, {
     h.on = !h.on;
     h.heat = 0;
     h.tAt = now();
-    toast(h.on ? '開始狩獵：獵殺 Ⅰ，附近的怪物變強了' : '停止狩獵：追蹤之血會慢慢消退');
+    /* 關掉時先損失一半的血（避免一直開開關關，只停在低等級獵殺） */
+    const lost = h.on ? 0 : Math.ceil(h.blood / 2);
+    h.blood -= lost;
+    toast(
+      h.on ? '開始狩獵：獵殺 Ⅰ，附近的怪物變強了' : `停止狩獵：追蹤之血流失一半（-${lost}），之後每分鐘 -${BLOOD_DECAY}`
+    );
     huntHud();
     refreshEntities(true);
     save();
