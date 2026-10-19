@@ -855,7 +855,7 @@ Object.assign(A, {
       lat: e.lat,
       lng: e.lng,
       floors: 3,
-      onsite: onSite(e)
+      onsite: siteBonus(e)
     });
     save();
   },

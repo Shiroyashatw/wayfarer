@@ -37,7 +37,7 @@
 | 怪物生成（等級、稀有度） | `js/items.js` | `pickMon`、`makeEnemy` |
 | 單人戰鬥流程 | `js/battle.js` | `startBattle`、`useSkill`、`playerHit`、`enemyTurn`、`winBattle`、`loseBattle` |
 | 戰鬥規則（單人＋多人共用） | `js/battle.js` | `skCost`、`canPay`、`payCost`、`heroPacket`、`heroDmg`、`heroAil`、`takeDmg`、`mitigate` |
-| 掉寶、地城獎勵 | `js/battle.js` | `dropLoot`、`dunReward`；靈魂碎片與刻印石 `gemLoot`；現場加成 `ONSITE_BONUS`、`onsiteNow`（判定現場用 `ui.js` 的 `onSite`） |
+| 掉寶、地城獎勵 | `js/battle.js` | `dropLoot`、`dunReward`；靈魂碎片與刻印石 `gemLoot`；現場加成 `ONSITE_BONUS`、`onsiteNow`（判定現場用 `ui.js` 的 `onSite`；只有石碑、魔法陣有加成：`ONSITE_K`／`siteBonus`） |
 | 亡靈區、亡靈怪、亡靈祭壇與軍團長、亡靈王 | `js/undead.js` | `undeadSpawns`（由 `endgameSpawns` 呼叫）、`UDZ`、`UNDEAD`、`drawUndead`、`undeadWin`、`commanderWin`、`kingWin`、`A.udBoss`、`A.udKing` |
 | 亡靈精華與亡靈製作（屍化值） | `js/undead.js` | `ESS`（精華對應的詞綴）、`UCUR`、`ucReroll`、`ucConv`、`ucAdd`、`ucAff`、`ucBlock`、`undeadCraftHTML`（裝備詳情頁）；屍化值存在裝備的 `sh`、次數 `uc` |
 | 魔霧封印、魔霧詞綴與專屬怪、進度與碎片 | `js/demon.js` | `demonSpawns`（由 `endgameSpawns` 呼叫）、`MIST_TIERS`、`MMODS`／`mistApply`、`MISTMON`、`drawMist`、`drawSeals`／`drawSealMark`（封印的法陣與遠距離符號）、`mistWin`、`A.mistGo`；狀態 `S.mist` |
@@ -226,16 +226,16 @@
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:290`、`classPicker:423`
 
-### js/ui.js（1416 行）
+### js/ui.js（1418 行）
 
 - **HUD & sheets**（3）
   `renderHud:4`、`toast:23`、`openSheet:30`、`closeSheet:37`、`TITLES:43`、`NAVG:61`、`navG:80`、`navClose:81`、`navOpen:90`、`KIND:119`、`bar:128`、`entIcon:131`、`fmt1:162`、`curRow:163`、`bagTabs:167`、`curRowG:174`、`BUFFN:177`、`gemDesc:178`、`gemCell:213`、`dupGems:219`、`gemRow:227`、`prayed:231`、`renderSheet:232`、`nearTownE:399`、`canSell:403`、`worseThanEq:409`、`sellSel:414`、`bagListHTML:416`
 - **entity interaction**（434）
-  `openEnt:435`、`FIGHTK:571`、`onSite:572`、`inRange:573`
-- **bases**（575）
-  `prodRate:576`、`stored:577`、`baseName:578`、`flagCheck:579`
-- **actions**（587）
-  `authForm:589`、`A:621`
+  `openEnt:435`、`onSite:571`、`ONSITE_K:573`、`siteBonus:574`、`inRange:575`
+- **bases**（577）
+  `prodRate:578`、`stored:579`、`baseName:580`、`flagCheck:581`
+- **actions**（589）
+  `authForm:591`、`A:623`
 
 ### js/endgame.js（801 行）
 
@@ -281,20 +281,20 @@
   `sinHTML:754`、`sinMods:762`、`demonHTML:772`、`jewelHTML:779`、`socketCardHTML:792`
 - **actions**（814）
 
-### js/hunt.js（779 行）
+### js/hunt.js（778 行）
 
 - **data**（3）
   `HUNT_STEP:4`、`pad16z:11`、`ZBASE:214`、`ZODIAC:226`、`ZODI:310`、`HSUM:312`、`drawZodiacs:319`、`corruptPal:355`、`zodPal:370`
-- **state**（388）
-  `H:389`、`huntWalk:391`、`huntHud:404`、`nearSpot:412`、`addSummon:422`、`huntSpawns:430`、`zodActive:440`
-- **enemies**（442）
-  `makeBeast:443`、`ZOD_MODS:450`、`rollZodMods:452`、`makeZodiac:458`、`huntWin:481`
-- **sheet**（517）
-  `huntHTML:518`、`huntPaint:542`
-- **印記兌換**（549）
-  `ZLEG:551`、`ZLEG_COST:565`、`zodStats:585`、`markTotal:589`、`sealHTML:590`、`spendMarks:613`
-- **actions**（621）
-  `zodEntHTML:771`
+- **state**（387）
+  `H:388`、`huntWalk:390`、`huntHud:403`、`nearSpot:411`、`addSummon:421`、`huntSpawns:429`、`zodActive:439`
+- **enemies**（441）
+  `makeBeast:442`、`ZOD_MODS:449`、`rollZodMods:451`、`makeZodiac:457`、`huntWin:480`
+- **sheet**（516）
+  `huntHTML:517`、`huntPaint:541`
+- **印記兌換**（548）
+  `ZLEG:550`、`ZLEG_COST:564`、`zodStats:584`、`markTotal:588`、`sealHTML:589`、`spendMarks:612`
+- **actions**（620）
+  `zodEntHTML:770`
 
 ### js/daily.js（233 行）
 

@@ -383,7 +383,6 @@ const zodPal = z => ({ ...ZBASE, ...z.pal });
   };
 })();
 Object.assign(KIND, { zodiac: '墮落生肖' });
-FIGHTK.add('zodiac');
 
 /* ================= state ================= */
 const H = () => (S.hunt = S.hunt || { on: false, blood: 0, acc: 0, marks: {} });
@@ -481,7 +480,7 @@ function makeZodiac(k, lv, mods) {
 function huntWin(b) {
   const h = H();
   if (b.hunt === 'beast') {
-    const n = 1 + fl(Math.random() * 3) + (b.onsite ? 1 : 0);
+    const n = 1 + fl(Math.random() * 3);
     giveCur('dcrys', n);
     addLog(`擊敗墮落獸，得到惡魔結晶 ×${n}`);
     return `<p style="color:#ff8a9a">${curDot('dcrys')}惡魔結晶 ×${n}（共 ${S.cur.dcrys}）</p>`;
@@ -523,7 +522,7 @@ function huntHTML() {
   return `<div class="card"><div class="rowx"><div class="t"><b>狩獵模式：<span style="color:${h.on ? '#ff6a7a' : 'var(--dim)'}">${h.on ? '追蹤中' : '關閉'}</span></b><small>開啟後每走 ${HUNT_STEP} 公尺得到 1 滴追蹤之血（最多 ${BLOOD_MAX}）。</small></div><button class="btn sm ${h.on ? '' : 'pri'}" data-act="huntOn">${h.on ? '停止' : '開始狩獵'}</button></div>
   ${bar('追蹤之血', h.blood, BLOOD_MAX, '#e5484d')}</div>
   <button class="btn pri" data-act="huntRite" ${h.blood >= RITE_COST ? '' : 'disabled'}>${curDot('blood')}血祭（${RITE_COST} 滴）：引出附近的墮落獸</button>
-  <p class="sub">墮落獸會出現在 50～150 公尺內的路上（${BEAST_MS / 60e3} 分鐘內有效），打倒得到 1～3 個惡魔結晶，人在現場打再多 1 個。</p>
+  <p class="sub">墮落獸會出現在 50～150 公尺內的路上（${BEAST_MS / 60e3} 分鐘內有效），打倒得到 1～3 個惡魔結晶。</p>
   <h3>${curDot('dcrys')}惡魔結晶 ${cr}</h3>
   <p class="sub">在你身邊 60～180 公尺召喚事件，${SUM_MS / 60e3} 分鐘內有效。走完一圈沒東西打的時候用。</p>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${HSUM.map(
@@ -763,7 +762,7 @@ Object.assign(A, {
       zod: e.z,
       uwz: e.uwz,
       hunt: 'zod',
-      onsite: onSite(e)
+      onsite: siteBonus(e)
     });
   }
 });
