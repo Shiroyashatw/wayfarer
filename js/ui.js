@@ -374,8 +374,6 @@ function renderSheet() {
     if (!CLOUD.anon && !SOC.loaded) friendsLoad();
   } else if (sheetName === 'party') {
     html = partyHTML();
-  } else if (sheetName === 'asc') {
-    html = ascHTML();
   } else if (sheetName === 'hunt') {
     html = huntHTML();
   } else if (sheetName === 'seal') {
@@ -589,6 +587,10 @@ const A = {
     sfx('tap');
     if (d.s === 'tree') {
       openTree();
+      return;
+    }
+    if (d.s === 'asc') {
+      openAsc();
       return;
     }
     if (d.s === 'stele') SEL.site = null;
