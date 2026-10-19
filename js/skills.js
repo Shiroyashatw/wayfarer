@@ -686,3 +686,50 @@ Object.assign(ICONS, {
   cloud: ['..gg....', '.gggg.g.', 'gggggggg', 'gggggggg', '.gggggg.', '..g..g..', '.g..g...', '........'],
   xbow: ['k.......', '.k......', 'bbbbbbbw', '.k......', 'k.......', '........', '........', '........']
 });
+/* 0.3.1.8 技能標籤：目標（單體／全體／隨機／連鎖／多支投射物／自身）、傷害類型（物理、火焰、冰冷、閃電）、武器、效果（流血、中毒、暈眩…）。
+   技能頁、技能石詳情、戰鬥中的技能按鈕共用；回傳 [文字, 類別]，類別決定顏色 */
+function skTags(q) {
+  const out = [];
+  if (q.pet) out.push(['召喚', 'pet']);
+  else if (q.kind === 'buff') out.push(['增益・自身', 'buf']);
+  else if (q.kind === 'heal') out.push([q.healAll ? '治癒・全隊' : '治癒・自身', 'heal']);
+  else {
+    out.push(
+      q.tg === 'all'
+        ? ['全體', 'tg all']
+        : q.tg === 'rand'
+          ? [`隨機 ${q.hits || 1} 下`, 'tg rand']
+          : q.chain
+            ? [`連鎖 ${q.chain + 1} 隻`, 'tg rand']
+            : q.proj
+              ? [`${q.proj + 1} 支（分散）`, 'tg rand']
+              : ['單體', 'tg']
+    );
+    if (q.hits > 1 && q.tg !== 'rand') out.push([`${q.hits} 連擊`, 'fx']);
+    const el = q.kind === 'spell' ? q.el || 'phys' : 'phys';
+    out.push([EL[el], 'el ' + el]);
+    if (q.addEl) out.push(['附加' + EL[q.addEl[0]], 'el ' + q.addEl[0]]);
+  }
+  if (q.w) out.push([WTAGN[q.w], 'w']);
+  if (q.bleed) out.push(['流血', 'ail']);
+  if (q.poison) out.push(['中毒', 'ail']);
+  if (q.stun) out.push(['暈眩', 'ail']);
+  if (q.freeze) out.push(['凍結', 'ail']);
+  if (q.mark) out.push(['標記', 'ail']);
+  if (q.curse) out.push(['詛咒', 'ail']);
+  if (q.exec) out.push(['斬殺', 'ail']);
+  if (q.guard) out.push(['格擋', 'buf']);
+  if (q.lifeCost) out.push(['耗血', 'ail']);
+  return out;
+}
+const skTagHTML = (q, n = 99) =>
+  `<span class="sktags">${skTags(q)
+    .slice(0, n)
+    .map(([t, c]) => `<i class="skt ${c}">${t}</i>`)
+    .join('')}</span>`;
+/* 戰鬥按鈕上的短標籤：目標＋傷害類型 */
+const skShort = q =>
+  skTags(q)
+    .slice(0, 2)
+    .map(t => t[0])
+    .join('・');

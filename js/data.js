@@ -37,7 +37,7 @@ const SKILLS = {
   attack: { name: '攻擊', mp: 0, kind: 'attack', mult: 1, icon: 'axe' },
   power: { name: '強力一擊', mp: 4, kind: 'attack', mult: 1.6, icon: 'sword', r: 3 },
   bash: { name: '盾擊', mp: 5, kind: 'attack', mult: 1.3, guard: 2, icon: 'shield', r: 3 },
-  whirl: { name: '旋風斬', mp: 10, kind: 'attack', mult: 2.3, fx: 'whirl', icon: 'sword', r: 4 },
+  whirl: { name: '旋風斬', mp: 10, kind: 'attack', mult: 1.25, tg: 'all', bleed: 20, fx: 'whirl', icon: 'sword', r: 4 },
   fire: { name: '火球術', mp: 5, kind: 'spell', el: 'fire', mult: 2, fx: 'fire', icon: 'flame', r: 3 },
   ice: { name: '冰矛', mp: 8, kind: 'spell', el: 'cold', mult: 1.7, fx: 'ice', freeze: 0.3, icon: 'ice', r: 4 },
   heal: { name: '治癒', mp: 6, kind: 'heal', icon: 'heart', r: 3 },
@@ -45,10 +45,21 @@ const SKILLS = {
   poison: { name: '毒箭', mp: 5, kind: 'attack', mult: 1.1, poison: 3, fx: 'arrow', icon: 'leaf', r: 3 },
   bolt: { name: '落雷', mp: 7, kind: 'spell', el: 'light', mult: 2.1, fx: 'bolt', icon: 'bolt', r: 4 },
   pierce: { name: '穿雲箭', mp: 8, kind: 'attack', mult: 1.9, fx: 'arrow', icon: 'arrow', r: 4 },
-  meteor: { name: '隕石術', mp: 16, kind: 'spell', el: 'fire', mult: 3.4, fx: 'fire', icon: 'flame', r: 5 },
-  blizzard: { name: '暴風雪', mp: 14, kind: 'spell', el: 'cold', mult: 2.8, fx: 'ice', freeze: 0.5, icon: 'ice', r: 5 },
-  cleave: { name: '裂地斬', mp: 14, kind: 'attack', mult: 3, fx: 'whirl', icon: 'axe', r: 5 },
-  sanct: { name: '聖域', mp: 14, kind: 'heal', heal: 0.6, icon: 'heart', r: 5 }
+  meteor: { name: '隕石術', mp: 16, kind: 'spell', el: 'fire', mult: 2.1, tg: 'all', fx: 'fire', icon: 'flame', r: 5 },
+  blizzard: {
+    name: '暴風雪',
+    mp: 14,
+    kind: 'spell',
+    el: 'cold',
+    mult: 1.8,
+    tg: 'all',
+    fx: 'ice',
+    freeze: 0.4,
+    icon: 'ice',
+    r: 5
+  },
+  cleave: { name: '裂地斬', mp: 14, kind: 'attack', mult: 1.7, tg: 'all', fx: 'whirl', icon: 'axe', r: 5 },
+  sanct: { name: '聖域', mp: 14, kind: 'heal', heal: 0.6, healAll: 40, icon: 'heart', r: 5 }
 };
 const RSTAR = { 3: '#7fb4ff', 4: '#c58cff', 5: '#ffcf5a' };
 /* 技能石：等級上限 30，每 5 級開 1 個空的刻印槽，要用刻印石點下去才會抽出詞綴 */
@@ -2376,5 +2387,5 @@ const TREE = (() => {
   });
   return { N, E, byId };
 })();
-const VER = '0.3.1.7';
+const VER = '0.3.1.8';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };
