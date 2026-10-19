@@ -156,7 +156,10 @@ function entIcon(e) {
     n = e.kind;
     p = PAL[e.kind];
   }
-  x.drawImage(sprite(n, p), 0, 0);
+  const sp = sprite(n, p);
+  /* PNG 圖（a_ 開頭）比 18×18 大，直接回傳它自己的畫布，不要裁成 18 格 */
+  if (sp.art) return sp;
+  x.drawImage(sp, 0, 0);
   return c;
 }
 const fmt1 = v => Math.round(v);
@@ -459,6 +462,10 @@ function openEnt(id) {
     desc += `<br><span class="sub">攻擊屬性：${EL[e.base.el]}${e.base.res.some(v => v) ? '・抗性 火' + e.base.res[0] + '% 冰' + e.base.res[1] + '% 雷' + e.base.res[2] + '%' : ''}</span>`;
     if (e.bounty) desc += '<br><span style="color:#ff8a6a">懸賞：擊敗可得額外金幣與混沌石。</span>';
     const pn = packN(e);
+    if (huntLv()) {
+      const c = huntCfg();
+      desc += `<div class="packn many" style="background:#c8141e33;color:#ff9a9a">🩸 獵殺 ${c.n}：這場的怪物等級 +${c.lv}、生命 +${c.hp}%、攻擊 +${c.atk}%</div>`;
+    }
     desc += `<div class="packn${pn ? ' many' : ''}">${pn ? `⚔ 本次戰鬥共 <b>${pn + 1}</b> 隻：${esc(e.name)} ＋ ${pn} 隻同伴` : '⚔ 本次戰鬥只有 <b>1</b> 隻'}</div>`;
     act = `<button class="btn pri" data-act="fight" data-id="${id}" ${inR ? '' : 'disabled'}>戰鬥</button>`;
   } else if (e.kind === 'dungeon') {
@@ -521,12 +528,13 @@ function openEnt(id) {
       `<button class="btn pri" data-act="udBoss" data-id="${id}" ${inR && !used && p >= 100 ? '' : 'disabled'}>${used ? '已挑戰' : p >= 100 ? '挑戰亡靈軍團長' : `進度 ${p}%`}</button>` +
       `<button class="btn" data-act="udKing" data-id="${id}" ${inR && S.cur.kBone >= KING_NEED ? '' : 'disabled'}>召喚亡靈王（骸骨 ${S.cur.kBone || 0}/${KING_NEED}）</button>`;
   } else if (e.kind === 'mseal') {
-    const t = MIST_TIERS[e.tier],
-      os = onSite(e);
-    desc = S.mist
-      ? '你已經有一團魔霧在擴散了，先打碎它或等它散去。'
-      : `強度 ${ROMAN[e.tier]}：觸發後魔霧固定在這裡擴散，半徑 ${t.r} 公尺、持續 ${t.min} 分鐘。範圍內的怪物帶魔霧詞綴、等級 +${e.tier}，還會出現魔霧專屬怪。在範圍內打怪累積進度，滿 100% 魔霧碎裂，得到 ${e.tier + 1} 片魔霧碎片。${os ? '' : '<br><span style="color:#ffb27a">只能人在現場觸發。</span>'}`;
-    act = `<button class="btn pri" data-act="mistGo" data-id="${id}" ${os && !S.mist && S.lv >= t.lv ? '' : 'disabled'}>${S.lv < t.lv ? `需要 Lv${t.lv}` : '觸發魔霧'}</button>`;
+    const z = MZ.find(q => q.id === e.id),
+      p = mistProg(e.id);
+    desc = z
+      ? `強度 ${ROMAN[z.tier]}：方圓 ${z.r} 公尺被魔霧籠罩（地圖上的紫色圓圈），範圍內的怪物帶魔霧詞綴、等級 +${z.tier}，還會出現魔霧專屬怪。在範圍內打怪累積進度（目前 <b>${p}%</b>），滿 100% 魔霧碎裂，得到 ${z.tier + 1} 片魔霧碎片。剩 ${Math.max(1, Math.ceil((z.until - now()) / 60e3))} 分鐘散去。` +
+        bar('魔霧進度', p, 100, '#b06bff')
+      : '這團魔霧已經碎裂了。';
+    act = '';
   } else if (e.kind === 'sinst') {
     const x = Math.min(SIN_EXTRA, SEL.sinX || 0),
       need = SIN_COST + x,
@@ -565,7 +573,14 @@ function openEnt(id) {
     `<div class="ent"><canvas id="entBig" width="18" height="18" style="width:84px;height:84px"></canvas><div style="flex:1;min-width:0;display:grid;gap:4px"><b style="font-family:var(--f-pix);font-size:19px;font-weight:400;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(title)}${e.lv && e.kind !== 'town' ? ` <span class="sub">Lv${e.lv}</span>` : ''}</b><span class="sub">${d < 5 ? '就在這裡' : dirName(S.lat, S.lng, e.lat, e.lng) + '方 ' + fmtD(d)}</span></div></div>
     <p class="sub" style="color:var(--ink)">${desc}</p>${siteBonus(e) ? `<p class="sub" style="color:var(--gold)">✦ 現場加成：人在這裡當場挑戰，掉寶數量與稀有度 +${ONSITE_BONUS}%</p>` : ''}${zn ? `<p class="sub" style="color:var(--good)">在${esc(zn.name)}的範圍內，不用走過去就能互動（遠端沒有現場加成）。</p>` : ''}${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
     <div class="btns" style="flex-direction:column">${act}${!inR ? `<button class="btn" data-act="walkto" data-id="${id}">走過去</button>` : ''}</div>`;
-  $('entBig').getContext('2d').drawImage(entIcon(e), 0, 0);
+  {
+    /* PNG 怪物圖比 18×18 大：畫布跟著圖的大小，CSS 一樣顯示 84px */
+    const ic = entIcon(e),
+      cv = $('entBig');
+    cv.width = ic.width;
+    cv.height = ic.height;
+    cv.getContext('2d').drawImage(ic, 0, 0);
+  }
 }
 /* 人實際在現場（不是靠據點、營旗、絲綢之路的遠端範圍） */
 const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e);
@@ -664,8 +679,10 @@ const A = {
   fight: d => {
     const e = ENT.get(d.id);
     if (!inRange(e)) return;
-    const en = makeEnemy(e.base, e.lv, e.rar, e.mods);
+    /* 狩獵中：獵殺等級加的等級直接用來產生怪物，再加生命與攻擊 */
+    const en = makeEnemy(e.base, e.lv + (huntLv() ? huntCfg().lv : 0), e.rar, e.mods);
     if (e.hunt) en.name = e.name;
+    if (huntLv()) huntBuff(en, true);
     startBattle(en, {
       entId: e.id,
       bg: e.base.bg,

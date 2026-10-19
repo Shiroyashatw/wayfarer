@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 14,
+    v: 15,
     cls: 'novice',
     lv: 1,
     xp: 0,
@@ -26,7 +26,7 @@ function newGame() {
     caravan: {},
     ess: {},
     und: {},
-    mist: null,
+    mistp: {},
     hunt: { on: false, blood: 0, acc: 0, marks: {} },
     summons: [],
     daily: null,

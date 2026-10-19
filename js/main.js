@@ -138,6 +138,13 @@ function migrate(s) {
     s.stacks = 0;
     s.v = 14;
   }
+  if (s.v < 15) {
+    // 0.3.1.6：魔霧改成地圖上的魔霧區（各區進度在 S.mistp），舊的單一魔霧作廢；狩獵加獵殺熱度
+    delete s.mist;
+    s.mistp = {};
+    if (s.hunt) Object.assign(s.hunt, { heat: 0, tAt: 0 });
+    s.v = 15;
+  }
   return s;
 }
 function start() {

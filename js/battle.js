@@ -414,7 +414,10 @@ const PACK_P = { 0: [0.75, 0.95], 1: [0.45, 0.85], 2: [0.25, 0.7], 4: [0.6, 0.9]
 function packN(e) {
   if (S.lv < 3 || !PACK_P[e.rar || 0]) return 0;
   const q = (h(fl(e.lat * 1e5), fl(e.lng * 1e5), epoch() + 77) % 1000) / 1000,
-    [a, b] = PACK_P[e.rar || 0];
+    /* 狩獵中：獵殺等級越高越常成群 */
+    hp = huntLv() ? huntCfg().pack : [0, 0],
+    a = PACK_P[e.rar || 0][0] - hp[0],
+    b = PACK_P[e.rar || 0][1] - hp[1];
   return q < a ? 0 : q < b ? 1 : 2;
 }
 function packOf(lead, extra = 0, n = 0) {
@@ -432,6 +435,8 @@ function packOf(lead, extra = 0, n = 0) {
     m.xp = Math.round(m.xp * 0.6);
     m.gold = Math.round(m.gold * 0.6);
     m.minion = 1;
+    /* 小怪的等級已經跟著帶頭的（含獵殺加的等級），這裡只加生命與攻擊 */
+    if (lead.hlv) huntBuff(m, true);
     for (const k2 of ['ud', 'mist', 'uw']) if (lead[k2]) m[k2] = lead[k2];
     if (lead.mist) m.name = (lead.ud ? '霧中亡靈・' : '魔霧・') + m.name;
     out.push(m);
@@ -1645,6 +1650,7 @@ function winBattle() {
   if (B.king) bonus += kingWin();
   if (B.watcher) bonus += watcherWin(B.watcher);
   if (B.hunt) bonus += huntWin(B);
+  bonus += huntKills(es);
   if (B.hunt === 'beast') quest('beast');
   addLog(`擊敗 ${e.name}${es.length > 1 ? ` 等 ${es.length} 隻` : ''} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);
   if (up) setTimeout(() => sfx('level'), 500);
