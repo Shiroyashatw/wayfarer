@@ -70,7 +70,7 @@ const GAFF = [
   {
     id: 'cost',
     n: v => `魔力消耗 -${v}%`,
-    k: ['attack', 'spell', 'heal'],
+    k: ['attack', 'spell', 'heal', 'buff'],
     t: [
       [18, 25],
       [12, 16],

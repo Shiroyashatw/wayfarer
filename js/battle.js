@@ -469,13 +469,19 @@ function mitigate(pk, arm, res, shock) {
 }
 /* ---- 天賦規則（單人與多人共用）：o 是有 hp/mp 的對象（S 或隊員），st 是它的屬性 ---- */
 const skCost = (st, sk) => Math.round(sk.mp * (1 - Math.min(80, (st.mpCost || 0) + (supOf(st, sk).cost || 0)) / 100));
-const canPay = (o, st, sk) => (st.blood ? o.hp > skCost(st, sk) : o.mp >= skCost(st, sk));
+const lifeCost = (st, sk) => (sk.lifeCost ? Math.round(st.maxhp * sk.lifeCost) : 0);
+const canPay = (o, st, sk) =>
+  st.blood ? o.hp > skCost(st, sk) + lifeCost(st, sk) : o.mp >= skCost(st, sk) && o.hp > lifeCost(st, sk);
 function payCost(o, st, sk) {
   const n = skCost(st, sk);
   if (st.blood) o.hp = Math.max(1, o.hp - n);
   else o.mp -= n;
+  if (sk.lifeCost) o.hp = Math.max(1, o.hp - lifeCost(st, sk));
 }
-const costTxt = (st, sk) => (sk.mp ? skCost(st, sk) + (st.blood ? ' 生命' : ' 魔力') : '');
+const costTxt = (st, sk) =>
+  [sk.mp ? skCost(st, sk) + (st.blood ? ' 生命' : ' 魔力') : '', sk.lifeCost ? lifeCost(st, sk) + ' 生命' : '']
+    .filter(Boolean)
+    .join('＋');
 /* 技能石的刻印詞綴只在用那個技能時生效 */
 const skSt = (st, sk) =>
   sk.gid
@@ -599,17 +605,19 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       leech: (st.leech || 0) + (sup.leech || 0),
       brk: Math.max(st.brk || 0, sup.pen || 0),
       penRes: (st.penRes || 0) + (sup.penRes || 0),
-      bleedCh: (st.bleedCh || 0) + (sup.bleed || 0),
+      bleedCh: (st.bleedCh || 0) + (sup.bleed || 0) + (sk.bleed || 0),
       stunCh: (st.stunCh || 0) + (sup.stun || 0),
       poisonCh: Math.min(100, (st.poisonCh || 0) + (sup.poison || 0)),
-      exec: (st.exec || 0) + (sup.exec || 0),
+      exec: (st.exec || 0) + (sup.exec || 0) + (sk.exec || 0),
       dotMul: (st.dotMul || 1) * (1 + (sup.dot || 0) / 100)
     },
     more =
       (1 + (sup.more || 0) / 100) *
       (1 + bsum(me, 'more') / 100) *
       (1 + ((me.stacks || 0) * (st.killStack || 0)) / 100) *
-      (ext.allyMul || 1),
+      (ext.allyMul || 1) *
+      /* 技能要求的武器不符：傷害 -40% */
+      (sk.w && st.wtag && sk.w !== st.wtag && !st.anyWep ? 0.6 : 1),
     who = me.uid;
   if (me.dc) {
     S2.crit = 100;
@@ -620,11 +628,12 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       v = Math.round(tg.st.maxhp * (sk.heal || 0.35) * (st.healMul || 1));
     tg.hp = Math.min(tg.st.maxhp, tg.hp + v);
     ev.push({ t: 'heal', who: tg.uid, from: who, v, at: 250 });
-    if (st.healAll)
+    const ha = (st.healAll || 0) + (sk.healAll || 0);
+    if (ha)
       party
         .filter(q => q.alive !== false && q !== tg)
         .forEach(q => {
-          const w = Math.round((v * st.healAll) / 100);
+          const w = Math.round((v * ha) / 100);
           q.hp = Math.min(q.st.maxhp, q.hp + w);
           ev.push({ t: 'heal', who: q.uid, from: who, v: w, at: 300 });
         });
@@ -656,8 +665,9 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
   const one = (i, mult, t, kind) => {
     const e = es[i];
     if (!e || e.hp <= 0) return;
-    const pk = heroPacket(S2, sk, mult * more),
-      r = heroDmg(S2, pk, e, e.shock > 0, me);
+    const pk = heroPacket(S2, sk, mult * more);
+    if (sk.addEl) pk[sk.addEl[0]] += pk.phys * sk.addEl[1] * ((st.elm && st.elm[sk.addEl[0]]) || 1);
+    const r = heroDmg(S2, pk, e, e.shock > 0, me);
     let d = r.d;
     if (e.sin && ext.sinHit) d = ext.sinHit(e, d, i);
     e.hp = Math.max(0, e.hp - d);
@@ -674,6 +684,12 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
         e.mark = 99;
         e.markP = Math.max(sk.mark || 0, st.markFirst || 0);
         ev.push({ t: 'st', i, s: '標記', col: '#ffd166', at: t + 90 });
+      }
+      if (sk.curse) {
+        e.curse = 3;
+        e.curseP = Math.max(e.curseP || 0, sk.curse);
+        e.curseW = Math.max(e.curseW || 0, sk.curseW || 0);
+        ev.push({ t: 'st', i, s: '詛咒', col: '#c86aff', at: t + 75 });
       }
       if (sk.stun && Math.random() < sk.stun) {
         e.stun = 1;

@@ -169,12 +169,42 @@ const bagTabs = () =>
     .join('')}</div>`;
 const curRowG = () =>
   `<div class="curs">${GCUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>`;
-const gemDesc = q =>
-  q.kind === 'spell'
-    ? `${EL[q.el]}法術・基礎傷害 ${Math.round(q.sb * q.mult)}`
-    : q.kind === 'attack'
-      ? `攻擊・武器傷害 ${Math.round(q.mult * 100)}%${q.hits > 1 ? ` × ${q.hits} 下` : ''}`
-      : `回復 ${Math.round(q.heal * 100)}% 生命`;
+/* 技能說明：類別、傷害、目標形式與特殊效果 */
+const BUFFN = { more: '傷害', arm: '護甲', dodge: '閃避', crit: '暴擊率', taunt: '嘲諷', dmgRed: '受傷降低' };
+function gemDesc(q) {
+  const out = [],
+    tg = q.tg === 'all' ? '全體' : q.tg === 'rand' ? '隨機目標' : '';
+  if (q.pet) out.push(`召喚 ${q.pet.n || 1} 隻${q.pet.name}（${q.pet.turns} 回合、最多 ${q.pet.max}）`);
+  else if (q.kind === 'spell') out.push(`${EL[q.el]}法術・基礎傷害 ${Math.round(q.sb * q.mult)}`);
+  else if (q.kind === 'attack')
+    out.push(
+      `${q.w ? WTAGN[q.w] : ''}攻擊・武器傷害 ${Math.round(q.mult * 100)}%${q.hits > 1 ? ` × ${q.hits} 下` : ''}`
+    );
+  else if (q.kind === 'heal')
+    out.push(`回復 ${Math.round(q.heal * 100)}% 生命${q.healAll ? `，其他隊友 ${q.healAll}%` : ''}`);
+  if (tg) out.push(tg);
+  if (q.chain) out.push(`連鎖 ${q.chain} 次`);
+  if (q.proj) out.push(`多 ${q.proj} 支投射物`);
+  if (q.addEl) out.push(`附加 ${Math.round(q.addEl[1] * 100)}% ${EL[q.addEl[0]]}`);
+  if (q.stun) out.push(`${Math.round(q.stun * 100)}% 暈眩`);
+  if (q.bleed) out.push(`${q.bleed}% 流血`);
+  if (q.poison) out.push('中毒');
+  if (q.mark) out.push(`標記（受傷 +${q.mark}%）`);
+  if (q.curse) out.push(`詛咒（受傷 +${q.curse}%）`);
+  if (q.exec) out.push(`斬殺 +${q.exec}%`);
+  if (q.buff)
+    out.push(
+      `${q.buff.n} ${q.buff.turns} 回合：` +
+        Object.entries(q.buff)
+          .filter(([k]) => BUFFN[k])
+          .map(([k, v]) => `${BUFFN[k]} ${k === 'dmgRed' ? '-' : '+'}${Math.round(v)}%`)
+          .concat(q.buff.shield ? [`護盾 ${Math.round(q.buff.shield * 100)}% 生命`] : [])
+          .join('、')
+    );
+  if (q.lifeCost) out.push(`消耗 ${Math.round(q.lifeCost * 100)}% 生命`);
+  if (q.w) out.push(`需要${WTAGN[q.w]}（不符傷害 -40%）`);
+  return out.join('・');
+}
 /* 技能石圖示：星級底色、左上等級、右上刻印槽（亮的是已刻印）、右下「裝」表示在技能欄 */
 const gemCell = (g, noEq) => {
   const r = SKILLS[g.k].r || 3,

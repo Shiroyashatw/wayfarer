@@ -264,7 +264,15 @@ function gemSkill(g) {
     sk.sb = 9 + 4 * L;
   }
   if (b.kind === 'heal') sk.heal = (b.heal || 0.35) * (1 + 0.06 * L) * (1 + (t.heal || 0) / 100);
-  ['crit', 'ail', 'brk', 'leech', 'dbl'].forEach(k => (sk[k] = t[k] || 0));
+  ['crit', 'ail', 'brk', 'leech', 'dbl'].forEach(k => (sk[k] = (b[k] || 0) + (t[k] || 0)));
+  /* 召喚物與增益也隨等級變強（每級 +4%，回合數不變） */
+  if (b.pet) sk.pet = { ...b.pet, mult: b.pet.mult * (1 + 0.06 * L) * (1 + (t.dmg || 0) / 100) };
+  if (b.buff)
+    sk.buff = Object.fromEntries(
+      Object.entries(b.buff).map(([k, v]) =>
+        typeof v === 'number' && k !== 'turns' ? [k, Math.round(v * (1 + 0.04 * L) * 100) / 100] : [k, v]
+      )
+    );
   return sk;
 }
 /* 目前技能欄的 4 個技能（空格是 null），戰鬥用 's0'～'s3' 指定 */
