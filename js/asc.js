@@ -14,7 +14,7 @@ Object.assign(ICONS, {
   moon: ['..www...', '.ww.....', 'ww......', 'ww......', 'ww......', '.ww.....', '..www...', '........'],
   stars: ['.y...y..', 'yyy.yyy.', '.y...y..', '...y....', '..yyy...', '...y....', '........', '........'],
   fist: ['.rrrr...', 'rwrwrr..', 'rrrrrr..', 'rrrrrr..', '.rrrrr..', '.rrrr...', '..rr....', '........'],
-  anvil: ['........', 'kkkkkkk.', '.kkkkkkk', '..kkkk..', '..kkkk..', '.kkkkkk.', 'kkkkkkkk', '........'],
+  anvil: ['........', 'wwwwwww.', '.wwwwwww', '..wccw..', '..wccw..', '.wwwwww.', 'wwwwwwww', '........'],
   crack: ['b...b...', '.b.b....', '..b..b..', '.b..b.b.', 'b..b...b', '..b.b...', '.b...b..', 'b.....b.'],
   bone: ['ww....ww', 'www..www', '.ww..ww.', '..wwww..', '..wwww..', '.ww..ww.', 'www..www', 'ww....ww'],
   sun: ['y..y..y.', '.y.y.y..', '..yyy...', 'yyywyyy.', '..yyy...', '.y.y.y..', 'y..y..y.', '........'],
@@ -25,8 +25,8 @@ Object.assign(ICONS, {
   ghost: ['.wwwww..', 'wwwwwww.', 'wkwwkww.', 'wwwwwww.', 'wwwwwww.', 'wwwwwww.', 'w.w.w.w.', '........'],
   drop: ['...r....', '...r....', '..rrr...', '.rrrrr..', '.rwrrr..', '.rrrrr..', '..rrr...', '........'],
   fang: ['wwwwwww.', 'w.w.w.w.', 'w.w.w.w.', '.w...w..', '........', '.w...w..', 'w.w.w.w.', 'wwwwwww.'],
-  trap: ['k.k.k.k.', 'kkkkkkk.', 'k.....k.', 'k.....k.', 'kkkkkkk.', 'k.k.k.k.', '........', '........'],
-  bomb: ['.....y..', '....b...', '..kkk...', '.kkkkk..', 'kkwkkkk.', 'kkkkkkk.', '.kkkkk..', '..kkk...'],
+  trap: ['w.w.w.w.', 'wwwwwww.', 'w..r..w.', 'w.rrr.w.', 'wwwwwww.', 'w.w.w.w.', '........', '........'],
+  bomb: ['.....y..', '....b...', '..www...', '.wkkkw..', 'wkwkkkw.', 'wkkkkkw.', '.wkkkw..', '..www...'],
   splat: ['r.....r.', '.r.r.r..', '..rrr...', 'rrrrrrr.', '..rrr...', '.r.r.r..', 'r.....r.', '........'],
   hourglass: ['yyyyyyy.', '.wwwww..', '..www...', '...w....', '..w.w...', '.wwwww..', 'yyyyyyy.', '........'],
   potion: ['..kk....', '..ww....', '..ww....', '.wrrw...', 'wrrrrw..', 'wrrrrw..', '.wwww...', '........'],
@@ -36,7 +36,33 @@ Object.assign(ICONS, {
   heartx: ['.rr.rr..', 'rrrrrrr.', 'rrrrrrr.', 'rrwwwrr.', '.rrwrr..', '..rrr...', '...r....', '........'],
   mask: ['.yyyyy..', 'yyyyyyy.', 'ykkykky.', 'yyyyyyy.', 'yyrrryy.', '.yyyyy..', '..yyy...', '........'],
   lotus: ['...w....', '..www...', '.w.w.w..', 'ww.w.ww.', '.wwwww..', 'ggggggg.', '.ggggg..', '........'],
-  flaskg: ['..kk....', '..ww....', '..ww....', '.wggw...', 'wggggw..', 'wggggw..', '.wwww...', '........']
+  flaskg: ['..kk....', '..ww....', '..ww....', '.wggw...', 'wggggw..', 'wggggw..', '.wwww...', '........'],
+  /* 終極專用 */
+  katana: ['.......w', '......wc', '.....wc.', '....wc..', '...wc...', '.yyc....', '.yy.....', 'y.......'],
+  mountain: ['...w....', '..www...', '..wbw...', '.wbbbw..', '.bbbbb..', 'wbbbbbw.', 'bbbbbbbb', '........'],
+  standard: ['y.......', 'yrrrrr..', 'yryyrr..', 'yrrrrr..', 'yrr.....', 'y.......', 'y.......', 'yy......'],
+  shieldstar: ['.wwwwww.', 'wwwywwww', 'wwyyyww.', 'wyyyyyw.', 'wwyyyww.', '.wywyw..', '..www...', '...w....'],
+  dragon: ['.r...r..', 'rrr.rrr.', 'rryrryr.', 'rrrrrrr.', '.rwrwr..', '.rrrrr..', '..r.r...', '........'],
+  gavel: ['.bbbb...', '.bbbb...', '..bb....', '...b....', '....b...', '.....b..', 'yyyyyy..', '........'],
+  lion: ['.yyyyy..', 'yybbbyy.', 'ybkbkby.', 'ybbbbby.', 'yybrbyy.', '.ybbby..', '..yyy...', '........'],
+  wings: ['w......w', 'ww....ww', 'www..www', 'wwwyywww', '.wwyyww.', '..w..w..', '........', '........'],
+  eclipse: ['..yyyy..', '.ykkkky.', 'ykkkkkky', 'ykkkkkky', 'ykkkkkky', '.ykkkky.', '..yyyy..', '........'],
+  scythe: ['.wwwww..', 'w....ww.', '......w.', '.....b..', '....b...', '...b....', '..b.....', '.b......'],
+  bloodclaw: ['r.r.r...', 'r.r.r...', 'r.r.r...', '.r.r.r..', '..rrrr..', '..rrrr..', '...rr...', '........'],
+  boom: ['y.r.y.r.', '.yrrry..', 'rrywyrr.', '.ywwwy..', 'rrywyrr.', '.yrrry..', 'y.r.y.r.', '........'],
+  bigflame: ['...r....', '..rr..r.', '.rryr.r.', '.ryyrrr.', 'rryyyrr.', 'ryywyyr.', 'ryywwyr.', '.rrrrr..'],
+  snow: ['c..c..c.', '.c.c.c..', '..ccc...', 'cccwccc.', '..ccc...', '.c.c.c..', 'c..c..c.', '........'],
+  thor: ['.wwwww..', '.wwwww..', '...b..y.', '...b.y..', '...byyy.', '...b..y.', '...b.y..', '........'],
+  witch: ['...w....', '..ww....', '..www...', '.wwwww..', '.wyyyw..', 'wwwwwww.', '.rkrkr..', '..rrr...'],
+  bloodmoon: ['..rrr...', '.rr.....', 'rr......', 'rr......', 'rr......', '.rr.....', '..rrr...', '........'],
+  bagua: ['.wwwww..', 'w.www.w.', 'www.www.', 'w.w.w.w.', 'www.www.', 'w.www.w.', '.wwwww..', '........'],
+  flysword: ['w.......', '.w......', '..w....c', '...w..c.', '....wc..', '....cw..', '...c..y.', '..c....y'],
+  deity: ['.yyyyy..', 'y.....y.', '..www...', '.wkwkw..', '.wwwww..', '..wrw...', '.yyyyy..', 'yyyyyyy.'],
+  starsword: ['...y....', '..yyy...', '...y.w..', '....w...', '...w.w..', '..w.....', '.w......', 'b.......'],
+  stone: ['..rrr...', '.ryrrr..', 'rywrrrr.', 'rrrrrrr.', 'rrrrrrr.', '.rrrrr..', '..rrr...', '........'],
+  moonshield: ['.cccccc.', 'cc.wwwcc', 'c.ww...c', 'c.w....c', 'c.ww...c', '.c.www.c', '..cccc..', '...cc...'],
+  sacredtree: ['..ggg...', '.ggggg..', 'ggggggg.', '.ggggg..', '...b....', '...b....', '.bbbbb..', '........'],
+  howl: ['.....bb.', '....bbb.', '...bbwb.', '..bbbbb.', '.bbbb...', 'bb.bb...', 'b..b....', '........']
 });
 /* ================= data ================= */
 const ASC_LV = [20, 30, 45, 60],
@@ -76,7 +102,7 @@ const ASC = [
           [2, N('一閃', 'flash', { extraTurn: 15 })]
         ],
         u: [
-          [0, N('劍聖', 'crown', 0, [['T', { more: 50, crit: 10 }]], { lifeMore: -15 })],
+          [0, N('劍聖', 'katana', 0, [['T', { more: 50, crit: 10 }]], { lifeMore: -15 })],
           [2, N('無我之境', 'moon', { dodgeCrit: 1, extraTurn: 15, evade: 10 }, 0, { armorMore: -40 })]
         ]
       },
@@ -105,7 +131,7 @@ const ASC = [
           [2, N('不屈', 'heartx', { killHeal: 8, dmgRed: 8 })]
         ],
         u: [
-          [0, N('泰坦', 'crown', 0, [['T', { more: 60, stun: 20 }]], { speed: -6 })],
+          [0, N('泰坦', 'mountain', 0, [['T', { more: 60, stun: 20 }]], { speed: -6 })],
           [2, N('狂戰之魂', 'fang2', { lowLife: 60, leech: 4 }, 0, { dmgRed: -15 })]
         ]
       },
@@ -134,7 +160,7 @@ const ASC = [
           [3, N('鼓舞', 'heartx', { healAll: 40, regen: 10 })]
         ],
         u: [
-          [0, N('萬軍之王', 'crown', { allyDmg: 15, dmgMore: 15 }, 0, { hpDrain: 3 })],
+          [0, N('萬軍之王', 'standard', { allyDmg: 15, dmgMore: 15 }, 0, { hpDrain: 3 })],
           [1, N('不落戰旗', 'castle', { shieldPct: 30, taunt: 100, dmgRed: 15 }, 0, { dmgMore: -20 })]
         ]
       }
@@ -172,7 +198,7 @@ const ASC = [
           [3, N('守護誓言', 'heartx', { healAll: 30, allyDmg: 4 })]
         ],
         u: [
-          [0, N('不朽', 'crown', { block: 30, dmgRed: 15 }, 0, { speed: -5 })],
+          [0, N('不朽', 'shieldstar', { block: 30, dmgRed: 15 }, 0, { speed: -5 })],
           [1, N('復仇者', 'fist', { reflectPct: 80, lifePct: 10 }, 0, { noDodge: 1 })]
         ]
       },
@@ -201,7 +227,7 @@ const ASC = [
           [2, N('不動', 'anvil', { taunt: 50, dmgRed: 10 })]
         ],
         u: [
-          [0, N('龍膽', 'crown', 0, [['T', { more: 50, exec: 30 }]], { lifeMore: -15 })],
+          [0, N('龍膽', 'dragon', 0, [['T', { more: 50, exec: 30 }]], { lifeMore: -15 })],
           [2, N('方陣之主', 'castle', { block: 25, reflectPct: 40, armorMore: 30 }, 0, { dmgMore: -15 })]
         ]
       },
@@ -234,7 +260,7 @@ const ASC = [
             0,
             N(
               '審判之日',
-              'crown',
+              'gavel',
               0,
               [
                 ['T', { more: 40 }],
@@ -243,7 +269,7 @@ const ASC = [
               { hpDrain: 3 }
             )
           ],
-          [1, N('聖光庇護', 'lotus', { healAll: 80, shieldPct: 25 }, 0, { dmgMore: -25 })]
+          [1, N('聖光庇護', 'sacredtree', { healAll: 80, shieldPct: 25 }, 0, { dmgMore: -25 })]
         ]
       }
     ]
@@ -281,7 +307,7 @@ const ASC = [
           [3, N('林間步', 'wind', { dodgeCrit: 1, evade: 6 })]
         ],
         u: [
-          [0, N('百獸之王', 'crown', { killStack: 4, killMax: 10, keepStacks: 1 }, 0, { noPotion: 1 })],
+          [0, N('百獸之王', 'lion', { killStack: 4, killMax: 10, keepStacks: 1 }, 0, { noPotion: 1 })],
           [2, N('影獵者', 'ghost', { evade: 15, counter: 70 }, 0, { lifeMore: -15 })]
         ]
       },
@@ -311,7 +337,7 @@ const ASC = [
           [2, N('吸血之矛', 'drop', 0, [['T', { leech: 4 }]])]
         ],
         u: [
-          [1, N('女武神降臨', 'crown', { lowLife: 60, extraTurn: 15 }, 0, { lifeMore: -20 })],
+          [1, N('女武神降臨', 'wings', { lowLife: 60, extraTurn: 15 }, 0, { lifeMore: -20 })],
           [0, N('天槍', 'flash', 0, [['T', { aoe: 1, more: 30 }]], { hpDrain: 2 })]
         ]
       },
@@ -340,8 +366,8 @@ const ASC = [
           [2, N('月蝕之咒', 'eye', { curseCh: 20, curseP: 20 })]
         ],
         u: [
-          [1, N('月蝕', 'crown', 0, [['T', { more: 60 }]], { hpDrain: 3 })],
-          [0, N('新月', 'lotus', { evade: 20, manaRegen: 8, mom: 20 }, 0, { lifeMore: -15 })]
+          [1, N('月蝕', 'eclipse', 0, [['T', { more: 60 }]], { hpDrain: 3 })],
+          [0, N('新月', 'moonshield', { evade: 20, manaRegen: 8, mom: 20 }, 0, { lifeMore: -15 })]
         ]
       }
     ]
@@ -379,7 +405,7 @@ const ASC = [
           [3, N('雙刃', 'swords', { dbl: 15 })]
         ],
         u: [
-          [0, N('死神', 'crown', 0, [['T', { crit: 25, cm: 80 }]], { lifeMore: -20 })],
+          [0, N('死神', 'scythe', 0, [['T', { crit: 25, cm: 80 }]], { lifeMore: -20 })],
           [1, N('影之舞', 'moon', { evade: 20, counter: 80, extraTurn: 10 }, 0, { armorMore: -50 })]
         ]
       },
@@ -408,7 +434,7 @@ const ASC = [
           [2, N('血爪亂舞', 'whirl', 0, [['T', { aoe: 1 }]])]
         ],
         u: [
-          [0, N('血魔之爪', 'crown', { spread: 1, dotPct: 80 }, 0, { hpDrain: 2 })],
+          [0, N('血魔之爪', 'bloodclaw', { spread: 1, dotPct: 80 }, 0, { hpDrain: 2 })],
           [1, N('不死之身', 'fang2', { lifePct: 15 }, [['T', { leech: 10 }]], { noPotion: 1 })]
         ]
       },
@@ -437,7 +463,7 @@ const ASC = [
           [3, N('機關槍', 'gear', 0, [['T', { echo: 25 }]])]
         ],
         u: [
-          [0, N('爆破大師', 'crown', 0, [['T', { more: 50 }]], { dmgRed: -15 })],
+          [0, N('爆破大師', 'boom', 0, [['T', { more: 50 }]], { dmgRed: -15 })],
           [2, N('千機', 'hourglass', { extraTurn: 20 }, [['T', { proj: 2 }]], { lifeMore: -15 })]
         ]
       }
@@ -475,7 +501,7 @@ const ASC = [
           [2, N('熔岩', 'anvil', 0, [['T', { penRes: 25 }]])]
         ],
         u: [
-          [2, N('焚天', 'crown', 0, [['T', { more: 70 }]], { hpDrain: 3 })],
+          [2, N('焚天', 'bigflame', 0, [['T', { more: 70 }]], { hpDrain: 3 })],
           [0, N('不滅之火', 'fist', { dotPct: 120, spread: 1 }, 0, { dmgMore: -15 })]
         ]
       },
@@ -504,7 +530,7 @@ const ASC = [
           [2, N('永凍', 'castle', { dmgRed: 10, noFreeze: 1 })]
         ],
         u: [
-          [0, N('絕對零度', 'crown', 0, [['T', { more: 60, ail: 100 }]], { speed: -6 })],
+          [0, N('絕對零度', 'snow', 0, [['T', { more: 60, ail: 100 }]], { speed: -6 })],
           [2, N('冰霜女王', 'lotus', { shieldPct: 40, reflectPct: 30 }, 0, { dmgMore: -20 })]
         ]
       },
@@ -533,7 +559,7 @@ const ASC = [
           [3, N('雷霆萬鈞', 'stars', 0, [['T', { echo: 25 }]])]
         ],
         u: [
-          [0, N('雷神', 'crown', 0, [['T', { chain: 3, more: 40 }]], { hpDrain: 3 })],
+          [0, N('雷神', 'thor', 0, [['T', { chain: 3, more: 40 }]], { hpDrain: 3 })],
           [1, N('閃電化身', 'ghost', { extraTurn: 25, evade: 10 }, 0, { lifeMore: -20 })]
         ]
       }
@@ -600,7 +626,7 @@ const ASC = [
           [2, N('咒力', 'spark', 0, [['T', { more: 20 }]])]
         ],
         u: [
-          [0, N('咒怨之女', 'crown', { curseCh: 60, curseP: 40 }, 0, { lifeMore: -15 })],
+          [0, N('咒怨之女', 'witch', { curseCh: 60, curseP: 40 }, 0, { lifeMore: -15 })],
           [1, N('萬毒之母', 'flaskg', { dotPct: 120, poisonCh: 30 }, 0, { hpDrain: 2 })]
         ]
       },
@@ -629,7 +655,7 @@ const ASC = [
           [2, N('血怒', 'fang2', { extraTurn: 12 })]
         ],
         u: [
-          [0, N('血魔降臨', 'crown', 0, [['T', { more: 60, leech: 6 }]], { hpDrain: 3 })],
+          [0, N('血魔降臨', 'bloodmoon', 0, [['T', { more: 60, leech: 6 }]], { hpDrain: 3 })],
           [1, N('不朽之血', 'lotus', { regen: 30, lifeMore: 20 }, 0, { noPotion: 1 })]
         ]
       }
@@ -667,7 +693,7 @@ const ASC = [
           [2, N('符陣', 'castle', { dmgRed: 10, block: 10 })]
         ],
         u: [
-          [1, N('天師', 'crown', 0, [['spell', { more: 50, echo: 20 }]], { hpDrain: 2 })],
+          [1, N('天師', 'bagua', 0, [['spell', { more: 50, echo: 20 }]], { hpDrain: 2 })],
           [0, N('鎮魔', 'anvil', 0, [['spell', { stun: 40, exec: 60 }]], { dmgMore: -15 })]
         ]
       },
@@ -696,7 +722,7 @@ const ASC = [
           [1, N('斬妖', 'fist', { killStack: 3, killMax: 8 })]
         ],
         u: [
-          [0, N('劍仙', 'crown', 0, [['T', { proj: 2, more: 40 }]], { lifeMore: -15 })],
+          [0, N('劍仙', 'flysword', 0, [['T', { proj: 2, more: 40 }]], { lifeMore: -15 })],
           [1, N('一劍封神', 'flash', 0, [['T', { more: 80 }]], { speed: -6 })]
         ]
       },
@@ -725,7 +751,7 @@ const ASC = [
           [2, N('血祭', 'fang', { killHeal: 8, leech: 3 })]
         ],
         u: [
-          [0, N('神降', 'crown', { dmgMore: 40, extraTurn: 10 }, 0, { hpDrain: 3 })],
+          [0, N('神降', 'deity', { dmgMore: 40, extraTurn: 10 }, 0, { hpDrain: 3 })],
           [1, N('金身', 'lotus', { dmgRed: 25, shieldPct: 30 }, 0, { dmgMore: -20 })]
         ]
       }
@@ -763,7 +789,7 @@ const ASC = [
           [2, N('洞察', 'needle', 0, [['T', { pen: 30 }]])]
         ],
         u: [
-          [0, N('天下無雙', 'crown', 0, [['T', { more: 50 }]], { lifeMore: -15 })],
+          [0, N('天下無雙', 'starsword', 0, [['T', { more: 50 }]], { lifeMore: -15 })],
           [1, N('天命', 'sun', { extraTurn: 25, dodgeCrit: 1 }, 0, { armorMore: -40 })]
         ]
       },
@@ -792,7 +818,7 @@ const ASC = [
           [2, N('腐蝕藥劑', 'cloud', { dotPct: 60, ailDur: 1 })]
         ],
         u: [
-          [1, N('賢者之石', 'crown', { potPct: 120, regen: 20 }, 0, { dmgMore: -15 })],
+          [1, N('賢者之石', 'stone', { potPct: 120, regen: 20 }, 0, { dmgMore: -15 })],
           [0, N('瘋狂鍊金', 'splat', { potBomb: 300 }, 0, { hpDrain: 2 })]
         ]
       },
@@ -821,7 +847,7 @@ const ASC = [
           [3, N('野性', 'feather', { extraTurn: 10 })]
         ],
         u: [
-          [0, N('萬獸之主', 'sun', { petPct: 100 }, 0, { dmgMore: -30 })],
+          [0, N('萬獸之主', 'howl', { petPct: 100 }, 0, { dmgMore: -30 })],
           [1, N('狼群戰術', 'stars', { petStart: 2 }, [['T', { petMax: 3, petTurns: 3 }]], { lifeMore: -15 })]
         ]
       }
