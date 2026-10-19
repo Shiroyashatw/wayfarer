@@ -459,3 +459,7 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .irow em.lk{font-style:normal;font-size:10px;padding:0 4px;border-radius:4px;background:#ffffff22;color:var(--dim);vertical-align:2px}
 .sellgo{position:sticky;bottom:0;padding:8px 0 2px;background:linear-gradient(transparent,var(--bg,#14101c) 35%)}
 .sellgo .btn{width:100%}
+/* 0.3.1.5 開打前顯示這場有幾隻 */
+.packn{margin-top:8px;padding:6px 10px;border-radius:8px;background:#ffffff10;font-size:13px}
+.packn.many{background:#ff8a3a22;color:#ffc59a}
+.packn b{color:var(--gold)}

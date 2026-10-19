@@ -436,7 +436,7 @@ function openEnt(id) {
   const e = ENT.get(id);
   if (!e) return;
   const d = dist(S.lat, S.lng, e.lat, e.lng),
-    lim = e.kind === 'town' ? 120 : RANGE,
+    lim = reachOf(e),
     zn = d > lim && e.kind !== 'base' && zoneOf(e),
     inR = d <= lim || e.kind === 'base' || !!zn;
   sheetName = 'ent';
@@ -458,6 +458,8 @@ function openEnt(id) {
       desc = `<span class="danger">⚠ 危險怪物</span> 比你高 ${e.lv - S.lv} 級，生命約一般怪的 3 倍、攻擊 1.6 倍，還帶 ${e.mods.length} 個詞綴：${e.mods.map(id => `<b>${EMODS.find(q => q.id === id).n}</b>`).join('、')}。打贏保證掉 2 件稀有裝備與大量通貨，但很可能會輸。`;
     desc += `<br><span class="sub">攻擊屬性：${EL[e.base.el]}${e.base.res.some(v => v) ? '・抗性 火' + e.base.res[0] + '% 冰' + e.base.res[1] + '% 雷' + e.base.res[2] + '%' : ''}</span>`;
     if (e.bounty) desc += '<br><span style="color:#ff8a6a">懸賞：擊敗可得額外金幣與混沌石。</span>';
+    const pn = packN(e);
+    desc += `<div class="packn${pn ? ' many' : ''}">${pn ? `⚔ 本次戰鬥共 <b>${pn + 1}</b> 隻：${esc(e.name)} ＋ ${pn} 隻同伴` : '⚔ 本次戰鬥只有 <b>1</b> 隻'}</div>`;
     act = `<button class="btn pri" data-act="fight" data-id="${id}" ${inR ? '' : 'disabled'}>戰鬥</button>`;
   } else if (e.kind === 'dungeon') {
     const sp = dunSpec(e),
@@ -561,14 +563,16 @@ function openEnt(id) {
   const title = e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name;
   $('sbody').innerHTML =
     `<div class="ent"><canvas id="entBig" width="18" height="18" style="width:84px;height:84px"></canvas><div style="flex:1;min-width:0;display:grid;gap:4px"><b style="font-family:var(--f-pix);font-size:19px;font-weight:400;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(title)}${e.lv && e.kind !== 'town' ? ` <span class="sub">Lv${e.lv}</span>` : ''}</b><span class="sub">${d < 5 ? '就在這裡' : dirName(S.lat, S.lng, e.lat, e.lng) + '方 ' + fmtD(d)}</span></div></div>
-    <p class="sub" style="color:var(--ink)">${desc}</p>${onSite(e) && FIGHTK.has(e.kind) ? `<p class="sub" style="color:var(--gold)">✦ 現場加成：人在這裡打，掉寶數量與稀有度 +${ONSITE_BONUS}%</p>` : ''}${zn ? `<p class="sub" style="color:var(--good)">在${esc(zn.name)}的範圍內，不用走過去就能互動（遠端沒有現場加成）。</p>` : ''}${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
+    <p class="sub" style="color:var(--ink)">${desc}</p>${siteBonus(e) ? `<p class="sub" style="color:var(--gold)">✦ 現場加成：人在這裡當場挑戰，掉寶數量與稀有度 +${ONSITE_BONUS}%</p>` : ''}${zn ? `<p class="sub" style="color:var(--good)">在${esc(zn.name)}的範圍內，不用走過去就能互動（遠端沒有現場加成）。</p>` : ''}${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
     <div class="btns" style="flex-direction:column">${act}${!inR ? `<button class="btn" data-act="walkto" data-id="${id}">走過去</button>` : ''}</div>`;
   $('entBig').getContext('2d').drawImage(entIcon(e), 0, 0);
 }
 /* 人實際在現場（不是靠據點、營旗、絲綢之路的遠端範圍） */
-const FIGHTK = new Set(['monster', 'dungeon', 'stele', 'circle', 'event', 'town', 'ualtar', 'sinst']);
-const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE);
-const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE) || inZone(e));
+const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e);
+/* 現場掉寶加成只給可以封印帶走的石碑、魔法陣（人在現場當場挑戰）；路邊野怪、地城、首領都不算（0.3.1.5） */
+const ONSITE_K = new Set(['stele', 'circle']);
+const siteBonus = e => !!e && ONSITE_K.has(e.kind) && onSite(e);
+const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e) || inZone(e));
 
 /* ================= bases ================= */
 const prodRate = b => 60 * b.lv;
@@ -650,7 +654,7 @@ const A = {
   walkto: d => {
     const e = ENT.get(d.id);
     if (!e) return;
-    const lim = (e.kind === 'town' ? 120 : RANGE) * 0.6,
+    const lim = reachOf(e) * 0.6,
       dd = dist(S.lat, S.lng, e.lat, e.lng),
       k = Math.max(0, 1 - lim / dd);
     simTarget = [S.lat + (e.lat - S.lat) * k, S.lng + (e.lng - S.lng) * k];
@@ -673,14 +677,15 @@ const A = {
       mistBase: e.mist && e.base.name,
       hunt: e.hunt,
       pack: true,
-      onsite: onSite(e)
+      packN: packN(e),
+      onsite: siteBonus(e)
     });
   },
   enter: d => {
     const e = ENT.get(d.id);
     if (!inRange(e) || isDone(e)) return;
     closeSheet();
-    enterDungeon({ ...e, onsite: onSite(e) }, false);
+    enterDungeon({ ...e, onsite: siteBonus(e) }, false);
   },
   trial: d => {
     const e = ENT.get(d.id);
@@ -689,7 +694,7 @@ const A = {
     if (S.cleared[t.id] === hepoch()) return;
     closeSheet();
     enterDungeon(
-      { id: t.id, kind: 'landmark', dn: t.dn, lat: t.lat, lng: t.lng, lv: townLv(t), onsite: onSite(e) },
+      { id: t.id, kind: 'landmark', dn: t.dn, lat: t.lat, lng: t.lng, lv: townLv(t), onsite: siteBonus(e) },
       false
     );
   },
@@ -789,7 +794,7 @@ const A = {
       sfx('bless');
       toast('祝福生效！30 分鐘內經驗與掉落 +20%');
       addLog('喝下祝福泉');
-    } else enterDungeon({ id: e.id, kind: 'rift', lat: e.lat, lng: e.lng, lv: e.lv, onsite: onSite(e) }, false);
+    } else enterDungeon({ id: e.id, kind: 'rift', lat: e.lat, lng: e.lng, lv: e.lv, onsite: siteBonus(e) }, false);
   },
   skill: d => useSkill(d.k),
   gem: d => {
@@ -1281,7 +1286,7 @@ const A = {
     const e = ENT.get(d.id);
     if (!inRange(e) || isDone(e)) return;
     sfx('select');
-    partyCreate({ ...e, onsite: onSite(e) });
+    partyCreate({ ...e, onsite: siteBonus(e) });
     friendsLoad();
   },
   ptJoin: () => {

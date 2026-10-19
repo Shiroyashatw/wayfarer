@@ -1488,7 +1488,7 @@ Object.assign(A, {
         lng: e.lng,
         lv: nx + 2,
         floors: 3,
-        onsite: onSite(e)
+        onsite: siteBonus(e)
       },
       false
     );

@@ -1577,7 +1577,8 @@ function gpsStart() {
       }
       const d = dist(GPS.last.la, GPS.last.ln, la, ln),
         dt = Math.max(1, (t - GPS.last.t) / 1000);
-      if (d < 3) return;
+      /* 站著不動時定位會飄（幾公尺到十幾公尺），小於誤差的跳動不算移動，免得原地「走路」回血、算委託 */
+      if (d < Math.max(6, acc * 0.6)) return;
       GPS.moving = d / dt > 0.5;
       setPos(la, ln, d / dt <= 40 ? d : 0);
       GPS.last = { la, ln, t };

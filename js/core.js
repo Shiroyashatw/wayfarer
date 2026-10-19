@@ -62,4 +62,7 @@ function dirName(lat1, lng1, lat2, lng2) {
   const a = (Math.atan2(lat2 - lat1, (lng2 - lng1) * Math.cos((lat1 * Math.PI) / 180)) * 180) / Math.PI;
   return ['東', '東北', '北', '西北', '西', '西南', '南', '東南'][m(Math.round(a / 45), 8)];
 }
-const RANGE = 80; // interaction radius (m)
+/* 互動半徑（公尺）：0.3.1.5 從 80 加大到 150，城鎮 120 → 200 */
+const RANGE = 150,
+  TOWN_R = 200;
+const reachOf = e => (e && e.kind === 'town' ? TOWN_R : RANGE);

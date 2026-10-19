@@ -591,7 +591,7 @@ Object.assign(A, {
       bg: 'cave',
       boss: true,
       commander: a.id,
-      onsite: onSite(a)
+      onsite: siteBonus(a)
     });
   },
   udKing: d => {
@@ -603,7 +603,7 @@ Object.assign(A, {
       bg: 'cave',
       boss: true,
       king: true,
-      onsite: onSite(a)
+      onsite: siteBonus(a)
     });
     save();
   }
