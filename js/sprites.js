@@ -664,6 +664,13 @@ function sprite(name, pal, white) {
   SPC.set(key, c);
   return c;
 }
+/* 把圖畫進列表用的小畫布：PNG 圖（a_ 開頭）比 18×18 大，畫布跟著圖的大小，CSS 顯示大小不變 */
+function paintIcon18(cv, sp) {
+  if (cv.width !== sp.width) cv.width = cv.height = sp.width;
+  const x = cv.getContext('2d');
+  x.clearRect(0, 0, cv.width, cv.height);
+  x.drawImage(sp, 0, 0);
+}
 function spriteCanvas(name, pal, flip) {
   const c = document.createElement('canvas');
   c.width = 18;

@@ -618,12 +618,12 @@ function mistWin(b) {
 /* 七宗罪的王各自的圖（sprites.js 的 b_*） */
 const SINSPR = {
   pride: 'a_lucifer',
-  envy: 'b_leviathan',
-  wrath: 'b_satan',
-  sloth: 'b_belphegor',
-  greed: 'b_mammon',
-  gluttony: 'b_beelzebub',
-  lust: 'b_asmodeus'
+  envy: 'a_leviathan',
+  wrath: 'a_satan',
+  sloth: 'a_belphegor',
+  greed: 'a_mammon',
+  gluttony: 'a_beelzebub',
+  lust: 'a_asmodeus'
 };
 function makeSinLord(k, lv) {
   const s = SINI[k],
@@ -654,7 +654,7 @@ function makeSinKing(lv) {
   const b = {
       name: '七宗罪之王',
       bg: 'cave',
-      spr: 'b_sinking',
+      spr: 'a_sinking',
       pal: BOSSPAL.b_sinking,
       hp: 160,
       atk: 24,

@@ -27,7 +27,7 @@
 | 回復規則（自然回復、自動喝水） | `js/items.js`、`js/map.js` | `naturalRegen`、`autoPot`；走路在 `setPos`、時間在 `timeRegen` |
 | 刷新週期 | `js/core.js` | `REFRESH`／`epoch`（怪物、事件 15 分鐘）、`REFRESH_H`／`hepoch`（地城、寶箱、商店、廟宇 1 小時） |
 | 角色外觀（跟著裝備） | `js/gear.js` | `heroLook`（外觀代碼，多人傳 `look`）、`heroSpr(view, look)`（組出 `heroF:…`／`heroS:…` 像素圖）、`heroPal`（材質階級配色）、`GLOOK`、正面武器 `WFRONT`、副手 `OFRONT`；側面武器 `battle.js` 的 `drawWeapon`（`mc` 刃色） |
-| PNG 怪物圖（0.3.1.3） | `art/monsters/`、`tools/art.py`、`js/art.js`、`js/sprites.js` | 原圖放 `art/monsters/檔名.png` → `python3 tools/art.py` → `ART`（圖名 `a_檔名`，怪物 `spr` 填這個）；載入 `artImg`、畫布 `artSprite`（`sprite` 遇到 `a_` 開頭時呼叫）、大小 `ART_U`（`drawSpr` 的 `sp.art`）；提示詞與流程見 skill `.claude/skills/pixel-art` |
+| PNG 怪物圖（0.3.1.3） | `art/monsters/`、`tools/art.py`、`js/art.js`、`js/sprites.js` | 原圖放 `art/monsters/檔名.png` → `python3 tools/art.py` → `ART`（圖名 `a_檔名`，怪物 `spr` 填這個）；載入 `artImg`、畫布 `artSprite`（`sprite` 遇到 `a_` 開頭時呼叫）、大小 `ART_U`（`drawSpr` 的 `sp.art`）、列表小圖 `paintIcon18`；提示詞與流程見 skill `.claude/skills/pixel-art` |
 | 裝備圖示、材質階級（0.3.1） | `js/gear.js` | `GEAR`（每個底材一張 12×12，索引對應 `BASES`，新底材要補圖）、`MATC`／`BLADEC`／`TRIMC`／`GEMC`、`tierOf`／`TIERN`、`gearPal`、`gearIcon`（`slotIcon` 呼叫） |
 | 點地圖移動速度（0.3.1.1） | `js/map.js`、`js/ui.js` | `SIM_SPEED`、`simSpeed()`（乘上 `S.simSpd`）；設定面板 `A.simSpd` |
 | 背包批量賣出、上鎖（0.3.1） | `js/ui.js` | `canSell`（城鎮或據點）、`bagListHTML`、`worseThanEq`、`sellSel`、`A.sellMode`／`A.sellPick`／`A.sellQuick`／`A.sellMany`／`A.lock`、單件 `A.sell`；勾選狀態 `SEL.sell`、上鎖 `it.lock` |
@@ -149,21 +149,21 @@
 - **game data**（22）
   `CLASSES:24`、`SKILLS:36`、`RSTAR:64`、`GEM_MAX:66`、`GEM_DRAW:67`、`dustNeed:68`、`GAFF:70`、`GAFFI:152`、`GCUR:154`、`GCURI:164`、`EL:165`、`MONS:166`、`MIMIC:1182`、`EMODS:1195`、`DTYPES:1208`、`DMODS:1319`、`DMODI:1332`、`UMODS:1334`、`EMODI:1341`、`FRAG_PARTS:1343`、`ZONE_CELL:1345`、`ZMODS:1347`、`RCOL:1357`、`RGLOW:1359`、`RAREA:1360`、`SLOTS:1362`、`SLOTN:1363`、`BASES:1376`、`DROPS:1454`、`T5:1455`、`ARMOR:1462`、`AFF:1464`、`AFFI:1618`、`STATN:1619`、`sg:1673`、`CUR:1719`、`CURI:1727`、`TH:1730`、`SPOKES:2022`、`TREE:2129`、`VER:2390`、`START:2391`
 
-### js/sprites.js（1318 行）
+### js/sprites.js（1325 行）
 
 - **pixel sprites (original art)**（3）
-  `SPR:4`、`ICONS:560`、`ICOPAL:582`、`PAL:583`、`FIXED:591`、`ART_U:594`、`artImg:596`、`artSprite:605`、`sprite:629`、`spriteCanvas:667`、`drawSpr:679`、`ICC:699`、`iconURL:700`、`paintIcon:710`、`wepKind:723`、`wepType:725`、`twoHand:726`、`WTAGN:727`、`offType:728`
-- **icons: currency, item slots, passive nodes**（729）
-  `PIX:730`、`PIXC:914`、`pixURL:915`、`curIcon:949`、`slotIcon:950`、`ICIMG:964`、`nodeIcon:965`
-- **boss sprites**（973）
-  `BOSSPAL:1249`
+  `SPR:4`、`ICONS:560`、`ICOPAL:582`、`PAL:583`、`FIXED:591`、`ART_U:594`、`artImg:596`、`artSprite:605`、`sprite:629`、`paintIcon18:668`、`spriteCanvas:674`、`drawSpr:686`、`ICC:706`、`iconURL:707`、`paintIcon:717`、`wepKind:730`、`wepType:732`、`twoHand:733`、`WTAGN:734`、`offType:735`
+- **icons: currency, item slots, passive nodes**（736）
+  `PIX:737`、`PIXC:921`、`pixURL:922`、`curIcon:956`、`slotIcon:957`、`ICIMG:971`、`nodeIcon:972`
+- **boss sprites**（980）
+  `BOSSPAL:1256`
 
 ### js/gear.js（685 行）
 
 - **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1）
   `GEAR:3`、`TIER_LV:244`、`tierOf:246`、`MATC:247`、`BLADEC:258`、`gearArt:261`、`gearPal:263`、`GIC:286`、`gearIcon:288`、`GLOOK:340`、`heroLook:347`、`WFRONT:355`、`OFRONT:502`、`put:508`、`stamp:513`、`heroSpr:518`、`heroPal:637`
 
-### js/art.js（7 行）
+### js/art.js（33 行）
 
   `ART:2`
 
@@ -262,7 +262,7 @@
   `SEL:515`、`chip:516`、`baseHTML:518`、`silkHTML:544`、`siteEnt:565`、`steleHTML:570`、`MAT_TABS:607`、`matsHTML:613`、`ENTURL:660`、`entURL:661`、`portalPick:666`
 - **actions**（672）
 
-### js/undead.js（611 行）
+### js/undead.js（613 行）
 
 - **data**（3）
   `pad16u:4`、`UNDEAD:100`、`UNDEADN:177`、`ESS:179`、`ESSI:207`、`ESS_MAX:208`、`affCat:209`、`UCUR:211`、`UCURI:217`、`KING_NEED:218`

@@ -379,28 +379,28 @@ function makeFrag(lv) {
 const WATCHERS = [
   {
     n: '牛頭',
-    spr: 'oxhead',
+    spr: 'a_oxhead',
     el: 'phys',
     pal: { b: '#6a3a2a', w: '#e8e2d4', r: '#ff3a3a', n: '#c88a7a', a: '#3a2a3a' },
     mods: ['uw_body', 'fury']
   },
   {
     n: '馬面',
-    spr: 'horseface',
+    spr: 'a_horseface',
     el: 'fire',
     pal: { g: '#5a7a6a', m: '#2a2a2a', r: '#ff3a3a', n: '#2a3a30', a: '#3a2a3a' },
     mods: ['uw_flame', 'swift']
   },
   {
     n: '黑無常',
-    spr: 'wuchang',
+    spr: 'a_wuchang_black',
     el: 'cold',
     pal: { h: '#1a1a22', t: '#e8e8e8', f: '#cfd8cf', e: '#111111', r: '#c0202a', c: '#24242c' },
     mods: ['uw_rage', 'cold']
   },
   {
     n: '白無常',
-    spr: 'wuchang',
+    spr: 'a_wuchang_white',
     el: 'light',
     pal: { h: '#f0f0f0', t: '#c0202a', f: '#f4f4f4', e: '#111111', r: '#e03040', c: '#e4e4ec' },
     mods: ['uw_soul', 'shock']

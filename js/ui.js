@@ -467,7 +467,7 @@ function renderSheet() {
   if (hb) hb.getContext('2d').drawImage(sprite(heroSpr('F'), heroPal()), 0, 0);
   el.querySelectorAll('canvas[data-ent]').forEach(cv => {
     const e = ENT.get(cv.dataset.ent);
-    if (e) cv.getContext('2d').drawImage(entIcon(e), 0, 0);
+    if (e) paintIcon18(cv, entIcon(e));
   });
   if (sheetName === 'hunt' || sheetName === 'seal') huntPaint();
   const dh = $('dollHero');

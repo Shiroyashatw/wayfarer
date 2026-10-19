@@ -587,7 +587,9 @@ Object.assign(A, {
     const a = ENT.get(d.id);
     if (!inRange(a) || isDone(a) || udProg(a.zid) < 100) return;
     closeSheet();
-    startBattle(udBoss('亡靈軍團長', 'bonelord', { y: '#ffd166', w: '#e8e2d0', a: '#3a4a3a' }, a.lv, 3), {
+    /* 軍團長外觀依祭壇固定：骷髏將軍或死亡巫女 */
+    const look = ['a_bonelord', 'a_death_witch'][[...String(a.zid)].reduce((s, c) => s + c.charCodeAt(0), 0) % 2];
+    startBattle(udBoss('亡靈軍團長', look, { y: '#ffd166', w: '#e8e2d0', a: '#3a4a3a' }, a.lv, 3), {
       bg: 'cave',
       boss: true,
       commander: a.id,
@@ -599,7 +601,7 @@ Object.assign(A, {
     if (!inRange(a) || !(S.cur.kBone >= KING_NEED)) return;
     S.cur.kBone -= KING_NEED;
     closeSheet();
-    startBattle(udBoss('亡靈王', 'b_lichking', BOSSPAL.b_lichking, a.lv + 3, 5), {
+    startBattle(udBoss('亡靈王', 'a_lichking', BOSSPAL.b_lichking, a.lv + 3, 5), {
       bg: 'cave',
       boss: true,
       king: true,

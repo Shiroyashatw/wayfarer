@@ -306,7 +306,7 @@ const ZODIAC = [
     d: '踐踏一切的魔豬',
     pal: { b: '#5a2a2a', l: '#a06070' }
   }
-].map(z => ({ ...z, spr: 'z_' + z.k }));
+].map(z => ({ ...z, spr: 'a_z_' + z.k }));
 const ZODI = Object.fromEntries(ZODIAC.map(z => [z.k, z]));
 /* 用結晶在身邊召喚的事件 */
 const HSUM = [
@@ -623,7 +623,7 @@ function huntHTML() {
 function huntPaint() {
   document.querySelectorAll('canvas[data-zod]').forEach(cv => {
     const z = ZODI[cv.dataset.zod];
-    cv.getContext('2d').drawImage(sprite(z.spr, zodPal(z)), 0, 0);
+    paintIcon18(cv, sprite(z.spr, zodPal(z)));
   });
 }
 
