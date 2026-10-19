@@ -637,7 +637,7 @@ function mistWin(b) {
 /* ================= sin lords ================= */
 /* 七宗罪的王各自的圖（sprites.js 的 b_*） */
 const SINSPR = {
-  pride: 'b_lucifer',
+  pride: 'a_lucifer',
   envy: 'b_leviathan',
   wrath: 'b_satan',
   sloth: 'b_belphegor',
