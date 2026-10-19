@@ -987,7 +987,9 @@ function isDone(e) {
     (e.kind === 'dungeon' && S.cleared[e.id] === hepoch()) ||
     (e.kind === 'event' && S.cleared[e.id] === evEp()) ||
     ((e.kind === 'stele' || e.kind === 'circle' || e.kind === 'vein') && !!S.defeated[e.id]) ||
-    (e.kind === 'ualtar' && S.cleared[e.id] === udEp())
+    (e.kind === 'ualtar' && S.cleared[e.id] === udEp()) ||
+    (e.kind === 'sinst' && S.cleared[e.id] === ep2()) ||
+    (e.kind === 'mseal' && !!S.defeated[e.id])
   );
 }
 const townLv = t => S.lv + 1 + (t.big ? 1 : 0);
@@ -1144,6 +1146,7 @@ function renderWorld(t) {
   c.restore();
   drawZones(c);
   drawUndead(c, t);
+  drawMist(c, t);
   const s = sprScale(),
     list = [];
   for (const e of ENT.values()) {
@@ -1607,6 +1610,7 @@ function placeLabel() {
   $('expl').innerHTML =
     `<span style="color:${dp.night > 0.5 ? '#9fb8ff' : '#ffd877'}">${dp.label}</span> ${hh}:${mm}・視野 ${stats().vision}m<br><span class="rf${left < 60e3 ? ' soon' : ''}">怪物 ${mmss(left)}</span>・<span class="rf${leftH < 60e3 ? ' soon' : ''}">地城 ${mmss(leftH)}</span>・探索 ${explKm2().toFixed(2)} km²` +
     `<br>區域：${zoneAt(S.lat, S.lng).m.n}` +
+    (S.mist ? `<br><span style="color:#d8b8ff">魔霧 ${ROMAN[S.mist.tier]} ${S.mist.prog}%</span>` : '') +
     (uz => (uz ? `<br><span style="color:#8fe0a0">亡靈區 ${udProg(uz.id)}%</span>` : ''))(
       udZoneAt(...toM(S.lat, S.lng))
     ) +

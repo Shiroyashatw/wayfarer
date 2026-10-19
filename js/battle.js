@@ -491,6 +491,8 @@ function heroDmg(st, pk, e, shock, o) {
   const crit = Math.random() * 100 < st.crit;
   if (crit) d *= st.critMulti / 100;
   if (st.lowLife && o.hp < st.maxhp / 2) d *= 1 + st.lowLife / 100;
+  if (st.legPride && o.hp >= st.maxhp) d *= 1.3;
+  if (st.legEnvy && e.hp > o.hp) d *= 1.25;
   return { d: Math.round(d), crit };
 }
 /* 命中後的異常狀態，es 是敵人身上的狀態（B 或 MB.es），回傳要跳出的文字 */
@@ -509,6 +511,10 @@ function heroAil(st, sk, pk, es) {
   if (pk.light > 0 && Math.random() < 0.25 * m) {
     es.shock = 2;
     out.push(['感電', '#fff27a']);
+  }
+  if (st.legLust && Math.random() < 0.15) {
+    es.frozen = 1;
+    out.push(['魅惑', '#ff8ad8']);
   }
   if (sk.kind === 'attack' && !sk.poison && st.poisonCh && Math.random() * 100 < st.poisonCh) {
     es.poison = Math.max(es.poison || 0, 3);
@@ -530,7 +536,9 @@ function playerHit(sk, mult) {
     e = B.e,
     p = POS(),
     pk = heroPacket(st, sk, mult);
-  const { d, crit } = heroDmg(st, pk, e, B.shock > 0, S);
+  const r0 = heroDmg(st, pk, e, B.shock > 0, S),
+    crit = r0.crit,
+    d = e.sin ? sinHit(e, r0.d, p) : r0.d;
   e.hp = Math.max(0, e.hp - d);
   BFX.en.flash = performance.now();
   anim('en', 'hurt', 300);
@@ -573,7 +581,7 @@ function useSkill(k) {
   const p = POS();
   if (sk.kind === 'attack') {
     const ranged = sk.fx === 'arrow' || wepKind() === 'bow',
-      hits = (sk.hits || 1) + extraHit(st0, sk);
+      hits = (sk.hits || 1) + extraHit(st0, sk) + (st0.legWrath && S.hp < st0.maxhp / 2 ? 1 : 0);
     for (let n = 0; n < hits; n++)
       later(n * 380, () => {
         if (B.e.hp <= 0) return;
@@ -640,6 +648,7 @@ function bItem(k) {
     const v = Math.round(st.maxhp * 0.4 * hm);
     S.hp = Math.min(st.maxhp, S.hp + v);
     pop('+' + v, p.hx, p.hy - 90, '#7bd36b');
+    if (st.legGlut) S.mp = Math.min(st.maxmp, S.mp + v);
   } else {
     const v = Math.round(st.maxmp * 0.5 * hm);
     S.mp = Math.min(st.maxmp, S.mp + v);
@@ -708,6 +717,7 @@ function enemyTurn() {
       later(800, endEnemyTurn);
       return;
     }
+    if (e.sin) sinTurn(e, p);
     const acts = e.mods && e.mods.includes('swift') && Math.random() < 0.35 ? 2 : 1;
     let n = 0;
     const strike = () => {
@@ -796,6 +806,8 @@ function dunSpec(t) {
     dm = { hp: dt.hp, atk: 1, arm: 1 };
   let q = dt.q,
     r = dt.r;
+  q += (t.xk || 0) * 15;
+  r += (t.xk || 0) * 15;
   for (const m of mods) {
     q += m.q;
     r += m.r;
@@ -811,6 +823,8 @@ function dunSpec(t) {
     dm,
     em: [...new Set([...mods.filter(m => m.em).map(m => m.em), ...(t.umods || [])])],
     norevive: !!dt.norevive,
+    sin: t.sin,
+    xk: t.xk || 0,
     noregen: has('noregen'),
     eleweak: has('eleweak'),
     elite: has('elite')
@@ -832,6 +846,16 @@ function dunEnemy(D, room) {
       if (sp.em.some(m => EMODI[m] && EMODI[m].uw) && !e.name.startsWith('冥府')) e.name = '冥府・' + e.name;
       return e;
     };
+  /* 七宗罪：雕像挑戰的最後一層是該宗罪的王；七宗罪之王 7 層依序是 7 個王，第 8 層是七宗罪之王 */
+  if (sp.dt === 'sinking' || (boss && sp.sin)) {
+    const e =
+      sp.dt === 'sinking'
+        ? room < 7
+          ? makeSinLord(SINS[room].k, D.lv)
+          : makeSinKing(D.lv + 2)
+        : makeSinLord(sp.sin, D.lv + 1);
+    return { e: addEm(e), bg: 'cave', boss: true };
+  }
   let e, bg;
   if (D.kind === 'rift') {
     const b = pickMon(r, D.lv);
@@ -927,6 +951,11 @@ function dropLoot(e, boss, sp, remote) {
     giveCur(c);
     out.push(curDot(c) + CURI[c].n);
   }
+  if (stats().legGreed) {
+    const c = rollCur(2);
+    giveCur(c);
+    out.push(curDot(c) + CURI[c].n);
+  }
   gemLoot(e, boss, sp && sp.dt !== 'normal' && sp.dt !== 'party' && sp.dt !== 'stele', rem, out);
   if (boss && sp && sp.dt === 'circle') {
     giveCur('engX', 1 + (Math.random() < 0.5 ? 1 : 0));
@@ -1000,6 +1029,7 @@ function dunReward(D) {
     curs.push(curDot(c) + CURI[c].n);
   }
   if (sp.dt === 'stele') curs.push(makeTablet(D.lv, sp.mods));
+  if (sp.dt === 'sin' || sp.dt === 'sinking') curs.push(...sinReward(sp));
   return { gold, cry, items, curs };
 }
 function dunModsHTML(sp) {
@@ -1031,6 +1061,8 @@ function winBattle() {
   if (onsiteNow()) bonus += `<p class="sub" style="color:var(--gold)">✦ 現場加成：掉寶 +${ONSITE_BONUS}%</p>`;
   if (B.uw) bonus += obeliskCharge(B.uw);
   if (B.ud) bonus += undeadWin(B);
+  if (B.mist) bonus += mistWin(B);
+  if (e.sin) bonus += sinBattleWin(e);
   if (B.commander) bonus += commanderWin(B.commander);
   if (B.king) bonus += kingWin();
   if (B.watcher) bonus += watcherWin(B.watcher);

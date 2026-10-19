@@ -446,6 +446,21 @@ function openEnt(id) {
     act =
       `<button class="btn pri" data-act="udBoss" data-id="${id}" ${inR && !used && p >= 100 ? '' : 'disabled'}>${used ? '已挑戰' : p >= 100 ? '挑戰亡靈軍團長' : `進度 ${p}%`}</button>` +
       `<button class="btn" data-act="udKing" data-id="${id}" ${inR && S.cur.kBone >= KING_NEED ? '' : 'disabled'}>召喚亡靈王（骸骨 ${S.cur.kBone || 0}/${KING_NEED}）</button>`;
+  } else if (e.kind === 'mseal') {
+    const t = MIST_TIERS[e.tier],
+      os = onSite(e);
+    desc = S.mist
+      ? '你已經有一團魔霧在擴散了，先打碎它或等它散去。'
+      : `強度 ${ROMAN[e.tier]}：觸發後魔霧固定在這裡擴散，半徑 ${t.r} 公尺、持續 ${t.min} 分鐘。範圍內的怪物帶魔霧詞綴、等級 +${e.tier}，還會出現魔霧專屬怪。在範圍內打怪累積進度，滿 100% 魔霧碎裂，得到 ${e.tier + 1} 片魔霧碎片。${os ? '' : '<br><span style="color:#ffb27a">只能人在現場觸發。</span>'}`;
+    act = `<button class="btn pri" data-act="mistGo" data-id="${id}" ${os && !S.mist && S.lv >= t.lv ? '' : 'disabled'}>${S.lv < t.lv ? `需要 Lv${t.lv}` : '觸發魔霧'}</button>`;
+  } else if (e.kind === 'sinst') {
+    const x = Math.min(SIN_EXTRA, SEL.sinX || 0),
+      need = SIN_COST + x,
+      done = isDone(e);
+    desc = done ? '這座雕像已經挑戰過了，每 2 小時會換一輪。' : sinHTML(e);
+    act = done
+      ? ''
+      : `<div class="btns"><button class="btn sm" data-act="sinX" data-id="${id}" data-v="-1" ${x > 0 ? '' : 'disabled'}>－ 少放 1 片</button><button class="btn sm" data-act="sinX" data-id="${id}" data-v="1" ${x < SIN_EXTRA ? '' : 'disabled'}>＋ 多放 1 片</button></div><button class="btn pri" data-act="sinGo" data-id="${id}" ${inR && (S.cur.mfrag || 0) >= need ? '' : 'disabled'}>放入 ${need} 片魔霧碎片挑戰</button>`;
   } else if (e.kind === 'base') {
     desc = `你的${baseName(e.b)}，回到這裡會恢復全部狀態。`;
     act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
@@ -476,7 +491,7 @@ function openEnt(id) {
   $('entBig').getContext('2d').drawImage(entIcon(e), 0, 0);
 }
 /* 人實際在現場（不是靠據點、營旗、絲綢之路的遠端範圍） */
-const FIGHTK = new Set(['monster', 'dungeon', 'stele', 'circle', 'event', 'town', 'ualtar']);
+const FIGHTK = new Set(['monster', 'dungeon', 'stele', 'circle', 'event', 'town', 'ualtar', 'sinst']);
 const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE);
 const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= (e.kind === 'town' ? 120 : RANGE) || inZone(e));
 
@@ -573,6 +588,8 @@ const A = {
       uw: e.uw,
       ud: e.ud,
       udBase: e.ud && e.base.name,
+      mist: e.mist,
+      mistBase: e.mist && e.base.name,
       onsite: onSite(e)
     });
   },

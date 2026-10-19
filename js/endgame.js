@@ -213,6 +213,7 @@ function endgameSpawns(out, cells, put, hp) {
     e.name = makeEnemy(e.base, e.lv, e.rar, e.mods).name;
   }
   undeadSpawns(out, cells);
+  demonSpawns(out, cells, hp);
   flagsOn().forEach(f => {
     const [x, y] = toM(f.lat, f.lng);
     out.set('f' + f.id, { id: 'f' + f.id, kind: 'flag', x, y, lat: f.lat, lng: f.lng, f, name: '冒險營旗' });
@@ -258,6 +259,8 @@ function payDun(pay) {
   if (pay.scroll && !((S.scrolls || {})[pay.scroll] > 0)) return false;
   if ((pay.tabs || []).some(id => !tabs.some(t => t.id === id))) return false;
   if ((pay.frags || []).some(id => !frags.some(t => t.id === id))) return false;
+  if (pay.souls && !SINS.every(s => (S.sins || {})[s.k] > 0)) return false;
+  if (pay.souls) SINS.forEach(s => S.sins[s.k]--);
   if (pay.ent && S.defeated[pay.ent]) return false;
   if (pay.ent) S.defeated[pay.ent] = 1;
   if (pay.scroll) S.scrolls[pay.scroll]--;
@@ -518,6 +521,8 @@ function steleHTML() {
   <button class="btn pri" data-act="circleOpen" ${sc.circle > 0 && nt >= 4 && nt <= 6 ? '' : 'disabled'}>用卷軸組隊開啟魔法陣（已選 ${nt}/4～6）</button>
   <h3>冥府傳送門</h3><p class="sub">集滿 4 個不同部位的冥府碎片（${FRAG_PARTS.join('、')}）就能組成傳送門，8 層、詞綴全部疊加，首領保證掉冥府之血。</p>
   <div style="display:grid;gap:6px">${frags.map(f => `<div class="card"><b>${FRAG_PARTS[f.part]} Lv${f.lv}</b><small class="sub" style="display:block">${modList(f.mods)}・<span style="color:#ff8a9a">${modList(f.um)}</span></small></div>`).join('') || '<span class="sub">沒有冥府碎片</span>'}</div>
+  <h3>七宗罪之王</h3><p class="sub">集齊 7 種殘魂（${SINS.map(q => `${q.n} ${(S.sins || {})[q.k] || 0}`).join('、')}）可以組隊挑戰：8 層，前 7 層依序是七宗罪的王，最後是七宗罪之王，倒下不會復活。保證掉傳奇裝備與 3 條詞綴的惡魔珠寶。</p>
+  <button class="btn pri" data-act="sinKing" ${SINS.every(q => (S.sins || {})[q.k] > 0) ? '' : 'disabled'}>組隊挑戰七宗罪之王（4 人）</button>
   <button class="btn pri" data-act="portalOpen" ${best ? '' : 'disabled'}>組隊開啟冥府傳送門${best ? '' : `（還缺 ${FRAG_PARTS.filter((_, i) => !frags.some(f => f.part === i)).join('、')}）`}</button>`;
 }
 /* 背包的材料分頁：碑文碎片、石碑、冥府碎片、卷軸 */
@@ -529,6 +534,8 @@ const MAT_TABS = [
 ];
 function matsHTML(tab) {
   if (tab === 'ess') return essHTML();
+  if (tab === 'demon') return demonHTML();
+  if (tab === 'jewels') return jewelHTML();
   const drop = (k, id) => `<button class="btn sm" data-act="matDrop" data-k="${k}" data-id="${id}">丟棄</button>`,
     go = '<button class="btn" data-act="sheet" data-s="stele">前往「冒險 → 石碑」使用</button>';
   if (tab === 'insc') {

@@ -109,7 +109,7 @@ function treeFit() {
 const TX = x => (x - TV.x) * TV.s + TV.W / 2,
   TY = y => (y - TV.y) * TV.s + TV.H / 2;
 const CLSN = { novice: '冒險者之魂', knight: '戰士之魂', ranger: '遊俠之魂', mage: '術士之魂' };
-const NR = { start: 28, key: 17, notable: 13, small: 8 };
+const NR = { start: 28, key: 17, notable: 13, small: 8, socket: 14 };
 function drawTree() {
   const cv = $('treeCv');
   if (!cv || $('treeView').hidden) return;
@@ -261,6 +261,18 @@ function drawTree() {
     if (im.complete) x.drawImage(im, sx - is / 2, sy - is / 2, is, is);
     else im.onload = drawTree;
     x.globalAlpha = 1;
+    if (n.type === 'socket') {
+      const jw = (S.jsock || {})[n.id];
+      x.strokeStyle = jw ? '#c58cff' : '#7a5ad6';
+      x.lineWidth = Math.max(1, 2 * TV.s);
+      x.beginPath();
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * 6.28;
+        x[i ? 'lineTo' : 'moveTo'](sx + Math.cos(a) * (r + 4 * TV.s), sy + Math.sin(a) * (r + 4 * TV.s));
+      }
+      x.closePath();
+      x.stroke();
+    }
     if ((n.type === 'key' && TV.s > 0.3) || (n.type === 'notable' && TV.s > 1.25))
       lab.push([n, sx, sy + r + fs * 0.75, on]);
   }
@@ -309,7 +321,7 @@ function renderTreeCard() {
   else if (!path) btn = '<span class="sub">無法到達</span>';
   else
     btn = `<button class="btn pri" data-act="alloc" ${cost <= treePts() ? '' : 'disabled'}>${cost <= treePts() ? `點亮（${cost} 點）` : `需要 ${cost} 點，目前 ${treePts()} 點`}</button>`;
-  el.innerHTML = `<div class="ent"><img class="bigico" src="${pixURL('ic_' + n.ic)}" alt=""><div style="min-width:0;flex:1"><b style="color:${n.type === 'key' ? '#e8873a' : n.type === 'notable' || n.type === 'start' ? 'var(--gold)' : 'var(--ink)'}">${n.n}${n.type === 'key' ? '・基石' : n.type === 'notable' ? '・重要節點' : ''}</b><div class="sub">${stats || '—'}</div></div></div>${btn}`;
+  el.innerHTML = `<div class="ent"><img class="bigico" src="${pixURL('ic_' + n.ic)}" alt=""><div style="min-width:0;flex:1"><b style="color:${n.type === 'key' ? '#e8873a' : n.type === 'notable' || n.type === 'start' ? 'var(--gold)' : 'var(--ink)'}">${n.n}${n.type === 'key' ? '・基石' : n.type === 'notable' ? '・重要節點' : ''}</b><div class="sub">${stats || '—'}</div></div></div>${n.type === 'socket' ? socketCardHTML(n) : ''}${btn}`;
   drawTree();
 }
 (() => {
