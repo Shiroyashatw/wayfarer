@@ -14,6 +14,7 @@
 | 天賦盤起點（之魂）、技能 | `js/data.js` | `CLASSES`（起點名稱、主色、開局技能石）、`SKILLS` |
 | 技能石：等級、刻印詞綴、刻印石 | `js/data.js`、`js/items.js` | `GEM_MAX`、`dustNeed`、`GAFF`、`GCUR`；`gemSkill`（技能石→戰鬥技能）、`mySkills`、`gemCraft`、`gemLvBlock` |
 | 技能石面板（圖示格子、一鍵分解） | `js/ui.js` | `renderSheet` 的 `skills`／`gem` 分支、`gemCell`、`dupGems`、`A.gemDup`、`A.gemLv`、`A.gemCraft` |
+| 新手引導（步驟、框選的按鈕） | `js/tutor.js` | `TUT`（每步的標題、說明、要框起來的選擇器）、`tutorStart`、`tutorShow`；存檔旗標 `S.tut` |
 | 祈願（抽卡）介面、卡池、保底 | `js/gacha.js` | `BANNERS`、`GACHA_RATE`、`gachaPull`、`renderGacha`；主畫面圖示在 `index.html` 的 `.lbar` |
 | 天賦外圈（武器、組隊、刻印專精） | `js/data.js`、`js/items.js` | `TH` 的 `sword`～`gem` 主題、`TREE` 的「0.2.4 外圈」段落；武器條件在 `stats` 開頭（`wepType`、`offType`）；嘲諷、群體治癒、隊友加成在 `mp.js` 的 `mpEnemy`、`mpResolve` |
 | 技能石在戰鬥中的效果 | `js/battle.js` | `skSt`（刻印詞綴只對該技能生效）、`skByKey`（`'attack'`／`'s0'`～`'s3'`）、`gemLoot`（碎片與刻印石掉落） |
@@ -180,7 +181,7 @@
 - **passive tree (full screen)**（3）
   `startOf:4`、`blockedStart:5`、`treeAdj:9`、`canAlloc:19`、`pathTo:23`、`canRefund:50`、`treeTotals:67`、`TV:78`、`openTree:79`、`closeTree:87`、`sizeTree:94`、`treeFit:102`、`TX:109`、`CLSN:111`、`NR:112`、`drawTree:113`、`renderTreeCard:278`、`classPicker:411`
 
-### js/ui.js（1215 行）
+### js/ui.js（1202 行）
 
 - **HUD & sheets**（3）
   `renderHud:4`、`toast:19`、`openSheet:26`、`closeSheet:33`、`TITLES:38`、`NAVG:54`、`navG:72`、`navClose:73`、`navOpen:82`、`KIND:110`、`bar:119`、`entIcon:122`、`fmt1:168`、`curRow:169`、`curRowG:172`、`gemDesc:174`、`gemCell:181`、`dupGems:187`、`gemRow:195`、`prayed:199`、`renderSheet:200`、`nearTownE:361`
@@ -218,6 +219,11 @@
 - **ui**（79）
   `gemTile:80`、`openGacha:85`、`closeGacha:93`、`renderGacha:98`
 
+### js/tutor.js（133 行）
+
+- **tutorial**（3）
+  `TUT:5`、`tutI:75`、`tutorStart:76`、`tutorEnd:83`、`tutorShow:89`
+
 ### js/cloud.js（161 行）
 
 - **cloud save (Supabase)**（4）
@@ -246,7 +252,7 @@
 - **battle rendering**（920）
   `mpPos:922`、`renderMBHud:928`、`mpTurnT:978`、`mpTurnBar:979`、`renderMB:1002`
 
-### js/main.js（153 行）
+### js/main.js（158 行）
 
 - **boot**（3）
   `load:4`、`save:12`、`rebuildWorld:25`、`migrate:34`、`start:106`

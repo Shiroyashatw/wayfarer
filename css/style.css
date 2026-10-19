@@ -315,3 +315,14 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .gen i.f{background:#7fd6ff}
 .geq{position:absolute;bottom:-5px;right:-5px;font-style:normal;font-size:10px;background:var(--good);color:#000;border-radius:6px;padding:0 4px}
 .gcor{outline:2px solid #e5304a;outline-offset:1px}
+
+/* ---------- tutorial ---------- */
+#tut{position:fixed;inset:0;z-index:60}
+#tut.center{background:#000b}
+#tutHole{position:fixed;box-shadow:0 0 0 9999px #000b;border:2px solid var(--gold);pointer-events:none;animation:tpulse 1.4s ease-in-out infinite}
+@keyframes tpulse{50%{border-color:#fff8d0}}
+#tutBox{position:fixed;left:max(16px,var(--sal));right:max(16px,var(--sar));max-width:420px;margin:0 auto;display:grid;gap:6px;border:1px solid var(--gild);box-shadow:0 10px 30px #000c}
+#tut.center #tutBox{top:50%!important;transform:translateY(-50%)}
+#tutBox h3{margin:0;font-family:var(--f-pix);font-weight:400;font-size:19px;color:var(--gold);text-transform:none;letter-spacing:0}
+#tutBox p{margin:0;font-size:14px;line-height:1.6}
+#tutBox .btns{justify-content:flex-end}

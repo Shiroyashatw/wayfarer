@@ -131,7 +131,7 @@ function start() {
     addLog('冒險開始！');
     showModal(
       `漫步勇者 v${VER}`,
-      `<p>真實世界就是你的冒險地圖。道路跟著真實街道走，知名地點會變成城鎮。</p><p class="sub">一開始地圖被迷霧覆蓋，走過的地方才會揭開。點路面讓角色走過去，走進黃色圈內就能戰鬥、開寶箱、參拜。發光的怪物是菁英，掉寶更好；城鎮附近會出現限時事件。背包裡已經放了幾件裝備、一盞提燈（裝在副手）、一條腰帶和一些通貨，可以先試試改造裝備。晚上視野會縮小，提燈能照得更遠，但也會引來更多怪物。</p>`,
+      `<p>真實世界就是你的冒險地圖。道路跟著真實街道走，知名地點會變成城鎮。</p><p class="sub">先選擇天賦盤的起點，接著會有簡短的新手教學帶你認識畫面。</p>`,
       [
         {
           label: '選擇起點',
@@ -141,12 +141,17 @@ function start() {
             classPicker(() => {
               checkArrive();
               save();
+              tutorStart();
             });
           }
         }
       ]
     );
-  } else checkArrive();
+  } else {
+    checkArrive();
+    /* 0.2.5 前的存檔也看一次新手教學（可以跳過） */
+    if (!S.tut) setTimeout(tutorStart, 600);
+  }
   requestAnimationFrame(tick);
 }
 start();

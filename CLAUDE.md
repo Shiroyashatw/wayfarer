@@ -28,6 +28,7 @@
 | `js/ui.js` | HUD、底部面板、互動、據點、`data-act` 動作表 |
 | `js/endgame.js` | 0.2 終局：據點半徑與冒險營旗、空白石碑／魔法陣、靈脈、區域特性、冥府侵蝕柱與碎片、絲綢之路（`ui.js` 之後載入） |
 | `js/gacha.js` | 祈願（抽卡）：卡池、保底、十連、結果動畫 |
+| `js/tutor.js` | 新手引導：`TUT` 步驟清單，新增功能時順手補一步 |
 | `js/cloud.js` | Supabase 匿名登入、信箱註冊／登入、玩家編號、存檔上傳（每 15 秒／切到背景時） |
 | `js/social.js` | 好友（`friend_*` RPC）、名字同步到 `profiles`、組隊邀請（`party_invites` + Realtime） |
 | `js/mp.js` | 隊伍（6 碼代碼、Realtime 廣播頻道 `wf-party-代碼`）與多人戰鬥；隊長的裝置計算、廣播 `state` |
