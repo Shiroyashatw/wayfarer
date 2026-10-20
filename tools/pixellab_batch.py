@@ -12,7 +12,7 @@ API 金鑰放環境變數，不要寫進程式或 commit：
 
 - 輸出到 art/new/（不會直接進遊戲）：每張 檔名.png，--n 2 以上是 檔名_1.png、檔名_2.png。挑好再搬到 art/monsters/ 或 art/icons/。
 - 已經有的檔案（art/new、art/monsters、art/icons）會跳過，中斷了重跑會接著做。
-- 尺寸沒指定時：sk_／sup_／gear_／unit_ 開頭用 32，其他（怪物）用 64。
+- 尺寸沒指定時：sk_／sup_／gear_／unit_／tree_／asc_ 開頭用 32，其他（怪物）用 64。
 - --extra 可以多傳 API 參數（JSON），預設 {"no_background": true}；API 不認得時會自動拿掉再試一次。
 """
 import argparse, base64, json, os, pathlib, re, sys, time, urllib.error, urllib.request
@@ -57,15 +57,9 @@ def jobs_from(doc):
     # 舊格式／戰場單位：``` 提示詞 ``` 下一行是 `檔名.png`（名稱）
     for m in re.finditer(r'```\n(.*?)\n```\n`([\w-]+)\.png`', t, re.S):
         out.append((m.group(2), m.group(1)))
-    # 技能：| `代號` | 名稱 | 類型 | `提示詞` |；輔助寶石：| `代號` | 名稱 | `提示詞` |
-    for m in re.finditer(r'^\| `(\w+)` \| [^|]+ \| [^|]+ \| `([^`]+)` \|$', t, re.M):
-        out.append(('sk_' + m.group(1), m.group(2)))
-    for m in re.finditer(r'^\| `((?:sp|ln)_\w+)` \| [^|]+ \| `([^`]+)` \|$', t, re.M):
-        out.append(('sup_' + m.group(1), m.group(2)))
-    # 裝備：#### 武器（`weapon`）底下的 | 底材 | `提示詞` |，照順序編號
-    for sec in re.finditer(r'^#### [^\n]*（`(\w+)`）\n(.*?)(?=^#|\Z)', t, re.M | re.S):
-        rows = re.findall(r'^\| [^|`]+ \| `([^`]+)` \|$', sec.group(2), re.M)
-        out += [(f'gear_{sec.group(1)}_{i}', p) for i, p in enumerate(rows)]
+    # 圖示表格（技能、輔助寶石、裝備、戰場單位、天賦樹、昇華）：| `檔名` | … | `提示詞` |
+    for m in re.finditer(r'^\| `([\w-]+)` \|.*\| `([^`]+)` \|$', t, re.M):
+        out.append((m.group(1), m.group(2)))
     seen, res = set(), []
     for f, p in out:
         if f not in seen:
@@ -153,15 +147,18 @@ def main():
     jobs = [(f, p) for f, p in jobs_from(a.doc) if f.startswith(a.only) and (a.force or not have(f))]
     if a.limit:
         jobs = jobs[: a.limit]
-    print(f'{len(jobs)} 種 × {a.n} 張')
+    print(f'{len(jobs)} 種 × {a.n} 張（約扣 {len(jobs) * a.n} 次）')
     if a.cmd == 'list':
-        for f, p in jobs:
-            print(f'{f}: {p[:90]}…')
+        try:
+            for f, p in jobs:
+                print(f'{f}: {p[:90]}…')
+        except BrokenPipeError:
+            pass
         return
     OUT.mkdir(parents=True, exist_ok=True)
     extra, total = json.loads(a.extra), 0.0
     for k, (f, p) in enumerate(jobs, 1):
-        size = a.size or (32 if re.match(r'(sk|sup|gear|unit)_', f) else 64)
+        size = a.size or (32 if re.match(r'(sk|sup|gear|unit|tree|asc)_', f) else 64)
         for i in range(1, a.n + 1):
             name = f if a.n == 1 else f'{f}_{i}'
             try:
