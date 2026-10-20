@@ -383,7 +383,7 @@ const MONS = [
   {
     name: '夜鷺',
     bg: 'meadow',
-    spr: 'bird',
+    spr: 'a_m_nightheron',
     pal: { b: '#4a5a6a', e: '#ffdd55', y: '#f2c14e', w: '#c8d4e0' },
     hp: 24,
     atk: 9,
@@ -2656,5 +2656,5 @@ const TREE = (() => {
       n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.27';
+const VER = '0.3.28';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };
