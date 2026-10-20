@@ -102,7 +102,7 @@ const UNDEAD = [
     name: '骷髏兵',
     ess: 'bone',
     bg: 'cave',
-    spr: 'skeleton',
+    spr: 'a_skeleton',
     pal: { w: '#e8e2d0' },
     hp: 40,
     atk: 11,
@@ -584,8 +584,17 @@ Object.assign(A, {
     const a = ENT.get(d.id);
     if (!inRange(a) || isDone(a) || udProg(a.zid) < 100) return;
     closeSheet();
-    /* 軍團長外觀依祭壇固定：骷髏將軍或死亡巫女 */
-    const look = ['a_bonelord', 'a_death_witch'][[...String(a.zid)].reduce((s, c) => s + c.charCodeAt(0), 0) % 2];
+    /* 軍團長外觀依祭壇固定（0.3.26 起 7 種） */
+    const looks = [
+        'a_bonelord',
+        'a_death_witch',
+        'a_bone_knight',
+        'a_ghost_priest',
+        'a_wraith_general',
+        'a_bone_colossus',
+        'a_blood_count'
+      ],
+      look = looks[[...String(a.zid)].reduce((s, c) => s + c.charCodeAt(0), 0) % looks.length];
     startBattle(udBoss('亡靈軍團長', look, { y: '#ffd166', w: '#e8e2d0', a: '#3a4a3a' }, a.lv, 3), {
       bg: 'cave',
       boss: true,

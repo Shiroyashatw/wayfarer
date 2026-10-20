@@ -1980,9 +1980,22 @@ const dunName = t =>
         : t.kind === 'tier'
           ? '突破試煉'
           : DTYPES[t.dt || 'normal'].n;
-/* 0.3.23 冥府傳送門的最終王改成閻羅王（圖先沿用冥府之主的 b_hades，PixelLab 提示詞在 docs/怪物提示詞.md） */
+/* 0.3.23 冥府傳送門的最終王是閻羅王；0.3.26 換成 PNG 圖 */
 const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '閻羅王', stele: '石碑守衛' },
-  BOSSSPR = { hell: 'b_hellord', circle: 'b_arcane', portal: 'b_hades', stele: 'b_stelekeeper' };
+  BOSSSPR = { hell: 'b_hellord', circle: 'b_arcane', portal: 'a_yanluo', stele: 'b_stelekeeper' };
+/* 0.3.26 地城、石碑、魔法陣、地獄、組隊地城的首領：從台灣鬼怪裡抽一隻（每座地城固定，看種子） */
+const GHOSTS = [
+  { n: '魔神仔', spr: 'a_mosina', el: 'cold' },
+  { n: '虎姑婆', spr: 'a_hugupo', el: 'phys' },
+  { n: '陳守娘', spr: 'a_chenshouniang', el: 'cold' },
+  { n: '椅仔姑', spr: 'a_yiagu', el: 'light' },
+  { n: '林投姐', spr: 'a_lintoujie', el: 'cold' },
+  { n: '水鬼', spr: 'a_shuigui', el: 'cold' },
+  { n: '冥婚新娘', spr: 'a_guixinniang', el: 'fire' },
+  { n: '紅衣小女孩', spr: 'a_hongy', el: 'phys' },
+  { n: '吊死鬼', spr: 'a_diaosi', el: 'phys' }
+];
+const ghostOf = D => GHOSTS[h(D.seed, 77, 7) % GHOSTS.length];
 /* 第 room 層的敵人群（0.3 起一層是一群，最多 5 隻）。boss 在最後一層；extra 是組隊多出來的隻數 */
 function dunEnemy(D, room, extra = 0) {
   const sp = D.spec,
@@ -2058,21 +2071,19 @@ function dunEnemy(D, room, extra = 0) {
     n = boss ? 1 : 1 + (r % 2);
   } else if (boss) {
     const hell = (!!BIGBOSS[sp.dt] && sp.dt !== 'stele') || D.kind === 'asc' || D.kind === 'tier',
-      bn = D.lm
-        ? `${D.lm.dn}守護者`
-        : D.kind === 'asc' || D.kind === 'tier'
-          ? D.kind === 'tier'
-            ? '突破之門守衛'
-            : '昇華試煉守衛'
-          : BIGBOSS[sp.dt] || (sp.dt === 'party' ? '深淵看守' : '洞窟守護者'),
-      /* 首領專屬圖：地標是石獅、組隊是深淵之眼、地獄／魔法陣／冥府／石碑各自一張 */
-      bspr = D.lm
-        ? 'b_lion'
-        : D.kind === 'asc'
-          ? 'b_arcane'
-          : D.kind === 'tier'
-            ? 'b_hellord'
-            : BOSSSPR[sp.dt] || (sp.dt === 'party' ? 'b_abyss' : 'b_golem');
+      /* 地標是石獅、昇華試煉是鍾馗、突破之門是門神、冥府是閻羅王，其他抽台灣鬼怪 */
+      gh = ghostOf(D),
+      fix = D.lm
+        ? { n: `${D.lm.dn}守護者`, spr: 'a_lion', el: 'cold' }
+        : D.kind === 'tier'
+          ? { n: '門神・秦叔寶', spr: 'a_menshen_qin', el: 'light' }
+          : D.kind === 'asc'
+            ? { n: '鍾馗', spr: 'a_zhongkui', el: 'fire' }
+            : sp.dt === 'portal'
+              ? { n: BIGBOSS.portal, spr: BOSSSPR.portal, el: 'fire' }
+              : gh,
+      bn = fix.n,
+      bspr = fix.spr;
     e = makeEnemy(
       {
         name: bn,
@@ -2080,7 +2091,7 @@ function dunEnemy(D, room, extra = 0) {
         hp: 70,
         atk: 12,
         arm: 30,
-        el: D.lm ? 'cold' : hell ? 'fire' : 'phys',
+        el: fix.el,
         res: [25, 25, 25],
         xp: 30,
         gold: 30,
@@ -2101,6 +2112,35 @@ function dunEnemy(D, room, extra = 0) {
     if (sp.dt === 'portal') e.yama = 1;
     bg = 'cave';
     n = hell ? 2 : 1 + (sp.dt === 'party' ? 1 : 0);
+    /* 突破之門：兩位門神一起守門，尉遲恭是第二隻（生命 70%） */
+    if (D.kind === 'tier') {
+      const es = group(e, n - 1),
+        e2 = makeEnemy(
+          {
+            name: '門神・尉遲恭',
+            bg: 'cave',
+            hp: 70,
+            atk: 12,
+            arm: 30,
+            el: 'phys',
+            res: [25, 25, 25],
+            xp: 30,
+            gold: 30,
+            spr: 'a_menshen_yu'
+          },
+          D.lv + 1,
+          0,
+          rollMods(h(r, 2, 21), 2),
+          sp.dm
+        );
+      e2.maxhp = e2.hp = Math.round(e.maxhp * 0.7);
+      e2.atk = e.atk;
+      e2.xp = e.xp;
+      e2.rar = 4;
+      e2.minion = 0;
+      es.splice(1, 0, e2);
+      return { e: es[0], es: es.slice(0, 5), bg, boss: true };
+    }
   } else {
     e = sp.siege ? makeFollower(sp.sin, SINF[sp.sin][r % 5], D.lv, r % 3 === 0 ? 2 : 1, rollMods(r, 1)) : mob(0);
     bg = D.lm ? 'forest' : 'cave';
