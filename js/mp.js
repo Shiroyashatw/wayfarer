@@ -460,16 +460,17 @@ function mpResolve(uid, k, auto, tg = 0) {
     MBT = setTimeout(mpNext, 900);
     return;
   }
-  if (!sk || !canPay(p, skSt(p.st, sk), sk)) {
+  if (!sk || !skReady(p, p, skSt(p.st, sk), sk)) {
     sk = SKILLS.attack;
     k = 'attack';
   }
-  payCost(p, p.st, sk);
+  if (!charging(p, sk)) payCost(p, p.st, sk);
   fx.push({ t: 'msg', s: auto ? `${p.name} 時間到，自動攻擊` : `${p.name}：${sk.name}` });
   const alive = MB.ps.filter(q => q.alive),
     ev = actResolve(p, p.st, sk, MB.es, tg, alive, {
       allyMul: 1 + ((p.st.allyDmg || 0) * (alive.length - 1)) / 100,
-      ew: MB.spec.eleweak ? 20 : 0
+      ew: MB.spec.eleweak ? 20 : 0,
+      av: MB.av
     }),
     end = ev.reduce((a, f) => Math.max(a, f.at || 0), 0),
     pe = petsAct(p, p.st, MB.es).map(f => ({ ...f, at: (f.at || 0) + end + 150 })),
@@ -660,7 +661,7 @@ function mpMy(k) {
     S[key]--;
   } else {
     const sk = skByKey(k, me.sks || []);
-    if (!sk || !canPay(me, skSt(me.st, sk), sk)) return;
+    if (!sk || !skReady(me, me, skSt(me.st, sk), sk)) return;
   }
   MB.sent = MB.tok;
   MB.sub = null;
@@ -850,7 +851,7 @@ function renderMBHud() {
         low = q.alive && hr < 0.3;
       return (
         `<div class="mp ${q.uid === MB.actor ? 'on' : ''} ${q.alive ? '' : 'down'} ${low ? 'low' : ''} ${q.uid === CLOUD.uid ? 'mine' : ''}" style="left:${ps.x}px;top:${ps.y + 8}px"><b>${esc(q.name)}${q.gone ? '（離線）' : q.alive ? '' : '（倒下）'}</b><i class="mh"><i style="width:${hr * 100}%"></i><em>${hp}/${q.st.maxhp}</em></i><i class="mm"><i style="width:${(q.mp / q.st.maxmp) * 100}%"></i><em>${Math.max(0, Math.round(q.mp))}</em></i></div>` +
-        `<div class="ailbox" style="left:${ps.x + 5 * (battleSc() - 1)}px;top:${ps.y - 16 * (battleSc() - 1)}px">${ailHTML(q, AIL_H)}</div>`
+        `<div class="ailbox" style="left:${ps.x + 5 * (battleSc() - 1)}px;top:${ps.y - 16 * (battleSc() - 1)}px">${heroAilHTML(q)}</div>`
       );
     })
     .join('');
@@ -865,9 +866,9 @@ function renderMBHud() {
     return cb(
       q.name,
       q.icon,
-      skSub(me ? me.st : stats(), q),
+      skSub(me ? me.st : stats(), q, me, MB.es, MB.tg || 0),
       `data-k="${k}"`,
-      me && canPay(me, skSt(me.st, q), q) ? '' : 'disabled'
+      me && skReady(me, me, skSt(me.st, q), q) ? '' : 'disabled'
     );
   };
   /* 0.3.1.9：四個技能欄都直接放在面板上；普攻固定在右上角，物品與撤退擠在右下一格 */

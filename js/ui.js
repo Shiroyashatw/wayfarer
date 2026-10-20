@@ -213,7 +213,15 @@ const bagTabs = () =>
 const curRowG = () =>
   `<div class="curs">${GCUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>`;
 /* 技能說明：類別、傷害、目標形式與特殊效果；0.3.18 特殊效果的關鍵字上色（kw） */
-const BUFFN = { more: '傷害', arm: '護甲', dodge: '閃避', crit: '暴擊率', taunt: '嘲諷', dmgRed: '受傷降低' };
+const BUFFN = {
+  more: '傷害',
+  arm: '護甲',
+  dodge: '閃避',
+  crit: '暴擊率',
+  taunt: '嘲諷',
+  dmgRed: '受傷降低',
+  spd: '速度'
+};
 const kw = (t, c) => `<i class="kw ${c}">${t}</i>`;
 /* 0.3.18 換武器後，技能欄裡武器不符的技能提示（戰鬥中不能用） */
 function wepWarn(sl) {
@@ -260,6 +268,57 @@ function gemDesc(q, st) {
           .concat(q.buff.shield ? [`護盾 ${Math.round(q.buff.shield * 100)}% 生命`] : [])
           .join('、')
     );
+  /* 0.3.19 條件與狀態連動 */
+  const SN = typeof COND_ST !== 'undefined' ? COND_ST : {};
+  if (q.ignite) out.push(`必定${kw('燃燒', 'fire')}`);
+  if (q.foes > 0) out.push(`每多一隻敵人傷害 ${kw('+' + q.foes + '%', 'num')}（最多算 5 隻）`);
+  if (q.foes < 0) out.push(`每多一隻敵人，每隻傷害 ${kw(q.foes + '%', 'bad')}`);
+  if (q.vs)
+    for (const k in q.vs)
+      out.push(
+        `對${kw(SN[k] || k, 'eff')}的目標傷害 ${kw('+' + q.vs[k] + '%', 'num')}${k === 'poison' || k === 'bleed' ? '（每層）' : ''}`
+      );
+  if (q.vsCrit) out.push(`對${kw(SN[q.vsCrit], 'eff')}的目標${kw('必定暴擊', 'num')}`);
+  if (q.consume) out.push(`命中後${kw('消耗', 'eff')}目標的${SN[q.consume]}`);
+  if (q.det)
+    out.push(
+      `${kw('引爆', 'eff')}目標的${kw(SN[q.det], 'eff')}：剩下的持續傷害一次結算${q.detMul && q.detMul !== 1 ? `（×${q.detMul}）` : ''}`
+    );
+  if (q.shockChain) out.push(`目標${kw('感電', 'light')}時${kw(`多連鎖 ${q.shockChain} 次`, 'tg')}`);
+  if (q.lowT) out.push(`對生命低於 30% 的目標傷害 ${kw('+' + q.lowT + '%', 'num')}`);
+  if (q.fullT) out.push(`對滿血目標傷害 ${kw('+' + q.fullT + '%', 'num')}`);
+  if (q.lowMe) out.push(`自己每少 10% 生命，傷害 ${kw('+' + q.lowMe + '%', 'num')}`);
+  if (q.combo) out.push(`${kw('連續使用', 'eff')}每次傷害 ${kw('+' + q.combo + '%', 'num')}（最多 5 層，換招歸零）`);
+  if (q.petN) out.push(`每隻召喚物讓傷害 ${kw('+' + q.petN + '%', 'num')}`);
+  if (q.charge)
+    out.push(`${kw('蓄力', 'eff')}：先蓄一回合，下次放同一招傷害 ${kw('×' + q.charge, 'num')}（蓄力時被打會減弱）`);
+  if (q.slow) out.push(`${kw('衰老', 'eff')}：目標行動變慢 ${q.slow} 回合`);
+  if (q.vulP) out.push(`${kw('脆弱', 'eff')}：目標受到的物理傷害 +${q.vulP}%（3 回合）`);
+  if (q.vulE) out.push(`${kw('元素弱化', 'eff')}：目標受到的元素傷害 +${q.vulE}%（3 回合）`);
+  if (q.dmark) out.push(`${kw('死亡印記', 'eff')}：目標 3 回合內死亡時，回復 10% 生命與魔力`);
+  if (q.spreadSt) out.push(`把目標身上的${kw('詛咒、印記、易傷、衰老', 'eff')}${kw('擴散', 'tg')}給全部敵人`);
+  if (q.killBoom) out.push(`擊殺時${kw('爆炸', 'fire')}：這下傷害的 ${q.killBoom}% 打其他敵人`);
+  if (q.sac) out.push(`${kw('引爆', 'eff')}一隻召喚物，炸全部敵人（召喚物傷害 ×${q.sac}）`);
+  if (q.cmd) out.push(`所有召喚物${kw('立刻再行動一次', 'buf')}`);
+  if (q.healLow) out.push(`目標每少 10% 生命，治療量 ${kw('+' + q.healLow + '%', 'num')}`);
+  if (q.cry) {
+    out.push(kw(`吼全部敵人${q.party ? '（全隊受益）' : ''}`, 'tg'));
+    if (q.perFoe)
+      out.push(
+        `每吼到一隻敵人（最多 5 隻）：${Object.entries(q.perFoe)
+          .map(([k, v]) => `${BUFFN[k] || k} ${k === 'dmgRed' ? '-' : '+'}${v}%`)
+          .join('、')}`
+      );
+    if (q.lowMeBuff) out.push(`自己每少 10% 生命，傷害再 ${kw('+' + q.lowMeBuff + '%', 'num')}`);
+    if (q.emp) out.push(`強化接下來的 ${kw('N 次攻擊', 'num')}（N = 吼到的敵人數）：傷害 +${q.emp}%`);
+    if (q.fear) out.push(`生命低於 ${q.fear}% 的敵人${kw('恐懼', 'eff')}，跳過下一回合`);
+    if (q.cryCurse)
+      out.push(
+        `全部敵人${kw('震懾', 'eff')}：受傷 +${q.cryCurse}%${q.cryWeak ? `、攻擊 -${q.cryWeak}%` : ''}（3 回合）`
+      );
+    if (q.avUp) out.push(`全隊${kw('行動值提前', 'buf')} ${q.avUp}`);
+  }
+  if (q.cd) out.push(kw(`冷卻 ${q.cd} 回合`, 'bad'));
   if (q.lifeCost) out.push(kw(`消耗 ${Math.round(q.lifeCost * 100)}% 生命`, 'bad'));
   if (q.w) out.push(st && !wOk(st, q) ? kw(`需要${WTAGN[q.w]}（目前不能用）`, 'bad') : `需要${WTAGN[q.w]}`);
   return out.join('・');

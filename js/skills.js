@@ -727,12 +727,20 @@ function skTags(q) {
   if (q.hits > 1 && q.tg !== 'rand') out.push(['連擊', 'eff']);
   if (q.bleed) out.push(['流血', 'eff']);
   if (q.poison) out.push(['中毒', 'eff']);
-  if (q.burn) out.push(['燃燒', 'eff']);
+  if (q.ignite) out.push(['燃燒', 'eff']);
   if (q.stun) out.push(['暈眩', 'eff']);
   if (q.freeze) out.push(['凍結', 'eff']);
   if (q.mark) out.push(['標記', 'eff']);
   if (q.curse) out.push(['詛咒', 'eff']);
   if (q.exec) out.push(['斬殺', 'eff']);
+  if (q.slow) out.push(['衰老', 'eff']);
+  if (q.vulP || q.vulE) out.push(['易傷', 'eff']);
+  if (q.dmark) out.push(['印記', 'eff']);
+  if (q.det) out.push(['引爆', 'eff']);
+  if (q.consume === 'frozen') out.push(['碎冰', 'eff']);
+  if (q.charge) out.push(['蓄力', 'eff']);
+  if (q.combo) out.push(['連續', 'eff']);
+  if (q.sac || q.cmd) out.push([q.sac ? '犧牲' : '號令', 'pet']);
   if (q.guard) out.push(['格擋', 'buf']);
   if (q.lifeCost) out.push(['耗血', 'eff']);
   return out;
@@ -749,3 +757,226 @@ const skShort = q =>
     .slice(1, 3)
     .map(t => t[0])
     .join('・');
+/* ---- 0.3.19：每顆技能都有自己的條件或取捨（欄位說明在 battle.js 的「技能的通用條件與狀態連動」） ---- */
+const SK_COND = {
+  power: { vsCrit: 'stun' },
+  bash: { stun: 0.25 },
+  whirl: { foes: -10 },
+  fire: { ignite: 1 },
+  ice: { vs: { frozen: 80 }, consume: 'frozen' },
+  heal: { healLow: 8 },
+  double: { combo: 12 },
+  bolt: { vs: { shock: 40 } },
+  pierce: { brk: 50 },
+  meteor: { cd: 2, ignite: 1 },
+  blizzard: { cd: 2 },
+  cleave: { foes: 8 },
+  sanct: { cd: 3 },
+  slash2: { fullT: 40 },
+  swordwave: { combo: 10 },
+  thrust: { vs: { bleed: 15 } },
+  riposte: { cd: 2 },
+  spinslash: { foes: -10 },
+  crosscut: { vs: { bleed: 10 } },
+  mirage: { vs: { mark: 30 } },
+  judgment: { cd: 3, lowT: 60 },
+  bladestorm: { cd: 2 },
+  groundslam: { foes: 6 },
+  bonecrush: { vsCrit: 'stun' },
+  shatter: { vs: { frozen: 100 }, consume: 'frozen' },
+  warcry: { cry: 1, cd: 3, perFoe: { more: 6 }, buff: { id: 'warcry', n: '戰吼', turns: 3, more: 10 } },
+  axespin: { foes: -10 },
+  execute: { mult: 1.1, lowT: 90 },
+  earthquake: { cd: 2, foes: 6 },
+  thorhammer: { cd: 2, shockChain: 1 },
+  javelin: { fullT: 30 },
+  lunge: { combo: 12 },
+  sweep: { foes: 6 },
+  impale: { vs: { bleed: 15 } },
+  spinspear: { foes: -8 },
+  valkyrie: { cd: 2, vs: { mark: 40 } },
+  skypierce: { cd: 2, vs: { shock: 30 } },
+  firearrow: { vs: { burn: 30 } },
+  rainarrow: { foes: 6 },
+  snipe: { mult: 1.8, charge: 2.6 },
+  burstbolt: { killBoom: 40 },
+  lightarrow: { shockChain: 1 },
+  barrage: { combo: 10 },
+  starfall: { cd: 3 },
+  deadeye: { cd: 2, charge: 2.2 },
+  backstab: { fullT: 60 },
+  bloodclaw: { vs: { bleed: 12 } },
+  venomfang: { vs: { poison: 8 } },
+  shadowstep: { cd: 2 },
+  smokebomb: { cd: 2 },
+  fanblade: { vs: { mark: 25 } },
+  whirlblade: { foes: -8 },
+  frenzy: { combo: 15 },
+  assassinate: { cd: 3, lowT: 60 },
+  shadowclone: { cd: 3 },
+  flamelance: { vs: { burn: 40 } },
+  firewall: { ignite: 1 },
+  fireburst: { det: 'burn', detMul: 0.8 },
+  combust: { det: 'burn', detMul: 1.4 },
+  inferno: { cd: 3, vs: { burn: 30 } },
+  phoenix: { cd: 4 },
+  iceshard: { vs: { frozen: 40 } },
+  iceshield: { cd: 3 },
+  coldsnap: { vs: { frozen: 60 }, consume: 'frozen' },
+  glacier: { cd: 3 },
+  arc: { shockChain: 2 },
+  chainlight: { shockChain: 1 },
+  ballight: { combo: 10 },
+  thunderstorm: { cd: 3 },
+  smite: { cd: 2, vs: { shock: 50 } },
+  bonewall: { cd: 3 },
+  bonespear: { petN: 10 },
+  bloodlance: { lowMe: 8 },
+  doom: { spreadSt: 1 },
+  bloodburst: { lowMe: 6 },
+  wraith: { cd: 3 },
+  sacrifice: { cd: 4 },
+  banner: { cd: 3 },
+  haste: { cd: 2, buff: { id: 'haste', n: '加速', turns: 3, dodge: 10, more: 5, spd: 25 } },
+  tauntroar: {
+    cry: 1,
+    cd: 3,
+    perFoe: { arm: 15 },
+    buff: { id: 'taunt', n: '嘲諷', turns: 3, taunt: 100, arm: 20 }
+  },
+  purify: { healLow: 10 },
+  regenaura: { cd: 2 },
+  holyshield: { cd: 3 },
+  inspire: { cry: 1, party: 1, cd: 3 },
+  battlecry: { cry: 1, party: 1, cd: 4, perFoe: { more: 4 } },
+  exorcise: { vs: { curse: 40 } },
+  possession: { cd: 3 },
+  summongod: { cd: 4 }
+};
+for (const k in SK_COND) if (SKILLS[k]) Object.assign(SKILLS[k], SK_COND[k]);
+/* 0.3.19 新技能：戰吼、條件攻擊、狀態連動（碎冰、引爆、毒爆）、召喚連動、詛咒 */
+Object.assign(SKILLS, {
+  /* ---- 戰吼（任何武器都能用） ---- */
+  daunt: {
+    name: '震懾怒吼',
+    mp: 6,
+    kind: 'buff',
+    cry: 1,
+    cd: 3,
+    perFoe: { more: 9 },
+    cryCurse: 10,
+    buff: { id: 'daunt', n: '震懾', turns: 3, more: 4 },
+    icon: 'horn',
+    r: 3
+  },
+  provoke: {
+    name: '挑釁戰吼',
+    mp: 5,
+    kind: 'buff',
+    cry: 1,
+    cd: 3,
+    perFoe: { arm: 20, dmgRed: 3 },
+    buff: { id: 'provoke', n: '挑釁', turns: 3, taunt: 150 },
+    icon: 'horn',
+    r: 3
+  },
+  valor: { name: '戰意激昂', mp: 7, kind: 'buff', cry: 1, cd: 3, emp: 45, icon: 'horn', r: 4 },
+  dread: {
+    name: '恐懼咆哮',
+    mp: 8,
+    kind: 'buff',
+    cry: 1,
+    cd: 3,
+    fear: 30,
+    cryCurse: 15,
+    cryWeak: 10,
+    icon: 'horn',
+    r: 4
+  },
+  ancestral: {
+    name: '先祖吶喊',
+    mp: 9,
+    kind: 'buff',
+    cry: 1,
+    party: 1,
+    cd: 4,
+    avUp: 50,
+    buff: { id: 'ancestral', n: '先祖', turns: 2, spd: 15 },
+    icon: 'horn',
+    r: 4
+  },
+  bloodhowl: {
+    name: '血怒嚎叫',
+    mp: 0,
+    kind: 'buff',
+    cry: 1,
+    cd: 3,
+    lifeCost: 0.1,
+    lowMeBuff: 9,
+    buff: { id: 'bloodhowl', n: '血怒', turns: 3, more: 8 },
+    icon: 'horn',
+    r: 5
+  },
+  /* ---- 條件攻擊（不限武器） ---- */
+  reckless: { name: '捨身一擊', mp: 3, kind: 'attack', mult: 3, lifeCost: 0.15, icon: 'axe', r: 4 },
+  rend: { name: '撕裂斬', mp: 7, kind: 'attack', mult: 1, vs: { bleed: 25 }, icon: 'sword', r: 4 },
+  chainslash: { name: '連環斬', mp: 5, kind: 'attack', w: 'sword', mult: 0.95, combo: 20, icon: 'sword', r: 4 },
+  blastarrow: {
+    name: '爆裂箭',
+    mp: 8,
+    kind: 'attack',
+    w: 'bow',
+    mult: 1.3,
+    killBoom: 60,
+    fx: 'arrow',
+    icon: 'flame',
+    r: 4
+  },
+  /* ---- 狀態連動 ---- */
+  detonate: {
+    name: '爆燃',
+    mp: 8,
+    kind: 'spell',
+    el: 'fire',
+    mult: 0.6,
+    det: 'burn',
+    detMul: 1.5,
+    fx: 'fire',
+    icon: 'flame',
+    r: 4
+  },
+  iceshatter: {
+    name: '碎冰',
+    mp: 8,
+    kind: 'spell',
+    el: 'cold',
+    mult: 1,
+    vs: { frozen: 120 },
+    consume: 'frozen',
+    fx: 'ice',
+    icon: 'ice',
+    r: 4
+  },
+  venomburst: {
+    name: '毒爆',
+    mp: 8,
+    kind: 'spell',
+    el: 'phys',
+    mult: 0.4,
+    det: 'poison',
+    detMul: 1.2,
+    icon: 'leaf',
+    r: 4
+  },
+  toxin: { name: '毒雲', mp: 9, kind: 'spell', el: 'phys', mult: 0.25, tg: 'all', poison: 3, icon: 'cloud', r: 3 },
+  /* ---- 召喚連動 ---- */
+  corpseburst: { name: '屍爆', mp: 7, kind: 'spell', el: 'phys', mult: 0, sac: 3, icon: 'skull', r: 4 },
+  command: { name: '號令', mp: 6, kind: 'buff', cmd: 1, cd: 2, icon: 'skull', r: 4 },
+  /* ---- 詛咒與印記（本身傷害低，要接後續） ---- */
+  frailty: { name: '脆弱', mp: 5, kind: 'spell', el: 'phys', mult: 0.2, vulP: 30, icon: 'eye', r: 3 },
+  elemweak: { name: '元素弱化', mp: 6, kind: 'spell', el: 'cold', mult: 0.2, vulE: 30, icon: 'eye', r: 4 },
+  enfeeble: { name: '衰老', mp: 6, kind: 'spell', el: 'phys', mult: 0.2, slow: 3, icon: 'eye', r: 4 },
+  deathmark: { name: '死亡印記', mp: 5, kind: 'spell', el: 'phys', mult: 0.3, dmark: 1, icon: 'skull', r: 3 },
+  /* ---- 治療 ---- */
+  emergency: { name: '緊急治療', mp: 6, kind: 'heal', heal: 0.12, healLow: 25, cd: 2, icon: 'heart', r: 3 }
+});
