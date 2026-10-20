@@ -1,11 +1,8 @@
 /* 漫步勇者 · 天賦樹全螢幕介面 */
 'use strict';
 /* ================= passive tree (full screen) ================= */
-const startOf = cls => 'start_' + (cls || 'novice');
-const blockedStart = id => {
-  const n = TREE.byId[id];
-  return n && n.type === 'start' && n.cls !== S.cls;
-};
+/* 0.3.13：沒有出發點，根節點 start 在契靈圓盤中間（接到每條路線的第一格） */
+const startOf = () => 'start';
 const treeAdj = () =>
   TREE.adj ||
   (TREE.adj = (() => {
@@ -17,11 +14,11 @@ const treeAdj = () =>
     return m;
   })());
 function canAlloc(id, have = new Set(S.tree)) {
-  if (have.has(id) || blockedStart(id)) return false;
+  if (have.has(id)) return false;
   return (treeAdj()[id] || []).some(y => have.has(y));
 }
 function pathTo(id) {
-  if (S.tree.includes(id) || blockedStart(id)) return null;
+  if (S.tree.includes(id)) return null;
   const have = new Set(S.tree),
     prev = new Map(),
     q = [...S.tree];
@@ -31,7 +28,7 @@ function pathTo(id) {
     const x = q.shift();
     if (x === id) break;
     for (const y of adj[x] || []) {
-      if (seen.has(y) || blockedStart(y)) continue;
+      if (seen.has(y)) continue;
       seen.add(y);
       prev.set(y, x);
       q.push(y);
@@ -50,7 +47,7 @@ function pathTo(id) {
 function canRefund(id) {
   if (!S.tree.includes(id) || TREE.byId[id].type === 'start') return false;
   const rest = new Set(S.tree.filter(x => x !== id)),
-    st = startOf(S.cls),
+    st = startOf(),
     seen = new Set([st]),
     q = [st],
     adj = treeAdj();
@@ -75,7 +72,25 @@ function treeTotals() {
   }
   return { t, keys };
 }
-const TV = { s: 1, x: 0, y: 0, W: 0, H: 0, D: 1, sum: false };
+const TV = { s: 1, x: 0, y: 0, W: 0, H: 0, D: 1, sum: false, slot: null };
+/* 0.3.13 中間的契靈圓盤：半徑 130，6 個欄位在半徑 78 的圓上（第 1 格在正上方） */
+const DISC_R = 130,
+  DSLOT_R = 78,
+  DSLOT_S = 30,
+  dslotXY = i => {
+    const a = ((-90 + i * 60) * Math.PI) / 180;
+    return [DSLOT_R * Math.cos(a), DSLOT_R * Math.sin(a)];
+  },
+  PIMG = new Map(),
+  pactImgEl = k => {
+    if (!PIMG.has(k)) {
+      const im = new Image();
+      im.onload = () => drawTree();
+      im.src = pactImg(k);
+      PIMG.set(k, im);
+    }
+    return PIMG.get(k);
+  };
 function openTree() {
   closeSheet();
   $('treeView').hidden = false;
@@ -88,6 +103,7 @@ function closeTree() {
   $('treeView').hidden = true;
   selNode = null;
   TV.sum = false;
+  TV.slot = null;
   renderHud();
   save();
 }
@@ -100,15 +116,13 @@ function sizeTree() {
   cv.height = Math.round(TV.H * TV.D);
 }
 function treeFit() {
-  const st = TREE.byId[startOf(S.cls)];
-  TV.s = Math.min(TV.W, TV.H) / 560;
-  TV.x = st.x * 0.8;
-  TV.y = st.y * 0.8 + 40 / TV.s;
+  TV.s = Math.min(TV.W, TV.H) / 620;
+  TV.x = 0;
+  TV.y = 40 / TV.s;
   drawTree();
 }
 const TX = x => (x - TV.x) * TV.s + TV.W / 2,
   TY = y => (y - TV.y) * TV.s + TV.H / 2;
-const CLSN = { novice: '冒險者之魂', knight: '戰士之魂', ranger: '遊俠之魂', mage: '術士之魂' };
 const NR = { start: 28, key: 17, notable: 13, small: 8, socket: 14 };
 function drawTree() {
   const cv = $('treeCv');
@@ -122,11 +136,11 @@ function drawTree() {
   g.addColorStop(1, '#0c0a10');
   x.fillStyle = g;
   x.fillRect(0, 0, TV.W, TV.H);
-  // 裝飾圓環：起始圓盤、中圈、外圈
+  // 裝飾圓環：出發點那一圈、中圈、外圈
   x.strokeStyle = 'rgba(201,164,92,.18)';
   x.lineWidth = Math.max(1, 10 * TV.s);
   x.beginPath();
-  x.arc(TX(0), TY(0), 125 * TV.s, 0, 6.28);
+  x.arc(TX(0), TY(0), 165 * TV.s, 0, 6.28);
   x.stroke();
   x.strokeStyle = 'rgba(201,164,92,.07)';
   x.lineWidth = Math.max(1, 4 * TV.s);
@@ -135,14 +149,11 @@ function drawTree() {
     x.arc(TX(0), TY(0), r * TV.s, 0, 6.28);
     x.stroke();
   });
-  x.fillStyle = 'rgba(201,164,92,.06)';
-  x.beginPath();
-  x.arc(TX(0), TY(0), 100 * TV.s, 0, 6.28);
-  x.fill();
   const fs = Math.max(10, Math.min(16, 13 * TV.s));
   x.font = `${fs}px DotGothic16, sans-serif`;
   x.textAlign = 'center';
   x.textBaseline = 'middle';
+  drawDisc(x, fs);
   [
     ['力量', 150],
     ['力量・智力', 210],
@@ -162,8 +173,14 @@ function drawTree() {
       Bn = TREE.byId[b],
       on = have.has(a) && have.has(b),
       pp = (pset.has(a) || have.has(a)) && (pset.has(b) || have.has(b)) && (pset.has(a) || pset.has(b));
-    const ax = TX(A.x),
-      ay = TY(A.y),
+    /* 接到圓盤的線從圓盤邊緣畫起 */
+    const ed = n =>
+        n.type === 'start'
+          ? [(Bn.x / Math.hypot(Bn.x, Bn.y)) * DISC_R, (Bn.y / Math.hypot(Bn.x, Bn.y)) * DISC_R]
+          : [n.x, n.y],
+      [Ax, Ay] = ed(A),
+      ax = TX(Ax),
+      ay = TY(Ay),
       bx = TX(Bn.x),
       by = TY(Bn.y);
     if (
@@ -189,36 +206,7 @@ function drawTree() {
       can = canAlloc(n.id, have),
       inp = pset.has(n.id);
     const r = NR[n.type] * TV.s;
-    if (n.type === 'start') {
-      const mine = n.cls === S.cls;
-      x.fillStyle = mine ? '#3a2e16' : '#1c1822';
-      x.strokeStyle = mine ? '#f2c14e' : 'rgba(201,164,92,.35)';
-      x.lineWidth = Math.max(2, 4 * TV.s);
-      x.beginPath();
-      x.arc(sx, sy, r, 0, 6.28);
-      x.fill();
-      x.stroke();
-      x.lineWidth = Math.max(1, 1.5 * TV.s);
-      x.beginPath();
-      x.arc(sx, sy, r * 0.78, 0, 6.28);
-      x.stroke();
-      const im = nodeIcon(n.ic),
-        is = r * 1.05;
-      x.globalAlpha = mine ? 1 : 0.45;
-      if (im.complete) x.drawImage(im, sx - is / 2, sy - is / 2, is, is);
-      else im.onload = drawTree;
-      x.globalAlpha = 1;
-      x.fillStyle = mine ? '#f2d9a6' : 'rgba(242,217,166,.45)';
-      x.fillText(CLSN[n.cls], sx, n.cls === 'novice' ? sy - r - fs * 0.9 : sy + r + fs * 0.9);
-      if (n.id === selNode) {
-        x.strokeStyle = '#fff';
-        x.lineWidth = 2;
-        x.beginPath();
-        x.arc(sx, sy, r + 6, 0, 6.28);
-        x.stroke();
-      }
-      continue;
-    }
+    if (n.type === 'start') continue;
     if (n.id === selNode) {
       x.strokeStyle = '#fff';
       x.lineWidth = 2;
@@ -285,11 +273,67 @@ function drawTree() {
     x.fillText(n.n, sx, sy);
   }
   $('tvPts').innerHTML =
-    `<b>${treePts()}</b> 點可用<small>已點 ${S.tree.length - 1} / ${TREE.N.length - 4}・每升一級 +1</small>`;
+    `<b>${treePts()}</b> 點可用<small>已點 ${S.tree.length - 1} / ${TREE.N.length - 1}・每升一級 +1</small>`;
+}
+/* 中間的契靈圓盤：已裝的契靈、空格、還沒解鎖（要通過昇華試煉）的格子 */
+function drawDisc(x, fs) {
+  const cx = TX(0),
+    cy = TY(0),
+    g = x.createRadialGradient(cx, cy, 10 * TV.s, cx, cy, DISC_R * TV.s);
+  g.addColorStop(0, 'rgba(90,60,140,.35)');
+  g.addColorStop(1, 'rgba(40,28,60,.55)');
+  x.fillStyle = g;
+  x.strokeStyle = 'rgba(201,164,92,.5)';
+  x.lineWidth = Math.max(1.5, 3 * TV.s);
+  x.beginPath();
+  x.arc(cx, cy, DISC_R * TV.s, 0, 6.28);
+  x.fill();
+  x.stroke();
+  x.fillStyle = 'rgba(242,217,166,.55)';
+  x.fillText('契靈', cx, cy);
+  const on = pactsOn(),
+    ns = pactSlots();
+  for (let i = 0; i < PSLOT_MAX; i++) {
+    const [dx, dy] = dslotXY(i),
+      sx = TX(dx),
+      sy = TY(dy),
+      r = DSLOT_S * TV.s,
+      o = i < ns && on[i] && pactOf(on[i]);
+    x.fillStyle = i >= ns ? '#15111c' : o ? ['#1c2e52', '#35205a', '#5a3a14'][PACTI[o.k].r] : '#221c2c';
+    x.strokeStyle =
+      TV.slot === i ? '#fff' : i >= ns ? 'rgba(201,164,92,.2)' : o ? PCOL[PACTI[o.k].r] : 'rgba(201,164,92,.55)';
+    x.lineWidth = Math.max(1.5, (TV.slot === i ? 3 : 2) * TV.s);
+    x.beginPath();
+    x.arc(sx, sy, r, 0, 6.28);
+    x.fill();
+    x.stroke();
+    if (o) {
+      const im = pactImgEl(o.k),
+        z = r * 1.5;
+      if (im.complete && im.naturalWidth) x.drawImage(im, sx - z / 2, sy - z / 2, z, z);
+    } else {
+      x.fillStyle = i >= ns ? 'rgba(242,217,166,.25)' : 'rgba(242,217,166,.6)';
+      x.fillText(i >= ns ? '🔒' : '+', sx, sy);
+    }
+  }
 }
 function renderTreeCard() {
   const el = $('tvCard'),
     n = selNode && TREE.byId[selNode];
+  if (TV.slot != null) {
+    const i = TV.slot,
+      ns = pactSlots(),
+      u = pactsOn()[i],
+      o = i < ns && u && pactOf(u);
+    el.innerHTML =
+      i >= ns
+        ? `<div class="rowx"><b style="color:var(--gold)">契靈欄位 ${i + 1}</b></div><div class="sub">還沒解鎖：通過第 ${i - PSLOT0 + 1} 場昇華試煉（Lv${ASC_LV[i - PSLOT0]}，到城鎮挑戰）就會開放。</div>`
+        : o
+          ? `${pactCard(o, 'main')}<div class="btns"><button class="btn pri" data-act="treePact">管理契靈</button></div>`
+          : `<div class="rowx"><b style="color:var(--gold)">契靈欄位 ${i + 1}</b></div><div class="sub">空的欄位。裝上契靈後，它已解鎖的詞綴全部生效。</div><div class="btns"><button class="btn pri" data-act="treePact">裝契靈</button></div>`;
+    drawTree();
+    return;
+  }
   if (TV.sum) {
     const { t, keys } = treeTotals(),
       rows = Object.entries(t)
@@ -300,7 +344,7 @@ function renderTreeCard() {
     return;
   }
   if (!n) {
-    el.innerHTML = `<div class="rowx"><span class="sub">點節點看效果。從你的起點（金框圓盤）往外點；藍色線是要點亮的路徑。路線盡頭的六角形是<b style="color:#e8873a">基石</b>，會改變戰鬥規則。</span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="treeSum">總覽</button></div>`;
+    el.innerHTML = `<div class="rowx"><span class="sub">點節點看效果。從中間的契靈圓盤旁邊任何一條路線開始往外點；藍色線是要點亮的路徑。點圓盤上的格子可以看契靈。路線盡頭的六角形是<b style="color:#e8873a">基石</b>，會改變戰鬥規則。</span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="treeSum">總覽</button></div>`;
     drawTree();
     return;
   }
@@ -317,7 +361,6 @@ function renderTreeCard() {
         : canRefund(n.id)
           ? `<div class="btns"><span class="sub" style="color:var(--good);align-self:center">已點亮</span><button class="btn sm" data-act="refund">退點</button></div>`
           : '<span class="sub" style="color:var(--good)">已點亮・要退點請先退掉更外面的節點</span>';
-  else if (blockedStart(n.id)) btn = '<span class="sub">其他起點，無法點亮，但可以從旁邊的節點繞過去</span>';
   else if (!path) btn = '<span class="sub">無法到達</span>';
   else
     btn = `<button class="btn pri" data-act="alloc" ${cost <= treePts() ? '' : 'disabled'}>${cost <= treePts() ? `點亮（${cost} 點）` : `需要 ${cost} 點，目前 ${treePts()} 點`}</button>`;
@@ -379,6 +422,22 @@ function renderTreeCard() {
     if (tap) {
       const wx = (ev.clientX - TV.W / 2) / TV.s + TV.x,
         wy = (ev.clientY - TV.H / 2) / TV.s + TV.y;
+      /* 點到中間圓盤的契靈欄位 */
+      if (Math.hypot(wx, wy) < DISC_R) {
+        const i = [...Array(PSLOT_MAX).keys()].find(q => {
+          const [dx, dy] = dslotXY(q);
+          return Math.hypot(dx - wx, dy - wy) < DSLOT_S + 8;
+        });
+        if (i != null) {
+          TV.slot = i;
+          selNode = null;
+          TV.sum = false;
+          sfx('tap');
+          renderTreeCard();
+        }
+        return;
+      }
+      TV.slot = null;
       let best = null,
         bd = 1e9;
       for (const n of TREE.N) {
@@ -420,29 +479,3 @@ function renderTreeCard() {
     }
   });
 })();
-function classPicker(after) {
-  const opts = ['knight', 'ranger', 'mage', 'novice'].map(k => [
-    k,
-    CLASSES[k].name,
-    `${CLASSES[k].desc}。開局技能石：${SKILLS[CLASSES[k].gem].name}、治癒`
-  ]);
-  showModal(
-    '選擇起點',
-    `<p class="sub">選擇天賦盤的起點，只影響起點位置、起點數值與開局的技能石；之後的技能全部來自技能石。天賦點從 0 開始，每升一級得 1 點。</p>${opts.map(([k, n, d], i) => `<button class="btn" style="text-align:left;display:grid;gap:2px" data-act="mbtn" data-i="${i}"><span style="color:${CLASSES[k].color};font-weight:500">${n}</span><small class="sub">${d}</small></button>`).join('')}`,
-    []
-  );
-  modalFns = opts.map(([k]) => () => {
-    S.cls = k;
-    S.tree = [startOf(k)];
-    if (!S.gems.length) {
-      giveGem(CLASSES[k].gem);
-      giveGem('heal');
-    }
-    fullHeal();
-    sfx('level');
-    addLog(`選擇了起點：${CLASSES[k].name}`);
-    hideModal();
-    renderHud();
-    after && after();
-  });
-}

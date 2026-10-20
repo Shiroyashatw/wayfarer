@@ -635,7 +635,7 @@ function heroSpr(view = 'F', look = heroLook()) {
 }
 /* 角色配色：主色看天賦盤起點，身上的裝備用材質階級的顏色 */
 function heroPal(cls = S.cls, eq = S.eq) {
-  const cc = (CLASSES[cls] || CLASSES.novice).color,
+  const cc = clsOf(cls).color,
     P = sl => (eq && eq[sl] && gearArt(eq[sl]) ? gearPal(eq[sl]) : null),
     hp = P('helm'),
     cp = P('chest'),

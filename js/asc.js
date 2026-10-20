@@ -1,6 +1,7 @@
 /* 漫步勇者 · 0.3 昇華：城鎮的昇華試煉（Lv20／30／45／60 各 2 點，共 8 點）、昇華職業與分支、分支節點、重選
-   一條分支 19 個節點：入口（免費）→ 第一層 4 組「小→大」→ 第二層 3 組 → 終極 2 組（互斥）；8 點一定拿到 4 個大點
-   大點的效果：st 直接加到屬性；sup 是輔助效果，依技能標籤套用（'T' 代表分支的標籤）；cost 是終極的代價 */
+   一條分支 15 個節點（0.3.13 比照 PoE2 的昇華圖、拿掉終極點）：入口（免費）往外扇形分出 4 條獨立的路線，
+   每條是「小→大」，其中 3 條再往外接一組「小→大」；8 點最多拿 4 個大點，要自己取捨走哪幾條。
+   大點的效果：st 直接加到屬性；sup 是輔助效果，依技能標籤套用（'T' 代表分支的標籤）；cost 是代價 */
 'use strict';
 /* 昇華大點用的 8×8 圖示（配色 w 白、k 黑、b 棕、y 金、r 紅、c 青、g 綠） */
 Object.assign(ICONS, {
@@ -37,7 +38,7 @@ Object.assign(ICONS, {
   mask: ['.yyyyy..', 'yyyyyyy.', 'ykkykky.', 'yyyyyyy.', 'yyrrryy.', '.yyyyy..', '..yyy...', '........'],
   lotus: ['...w....', '..www...', '.w.w.w..', 'ww.w.ww.', '.wwwww..', 'ggggggg.', '.ggggg..', '........'],
   flaskg: ['..kk....', '..ww....', '..ww....', '.wggw...', 'wggggw..', 'wggggw..', '.wwww...', '........'],
-  /* 終極專用 */
+  /* 0.3.13 前終極點用的圖示（終極點已拿掉，圖示保留給之後的節點） */
   katana: ['.......w', '......wc', '.....wc.', '....wc..', '...wc...', '.yyc....', '.yy.....', 'y.......'],
   mountain: ['...w....', '..www...', '..wbw...', '.wbbbw..', '.bbbbb..', 'wbbbbbw.', 'bbbbbbbb', '........'],
   standard: ['y.......', 'yrrrrr..', 'yryyrr..', 'yrrrrr..', 'yrr.....', 'y.......', 'y.......', 'yy......'],
@@ -100,10 +101,6 @@ const ASC = [
           [0, N('斬鐵', 'swords', 0, [['T', { exec: 50 }]])],
           [1, N('劍刃風暴', 'whirl', { dbl: 10 }, [['T', { more: 25 }]])],
           [2, N('一閃', 'flash', { extraTurn: 15 })]
-        ],
-        u: [
-          [0, N('劍聖', 'katana', 0, [['T', { more: 50, crit: 10 }]], { lifeMore: -15 })],
-          [2, N('無我之境', 'moon', { dodgeCrit: 1, extraTurn: 15, evade: 10 }, 0, { armorMore: -40 })]
         ]
       },
       {
@@ -129,10 +126,6 @@ const ASC = [
           [0, N('地震', 'crack', 0, [['T', { aoe: 1 }]])],
           [1, N('碎骨', 'bone', 0, [['T', { exec: 40, bleed: 25 }]])],
           [2, N('不屈', 'heartx', { killHeal: 8, dmgRed: 8 })]
-        ],
-        u: [
-          [0, N('泰坦', 'mountain', 0, [['T', { more: 60, stun: 20 }]], { speed: -6 })],
-          [2, N('狂戰之魂', 'fang2', { lowLife: 60, leech: 4 }, 0, { dmgRed: -15 })]
         ]
       },
       {
@@ -158,10 +151,6 @@ const ASC = [
           [0, N('戰意', 'fist', { killStack: 4, killMax: 8 })],
           [2, N('統帥之盾', 'anvil', { block: 20 })],
           [3, N('鼓舞', 'heartx', { healAll: 40, regen: 10 })]
-        ],
-        u: [
-          [0, N('萬軍之王', 'standard', { allyDmg: 15, dmgMore: 15 }, 0, { hpDrain: 3 })],
-          [1, N('不落戰旗', 'castle', { shieldPct: 30, taunt: 100, dmgRed: 15 }, 0, { dmgMore: -20 })]
         ]
       }
     ]
@@ -196,10 +185,6 @@ const ASC = [
           [0, N('堅守', 'castle', { shieldPct: 20 })],
           [1, N('荊棘', 'crack', { reflectPct: 30, armor: 80 })],
           [3, N('守護誓言', 'heartx', { healAll: 30, allyDmg: 4 })]
-        ],
-        u: [
-          [0, N('不朽', 'shieldstar', { block: 30, dmgRed: 15 }, 0, { speed: -5 })],
-          [1, N('復仇者', 'fist', { reflectPct: 80, lifePct: 10 }, 0, { noDodge: 1 })]
         ]
       },
       {
@@ -225,10 +210,6 @@ const ASC = [
           [0, N('貫心', 'target', 0, [['T', { crit: 10, cm: 40 }]])],
           [1, N('槍林', 'burst', 0, [['T', { aoe: 1 }]])],
           [2, N('不動', 'anvil', { taunt: 50, dmgRed: 10 })]
-        ],
-        u: [
-          [0, N('龍膽', 'dragon', 0, [['T', { more: 50, exec: 30 }]], { lifeMore: -15 })],
-          [2, N('方陣之主', 'castle', { block: 25, reflectPct: 40, armorMore: 30 }, 0, { dmgMore: -15 })]
         ]
       },
       {
@@ -254,22 +235,6 @@ const ASC = [
           [0, N('天罰', 'stars', 0, [['T', { stun: 20 }]])],
           [1, N('聖療', 'heartx', { regen: 15, killHeal: 5 })],
           [3, N('雷獄', 'flash', { ailDur: 1 }, [['light', { ail: 60 }]])]
-        ],
-        u: [
-          [
-            0,
-            N(
-              '審判之日',
-              'gavel',
-              0,
-              [
-                ['T', { more: 40 }],
-                ['light', { more: 40 }]
-              ],
-              { hpDrain: 3 }
-            )
-          ],
-          [1, N('聖光庇護', 'sacredtree', { healAll: 80, shieldPct: 25 }, 0, { dmgMore: -25 })]
         ]
       }
     ]
@@ -305,10 +270,6 @@ const ASC = [
           [0, N('穿心', 'needle', 0, [['T', { pen: 30, penRes: 15 }]])],
           [1, N('連珠', 'arrow', 0, [['T', { echo: 25 }]])],
           [3, N('林間步', 'wind', { dodgeCrit: 1, evade: 6 })]
-        ],
-        u: [
-          [0, N('百獸之王', 'lion', { killStack: 4, killMax: 10, keepStacks: 1 }, 0, { noPotion: 1 })],
-          [2, N('影獵者', 'ghost', { evade: 15, counter: 70 }, 0, { lifeMore: -15 })]
         ]
       },
       {
@@ -335,10 +296,6 @@ const ASC = [
           [0, N('穿雲', 'chain', 0, [['T', { chain: 2 }]])],
           [1, N('疾風突刺', 'feather', { extraTurn: 12 })],
           [2, N('吸血之矛', 'drop', 0, [['T', { leech: 4 }]])]
-        ],
-        u: [
-          [1, N('女武神降臨', 'wings', { lowLife: 60, extraTurn: 15 }, 0, { lifeMore: -20 })],
-          [0, N('天槍', 'flash', 0, [['T', { aoe: 1, more: 30 }]], { hpDrain: 2 })]
         ]
       },
       {
@@ -364,10 +321,6 @@ const ASC = [
           [1, N('月影步', 'feather', { dodgeCrit: 1 })],
           [0, N('滿月', 'sun', 0, [['T', { echo: 20 }]])],
           [2, N('月蝕之咒', 'eye', { curseCh: 20, curseP: 20 })]
-        ],
-        u: [
-          [1, N('月蝕', 'eclipse', 0, [['T', { more: 60 }]], { hpDrain: 3 })],
-          [0, N('新月', 'moonshield', { evade: 20, manaRegen: 8, mom: 20 }, 0, { lifeMore: -15 })]
         ]
       }
     ]
@@ -403,10 +356,6 @@ const ASC = [
           [0, N('割喉', 'needle', 0, [['T', { exec: 60 }]])],
           [1, N('影步', 'feather', { extraTurn: 15 })],
           [3, N('雙刃', 'swords', { dbl: 15 })]
-        ],
-        u: [
-          [0, N('死神', 'scythe', 0, [['T', { crit: 25, cm: 80 }]], { lifeMore: -20 })],
-          [1, N('影之舞', 'moon', { evade: 20, counter: 80, extraTurn: 10 }, 0, { armorMore: -50 })]
         ]
       },
       {
@@ -432,10 +381,6 @@ const ASC = [
           [0, N('大出血', 'splat', { dotPct: 50, ailDur: 1 })],
           [1, N('血之狂潮', 'heartx', { lowLife: 40 })],
           [2, N('血爪亂舞', 'whirl', 0, [['T', { aoe: 1 }]])]
-        ],
-        u: [
-          [0, N('血魔之爪', 'bloodclaw', { spread: 1, dotPct: 80 }, 0, { hpDrain: 2 })],
-          [1, N('不死之身', 'fang2', { lifePct: 15 }, [['T', { leech: 10 }]], { noPotion: 1 })]
         ]
       },
       {
@@ -461,10 +406,6 @@ const ASC = [
           [2, N('定點爆炸', 'burst', { spread: 1 }, [['T', { more: 25 }]])],
           [1, N('麻痺毒', 'flaskg', { ailDur: 1, dotPct: 40 })],
           [3, N('機關槍', 'gear', 0, [['T', { echo: 25 }]])]
-        ],
-        u: [
-          [0, N('爆破大師', 'boom', 0, [['T', { more: 50 }]], { dmgRed: -15 })],
-          [2, N('千機', 'hourglass', { extraTurn: 20 }, [['T', { proj: 2 }]], { lifeMore: -15 })]
         ]
       }
     ]
@@ -499,10 +440,6 @@ const ASC = [
           [0, N('焦土', 'crack', { dotPct: 60, ailDur: 1 })],
           [1, N('火海', 'burst', 0, [['T', { echo: 20 }]])],
           [2, N('熔岩', 'anvil', 0, [['T', { penRes: 25 }]])]
-        ],
-        u: [
-          [2, N('焚天', 'bigflame', 0, [['T', { more: 70 }]], { hpDrain: 3 })],
-          [0, N('不滅之火', 'fist', { dotPct: 120, spread: 1 }, 0, { dmgMore: -15 })]
         ]
       },
       {
@@ -528,10 +465,6 @@ const ASC = [
           [0, N('碎冰', 'needle', 0, [['T', { exec: 60 }]])],
           [1, N('冰暴', 'burst', 0, [['T', { aoe: 1 }]])],
           [2, N('永凍', 'castle', { dmgRed: 10, noFreeze: 1 })]
-        ],
-        u: [
-          [0, N('絕對零度', 'snow', 0, [['T', { more: 60, ail: 100 }]], { speed: -6 })],
-          [2, N('冰霜女王', 'lotus', { shieldPct: 40, reflectPct: 30 }, 0, { dmgMore: -20 })]
         ]
       },
       {
@@ -557,10 +490,6 @@ const ASC = [
           [0, N('雷暴', 'burst', 0, [['T', { aoe: 1 }]])],
           [1, N('超載', 'flash', { ailDur: 1 }, [['T', { more: 15 }]])],
           [3, N('雷霆萬鈞', 'stars', 0, [['T', { echo: 25 }]])]
-        ],
-        u: [
-          [0, N('雷神', 'thor', 0, [['T', { chain: 3, more: 40 }]], { hpDrain: 3 })],
-          [1, N('閃電化身', 'ghost', { extraTurn: 25, evade: 10 }, 0, { lifeMore: -20 })]
         ]
       }
     ]
@@ -595,10 +524,6 @@ const ASC = [
           [1, N('骨牆', 'castle', { shieldPct: 20 })],
           [0, N('統御', 'crown', { petPct: 40 })],
           [3, N('屍爆', 'splat', { spread: 1, killHeal: 5 })]
-        ],
-        u: [
-          [1, N('白骨君王', 'ghost', { petPct: 60 }, [['T', { petMax: 3 }]], { dmgMore: -30 })],
-          [0, N('骨之鎧', 'anvil', { shieldPct: 40, armorMore: 40 }, 0, { petPct: -40 })]
         ]
       },
       {
@@ -624,10 +549,6 @@ const ASC = [
           [0, N('厄運', 'rune', { curseP: 25 })],
           [1, N('瘟疫', 'splat', { spread: 1, ailDur: 1 })],
           [2, N('咒力', 'spark', 0, [['T', { more: 20 }]])]
-        ],
-        u: [
-          [0, N('咒怨之女', 'witch', { curseCh: 60, curseP: 40 }, 0, { lifeMore: -15 })],
-          [1, N('萬毒之母', 'flaskg', { dotPct: 120, poisonCh: 30 }, 0, { hpDrain: 2 })]
         ]
       },
       {
@@ -653,10 +574,6 @@ const ASC = [
           [0, N('血爆', 'splat', 0, [['T', { aoe: 1 }]])],
           [1, N('不死', 'bone', { killHeal: 10 })],
           [2, N('血怒', 'fang2', { extraTurn: 12 })]
-        ],
-        u: [
-          [0, N('血魔降臨', 'bloodmoon', 0, [['T', { more: 60, leech: 6 }]], { hpDrain: 3 })],
-          [1, N('不朽之血', 'lotus', { regen: 30, lifeMore: 20 }, 0, { noPotion: 1 })]
         ]
       }
     ]
@@ -691,10 +608,6 @@ const ASC = [
           [0, N('封印', 'trap', 0, [['spell', { exec: 40 }]])],
           [1, N('天雷', 'flash', 0, [['T', { aoe: 1 }]])],
           [2, N('符陣', 'castle', { dmgRed: 10, block: 10 })]
-        ],
-        u: [
-          [1, N('天師', 'bagua', 0, [['spell', { more: 50, echo: 20 }]], { hpDrain: 2 })],
-          [0, N('鎮魔', 'anvil', 0, [['spell', { stun: 40, exec: 60 }]], { dmgMore: -15 })]
         ]
       },
       {
@@ -720,10 +633,6 @@ const ASC = [
           [2, N('萬劍', 'burst', 0, [['T', { echo: 20 }]])],
           [0, N('仙劍', 'spark', 0, [['T', { crit: 10, cm: 40 }]])],
           [1, N('斬妖', 'fist', { killStack: 3, killMax: 8 })]
-        ],
-        u: [
-          [0, N('劍仙', 'flysword', 0, [['T', { proj: 2, more: 40 }]], { lifeMore: -15 })],
-          [1, N('一劍封神', 'flash', 0, [['T', { more: 80 }]], { speed: -6 })]
         ]
       },
       {
@@ -749,10 +658,6 @@ const ASC = [
           [0, N('起乩', 'eye', { extraTurn: 12 })],
           [1, N('神威', 'sun', { dmgRed: 12 })],
           [2, N('血祭', 'fang', { killHeal: 8, leech: 3 })]
-        ],
-        u: [
-          [0, N('神降', 'deity', { dmgMore: 40, extraTurn: 10 }, 0, { hpDrain: 3 })],
-          [1, N('金身', 'lotus', { dmgRed: 25, shieldPct: 30 }, 0, { dmgMore: -20 })]
         ]
       }
     ]
@@ -787,10 +692,6 @@ const ASC = [
           [0, N('萬劍歸宗', 'spark', 0, [['T', { crit: 8, cm: 30 }]])],
           [1, N('無招', 'flash', { extraTurn: 15 })],
           [2, N('洞察', 'needle', 0, [['T', { pen: 30 }]])]
-        ],
-        u: [
-          [0, N('天下無雙', 'starsword', 0, [['T', { more: 50 }]], { lifeMore: -15 })],
-          [1, N('天命', 'sun', { extraTurn: 25, dodgeCrit: 1 }, 0, { armorMore: -40 })]
         ]
       },
       {
@@ -816,10 +717,6 @@ const ASC = [
           [0, N('連鎖爆炸', 'burst', { spread: 1, potBomb: 80 })],
           [1, N('長效', 'hourglass', { regen: 15 })],
           [2, N('腐蝕藥劑', 'cloud', { dotPct: 60, ailDur: 1 })]
-        ],
-        u: [
-          [1, N('賢者之石', 'stone', { potPct: 120, regen: 20 }, 0, { dmgMore: -15 })],
-          [0, N('瘋狂鍊金', 'splat', { potBomb: 300 }, 0, { hpDrain: 2 })]
         ]
       },
       {
@@ -845,10 +742,6 @@ const ASC = [
           [0, N('獸王', 'crown', { petPct: 40 })],
           [1, N('狂野', 'fang2', { petStart: 1 }, [['T', { petMax: 2 }]])],
           [3, N('野性', 'feather', { extraTurn: 10 })]
-        ],
-        u: [
-          [0, N('萬獸之主', 'howl', { petPct: 100 }, 0, { dmgMore: -30 })],
-          [1, N('狼群戰術', 'stars', { petStart: 2 }, [['T', { petMax: 3, petTurns: 3 }]], { lifeMore: -15 })]
         ]
       }
     ]
@@ -894,7 +787,7 @@ const SUPN = {
   petMax: v => `召喚上限 +${v}`,
   petTurns: v => `召喚物多存在 ${v} 回合`
 };
-/* 分支的節點：id → {id, br, kind: 'e'|'s'|'b'|'u', p: 父節點, n, g, st, sup, cost, col, row} */
+/* 分支的節點：id → {id, br, kind: 'e'|'s'|'b', p: 父節點, n, g, st, sup, cost, col, row} */
 /* 小點的圖示（依屬性） */
 const SMG = {
   physPct: 'sword',
@@ -948,11 +841,6 @@ const ASCB = {};
         small(`${b.k}_b${j}s`, `${b.k}_a${pi}`, pi, 3);
         add(`${b.k}_b${j}`, { kind: 'b', p: `${b.k}_b${j}s`, ...nd, sup: T(nd.sup), col: pi, row: 4 });
       });
-      b.u.forEach(([pj, nd], j) => {
-        const col = b.t2[pj][0];
-        small(`${b.k}_u${j}s`, `${b.k}_b${pj}`, col, 5);
-        add(`${b.k}_u${j}`, { kind: 'u', p: `${b.k}_u${j}s`, ...nd, sup: T(nd.sup), col, row: 6 });
-      });
     }
 })();
 
@@ -988,16 +876,12 @@ function ascTxt(n) {
   return out;
 }
 const ascCostTxt = n => (n.cost ? Object.entries(n.cost).map(([k, v]) => STATN[k](v)) : []);
-/* 可不可以點：父節點已點、還有點數、兩個終極互斥 */
+/* 可不可以點：父節點已點、還有點數 */
 function ascCan(id) {
   const n = ASCN[id],
     a = ASCD();
   if (!n || n.kind === 'e' || n.br !== a.br || a.nodes.includes(id) || ascUsed() >= ascPts()) return false;
   if (n.p !== a.br + '_e' && !a.nodes.includes(n.p)) return false;
-  if (/_u\ds?$/.test(id)) {
-    const j = id.match(/_u(\d)/)[1];
-    if (a.nodes.some(x => /_u\ds?$/.test(x) && x.match(/_u(\d)/)[1] !== j)) return false;
-  }
   return true;
 }
 const ascResetCost = () => 300 + S.lv * 60;
@@ -1005,7 +889,7 @@ const ascResetCost = () => 300 + S.lv * 60;
 const ascAlert = () => ascPts() > ascUsed() || (ascNext() != null && S.lv >= ascNext());
 
 /* ================= icons ================= */
-/* 節點圖示：分支顏色的圓底＋效果圖示；終極是金框，入口是分支徽章 */
+/* 節點圖示：分支顏色的圓底＋效果圖示；中間的職業徽章是金框（kind 'u'） */
 const ASCI = new Map();
 function ascIcon(n, on) {
   const k = n.id + (on ? 1 : 0);
@@ -1035,17 +919,34 @@ function ascIcon(n, on) {
 /* ================= board（0.3.0.3：比照天賦樹的全螢幕昇華盤） ================= */
 /* 一個昇華職業一張盤：中間是職業徽章，三條分支往外放射（上、右下、左下），可以縮放、拖曳、點節點看說明 */
 const AV = { s: 1, x: 0, y: 0, W: 0, H: 0, D: 1, cls: null, sel: null };
-const ascMine = c => S.cls === 'novice' || c.soul === S.cls || c.soul === 'novice';
+/* 0.3.13：昇華不綁天賦樹起點，每個職業都可以選 */
+const ascMine = () => true;
 const AV_ANG = [-90, 30, 150],
   AV_R = { e: 24, b: 17, u: 21, s: 11 };
-/* 節點在盤上的座標：分支方向是 u，橫向是 v；入口距中心 110，之後每列 70、每欄 90 */
-function ascXY(n) {
+/* 0.3.13 節點在盤上的座標（比照 PoE2 的昇華圖）：入口在分支方向 110 的位置，4 條路線從入口扇形展開，
+   每條路線的角度差 26°，第二組「小→大」再往外彎 10°；距離入口 80／155／230／305 */
+const AV_FAN = 26,
+  AV_D = [0, 80, 155, 230, 305];
+function ascPolar(n) {
   const c = ASC.find(q => q.k === ASCB[n.br].cls),
     bi = c.br.findIndex(b => b.k === n.br),
-    a = (AV_ANG[bi] * Math.PI) / 180,
-    d = 110 + n.row * 70,
-    off = n.kind === 'e' ? 0 : (n.col - 1.5) * 90;
-  return [Math.cos(a) * d - Math.sin(a) * off, Math.sin(a) * d + Math.cos(a) * off];
+    a = AV_ANG[bi],
+    ex = Math.cos((a * Math.PI) / 180) * 110,
+    ey = Math.sin((a * Math.PI) / 180) * 110;
+  if (n.kind === 'e') return { ex, ey, r: 0, t: a };
+  const f = (n.col - 1.5) * AV_FAN;
+  return { ex, ey, r: AV_D[n.row], t: a + f + (n.row >= 3 ? Math.sign(f || 1) * 10 : 0) };
+}
+function ascXY(n) {
+  const { ex, ey, r, t } = ascPolar(n);
+  return [ex + Math.cos((t * Math.PI) / 180) * r, ey + Math.sin((t * Math.PI) / 180) * r];
+}
+/* 父→子的連線控制點：在父節點的距離、子節點的角度，畫出繞著入口的弧線 */
+function ascCtl(p, n) {
+  const P = ascPolar(p),
+    Q = ascPolar(n);
+  if (!P.r) return null;
+  return [P.ex + Math.cos((Q.t * Math.PI) / 180) * P.r, P.ey + Math.sin((Q.t * Math.PI) / 180) * P.r];
 }
 const AIMG = new Map();
 function ascImg(n, on) {
@@ -1090,7 +991,7 @@ function ascFit() {
   const a = ASCD();
   if (a.br && a.cls === AV.cls) {
     const [ex, ey] = ascXY(ASCN[a.br + '_e']),
-      [ux, uy] = ascXY(ASCN[a.br + '_u0']);
+      [ux, uy] = ascXY(ASCN[a.br + '_b1']);
     AV.s = Math.min(AV.W, AV.H * 0.62) / 540;
     AV.x = (ex + ux) / 2;
     AV.y = (ey + uy) / 2 + 60;
@@ -1142,9 +1043,11 @@ function drawAsc() {
       s0 = p ? ascState(p) : { on: a.br === n.br };
     x.strokeStyle = s1.on && s0.on ? ASCB[n.br].col : s0.on && s1.can ? 'rgba(242,193,78,.7)' : 'rgba(255,255,255,.13)';
     x.lineWidth = Math.max(1.2, (s1.on && s0.on ? 4 : 2.4) * AV.s);
+    const ct = p && ascCtl(p, n);
     x.beginPath();
     x.moveTo(AX(px), AY(py));
-    x.lineTo(AX(nx), AY(ny));
+    if (ct) x.quadraticCurveTo(AX(ct[0]), AY(ct[1]), AX(nx), AY(ny));
+    else x.lineTo(AX(nx), AY(ny));
     x.stroke();
   }
   /* 中心徽章 */
@@ -1193,8 +1096,7 @@ function drawAsc() {
     const w = x.measureText(n.n).width + 8;
     x.fillStyle = 'rgba(12,10,16,.75)';
     x.fillRect(sx - w / 2, sy - fs * 0.62, w, fs * 1.24);
-    x.fillStyle =
-      n.kind === 'u' ? (on ? '#ffd166' : '#c9a45c') : n.kind === 'e' ? ASCB[n.br].col : on ? '#f2d9a6' : '#b8ae98';
+    x.fillStyle = n.kind === 'e' ? ASCB[n.br].col : on ? '#f2d9a6' : '#b8ae98';
     x.fillText(n.n, sx, sy);
   }
   const pts = ascPts(),
@@ -1202,7 +1104,7 @@ function drawAsc() {
   $('avPts').innerHTML =
     `<b>${pts - used}</b> 點可用<small>昇華點數 ${used}/${pts}・共 ${ASC_MAX} 點${ascNext() ? `・下一場試煉 Lv${ascNext()}` : ''}</small>`;
   $('avCls').innerHTML =
-    `<button class="btn sm" data-act="ascCls" data-v="-1">‹</button><b>${c.n}${a.cls === c.k ? '<small>（目前的昇華）</small>' : ascMine(c) ? '' : `<small>（${CLASSES[c.soul].name}）</small>`}</b><button class="btn sm" data-act="ascCls" data-v="1">›</button>`;
+    `<button class="btn sm" data-act="ascCls" data-v="-1">‹</button><b>${c.n}${a.cls === c.k ? '<small>（目前的昇華）</small>' : ''}</b><button class="btn sm" data-act="ascCls" data-v="1">›</button>`;
 }
 /* 下方卡片：選中節點的說明與按鈕；沒選時顯示職業說明 */
 function renderAscCard() {
@@ -1212,7 +1114,7 @@ function renderAscCard() {
     n = AV.sel && ASCN[AV.sel],
     pts = ascPts();
   if (!n) {
-    el.innerHTML = `<b>${c.n}</b><small class="sub">${c.d}</small><small class="sub">${c.br.map(b => `<span style="color:${b.col}">${b.n}</span>（${b.d}）`).join('<br>')}</small><small class="sub">點節點看效果。8 點只能點在選定的分支裡，一小一大交錯，最深處兩個終極只能選一個。${pts ? '' : `Lv${ASC_LV[0]} 起到城鎮挑戰昇華試煉取得點數。`}</small>${a.br ? `<button class="btn sm" data-act="ascReset">重選昇華（${ascResetCost()} 金幣，要在城鎮）</button>` : ''}`;
+    el.innerHTML = `<b>${c.n}</b><small class="sub">${c.d}</small><small class="sub">${c.br.map(b => `<span style="color:${b.col}">${b.n}</span>（${b.d}）`).join('<br>')}</small><small class="sub">點節點看效果。8 點只能點在選定的分支裡；入口分出 4 條獨立的路線，每條一小一大，有 3 條還能再往外點一組，8 點最多拿 4 個大點，要自己取捨。${pts ? '' : `Lv${ASC_LV[0]} 起到城鎮挑戰昇華試煉取得點數。`}</small>${a.br ? `<button class="btn sm" data-act="ascReset">重選昇華（${ascResetCost()} 金幣，要在城鎮）</button>` : ''}`;
     drawAsc();
     return;
   }
@@ -1233,7 +1135,7 @@ function renderAscCard() {
   } else if (a.cls === c.k)
     act = `<button class="btn" data-act="ascSwitch" data-k="${b.k}">改走${b.n}（重選，${ascResetCost()} 金幣，要在城鎮）</button>`;
   else act = `<small class="sub">目前的昇華是 ${ASCB[a.br].n}，要換成這個職業需要先重選昇華。</small>`;
-  el.innerHTML = `<div class="rowx"><b style="color:${n.kind === 'u' ? '#ffd166' : b.col}">${n.kind === 'u' ? '終極・' : n.kind === 'e' ? '入口・' : n.kind === 's' ? '小點・' : ''}${n.n}</b><small class="sub">${b.n}</small></div>${ascTxt(
+  el.innerHTML = `<div class="rowx"><b style="color:${b.col}">${n.kind === 'e' ? '入口・' : n.kind === 's' ? '小點・' : ''}${n.n}</b><small class="sub">${b.n}</small></div>${ascTxt(
     n
   )
     .map(t => `<small class="sub" style="display:block;color:var(--ink)">・${esc(t)}</small>`)
@@ -1241,7 +1143,7 @@ function renderAscCard() {
     .map(t => `<small style="display:block;color:#ff8a8a">代價：${esc(t)}</small>`)
     .join(
       ''
-    )}${n.kind === 'u' ? '<small class="sub">兩個終極只能選一個。</small>' : ''}${n.kind === 'e' ? `<small class="sub">選定${b.n}就會得到入口的效果；輔助型大點套用到「${TAGN[b.tag]}」技能。</small>` : ''}${act}`;
+    )}${n.kind === 'e' ? `<small class="sub">選定${b.n}就會得到入口的效果；輔助型大點套用到「${TAGN[b.tag]}」技能。</small>` : ''}${act}`;
   drawAsc();
 }
 (() => {

@@ -1534,8 +1534,8 @@ function dropLoot(e, boss, sp, remote, minion) {
     /* 0.3.10：T 級的掉寶數量與稀有度；首領與災厄另外加上機制王的加成 */
     tb = tierBonus(),
     tk = boss || r >= 3 ? tb.boss : 0,
-    Q = 1 + ((sp ? sp.q : 0) + (zm.q || 0) + os + tb.q + tk + pactMech('q')) / 100,
-    R = 1 + ((sp ? sp.r : 0) + (zm.r || 0) + os + tb.r + tk + pactMech('r')) / 100;
+    Q = 1 + ((sp ? sp.q : 0) + (zm.q || 0) + os + tb.q + tk) / 100,
+    R = 1 + ((sp ? sp.r : 0) + (zm.r || 0) + os + tb.r + tk) / 100;
   const mm = minion ? 0.5 : 1,
     itemCh = ([0.22, 0.5, 1, 1, 1][r] || 0.22) * buf * rem * Q * mm,
     curN =
@@ -1616,15 +1616,15 @@ function gemLoot(e, boss, hell, rem, out) {
       fl((e.lv || 1) / 4) +
       (boss ? 6 + (hell ? 6 : 0) : 0),
     z = zoneAt(S.lat, S.lng).m,
-    ch = p => Math.random() < p * rem * (z.eng || 1) * pactK('eng'),
+    ch = p => Math.random() < p * rem * (z.eng || 1),
     add = (id, n = 1) => {
       if (n <= 0) return;
       giveCur(id, n);
       out.push(curDot(id) + GCURI[id].n + (n > 1 ? ' ×' + n : ''));
     };
-  add('soul', Math.round(soul * rem * (z.soul || 1) * SOUL_MUL * (1 + pactMech('soul') / 100)));
-  /* 0.3.11 祈願石：菁英與首領比較常掉（契靈「機制」可以提高） */
-  const wm = rem * (1 + pactMech('wish') / 100);
+  add('soul', Math.round(soul * rem * (z.soul || 1) * SOUL_MUL));
+  /* 0.3.11 祈願石：菁英與首領比較常掉 */
+  const wm = rem;
   if (boss) add('wish', Math.round((1 + (hell ? 1 : 0)) * wm) || 1);
   else if (Math.random() < [0.01, 0.04, 0.12, 0.12, 0.4][r] * wm) add('wish');
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
@@ -1641,7 +1641,7 @@ function dunReward(D) {
   const sp = D.spec,
     mult = D.remote ? 0.8 : 1,
     tb = tierBonus(),
-    Q = 1 + (sp.q + (D.onsite ? ONSITE_BONUS : 0) + tb.q + tb.boss + pactMech('q') + pactMech('dun')) / 100,
+    Q = 1 + (sp.q + (D.onsite ? ONSITE_BONUS : 0) + tb.q + tb.boss) / 100,
     bonus = (D.lm ? 1.6 : 1) * Q,
     gold = Math.round((40 + D.lv * 25) * mult * bonus),
     cry = D.kind === 'rift' ? 0 : Math.max(1, Math.round((2 + fl(D.lv / 2)) * mult * bonus));
@@ -1682,13 +1682,12 @@ function winBattle() {
     e = es[0],
     zm = zoneAt(S.lat, S.lng).m,
     st = stats(),
-    mult = (D && D.remote ? 0.8 : 1) * (buffOn() ? 1.2 : 1),
-    xm = 1 + pactMech('xp') / 100;
+    mult = (D && D.remote ? 0.8 : 1) * (buffOn() ? 1.2 : 1);
   let xp = 0,
     gold = 0;
   const drops = [];
   es.forEach((o, i) => {
-    xp += Math.round(o.xp * mult * xm * (zm.xp || 1));
+    xp += Math.round(o.xp * mult * (zm.xp || 1));
     gold += Math.round(o.gold * rnd(0.8, 1.2) * mult * st.goldMul * (zm.gold || 1));
     drops.push(...dropLoot(o, B.boss && i === 0, D && D.spec, D && D.remote, o.minion));
   });
@@ -1984,8 +1983,7 @@ function bossPicks(lv) {
       }
     ];
   const out = [];
-  /* 0.3.11：裝著掉落契靈「地城」時尾王四選一 */
-  while (out.length < (pactMech('dun') ? 4 : 3)) {
+  while (out.length < 3) {
     const p = pool.splice(fl(Math.random() * pool.length), 1)[0];
     out.push(p);
   }

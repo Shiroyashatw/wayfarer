@@ -303,7 +303,7 @@ const INSC_MAX = 40,
   FRAG_MAX = 20;
 /* 碑文碎片：菁英怪掉落，帶一條地城詞綴 */
 function rollInsc(r, boss) {
-  if (!(Math.random() < (boss ? 0.5 : [0, 0.12, 0.35, 0.35, 1][r]) * pactK('stele'))) return '';
+  if (!(Math.random() < (boss ? 0.5 : [0, 0.12, 0.35, 0.35, 1][r]))) return '';
   S.insc = S.insc || [];
   if (S.insc.length >= INSC_MAX) return '';
   const m = DMODS[fl(Math.random() * DMODS.length)].id;
@@ -351,8 +351,7 @@ function payDun(pay) {
 function obeliskCharge(id) {
   S.obel = S.obel || {};
   for (const k in S.obel) if (!k.endsWith('_' + ep2())) delete S.obel[k];
-  /* 0.3.11：掉落契靈「冥府」有機率多充能一次 */
-  S.obel[id] = Math.min(OB_NEED, (S.obel[id] || 0) + 1 + (Math.random() * 100 < pactMech('uw') ? 1 : 0));
+  S.obel[id] = Math.min(OB_NEED, (S.obel[id] || 0) + 1);
   quest('obel');
   const n = S.obel[id];
   const e = ENT.get(id);

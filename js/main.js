@@ -74,7 +74,7 @@ function migrate(s) {
   if (s.v < 8) {
     // 0.2.0：技能改為技能石，職業只剩天賦盤起點；舊存檔補開局技能石
     const g = k => ({ id: uid(), k, lv: 1, dust: 0, en: [] });
-    s.gems = [g(CLASSES[s.cls] ? CLASSES[s.cls].gem : 'power'), g('heal')];
+    s.gems = [g(clsOf(s.cls).gem), g('heal')];
     s.sk = [s.gems[0].id, s.gems[1].id, null, null];
     Object.assign(s.cur, { soul: 0, dust: 0, eng: 1 });
     s.autoHp = s.autoHp || 0;
@@ -157,8 +157,38 @@ function migrate(s) {
     c.soul = c.dust || 0;
     delete c.dust;
     s.pity = {};
-    s.pact = { have: {}, eq: { fight: [], drop: [] }, board: {}, follow: null };
+    s.pact = { have: {}, eq: [], follow: null };
     s.v = 17;
+  }
+  if (s.v < 18) {
+    // 0.3.12：契靈重做（R／SR／SSR、每隻是獨立個體、6 條隨機戰鬥詞綴、吃同名的突破）；0.3.11 抽到的契靈各變成一隻，重新骰詞綴、保留突破次數
+    const old = (s.pact && s.pact.have) || {},
+      list = [];
+    for (const k in old)
+      if (PACTI[k]) {
+        const o = rollPact(k);
+        o.brk = Math.min(PBRK_MAX, typeof old[k] === 'number' ? old[k] : 0);
+        list.push(o);
+      }
+    /* 先幫忙裝上稀有度最高的幾隻（欄位 2 + 通過的昇華試煉） */
+    const eq = [...list]
+        .sort((a, b) => PACTI[b.k].r - PACTI[a.k].r || b.brk - a.brk)
+        .slice(0, Math.min(PSLOT_MAX, PSLOT0 + ((s.asc && s.asc.trials) || 0)))
+        .map(o => o.u),
+      fo = s.pact && list.find(o => o.k === s.pact.follow);
+    s.pact = { list, eq, follow: fo ? fo.u : null };
+    s.pity = {};
+    s.v = 18;
+  }
+  if (s.v < 19) {
+    // 0.3.13：天賦樹中間改成契靈圓盤、沒有出發點（從圓盤往外點）；已點的天賦全部退回、珠寶回到背包；昇華拿掉終極點（點數退回）
+    const was = s.tree && s.tree.length > 1;
+    s.cls = CLASSES[s.cls] ? s.cls : s.asc && CLASSES[s.asc.cls] ? s.asc.cls : OLDCLS[s.cls] || 'destiny';
+    s.tree = ['start'];
+    s.jsock = {};
+    if (s.asc && s.asc.nodes) s.asc.nodes = s.asc.nodes.filter(id => ASCN[id]);
+    if (was && s.log) s.log.unshift('天賦樹改版：中間改成契靈圓盤、沒有出發點，已點的天賦全部退回');
+    s.v = 19;
   }
   return s;
 }
@@ -190,18 +220,22 @@ function start() {
     addLog('冒險開始！');
     showModal(
       `漫步勇者 v${VER}`,
-      `<p>真實世界就是你的冒險地圖。道路跟著真實街道走，知名地點會變成城鎮。</p><p class="sub">先選擇天賦盤的起點，接著會有簡短的新手教學帶你認識畫面。</p>`,
+      `<p>真實世界就是你的冒險地圖。道路跟著真實街道走，知名地點會變成城鎮。</p><p class="sub">接下來會有簡短的新手教學帶你認識畫面。</p>`,
       [
         {
-          label: '選擇起點',
+          label: '開始冒險',
           pri: 1,
           fn: () => {
             hideModal();
-            classPicker(() => {
-              checkArrive();
-              save();
-              tutorStart();
-            });
+            /* 0.3.13 起沒有出發路線：開局送強力一擊與治癒，其他技能石到城鎮的技能石商店買 */
+            if (!S.gems.length) {
+              giveGem('power');
+              giveGem('heal');
+            }
+            fullHeal();
+            checkArrive();
+            save();
+            tutorStart();
           }
         }
       ]

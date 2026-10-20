@@ -1342,7 +1342,15 @@ function renderWorld(t) {
   if (fo)
     list.push({
       y: hy - 1,
-      draw: () => drawSpr(c, PACTI[fo].spr, pactPal(fo), hx - 15 * s, hy - 6 * s + Math.sin(t / 300) * 2 * s, s * 0.75)
+      draw: () =>
+        drawSpr(
+          c,
+          pactKind(fo).spr,
+          pactPal(pactOf(fo).k),
+          hx - 15 * s,
+          hy - 6 * s + Math.sin(t / 300) * 2 * s,
+          s * 0.75
+        )
     });
   list.sort((a, b) => a.y - b.y).forEach(o => o.draw());
   drawUndeadMark(c, t);

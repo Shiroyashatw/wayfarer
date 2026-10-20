@@ -408,8 +408,7 @@ const huntCfg = () => HUNT_LV[huntLv() - 1];
 function addBlood(n) {
   const h = H(),
     before = h.blood;
-  /* 0.3.11：掉落契靈「狩獵」加追蹤之血 */
-  h.blood = Math.min(BLOOD_MAX, h.blood + Math.round(n * pactK('hunt')));
+  h.blood = Math.min(BLOOD_MAX, h.blood + n);
   quest('blood', h.blood - before);
   if (before < RITE_COST && h.blood >= RITE_COST) toast('追蹤之血滿 100 了，可以血祭引出墮落獸');
   huntHud();
@@ -554,7 +553,7 @@ function makeZodiac(k, lv, mods) {
 function huntWin(b) {
   const h = H();
   if (b.hunt === 'beast') {
-    const n = Math.round((1 + fl(Math.random() * 3)) * pactK('hunt'));
+    const n = 1 + fl(Math.random() * 3);
     giveCur('dcrys', n);
     addLog(`擊敗墮落獸，得到惡魔結晶 ×${n}`);
     return `<p style="color:#ff8a9a">${curDot('dcrys')}惡魔結晶 ×${n}（共 ${S.cur.dcrys}）</p>`;

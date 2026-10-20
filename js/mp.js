@@ -249,7 +249,7 @@ function partyHTML() {
     mem = [...PT.members.values()];
   let h = `<div class="card"><b style="color:${T.col};font-family:var(--f-pix);font-size:18px;font-weight:400">${esc(dunName(d))} Lv${d.lv}</b><p class="sub">${sp.floors} 層・物品數量 +${sp.q}%・稀有度 +${sp.r}%・怪物生命隨人數提高</p>${dunModsHTML(sp)}</div>
     <div class="card ptcode"><small class="sub">隊伍代碼</small><b>${PT.code}</b><small class="sub">好友在「好友與組隊」輸入這組代碼就能加入</small></div>
-    <h3>大廳・隊員 ${mem.length}/${ptMax()}・準備 ${mem.filter(m => m.ready).length}/${mem.length}</h3>${mem.map(m => `<div class="card"><div class="rowx"><div class="t"><b>${esc(m.name)}${m.uid === PT.leader ? ' <span style="color:var(--gold)">隊長</span>' : ''}${m.uid === CLOUD.uid ? ' <span class="sub">（你）</span>' : ''}</b><small><span style="color:${(CLASSES[m.cls] || CLASSES.novice).color}">${(CLASSES[m.cls] || CLASSES.novice).name}</span> Lv${m.lv}・生命 ${m.st.maxhp}・速度 ${m.st.speed}</small></div><span class="rdy ${m.ready ? 'ok' : ''}">${m.ready ? '✓ 準備好了' : '準備中…'}</span></div></div>`).join('')}`;
+    <h3>大廳・隊員 ${mem.length}/${ptMax()}・準備 ${mem.filter(m => m.ready).length}/${mem.length}</h3>${mem.map(m => `<div class="card"><div class="rowx"><div class="t"><b>${esc(m.name)}${m.uid === PT.leader ? ' <span style="color:var(--gold)">隊長</span>' : ''}${m.uid === CLOUD.uid ? ' <span class="sub">（你）</span>' : ''}</b><small><span style="color:${clsOf(m.cls).color}">${clsOf(m.cls).name}</span> Lv${m.lv}・生命 ${m.st.maxhp}・速度 ${m.st.speed}</small></div><span class="rdy ${m.ready ? 'ok' : ''}">${m.ready ? '✓ 準備好了' : '準備中…'}</span></div></div>`).join('')}`;
   if (lead && !CLOUD.anon) {
     const fr = SOC.friends
       .filter(f => f.status === 'accepted' && !PT.members.has(f.user_id))
@@ -673,7 +673,7 @@ function mpMy(k) {
 /* 一層的獎勵：經驗是整群加總後依人數平均，金幣與掉寶各自結算 */
 function mpRoomReward(info, n = 1) {
   const list = Array.isArray(info) ? info : [info],
-    xp = Math.round((list.reduce((a, e) => a + e.xp, 0) / Math.max(1, n)) * (1 + pactMech('xp') / 100));
+    xp = Math.round(list.reduce((a, e) => a + e.xp, 0) / Math.max(1, n));
   let gold = 0;
   const drops = [];
   for (const e of list) {
