@@ -166,21 +166,21 @@
 - **game data**（22）
   `CLASSES:26`、`OLDCLS:36`、`clsOf:37`、`SKILLS:39`、`GEM_MAX:68`、`GEM_DRAW:70`、`soulNeed:71`、`GCUR:74`、`GCURI:84`、`EL:85`、`MONS:86`、`MIMIC:1102`、`EMODS:1115`、`DTYPES:1128`、`DMODS:1239`、`DMODI:1252`、`UMODS:1254`、`EMODI:1261`、`FRAG_PARTS:1263`、`ZONE_CELL:1265`、`ZMODS:1267`、`RCOL:1277`、`RGLOW:1279`、`RAREA:1280`、`SLOTS:1282`、`SLOTN:1283`、`BASES:1296`、`DROPS:1374`、`T5:1375`、`ARMOR:1382`、`AFF:1384`、`AFFI:1538`、`STATN:1539`、`sg:1594`、`CUR:1640`、`CURI:1651`、`TH:1654`、`SPOKES:1946`、`TREE:2053`、`VER:2659`、`START:2660`
 
-### js/sprites.js（1333 行）
+### js/sprites.js（1334 行）
 
 - **pixel sprites (original art)**（3）
-  `SPR:4`、`ICONS:560`、`ICOPAL:582`、`PAL:583`、`FIXED:591`、`ART_U:594`、`artImg:596`、`artSprite:605`、`sprite:629`、`paintIcon18:668`、`spriteCanvas:674`、`drawSpr:686`、`ICC:706`、`iconURL:707`、`paintIcon:717`、`wepKind:730`、`wepType:732`、`twoHand:733`、`WTAGN:734`、`offType:735`
-- **icons: currency, item slots, passive nodes**（736）
-  `PIX:737`、`PIXC:929`、`pixURL:930`、`curIcon:964`、`slotIcon:965`、`ICIMG:979`、`nodeIcon:980`
-- **boss sprites**（988）
-  `BOSSPAL:1264`
+  `SPR:4`、`ICONS:560`、`ICOPAL:582`、`PAL:583`、`FIXED:591`、`ART_U:594`、`artImg:596`、`artSprite:605`、`sprite:629`、`paintIcon18:668`、`spriteCanvas:674`、`drawSpr:686`、`ICC:706`、`iconURL:707`、`paintIcon:717`、`wepKind:731`、`wepType:733`、`twoHand:734`、`WTAGN:735`、`offType:736`
+- **icons: currency, item slots, passive nodes**（737）
+  `PIX:738`、`PIXC:930`、`pixURL:931`、`curIcon:965`、`slotIcon:966`、`ICIMG:980`、`nodeIcon:981`
+- **boss sprites**（989）
+  `BOSSPAL:1265`
 
 ### js/gear.js（685 行）
 
 - **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1）
   `GEAR:3`、`TIER_LV:244`、`tierOf:246`、`MATC:247`、`BLADEC:258`、`gearArt:261`、`gearPal:263`、`GIC:286`、`gearIcon:288`、`GLOOK:340`、`heroLook:347`、`WFRONT:355`、`OFRONT:502`、`put:508`、`stamp:513`、`heroSpr:518`、`heroPal:637`
 
-### js/art.js（100 行）
+### js/art.js（101 行）
 
   `ART:2`
 
