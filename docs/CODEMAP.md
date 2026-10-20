@@ -66,6 +66,7 @@
 | 技能石資料與效果 | `js/skills.js`、`js/items.js`、`js/battle.js` | `SKILLS` 擴充欄位（`w`、`tg`、`hits`、`chain`、`proj`、`addEl`、`bleed`、`stun`、`mark`、`curse`、`exec`、`pet`、`buff`、`lifeCost`）；等級成長 `gemSkill`；說明 `gemDesc`（`ui.js`） |
 | 昇華（0.3） | `js/asc.js`、`js/items.js` | 資料 `ASC`（職業→分支→`t1`／`t2`／`u`）、節點表 `ASCN`／`ASCB`、輔助效果文字 `SUPN`；屬性 `ascStats`（`sumStats`）、`ascSup`（`stats` 的 `sup`，戰鬥用 `supOf`）；昇華盤 `openAsc`／`drawAsc`／`renderAscCard`（座標 `ascXY`、視角 `AV`、`ascFit`）、小點圖示 `SMG`、圖示 `ascIcon`、換分支 `A.ascSwitch`；試煉 `ascTownHTML`（城鎮面板）、`A.ascTrial`、`ascTrialDone`（`dungeonClear`）；狀態 `S.asc` |
 | 首領專屬圖（0.2.13.1） | `js/sprites.js`、`js/demon.js`、`js/battle.js`、`js/undead.js` | `SPR.b_*` 與 `BOSSPAL`（sprites.js 結尾）；七宗罪 `SINSPR`（`makeSinLord`）、`makeSinKing`、地城首領 `BOSSSPR`（`dunEnemy`）、亡靈王 `A.udKing` |
+| 地城首領抽籤、PNG 怪物圖（0.3.26） | `js/battle.js`、`tools/art.py`、`js/art.js` | `GHOSTS`／`ghostOf`（9 種台灣鬼怪，依地城種子抽）、`dunEnemy` 的固定首領（石獅、鍾馗、門神兩隻、閻羅王）；PNG 圖放 `art/monsters/`，`python3 tools/art.py` 產生 `js/art.js`，`spr` 填 `a_檔名` |
 | 印記兌換、生肖傳奇（0.2.13） | `js/hunt.js`、`js/items.js` | `ZLEG`（加進 `LEGENDS`／`LEGI`，`k` 是 `z_生肖`）、`zodStats`（`sumStats` 呼叫，生肖共鳴）、`sealHTML`（`seal` 面板）、`A.sealLeg`／`A.sealJewel`、`spendMarks`；`S.hunt.marks`（可消耗）、`S.hunt.slain`（稱號） |
 | 地圖事件連動（0.2.13） | `js/demon.js`、`js/undead.js`、`js/hunt.js` | 霧中亡靈：`mistify`（`e.ud`）、`mistWin`／`undeadWin`（×1.5）；冥府生肖：`A.huntZod`（`ZOD_UW_R`、`uwz`）、`huntWin`；夜晚：`undeadSpawns` 半徑、魔霧刷新機率 |
 | 獵殺等級（0.3.1.6） | `js/hunt.js`、`js/map.js`、`js/battle.js`、`js/ui.js` | `HUNT_LV`（三級的強化與倍率）、`huntLv`／`huntCfg`、`huntTick`（每分鐘熱度與關閉後消退，`map.js` 每幀呼叫）、`huntKills`（`winBattle`）、`huntBuff`（`A.fight`、`packOf`）、`packN` 的成群加成；紅圈在 `map.js` 畫玩家範圍圈的地方；狀態 `S.hunt.heat`／`tAt` |
@@ -178,7 +179,7 @@
 - **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1）
   `GEAR:3`、`TIER_LV:244`、`tierOf:246`、`MATC:247`、`BLADEC:258`、`gearArt:261`、`gearPal:263`、`GIC:286`、`gearIcon:288`、`GLOOK:340`、`heroLook:347`、`WFRONT:355`、`OFRONT:502`、`put:508`、`stamp:513`、`heroSpr:518`、`heroPal:637`
 
-### js/art.js（33 行）
+### js/art.js（100 行）
 
   `ART:2`
 
@@ -204,7 +205,7 @@
 - **modal**（1016）
   `showModal:1017`、`hideModal:1023`、`busy:1026`、`openShop:1027`、`SHOP:1125`
 
-### js/battle.js（2980 行）
+### js/battle.js（3020 行）
 
 - **battle: painted backgrounds**（3）
   `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
@@ -215,9 +216,9 @@
 - **battle: solo**（1503）
   `heroMe:1505`、`startBattle:1535`、`pickTarget:1579`、`renderBHud:1609`、`playEv:1717`、`soloExt:1771`、`useSkill:1784`、`bItem:1827`、`flee:1873`、`allDead:1888`、`afterPlayer:1889`、`soloUnits:1901`、`nextTurn:1906`、`enemyAct:1925`
 - **dungeons (shared by solo and party)**（1940）
-  `dunSpec:1942`、`dunName:1973`、`BIGBOSS:1984`、`dunEnemy:1987`、`dropLoot:2113`、`SOUL_MUL:2195`、`gemLoot:2196`、`mechOf:2223`、`supLoot:2235`、`ONSITE_BONUS:2258`、`onsiteNow:2259`、`dunReward:2261`、`dunModsHTML:2301`、`lootList:2307`、`winBattle:2316`、`loseBattle:2420`、`endBattle:2444`、`enterDungeon:2453`、`nextRoom:2471`、`dungeonClear:2491`、`BP_ARMOR:2547`、`bossPicks:2549`
-- **battle: drawing**（2631）
-  `drawEnemies:2633`、`selTrack:2674`、`drawSel:2685`、`drawPets:2720`、`renderBattle:2729`、`drawWeapon:2805`、`drawFx:2883`
+  `dunSpec:1942`、`dunName:1973`、`BIGBOSS:1984`、`GHOSTS:1987`、`ghostOf:1998`、`dunEnemy:2000`、`dropLoot:2153`、`SOUL_MUL:2235`、`gemLoot:2236`、`mechOf:2263`、`supLoot:2275`、`ONSITE_BONUS:2298`、`onsiteNow:2299`、`dunReward:2301`、`dunModsHTML:2341`、`lootList:2347`、`winBattle:2356`、`loseBattle:2460`、`endBattle:2484`、`enterDungeon:2493`、`nextRoom:2511`、`dungeonClear:2531`、`BP_ARMOR:2587`、`bossPicks:2589`
+- **battle: drawing**（2671）
+  `drawEnemies:2673`、`selTrack:2714`、`drawSel:2725`、`drawPets:2760`、`renderBattle:2769`、`drawWeapon:2845`、`drawFx:2923`
 
 ### js/map.js（1712 行）
 
@@ -273,7 +274,7 @@
   `SEL:411`、`chip:412`、`HIDE_REST:415`、`hideRestLeft:417`、`hideoutHTML:418`、`siteEnt:429`、`steleHTML:434`、`MAT_TABS:471`、`matsHTML:477`、`ENTURL:524`、`entURL:525`、`portalPick:530`
 - **actions**（536）
 
-### js/undead.js（610 行）
+### js/undead.js（619 行）
 
 - **data**（3）
   `pad16u:4`、`UNDEAD:100`、`UNDEADN:177`、`ESS:179`、`ESSI:207`、`ESS_MAX:208`、`affCat:209`、`UCUR:211`、`UCURI:217`、`KING_NEED:218`

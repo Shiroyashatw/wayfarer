@@ -87,7 +87,7 @@ const MONS = [
   {
     name: '綠史萊姆',
     bg: 'meadow',
-    spr: 'slime',
+    spr: 'a_m_slime_green',
     pal: { g: '#62b844', w: '#ffffff', e: '#173010' },
     hp: 28,
     atk: 6,
@@ -115,7 +115,7 @@ const MONS = [
   {
     name: '夜蝠',
     bg: 'city',
-    spr: 'bat',
+    spr: 'a_m_bat',
     pal: { p: '#6e4bb0', e: '#ffd166', w: '#ffffff' },
     hp: 22,
     atk: 8,
@@ -129,7 +129,7 @@ const MONS = [
   {
     name: '稻草人魔',
     bg: 'meadow',
-    spr: 'scare',
+    spr: 'a_m_scarecrow',
     pal: { y: '#e6c35c', t: '#c9a878', e: '#2a1a10', m: '#c0392b', w: '#8a6a40', r: '#b8433d' },
     hp: 38,
     atk: 9,
@@ -172,7 +172,7 @@ const MONS = [
   {
     name: '魔神仔',
     bg: 'forest',
-    spr: 'spirit',
+    spr: 'a_mosina',
     pal: { v: '#8fcdbd', e: '#102a24', m: '#c0392b' },
     hp: 45,
     atk: 13,
@@ -217,7 +217,7 @@ const MONS = [
   {
     name: '焰史萊姆',
     bg: 'meadow',
-    spr: 'slime',
+    spr: 'a_m_slime_fire',
     pal: { g: '#e8603a', w: '#ffe0a0', e: '#3a0d05' },
     hp: 32,
     atk: 8,
@@ -262,7 +262,7 @@ const MONS = [
   {
     name: '雷鳴蝠',
     bg: 'city',
-    spr: 'bat',
+    spr: 'a_m_thunderbat',
     pal: { p: '#c9b23a', e: '#3a1a5a', w: '#ffffff' },
     hp: 26,
     atk: 10,
@@ -307,7 +307,7 @@ const MONS = [
   {
     name: '水鬼',
     bg: 'meadow',
-    spr: 'spirit',
+    spr: 'a_shuigui',
     pal: { v: '#5f8fb8', e: '#06121e', m: '#2a4a6a' },
     hp: 50,
     atk: 14,
@@ -353,7 +353,7 @@ const MONS = [
   {
     name: '招潮蟹',
     bg: 'meadow',
-    spr: 'crab',
+    spr: 'a_m_fiddler',
     pal: { r: '#e86a3a', e: '#1a1a1a', w: '#f4e3c8' },
     hp: 30,
     atk: 7,
@@ -413,7 +413,7 @@ const MONS = [
   {
     name: '垃圾史萊姆',
     bg: 'city',
-    spr: 'slime',
+    spr: 'a_m_slime_trash',
     pal: { g: '#7a7a5a', w: '#c8c8a0', e: '#1a1a10' },
     hp: 34,
     atk: 8,
@@ -2656,5 +2656,5 @@ const TREE = (() => {
       n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.25';
+const VER = '0.3.26';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

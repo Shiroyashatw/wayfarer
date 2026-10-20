@@ -797,10 +797,10 @@ Object.assign(A, {
 /* 魔霧進度滿 100% 時，霧的中心出現一隻四凶（依位置固定是哪一隻），打倒得到牠的凶獸之印；四種印各 1 個在魔霧中心召喚燭龍。
    圖先沿用相近的十二生肖圖，PixelLab 提示詞在 docs/怪物提示詞.md */
 const XIONG = [
-  { k: 'hundun', n: '混沌', spr: 'a_z_pig', el: 'phys', d: '看不到牠的行動順序；每次行動換一種元素抗性' },
-  { k: 'qiongqi', n: '窮奇', spr: 'a_z_tiger', el: 'cold', d: '專挑生命比例最低的人打；被打時反刺 15% 傷害' },
-  { k: 'taowu', n: '檮杌', spr: 'a_z_dog', el: 'phys', d: '每次行動護甲 +15%，越打越硬' },
-  { k: 'taotie', n: '饕餮', spr: 'a_z_goat', el: 'fire', d: '吃掉目標身上的增益回血；會偷吃你的生命藥水' }
+  { k: 'hundun', n: '混沌', spr: 'a_hundun', el: 'phys', d: '看不到牠的行動順序；每次行動換一種元素抗性' },
+  { k: 'qiongqi', n: '窮奇', spr: 'a_qiongqi', el: 'cold', d: '專挑生命比例最低的人打；被打時反刺 15% 傷害' },
+  { k: 'taowu', n: '檮杌', spr: 'a_taowu', el: 'phys', d: '每次行動護甲 +15%，越打越硬' },
+  { k: 'taotie', n: '饕餮', spr: 'a_taotie', el: 'fire', d: '吃掉目標身上的增益回血；會偷吃你的生命藥水' }
 ];
 const XIONGI = Object.fromEntries(XIONG.map(x => [x.k, x]));
 const xiongOf = z => XIONG[h(fl(z.x), fl(z.y), 31) % 4];
@@ -826,7 +826,7 @@ function makeZhulong(lv) {
     {
       name: '燭龍',
       bg: 'cave',
-      spr: 'a_z_dragon',
+      spr: 'a_zhulong',
       hp: 110,
       atk: 18,
       arm: 40,
@@ -1005,53 +1005,53 @@ const SIEGE_FX = {
 /* 信徒：t 是特色（battle.js 的 followerTurn／followerHit）、spr 是先用的現有圖 */
 const SINF = {
   pride: [
-    { n: '墮天騎士', t: 'proud', spr: 'golem', d: '生命高於一半時受傷 -30%' },
-    { n: '光輪祭司', t: 'healer', spr: 'spirit', d: '替生命最低的信徒回血' },
-    { n: '鏡面衛兵', t: 'mirror', spr: 'golem', d: '反射 15% 傷害' },
-    { n: '金冠貴族', t: 'bully', spr: 'scare', d: '對生命比例比自己低的目標傷害 ×1.5' },
-    { n: '聖像傀儡', t: 'idol', spr: 'golem', d: '護甲極高、很慢' }
+    { n: '墮天騎士', t: 'proud', spr: 'a_sin_pride_paladin', d: '生命高於一半時受傷 -30%' },
+    { n: '光輪祭司', t: 'healer', spr: 'a_sin_pride_priest', d: '替生命最低的信徒回血' },
+    { n: '鏡面衛兵', t: 'mirror', spr: 'a_sin_pride_mirror', d: '反射 15% 傷害' },
+    { n: '金冠貴族', t: 'bully', spr: 'a_sin_pride_noble', d: '對生命比例比自己低的目標傷害 ×1.5' },
+    { n: '聖像傀儡', t: 'idol', spr: 'a_sin_pride_idol', d: '護甲極高、很慢' }
   ],
   envy: [
-    { n: '妒火魚人', t: 'envy', spr: 'fish', d: '攻擊依你的傷害提高' },
-    { n: '竊影者', t: 'thief', spr: 'spirit', d: '偷走你一個增益' },
-    { n: '綠眼海蛇', t: 'venom', spr: 'snake', d: '命中讓你中毒（每回合扣血）' },
-    { n: '模仿者', t: 'mimic', spr: 'slime', d: '對你上一招的元素抗性變高' },
-    { n: '深海觸手', t: 'grab', spr: 'jelly', d: '纏住你：行動值延後' }
+    { n: '妒火魚人', t: 'envy', spr: 'a_sin_envy_fishman', d: '攻擊依你的傷害提高' },
+    { n: '竊影者', t: 'thief', spr: 'a_sin_envy_thief', d: '偷走你一個增益' },
+    { n: '綠眼海蛇', t: 'venom', spr: 'a_sin_envy_serpent', d: '命中讓你中毒（每回合扣血）' },
+    { n: '模仿者', t: 'mimic', spr: 'a_sin_envy_mimic', d: '對你上一招的元素抗性變高' },
+    { n: '深海觸手', t: 'grab', spr: 'a_sin_envy_tentacle', d: '纏住你：行動值延後' }
   ],
   wrath: [
-    { n: '狂戰惡魔', t: 'fury', spr: 'monkey', d: '生命越低攻擊越高' },
-    { n: '熔岩獵犬', t: 'hound', spr: 'wolf', d: '火焰攻擊、速度快' },
-    { n: '自爆怨火', t: 'boom', spr: 'lantern', d: '死亡時爆炸，傷害打倒牠的人' },
-    { n: '血角鬥士', t: 'stack', spr: 'boar', d: '每次行動攻擊 +12%' },
-    { n: '怒焰狂信者', t: 'zealot', spr: 'scare', d: '讓其他信徒攻擊 +10%' }
+    { n: '狂戰惡魔', t: 'fury', spr: 'a_sin_wrath_berserker', d: '生命越低攻擊越高' },
+    { n: '熔岩獵犬', t: 'hound', spr: 'a_sin_wrath_hound', d: '火焰攻擊、速度快' },
+    { n: '自爆怨火', t: 'boom', spr: 'a_sin_wrath_bomber', d: '死亡時爆炸，傷害打倒牠的人' },
+    { n: '血角鬥士', t: 'stack', spr: 'a_sin_wrath_gladiator', d: '每次行動攻擊 +12%' },
+    { n: '怒焰狂信者', t: 'zealot', spr: 'a_sin_wrath_cultist', d: '讓其他信徒攻擊 +10%' }
   ],
   sloth: [
-    { n: '沉睡巨人', t: 'sleep', spr: 'bear', d: '前兩次輪到都在睡，醒來猛擊（×2）' },
-    { n: '泥沼史萊姆', t: 'mud', spr: 'slime', d: '命中讓你行動值延後' },
-    { n: '夢魘綿羊', t: 'dream', spr: 'deer', d: '25% 讓你睡著（跳過一回合）' },
-    { n: '苔蘚樹人', t: 'regen', spr: 'mush', d: '生命高，每次行動回 10% 生命' },
-    { n: '蝸牛騎士', t: 'snail', spr: 'turtle', d: '護甲極高、很慢' }
+    { n: '沉睡巨人', t: 'sleep', spr: 'a_sin_sloth_giant', d: '前兩次輪到都在睡，醒來猛擊（×2）' },
+    { n: '泥沼史萊姆', t: 'mud', spr: 'a_sin_sloth_slime', d: '命中讓你行動值延後' },
+    { n: '夢魘綿羊', t: 'dream', spr: 'a_sin_sloth_sheep', d: '25% 讓你睡著（跳過一回合）' },
+    { n: '苔蘚樹人', t: 'regen', spr: 'a_sin_sloth_treant', d: '生命高，每次行動回 10% 生命' },
+    { n: '蝸牛騎士', t: 'snail', spr: 'a_sin_sloth_snail', d: '護甲極高、很慢' }
   ],
   greed: [
-    { n: '金幣竊賊', t: 'coin', spr: 'monkey', d: '偷你的金幣，3 次行動後逃走就拿不回來' },
-    { n: '寶箱怪', t: 'chest', spr: 'crab', d: '傷害很高（×1.6）' },
-    { n: '黃金魔像', t: 'goldg', spr: 'golem', d: '護甲極高，打倒掉很多金幣' },
-    { n: '放貸惡魔', t: 'debt', spr: 'bat', d: '「債務」：每次行動偷的金幣越來越多' },
-    { n: '黃金傭兵', t: 'merc', spr: 'scare', d: '還活著時，其他信徒受傷 -20%' }
+    { n: '金幣竊賊', t: 'coin', spr: 'a_sin_greed_goblin', d: '偷你的金幣，3 次行動後逃走就拿不回來' },
+    { n: '寶箱怪', t: 'chest', spr: 'a_sin_greed_mimic', d: '傷害很高（×1.6）' },
+    { n: '黃金魔像', t: 'goldg', spr: 'a_sin_greed_golem', d: '護甲極高，打倒掉很多金幣' },
+    { n: '放貸惡魔', t: 'debt', spr: 'a_sin_greed_usurer', d: '「債務」：每次行動偷的金幣越來越多' },
+    { n: '黃金傭兵', t: 'merc', spr: 'a_sin_greed_merc', d: '還活著時，其他信徒受傷 -20%' }
   ],
   gluttony: [
-    { n: '腐食鬣狗', t: 'flies', spr: 'wolf', d: '打牠有 30% 打空' },
-    { n: '腐肉胖子', t: 'devour', spr: 'boar', d: '吃掉旁邊的信徒回血' },
-    { n: '嘔吐蛆蟲', t: 'venom', spr: 'beetle', d: '命中讓你中毒（每回合扣血）' },
-    { n: '吞噬口', t: 'maw', spr: 'frog', d: '偷吃你的生命藥水' },
-    { n: '寄生巫婆', t: 'parasite', spr: 'spirit', d: '吸血' }
+    { n: '腐食鬣狗', t: 'flies', spr: 'a_sin_glut_hyena', d: '打牠有 30% 打空' },
+    { n: '腐肉胖子', t: 'devour', spr: 'a_sin_glut_glutton', d: '吃掉旁邊的信徒回血' },
+    { n: '嘔吐蛆蟲', t: 'venom', spr: 'a_sin_glut_maggot', d: '命中讓你中毒（每回合扣血）' },
+    { n: '吞噬口', t: 'maw', spr: 'a_sin_glut_maw', d: '偷吃你的生命藥水' },
+    { n: '寄生巫婆', t: 'parasite', spr: 'a_sin_glut_witch', d: '吸血' }
   ],
   lust: [
-    { n: '魅魔', t: 'charm', spr: 'butterfly', d: '打牠有 20% 被魅惑、打到自己' },
-    { n: '薔薇藤妖', t: 'vine', spr: 'mush', d: '纏繞並流血（每回合扣血）' },
-    { n: '假面舞者', t: 'dancer', spr: 'cat', d: '打牠有 35% 被閃過並反擊' },
-    { n: '心碎吟遊詩人', t: 'bard', spr: 'bird', d: '降低你的傷害（2 回合 -20%）' },
-    { n: '傀儡情人', t: 'puppet', spr: 'scare', d: '還活著時，其他信徒受傷 -25%' }
+    { n: '魅魔', t: 'charm', spr: 'a_sin_lust_succubus', d: '打牠有 20% 被魅惑、打到自己' },
+    { n: '薔薇藤妖', t: 'vine', spr: 'a_sin_lust_vine', d: '纏繞並流血（每回合扣血）' },
+    { n: '假面舞者', t: 'dancer', spr: 'a_sin_lust_dancer', d: '打牠有 35% 被閃過並反擊' },
+    { n: '心碎吟遊詩人', t: 'bard', spr: 'a_sin_lust_bard', d: '降低你的傷害（2 回合 -20%）' },
+    { n: '傀儡情人', t: 'puppet', spr: 'a_sin_lust_puppet', d: '還活著時，其他信徒受傷 -25%' }
   ]
 };
 const siegeTown = () => S.siege && TOWNS.find(t => t.id === S.siege.tid);
