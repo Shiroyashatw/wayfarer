@@ -140,11 +140,12 @@ function drawTree() {
   x.strokeStyle = 'rgba(201,164,92,.18)';
   x.lineWidth = Math.max(1, 10 * TV.s);
   x.beginPath();
-  x.arc(TX(0), TY(0), 165 * TV.s, 0, 6.28);
+  x.arc(TX(0), TY(0), 185 * TV.s, 0, 6.28);
   x.stroke();
   x.strokeStyle = 'rgba(201,164,92,.07)';
   x.lineWidth = Math.max(1, 4 * TV.s);
-  [420, 588].forEach(r => {
+  /* 中圈與外圈（各路線的連接點）大約在半徑 570、810 */
+  [570, 810].forEach(r => {
     x.beginPath();
     x.arc(TX(0), TY(0), r * TV.s, 0, 6.28);
     x.stroke();
@@ -163,12 +164,12 @@ function drawTree() {
     ['敏捷・力量', 90]
   ].forEach(([t, a]) => {
     x.fillStyle = 'rgba(255,255,255,.2)';
-    x.fillText(t, TX(780 * Math.cos((a * Math.PI) / 180)), TY(780 * Math.sin((a * Math.PI) / 180)));
+    x.fillText(t, TX(1000 * Math.cos((a * Math.PI) / 180)), TY(1000 * Math.sin((a * Math.PI) / 180)));
   });
   const have = new Set(S.tree),
     path = selNode ? pathTo(selNode) : null,
     pset = new Set(path || []);
-  for (const [a, b] of TREE.E) {
+  for (const [a, b, c] of TREE.E) {
     const A = TREE.byId[a],
       Bn = TREE.byId[b],
       on = have.has(a) && have.has(b),
@@ -184,17 +185,20 @@ function drawTree() {
       bx = TX(Bn.x),
       by = TY(Bn.y);
     if (
-      Math.max(ax, bx) < -20 ||
-      Math.min(ax, bx) > TV.W + 20 ||
-      Math.max(ay, by) < -20 ||
-      Math.min(ay, by) > TV.H + 20
+      Math.max(ax, bx) < -60 ||
+      Math.min(ax, bx) > TV.W + 60 ||
+      Math.max(ay, by) < -60 ||
+      Math.min(ay, by) > TV.H + 60
     )
       continue;
     x.strokeStyle = on ? '#f2c14e' : pp ? 'rgba(140,220,255,.85)' : 'rgba(255,255,255,.13)';
     x.lineWidth = Math.max(1.2, (on ? 4 : pp ? 3 : 2.4) * TV.s);
     x.beginPath();
     x.moveTo(ax, ay);
-    x.lineTo(bx, by);
+    /* 0.3.14：有圓心的連線畫成弧（控制點是兩端切線的交點） */
+    const k = c && arcCtl(Ax, Ay, Bn.x, Bn.y, c);
+    if (k) x.quadraticCurveTo(TX(k[0]), TY(k[1]), bx, by);
+    else x.lineTo(bx, by);
     x.stroke();
   }
   const lab = [];
@@ -274,6 +278,16 @@ function drawTree() {
   }
   $('tvPts').innerHTML =
     `<b>${treePts()}</b> 點可用<small>已點 ${S.tree.length - 1} / ${TREE.N.length - 1}・每升一級 +1</small>`;
+}
+/* 弧線的控制點：圓心 c、兩端 A、B，取兩端切線的交點（弧度大於 150° 或太扁就畫直線） */
+function arcCtl(ax, ay, bx, by, c) {
+  const mx = (ax + bx) / 2 - c[0],
+    my = (ay + by) / 2 - c[1],
+    d2 = mx * mx + my * my,
+    r = (Math.hypot(ax - c[0], ay - c[1]) + Math.hypot(bx - c[0], by - c[1])) / 2;
+  if (d2 < 1 || d2 < r * r * 0.07) return null;
+  const f = (r * r) / d2;
+  return [c[0] + mx * f, c[1] + my * f];
 }
 /* 中間的契靈圓盤：已裝的契靈、空格、還沒解鎖（要通過昇華試煉）的格子 */
 function drawDisc(x, fs) {

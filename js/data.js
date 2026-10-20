@@ -2143,8 +2143,9 @@ const TREE = (() => {
     byId[id] = n;
     return id;
   };
-  const ln = (a, b) => {
-    if (a && b && a !== b) E.push([a, b]);
+  /* c 是弧線的圓心（世界座標，0.3.14）：有的話 tree.js 把這條連線畫成繞著圓心的弧 */
+  const ln = (a, b, c) => {
+    if (a && b && a !== b) E.push(c ? [a, b, c] : [a, b]);
   };
   const used = {},
     notable = t => {
@@ -2155,61 +2156,415 @@ const TREE = (() => {
     };
   /* 0.3.13：中間是放契靈的圓盤（半徑 130 以內沒有天賦節點，tree.js 畫）。比照 PoE 沒有出發點：
      看不見的根節點 start 在圓心，接到每一條輻射路線的第一格，從圓盤旁邊的任何一條路線都可以開始點 */
-  const RS = 210,
-    STEP = 42;
   add('start', 0, 0, ['契靈圓盤', {}, 'star'], 'start');
-  // 輻射路線
-  const sp = SPOKES.map((s, j) => {
-    const ids = [];
-    for (let i = 0; i <= 10; i++) {
-      const [x, y] = P(RS + i * STEP, s.a);
-      ids.push(add(`p${j}_${i}`, x, y, TH[s.sm[i % 2]].s, 'small'));
-      if (i) ln(ids[i - 1], ids[i]);
-    }
-    const [kx, ky] = P(RS + 10 * STEP + 52, s.a);
-    add(`k${j}`, kx, ky, s.ks, 'key');
-    ln(ids[10], `k${j}`);
-    // 節點群：第 2、6 格在順時針側，第 4、8 格在逆時針側；外側兩群是 6 節點
-    [
-      [2, 1],
-      [4, -1],
-      [6, 1],
-      [8, -1]
-    ].forEach(([i, side], ci) => {
-      const t = s.cl[ci],
-        big = ci >= 2,
-        n = big ? 6 : 5,
-        rr = big ? 24 : 21,
-        off = big ? 48 : 44;
-      const a = (s.a * Math.PI) / 180,
-        tx = -Math.sin(a) * side,
-        ty = Math.cos(a) * side,
-        [bx, by] = P(RS + i * STEP, s.a),
-        cx = bx + tx * off,
-        cy = by + ty * off;
-      const base = Math.atan2(-ty, -tx),
-        nb = big ? (ci === 3 ? [2, 4] : [3]) : [2],
-        ring = [];
-      for (let q = 0; q < n; q++) {
-        const aa = base + (q / n) * Math.PI * 2,
-          isN = nb.includes(q);
-        ring.push(
-          add(
-            `c${j}_${ci}_${q}`,
-            cx + rr * Math.cos(aa),
-            cy + rr * Math.sin(aa),
-            isN ? notable(t) : TH[t].s,
-            isN ? 'notable' : 'small'
-          )
+  /* 0.3.14 每條路線各自不同（比照 PoE2，不追求每條一樣公平）：路線拆成內段（圓盤 → 中圈，半徑約 290～570）與外段
+     （中圈 → 外圈 → 基石，約 570～880）。內段 6 種結構、外段 5 種結構，15 條路線的組合都不重複，奇偶路線左右鏡像。
+     座標用路線自己的 (r, l)：r 是離圓心的距離、l 是橫向（右手邊為正），寬度大約只能用到 ±0.17r。
+     小節點用路線的兩種小點屬性交錯；重要節點依序用 cl 的四個主題 */
+  const sec = SPOKES.map((s, j) => {
+    const th = (s.a * Math.PI) / 180,
+      mir = j % 2 ? 1 : -1,
+      W = (r, l) => [r * Math.cos(th) - l * mir * Math.sin(th), r * Math.sin(th) + l * mir * Math.cos(th)];
+    let k = 0,
+      si = 0,
+      ni = 0;
+    const sm = (r, l) => add(`t${j}_${k++}`, ...W(r, l), TH[s.sm[si++ % 2]].s, 'small'),
+      nb = (r, l) => add(`t${j}_${k++}`, ...W(r, l), notable(s.cl[ni++ % 4]), 'notable'),
+      /* 串成一條線：pts 是 [r, l, 'n'?]，回傳 id 陣列；from 是要接上的起點 */
+      path = (from, pts) => {
+        let prev = from;
+        return pts.map(([r, l, n]) => {
+          const id = n ? nb(r, l) : sm(r, l);
+          ln(prev, id);
+          prev = id;
+          return id;
+        });
+      },
+      /* 一圈：中心 (cr, cl)、半徑 rad、n 個點，第 0 個點朝 a0（弧度，0 是往外）；far 個離入口最遠的當重要節點 */
+      loop = (from, cr, cl, rad, n, a0, far = 1) => {
+        const ids = Array.from({ length: n }, (_, q) => {
+          const t = a0 + (q / n) * 6.283,
+            isN = far && Math.abs(q - n / 2) < far / 2 + 0.01;
+          return (isN ? nb : sm)(cr + rad * Math.cos(t), cl + rad * Math.sin(t));
+        });
+        ids.forEach((id, q) => ln(id, ids[(q + 1) % n], W(cr, cl)));
+        ln(from, ids[0]);
+        return ids;
+      },
+      /* 沿著以 (cr, cl) 為圓心的弧串起來：第一段從 from 直線接上，之後畫成弧線 */
+      arc = (from, cr, cl, pts) => {
+        let prev = from;
+        return pts.map(([r, l, n], q) => {
+          const id = n ? nb(r, l) : sm(r, l);
+          ln(prev, id, q ? W(cr, cl) : null);
+          prev = id;
+          return id;
+        });
+      };
+    /* ---- 內段：entry（接圓盤）→ mid（中圈的連接點） ---- */
+    const IN = [
+      /* 大菱形框架：兩條邊夾著中間的脊，邊的轉角往內掛重要節點 */
+      () => {
+        const e = sm(290, 0),
+          L = path(e, [
+            [335, -30],
+            [385, -62],
+            [435, -90]
+          ]),
+          Rr = path(e, [
+            [335, 30],
+            [385, 62],
+            [435, 90]
+          ]),
+          sp = path(e, [
+            [340, 0],
+            [390, 0],
+            [440, 0, 1],
+            [490, 0],
+            [530, 0]
+          ]),
+          m = sm(570, 0);
+        ln(
+          path(L[2], [
+            [490, -60],
+            [535, -30]
+          ])[1],
+          m
         );
+        ln(
+          path(Rr[2], [
+            [490, 60],
+            [535, 30]
+          ])[1],
+          m
+        );
+        ln(sp[4], m);
+        path(L[1], [[420, -40, 1]]);
+        path(Rr[1], [[420, 40, 1]]);
+        return [e, m];
+      },
+      /* 螺旋：入口旁邊捲進去，中心是重要節點；另一條路繞過去接中圈 */
+      () => {
+        const e = sm(290, 0),
+          c = [440, 18],
+          sp = [];
+        let prev = sm(330, 15),
+          t = Math.PI;
+        ln(e, prev);
+        /* 每一步沿著螺旋走約 34，越往中心半徑越小 */
+        for (let q = 0; q < 8; q++) {
+          const rad = 62 - q * 5.5,
+            id = (q >= 6 ? nb : sm)(c[0] + rad * Math.cos(t), c[1] + rad * Math.sin(t));
+          t += 34 / rad;
+          ln(prev, id, q ? W(...c) : null);
+          prev = id;
+          sp.push(id);
+        }
+        const by = path(e, [
+            [330, -42],
+            [390, -70],
+            [455, -74],
+            [515, -50]
+          ]),
+          m = sm(570, 0);
+        ln(by[3], m);
+        ln(sp[3], m);
+        return [e, m];
+      },
+      /* 輪軸：直線到中心，往四個方向伸出輻條，輻條末端是重要節點 */
+      () => {
+        const e = sm(290, 0),
+          st = path(e, [
+            [335, 0],
+            [380, 0]
+          ]),
+          h = sm(430, 0);
+        ln(st[1], h);
+        [60, 120, 240, 300].forEach((d, q) => {
+          const t = (d * Math.PI) / 180;
+          path(h, [
+            [430 + 45 * Math.cos(t), 45 * Math.sin(t)],
+            [430 + 85 * Math.cos(t), 85 * Math.sin(t), q % 2 === 0]
+          ]);
+        });
+        const out = path(h, [
+            [478, 0],
+            [524, 0]
+          ]),
+          m = sm(570, 0);
+        ln(out[1], m);
+        return [e, m];
+      },
+      /* 雙軌梯子：兩條平行的軌道，中間兩根橫檔，外側掛著重要節點 */
+      () => {
+        const e = sm(285, 0),
+          rs = [320, 365, 410, 455, 500, 545],
+          A = path(
+            e,
+            rs.map(r => [r, -42])
+          ),
+          Bz = path(
+            e,
+            rs.map(r => [r, 42])
+          ),
+          m = sm(570, 0);
+        ln(A[1], Bz[1]);
+        ln(A[4], Bz[4]);
+        ln(A[5], m);
+        ln(Bz[5], m);
+        path(A[3], [[475, -82, 1]]);
+        path(Bz[2], [[430, 78, 1]]);
+        const c = nb(432, 0);
+        ln(A[3], c);
+        ln(Bz[3], c);
+        return [e, m];
+      },
+      /* 分岔樹：一分三，左邊再分岔，葉子是重要節點，右邊接中圈 */
+      () => {
+        const e = sm(290, 0),
+          f = path(e, [
+            [340, 0],
+            [385, 0]
+          ])[1],
+          Lb = path(f, [
+            [425, -38],
+            [465, -58]
+          ]),
+          Rb = path(f, [
+            [425, 38],
+            [465, 56]
+          ]),
+          m = sm(570, 0);
+        path(f, [[435, 0, 1]]);
+        path(Lb[1], [[505, -82, 1]]);
+        path(Lb[1], [
+          [515, -40],
+          [550, -25, 1]
+        ]);
+        ln(path(Rb[1], [[520, 30]])[0], m);
+        path(Rb[1], [[500, 84]]);
+        return [e, m];
+      },
+      /* 花：莖往上，兩片花瓣是繞回來的小圈 */
+      () => {
+        const e = sm(290, 0),
+          st = path(e, [
+            [335, 0],
+            [380, 0]
+          ]),
+          h = sm(425, 0);
+        ln(st[1], h);
+        [-55, 55].forEach(d => {
+          const t = (d * Math.PI) / 180,
+            P1 = [425 + 48 * Math.cos(t - 0.42), 48 * Math.sin(t - 0.42)],
+            P2 = [425 + 88 * Math.cos(t), 88 * Math.sin(t)],
+            P3 = [425 + 48 * Math.cos(t + 0.42), 48 * Math.sin(t + 0.42)],
+            pc = [425 + 52 * Math.cos(t), 52 * Math.sin(t)],
+            pe = arc(h, ...pc, [P1, [...P2, 1], P3]);
+          ln(pe[2], h, W(...pc));
+        });
+        const up = path(h, [
+            [470, 0],
+            [515, 0, 1]
+          ]),
+          m = sm(570, 0);
+        ln(up[1], m);
+        return [e, m];
+      },
+      /* 沙漏：兩個三角形尖對尖，腰上是重要節點，上下三角形中間各一個重要節點 */
+      () => {
+        const e = sm(290, 0),
+          w = nb(430, 0),
+          m = sm(570, 0),
+          lowN = nb(350, 0),
+          upN = nb(510, 0);
+        [-1, 1].forEach(sd => {
+          const lo = path(e, [
+            [322, 58 * sd],
+            [376, 30 * sd]
+          ]);
+          ln(lo[1], w);
+          ln(lo[0], lowN);
+          const up = path(w, [
+            [484, 30 * sd],
+            [538, 58 * sd]
+          ]);
+          ln(up[1], m);
+          ln(up[1], upN);
+        });
+        return [e, m];
+      },
+      /* 新月：一道大弧往旁邊掃過去，內側掛兩個重要節點 */
+      () => {
+        const e = sm(292, 0),
+          c = [430, 70],
+          cr = (t, rad = 150) => [c[0] + rad * Math.cos(t), c[1] + rad * Math.sin(t)],
+          ar = arc(
+            e,
+            ...c,
+            [-2.35, -2.02, -1.69, -1.36, -1.03, -0.7].map((t, q) => [...cr(t), q === 3])
+          ),
+          m = sm(570, 0);
+        ln(ar[5], m, W(...c));
+        /* 弧的內側掛兩個重要節點，外側一條短路 */
+        path(ar[1], [[378, -22, 1]]);
+        path(ar[4], [[500, -22, 1]]);
+        path(e, [
+          [340, 30],
+          [392, 48]
+        ]);
+        return [e, m];
       }
-      ln(ids[i], ring[0]);
-      for (let q = 0; q < n; q++) ln(ring[q], ring[(q + 1) % n]);
-    });
-    return ids;
+    ];
+    /* ---- 外段：mid → out（外圈的連接點，外圈專精群從這裡出去）→ 基石 ---- */
+    const OUT = [
+      /* 長路線，兩側各掛一個環 */
+      m => {
+        const pt = path(m, [
+          [615, 0],
+          [660, 0],
+          [705, 0],
+          [750, 0],
+          [795, 0]
+        ]);
+        loop(pt[1], 680, -78, 30, 5, Math.PI / 2 + 0.6);
+        loop(pt[2], 728, 80, 30, 6, -Math.PI / 2 - 0.4, 2);
+        return pt[4];
+      },
+      /* 三角框架：兩條斜邊在外圈會合，底邊中間是重要節點 */
+      m => {
+        const Lf = path(m, [
+            [620, -52],
+            [675, -100]
+          ]),
+          Rf = path(m, [
+            [620, 52],
+            [675, 100]
+          ]),
+          base = path(Lf[1], [
+            [680, -50],
+            [685, 0, 1],
+            [680, 50]
+          ]),
+          o = sm(800, 0);
+        ln(base[2], Rf[1]);
+        ln(path(Lf[1], [[740, -55]])[0], o);
+        ln(path(Rf[1], [[740, 55]])[0], o);
+        ln(path(base[1], [[742, 0, 1]])[0], o);
+        return o;
+      },
+      /* 連環：一串大小不同的圈 */
+      m => {
+        const a = loop(m, 642, 0, 32, 4, Math.PI, 1),
+          b = loop(a[2], 748, 0, 40, 6, Math.PI, 1),
+          o = sm(830, 0);
+        ln(b[3], o);
+        return o;
+      },
+      /* 扇形：像昇華盤一樣從一點散開成四條弧，其中一條繼續往外 */
+      m => {
+        const h = sm(612, 0);
+        ln(m, h);
+        [-62, -30, 30, 62].forEach((d, q) => {
+          const t = (d * Math.PI) / 180,
+            pts = [45, 90, 135].map((dd, z) => {
+              const tt = t + (d > 0 ? 1 : -1) * 0.1 * z;
+              return [612 + dd * Math.cos(tt), dd * Math.sin(tt), z === 2 && q % 3 === 0];
+            });
+          path(h, pts);
+        });
+        const pt = path(h, [
+          [662, 0],
+          [712, 0],
+          [762, 0, 1],
+          [805, 0]
+        ]);
+        return pt[3];
+      },
+      /* 星形：中心掛滿四個方向的墜飾 */
+      m => {
+        const h = path(m, [
+          [615, 0],
+          [668, 0]
+        ])[1];
+        [55, 115, 245, 305].forEach((d, q) => {
+          const t = (d * Math.PI) / 180;
+          path(h, [
+            [668 + 42 * Math.cos(t), 42 * Math.sin(t)],
+            [668 + 80 * Math.cos(t), 80 * Math.sin(t), q === 1 || q === 2]
+          ]);
+        });
+        const pt = path(h, [
+          [722, 0],
+          [770, 0, 1],
+          [810, 0]
+        ]);
+        return pt[2];
+      },
+      /* 蝴蝶：身體是一條路，兩邊各一大一小的翅膀 */
+      m => {
+        const pt = path(m, [
+          [620, 0],
+          [670, 0],
+          [720, 0],
+          [770, 0],
+          [815, 0]
+        ]);
+        loop(pt[0], 652, -68, 34, 6, Math.PI / 2 + 0.9, 1);
+        loop(pt[0], 652, 68, 34, 6, -Math.PI / 2 - 0.9, 1);
+        loop(pt[2], 742, -64, 24, 4, Math.PI / 2 + 0.6, 0);
+        loop(pt[2], 742, 64, 24, 4, -Math.PI / 2 - 0.6, 0);
+        return pt[4];
+      },
+      /* 皇冠：一條橫帶，往外伸出三根尖刺，中間那根接外圈 */
+      m => {
+        const c = sm(628, 0),
+          band = [-92, -46, 46, 92].map(l => sm(650, l));
+        ln(m, c);
+        ln(c, band[1], [0, 0]);
+        ln(c, band[2], [0, 0]);
+        ln(band[0], band[1], [0, 0]);
+        ln(band[2], band[3], [0, 0]);
+        path(band[0], [[720, -96, 1]]);
+        path(band[3], [[720, 96, 1]]);
+        path(band[1], [[700, -50]]);
+        path(band[2], [[700, 50]]);
+        return path(c, [
+          [690, 0],
+          [748, 0, 1],
+          [805, 0]
+        ])[2];
+      },
+      /* 眼：上下兩道弧夾成一個眼睛，中間的瞳孔是一圈 */
+      m => {
+        const s0 = sm(612, 0),
+          o = sm(818, 0);
+        ln(m, s0);
+        const tops = [-1, 1].map(sd => {
+          const a = arc(s0, 715, -150 * sd, [
+            [648, 52 * sd],
+            [692, 74 * sd],
+            [740, 74 * sd],
+            [784, 50 * sd]
+          ]);
+          ln(a[3], o, W(715, -150 * sd));
+          return a;
+        });
+        const iris = loop(tops[0][1], 716, 0, 28, 5, Math.PI / 2 + Math.PI, 1);
+        ln(iris[2], tops[1][1]);
+        return o;
+      }
+    ];
+    /* 內段 8 種、外段 8 種，15 條路線的組合都不重複 */
+    const [entry, mid] = IN[j % IN.length](),
+      out = OUT[(j * 3 + (j >= 8 ? 1 : 2)) % OUT.length](mid),
+      [kx, ky] = W(885, 0);
+    add(`k${j}`, kx, ky, s.ks, 'key');
+    ln(out, `k${j}`);
+    return { entry, mid, out };
   });
-  // 每條路線的第一格都接到圓盤
-  sp.forEach(ids => ln('start', ids[0]));
+  // 每條路線的入口都接到圓盤
+  sec.forEach(q => ln('start', q.entry));
   /* 0.2.4 外圈：每條路線往外分出兩個 9 節點的專精群（左邊武器、右邊組隊），最外圈再把所有專精群接成一圈 */
   const WEP = [
       'axe',
@@ -2245,45 +2600,76 @@ const TREE = (() => {
       'tactic',
       'guard'
     ],
-    CR = 840,
-    CRAD = 38,
-    RING = 960,
+    CR = 1120,
+    CRAD = 48,
+    RING = 1280,
     outer = [];
   const angTo = (x, y, cx, cy) => Math.atan2(y - cy, x - cx);
   SPOKES.forEach((s, j) => {
     const pair = [];
     [
-      [WEP[j], -8, 'w'],
-      [PTY[j], 8, 'q']
+      [WEP[j], -7, 'w'],
+      [PTY[j], 7, 'q']
     ].forEach(([t, da, tag]) => {
       const [cx, cy] = P(CR, s.a + da),
-        [sx, sy] = P(RS + 9 * STEP, s.a),
+        sx = byId[sec[j].out].x,
+        sy = byId[sec[j].out].y,
         a0 = angTo(sx, sy, cx, cy),
         ex = cx + Math.cos(a0) * CRAD,
         ey = cy + Math.sin(a0) * CRAD;
-      let prev = `p${j}_9`;
+      let prev = sec[j].out;
+      /* 0.3.14：先往旁邊彎出去再往外，才不會貼著路線最外面那格 */
+      const r9 = Math.hypot(sx, sy),
+        a9 = Math.atan2(sy, sx),
+        re = Math.hypot(ex, ey),
+        ae = Math.atan2(ey, ex),
+        dA = ((ae - a9 + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
       for (let q = 1; q <= 3; q++) {
-        const id = add(`${tag}${j}_p${q}`, sx + ((ex - sx) * q) / 4, sy + ((ey - sy) * q) / 4, TH[t].s, 'small');
+        const rr = r9 + ((re - r9) * q) / 4,
+          aa = a9 + dA * Math.min(1, q / 2),
+          id = add(`${tag}${j}_p${q}`, rr * Math.cos(aa), rr * Math.sin(aa), TH[t].s, 'small');
         ln(prev, id);
         prev = id;
       }
-      const ring = [];
+      /* 0.3.14：專精群輪流用三種形狀（9 個節點，第 0 個接進來）：環、輪（中心是刻印重要節點）、星（中心往外放射） */
+      const form = (j + (tag === 'q' ? 1 : 0)) % 3,
+        pos = q => {
+          if (form === 0 || (form === 1 && q < 8)) {
+            const aa = a0 + (q / (form === 0 ? 9 : 8)) * Math.PI * 2;
+            return [cx + CRAD * Math.cos(aa), cy + CRAD * Math.sin(aa)];
+          }
+          if (form === 1) return [cx, cy];
+          if (q === 0) return [cx + CRAD * Math.cos(a0), cy + CRAD * Math.sin(a0)];
+          if (q === 1) return [cx, cy];
+          const aa = a0 + Math.PI * (0.45 + ((q - 2) / 6) * 1.1);
+          return [cx + CRAD * 1.15 * Math.cos(aa), cy + CRAD * 1.15 * Math.sin(aa)];
+        },
+        gq = form === 1 ? 8 : 5,
+        nq = form === 2 ? [3, 7] : [2, 6],
+        ring = [];
       for (let q = 0; q < 9; q++) {
-        const aa = a0 + (q / 9) * Math.PI * 2,
-          isG = q === 5,
-          isN = q === 2 || q === 7;
+        const isG = q === gq,
+          isN = nq.includes(q),
+          [x, y] = pos(q);
         ring.push(
           add(
             `${tag}${j}_${q}`,
-            cx + CRAD * Math.cos(aa),
-            cy + CRAD * Math.sin(aa),
+            x,
+            y,
             isG ? notable('gem') : isN ? notable(t) : TH[t].s,
             isG || isN ? 'notable' : 'small'
           )
         );
       }
       ln(prev, ring[0]);
-      for (let q = 0; q < 9; q++) ln(ring[q], ring[(q + 1) % 9]);
+      if (form === 0) for (let q = 0; q < 9; q++) ln(ring[q], ring[(q + 1) % 9]);
+      else if (form === 1) {
+        for (let q = 0; q < 8; q++) ln(ring[q], ring[(q + 1) % 8]);
+        [0, 2, 4, 6].forEach(q => ln(ring[q], ring[8]));
+      } else {
+        ln(ring[0], ring[1]);
+        for (let q = 2; q < 9; q++) ln(ring[1], ring[q]);
+      }
       pair.push({ ring, cx, cy, a0 });
     });
     outer.push(pair);
@@ -2298,7 +2684,8 @@ const TREE = (() => {
     let prev = nearest(from, ...pts[0]);
     pts.forEach(([x, y], q) => {
       const id = add(`${tag}_${q}`, x, y, TH.gem.s, 'small');
-      ln(prev, id);
+      /* 最外圈畫成繞著圓心的弧 */
+      ln(prev, id, q ? [0, 0] : null);
       prev = id;
     });
     ln(prev, nearest(to, ...pts[pts.length - 1]));
@@ -2311,22 +2698,28 @@ const TREE = (() => {
   });
   // 中圈（第 5 格）與外圈（第 9 格）把相鄰路線接起來
   for (let j = 0; j < SPOKES.length; j++) {
-    const k = (j + 1) % SPOKES.length,
-      a1 = SPOKES[j].a,
-      a2 = a1 + 24;
+    const k = (j + 1) % SPOKES.length;
     [
       [5, 'm'],
       [9, 'o']
     ].forEach(([i, tag]) => {
-      let prev = sp[j][i];
+      const anc = q => (i === 5 ? sec[q].mid : sec[q].out);
+      let prev = anc(j);
       for (let q = 1; q <= 2; q++) {
-        const [x, y] = P(RS + i * STEP, a1 + ((a2 - a1) * q) / 3),
+        /* 0.3.14：路線會彎，連接點改用兩端節點的實際角度內插 */
+        const nA = byId[anc(j)],
+          nB = byId[anc(k)],
+          A1 = Math.atan2(nA.y, nA.x),
+          A2 = A1 + ((Math.atan2(nB.y, nB.x) - A1 + 3 * Math.PI) % (2 * Math.PI)) - Math.PI,
+          rr = (Math.hypot(nA.x, nA.y) + Math.hypot(nB.x, nB.y)) / 2,
+          [x, y] = P(rr, ((A1 + ((A2 - A1) * q) / 3) * 180) / Math.PI),
           pool = q === 1 ? SPOKES[j].sm : SPOKES[k].sm;
         const id = add(`${tag}${j}_${q}`, x, y, TH[pool[q % 2]].s, 'small');
-        ln(prev, id);
+        /* 中圈、外圈的連接畫成繞著圓心的弧 */
+        ln(prev, id, [0, 0]);
         prev = id;
       }
-      ln(prev, sp[k][i]);
+      ln(prev, anc(k), [0, 0]);
     });
   }
   /* 0.2.9 珠寶槽：最外圈每條路線一個（15）＋中圈 6 個，點亮後可以放惡魔珠寶 */
@@ -2337,5 +2730,5 @@ const TREE = (() => {
   });
   return { N, E, byId };
 })();
-const VER = '0.3.13';
+const VER = '0.3.14';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

@@ -24,7 +24,8 @@
 | 裝備底材、詞綴、通貨 | `js/data.js` | `BASES`、`AFF`、`CUR`、`STATN`（屬性的顯示文字） |
 | 天賦樹節點與基石 | `js/data.js` | `TH`（主題與重要節點）、`SPOKES`（15 條路線與基石）、`TREE`（產生節點座標與連線） |
 | 契靈圓盤、沒有出發點（0.3.13） | `js/data.js`、`js/tree.js` | `TREE` 開頭的根節點 `start`（圓心，接到每條輻射路線的第一格；`startOf()` 永遠是 `start`）；`CLASSES` 只剩名稱與主色（`clsOf`／`OLDCLS`）；圓盤 `DISC_R`／`dslotXY`／`drawDisc`（接到根節點的線從圓盤邊緣畫起）、`TV.slot`（`renderTreeCard` 顯示欄位）、`A.treePact` |
-| 昇華盤的扇形路線（0.3.13） | `js/asc.js` | `ascPolar`（入口與每條路線的角度、距離 `AV_FAN`／`AV_D`）、`ascXY`、`ascCtl`（弧線控制點，`drawAsc`）；節點建在 `ASCN`（沒有終極 `u`） |
+| 昇華盤的扇形路線（0.3.13／0.3.14） | `js/asc.js` | 資料 `t1`（4 條路線的第一個大點）、`t2`（`[路線, 節點]`）、`u`（補缺第二層的路線與第三層，見 `ASCN` 的建立）；座標 `ascPolar`（`AV_E`、`AV_FAN`、`AV_D`）、`ascXY`、`ascCtl`（弧線控制點，`drawAsc`） |
+| 天賦樹的路線結構（0.3.14） | `js/data.js` | `TREE` 的 `sec`：每條路線用 `W(r, l)` 自己的座標，工具 `sm`／`nb`／`path`／`loop`；工具還有 `arc`（弧線串起來）；內段 `IN`（8 種，回傳入口與中圈連接點）、外段 `OUT`（8 種，回傳外圈連接點），組合見 `sec` 結尾；連線 `ln(a, b, 圓心)` 帶圓心時 `tree.js` 用 `arcCtl` 畫成弧；中圈／外圈連接用 `sec[j].mid`／`.out`；外圈專精群三種形狀 `form`、`CR`／`CRAD`／`RING`；舊存檔的節點保留在 `migrate` 的 `v < 20` |
 | 天賦樹介面（縮放、點亮、退點、總覽） | `js/tree.js` | `drawTree`、`renderTreeCard`、`pathTo`、`canRefund` |
 | 屬性計算（傷害、護甲、抗性、基石效果） | `js/items.js` | `sumStats`、`stats`（新屬性要加進 `STAT0`；每級成長 `HP_LV`、`MP_LV`） |
 | 回復規則（自然回復、自動喝水） | `js/items.js`、`js/map.js` | `naturalRegen`、`autoPot`；走路在 `setPos`、時間在 `timeRegen` |
@@ -151,12 +152,12 @@
 - **utils**（6）
   `h:7`、`rng:13`、`rnd:22`、`now:23`、`REFRESH:25`、`epoch:27`、`uid:29`、`esc:30`、`hex2rgb:31`、`shade:41`、`dist:51`、`fmtD:60`、`dirName:61`、`RANGE:66`、`reachOf:69`
 
-### js/data.js（2342 行）
+### js/data.js（2735 行）
 
 - **state**（3）
   `SLOT:5`、`KEY:6`
 - **game data**（22）
-  `CLASSES:26`、`OLDCLS:36`、`clsOf:37`、`SKILLS:39`、`GEM_MAX:68`、`GEM_DRAW:70`、`soulNeed:71`、`GAFF:73`、`GAFFI:155`、`GCUR:157`、`GCURI:167`、`EL:168`、`MONS:169`、`MIMIC:1185`、`EMODS:1198`、`DTYPES:1211`、`DMODS:1322`、`DMODI:1335`、`UMODS:1337`、`EMODI:1344`、`FRAG_PARTS:1346`、`ZONE_CELL:1348`、`ZMODS:1350`、`RCOL:1360`、`RGLOW:1362`、`RAREA:1363`、`SLOTS:1365`、`SLOTN:1366`、`BASES:1379`、`DROPS:1457`、`T5:1458`、`ARMOR:1465`、`AFF:1467`、`AFFI:1621`、`STATN:1622`、`sg:1676`、`CUR:1722`、`CURI:1733`、`TH:1736`、`SPOKES:2028`、`TREE:2135`、`VER:2340`、`START:2341`
+  `CLASSES:26`、`OLDCLS:36`、`clsOf:37`、`SKILLS:39`、`GEM_MAX:68`、`GEM_DRAW:70`、`soulNeed:71`、`GAFF:73`、`GAFFI:155`、`GCUR:157`、`GCURI:167`、`EL:168`、`MONS:169`、`MIMIC:1185`、`EMODS:1198`、`DTYPES:1211`、`DMODS:1322`、`DMODI:1335`、`UMODS:1337`、`EMODI:1344`、`FRAG_PARTS:1346`、`ZONE_CELL:1348`、`ZMODS:1350`、`RCOL:1360`、`RGLOW:1362`、`RAREA:1363`、`SLOTS:1365`、`SLOTN:1366`、`BASES:1379`、`DROPS:1457`、`T5:1458`、`ARMOR:1465`、`AFF:1467`、`AFFI:1621`、`STATN:1622`、`sg:1676`、`CUR:1722`、`CURI:1733`、`TH:1736`、`SPOKES:2028`、`TREE:2135`、`VER:2733`、`START:2734`
 
 ### js/sprites.js（1333 行）
 
@@ -235,10 +236,10 @@
 - **GPS**（1614）
   `GPS:1616`、`gpsStart:1617`、`gpsStop:1655`、`tick:1662`、`timeRegen:1689`、`mmss:1698`、`plT:1702`、`placeLabel:1703`
 
-### js/tree.js（482 行）
+### js/tree.js（496 行）
 
 - **passive tree (full screen)**（3）
-  `startOf:5`、`treeAdj:6`、`canAlloc:16`、`pathTo:20`、`canRefund:47`、`treeTotals:64`、`TV:75`、`DISC_R:77`、`openTree:94`、`closeTree:102`、`sizeTree:110`、`treeFit:118`、`TX:124`、`NR:126`、`drawTree:127`、`drawDisc:279`、`renderTreeCard:320`
+  `startOf:5`、`treeAdj:6`、`canAlloc:16`、`pathTo:20`、`canRefund:47`、`treeTotals:64`、`TV:75`、`DISC_R:77`、`openTree:94`、`closeTree:102`、`sizeTree:110`、`treeFit:118`、`TX:124`、`NR:126`、`drawTree:127`、`arcCtl:283`、`drawDisc:293`、`renderTreeCard:334`
 
 ### js/ui.js（1689 行）
 
@@ -319,19 +320,19 @@
 - **足跡**（171）
   `FOOT_CELL:173`、`FOOTA:177`、`footKey:178`、`footN2Lv:179`、`footLv:180`、`footStep:185`、`footDens:210`、`drawFoot:213`
 
-### js/asc.js（1399 行）
+### js/asc.js（1520 行）
 
-- **data**（68）
-  `ASC_LV:69`、`N:72`、`ASC:73`、`TAGN:750`、`SUPN:768`、`SMG:792`、`ASCN:821`、`ASCB:822`
-- **state & stats**（847）
-  `ASCD:848`、`ascPts:849`、`ascUsed:850`、`ascNext:851`、`ascOn:852`、`ascStats:857`、`ascSup:864`、`ascTxt:866`、`ascCostTxt:878`、`ascCan:880`、`ascResetCost:887`、`ascAlert:889`
-- **icons**（891）
-  `ASCI:893`、`ascIcon:894`
-- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（919）
-  `AV:921`、`ascMine:923`、`AV_ANG:924`、`AV_FAN:928`、`ascPolar:930`、`ascXY:940`、`ascCtl:945`、`AIMG:951`、`ascImg:952`、`AX:962`、`openAsc:964`、`closeAsc:976`、`sizeAsc:981`、`ascFit:990`、`ascState:1006`、`drawAsc:1011`、`renderAscCard:1110`
-- **trials**（1245）
-  `ascTownHTML:1247`、`ascTrialDone:1254`
-- **actions**（1261）
+- **data**（69）
+  `ASC_LV:70`、`N:73`、`ASC:74`、`TAGN:859`、`SUPN:877`、`SMG:901`、`ASCN:930`、`ASCB:931`
+- **state & stats**（966）
+  `ASCD:967`、`ascPts:968`、`ascUsed:969`、`ascNext:970`、`ascOn:971`、`ascStats:976`、`ascSup:983`、`ascTxt:985`、`ascCostTxt:997`、`ascCan:999`、`ascResetCost:1006`、`ascAlert:1008`
+- **icons**（1010）
+  `ASCI:1012`、`ascIcon:1013`
+- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1038）
+  `AV:1040`、`ascMine:1042`、`AV_ANG:1043`、`AV_FAN:1047`、`ascPolar:1050`、`ascXY:1060`、`ascCtl:1065`、`AIMG:1071`、`ascImg:1072`、`AX:1082`、`openAsc:1084`、`closeAsc:1096`、`sizeAsc:1101`、`ascFit:1110`、`ascState:1127`、`drawAsc:1132`、`renderAscCard:1231`
+- **trials**（1366）
+  `ascTownHTML:1368`、`ascTrialDone:1375`
+- **actions**（1382）
 
 ### js/gacha.js（753 行）
 
@@ -375,8 +376,8 @@
 - **battle rendering**（796）
   `mpPos:798`、`renderMBHud:804`、`mpTurnT:904`、`mpTurnBar:905`、`renderMB:923`
 
-### js/main.js（251 行）
+### js/main.js（273 行）
 
 - **boot**（3）
-  `load:4`、`save:12`、`rebuildWorld:30`、`migrate:40`、`start:195`
+  `load:4`、`save:12`、`rebuildWorld:30`、`migrate:40`、`start:217`
 <!-- index:end -->
