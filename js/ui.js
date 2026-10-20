@@ -339,6 +339,23 @@ function gemDesc(q, st) {
       );
     if (q.avUp) out.push(`全隊${kw('行動值提前', 'buf')} ${q.avUp}`);
   }
+  /* 0.3.22 戰場單位 */
+  if (q.totem)
+    out.push(
+      `${kw('放置圖騰', 'buf')}（生命 ${Math.round((q.totem.hp || 0.35) * 100)}%、${q.totem.turns || 4} 回合，敵人會打它${q.totem.taunt ? '，很會吸引攻擊' : ''}）${q.totem.cry ? `：每回合給你 ${q.totem.cry.n} 傷害 +${q.totem.cry.more}%` : q.mult ? `：每次你行動後施放（${Math.round((q.totem.mul || 1) * 100)}% 傷害）` : ''}`
+    );
+  if (q.turret)
+    out.push(
+      `${kw('放置砲台', 'buf')}（${q.turret.turns || 4} 回合、打不到）：每次你行動後射擊（${Math.round((q.turret.mul || 1) * 100)}% 傷害）`
+    );
+  if (q.trap)
+    out.push(
+      `${kw('佈置陷阱', 'eff')}：下一隻行動的敵人先觸發（${Math.round((q.trap.mul || 1) * 100)}% 傷害，最多 3 個）`
+    );
+  if (q.mine)
+    out.push(
+      `${kw('放置地雷', 'eff')}：最多疊 5 顆，按「引爆地雷」一次炸掉（每顆 ${Math.round((q.mine.mul || 1) * 100)}%，每多一顆每顆 +10%）`
+    );
   if (q.cd) out.push(kw(`冷卻 ${q.cd} 回合`, 'bad'));
   if (q.lifeCost) out.push(kw(`消耗 ${Math.round(q.lifeCost * 100)}% 生命`, 'bad'));
   if (q.w) out.push(st && !wOk(st, q) ? kw(`需要${WTAGN[q.w]}（目前不能用）`, 'bad') : `需要${WTAGN[q.w]}`);
@@ -483,7 +500,7 @@ function renderSheet() {
   } else if (sheetName === 'skills') {
     const eqd = new Set(S.sk),
       list = [...S.gems].sort((a, b) => eqd.has(b.id) - eqd.has(a.id) || b.lv - a.lv || a.k.localeCompare(b.k));
-    html = `<div class="gslots">${S.sk
+    html = `<div class="gslots g6">${S.sk
       .map((id, i) => {
         const g = gemOf(id);
         return g

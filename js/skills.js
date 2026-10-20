@@ -741,6 +741,10 @@ function skTags(q) {
   if (q.charge) out.push(['蓄力', 'eff']);
   if (q.combo) out.push(['連續', 'eff']);
   if (q.sac || q.cmd) out.push([q.sac ? '犧牲' : '號令', 'pet']);
+  if (q.totem) out.push(['圖騰', 'pet']);
+  if (q.turret) out.push(['砲台', 'pet']);
+  if (q.trap) out.push(['陷阱', 'pet']);
+  if (q.mine) out.push(['地雷', 'pet']);
   if (q.guard) out.push(['格擋', 'buf']);
   if (q.lifeCost) out.push(['耗血', 'eff']);
   return out;
@@ -1240,3 +1244,133 @@ Object.assign(SKILLS.regenaura, { kind: 'aura', mp: 0, spirit: 20, party: 1, aur
 delete SKILLS.regenaura.heal;
 delete SKILLS.regenaura.healAll;
 delete SKILLS.regenaura.cd;
+/* ---- 0.3.22 圖騰、砲台、陷阱、地雷（欄位說明在 battle.js 的「戰場單位」） ---- */
+Object.assign(SKILLS, {
+  firetotem: {
+    name: '火焰圖騰',
+    mp: 12,
+    kind: 'spell',
+    el: 'fire',
+    mult: 1.6,
+    ignite: 1,
+    totem: { n: '火焰圖騰', hp: 0.35, turns: 4, mul: 0.7 },
+    fx: 'fire',
+    icon: 'flame',
+    r: 4
+  },
+  guardtotem: {
+    name: '守護圖騰',
+    mp: 10,
+    kind: 'spell',
+    el: 'phys',
+    mult: 0,
+    totem: { n: '守護圖騰', hp: 0.9, turns: 5, taunt: 250 },
+    icon: 'shield',
+    r: 3
+  },
+  crytotem: {
+    name: '戰吼圖騰',
+    mp: 10,
+    kind: 'buff',
+    totem: { n: '戰吼圖騰', hp: 0.4, turns: 4, cry: { n: '戰吼圖騰', turns: 2, more: 10 } },
+    icon: 'horn',
+    r: 4
+  },
+  frosttrap: {
+    name: '冰霜陷阱',
+    mp: 7,
+    kind: 'spell',
+    el: 'cold',
+    mult: 1.5,
+    freeze: 0.8,
+    trap: { n: '冰霜陷阱', mul: 1.3 },
+    fx: 'ice',
+    icon: 'ice',
+    r: 3
+  },
+  poisontrap: {
+    name: '毒霧陷阱',
+    mp: 9,
+    kind: 'spell',
+    el: 'phys',
+    mult: 0.35,
+    tg: 'all',
+    poison: 4,
+    trap: { n: '毒霧陷阱', mul: 1.2 },
+    icon: 'cloud',
+    r: 4
+  },
+  blastmine: {
+    name: '爆裂地雷',
+    mp: 5,
+    kind: 'spell',
+    el: 'fire',
+    mult: 1.1,
+    ignite: 1,
+    mine: { n: '爆裂地雷', mul: 1 },
+    fx: 'fire',
+    icon: 'flame',
+    r: 3
+  },
+  ballista: {
+    name: '弩砲台',
+    mp: 10,
+    kind: 'spell',
+    el: 'phys',
+    mult: 1.2,
+    turret: { n: '弩砲台', turns: 4, mul: 0.8 },
+    fx: 'arrow',
+    icon: 'xbow',
+    r: 3
+  },
+  tesla: {
+    name: '雷電砲台',
+    mp: 12,
+    kind: 'spell',
+    el: 'light',
+    mult: 0.8,
+    chain: 2,
+    turret: { n: '雷電砲台', turns: 4, mul: 0.8 },
+    fx: 'bolt',
+    icon: 'bolt',
+    r: 4
+  }
+});
+/* 轉圖騰、轉陷阱、轉地雷：任何傷害技能都能變成單位（轉換類） */
+SUPREQ.unit = q => SUPREQ.dmg(q) && !q.totem && !q.turret && !q.trap && !q.mine;
+SUPREQN.unit = '還不是圖騰／陷阱／地雷的傷害技能';
+SUPG.splice(
+  25,
+  0,
+  {
+    k: 'sp_totem',
+    n: '轉圖騰',
+    t: 3,
+    req: 'unit',
+    mp: 30,
+    conv: 1,
+    sk: { totem: { hp: 0.35, turns: 4, mul: 0.65 } },
+    d: '改成放圖騰：之後每次你行動後由圖騰施放（65% 傷害、4 回合、圖騰會被打）'
+  },
+  {
+    k: 'sp_trap',
+    n: '轉陷阱',
+    t: 3,
+    req: 'unit',
+    mp: 20,
+    conv: 1,
+    sk: { trap: { mul: 1.25 } },
+    d: '改成佈置陷阱：下一隻行動的敵人先觸發（125% 傷害）'
+  },
+  {
+    k: 'sp_mine',
+    n: '轉地雷',
+    t: 4,
+    req: 'unit',
+    mp: 15,
+    conv: 1,
+    sk: { mine: { mul: 0.85 } },
+    d: '改成放地雷：疊好幾顆一起引爆（每顆 85%，每多一顆 +10%）'
+  }
+);
+for (const sp of SUPG.slice(25, 28)) SUPGI[sp.k] = sp;

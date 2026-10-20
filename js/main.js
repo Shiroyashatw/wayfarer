@@ -263,6 +263,12 @@ function migrate(s) {
     });
     s.v = 24;
   }
+  if (s.v < 25) {
+    // 0.3.22：技能欄 4 格 → 6 格
+    s.sk = s.sk || [];
+    while (s.sk.length < 6) s.sk.push(null);
+    s.v = 25;
+  }
   return s;
 }
 function start() {
