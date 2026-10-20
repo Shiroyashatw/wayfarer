@@ -320,19 +320,19 @@
 - **足跡**（141）
   `FOOT_CELL:143`、`FOOTA:147`、`footKey:148`、`footN2Lv:149`、`footLv:150`、`footStep:155`、`footDens:180`、`drawFoot:183`
 
-### js/asc.js（2154 行）
+### js/asc.js（2219 行）
 
 - **data**（68）
-  `ASC_LV:69`、`N:72`、`ASC:73`、`TAGN:858`、`SUPN:876`、`SMG:900`、`ASCN:929`、`ASCB:930`、`ASC_ART:936`、`ASCE:1492`
-- **state & stats**（1557）
-  `ASCD:1558`、`ascPts:1559`、`ascUsed:1560`、`ascNext:1561`、`ascOn:1562`、`ascStats:1567`、`ascSup:1574`、`ascTxt:1576`、`ascCostTxt:1588`、`ascCan:1590`、`ascNear:1598`、`ascTurn:1600`、`ascResetCost:1615`、`ascAlert:1617`
-- **icons**（1619）
-  `ASCI:1621`、`ascIcon:1622`
-- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1647）
-  `AV:1649`、`ascMine:1651`、`AV_ANG:1652`、`AV_E:1656`、`ascXY:1658`、`ascCtl:1669`、`AIMG:1681`、`ascImg:1682`、`AX:1692`、`openAsc:1694`、`closeAsc:1706`、`sizeAsc:1711`、`ascFit:1720`、`ascState:1747`、`drawAsc:1752`、`renderAscCard:1860`
-- **trials**（2000）
-  `ascTownHTML:2002`、`ascTrialDone:2009`
-- **actions**（2016）
+  `ASC_LV:69`、`N:72`、`ASC:73`、`TAGN:858`、`SUPN:876`、`SMG:900`、`ASCN:929`、`ASCB:930`、`ASC_ART:936`、`ASCE:1557`
+- **state & stats**（1622）
+  `ASCD:1623`、`ascPts:1624`、`ascUsed:1625`、`ascNext:1626`、`ascOn:1627`、`ascStats:1632`、`ascSup:1639`、`ascTxt:1641`、`ascCostTxt:1653`、`ascCan:1655`、`ascNear:1663`、`ascTurn:1665`、`ascResetCost:1680`、`ascAlert:1682`
+- **icons**（1684）
+  `ASCI:1686`、`ascIcon:1687`
+- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1712）
+  `AV:1714`、`ascMine:1716`、`AV_ANG:1717`、`AV_E:1721`、`ascXY:1723`、`ascCtl:1734`、`AIMG:1746`、`ascImg:1747`、`AX:1757`、`openAsc:1759`、`closeAsc:1771`、`sizeAsc:1776`、`ascFit:1785`、`ascState:1812`、`drawAsc:1817`、`renderAscCard:1925`
+- **trials**（2065）
+  `ascTownHTML:2067`、`ascTrialDone:2074`
+- **actions**（2081）
 
 ### js/gacha.js（753 行）
 
