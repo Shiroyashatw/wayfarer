@@ -24,7 +24,7 @@
 | 裝備底材、詞綴、通貨 | `js/data.js` | `BASES`、`AFF`、`CUR`、`STATN`（屬性的顯示文字） |
 | 天賦樹節點與基石 | `js/data.js` | `TH`（主題與重要節點）、`SPOKES`（15 條路線與基石）、`TREE`（產生節點座標與連線） |
 | 契靈圓盤、沒有出發點（0.3.13） | `js/data.js`、`js/tree.js` | `TREE` 開頭的根節點 `start`（圓心，接到每條輻射路線的第一格；`startOf()` 永遠是 `start`）；`CLASSES` 只剩名稱與主色（`clsOf`／`OLDCLS`）；圓盤 `DISC_R`／`dslotXY`／`drawDisc`（接到根節點的線從圓盤邊緣畫起）、`TV.slot`（`renderTreeCard` 顯示欄位）、`A.treePact` |
-| 昇華分支圖案、三選一（0.3.16） | `js/asc.js` | 每條分支一張圖 `ASC_ART[分支 id]`（`s` 小點、`b` 大點、`ch` 抉擇＋三個選項、`L` 連線、`P` 路徑），建在 `ASCN`（`nb` 鄰居）與 `ASCE`（邊 `[甲, 乙, 圓心?]`）；大點是 `t1` 4 個＋`t2` 前 2 個，抉擇 `kind: 'c'`、三個選項 `kind: 'o'`（`hub`）是 `t2[2]`＋`u`；座標 `ascXY`（`AV_E`、`AV_K`）、弧 `ascCtl`；點亮 `ascCan`（`ascNear` 旁邊有已點的節點、`ascTurn` 一小一大輪流；選項要抉擇已點、其他選項沒點） |
+| 昇華分支圖案、三選一（0.3.16） | `js/asc.js` | 每條分支一張圖 `ASC_ART[分支 id]`（`s` 小點、`b` 大點、`ch` 抉擇＋三個選項、`L` 連線、`P` 路徑），建在 `ASCN`（`nb` 鄰居）與 `ASCE`（邊 `[甲, 乙, 圓心?]`）；大點是 `t1` 4 個＋`t2` 前 2 個，抉擇 `kind: 'c'`、三個選項 `kind: 'o'`（`hub`）是 `t2[2]`＋`u`；座標 `ascXY`（`AV_E`、`AV_K`）、弧 `ascCtl`；點亮 `ascCan`：`ascOpen`（旁邊有已點的節點、選項要抉擇已點且其他選項沒點、0.3.17 小點 `ascSmall`／大點各最多 4 個）＋`ascFree`（點了之後還補得滿 4 小 4 大，`ASCF` 快取）；剩餘數 `ascLeft` |
 | 天賦樹的路線結構（0.3.14） | `js/data.js` | `TREE` 的 `sec`：每條路線用 `W(r, l)` 自己的座標，工具 `sm`／`nb`／`path`／`loop`；工具還有 `arc`（弧線串起來）；內段 `IN`（8 種，回傳入口與中圈連接點）、外段 `OUT`（8 種，回傳外圈連接點），組合見 `sec` 結尾；連線 `ln(a, b, 圓心)` 帶圓心時 `tree.js` 用 `arcCtl` 畫成弧；中圈／外圈連接用 `sec[j].mid`／`.out`；外圈專精群三種形狀 `form`、`CR`／`CRAD`／`RING`；舊存檔的節點保留在 `migrate` 的 `v < 20` |
 | 天賦樹介面（縮放、點亮、退點、總覽） | `js/tree.js` | `drawTree`、`renderTreeCard`、`pathTo`、`canRefund` |
 | 屬性計算（傷害、護甲、抗性、基石效果） | `js/items.js` | `sumStats`、`stats`（新屬性要加進 `STAT0`；每級成長 `HP_LV`、`MP_LV`） |
@@ -320,19 +320,19 @@
 - **足跡**（141）
   `FOOT_CELL:143`、`FOOTA:147`、`footKey:148`、`footN2Lv:149`、`footLv:150`、`footStep:155`、`footDens:180`、`drawFoot:183`
 
-### js/asc.js（2219 行）
+### js/asc.js（2234 行）
 
-- **data**（68）
-  `ASC_LV:69`、`N:72`、`ASC:73`、`TAGN:858`、`SUPN:876`、`SMG:900`、`ASCN:929`、`ASCB:930`、`ASC_ART:936`、`ASCE:1557`
-- **state & stats**（1622）
-  `ASCD:1623`、`ascPts:1624`、`ascUsed:1625`、`ascNext:1626`、`ascOn:1627`、`ascStats:1632`、`ascSup:1639`、`ascTxt:1641`、`ascCostTxt:1653`、`ascCan:1655`、`ascNear:1663`、`ascTurn:1665`、`ascResetCost:1680`、`ascAlert:1682`
-- **icons**（1684）
-  `ASCI:1686`、`ascIcon:1687`
-- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1712）
-  `AV:1714`、`ascMine:1716`、`AV_ANG:1717`、`AV_E:1721`、`ascXY:1723`、`ascCtl:1734`、`AIMG:1746`、`ascImg:1747`、`AX:1757`、`openAsc:1759`、`closeAsc:1771`、`sizeAsc:1776`、`ascFit:1785`、`ascState:1812`、`drawAsc:1817`、`renderAscCard:1925`
-- **trials**（2065）
-  `ascTownHTML:2067`、`ascTrialDone:2074`
-- **actions**（2081）
+- **data**（69）
+  `ASC_LV:70`、`N:73`、`ASC:74`、`TAGN:859`、`SUPN:877`、`SMG:901`、`ASCN:930`、`ASCB:931`、`ASC_ART:937`、`ASCE:1560`
+- **state & stats**（1625）
+  `ASCD:1626`、`ascPts:1627`、`ascUsed:1628`、`ascNext:1629`、`ascOn:1630`、`ascStats:1635`、`ascSup:1642`、`ascTxt:1644`、`ascCostTxt:1656`、`ascCan:1658`、`ascSmall:1665`、`ascOpen:1667`、`ASCF:1676`、`ascFree:1677`、`ascNear:1689`、`ascLeft:1691`、`ascResetCost:1695`、`ascAlert:1697`
+- **icons**（1699）
+  `ASCI:1701`、`ascIcon:1702`
+- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1727）
+  `AV:1729`、`ascMine:1731`、`AV_ANG:1732`、`AV_E:1736`、`ascXY:1738`、`ascCtl:1749`、`AIMG:1761`、`ascImg:1762`、`AX:1772`、`openAsc:1774`、`closeAsc:1786`、`sizeAsc:1791`、`ascFit:1800`、`ascState:1827`、`drawAsc:1832`、`renderAscCard:1940`
+- **trials**（2080）
+  `ascTownHTML:2082`、`ascTrialDone:2089`
+- **actions**（2096）
 
 ### js/gacha.js（753 行）
 
@@ -376,8 +376,8 @@
 - **battle rendering**（796）
   `mpPos:798`、`renderMBHud:804`、`mpTurnT:904`、`mpTurnBar:905`、`renderMB:923`
 
-### js/main.js（282 行）
+### js/main.js（292 行）
 
 - **boot**（3）
-  `load:4`、`save:12`、`rebuildWorld:30`、`migrate:40`、`start:226`
+  `load:4`、`save:12`、`rebuildWorld:30`、`migrate:40`、`start:236`
 <!-- index:end -->
