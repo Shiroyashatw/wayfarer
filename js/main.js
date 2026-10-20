@@ -212,6 +212,15 @@ function migrate(s) {
     if (lost > 0 && s.log) s.log.unshift(`天賦樹改版：${lost} 個節點的位置變了，點數已退回`);
     s.v = 20;
   }
+  if (s.v < 21) {
+    // 0.3.16：昇華分支改成 24 種 PoE2 式的造型（短路線、岔路、三選一），已點的昇華節點全部退回
+    if (s.asc) {
+      if ((s.asc.nodes || []).length && s.log)
+        s.log.unshift('昇華改版：分支的節點排法換了，昇華點數已退回，可以重新點');
+      s.asc.nodes = [];
+    }
+    s.v = 21;
+  }
   return s;
 }
 function start() {
