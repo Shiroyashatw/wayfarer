@@ -44,6 +44,7 @@
 | `js/main.js` | `load`/`save`/`migrate`/`start`，最後執行 `start()` |
 | `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽 |
 | `tools/art.py` | `art/` 的 PNG 像素圖 → `js/art.js`（裁邊、內嵌）；新增怪物圖先用 skill `pixel-art` 產生 PixelLab 提示詞 |
+| `tools/pixellab_batch.py` | PixelLab API 批次產圖：讀 `docs/怪物提示詞.md`／`docs/圖示提示詞.md` 的提示詞，輸出到 `art/new/`（不進 git）；金鑰用環境變數 `PIXELLAB_API_KEY`，不要寫進專案 |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的函式行號索引 |
 | `supabase/migrations/` | 資料庫結構 |
 
