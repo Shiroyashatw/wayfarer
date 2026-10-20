@@ -1576,6 +1576,7 @@ const STATN = {
   critPct: v => `暴擊率 +${v}%`,
   critMulti: v => `暴擊傷害 ${v > 0 ? '+' : ''}${v}%`,
   speed: v => `速度 ${v > 0 ? '+' : ''}${v}`,
+  spirit: v => `精魄 +${v}`,
   leech: v => `傷害的 ${v}% 轉為生命`,
   spellPct: v => `法術傷害 +${v}%`,
   elePct: v => `元素傷害 +${v}%`,
@@ -2645,7 +2646,15 @@ const TREE = (() => {
     if (!n) return;
     Object.assign(n, { n: '珠寶槽', st: {}, ic: 'gem', type: 'socket' });
   });
+  /* 0.3.21 精魄：魔力、法術、技藝類的重要節點多給精魄（光環要花精魄），跟傷害節點搶點數 */
+  for (const n of N)
+    if (
+      (n.type === 'notable' || n.type === 'key') &&
+      n.st &&
+      (n.st.mana || n.st.manaRegen || n.st.mpCost || n.st.engPct || n.st.spellPct >= 20)
+    )
+      n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.20';
+const VER = '0.3.21';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

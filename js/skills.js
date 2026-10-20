@@ -722,7 +722,7 @@ function skTags(q) {
     if (q.addEl && q.addEl[0] !== el) out.push([EL[q.addEl[0]], 'el ' + q.addEl[0]]);
   } else if (q.kind === 'heal') out.push([q.healAll ? '全隊' : '自身', 'tg']);
   else if (q.cry) out.push(['全體', 'tg all']);
-  else if (!q.pet) out.push([q.buff && q.buff.party ? '全隊' : '自身', 'tg']);
+  else if (!q.pet) out.push([(q.buff && q.buff.party) || q.party ? '全隊' : '自身', 'tg']);
   if (q.w) out.push([WTAGN[q.w], 'w']);
   if (q.hits > 1 && q.tg !== 'rand') out.push(['連擊', 'eff']);
   if (q.bleed) out.push(['流血', 'eff']);
@@ -1184,3 +1184,59 @@ const SUPREQN = {
   buff: '有增益的技能'
 };
 const supFits = (k, q) => !!SUPGI[k] && SUPREQ[SUPGI[k].req](q);
+/* ---- 0.3.21 光環（比照 PoE2 的精魄）：放在光環欄、不佔技能欄，開著就一直生效，預留精魄；精魄不夠就開不了 ----
+   aura 是加到角色身上的屬性（隨等級每級 +3%、品質每 1% +1%）、spirit 是預留的精魄、party 組隊時隊友也受益（pb 是給隊友的增益）、avs 對有該狀態的敵人加傷（所有技能） */
+Object.assign(SKILLS, {
+  anger: { name: '憤怒', kind: 'aura', mp: 0, spirit: 20, aura: { firePct: 22, addFire: 3 }, icon: 'flame', r: 3 },
+  hatred: { name: '憎恨', kind: 'aura', mp: 0, spirit: 20, aura: { coldPct: 22, addCold: 3 }, icon: 'ice', r: 3 },
+  wrathaura: { name: '雷霆', kind: 'aura', mp: 0, spirit: 20, aura: { lightPct: 22, addLight: 3 }, icon: 'bolt', r: 3 },
+  determination: { name: '決心', kind: 'aura', mp: 0, spirit: 20, aura: { armorPct: 35 }, icon: 'shield', r: 3 },
+  purityaura: { name: '純淨', kind: 'aura', mp: 0, spirit: 20, aura: { resAll: 12 }, icon: 'shield', r: 4 },
+  grace: { name: '優雅', kind: 'aura', mp: 0, spirit: 25, aura: { evade: 8, speed: 2 }, icon: 'wind', r: 4 },
+  precise: {
+    name: '精準光環',
+    kind: 'aura',
+    mp: 0,
+    spirit: 25,
+    aura: { critPct: 6, critMulti: 15 },
+    icon: 'eye',
+    r: 4
+  },
+  vitality: { name: '活力', kind: 'aura', mp: 0, spirit: 15, aura: { regen: 4 }, icon: 'heart', r: 3 },
+  clarity: { name: '清晰', kind: 'aura', mp: 0, spirit: 15, aura: { manaRegen: 3 }, icon: 'mana', r: 3 },
+  scorch: {
+    name: '灼燒光環',
+    kind: 'aura',
+    mp: 0,
+    spirit: 25,
+    aura: { firePct: 8 },
+    avs: { burn: 25 },
+    icon: 'flame',
+    r: 5
+  },
+  cruelty: {
+    name: '殘酷光環',
+    kind: 'aura',
+    mp: 0,
+    spirit: 25,
+    aura: { physPct: 8 },
+    avs: { bleed: 6 },
+    icon: 'sword',
+    r: 5
+  }
+});
+/* 原本的戰旗、再生光環改成光環（組隊時隊友也受益） */
+Object.assign(SKILLS.banner, {
+  kind: 'aura',
+  mp: 0,
+  spirit: 25,
+  party: 1,
+  aura: { physPct: 12, critPct: 3 },
+  pb: { more: 10, crit: 3 }
+});
+delete SKILLS.banner.buff;
+delete SKILLS.banner.cd;
+Object.assign(SKILLS.regenaura, { kind: 'aura', mp: 0, spirit: 20, party: 1, aura: { regen: 5 }, pb: { hot: 3 } });
+delete SKILLS.regenaura.heal;
+delete SKILLS.regenaura.healAll;
+delete SKILLS.regenaura.cd;

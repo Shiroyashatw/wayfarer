@@ -676,6 +676,9 @@ function condMul(sk, e, me, st, n, cn = 0) {
   let m = 1;
   if (sk.foes) m *= Math.max(0.2, 1 + (sk.foes * Math.min(4, Math.max(0, n - 1))) / 100);
   if (sk.vs && e) for (const k in sk.vs) if (e[k] > 0) m *= 1 + (sk.vs[k] * stackOf(e, k)) / 100;
+  /* 0.3.21 光環的條件加傷（灼燒光環、殘酷光環…）對所有傷害技能 */
+  if (st && st.auraVs && e && !sk.pet && !sk.cry)
+    for (const k in st.auraVs) if (e[k] > 0) m *= 1 + (st.auraVs[k] * stackOf(e, k)) / 100;
   if (sk.lowT && e && e.hp < e.maxhp * 0.3) m *= 1 + sk.lowT / 100;
   if (sk.fullT && e && e.hp >= e.maxhp) m *= 1 + sk.fullT / 100;
   if (sk.lowMe && me) m *= 1 + (sk.lowMe * fl((1 - me.hp / st.maxhp) * 10)) / 100;
@@ -1241,6 +1244,8 @@ function roundEnd(p) {
   if (p.alive === false || p.hp <= 0) return;
   if (st.regen) p.hp = Math.min(st.maxhp, p.hp + st.regen);
   if (st.manaRegen) p.mp = Math.min(st.maxmp, p.mp + st.manaRegen);
+  /* 0.3.21 隊友光環的回血（每回合 hot% 生命） */
+  if (bsum(p, 'hot')) p.hp = Math.min(st.maxhp, p.hp + Math.round((st.maxhp * bsum(p, 'hot')) / 100));
   if (st.hpDrain) p.hp = Math.max(1, p.hp - Math.round((st.maxhp * st.hpDrain) / 100));
   if (p.guard > 0) p.guard--;
   p.buffs = (p.buffs || []).filter(b => --b.turns > 0);

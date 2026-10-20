@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 23,
+    v: 24,
     cls: 'destiny',
     lv: 1,
     tier: 1,
@@ -21,6 +21,7 @@ function newGame() {
     pact: { list: [], eq: [], follow: null },
     gems: [],
     sups: [],
+    aura: [],
     flags: [],
     scrolls: { stele: 0, circle: 0 },
     insc: [],
@@ -266,6 +267,14 @@ const gemOf = id => S.gems.find(g => g.id === id);
 const GEMK = () => Object.keys(SKILLS).filter(k => k !== 'attack');
 /* 品質效果：依技能本身的特色自動決定（技能再多也不用一顆一顆寫），每 1% 品質給一點點 */
 function gemQFx(b) {
+  if (b.kind === 'aura')
+    return {
+      t: q => `光環效果 +${q}%`,
+      f: (sk, q) => {
+        for (const o of [sk.aura, sk.avs, sk.pb])
+          if (o) for (const k in o) o[k] = Math.round(o[k] * (1 + q / 100) * 10) / 10;
+      }
+    };
   if (b.cry && b.perFoe)
     return { t: q => `依敵人數的效果 +${q * 2}%`, f: (sk, q) => (sk.cryMul = (sk.cryMul || 0) + q * 2) };
   if (b.det) return { t: q => `引爆傷害 +${q * 2}%`, f: (sk, q) => (sk.detMul = (sk.detMul || 1) + q * 0.02) };
@@ -330,6 +339,13 @@ function gemSkill(g) {
         typeof v === 'number' && k !== 'turns' ? [k, Math.round(v * (1 + 0.04 * L) * 100) / 100] : [k, v]
       )
     );
+  /* 光環：每級 +3% */
+  if (b.aura) {
+    const m = 1 + 0.03 * L;
+    sk.aura = Object.fromEntries(Object.entries(b.aura).map(([k, v]) => [k, Math.round(v * m * 10) / 10]));
+    if (b.avs) sk.avs = Object.fromEntries(Object.entries(b.avs).map(([k, v]) => [k, Math.round(v * m)]));
+    if (b.pb) sk.pb = Object.fromEntries(Object.entries(b.pb).map(([k, v]) => [k, Math.round(v * m * 10) / 10]));
+  }
   /* 品質 */
   if (sk.q) gemQFx(b).f(sk, sk.q);
   if (sk.qBuff && sk.buff)
@@ -483,6 +499,7 @@ function giveGem(k) {
   const g = newGem(k);
   S.gems.push(g);
   const i = S.sk.indexOf(null);
+  if (SKILLS[k].kind === 'aura') return g;
   if (i >= 0 && !S.sk.some(id => gemOf(id) && gemOf(id).k === k)) S.sk[i] = g.id;
   return g;
 }
@@ -590,6 +607,7 @@ const STAT0 = [
   'ailDur',
   'dotPct',
   'anyWep',
+  'spirit',
   'petStart'
 ];
 function sumStats() {
@@ -613,7 +631,36 @@ function sumStats() {
   zodStats(A);
   if (typeof pactStats === 'function') pactStats(A);
   if (typeof ascStats === 'function') ascStats(A);
+  /* 0.3.21 光環：精魄（基礎 SPIRIT0 + 天賦、契靈、裝備）夠的才生效，照光環欄的順序 */
+  for (const q of auraOn(SPIRIT0 + t.spirit)) for (const k in q.aura) A(k, q.aura[k]);
   return t;
+}
+function auraExtra(budget) {
+  const on = auraOn(budget),
+    avs = {},
+    pb = {};
+  for (const q of on) {
+    for (const k in q.avs || {}) avs[k] = (avs[k] || 0) + q.avs[k];
+    if (q.party) for (const k in q.pb || {}) pb[k] = (pb[k] || 0) + q.pb[k];
+  }
+  return { auraVs: avs, paura: pb, spiritUsed: on.reduce((a, q) => a + auraCost(q), 0) };
+}
+/* 0.3.21 精魄與光環欄（S.aura 是光環技能石的 id，最多 AURA_MAX 個） */
+const SPIRIT0 = 30,
+  AURA_MAX = 4;
+const auraCost = q => q.spirit || 0;
+function auraOn(budget) {
+  let used = 0;
+  const out = [];
+  for (const id of S.aura || []) {
+    const g = gemOf(id);
+    if (!g || SKILLS[g.k].kind !== 'aura') continue;
+    const q = gemSkill(g);
+    if (used + auraCost(q) > budget) continue;
+    used += auraCost(q);
+    out.push(q);
+  }
+  return out;
 }
 /* 升級只成長生命與魔力（所有人相同），其他數值靠裝備、天賦與技能石 */
 const HP_LV = 10,
@@ -683,6 +730,9 @@ function stats() {
     critMulti: Math.max(110, 150 + t.critMulti),
     leech: t.leech * (t.vaal ? 2 : 1),
     speed: 10 + t.speed,
+    /* 0.3.21 精魄、光環的條件加傷（所有技能）與給隊友的增益 */
+    spirit: SPIRIT0 + t.spirit,
+    ...auraExtra(SPIRIT0 + t.spirit),
     regen: t.vaal ? 0 : t.regen,
     dodge: t.ironReflex || t.noDodge ? 0 : Math.max(0, Math.min(30 + t.dodgeCap, dodgeRaw)),
     vision: Math.round((dayPhase().night > 0.5 ? 260 : 600) * (1 + t.vision / 100)),

@@ -368,6 +368,11 @@ function mpStart() {
     es: []
   };
   MB.ps.forEach(battleOpen);
+  /* 0.3.21 組隊光環：隊友開的戰旗、再生光環給其他人增益（整場戰鬥） */
+  for (const p of MB.ps)
+    for (const q of MB.ps)
+      if (q !== p && q.st.paura && Object.keys(q.st.paura).length)
+        p.buffs.push({ id: 'aura_' + q.uid, n: `${q.name}的光環`, turns: 999, ...q.st.paura });
   mpSpawn();
   ptSend('start', { mb: pub() });
   mpEnter(null);

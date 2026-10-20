@@ -250,6 +250,19 @@ function migrate(s) {
     }
     s.v = 23;
   }
+  if (s.v < 24) {
+    // 0.3.21：戰旗、再生光環改成光環，從技能欄移到光環欄
+    s.aura = s.aura || [];
+    s.sk = (s.sk || []).map(id => {
+      const g = (s.gems || []).find(x => x.id === id);
+      if (g && SKILLS[g.k] && SKILLS[g.k].kind === 'aura') {
+        if (s.aura.length < AURA_MAX) s.aura.push(id);
+        return null;
+      }
+      return id;
+    });
+    s.v = 24;
+  }
   return s;
 }
 function start() {

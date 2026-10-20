@@ -236,6 +236,27 @@ function wepWarn(sl) {
 function gemDesc(q, st) {
   const out = [],
     elc = q.kind === 'spell' ? q.el || 'phys' : 'phys';
+  if (q.kind === 'aura') {
+    out.push(
+      `${kw('光環', 'buf')}・預留 ${kw(auraCost(q) + ' 精魄', 'num')}：` +
+        Object.entries(q.aura || {})
+          .map(([k, v]) => (STATN[k] ? STATN[k](v) : `${k} +${v}`))
+          .join('、')
+    );
+    for (const k in q.avs || {})
+      out.push(
+        `所有傷害技能對${kw(COND_ST[k] || k, 'eff')}的目標 +${q.avs[k]}%${k === 'bleed' || k === 'poison' ? '（每層）' : ''}`
+      );
+    if (q.party)
+      out.push(
+        kw('組隊時隊友也受益', 'tg') +
+          '：' +
+          Object.entries(q.pb || {})
+            .map(([k, v]) => (k === 'hot' ? `每回合回復 ${v}% 生命` : `${BUFFN[k] || k} +${v}%`))
+            .join('、')
+      );
+    return out.join('・');
+  }
   if (q.pet) out.push(`召喚 ${q.pet.n || 1} 隻${kw(q.pet.name, 'buf')}（${q.pet.turns} 回合、最多 ${q.pet.max}）`);
   else if (q.kind === 'spell')
     out.push(`${kw(EL[q.el] + '法術', elc)}・基礎傷害 ${kw(Math.round(q.sb * q.mult), 'num')}`);
@@ -355,6 +376,13 @@ const gemRow = (g, tag) => {
   return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q, stats())}・插槽 ${(g.sp || []).length}/${g.sock || 2}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
 };
 /* 0.3.20 輔助寶石 */
+/* 光環能不能開：光環欄最多 AURA_MAX 個、精魄要夠 */
+function auraBlock(g, st) {
+  if ((S.aura || []).length >= AURA_MAX) return '光環欄滿了';
+  const need = auraCost(gemSkill(g));
+  if (st.spiritUsed + need > st.spirit) return `精魄不夠（要 ${need}，剩 ${st.spirit - st.spiritUsed}）`;
+  return '';
+}
 const supPrice = sp => Math.round(60 + 110 * Math.pow(sp.t || 1, 1.7));
 function supBuyBlock(sp) {
   if (sp.lin) return '只會掉落';
@@ -443,7 +471,7 @@ function renderSheet() {
         : '';
     })()}
     <h3>攻擊</h3><div class="kv"><div><span>物理傷害</span><b>${fmt1(st.physLo)}–${fmt1(st.physHi)}</b></div><div><span>元素附加</span><b>${fmt1(st.fire + st.cold + st.light)}</b></div><div><span>法術加成</span><b>${Math.round((st.spellMul - 1) * 100)}%</b></div><div><span>暴擊率</span><b>${st.crit}%</b></div><div><span>暴擊傷害</span><b>${st.critMulti}%</b></div><div><span>吸血</span><b>${st.leech}%</b></div></div>
-    <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>視線範圍</span><b>${st.vision}m</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div></div>
+    <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>視線範圍</span><b>${st.vision}m</b></div><div><span>精魄</span><b>${st.spiritUsed}/${st.spirit}</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div></div>
     <h3>技能</h3><div class="card">${mySkills()
       .map((q, i) =>
         q
@@ -463,6 +491,16 @@ function renderSheet() {
           : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>第 ${i + 1} 格</span></div>`;
       })
       .join('')}</div>
+    <h3>光環欄<small class="sub">・精魄 ${st.spiritUsed}/${st.spirit}（天賦的魔力、法術節點與契靈能加精魄）</small></h3><div class="gslots">${Array.from(
+      { length: AURA_MAX },
+      (_, i) => {
+        const g = gemOf((S.aura || [])[i]),
+          on = g && auraOn(st.spirit).some(q => q.gid === g.id);
+        return g
+          ? `<button class="gslot" data-act="gem" data-id="${g.id}">${gemCell(g, true)}<span>${SKILLS[g.k].name}</span><i class="skt ${on ? 'buf' : 'eff'}">${on ? `${auraCost(gemSkill(g))} 精魄` : '精魄不夠'}</i></button>`
+          : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>光環 ${i + 1}</span></div>`;
+      }
+    ).join('')}</div>
     <p class="sub" style="margin:0">另外有固定的普通攻擊。技能石有 2～5 個插槽，插上輔助寶石改變技能怎麼運作；品質用寶石稜鏡提高（野外機制掉落）。</p>
     <p class="sub" style="margin:0">技能石在城鎮的「技能石商店」購買（依 T 級解鎖），用擊殺怪物得到的${curDot('soul')}靈魂（${S.cur.soul || 0}）升級。</p>
     ${curRowG()}
@@ -524,7 +562,15 @@ function renderSheet() {
       )
       .join('')}</div>
     <h3>升級</h3><div class="card"><div class="rowx"><div class="t"><b>${g.lv < GEM_MAX ? `Lv${g.lv} → Lv${g.lv + 1}` : '已滿級'}</b><small>${g.lv < GEM_MAX ? `需要 ${soulNeed(g.lv)} 靈魂（你有 ${S.cur.soul || 0}）・技能石等級不能超過角色等級` : ''}</small></div><button class="btn pri sm" data-act="gemLv" ${blk ? 'disabled' : ''}>${blk || '升級'}</button></div></div>
-    <h3>技能欄</h3><div class="btns">${S.sk.map((id, i) => `<button class="btn sm ${id === g.id ? '' : 'pri'}" data-act="gemEquip" data-i="${i}" ${id === g.id ? 'disabled' : ''}>${id === g.id ? '裝在' : '裝到'}第 ${i + 1} 格${id && id !== g.id && gemOf(id) ? `<small>（換下${SKILLS[gemOf(id).k].name}）</small>` : ''}</button>`).join('')}${at >= 0 ? '<button class="btn sm" data-act="gemOff">卸下</button>' : ''}</div>
+    ${
+      SKILLS[g.k].kind === 'aura'
+        ? `<h3>光環欄<small class="sub">・精魄 ${st.spiritUsed}/${st.spirit}</small></h3><div class="btns">${
+            (S.aura || []).includes(g.id)
+              ? '<button class="btn sm" data-act="auraOff">關閉光環</button>'
+              : `<button class="btn sm pri" data-act="auraOn" ${auraBlock(g, st) ? 'disabled' : ''}>${auraBlock(g, st) || `開啟光環（預留 ${auraCost(q)} 精魄）`}</button>`
+          }</div>`
+        : `<h3>技能欄</h3><div class="btns">${S.sk.map((id, i) => `<button class="btn sm ${id === g.id ? '' : 'pri'}" data-act="gemEquip" data-i="${i}" ${id === g.id ? 'disabled' : ''}>${id === g.id ? '裝在' : '裝到'}第 ${i + 1} 格${id && id !== g.id && gemOf(id) ? `<small>（換下${SKILLS[gemOf(id).k].name}）</small>` : ''}</button>`).join('')}${at >= 0 ? '<button class="btn sm" data-act="gemOff">卸下</button>' : ''}</div>`
+    }
     <div class="btns"><button class="btn" data-act="gemBreak">分解（退回 ${gemSoulBack(g)} 靈魂）</button><button class="btn" data-act="sheet" data-s="skills">返回技能</button></div>`;
   } else if (sheetName === 'bag' && SEL.bag !== 'eq') {
     html = bagTabs() + matsHTML(SEL.bag);
@@ -1186,7 +1232,26 @@ const A = {
     sfx('tap');
     openSheet('gem');
   },
+  auraOn: () => {
+    const g = gemOf(selGem);
+    if (!g || auraBlock(g, stats())) return;
+    (S.aura = S.aura || []).push(g.id);
+    sfx('select');
+    clampHP();
+    renderSheet();
+    renderHud();
+    save();
+  },
+  auraOff: () => {
+    S.aura = (S.aura || []).filter(id => id !== selGem);
+    sfx('tap');
+    clampHP();
+    renderSheet();
+    renderHud();
+    save();
+  },
   gemEquip: d => {
+    if (gemOf(selGem) && SKILLS[gemOf(selGem).k].kind === 'aura') return;
     const i = +d.i;
     S.sk = S.sk.map(id => (id === selGem ? null : id));
     S.sk[i] = selGem;

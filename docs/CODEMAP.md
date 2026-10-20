@@ -18,6 +18,7 @@
 | 契靈祈願（0.3.12）：卡池、詞綴、突破、欄位、跟隨 | `js/gacha.js`、`js/items.js` | 契靈 `PACTS`／`PACTI`（`r` 0～2 是 R／SR／SSR）、`PRAR`／`PCOL`／`PRATE`、保底 `P_SOFT`／`P_HARD`（`pityOf`）；詞綴 `PAFF`／`PAFFI`（`v` 是 T6～T1 的範圍、`tg` 標籤、`ssr` 專屬、`sk` 特定技能等級、`allSk`）、階級權重 `PTW`、`rollTier`／`rollPAff`／`rollPact`、文字 `paffTxt`、標籤 `PTAG`／`paffTags`／`pactTags`；個體 `pactOf(u)`／`pactKind(u)`、新抽到 `pactGive`、突破 `pactFodder`／`A.pactBrk`／`A.pactEat`（sheet `pbrk`，`pactBrkHTML`、`PBRK_MAX`、`pactOpen` 已解鎖的詞綴）、卡片 `pactCard`；欄位 `pactSlots`（`PSLOT0` + 昇華試煉）、`pactsOn`；屬性 `pactStats`（`sumStats`）、技能等級 `pactSkLv`（`gemSkill` 的 `plus`）；跟隨 `pactFollow`（`reachOf`、`map.js` 畫在玩家旁邊）；介面 `renderGacha`、`pactHTML`（sheet `pact`）、`A.pactEq`／`A.pactFollow`／`A.ptag`；狀態 `S.pact`（`list = [{u, k, brk, aff}]`、`eq`／`follow` 存個體編號 `u`）、`S.pity` |
 | 技能石商店、靈魂升級（0.3.11） | `js/items.js`、`js/ui.js` | `gemReq`（需求等級，`GEM_START` 是 Lv1 的開局技能）、`gemTier`、`gemPrice`、`gemBuyBlock`、`soulNeed`、`gemSoulBack`；`gemShopHTML`（sheet `gemshop`）、`A.gemShop`／`A.gshopTier`／`A.gemBuy`；祈願石掉落在 `gemLoot` |
 | 天賦外圈（武器、組隊、刻印專精） | `js/data.js`、`js/items.js` | `TH` 的 `sword`～`gem` 主題、`TREE` 的「0.2.4 外圈」段落；武器條件在 `stats` 開頭（`wepType`、`offType`）；嘲諷、群體治癒、隊友加成在 `mp.js` 的 `mpEnemy`、`mpResolve` |
+| 精魄與光環（0.3.21） | `js/items.js`、`js/skills.js`、`js/ui.js`、`js/battle.js`、`js/mp.js`、`js/data.js`、`js/gacha.js` | 精魄 `SPIRIT0`、`st.spirit`／`st.spiritUsed`；光環欄 `S.aura`（`AURA_MAX`）、`auraOn`（`sumStats` 加屬性）、`auraCost`、`auraExtra`（`auraVs` 給 `condMul`、`paura` 給隊友）；光環資料 `skills.js`（`kind: 'aura'`）、等級與品質在 `gemSkill`／`gemQFx`；介面 `auraBlock`、`A.auraOn`／`A.auraOff`、技能頁的光環欄；天賦精魄在 `TREE` 結尾、契靈詞綴 `PAFF` 的 `spirit`；組隊光環 `mp.js` 開場、回血 `hot`（`roundEnd`） |
 | 技能石在戰鬥中的效果 | `js/battle.js` | `skSt`（技能石數值只對該技能生效、刻印共鳴 `engPct` 改成每顆輔助）、`supOf`（昇華＋技能石的 `gsup`）、`skByKey`（`'attack'`／`'s0'`～`'s3'`）、`gemLoot`（靈魂與刻印石系列）、0.3.20 `supLoot`／`mechOf`（寶石稜鏡與族裔輔助從野外機制掉、一般輔助從菁英與首領掉）；`dunReward` 的冥府傳送門與七宗罪首領 |
 | 怪物種類與數值 | `js/data.js` | `MONS`、`MIMIC`、`EMODS`（菁英詞綴） |
 | 地城種類與地城詞綴 | `js/data.js` | `DTYPES`、`DMODS`；規格換算在 `js/battle.js` 的 `dunSpec` |
@@ -153,12 +154,12 @@
 - **utils**（6）
   `h:7`、`rng:13`、`rnd:22`、`now:23`、`REFRESH:25`、`epoch:27`、`uid:29`、`esc:30`、`hex2rgb:31`、`shade:41`、`dist:51`、`fmtD:60`、`dirName:61`、`RANGE:66`、`reachOf:69`
 
-### js/data.js（2652 行）
+### js/data.js（2661 行）
 
 - **state**（3）
   `SLOT:5`、`KEY:6`
 - **game data**（22）
-  `CLASSES:26`、`OLDCLS:36`、`clsOf:37`、`SKILLS:39`、`GEM_MAX:68`、`GEM_DRAW:70`、`soulNeed:71`、`GCUR:74`、`GCURI:84`、`EL:85`、`MONS:86`、`MIMIC:1102`、`EMODS:1115`、`DTYPES:1128`、`DMODS:1239`、`DMODI:1252`、`UMODS:1254`、`EMODI:1261`、`FRAG_PARTS:1263`、`ZONE_CELL:1265`、`ZMODS:1267`、`RCOL:1277`、`RGLOW:1279`、`RAREA:1280`、`SLOTS:1282`、`SLOTN:1283`、`BASES:1296`、`DROPS:1374`、`T5:1375`、`ARMOR:1382`、`AFF:1384`、`AFFI:1538`、`STATN:1539`、`sg:1593`、`CUR:1639`、`CURI:1650`、`TH:1653`、`SPOKES:1945`、`TREE:2052`、`VER:2650`、`START:2651`
+  `CLASSES:26`、`OLDCLS:36`、`clsOf:37`、`SKILLS:39`、`GEM_MAX:68`、`GEM_DRAW:70`、`soulNeed:71`、`GCUR:74`、`GCURI:84`、`EL:85`、`MONS:86`、`MIMIC:1102`、`EMODS:1115`、`DTYPES:1128`、`DMODS:1239`、`DMODI:1252`、`UMODS:1254`、`EMODI:1261`、`FRAG_PARTS:1263`、`ZONE_CELL:1265`、`ZMODS:1267`、`RCOL:1277`、`RGLOW:1279`、`RAREA:1280`、`SLOTS:1282`、`SLOTN:1283`、`BASES:1296`、`DROPS:1374`、`T5:1375`、`ARMOR:1382`、`AFF:1384`、`AFFI:1538`、`STATN:1539`、`sg:1594`、`CUR:1640`、`CURI:1651`、`TH:1654`、`SPOKES:1946`、`TREE:2053`、`VER:2659`、`START:2660`
 
 ### js/sprites.js（1333 行）
 
@@ -178,7 +179,7 @@
 
   `ART:2`
 
-### js/skills.js（1187 行）
+### js/skills.js（1243 行）
 
   `SKKIND:675`、`SKTYPE:691`、`skTags:705`、`skTagHTML:749`、`skShort:755`、`SK_COND:761`、`SUPG:986`、`SUPGI:1159`、`SUPM:1160`、`SUPREQ:1162`、`SUPREQN:1174`、`supFits:1186`
 
@@ -187,33 +188,33 @@
 - **audio**（3）
   `AU:4`、`audioInit:5`、`tone:30`、`noise:47`、`NS:65`、`nf:66`、`SONGS:71`、`PARSED:109`、`parse:110`、`playSong:122`、`schedule:128`、`SFX:147`、`sfx:213`、`buzz:216`
 
-### js/items.js（1076 行）
+### js/items.js（1126 行）
 
 - **player & items**（3）
-  `newGame:4`、`makeItem:78`、`baseOf:97`、`Q_CAP:99`、`hasQ:100`、`qMul:101`、`qPhys:102`、`qArm:103`、`affFits:105`、`fitsSlot:107`、`rollAffix:109`、`cnt:130`、`addRandom:131`、`toMagic:141`、`rareName:148`、`toRare:149`、`itemTitle:155`、`itemName:166`、`itemSum:167`、`itemCard:176`、`sellVal:205`、`giveItem:206`、`giveCur:214`、`rollCur:217`、`curDot:227`、`craftable:229`、`craft:242`
-- **skill gems**（260）
-  `newGem:263`、`SOCK_MAX:264`、`gemOf:265`、`GEMK:266`、`gemQFx:268`、`gemSkill:303`、`mySkills:359`、`supUsed:361`、`supBlock:362`、`supIn:373`、`supOut:379`、`giveSup:385`、`Q_GEM:390`、`prismAdd:391`、`SOCK_CUR:393`、`gemCraftable:394`、`gemCraft:400`、`corrupt:423`、`gemLvBlock:446`、`gemSoulBack:454`、`GEM_START:458`、`GEMREQ:459`、`gemReq:460`、`gemTier:472`、`gemPrice:473`、`hasGem:474`、`gemCount:475`、`gemBuyBlock:476`、`giveGem:482`
-- **stats**（490）
-  `curSpec:492`、`STAT0:493`、`sumStats:595`、`HP_LV:619`、`stats:622`、`MECH:723`、`xpNeed:754`、`fullHeal:758`、`clampHP:763`、`autoPot:769`、`naturalRegen:791`、`addLog:799`、`gainXP:803`、`LV_MAX:818`、`treePts:819`、`dayPhase:820`、`buffOn:826`
-- **enemies**（828）
-  `TIERS:831`、`T_MAX:849`、`tierOfLv:851`、`tierMax:852`、`tierNow:853`、`tierRange:854`、`aLv:856`、`dunLv:861`、`tierBonus:866`、`tierBoss:870`、`tierNeed:872`、`pickMon:873`、`makeEnemy:884`、`rollMods:936`、`modNames:945`、`uwApply:947`
-- **modal**（966）
-  `showModal:967`、`hideModal:973`、`busy:976`、`openShop:977`、`SHOP:1075`
+  `newGame:4`、`makeItem:79`、`baseOf:98`、`Q_CAP:100`、`hasQ:101`、`qMul:102`、`qPhys:103`、`qArm:104`、`affFits:106`、`fitsSlot:108`、`rollAffix:110`、`cnt:131`、`addRandom:132`、`toMagic:142`、`rareName:149`、`toRare:150`、`itemTitle:156`、`itemName:167`、`itemSum:168`、`itemCard:177`、`sellVal:206`、`giveItem:207`、`giveCur:215`、`rollCur:218`、`curDot:228`、`craftable:230`、`craft:243`
+- **skill gems**（261）
+  `newGem:264`、`SOCK_MAX:265`、`gemOf:266`、`GEMK:267`、`gemQFx:269`、`gemSkill:312`、`mySkills:375`、`supUsed:377`、`supBlock:378`、`supIn:389`、`supOut:395`、`giveSup:401`、`Q_GEM:406`、`prismAdd:407`、`SOCK_CUR:409`、`gemCraftable:410`、`gemCraft:416`、`corrupt:439`、`gemLvBlock:462`、`gemSoulBack:470`、`GEM_START:474`、`GEMREQ:475`、`gemReq:476`、`gemTier:488`、`gemPrice:489`、`hasGem:490`、`gemCount:491`、`gemBuyBlock:492`、`giveGem:498`
+- **stats**（507）
+  `curSpec:509`、`STAT0:510`、`sumStats:613`、`auraExtra:638`、`SPIRIT0:649`、`auraCost:651`、`auraOn:652`、`HP_LV:666`、`stats:669`、`MECH:773`、`xpNeed:804`、`fullHeal:808`、`clampHP:813`、`autoPot:819`、`naturalRegen:841`、`addLog:849`、`gainXP:853`、`LV_MAX:868`、`treePts:869`、`dayPhase:870`、`buffOn:876`
+- **enemies**（878）
+  `TIERS:881`、`T_MAX:899`、`tierOfLv:901`、`tierMax:902`、`tierNow:903`、`tierRange:904`、`aLv:906`、`dunLv:911`、`tierBonus:916`、`tierBoss:920`、`tierNeed:922`、`pickMon:923`、`makeEnemy:934`、`rollMods:986`、`modNames:995`、`uwApply:997`
+- **modal**（1016）
+  `showModal:1017`、`hideModal:1023`、`busy:1026`、`openShop:1027`、`SHOP:1125`
 
-### js/battle.js（2670 行）
+### js/battle.js（2675 行）
 
 - **battle: painted backgrounds**（3）
   `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
 - **battle: logic**（238）
   `BFX:239`、`POS:241`、`ESLOT:246`、`battleSc:271`、`epos:273`、`etop:287`、`placeBName:288`、`AIL_E:294`、`AIL_NUM:317`、`ailHTML:318`、`heroAilHTML:330`、`placeAil:338`、`bossBar:345`、`enemyBars:355`、`setFloor:365`、`PORT:370`、`portrait:371`、`renderOrder:381`、`bmsg:390`、`pop:397`、`anim:401`、`animOff:404`、`later:418`
 - **battle: rules（單人與組隊共用）**（424）
-  `eInit:426`、`PACK_P:435`、`packN:436`、`packSeed:446`、`packBases:447`、`packOf:461`、`skTag:479`、`supOf:481`、`bsum:492`、`mitigate:494`、`skCost:502`、`lifeCost:503`、`wOk:505`、`canPay:506`、`skSub:511`、`skReady:520`、`payCost:521`、`costTxt:527`、`skSt:532`、`skByKey:545`、`extraHit:546`、`heroPacket:547`、`heroDmg:562`、`heroAil:576`、`poisonTick:623`、`bleedTick:625`、`addPoison:626`、`takeDmg:632`、`hitCol:643`、`aliveIdx:651`、`skKey:659`、`cdLeft:660`、`charging:661`、`COND_ST:662`、`stackOf:673`、`condMul:675`、`condTxt:687`、`actResolve:700`、`cryResolve:992`、`addBuff:1036`、`petsAct:1049`、`enemyResolve:1072`、`AV_MAX:1213`、`avSpd:1215`、`avNext:1217`、`avPreview:1234`、`roundEnd:1239`、`battleOpen:1251`
-- **battle: solo**（1264）
-  `heroMe:1266`、`startBattle:1296`、`pickTarget:1335`、`renderBHud:1365`、`playEv:1451`、`soloExt:1505`、`useSkill:1518`、`bItem:1545`、`flee:1590`、`allDead:1605`、`afterPlayer:1606`、`soloUnits:1618`、`nextTurn:1623`、`enemyAct:1642`
-- **dungeons (shared by solo and party)**（1657）
-  `dunSpec:1659`、`dunName:1689`、`BIGBOSS:1699`、`dunEnemy:1702`、`dropLoot:1808`、`SOUL_MUL:1890`、`gemLoot:1891`、`mechOf:1918`、`supLoot:1928`、`ONSITE_BONUS:1951`、`onsiteNow:1952`、`dunReward:1954`、`dunModsHTML:1994`、`lootList:2000`、`winBattle:2009`、`loseBattle:2110`、`endBattle:2134`、`enterDungeon:2143`、`nextRoom:2161`、`dungeonClear:2181`、`BP_ARMOR:2237`、`bossPicks:2239`
-- **battle: drawing**（2321）
-  `drawEnemies:2323`、`selTrack:2364`、`drawSel:2375`、`drawPets:2410`、`renderBattle:2419`、`drawWeapon:2495`、`drawFx:2573`
+  `eInit:426`、`PACK_P:435`、`packN:436`、`packSeed:446`、`packBases:447`、`packOf:461`、`skTag:479`、`supOf:481`、`bsum:492`、`mitigate:494`、`skCost:502`、`lifeCost:503`、`wOk:505`、`canPay:506`、`skSub:511`、`skReady:520`、`payCost:521`、`costTxt:527`、`skSt:532`、`skByKey:545`、`extraHit:546`、`heroPacket:547`、`heroDmg:562`、`heroAil:576`、`poisonTick:623`、`bleedTick:625`、`addPoison:626`、`takeDmg:632`、`hitCol:643`、`aliveIdx:651`、`skKey:659`、`cdLeft:660`、`charging:661`、`COND_ST:662`、`stackOf:673`、`condMul:675`、`condTxt:690`、`actResolve:703`、`cryResolve:995`、`addBuff:1039`、`petsAct:1052`、`enemyResolve:1075`、`AV_MAX:1216`、`avSpd:1218`、`avNext:1220`、`avPreview:1237`、`roundEnd:1242`、`battleOpen:1256`
+- **battle: solo**（1269）
+  `heroMe:1271`、`startBattle:1301`、`pickTarget:1340`、`renderBHud:1370`、`playEv:1456`、`soloExt:1510`、`useSkill:1523`、`bItem:1550`、`flee:1595`、`allDead:1610`、`afterPlayer:1611`、`soloUnits:1623`、`nextTurn:1628`、`enemyAct:1647`
+- **dungeons (shared by solo and party)**（1662）
+  `dunSpec:1664`、`dunName:1694`、`BIGBOSS:1704`、`dunEnemy:1707`、`dropLoot:1813`、`SOUL_MUL:1895`、`gemLoot:1896`、`mechOf:1923`、`supLoot:1933`、`ONSITE_BONUS:1956`、`onsiteNow:1957`、`dunReward:1959`、`dunModsHTML:1999`、`lootList:2005`、`winBattle:2014`、`loseBattle:2115`、`endBattle:2139`、`enterDungeon:2148`、`nextRoom:2166`、`dungeonClear:2186`、`BP_ARMOR:2242`、`bossPicks:2244`
+- **battle: drawing**（2326）
+  `drawEnemies:2328`、`selTrack:2369`、`drawSel:2380`、`drawPets:2415`、`renderBattle:2424`、`drawWeapon:2500`、`drawFx:2578`
 
 ### js/map.js（1727 行）
 
@@ -242,16 +243,16 @@
 - **passive tree (full screen)**（3）
   `startOf:5`、`treeAdj:6`、`canAlloc:16`、`pathTo:20`、`canRefund:47`、`treeTotals:64`、`TV:75`、`DISC_R:77`、`openTree:94`、`closeTree:102`、`sizeTree:110`、`treeFit:118`、`TX:124`、`NR:126`、`drawTree:127`、`arcCtl:283`、`drawDisc:293`、`renderTreeCard:334`
 
-### js/ui.js（1868 行）
+### js/ui.js（1933 行）
 
 - **HUD & sheets**（3）
-  `renderHud:4`、`ZICON:22`、`ibarRender:32`、`toast:55`、`openSheet:62`、`closeSheet:70`、`TITLES:76`、`NAVG:97`、`navG:116`、`navClose:117`、`navOpen:126`、`KIND:155`、`bar:164`、`entIcon:167`、`fmt1:201`、`curRow:202`、`bagTabs:206`、`curRowG:213`、`BUFFN:216`、`kw:225`、`wepWarn:227`、`gemDesc:236`、`SKF:327`、`skfOk:335`、`gemKc:347`、`gemCell:348`、`gemRow:353`、`supPrice:358`、`supBuyBlock:359`、`supN:365`、`supHint:367`、`supLine:368`、`gemShopHTML:371`、`gshopKind:390`、`supShopHTML:399`、`prayed:409`、`sheetParent:411`、`renderSheet:420`、`nearTownE:617`、`shopSellHTML:621`、`canSell:640`、`worseThanEq:646`、`sellSel:651`、`bagListHTML:653`
-- **entity interaction**（671）
-  `openEnt:672`、`lineupHTML:821`、`tierTownHTML:833`、`tierUpDone:841`、`tierInfoHTML:851`、`onSite:863`、`ONSITE_K:865`、`siteBonus:866`、`inRange:867`
-- **bases**（869）
-  `prodRate:870`、`stored:871`、`baseName:872`、`flagCheck:873`
-- **actions**（881）
-  `authForm:883`、`A:915`
+  `renderHud:4`、`ZICON:22`、`ibarRender:32`、`toast:55`、`openSheet:62`、`closeSheet:70`、`TITLES:76`、`NAVG:97`、`navG:116`、`navClose:117`、`navOpen:126`、`KIND:155`、`bar:164`、`entIcon:167`、`fmt1:201`、`curRow:202`、`bagTabs:206`、`curRowG:213`、`BUFFN:216`、`kw:225`、`wepWarn:227`、`gemDesc:236`、`SKF:348`、`skfOk:356`、`gemKc:368`、`gemCell:369`、`gemRow:374`、`auraBlock:380`、`supPrice:386`、`supBuyBlock:387`、`supN:393`、`supHint:395`、`supLine:396`、`gemShopHTML:399`、`gshopKind:418`、`supShopHTML:427`、`prayed:437`、`sheetParent:439`、`renderSheet:448`、`nearTownE:663`、`shopSellHTML:667`、`canSell:686`、`worseThanEq:692`、`sellSel:697`、`bagListHTML:699`
+- **entity interaction**（717）
+  `openEnt:718`、`lineupHTML:867`、`tierTownHTML:879`、`tierUpDone:887`、`tierInfoHTML:897`、`onSite:909`、`ONSITE_K:911`、`siteBonus:912`、`inRange:913`
+- **bases**（915）
+  `prodRate:916`、`stored:917`、`baseName:918`、`flagCheck:919`
+- **actions**（927）
+  `authForm:929`、`A:961`
 
 ### js/endgame.js（836 行）
 
@@ -335,14 +336,14 @@
   `ascTownHTML:2082`、`ascTrialDone:2089`
 - **actions**（2096）
 
-### js/gacha.js（753 行）
+### js/gacha.js（767 行）
 
 - **pacts**（6）
-  `PRAR:8`、`PTW:23`、`PTAG:30`、`PAFF:49`、`PAFFI:331`、`PACTS:333`、`PACTI:366`、`PD:368`、`pactOf:374`、`pactKind:375`、`pactSlots:380`、`pactsOn:381`、`pactIsOn:385`、`pactOpen:387`、`pactFodder:392`、`rollTier:397`、`rollPAff:403`、`rollPact:424`、`paffTags:431`、`pactTags:442`、`pactTagHTML:447`、`paffTxt:449`、`pactStats:457`、`pactSkLv:465`、`pactFollow:475`、`pactPal:480`、`pactImg:485`、`pactTile:486`
-- **banners**（491）
-  `BANNERS:492`、`ppool:502`、`GA:503`、`pityOf:504`、`gachaRoll:509`、`pactGive:521`、`gachaPull:528`、`revealNext:551`
-- **ui**（562）
-  `openGacha:563`、`closeGacha:571`、`renderGacha:576`、`pactAffHTML:612`、`pactCard:623`、`pactHTML:637`、`pactBrkHTML:669`、`pactRefresh:678`
+  `PRAR:8`、`PTW:23`、`PTAG:30`、`PAFF:49`、`PAFFI:345`、`PACTS:347`、`PACTI:380`、`PD:382`、`pactOf:388`、`pactKind:389`、`pactSlots:394`、`pactsOn:395`、`pactIsOn:399`、`pactOpen:401`、`pactFodder:406`、`rollTier:411`、`rollPAff:417`、`rollPact:438`、`paffTags:445`、`pactTags:456`、`pactTagHTML:461`、`paffTxt:463`、`pactStats:471`、`pactSkLv:479`、`pactFollow:489`、`pactPal:494`、`pactImg:499`、`pactTile:500`
+- **banners**（505）
+  `BANNERS:506`、`ppool:516`、`GA:517`、`pityOf:518`、`gachaRoll:523`、`pactGive:535`、`gachaPull:542`、`revealNext:565`
+- **ui**（576）
+  `openGacha:577`、`closeGacha:585`、`renderGacha:590`、`pactAffHTML:626`、`pactCard:637`、`pactHTML:651`、`pactBrkHTML:683`、`pactRefresh:692`
 
 ### js/tutor.js（160 行）
 
@@ -365,20 +366,20 @@
 - **friends sheet**（148）
   `friendsHTML:149`
 
-### js/mp.js（1020 行）
+### js/mp.js（1025 行）
 
   `PT:6`、`TURN_MS:7`、`ptMax:10`、`allReady:11`、`genCode:12`、`amLeader:14`、`mySnap:15`、`palFor:32`
 - **party / lobby**（34）
   `ptSend:35`、`ptConnect:38`、`ptPill:52`、`partyCreate:61`、`partyJoin:93`、`partyLeave:119`、`ptLobby:136`、`ptGone:142`、`ptMsg:164`、`ptCodeHTML:238`、`partyHTML:240`
 - **battle state (leader authoritative)**（268）
-  `MBT:269`、`MBFX:271`、`pub:273`、`mpPush:281`、`mpArm:287`、`ptReady:297`、`mpStart:309`、`mpSpawn:376`、`mpUnits:391`、`mpRound:396`、`mpNext:402`、`mpOnAct:436`、`mpResolve:442`、`mpEnemy:488`、`mpRoomClear:510`
-- **battle (every client)**（550）
-  `mpEnter:551`、`mpBG:574`、`mpApply:580`、`mpFx:595`、`mpMy:654`、`mpRoomReward:675`、`mpClear:697`、`mpWipe:730`、`mpEnd:754`、`mpStop:771`、`mpLeave:782`
-- **battle rendering**（797）
-  `mpPos:799`、`renderMBHud:805`、`mpTurnT:905`、`mpTurnBar:906`、`renderMB:924`
+  `MBT:269`、`MBFX:271`、`pub:273`、`mpPush:281`、`mpArm:287`、`ptReady:297`、`mpStart:309`、`mpSpawn:381`、`mpUnits:396`、`mpRound:401`、`mpNext:407`、`mpOnAct:441`、`mpResolve:447`、`mpEnemy:493`、`mpRoomClear:515`
+- **battle (every client)**（555）
+  `mpEnter:556`、`mpBG:579`、`mpApply:585`、`mpFx:600`、`mpMy:659`、`mpRoomReward:680`、`mpClear:702`、`mpWipe:735`、`mpEnd:759`、`mpStop:776`、`mpLeave:787`
+- **battle rendering**（802）
+  `mpPos:804`、`renderMBHud:810`、`mpTurnT:910`、`mpTurnBar:911`、`renderMB:929`
 
-### js/main.js（311 行）
+### js/main.js（324 行）
 
 - **boot**（3）
-  `load:4`、`save:12`、`rebuildWorld:30`、`migrate:40`、`start:255`
+  `load:4`、`save:12`、`rebuildWorld:30`、`migrate:40`、`start:268`
 <!-- index:end -->
