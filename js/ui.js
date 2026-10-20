@@ -212,40 +212,56 @@ const bagTabs = () =>
     .join('')}</div>`;
 const curRowG = () =>
   `<div class="curs">${GCUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>`;
-/* 技能說明：類別、傷害、目標形式與特殊效果 */
+/* 技能說明：類別、傷害、目標形式與特殊效果；0.3.18 特殊效果的關鍵字上色（kw） */
 const BUFFN = { more: '傷害', arm: '護甲', dodge: '閃避', crit: '暴擊率', taunt: '嘲諷', dmgRed: '受傷降低' };
-function gemDesc(q) {
+const kw = (t, c) => `<i class="kw ${c}">${t}</i>`;
+/* 0.3.18 換武器後，技能欄裡武器不符的技能提示（戰鬥中不能用） */
+function wepWarn(sl) {
+  if (sl !== 'weapon') return;
+  const st = stats(),
+    bad = mySkills().filter(q => q && !wOk(st, q));
+  if (bad.length)
+    toast(
+      `${bad.map(q => q.name).join('、')} 需要${[...new Set(bad.map(q => WTAGN[q.w]))].join('／')}，現在的武器不能用`
+    );
+}
+function gemDesc(q, st) {
   const out = [],
-    tg = q.tg === 'all' ? '全體' : q.tg === 'rand' ? '隨機目標' : '';
-  if (q.pet) out.push(`召喚 ${q.pet.n || 1} 隻${q.pet.name}（${q.pet.turns} 回合、最多 ${q.pet.max}）`);
-  else if (q.kind === 'spell') out.push(`${EL[q.el]}法術・基礎傷害 ${Math.round(q.sb * q.mult)}`);
+    elc = q.kind === 'spell' ? q.el || 'phys' : 'phys';
+  if (q.pet) out.push(`召喚 ${q.pet.n || 1} 隻${kw(q.pet.name, 'buf')}（${q.pet.turns} 回合、最多 ${q.pet.max}）`);
+  else if (q.kind === 'spell')
+    out.push(`${kw(EL[q.el] + '法術', elc)}・基礎傷害 ${kw(Math.round(q.sb * q.mult), 'num')}`);
   else if (q.kind === 'attack')
     out.push(
-      `${q.w ? WTAGN[q.w] : ''}攻擊・武器傷害 ${Math.round(q.mult * 100)}%${q.hits > 1 ? ` × ${q.hits} 下` : ''}`
+      `${q.w ? WTAGN[q.w] : ''}攻擊・武器傷害 ${kw(Math.round(q.mult * 100) + '%', 'num')}${q.hits > 1 ? ` × ${kw(q.hits + ' 下', 'num')}` : ''}`
     );
   else if (q.kind === 'heal')
-    out.push(`回復 ${Math.round(q.heal * 100)}% 生命${q.healAll ? `，其他隊友 ${q.healAll}%` : ''}`);
-  if (tg) out.push(tg);
-  if (q.chain) out.push(`連鎖 ${q.chain} 次`);
-  if (q.proj) out.push(`多 ${q.proj} 支投射物`);
-  if (q.addEl) out.push(`附加 ${Math.round(q.addEl[1] * 100)}% ${EL[q.addEl[0]]}`);
-  if (q.stun) out.push(`${Math.round(q.stun * 100)}% 暈眩`);
-  if (q.bleed) out.push(`${q.bleed}% 流血`);
-  if (q.poison) out.push('中毒');
-  if (q.mark) out.push(`標記（受傷 +${q.mark}%）`);
-  if (q.curse) out.push(`詛咒（受傷 +${q.curse}%）`);
-  if (q.exec) out.push(`斬殺 +${q.exec}%`);
+    out.push(`回復 ${kw(Math.round(q.heal * 100) + '%', 'num')} 生命${q.healAll ? `，其他隊友 ${q.healAll}%` : ''}`);
+  if (q.tg === 'all') out.push(kw('打全部敵人', 'tg'));
+  if (q.tg === 'rand') out.push(kw(`隨機打 ${q.hits || 1} 下`, 'tg'));
+  if (q.chain) out.push(kw(`連鎖 ${q.chain} 次`, 'tg') + '（每次 -20%）');
+  if (q.proj) out.push(kw(`多 ${q.proj} 支投射物`, 'tg') + '（各 70%）');
+  if (q.addEl) out.push(`附加 ${Math.round(q.addEl[1] * 100)}% ${kw(EL[q.addEl[0]], q.addEl[0])}`);
+  if (q.stun) out.push(`${Math.round(q.stun * 100)}% 機率${kw('暈眩', 'eff')}`);
+  if (q.freeze) out.push(`${Math.round(q.freeze * 100)}% 機率${kw('凍結', 'eff')}`);
+  if (q.bleed) out.push(`${q.bleed}% 機率${kw('流血', 'eff')}`);
+  if (q.poison) out.push(`造成${kw('中毒', 'eff')}（${q.poison} 回合）`);
+  if (q.mark) out.push(`${kw('標記', 'eff')}目標（受傷 +${q.mark}%）`);
+  if (q.curse) out.push(`${kw('詛咒', 'eff')}目標（受傷 +${q.curse}%）`);
+  if (q.exec) out.push(`${kw('斬殺', 'eff')}：低血敵人傷害 +${q.exec}%`);
+  if (q.brk) out.push(`${kw('碎甲', 'eff')}：無視 ${q.brk}% 護甲`);
+  if (q.guard) out.push(`${kw('格擋', 'buf')} ${q.guard} 回合（護甲加倍）`);
   if (q.buff)
     out.push(
-      `${q.buff.n} ${q.buff.turns} 回合：` +
+      `${kw(q.buff.n, 'buf')} ${q.buff.turns} 回合：` +
         Object.entries(q.buff)
           .filter(([k]) => BUFFN[k])
           .map(([k, v]) => `${BUFFN[k]} ${k === 'dmgRed' ? '-' : '+'}${Math.round(v)}%`)
           .concat(q.buff.shield ? [`護盾 ${Math.round(q.buff.shield * 100)}% 生命`] : [])
           .join('、')
     );
-  if (q.lifeCost) out.push(`消耗 ${Math.round(q.lifeCost * 100)}% 生命`);
-  if (q.w) out.push(`需要${WTAGN[q.w]}（不符傷害 -40%）`);
+  if (q.lifeCost) out.push(kw(`消耗 ${Math.round(q.lifeCost * 100)}% 生命`, 'bad'));
+  if (q.w) out.push(st && !wOk(st, q) ? kw(`需要${WTAGN[q.w]}（目前不能用）`, 'bad') : `需要${WTAGN[q.w]}`);
   return out.join('・');
 }
 /* 技能頁的篩選：全部、全體、單體、物理、元素、輔助（增益、治癒、召喚） */
@@ -276,23 +292,24 @@ const gemCell = (g, noEq) => {
 };
 const gemRow = (g, tag) => {
   const q = gemSkill(g);
-  return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q)}・刻印 ${g.en.length}/${gemSlots(g)}${gemOpen(g) > 0 ? ' <span style="color:var(--gold)">◇可刻印</span>' : ''}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
+  return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q, stats())}・刻印 ${g.en.length}/${gemSlots(g)}${gemOpen(g) > 0 ? ' <span style="color:var(--gold)">◇可刻印</span>' : ''}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
 };
 /* 0.3.11 技能石商店：依 T 分頁（T1～T5），未解鎖的 T 只能看 */
 function gemShopHTML() {
-  const mx = tierMax(),
+  const st = stats(),
+    mx = tierMax(),
     cur = Math.min(5, SEL.gtier || 1),
     ks = GEMK()
       .filter(k => gemTier(k) === cur)
       .sort((a, b) => gemReq(a) - gemReq(b) || a.localeCompare(b));
-  return `<p class="sub" style="margin:0">金幣 <b style="color:var(--gold)">${S.gold}</b>・目前解鎖到 T${mx}。買下的技能石是 Lv1，每種只能有一顆；用擊殺怪物得到的靈魂升級。</p>
+  return `<p class="sub" style="margin:0">金幣 <b style="color:var(--gold)">${S.gold}</b>・目前解鎖到 T${mx}。買下的技能石是 Lv1，同一種可以重複購買；用擊殺怪物得到的靈魂升級。</p>
     <div class="seg gst5">${[1, 2, 3, 4, 5].map(t => `<button data-act="gshopTier" data-v="${t}" aria-pressed="${t === cur}">T${t}${t > mx ? '🔒' : ''}</button>`).join('')}</div>
     ${cur > mx ? `<p class="sub" style="color:#ffb27a">T${cur} 還沒解鎖：到城鎮挑戰突破試煉。</p>` : ''}
     <div class="card">${ks
       .map(k => {
         const q = SKILLS[k],
           blk = gemBuyBlock(k);
-        return `<div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} <span class="sub">需要 Lv${gemReq(k)}</span></b>${skTagHTML(q, 3)}<small>${gemDesc(gemSkill(newGem(k)))}</small></div><button class="btn sm ${blk ? '' : 'pri'}" data-act="gemBuy" data-k="${k}" ${blk ? 'disabled' : ''}>${blk || `${gemPrice(k)} 金`}</button></div>`;
+        return `<div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} <span class="sub">需要 Lv${gemReq(k)}${gemCount(k) ? `・<span style="color:var(--gold)">已有 ${gemCount(k)} 顆</span>` : ''}</span></b>${skTagHTML(q)}<small>${gemDesc(gemSkill(newGem(k)), st)}</small></div><button class="btn sm ${blk ? '' : 'pri'}" data-act="gemBuy" data-k="${k}" ${blk ? 'disabled' : ''}>${blk || `${gemPrice(k)} 金`}</button></div>`;
       })
       .join('')}</div>`;
 }
@@ -337,7 +354,7 @@ function renderSheet() {
     <h3>技能</h3><div class="card">${mySkills()
       .map((q, i) =>
         q
-          ? `<div class="rowx"><div class="t"><b>${q.name} Lv${q.lv}</b><small>${gemDesc(q)}</small></div><small style="color:${st.blood ? 'var(--hp)' : 'var(--mp)'}">${costTxt(st, q) || '—'}</small></div>`
+          ? `<div class="rowx"><div class="t"><b>${q.name} Lv${q.lv}</b><small>${gemDesc(q, st)}</small></div><small style="color:${st.blood ? 'var(--hp)' : 'var(--mp)'}">${costTxt(st, q) || '—'}</small></div>`
           : `<div class="rowx"><div class="t"><small class="sub">第 ${i + 1} 格：空</small></div></div>`
       )
       .join('')}</div><button class="btn" data-act="sheet" data-s="skills">管理技能石</button>
@@ -349,7 +366,7 @@ function renderSheet() {
       .map((id, i) => {
         const g = gemOf(id);
         return g
-          ? `<button class="gslot" data-act="gem" data-id="${g.id}">${gemCell(g, true)}<span>${SKILLS[g.k].name}</span>${skTagHTML(gemSkill(g), 2)}</button>`
+          ? `<button class="gslot" data-act="gem" data-id="${g.id}">${gemCell(g, true)}<span>${SKILLS[g.k].name}</span>${skTagHTML(gemSkill(g), 2, 1)}${wOk(st, SKILLS[g.k]) ? '' : `<i class="skt eff">需要${WTAGN[SKILLS[g.k].w]}</i>`}</button>`
           : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>第 ${i + 1} 格</span></div>`;
       })
       .join('')}</div>
@@ -362,7 +379,7 @@ function renderSheet() {
         .filter(g => skfOk(g))
         .map(
           g =>
-            `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span>${skTagHTML(SKILLS[g.k], 2)}</button>`
+            `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span>${skTagHTML(SKILLS[g.k], 2, 1)}</button>`
         )
         .join('') || `<p class="sub">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石，到城鎮的技能石商店買吧'}</p>`
     }</div>`;
@@ -382,7 +399,7 @@ function renderSheet() {
       at = S.sk.indexOf(g.id),
       blk = gemLvBlock(g),
       n = gemSlots(g);
-    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span>${q.plus ? ` <span style="color:var(--gold)">+${q.plus}（契靈）</span>` : ''}</b>${skTagHTML(q)}<small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
+    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span>${q.plus ? ` <span style="color:var(--gold)">+${q.plus}（契靈）</span>` : ''}</b>${skTagHTML(q)}<small>${gemDesc(q, st)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
     <h3>刻印槽 ${g.en.length}/${n}${g.lv < GEM_MAX ? `<small class="sub">・下一個在 Lv${(fl(g.lv / 5) + 1) * 5}</small>` : ''}</h3><div class="card">${
       n
         ? [
@@ -1211,6 +1228,7 @@ const A = {
     if (cur) S.inv.push(cur);
     sfx('select');
     toast(`裝備了 ${itemTitle(it)}`);
+    wepWarn(d.s);
     clampHP();
     renderHud();
     renderSheet();
@@ -1243,6 +1261,7 @@ const A = {
     }
     sfx('select');
     toast(`裝備了 ${itemTitle(it)}`);
+    wepWarn(d.s);
     selItem = { eq: d.s };
     renderHud();
     openSheet('item');
@@ -1257,6 +1276,7 @@ const A = {
     }
     S.inv.push(it);
     S.eq[d.s] = null;
+    wepWarn(d.s);
     sfx('select');
     renderHud();
     if (sheetName === 'slot') {

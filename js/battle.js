@@ -477,8 +477,13 @@ function mitigate(pk, arm, res, shock) {
 /* ---- 天賦規則（單人與多人共用）：o 是有 hp/mp 的對象（S 或隊員），st 是它的屬性 ---- */
 const skCost = (st, sk) => Math.round(sk.mp * (1 - Math.min(80, (st.mpCost || 0) + (supOf(st, sk).cost || 0)) / 100));
 const lifeCost = (st, sk) => (sk.lifeCost ? Math.round(st.maxhp * sk.lifeCost) : 0);
+/* 0.3.18：技能要求的武器類型不符就不能用（昇華「技能不再需要特定武器」例外） */
+const wOk = (st, sk) => !sk.w || !st || !st.wtag || !!st.anyWep || sk.w === st.wtag;
 const canPay = (o, st, sk) =>
-  st.blood ? o.hp > skCost(st, sk) + lifeCost(st, sk) : o.mp >= skCost(st, sk) && o.hp > lifeCost(st, sk);
+  wOk(st, sk) &&
+  (st.blood ? o.hp > skCost(st, sk) + lifeCost(st, sk) : o.mp >= skCost(st, sk) && o.hp > lifeCost(st, sk));
+/* 戰鬥按鈕的小字：武器不符就寫「需要劍」，否則是消耗與短標籤 */
+const skSub = (st, q) => (wOk(st, q) ? [costTxt(st, q), skShort(q)].filter(Boolean).join('・') : `需要${WTAGN[q.w]}`);
 function payCost(o, st, sk) {
   const n = skCost(st, sk);
   if (st.blood) o.hp = Math.max(1, o.hp - n);
@@ -622,9 +627,7 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       (1 + (sup.more || 0) / 100) *
       (1 + bsum(me, 'more') / 100) *
       (1 + ((me.stacks || 0) * (st.killStack || 0)) / 100) *
-      (ext.allyMul || 1) *
-      /* 技能要求的武器不符：傷害 -40% */
-      (sk.w && st.wtag && sk.w !== st.wtag && !st.anyWep ? 0.6 : 1),
+      (ext.allyMul || 1),
     who = me.uid;
   if (me.dc) {
     S2.crit = 100;
@@ -1127,14 +1130,7 @@ function renderBHud() {
   const slot = k => {
     const q = k && sks[+k.slice(1)];
     return q
-      ? cb(
-          q.name,
-          q.icon,
-          [costTxt(st, q), skShort(q)].filter(Boolean).join('・'),
-          'skill',
-          `data-k="${k}"`,
-          canPay(S, st, q) ? '' : 'disabled'
-        )
+      ? cb(q.name, q.icon, skSub(st, q), 'skill', `data-k="${k}"`, canPay(S, st, q) ? '' : 'disabled')
       : cb(
           '生命藥水',
           'heart',

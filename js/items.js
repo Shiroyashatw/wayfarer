@@ -374,7 +374,7 @@ function gemLvBlock(g) {
 /* 分解：退回升級花掉的靈魂的 70%（g.dust 是累積投入的靈魂） */
 const gemSoulBack = g => Math.round((g.dust || 0) * 0.7);
 /* 0.3.11 技能石商店：每種技能有需求等級（開局技能 Lv1，其餘依強度分組平均分散到 Lv1～28，也就是 T1～T5），
-   城鎮商店只賣已解鎖 T 的技能石；買下來是 Lv1，每種技能只能有一顆 */
+   城鎮商店只賣已解鎖 T 的技能石；買下來是 Lv1。0.3.18 起可以重複購買同一種（同名技能石不能互吃） */
 /* 需求 Lv1 的入門技能石（開局送強力一擊與治癒） */
 const GEM_START = ['power', 'bash', 'double', 'fire', 'heal', 'poison', 'skeleton', 'talisman'];
 let GEMREQ = null;
@@ -393,8 +393,8 @@ function gemReq(k) {
 const gemTier = k => tierOfLv(gemReq(k));
 const gemPrice = k => Math.round(30 + 8 * Math.pow(gemReq(k), 1.6));
 const hasGem = k => S.gems.some(g => g.k === k);
+const gemCount = k => S.gems.filter(g => g.k === k).length;
 function gemBuyBlock(k) {
-  if (hasGem(k)) return '已擁有';
   if (gemTier(k) > tierMax()) return `T${gemTier(k)} 解鎖`;
   if (S.lv < gemReq(k)) return `需要 Lv${gemReq(k)}`;
   if (S.gold < gemPrice(k)) return '金幣不足';

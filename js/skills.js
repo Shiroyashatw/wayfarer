@@ -1,5 +1,5 @@
 /* 漫步勇者 · 0.3 技能石擴充（data.js 之後載入）：依武器類別與元素分組，約 100 種
-   欄位：w 武器類別（不符時傷害 -40%）、el 法術元素、tg 目標（one 單體／all 全體／rand 隨機）、hits 段數、chain 連鎖、proj 額外投射物、
+   欄位：w 武器類別（0.3.18 起不符就不能用）、el 法術元素、tg 目標（one 單體／all 全體／rand 隨機）、hits 段數、chain 連鎖、proj 額外投射物、
    addEl 攻擊附加元素 [元素, 物理的比例]、bleed／stun 機率、mark 標記、curse 詛咒、exec 斬殺、pet 召喚、buff 增益、lifeCost 扣生命 */
 'use strict';
 Object.assign(SKILLS, {
@@ -686,50 +686,66 @@ Object.assign(ICONS, {
   cloud: ['..gg....', '.gggg.g.', 'gggggggg', 'gggggggg', '.gggggg.', '..g..g..', '.g..g...', '........'],
   xbow: ['k.......', '.k......', 'bbbbbbbw', '.k......', 'k.......', '........', '........', '........']
 });
-/* 0.3.1.8 技能標籤：目標（單體／全體／隨機／連鎖／多支投射物／自身）、傷害類型（物理、火焰、冰冷、閃電）、武器、效果（流血、中毒、暈眩…）。
-   技能頁、技能石詳情、戰鬥中的技能按鈕共用；回傳 [文字, 類別]，類別決定顏色 */
+/* 技能標籤（0.3.18 直覺化）：類型、目標、元素、武器、效果；只放分類，不放數字（連鎖幾次、幾下寫在說明裡）。
+   技能頁、技能石詳情、商店、戰鬥按鈕共用；回傳 [文字, 類別]，類別決定顏色 */
+const SKTYPE = q =>
+  q.pet
+    ? '召喚'
+    : q.cry
+      ? '戰吼'
+      : q.aura
+        ? '光環'
+        : q.kind === 'heal'
+          ? '治癒'
+          : q.kind === 'buff'
+            ? '增益'
+            : q.kind === 'spell'
+              ? '法術'
+              : '攻擊';
 function skTags(q) {
-  const out = [];
-  if (q.pet) out.push(['召喚', 'pet']);
-  else if (q.kind === 'buff') out.push(['增益・自身', 'buf']);
-  else if (q.kind === 'heal') out.push([q.healAll ? '治癒・全隊' : '治癒・自身', 'heal']);
-  else {
+  const out = [[SKTYPE(q), 'ty']],
+    dmg = !q.pet && (q.kind === 'attack' || q.kind === 'spell');
+  if (dmg) {
     out.push(
       q.tg === 'all'
         ? ['全體', 'tg all']
         : q.tg === 'rand'
-          ? [`隨機 ${q.hits || 1} 下`, 'tg rand']
+          ? ['隨機', 'tg rand']
           : q.chain
-            ? [`連鎖 ${q.chain + 1} 隻`, 'tg rand']
+            ? ['連鎖', 'tg rand']
             : q.proj
-              ? [`${q.proj + 1} 支（分散）`, 'tg rand']
+              ? ['投射', 'tg rand']
               : ['單體', 'tg']
     );
-    if (q.hits > 1 && q.tg !== 'rand') out.push([`${q.hits} 連擊`, 'fx']);
     const el = q.kind === 'spell' ? q.el || 'phys' : 'phys';
     out.push([EL[el], 'el ' + el]);
-    if (q.addEl) out.push(['附加' + EL[q.addEl[0]], 'el ' + q.addEl[0]]);
-  }
+    if (q.addEl && q.addEl[0] !== el) out.push([EL[q.addEl[0]], 'el ' + q.addEl[0]]);
+  } else if (q.kind === 'heal') out.push([q.healAll ? '全隊' : '自身', 'tg']);
+  else if (q.cry) out.push(['全體', 'tg all']);
+  else if (!q.pet) out.push([q.buff && q.buff.party ? '全隊' : '自身', 'tg']);
   if (q.w) out.push([WTAGN[q.w], 'w']);
-  if (q.bleed) out.push(['流血', 'ail']);
-  if (q.poison) out.push(['中毒', 'ail']);
-  if (q.stun) out.push(['暈眩', 'ail']);
-  if (q.freeze) out.push(['凍結', 'ail']);
-  if (q.mark) out.push(['標記', 'ail']);
-  if (q.curse) out.push(['詛咒', 'ail']);
-  if (q.exec) out.push(['斬殺', 'ail']);
+  if (q.hits > 1 && q.tg !== 'rand') out.push(['連擊', 'eff']);
+  if (q.bleed) out.push(['流血', 'eff']);
+  if (q.poison) out.push(['中毒', 'eff']);
+  if (q.burn) out.push(['燃燒', 'eff']);
+  if (q.stun) out.push(['暈眩', 'eff']);
+  if (q.freeze) out.push(['凍結', 'eff']);
+  if (q.mark) out.push(['標記', 'eff']);
+  if (q.curse) out.push(['詛咒', 'eff']);
+  if (q.exec) out.push(['斬殺', 'eff']);
   if (q.guard) out.push(['格擋', 'buf']);
-  if (q.lifeCost) out.push(['耗血', 'ail']);
+  if (q.lifeCost) out.push(['耗血', 'eff']);
   return out;
 }
-const skTagHTML = (q, n = 99) =>
+/* n 是最多幾個，from 1 是略過類型（技能石格子的底色已經代表類型） */
+const skTagHTML = (q, n = 99, from = 0) =>
   `<span class="sktags">${skTags(q)
-    .slice(0, n)
+    .slice(from, from + n)
     .map(([t, c]) => `<i class="skt ${c}">${t}</i>`)
     .join('')}</span>`;
 /* 戰鬥按鈕上的短標籤：目標＋傷害類型 */
 const skShort = q =>
   skTags(q)
-    .slice(0, 2)
+    .slice(1, 3)
     .map(t => t[0])
     .join('・');

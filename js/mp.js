@@ -865,7 +865,7 @@ function renderMBHud() {
     return cb(
       q.name,
       q.icon,
-      [costTxt(me ? me.st : stats(), q), skShort(q)].filter(Boolean).join('・'),
+      skSub(me ? me.st : stats(), q),
       `data-k="${k}"`,
       me && canPay(me, skSt(me.st, q), q) ? '' : 'disabled'
     );
