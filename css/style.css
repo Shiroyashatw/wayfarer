@@ -621,5 +621,35 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .bcmd.six .brow2{grid-template-columns:1fr;gap:4px}
 .bcmd.six .brow2 .cb{min-height:27px!important;display:flex;gap:4px;padding:2px!important}
 .bcmd.six .brow2 .cb img{width:14px!important;height:14px!important}
+.bcmd.six .brow2 .cb small{display:inline;font-size:11px;margin:0 0 0 2px;color:#d8d2c4}
 .bcmd>.cb.mine{background:linear-gradient(#6a3a20,#3a2010);border-color:#ff8a3a88}
 .bcmd>.cb.atk{background:linear-gradient(#5a4630,#3a2c20);border-color:#c9a45c88}
+/* 0.3.27 戰鬥的狀態與紀錄面板（右上角按鈕） */
+.binfo-btn{position:absolute;top:calc(10px + var(--sat));right:calc(10px + var(--sar));z-index:4;display:flex;align-items:center;gap:5px;background:#000b;border:1px solid #c9a45c88;border-radius:8px;color:var(--tx,#f4ead2);font-family:var(--f-pix);font-size:13px;padding:4px 9px}
+.binfo-btn canvas{width:14px;height:14px;image-rendering:pixelated}
+.bossmode .binfo-btn{top:calc(10px + var(--sat))}
+.binfo{position:absolute;top:calc(44px + var(--sat));right:calc(8px + var(--sar));left:calc(8px + var(--sal));max-height:62%;z-index:5;display:flex;flex-direction:column;background:#120e1af2;border:1px solid #c9a45c99;border-radius:10px;box-shadow:0 6px 24px #000a}
+.binfo[hidden]{display:none}
+.binfo-tabs{display:flex;gap:6px;padding:6px;border-bottom:1px solid #c9a45c44}
+.binfo-tabs button{flex:1;background:#2a2230;border:1px solid #c9a45c44;border-radius:6px;color:#d8d2c4;font-size:14px;padding:5px}
+.binfo-tabs button.on{background:#4a3a20;border-color:#c9a45c;color:#ffd166}
+.binfo-tabs .x{flex:0 0 36px}
+.binfo-body{overflow:auto;padding:4px 10px 10px;font-size:13px}
+.binfo-body h4{margin:8px 0 3px;font-size:14px}
+.binfo-body h4 small{color:#a89c8a;font-weight:normal;font-size:11.5px}
+.bil{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.bil li{display:grid;grid-template-columns:16px auto 1fr;align-items:baseline;column-gap:6px;background:#ffffff0a;border-radius:5px;padding:3px 6px}
+.bil li img{width:14px;height:14px;image-rendering:pixelated;align-self:center}
+.bil li b{color:#ffd166;white-space:nowrap}
+.bil li small{grid-column:1/-1;color:#b8ae9c;font-size:11.5px}
+.bil li:not(:has(img)) b{grid-column:1/3}
+.bil li.none{color:#8a8070;display:block}
+.bau{margin:4px 0 0;color:#9fd4ef;font-size:12px}
+.blog{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.blog li{padding:2px 4px;border-bottom:1px solid #ffffff10;color:#d8d2c4}
+.blog .l-msg{color:#fff;font-weight:bold}
+.blog .l-hit{color:#ffb15a}
+.blog .l-dmg{color:#ff8a8a}
+.blog .l-heal{color:#7bd36b}
+.blog .l-st{color:#9fd4ef}
+.blog .l-kill{color:#c8b0ff}

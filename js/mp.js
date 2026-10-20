@@ -319,6 +319,8 @@ function mpStart() {
   ptLobby();
   const seed = h(fl(d.lat * 1e4), fl(d.lng * 1e4), hepoch()),
     spec = dunSpec(d);
+  BLOG = [];
+  $('binfo').hidden = true;
   MB = {
     spec,
     d: {
@@ -617,6 +619,8 @@ function mpApply(mb, fx) {
 function mpFx(f) {
   const now_ = performance.now(),
     en = i => MBFX.en[i] || (MBFX.en[i] = {});
+  if (MB)
+    logEv(f, MB.es, uid => (uid === CLOUD.uid ? '你' : ((MB.ps.find(p => p.uid === uid) || {}).name || '隊員') + ' '));
   if (f.t === 'msg') bmsg(f.s);
   else if (f.t === 'turn') {
     if (f.uid === CLOUD.uid) {
@@ -897,24 +901,22 @@ function renderMBHud() {
       me && skReady(me, me, skSt(me.st, q), q) ? '' : 'disabled'
     );
   };
-  /* 0.3.1.9：四個技能欄都直接放在面板上；普攻固定在右上角，物品與撤退擠在右下一格 */
-  /* 0.3.22：技能欄 6 格、3 欄排；有地雷時多一顆「引爆地雷」 */
+  /* 0.3.27：左邊兩欄 6 格都是技能；右邊一欄是攻擊、生命／魔力藥水、撤退（有地雷時多一顆「引爆地雷」） */
   const six = [0, 1, 2, 3, 4, 5].map(i =>
-    sks[i]
-      ? slot('s' + i)
-      : i === 0
-        ? cb(
-            '生命藥水',
-            'heart',
-            noPot ? '無法使用' : '×' + S.potions,
-            'data-k="potion"',
-            S.potions && !noPot ? '' : 'disabled'
-          )
-        : i === 1
-          ? cb('魔力藥水', 'ice', '×' + S.ethers, 'data-k="ether"', S.ethers ? '' : 'disabled')
-          : `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
-  );
-  const mn = me ? (me.mines || []).length : 0;
+      sks[i]
+        ? slot('s' + i)
+        : `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
+    ),
+    pot = cb(
+      '生命藥水',
+      'heart',
+      noPot ? '無法使用' : '×' + S.potions,
+      'data-k="potion"',
+      S.potions && !noPot ? '' : 'disabled'
+    ),
+    eth = cb('魔力藥水', 'ice', '×' + S.ethers, 'data-k="ether"', S.ethers ? '' : 'disabled'),
+    run = `<button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button>`,
+    mn = me ? (me.mines || []).length : 0;
   $('bcmd').classList.add('six');
   let html =
     `<div class="mpturn" id="mpTurn"></div>` +
@@ -923,26 +925,17 @@ function renderMBHud() {
     cb('攻擊', 'axe', '', 'data-k="attack"', '', 'atk') +
     six[2] +
     six[3] +
+    `<div class="brow2">${pot}${eth}</div>` +
     six[4] +
     six[5] +
-    (mn
-      ? cb('引爆地雷', 'flame', `×${mn}`, 'data-k="mines"', '', 'mine')
-      : !sks[0]
-        ? `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
-        : cb(
-            '生命藥水',
-            'heart',
-            noPot ? '無法使用' : '×' + S.potions,
-            'data-k="potion"',
-            S.potions && !noPot ? '' : 'disabled'
-          )) +
-    `<div class="brow2"><button class="cb" data-act="mpSub" data-k="items" ${dis}><img src="${iconURL('bag')}" alt="">物品</button><button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button></div>`;
+    (mn ? `<div class="brow2">${cb('引爆地雷', 'flame', `×${mn}`, 'data-k="mines"', '', 'mine')}${run}</div>` : run);
   if (MB.sub === 'skills' && my)
     html += `<div class="bsub">${sk.map(slot).join('')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
   if (MB.sub === 'items' && my)
     html += `<div class="bsub">${cb('生命藥水', 'heart', noPot ? '昇華代價：無法使用' : '×' + S.potions + '・恢復 40%', 'data-k="potion"', S.potions && !noPot ? '' : 'disabled')}${cb('魔力藥水', 'ice', '×' + S.ethers + '・恢復 50%', 'data-k="ether"', S.ethers ? '' : 'disabled')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
   $('bcmd').innerHTML = html;
   mpTurnBar();
+  if (!$('binfo').hidden) binfoRender();
 }
 let mpTurnT = 0;
 function mpTurnBar() {
