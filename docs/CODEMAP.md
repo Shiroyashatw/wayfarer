@@ -182,9 +182,9 @@
 
   `ART:2`
 
-### js/skills.js（1377 行）
+### js/skills.js（1416 行）
 
-  `SKKIND:675`、`SKTYPE:691`、`skTags:705`、`skTagHTML:753`、`skShort:759`、`SK_COND:765`、`SUPG:990`、`SUPGI:1163`、`SUPM:1164`、`SUPREQ:1166`、`SUPREQN:1178`、`supFits:1190`
+  `SKKIND:675`、`SKTYPE:691`、`skTags:705`、`skTagHTML:753`、`skShort:759`、`SK_COND:765`、`SUPG:990`、`SUPGI:1195`、`SUPM:1196`、`SUPREQ:1205`、`SUPREQN:1217`、`supFits:1229`
 
 ### js/audio.js（221 行）
 
@@ -204,7 +204,7 @@
 - **modal**（1016）
   `showModal:1017`、`hideModal:1023`、`busy:1026`、`openShop:1027`、`SHOP:1125`
 
-### js/battle.js（2978 行）
+### js/battle.js（2980 行）
 
 - **battle: painted backgrounds**（3）
   `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
@@ -215,9 +215,9 @@
 - **battle: solo**（1503）
   `heroMe:1505`、`startBattle:1535`、`pickTarget:1579`、`renderBHud:1609`、`playEv:1717`、`soloExt:1771`、`useSkill:1784`、`bItem:1827`、`flee:1873`、`allDead:1888`、`afterPlayer:1889`、`soloUnits:1901`、`nextTurn:1906`、`enemyAct:1925`
 - **dungeons (shared by solo and party)**（1940）
-  `dunSpec:1942`、`dunName:1973`、`BIGBOSS:1984`、`dunEnemy:1987`、`dropLoot:2113`、`SOUL_MUL:2195`、`gemLoot:2196`、`mechOf:2223`、`supLoot:2233`、`ONSITE_BONUS:2256`、`onsiteNow:2257`、`dunReward:2259`、`dunModsHTML:2299`、`lootList:2305`、`winBattle:2314`、`loseBattle:2418`、`endBattle:2442`、`enterDungeon:2451`、`nextRoom:2469`、`dungeonClear:2489`、`BP_ARMOR:2545`、`bossPicks:2547`
-- **battle: drawing**（2629）
-  `drawEnemies:2631`、`selTrack:2672`、`drawSel:2683`、`drawPets:2718`、`renderBattle:2727`、`drawWeapon:2803`、`drawFx:2881`
+  `dunSpec:1942`、`dunName:1973`、`BIGBOSS:1984`、`dunEnemy:1987`、`dropLoot:2113`、`SOUL_MUL:2195`、`gemLoot:2196`、`mechOf:2223`、`supLoot:2235`、`ONSITE_BONUS:2258`、`onsiteNow:2259`、`dunReward:2261`、`dunModsHTML:2301`、`lootList:2307`、`winBattle:2316`、`loseBattle:2420`、`endBattle:2444`、`enterDungeon:2453`、`nextRoom:2471`、`dungeonClear:2491`、`BP_ARMOR:2547`、`bossPicks:2549`
+- **battle: drawing**（2631）
+  `drawEnemies:2633`、`selTrack:2674`、`drawSel:2685`、`drawPets:2720`、`renderBattle:2729`、`drawWeapon:2805`、`drawFx:2883`
 
 ### js/map.js（1712 行）
 

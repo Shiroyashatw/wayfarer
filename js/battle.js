@@ -2223,13 +2223,15 @@ function gemLoot(e, boss, hell, rem, out) {
 const mechOf = e =>
   e.ud
     ? 'ud'
-    : e.sin || e.mist
+    : e.sin || e.siege
       ? 'sin'
-      : e.uw
-        ? 'uw'
-        : e.hunt || e.zod || (typeof B !== 'undefined' && B && B.hunt && !e.minion)
-          ? 'hunt'
-          : '';
+      : e.mist || e.xiong || e.zhulong
+        ? 'mist'
+        : e.uw
+          ? 'uw'
+          : e.hunt || e.zod || (typeof B !== 'undefined' && B && B.hunt && !e.minion)
+            ? 'hunt'
+            : '';
 function supLoot(e, boss, rem, out) {
   const r = e.rar || 0,
     m = mechOf(e),

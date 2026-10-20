@@ -948,7 +948,7 @@ function zhulongWin() {
   got.push('崇高石');
   giveCur('wish', 2);
   got.push('祈願石 ×2');
-  const l = SUPG.filter(x => x.lin && x.m === 'sin'),
+  const l = SUPG.filter(x => x.lin && x.m === 'mist'),
     x = l[fl(Math.random() * l.length)];
   if (Math.random() < 0.6) {
     giveSup(x.k);
