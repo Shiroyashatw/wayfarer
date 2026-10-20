@@ -231,6 +231,25 @@ function migrate(s) {
     }
     s.v = 22;
   }
+  if (s.v < 23) {
+    // 0.3.20：刻印拿掉，改成輔助插槽（2 格起）；每條刻印詞綴退回 1 個刻印石，腐化擴槽的多 1 格；新增輔助寶石背包與品質
+    let n = 0;
+    for (const g of s.gems || []) {
+      n += (g.en || []).length;
+      g.sock = 2 + (g.xs ? 1 : 0);
+      g.sp = g.sp || [];
+      g.q = g.q || 0;
+      delete g.en;
+      delete g.xs;
+    }
+    s.sups = s.sups || [];
+    if (n) {
+      s.cur = s.cur || {};
+      s.cur.eng = (s.cur.eng || 0) + n;
+      if (s.log) s.log.unshift(`技能石改版：刻印改成輔助插槽，原本的 ${n} 條刻印詞綴退回 ${n} 個刻印石`);
+    }
+    s.v = 23;
+  }
   return s;
 }
 function start() {

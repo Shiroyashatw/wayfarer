@@ -137,7 +137,7 @@ function navOpen(g) {
   const dot = s =>
     (s === 'tree' && treePts() > 0) ||
     (s === 'asc' && ascAlert()) ||
-    (s === 'skills' && S.cur.eng > 0 && S.gems.some(g => gemOpen(g) > 0)) ||
+    (s === 'skills' && supHint()) ||
     (s === 'party' && PT) ||
     (s === 'friends' && SOC.friends.some(f => f.status === 'pending' && f.incoming));
   el.innerHTML = NAVG[g]
@@ -343,25 +343,40 @@ function skfOk(g) {
   if (f === 'sup') return !dmg;
   return true;
 }
-/* 技能石圖示：左上等級、右上刻印槽（亮的是已刻印）、右下「裝」表示在技能欄；底色依種類（攻擊、法術、輔助），0.3.11 起沒有星級 */
+/* 技能石圖示：左上等級、右上插槽（亮的是插了輔助寶石）、右下「裝」表示在技能欄；底色依種類（攻擊、法術、輔助），0.3.11 起沒有星級 */
 const gemKc = k => (SKILLS[k].kind === 'spell' ? 'ks' : SKILLS[k].kind === 'attack' ? 'ka' : 'ku');
 const gemCell = (g, noEq) => {
-  const n = gemSlots(g);
-  return `<span class="gtile ${gemKc(g.k)}${g.cor ? ' gcor' : ''}"><img src="${iconURL(SKILLS[g.k].icon)}" alt=""><i class="glv">${g.lv}</i>${n ? `<span class="gen">${Array.from({ length: n }, (_, i) => `<i class="${i < g.en.length ? 'f' : ''}"></i>`).join('')}</span>` : ''}${!noEq && S.sk.includes(g.id) ? '<i class="geq">裝</i>' : ''}</span>`;
+  const n = g.sock || 2,
+    m = (g.sp || []).length;
+  return `<span class="gtile ${gemKc(g.k)}${g.cor ? ' gcor' : ''}"><img src="${iconURL(SKILLS[g.k].icon)}" alt=""><i class="glv">${g.lv}</i><span class="gen">${Array.from({ length: n }, (_, i) => `<i class="${i < m ? 'f' : ''}"></i>`).join('')}</span>${g.q ? `<i class="gq">${g.q}%</i>` : ''}${!noEq && S.sk.includes(g.id) ? '<i class="geq">裝</i>' : ''}</span>`;
 };
 const gemRow = (g, tag) => {
   const q = gemSkill(g);
-  return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q, stats())}・刻印 ${g.en.length}/${gemSlots(g)}${gemOpen(g) > 0 ? ' <span style="color:var(--gold)">◇可刻印</span>' : ''}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
+  return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q, stats())}・插槽 ${(g.sp || []).length}/${g.sock || 2}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
 };
+/* 0.3.20 輔助寶石 */
+const supPrice = sp => Math.round(60 + 110 * Math.pow(sp.t || 1, 1.7));
+function supBuyBlock(sp) {
+  if (sp.lin) return '只會掉落';
+  if (sp.t > tierMax()) return `T${sp.t} 解鎖`;
+  if (S.gold < supPrice(sp)) return '金幣不足';
+  return '';
+}
+const supN = k => (S.sups || []).filter(x => x.k === k).length;
+/* 紅點：有沒插的輔助寶石，而且技能欄裡有技能石插得進去 */
+const supHint = () => (S.sups || []).some(x => S.sk.some(id => gemOf(id) && !supBlock(gemOf(id), x)));
+const supLine = sp =>
+  `${sp.lin ? '<i class="kw num">族裔</i> ' : ''}<b>${sp.n}</b><small>${sp.d}・只能插${SUPREQN[sp.req]}${sp.mp ? `・魔力消耗 +${sp.mp}%` : ''}${sp.conv ? '・轉換類（一顆技能石只能一個）' : ''}${sp.lin ? `・同名一個角色只能用一顆・${SUPM[sp.m]}掉落` : ''}</small>`;
 /* 0.3.11 技能石商店：依 T 分頁（T1～T5），未解鎖的 T 只能看 */
 function gemShopHTML() {
+  if (SEL.gshopK === 'sup') return supShopHTML();
   const st = stats(),
     mx = tierMax(),
     cur = Math.min(5, SEL.gtier || 1),
     ks = GEMK()
       .filter(k => gemTier(k) === cur)
       .sort((a, b) => gemReq(a) - gemReq(b) || a.localeCompare(b));
-  return `<p class="sub" style="margin:0">金幣 <b style="color:var(--gold)">${S.gold}</b>・目前解鎖到 T${mx}。買下的技能石是 Lv1，同一種可以重複購買；用擊殺怪物得到的靈魂升級。</p>
+  return `${gshopKind()}<p class="sub" style="margin:0">金幣 <b style="color:var(--gold)">${S.gold}</b>・目前解鎖到 T${mx}。買下的技能石是 Lv1，同一種可以重複購買；用擊殺怪物得到的靈魂升級。</p>
     <div class="seg gst5">${[1, 2, 3, 4, 5].map(t => `<button data-act="gshopTier" data-v="${t}" aria-pressed="${t === cur}">T${t}${t > mx ? '🔒' : ''}</button>`).join('')}</div>
     ${cur > mx ? `<p class="sub" style="color:#ffb27a">T${cur} 還沒解鎖：到城鎮挑戰突破試煉。</p>` : ''}
     <div class="card">${ks
@@ -369,6 +384,25 @@ function gemShopHTML() {
         const q = SKILLS[k],
           blk = gemBuyBlock(k);
         return `<div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} <span class="sub">需要 Lv${gemReq(k)}${gemCount(k) ? `・<span style="color:var(--gold)">已有 ${gemCount(k)} 顆</span>` : ''}</span></b>${skTagHTML(q)}<small>${gemDesc(gemSkill(newGem(k)), st)}</small></div><button class="btn sm ${blk ? '' : 'pri'}" data-act="gemBuy" data-k="${k}" ${blk ? 'disabled' : ''}>${blk || `${gemPrice(k)} 金`}</button></div>`;
+      })
+      .join('')}</div>`;
+}
+const gshopKind = () =>
+  `<div class="seg" style="grid-template-columns:1fr 1fr">${[
+    ['gem', '技能石'],
+    ['sup', '輔助寶石']
+  ]
+    .map(
+      ([k, n]) => `<button data-act="gshopK" data-k="${k}" aria-pressed="${(SEL.gshopK || 'gem') === k}">${n}</button>`
+    )
+    .join('')}</div>`;
+function supShopHTML() {
+  const mx = tierMax();
+  return `${gshopKind()}<p class="sub" style="margin:0">金幣 <b style="color:var(--gold)">${S.gold}</b>・目前解鎖到 T${mx}。輔助寶石插在技能石的插槽裡（一開始 2 格），可以隨時拆下來換到別顆；同一種可以買很多顆。族裔輔助只會從野外機制的菁英與首領掉落。</p>
+    <div class="card">${SUPG.filter(sp => !sp.lin)
+      .map(sp => {
+        const blk = supBuyBlock(sp);
+        return `<div class="rowx"><div class="t">${supLine(sp)}<small class="sub">T${sp.t}${supN(sp.k) ? `・<span style="color:var(--gold)">已有 ${supN(sp.k)} 顆</span>` : ''}</small></div><button class="btn sm ${blk ? '' : 'pri'}" data-act="supBuy" data-k="${sp.k}" ${blk ? 'disabled' : ''}>${blk || `${supPrice(sp)} 金`}</button></div>`;
       })
       .join('')}</div>`;
 }
@@ -429,7 +463,7 @@ function renderSheet() {
           : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>第 ${i + 1} 格</span></div>`;
       })
       .join('')}</div>
-    <p class="sub" style="margin:0">另外有固定的普通攻擊。技能石每 5 級開 1 個空的刻印槽，用刻印石點下去才會抽出詞綴。</p>
+    <p class="sub" style="margin:0">另外有固定的普通攻擊。技能石有 2～5 個插槽，插上輔助寶石改變技能怎麼運作；品質用寶石稜鏡提高（野外機制掉落）。</p>
     <p class="sub" style="margin:0">技能石在城鎮的「技能石商店」購買（依 T 級解鎖），用擊殺怪物得到的${curDot('soul')}靈魂（${S.cur.soul || 0}）升級。</p>
     ${curRowG()}
     <h3>技能石（${S.gems.length}）</h3><div class="seg skf">${SKF.map(([k, n]) => `<button data-act="skFilter" data-k="${k}" aria-pressed="${(SEL.skf || 'all') === k}">${n}</button>`).join('')}</div>
@@ -441,6 +475,16 @@ function renderSheet() {
             `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span>${skTagHTML(SKILLS[g.k], 2, 1)}</button>`
         )
         .join('') || `<p class="sub">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石，到城鎮的技能石商店買吧'}</p>`
+    }</div>
+    <h3>輔助寶石（${(S.sups || []).length} 顆沒插）</h3><div class="card">${
+      [...new Set((S.sups || []).map(x => x.k))]
+        .map(k => SUPGI[k])
+        .filter(Boolean)
+        .map(
+          sp => `<div class="rowx"><div class="t">${supLine(sp)}</div><small class="sub">×${supN(sp.k)}</small></div>`
+        )
+        .join('') ||
+      '<p class="sub">還沒有輔助寶石：到城鎮的技能石商店買（切到「輔助寶石」），或從菁英、首領身上掉落。</p>'
     }</div>`;
   } else if (sheetName === 'pbrk') {
     html = pactBrkHTML();
@@ -457,21 +501,23 @@ function renderSheet() {
     const q = gemSkill(g),
       at = S.sk.indexOf(g.id),
       blk = gemLvBlock(g),
-      n = gemSlots(g);
+      n = g.sock || 2,
+      qf = gemQFx(SKILLS[g.k]);
     html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span>${q.plus ? ` <span style="color:var(--gold)">+${q.plus}（契靈）</span>` : ''}</b>${skTagHTML(q)}<small>${gemDesc(q, st)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
-    <h3>刻印槽 ${g.en.length}/${n}${g.lv < GEM_MAX ? `<small class="sub">・下一個在 Lv${(fl(g.lv / 5) + 1) * 5}</small>` : ''}</h3><div class="card">${
-      n
-        ? [
-            ...g.en.map(a => `<div class="rowx"><div class="t"><b>${gAffTxt(a)}</b></div></div>`),
-            ...Array.from(
-              { length: gemOpen(g) },
-              () =>
-                '<div class="rowx"><div class="t"><small class="sub">◇ 空的刻印槽：用刻印石點下去</small></div></div>'
-            )
-          ].join('')
-        : '<p class="sub">Lv5 開第一個刻印槽</p>'
-    }</div>
-    <h3>刻印</h3><div class="crafts">${GCUR.slice(2)
+    <h3>輔助插槽 ${(g.sp || []).length}/${n}</h3><div class="card">${[
+      ...(g.sp || []).map(
+        x =>
+          `<div class="rowx"><div class="t">${SUPGI[x.k] ? supLine(SUPGI[x.k]) : x.k}</div><button class="btn sm" data-act="supOut" data-u="${x.u}">拆下</button></div>`
+      ),
+      ...Array.from(
+        { length: Math.max(0, n - (g.sp || []).length) },
+        () =>
+          `<div class="rowx"><div class="t"><small class="sub">◇ 空的插槽</small></div><button class="btn sm pri" data-act="supPick">插入輔助寶石</button></div>`
+      )
+    ].join('')}</div>
+    <h3>品質 ${g.q || 0}%<small class="sub">・最多 ${Q_GEM}%（腐化可以超過）</small></h3><div class="card"><div class="rowx"><div class="t"><b>${qf.t(g.q || 0)}</b><small>每 1% 品質：${qf.t(1)}・寶石稜鏡一次 +${prismAdd(g)}%（越高加越少）</small></div></div></div>
+    <h3>技能石通貨</h3><div class="crafts">${['eng', 'engX', 'engD', 'engC', 'prism', 'vaal']
+      .map(id => GCURI[id])
       .map(
         cu =>
           `<button class="btn sm" data-act="gemCraft" data-c="${cu.id}" ${gemCraftable(g, cu.id) && S.cur[cu.id] > 0 ? '' : 'disabled'}>${curDot(cu.id)}${cu.n} <b>${S.cur[cu.id] || 0}</b><small>${cu.d}</small></button>`
@@ -1161,7 +1207,7 @@ const A = {
     g.dust += n;
     g.lv++;
     sfx(g.lv % 5 ? 'select' : 'level');
-    toast(g.lv % 5 ? `${SKILLS[g.k].name} 升到 Lv${g.lv}` : `${SKILLS[g.k].name} Lv${g.lv}：開了一個新的刻印槽！`);
+    toast(`${SKILLS[g.k].name} 升到 Lv${g.lv}`);
     renderSheet();
     save();
   },
@@ -1179,7 +1225,8 @@ const A = {
     } else if (res) {
       sfx(d.c === 'eng' ? 'select' : 'level');
       buzz(30);
-      addLog(`使用${GCURI[d.c].n}：${SKILLS[g.k].name} Lv${g.lv}`);
+      addLog(`使用${GCURI[d.c].n}：${SKILLS[g.k].name} Lv${g.lv}${typeof res === 'string' ? '・' + res : ''}`);
+      if (typeof res === 'string') toast(res);
       renderSheet();
       save();
     }
@@ -1190,12 +1237,13 @@ const A = {
     const v = gemSoulBack(g);
     showModal(
       '分解技能石',
-      `<p>分解 ${SKILLS[g.k].name} Lv${g.lv}，退回 ${v} 個靈魂（升級花掉的 70%）？刻印詞綴會一起消失，之後可以再到商店買。</p>`,
+      `<p>分解 ${SKILLS[g.k].name} Lv${g.lv}，退回 ${v} 個靈魂（升級花掉的 70%）？品質與插槽會一起消失，插著的輔助寶石退回背包；之後可以再到商店買。</p>`,
       [
         {
           label: '分解',
           pri: 1,
           fn: () => {
+            for (const y of g.sp || []) S.sups.push(y);
             S.gems = S.gems.filter(q => q !== g);
             S.sk = S.sk.map(id => (id === g.id ? null : id));
             giveCur('soul', v);
@@ -1217,6 +1265,58 @@ const A = {
     SEL.gshop = e.id;
     SEL.gtier = SEL.gtier || Math.min(tierMax(), 5);
     openSheet('gemshop');
+  },
+  gshopK: d => {
+    SEL.gshopK = d.k;
+    sfx('tap');
+    renderSheet();
+  },
+  supBuy: d => {
+    const sp = SUPGI[d.k],
+      e = ENT.get(SEL.gshop);
+    if (!sp || !inRange(e) || supBuyBlock(sp)) return;
+    S.gold -= supPrice(sp);
+    giveSup(sp.k);
+    sfx('coin');
+    toast(`買下輔助寶石：${sp.n}`);
+    addLog(`在${e.name}買下輔助寶石：${sp.n}`);
+    renderSheet();
+    renderHud();
+    save();
+  },
+  /* 插入：列出背包裡的輔助寶石，不能插的寫原因 */
+  supPick: () => {
+    const g = gemOf(selGem);
+    if (!g) return;
+    const ks = [...new Set((S.sups || []).map(x => x.k))].filter(k => SUPGI[k]);
+    showModal(
+      '插入輔助寶石',
+      ks.length
+        ? `<div class="card">${ks
+            .map(k => {
+              const x = S.sups.find(y => y.k === k),
+                blk = supBlock(g, x);
+              return `<div class="rowx"><div class="t">${supLine(SUPGI[k])}<small class="sub">×${supN(k)}</small></div><button class="btn sm ${blk ? '' : 'pri'}" data-act="supIn" data-u="${x.u}" ${blk ? 'disabled' : ''}>${blk || '插入'}</button></div>`;
+            })
+            .join('')}</div>`
+        : '<p class="sub">背包裡沒有輔助寶石。到城鎮的技能石商店買，或打菁英、首領掉落。</p>',
+      [{ label: '關閉', fn: hideModal }]
+    );
+  },
+  supIn: d => {
+    const g = gemOf(selGem);
+    if (!g || !supIn(g, d.u)) return;
+    hideModal();
+    sfx('select');
+    renderSheet();
+    save();
+  },
+  supOut: d => {
+    const g = gemOf(selGem);
+    if (!g || !supOut(g, d.u)) return;
+    sfx('tap');
+    renderSheet();
+    save();
   },
   gshopTier: d => {
     SEL.gtier = +d.v;

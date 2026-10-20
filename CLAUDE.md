@@ -23,7 +23,7 @@
 | `js/sprites.js` | 16x16 像素圖（自動描邊陰影）、8x8 圖示 |
 | `js/gear.js` | 0.3.1 裝備外觀：每種底材的 12×12 圖示 `GEAR`、材質階級 `tierOf`、`gearIcon`、角色外觀疊圖 `heroLook`／`heroSpr`／`heroPal`（`sprites.js` 之後載入） |
 | `js/art.js` | 自動產生（`tools/art.py`）：`art/monsters/*.png` 的 PNG 怪物圖（base64），圖名 `a_檔名`；不要手改 |
-| `js/skills.js` | 0.3 技能石擴充（約 100 種，武器／元素標籤、召喚、增益）與新圖示（`sprites.js` 之後載入） |
+| `js/skills.js` | 0.3 技能石擴充（約 130 種，武器／元素標籤、召喚、增益、0.3.19 條件 `SK_COND` 與戰吼）、0.3.20 輔助寶石 `SUPG`、新圖示（`sprites.js` 之後載入） |
 | `js/audio.js` | Web Audio 合成音樂與音效 |
 | `js/items.js` | `newGame`、裝備、詞綴、通貨製作、屬性計算 |
 | `js/battle.js` | 戰鬥背景、多隻敵人的回合邏輯（`actResolve`／`enemyResolve` 單人與組隊共用）、繪製 |

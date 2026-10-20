@@ -365,6 +365,8 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .gen{position:absolute;top:-4px;right:-4px;display:flex;gap:1px}
 .gen i{width:6px;height:6px;border-radius:2px;background:#fff3;border:1px solid #0008}
 .gen i.f{background:#7fd6ff}
+/* 0.3.20 技能石品質（左下） */
+.gq{position:absolute;bottom:-5px;left:-5px;font-style:normal;font-size:9px;background:#ff8fd8;color:#000;border-radius:6px;padding:0 3px}
 .geq{position:absolute;bottom:-5px;right:-5px;font-style:normal;font-size:10px;background:var(--good);color:#000;border-radius:6px;padding:0 4px}
 .gcor{outline:2px solid #e5304a;outline-offset:1px}
 

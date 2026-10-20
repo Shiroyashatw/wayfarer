@@ -484,6 +484,8 @@ function supOf(st, sk) {
   for (const s of (st && st.sup) || [])
     if (s.tag === 'all' || s.tag === tag || s.tag === sk.kind || (s.tag === 'summon' && sk.pet))
       for (const k in s) if (k !== 'tag') o[k] = (o[k] || 0) + s[k];
+  /* 0.3.20 技能石上插的輔助寶石 */
+  for (const k in sk.gsup || {}) o[k] = (o[k] || 0) + sk.gsup[k];
   return o;
 }
 /* 增益（戰旗、冰甲、附身…）：me.buffs 是 [{k: 值, turns}]，取同一個欄位的總和 */
@@ -526,7 +528,7 @@ const costTxt = (st, sk) =>
   [sk.mp ? skCost(st, sk) + (st.blood ? ' 生命' : ' 魔力') : '', sk.lifeCost ? lifeCost(st, sk) + ' 生命' : '']
     .filter(Boolean)
     .join('＋');
-/* 技能石的刻印詞綴只在用那個技能時生效 */
+/* 技能石自己的數值（暴擊、異常、吸血…）只在用那個技能時生效；0.3.20 刻印共鳴改成每顆輔助寶石 */
 const skSt = (st, sk) =>
   sk.gid
     ? {
@@ -963,7 +965,7 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
           if (!L.length) break;
           const j = L[fl(Math.random() * L.length)];
           seen.add(j);
-          one(j, sk.mult * Math.pow(0.8, c + 1), at + 120 * (c + 1), 'chain');
+          one(j, sk.mult * Math.pow(Math.min(1, 0.8 + (sk.chainDecay || 0) / 100), c + 1), at + 120 * (c + 1), 'chain');
         }
       }
       for (let p = 0; p < proj; p++) {
@@ -996,7 +998,7 @@ function cryResolve(me, st, sk, es, party, ext, ev) {
   L.forEach((i, n) => ev.push({ t: 'lunge', i, at: 150 + n * 40 }));
   if (sk.buff) {
     const b = { ...sk.buff };
-    if (sk.perFoe) for (const k in sk.perFoe) b[k] = (b[k] || 0) + sk.perFoe[k] * c;
+    if (sk.perFoe) for (const k in sk.perFoe) b[k] = (b[k] || 0) + sk.perFoe[k] * c * (1 + (sk.cryMul || 0) / 100);
     if (sk.lowMeBuff) b.more = (b.more || 0) + sk.lowMeBuff * fl((1 - me.hp / st.maxhp) * 10);
     (sk.party ? party.filter(q => q.alive !== false) : [me]).forEach(q => addBuff(q, { ...sk, buff: b }, ev));
   }
@@ -1033,7 +1035,12 @@ function cryResolve(me, st, sk, es, party, ext, ev) {
 }
 function addBuff(me, sk, ev) {
   me.buffs = (me.buffs || []).filter(b => b.id !== sk.buff.id);
-  me.buffs.push({ ...sk.buff, id: sk.buff.id || sk.name, turns: sk.buff.turns || 3, cry: sk.cry ? 1 : 0 });
+  me.buffs.push({
+    ...sk.buff,
+    id: sk.buff.id || sk.name,
+    turns: (sk.buff.turns || 3) + (sk.buffT || 0),
+    cry: sk.cry ? 1 : 0
+  });
   if (sk.buff.shield) me.shield = Math.round((me.st ? me.st.maxhp : 100) * sk.buff.shield);
   ev.push({ t: 'st', who: me.uid, s: sk.buff.n || sk.name, col: '#9fd4ef', at: 200 });
   ev.push({ t: 'fx', type: 'heal', who: me.uid, at: 150 });
@@ -1877,7 +1884,7 @@ function dropLoot(e, boss, sp, remote, minion) {
   }
   return out;
 }
-/* 技能石材料：靈魂與刻印石系列（昇華稜鏡、神聖刻印石在冥府內容出來前先由紅名怪掉落） */
+/* 技能石材料：靈魂與刻印石系列（開插槽）；0.3.20 寶石稜鏡與輔助寶石在 supLoot */
 /* 靈魂隨怪物強度增加：稀有度底數 + 每條詞綴 2（冥府詞綴 3）+ 每 4 級 1，首領再加 */
 /* 0.3.1.8：靈魂全部來源 ×1.5（0.3.11 起靈魂拿來升級技能石） */
 const SOUL_MUL = 1.5;
@@ -1904,8 +1911,41 @@ function gemLoot(e, boss, hell, rem, out) {
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
   if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
   if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');
-  if (r === 4 && ch(0.08)) add('prism');
   if (r === 4 && ch(0.08)) add('engD');
+  supLoot(e, boss, rem, out);
+}
+/* 0.3.20：寶石稜鏡與族裔輔助只從野外機制掉（菁英低機率、首領高機率），一般輔助寶石菁英與首領都會掉 */
+const mechOf = e =>
+  e.ud
+    ? 'ud'
+    : e.sin || e.mist
+      ? 'sin'
+      : e.uw
+        ? 'uw'
+        : e.hunt || e.zod || (typeof B !== 'undefined' && B && B.hunt && !e.minion)
+          ? 'hunt'
+          : '';
+function supLoot(e, boss, rem, out) {
+  const r = e.rar || 0,
+    m = mechOf(e),
+    big = boss || r >= 3,
+    pick = a => a[fl(Math.random() * a.length)],
+    giveS = sp => {
+      giveSup(sp.k);
+      out.push(
+        `<span style="color:${sp.lin ? '#ffd166' : '#9fd4ef'}">${sp.lin ? '族裔輔助・' : '輔助寶石・'}${sp.n}</span>`
+      );
+    };
+  if (m) {
+    const n = big ? 1 + (Math.random() < 0.5 ? 1 : 0) : r >= 1 && Math.random() < 0.08 * rem ? 1 : 0;
+    if (n) {
+      giveCur('prism', n);
+      out.push(curDot('prism') + GCURI.prism.n + (n > 1 ? ' ×' + n : ''));
+    }
+    if (Math.random() < (big ? 0.25 : r >= 1 ? 0.015 : 0) * rem) giveS(pick(SUPG.filter(sp => sp.lin && sp.m === m)));
+  } else if (r === 4 && Math.random() < 0.04 * rem) giveS(pick(SUPG.filter(sp => sp.lin && sp.m === 'wild')));
+  if (Math.random() < (boss ? 0.15 : [0, 0.01, 0.03, 0.05, 0.1][r] || 0) * rem)
+    giveS(pick(SUPG.filter(sp => !sp.lin && sp.t <= Math.max(1, Math.min(5, tierNow())))));
 }
 /* 現場加成：人實際走到互動範圍內（150 公尺，城鎮 200）打（不是靠據點、營旗、絲綢之路遠端），掉寶數量與稀有度 +20% */
 const ONSITE_BONUS = 20;
@@ -1934,6 +1974,21 @@ function dunReward(D) {
   }
   if (sp.dt === 'stele') curs.push(makeTablet(D.lv, sp.mods));
   if (sp.dt === 'sin' || sp.dt === 'sinking') curs.push(...sinReward(sp));
+  /* 0.3.20：冥府傳送門與七宗罪的首領：寶石稜鏡、族裔輔助 */
+  const lm = sp.dt === 'portal' ? 'uw' : sp.dt === 'sin' || sp.dt === 'sinking' ? 'sin' : '';
+  if (lm) {
+    giveCur('prism', 2);
+    curs.push(curDot('prism') + GCURI.prism.n + ' ×2');
+    if (Math.random() < (sp.dt === 'sinking' ? 0.6 : 0.3)) {
+      const l = SUPG.filter(x => x.lin && x.m === lm),
+        x = l[fl(Math.random() * l.length)];
+      giveSup(x.k);
+      curs.push(`<span style="color:#ffd166">族裔輔助・${x.n}</span>`);
+    }
+  } else if (sp.dt === 'hell' && Math.random() < 0.4) {
+    giveCur('prism');
+    curs.push(curDot('prism') + GCURI.prism.n);
+  }
   return { gold, cry, items, curs };
 }
 function dunModsHTML(sp) {

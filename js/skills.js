@@ -980,3 +980,207 @@ Object.assign(SKILLS, {
   /* ---- 治療 ---- */
   emergency: { name: '緊急治療', mp: 6, kind: 'heal', heal: 0.12, healLow: 25, cd: 2, icon: 'heart', r: 3 }
 });
+/* ---- 0.3.20 輔助寶石（取代刻印）：插在技能石的插槽裡，改變技能怎麼運作 ----
+   sup 是戰鬥的輔助效果（跟昇華共用 supOf）、sk 是加到技能上的條件欄位（數值相加，vs 合併）、mp 是魔力消耗 +%；
+   req 是能插的技能（標籤）、conv 轉換類一顆技能石只能一個、t 是商店的 T 級；lin 是族裔輔助（機制菁英／首領掉落，同名一個角色只能用一顆）、m 是機制 */
+const SUPG = [
+  { k: 'sp_dmg', n: '強化', t: 1, req: 'dmg', mp: 15, sup: { more: 25 }, d: '傷害 +25%（總乘）' },
+  { k: 'sp_proj', n: '多重投射', t: 1, req: 'one', mp: 30, sup: { proj: 2, more: -25 }, d: '多 2 支投射物，傷害 -25%' },
+  { k: 'sp_chain', n: '連鎖', t: 1, req: 'one', mp: 30, sup: { chain: 2, more: -15 }, d: '連鎖 +2 次，傷害 -15%' },
+  { k: 'sp_bleed', n: '撕裂', t: 1, req: 'attack', mp: 10, sup: { bleed: 35 }, d: '35% 機率流血' },
+  { k: 'sp_ign', n: '引燃', t: 1, req: 'fire', mp: 15, sk: { ignite: 1 }, d: '火焰傷害必定燃燒' },
+  { k: 'sp_crit', n: '精準', t: 1, req: 'dmg', mp: 15, sup: { crit: 8, cm: 30 }, d: '暴擊率 +8%、暴擊傷害 +30%' },
+  {
+    k: 'sp_aoe',
+    n: '範圍擴大',
+    t: 2,
+    req: 'one',
+    mp: 40,
+    conv: 1,
+    sup: { aoe: 1 },
+    d: '單體技能改成打全體（65% 傷害）'
+  },
+  { k: 'sp_poison', n: '毒性', t: 2, req: 'attack', mp: 15, sup: { poison: 60 }, d: '60% 機率中毒（會疊層）' },
+  { k: 'sp_stun', n: '震盪', t: 2, req: 'attack', mp: 15, sup: { stun: 25 }, d: '25% 機率暈眩' },
+  {
+    k: 'sp_echo',
+    n: '迴響',
+    t: 2,
+    req: 'spell',
+    mp: 40,
+    sup: { echo: 35, more: -10 },
+    d: '35% 機率整個法術再放一次，傷害 -10%'
+  },
+  { k: 'sp_multi', n: '多重打擊', t: 2, req: 'attack', mp: 35, sup: { hits: 1, more: -20 }, d: '多打 1 下，傷害 -20%' },
+  { k: 'sp_pen', n: '穿透', t: 2, req: 'dmg', mp: 15, sup: { pen: 30, penRes: 15 }, d: '無視 30% 護甲、穿透 15% 抗性' },
+  { k: 'sp_exec', n: '斬首', t: 3, req: 'dmg', mp: 15, sup: { exec: 50 }, d: '對生命低於 35% 的敵人傷害 +50%' },
+  { k: 'sp_leech', n: '吸血', t: 3, req: 'attack', mp: 10, sup: { leech: 4 }, d: '吸血 +4%' },
+  { k: 'sp_dot', n: '持續傷害', t: 3, req: 'dmg', mp: 15, sup: { dot: 40 }, d: '燃燒、中毒、流血傷害 +40%' },
+  {
+    k: 'sp_pet',
+    n: '召喚強化',
+    t: 3,
+    req: 'pet',
+    mp: 30,
+    sup: { petMax: 1, petTurns: 2, petPct: 25 },
+    d: '召喚上限 +1、多存在 2 回合、召喚物傷害 +25%'
+  },
+  { k: 'sp_shatter', n: '碎冰', t: 3, req: 'cold', mp: 15, sk: { vs: { frozen: 60 } }, d: '對凍結的目標傷害 +60%' },
+  { k: 'sp_combo', n: '連續', t: 3, req: 'dmg', mp: 10, sk: { combo: 12 }, d: '連續使用每次傷害 +12%（最多 5 層）' },
+  { k: 'sp_foes', n: '群戰', t: 4, req: 'dmg', mp: 15, sk: { foes: 8 }, d: '每多一隻敵人傷害 +8%' },
+  {
+    k: 'sp_charge',
+    n: '蓄力',
+    t: 4,
+    req: 'dmg',
+    mp: 20,
+    conv: 1,
+    sk: { charge: 2.3 },
+    d: '先蓄一回合，下次放同一招 ×2.3'
+  },
+  { k: 'sp_boom', n: '爆裂', t: 4, req: 'dmg', mp: 20, sk: { killBoom: 40 }, d: '擊殺時把這下傷害的 40% 炸到其他敵人' },
+  {
+    k: 'sp_cd',
+    n: '冷卻縮減',
+    t: 4,
+    req: 'cd',
+    mp: 20,
+    sk: { cd: -1 },
+    sup: { more: -10 },
+    d: '冷卻 -1 回合，傷害 -10%'
+  },
+  { k: 'sp_heavy', n: '重擊', t: 5, req: 'attack', mp: 15, sk: { vsCrit: 'stun' }, d: '對暈眩的目標必定暴擊' },
+  { k: 'sp_cry', n: '咆哮', t: 5, req: 'cry', mp: 20, sk: { cryMul: 50 }, d: '戰吼依敵人數的效果 +50%' },
+  { k: 'sp_ext', n: '延長', t: 5, req: 'buff', mp: 20, sk: { buffT: 1 }, d: '增益多 1 回合' },
+  /* ---- 族裔輔助：一個角色同名只能用一顆 ---- */
+  {
+    k: 'ln_soul',
+    n: '靈魂收割',
+    lin: 1,
+    m: 'ud',
+    req: 'dmg',
+    mp: 20,
+    sk: { killBoom: 50 },
+    sup: { leech: 4 },
+    d: '擊殺時爆炸（50%）、吸血 +4%'
+  },
+  {
+    k: 'ln_legion',
+    n: '不死軍團',
+    lin: 1,
+    m: 'ud',
+    req: 'pet',
+    mp: 30,
+    sup: { petMax: 2, petTurns: 3, petPct: 40 },
+    d: '召喚上限 +2、多存在 3 回合、召喚物傷害 +40%'
+  },
+  {
+    k: 'ln_wrath',
+    n: '憤怒之罪',
+    lin: 1,
+    m: 'sin',
+    req: 'dmg',
+    mp: 0,
+    sup: { more: 60 },
+    sk: { lifeCost: 0.05 },
+    d: '傷害 +60%，每次消耗 5% 生命'
+  },
+  {
+    k: 'ln_greed',
+    n: '貪婪之罪',
+    lin: 1,
+    m: 'sin',
+    req: 'dmg',
+    mp: 20,
+    sk: { lowMe: 12 },
+    d: '自己每少 10% 生命，傷害 +12%'
+  },
+  {
+    k: 'ln_void',
+    n: '冥府穿透',
+    lin: 1,
+    m: 'uw',
+    req: 'dmg',
+    mp: 20,
+    sup: { pen: 40, penRes: 30 },
+    d: '無視 40% 護甲、穿透 30% 抗性'
+  },
+  {
+    k: 'ln_hellfire',
+    n: '冥火轉化',
+    lin: 1,
+    m: 'uw',
+    req: 'attack',
+    mp: 20,
+    sk: { addEl: ['fire', 0.6], ignite: 1 },
+    d: '附加 60% 火焰、必定燃燒'
+  },
+  {
+    k: 'ln_pack',
+    n: '獸群',
+    lin: 1,
+    m: 'hunt',
+    req: 'one',
+    mp: 30,
+    sup: { proj: 3, more: -15 },
+    d: '多 3 支投射物，傷害 -15%'
+  },
+  {
+    k: 'ln_frenzy',
+    n: '狂獵',
+    lin: 1,
+    m: 'hunt',
+    req: 'attack',
+    mp: 30,
+    sup: { hits: 2, more: -10 },
+    d: '多打 2 下，傷害 -10%'
+  },
+  {
+    k: 'ln_fatal',
+    n: '致命',
+    lin: 1,
+    m: 'wild',
+    req: 'dmg',
+    mp: 20,
+    sup: { crit: 20, cm: 60 },
+    d: '暴擊率 +20%、暴擊傷害 +60%'
+  },
+  {
+    k: 'ln_iron',
+    n: '鐵壁',
+    lin: 1,
+    m: 'wild',
+    req: 'buff',
+    mp: 20,
+    sk: { buffT: 2, cd: -1 },
+    d: '增益多 2 回合、冷卻 -1'
+  }
+];
+const SUPGI = Object.fromEntries(SUPG.map(s => [s.k, s]));
+const SUPM = { ud: '亡靈軍團', sin: '魔霧與七宗罪', uw: '冥府', hunt: '狩獵十二生肖', wild: '野外紅名危險怪' };
+/* 輔助寶石能不能插在這個技能上（看技能標籤） */
+const SUPREQ = {
+  dmg: q => !q.pet && !q.sac && (q.kind === 'attack' || q.kind === 'spell'),
+  one: q => SUPREQ.dmg(q) && q.tg !== 'all',
+  attack: q => q.kind === 'attack',
+  spell: q => q.kind === 'spell' && !q.pet && !q.sac,
+  fire: q => SUPREQ.dmg(q) && ((q.kind === 'spell' && q.el === 'fire') || (q.addEl && q.addEl[0] === 'fire')),
+  cold: q => SUPREQ.dmg(q) && ((q.kind === 'spell' && q.el === 'cold') || (q.addEl && q.addEl[0] === 'cold')),
+  pet: q => !!q.pet,
+  cd: q => (q.cd || 0) > 0,
+  cry: q => !!q.cry,
+  buff: q => !!q.buff
+};
+const SUPREQN = {
+  dmg: '傷害技能',
+  one: '非全體的傷害技能',
+  attack: '攻擊技能',
+  spell: '法術',
+  fire: '火焰技能',
+  cold: '冰冷技能',
+  pet: '召喚技能',
+  cd: '有冷卻的技能',
+  cry: '戰吼',
+  buff: '有增益的技能'
+};
+const supFits = (k, q) => !!SUPGI[k] && SUPREQ[SUPGI[k].req](q);

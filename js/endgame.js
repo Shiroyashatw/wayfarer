@@ -476,7 +476,7 @@ async function silkRemove(other) {
   silkLoad();
 }
 /* 商隊：每條商路每天帶回一次對方地區的特產（依對方據點位置決定的一種通貨）與金幣、靈魂、祈願石 */
-const specialty = r => GCUR.slice(2, 5)[h(fl(r.base_lat * 100), fl(r.base_lng * 100), 5) % 3].id;
+const specialty = r => ['eng', 'engC', 'engX'][h(fl(r.base_lat * 100), fl(r.base_lng * 100), 5) % 3];
 function caravans() {
   const day = fl((now() + 8 * 3600e3) / 864e5),
     got = [];
