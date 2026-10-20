@@ -79,7 +79,7 @@ const TITLES = {
   item: '裝備',
   tree: '天賦樹',
   base: '據點',
-  near: '附近',
+  quest: '委託',
   settings: '設定',
   log: '冒險日誌',
   friends: '好友',
@@ -96,7 +96,7 @@ const TITLES = {
 /* 底部導覽：群組按鈕點了往上展開 2～3 個功能，再點一次或點地圖就收起來 */
 const NAVG = {
   adv: [
-    ['near', '附近', 'eye'],
+    ['quest', '委託', 'flag'],
     ['base', '據點', 'castle'],
     ['stele', '石碑', 'key'],
     ['log', '冒險日誌', 'book']
@@ -442,8 +442,8 @@ function renderSheet() {
     html = baseHTML();
   } else if (sheetName === 'stele') {
     html = steleHTML();
-  } else if (sheetName === 'near') {
-    html = nearHTML();
+  } else if (sheetName === 'quest') {
+    html = questHTML();
   } else if (sheetName === 'settings') {
     html = `<h3>聲音</h3><div class="seg"><button data-act="toggle" data-k="music" aria-pressed="${S.music}">音樂 ${S.music ? '開' : '關'}</button><button data-act="toggle" data-k="sfx" aria-pressed="${S.sfx}">音效・震動 ${S.sfx ? '開' : '關'}</button></div>
     <h3>自動喝水</h3><div class="card"><p class="sub" style="margin-bottom:6px">戰鬥結束後低於門檻就自動喝藥水（每種最多 3 瓶）。戰鬥勝利不會自動回復。</p>${[
