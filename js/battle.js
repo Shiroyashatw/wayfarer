@@ -299,20 +299,53 @@ const AIL_E = [
     ['bleed', 'heart', '流血'],
     ['stun', 'star', '暈眩'],
     ['curse', 'eye', '詛咒'],
-    ['mark', 'arrow', '標記']
+    ['mark', 'arrow', '標記'],
+    ['slow', 'wind', '衰老'],
+    ['vul', 'shield', '易傷'],
+    ['dmark', 'skull', '死亡印記']
   ],
   AIL_H = [
     ['frozen', 'ice', '凍結'],
     ['guard', 'shield', '防禦'],
     ['stacks', 'star', '疊層'],
-    ['shield', 'heart', '護盾']
+    ['shield', 'heart', '護盾'],
+    ['chgN', 'bolt', '蓄力'],
+    ['empN', 'horn', '強化'],
+    ['comboN', 'sword', '連續']
   ];
+/* 圖示右下的數字：中毒、流血顯示層數，其他顯示剩下的回合 */
+const AIL_NUM = { poison: 'poisonN', bleed: 'bleedN' };
 const ailHTML = (o, keys) =>
   keys
     .filter(([k]) => o && o[k] > 0)
     .map(
       ([k, ic, n]) =>
-        `<span class="ail ail-${ic}" title="${n}"><img src="${iconURL(ic)}" alt="${n}">${o[k] > 1 && k !== 'shield' ? `<b>${o[k]}</b>` : ''}</span>`
+        `<span class="ail ail-${ic}" title="${n}"><img src="${iconURL(ic)}" alt="${n}">${(() => {
+          const v = AIL_NUM[k] ? o[AIL_NUM[k]] : o[k];
+          return v > 1 && k !== 'shield' && k !== 'chgN' ? `<b>${v}</b>` : '';
+        })()}</span>`
+    )
+    .join('');
+/* 0.3.19 自己身上的狀態＋增益（增益顯示剩下的回合） */
+const heroAilHTML = o =>
+  ailHTML(o, AIL_H) +
+  /* 0.3.22 圖騰（剩下的生命 %）、砲台（剩下的回合）、陷阱、地雷（數量） */
+  ((o && o.units) || [])
+    .map(
+      u =>
+        `<span class="ail ail-shield" title="${u.n}"><img src="${iconURL(u.kind === 'totem' ? 'rune' : 'xbow')}" alt="${u.n}"><b>${u.kind === 'totem' ? Math.ceil((u.hp / u.maxhp) * 100) + '%' : u.turns}</b></span>`
+    )
+    .join('') +
+  (o && o.traps && o.traps.length
+    ? `<span class="ail ail-ice" title="陷阱"><img src="${iconURL('eye')}" alt="陷阱"><b>${o.traps.length}</b></span>`
+    : '') +
+  (o && o.mines && o.mines.length
+    ? `<span class="ail ail-flame" title="地雷"><img src="${iconURL('flame')}" alt="地雷"><b>${o.mines.length}</b></span>`
+    : '') +
+  ((o && o.buffs) || [])
+    .map(
+      b =>
+        `<span class="ail ail-shield" title="${b.n || ''}"><img src="${iconURL(b.cry ? 'horn' : 'star')}" alt="${b.n || ''}"><b>${b.turns}</b></span>`
     )
     .join('');
 function placeAil(id, x, y, html) {
@@ -406,6 +439,8 @@ function later(ms, fn) {
 function eInit(e) {
   Object.assign(e, { poison: 0, pMul: 1, burn: 0, burnDmg: 0, shock: 0, frozen: 0, bleed: 0, bleedDmg: 0, stun: 0 });
   Object.assign(e, { curse: 0, curseP: 0, mark: 0, markP: 0 });
+  /* 0.3.19：中毒、流血可以疊層；衰老（行動值變慢）、易傷（物理／元素受傷增加）、死亡印記 */
+  Object.assign(e, { poisonN: 0, bleedN: 0, slow: 0, vul: 0, vulP: 0, vulE: 0, dmark: 0 });
   return e;
 }
 /* 怪物群：地圖上的一隻怪代表一群，依稀有度帶 0～3 隻小怪（最多 5 隻）；小怪跟著帶頭的種族（亡靈、魔霧） */
@@ -462,6 +497,8 @@ function supOf(st, sk) {
   for (const s of (st && st.sup) || [])
     if (s.tag === 'all' || s.tag === tag || s.tag === sk.kind || (s.tag === 'summon' && sk.pet))
       for (const k in s) if (k !== 'tag') o[k] = (o[k] || 0) + s[k];
+  /* 0.3.20 技能石上插的輔助寶石 */
+  for (const k in sk.gsup || {}) o[k] = (o[k] || 0) + sk.gsup[k];
   return o;
 }
 /* 增益（戰旗、冰甲、附身…）：me.buffs 是 [{k: 值, turns}]，取同一個欄位的總和 */
@@ -477,8 +514,23 @@ function mitigate(pk, arm, res, shock) {
 /* ---- 天賦規則（單人與多人共用）：o 是有 hp/mp 的對象（S 或隊員），st 是它的屬性 ---- */
 const skCost = (st, sk) => Math.round(sk.mp * (1 - Math.min(80, (st.mpCost || 0) + (supOf(st, sk).cost || 0)) / 100));
 const lifeCost = (st, sk) => (sk.lifeCost ? Math.round(st.maxhp * sk.lifeCost) : 0);
+/* 0.3.18：技能要求的武器類型不符就不能用（昇華「技能不再需要特定武器」例外） */
+const wOk = (st, sk) => !sk.w || !st || !st.wtag || !!st.anyWep || sk.w === st.wtag;
 const canPay = (o, st, sk) =>
-  st.blood ? o.hp > skCost(st, sk) + lifeCost(st, sk) : o.mp >= skCost(st, sk) && o.hp > lifeCost(st, sk);
+  wOk(st, sk) &&
+  (st.blood ? o.hp > skCost(st, sk) + lifeCost(st, sk) : o.mp >= skCost(st, sk) && o.hp > lifeCost(st, sk));
+/* 戰鬥按鈕的小字：武器不符就寫「需要劍」，否則是消耗與短標籤 */
+/* 0.3.19：冷卻中寫「冷卻 N」；蓄力中寫「釋放 ×N」；有條件加成時寫預覽（例：+24%） */
+const skSub = (st, q, me, es, ti) =>
+  !wOk(st, q)
+    ? `需要${WTAGN[q.w]}`
+    : cdLeft(me, q)
+      ? `冷卻 ${cdLeft(me, q)}`
+      : [charging(me, q) ? '' : costTxt(st, q), (me && condTxt(q, me, st, es, ti)) || skShort(q)]
+          .filter(Boolean)
+          .join('・');
+/* 能不能按：武器、冷卻、消耗（蓄力好的那一下不用再付） */
+const skReady = (o, me, st, q) => wOk(st, q) && !cdLeft(me, q) && (charging(me, q) || canPay(o, st, q));
 function payCost(o, st, sk) {
   const n = skCost(st, sk);
   if (st.blood) o.hp = Math.max(1, o.hp - n);
@@ -489,7 +541,7 @@ const costTxt = (st, sk) =>
   [sk.mp ? skCost(st, sk) + (st.blood ? ' 生命' : ' 魔力') : '', sk.lifeCost ? lifeCost(st, sk) + ' 生命' : '']
     .filter(Boolean)
     .join('＋');
-/* 技能石的刻印詞綴只在用那個技能時生效 */
+/* 技能石自己的數值（暴擊、異常、吸血…）只在用那個技能時生效；0.3.20 刻印共鳴改成每顆輔助寶石 */
 const skSt = (st, sk) =>
   sk.gid
     ? {
@@ -538,7 +590,7 @@ function heroAil(st, sk, pk, es) {
   const out = [],
     m = st.ail || 1,
     dur = 3 + (st.ailDur || 0);
-  if (pk.fire > 0 && Math.random() < (sk.el === 'fire' ? 0.4 : 0.2) * m) {
+  if (pk.fire > 0 && (sk.ignite || Math.random() < (sk.el === 'fire' ? 0.4 : 0.2) * m)) {
     es.burn = dur;
     es.burnDmg = Math.max(1, Math.round(pk.fire * 0.3 * (st.dotMul || 1)));
     out.push(['燃燒', '#ffb15a']);
@@ -556,14 +608,18 @@ function heroAil(st, sk, pk, es) {
     out.push(['魅惑', '#ff8ad8']);
   }
   if (sk.kind === 'attack' && !sk.poison && st.poisonCh && Math.random() * 100 < st.poisonCh) {
-    es.poison = Math.max(es.poison || 0, dur);
-    es.pMul = (st.poisonMul || 1) * (st.dotMul || 1);
-    out.push(['中毒', '#9be36b']);
+    addPoison(es, dur, (st.poisonMul || 1) * (st.dotMul || 1));
+    out.push([es.poisonN > 1 ? `中毒×${es.poisonN}` : '中毒', '#9be36b']);
   }
   if (st.bleedCh && Math.random() * 100 < st.bleedCh) {
     es.bleed = dur;
-    es.bleedDmg = Math.max(1, Math.round((pk.phys || pk.fire + pk.cold + pk.light) * 0.25 * (st.dotMul || 1)));
-    out.push(['流血', '#ff5a5a']);
+    es.bleedN = Math.min(5, (es.bleedN || 0) + 1);
+    es.bleedDmg = Math.max(
+      es.bleedDmg || 0,
+      1,
+      Math.round((pk.phys || pk.fire + pk.cold + pk.light) * 0.25 * (st.dotMul || 1))
+    );
+    out.push([es.bleedN > 1 ? `流血×${es.bleedN}` : '流血', '#ff5a5a']);
   }
   if (st.stunCh && Math.random() * 100 < st.stunCh) {
     es.stun = 1;
@@ -576,7 +632,15 @@ function heroAil(st, sk, pk, es) {
   }
   return out;
 }
-const poisonTick = (e, es) => Math.max(1, Math.round(e.maxhp * 0.08 * (es.pMul || 1)));
+/* 中毒每層 +30%（最多 8 層）；流血每層 +50%（最多 5 層） */
+const poisonTick = (e, es) =>
+  Math.max(1, Math.round(e.maxhp * 0.08 * (es.pMul || 1) * (1 + 0.3 * Math.max(0, (es.poisonN || 1) - 1))));
+const bleedTick = e => Math.max(1, Math.round(e.bleedDmg * (1 + 0.5 * Math.max(0, (e.bleedN || 1) - 1))));
+const addPoison = (e, turns, mul) => {
+  e.poison = Math.max(e.poison || 0, turns);
+  e.poisonN = Math.min(8, (e.poisonN || 0) + 1);
+  e.pMul = mul;
+};
 /* 受到傷害：心靈凌駕讓一部分改扣魔力，護盾先吸收 */
 function takeDmg(o, st, d) {
   if (o.shield > 0) {
@@ -598,6 +662,55 @@ const hitCol = pk =>
         ? '#fff27a'
         : '#ffffff';
 const aliveIdx = es => es.map((e, i) => (e.hp > 0 ? i : -1)).filter(i => i >= 0);
+/* ---- 0.3.19 技能的通用條件與狀態連動 ----
+   技能欄位：cd 冷卻（自己的回合數）、foes 每多一隻敵人傷害 ±%（最多算 4 隻）、vs {狀態: %} 對有該狀態的目標加傷（中毒、流血每層算一次）、
+   vsCrit 對有該狀態的目標必定暴擊、lowT／fullT 目標低血（30% 以下）／滿血加傷、lowMe 自己每少 10% 生命加傷、combo 連續使用每層加傷（最多 5 層）、
+   petN 每隻召喚物加傷、consume 命中後消耗目標的狀態、det 引爆目標的持續傷害（一次結算剩下的回合）、shockChain 目標感電時多連鎖、
+   charge 先蓄力一回合、下次放同一招 ×倍數（蓄力時被打會減弱）、slow 衰老、vulP／vulE 物理／元素易傷、dmark 死亡印記、spreadSt 狀態擴散、
+   killBoom 擊殺時把這下傷害的 % 炸到其他敵人、sac 引爆一隻召喚物、cmd 召喚物立刻再行動一次；
+   戰吼 cry：perFoe 增益依敵人數放大、lowMeBuff、emp 強化接下來 N 次攻擊（N = 吼到的敵人數）、fear 低血敵人恐懼、avUp 全隊行動值提前 */
+const skKey = sk => sk.gid || sk.k || sk.name;
+const cdLeft = (me, sk) => (me && me.cd && me.cd[skKey(sk)]) || 0;
+const charging = (me, sk) => !!(me && me.chg && me.chg.k === skKey(sk));
+const COND_ST = {
+  burn: '燃燒',
+  shock: '感電',
+  frozen: '凍結',
+  stun: '暈眩',
+  poison: '中毒',
+  bleed: '流血',
+  mark: '標記',
+  curse: '詛咒',
+  slow: '衰老'
+};
+const stackOf = (e, k) => (k === 'poison' ? e.poisonN || 1 : k === 'bleed' ? e.bleedN || 1 : 1);
+/* cn 是連續使用的層數（結算時是這次的層數，預覽時是下一次的） */
+function condMul(sk, e, me, st, n, cn = 0) {
+  let m = 1;
+  if (sk.foes) m *= Math.max(0.2, 1 + (sk.foes * Math.min(4, Math.max(0, n - 1))) / 100);
+  if (sk.vs && e) for (const k in sk.vs) if (e[k] > 0) m *= 1 + (sk.vs[k] * stackOf(e, k)) / 100;
+  /* 0.3.21 光環的條件加傷（灼燒光環、殘酷光環…）對所有傷害技能 */
+  if (st && st.auraVs && e && !sk.pet && !sk.cry)
+    for (const k in st.auraVs) if (e[k] > 0) m *= 1 + (st.auraVs[k] * stackOf(e, k)) / 100;
+  if (sk.lowT && e && e.hp < e.maxhp * 0.3) m *= 1 + sk.lowT / 100;
+  if (sk.fullT && e && e.hp >= e.maxhp) m *= 1 + sk.fullT / 100;
+  if (sk.lowMe && me) m *= 1 + (sk.lowMe * fl((1 - me.hp / st.maxhp) * 10)) / 100;
+  if (sk.combo) m *= 1 + (sk.combo * cn) / 100;
+  if (sk.petN && me) m *= 1 + (sk.petN * (me.pets || []).filter(p => p.turns > 0).length) / 100;
+  return m;
+}
+/* 戰鬥按鈕上的條件預覽（對目前選的目標） */
+function condTxt(sk, me, st, es, ti) {
+  if (charging(me, sk)) return `釋放 ×${Math.round(me.chg.mul * 10) / 10}`;
+  const e = es && es[ti],
+    n = es ? aliveIdx(es).length : 1,
+    m = condMul(sk, e, me, st, n, me && me.combo === skKey(sk) ? Math.min(5, (me.comboN || 0) + 1) : 0);
+  if (sk.cry && sk.perFoe) return `吼 ${n} 隻`;
+  if (sk.det && e && e[sk.det] > 0) return `可引爆${COND_ST[sk.det]}`;
+  if (sk.sac) return `召喚物 ${(me.pets || []).filter(p => p.turns > 0).length}`;
+  if (Math.abs(m - 1) < 0.01) return '';
+  return `${m > 1 ? '+' : ''}${Math.round((m - 1) * 100)}%`;
+}
 /* 一次行動的結算（單人與組隊共用）：me 是施放者（hp、mp、戰鬥狀態，uid），es 是敵人，ti 是目標，party 是隊員
    回傳事件陣列，at 是相對時間（毫秒）；畫面由單人的 playEv 或組隊的 mpApply 播 */
 function actResolve(me, st0, sk, es, ti, party, ext = {}) {
@@ -618,21 +731,54 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       exec: (st.exec || 0) + (sup.exec || 0) + (sk.exec || 0),
       dotMul: (st.dotMul || 1) * (1 + (sup.dot || 0) / 100)
     },
-    more =
-      (1 + (sup.more || 0) / 100) *
-      (1 + bsum(me, 'more') / 100) *
-      (1 + ((me.stacks || 0) * (st.killStack || 0)) / 100) *
-      (ext.allyMul || 1) *
-      /* 技能要求的武器不符：傷害 -40% */
-      (sk.w && st.wtag && sk.w !== st.wtag && !st.anyWep ? 0.6 : 1),
-    who = me.uid;
+    key = skKey(sk);
+  let more =
+    (1 + (sup.more || 0) / 100) *
+    (1 + bsum(me, 'more') / 100) *
+    (1 + ((me.stacks || 0) * (st.killStack || 0)) / 100) *
+    (ext.allyMul || 1);
+  const who = me.uid;
   if (me.dc) {
     S2.crit = 100;
     me.dc = 0;
   }
+  /* 連續使用同一招才疊層，換招就歸零 */
+  me.comboN = me.combo === key ? Math.min(5, (me.comboN || 0) + 1) : 0;
+  me.combo = key;
+  /* 蓄力：先蓄一回合，下次放同一招才打出去；改放別招就取消 */
+  if (me.chg && me.chg.k !== key) me.chg = me.chgN = 0;
+  if (sk.charge) {
+    if (!me.chg) {
+      me.chg = { k: key, mul: sk.charge };
+      me.chgN = 1;
+      ev.push({ t: 'msg', s: `${sk.name}：蓄力中（下次 ×${sk.charge}）`, at: 0 });
+      ev.push({ t: 'st', who, s: '蓄力', col: '#ffd166', at: 120 });
+      ev.push({ t: 'fx', type: 'heal', who, at: 100 });
+      ev.push({ t: 'end', at: 600 });
+      return ev;
+    }
+    more *= me.chg.mul;
+    ev.push({ t: 'msg', s: `${sk.name}・釋放！`, at: 0 });
+    me.chg = me.chgN = 0;
+  }
+  if (sk.cd) (me.cd = me.cd || {})[key] = sk.cd + 1;
+  /* 戰意激昂：接下來 N 次攻擊強化 */
+  if (me.empN > 0 && sk.kind === 'attack' && !sk.pet) {
+    more *= 1 + (me.empMore || 0) / 100;
+    me.empN--;
+  }
+  if (sk.cry) return cryResolve(me, st, sk, es, party, ext, ev);
+  /* 0.3.22 戰場單位：圖騰、砲台、陷阱、地雷 */
+  if (sk.totem || sk.turret || sk.trap || sk.mine) return placeUnit(me, st, sk, ev);
   if (sk.kind === 'heal') {
     const tg = party.filter(q => q.alive !== false).sort((a, b) => a.hp / a.st.maxhp - b.hp / b.st.maxhp)[0] || me,
-      v = Math.round(tg.st.maxhp * (sk.heal || 0.35) * (st.healMul || 1));
+      /* 緊急治療：目標每少 10% 生命，治療量 +healLow% */
+      v = Math.round(
+        tg.st.maxhp *
+          (sk.heal || 0.35) *
+          (st.healMul || 1) *
+          (1 + ((sk.healLow || 0) * fl((1 - tg.hp / tg.st.maxhp) * 10)) / 100)
+      );
     tg.hp = Math.min(tg.st.maxhp, tg.hp + v);
     ev.push({ t: 'heal', who: tg.uid, from: who, v, at: 250 });
     const ha = (st.healAll || 0) + (sk.healAll || 0);
@@ -645,6 +791,13 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
           ev.push({ t: 'heal', who: q.uid, from: who, v: w, at: 300 });
         });
     if (sk.buff) addBuff(me, sk, ev);
+    return ev;
+  }
+  /* 號令：召喚物立刻再行動一次 */
+  if (sk.cmd) {
+    const pe = petsAct(me, st, es);
+    if (!pe.length) ev.push({ t: 'msg', s: '沒有召喚物可以號令', at: 0 }, { t: 'end', at: 500 });
+    else ev.push({ t: 'msg', s: '號令！', at: 0 }, ...pe.map(f => ({ ...f, at: (f.at || 0) + 200 })));
     return ev;
   }
   if (sk.kind === 'buff') {
@@ -660,6 +813,28 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     ev.push({ t: 'fx', type: 'summon', who, at: 200 });
     if (!sk.mult) return ev;
   }
+  /* 屍爆：引爆一隻召喚物，炸全部敵人 */
+  if (sk.sac) {
+    me.pets = (me.pets || []).filter(p => p.turns > 0);
+    if (!me.pets.length) {
+      ev.push({ t: 'msg', s: '沒有召喚物可以引爆', at: 0 }, { t: 'end', at: 500 });
+      return ev;
+    }
+    const pt = me.pets.sort((a, b) => (b.mult || 1) - (a.mult || 1)).shift(),
+      base = (8 + (me.lv || S.lv) * 1.8) * (pt.mult || 1) * sk.sac * more * (1 + (st.petPct || 0) / 100);
+    ev.push({ t: 'msg', s: `引爆${pt.name}！`, at: 0 });
+    aliveIdx(es).forEach((i, n) => {
+      const e = es[i],
+        pk = { phys: 0, fire: 0, cold: 0, light: 0 };
+      pk[pt.el || 'phys'] = base * rnd(0.9, 1.1);
+      const d = Math.round(mitigate(pk, e.arm, e.res, e.shock > 0));
+      e.hp = Math.max(0, e.hp - d);
+      ev.push({ t: 'hit', i, d, col: '#ffb15a', fx: 'whirl', from: who, at: 250 + n * 60 });
+      if (e.hp <= 0) ev.push({ t: 'kill', i, at: 350 + n * 60 });
+    });
+    ev.push({ t: 'end', at: 800 });
+    return ev;
+  }
   if (sk.guard) {
     me.guard = sk.guard;
     ev.push({ t: 'st', who, s: '護甲↑', col: '#9fd4ef', at: 100 });
@@ -668,14 +843,36 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     gap = spell ? 260 : 330,
     fx = spell ? sk.fx : sk.fx === 'whirl' ? 'whirl' : sk.fx === 'arrow' || st.ranged ? 'pierce' : 'slash';
   let at = spell ? 600 : 200;
-  const live = () => aliveIdx(es);
+  const live = () => aliveIdx(es),
+    n0 = live().length;
   const one = (i, mult, t, kind) => {
     const e = es[i];
     if (!e || e.hp <= 0) return;
-    const pk = heroPacket(S2, sk, mult * more);
+    const had = sk.consume && e[sk.consume] > 0,
+      S3 = sk.vsCrit && e[sk.vsCrit] > 0 ? { ...S2, crit: 100 } : S2,
+      pk = heroPacket(S3, sk, mult * more * condMul(sk, e, me, st, n0, me.comboN || 0));
     if (sk.addEl) pk[sk.addEl[0]] += pk.phys * sk.addEl[1] * ((st.elm && st.elm[sk.addEl[0]]) || 1);
-    const r = heroDmg(S2, pk, e, e.shock > 0, me);
+    /* 易傷：脆弱（物理）、元素弱化（火冰電） */
+    if (e.vul > 0) {
+      pk.phys *= 1 + (e.vulP || 0) / 100;
+      for (const k of ['fire', 'cold', 'light']) pk[k] *= 1 + (e.vulE || 0) / 100;
+    }
+    const r = heroDmg(S3, pk, e, e.shock > 0, me);
     let d = r.d;
+    /* 引爆：把目標身上剩下的燃燒／中毒／流血一次結算 */
+    if (sk.det && e[sk.det] > 0) {
+      const per = sk.det === 'burn' ? e.burnDmg : sk.det === 'poison' ? poisonTick(e, e) : bleedTick(e),
+        x = Math.round(per * e[sk.det] * (sk.detMul || 1) * (S2.dotMul || 1));
+      e[sk.det] = 0;
+      if (sk.det === 'poison') e.poisonN = 0;
+      if (sk.det === 'bleed') e.bleedN = 0;
+      ev.push({ t: 'st', i, s: `引爆 ${x}`, col: '#ffb15a', at: t + 40 });
+      d += x;
+    }
+    if (had) {
+      e[sk.consume] = 0;
+      ev.push({ t: 'st', i, s: COND_ST[sk.consume] ? '碎' + COND_ST[sk.consume] : '消耗', col: '#9fe7ff', at: t + 30 });
+    }
     if (e.sin && ext.sinHit) d = ext.sinHit(e, d, i);
     e.hp = Math.max(0, e.hp - d);
     ev.push({ t: 'hit', i, d, crit: r.crit, col: r.crit ? '#ffd166' : hitCol(pk), fx: kind || fx, from: who, at: t });
@@ -683,10 +880,31 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     if (e.hp > 0) {
       heroAil(S2, sk, pk, e).forEach(([s, col]) => ev.push({ t: 'st', i, s, col, at: t + 60 }));
       if (sk.poison) {
-        e.poison = Math.max(e.poison, sk.poison);
-        e.pMul = st.poisonMul || 1;
-        ev.push({ t: 'st', i, s: '中毒', col: '#9be36b', at: t + 80 });
+        addPoison(e, sk.poison, st.poisonMul || 1);
+        ev.push({ t: 'st', i, s: e.poisonN > 1 ? `中毒×${e.poisonN}` : '中毒', col: '#9be36b', at: t + 80 });
       }
+      if (sk.slow) {
+        e.slow = sk.slow;
+        ev.push({ t: 'st', i, s: '衰老', col: '#c8b0ff', at: t + 85 });
+      }
+      if (sk.vulP || sk.vulE) {
+        e.vul = 3;
+        e.vulP = Math.max(e.vulP || 0, sk.vulP || 0);
+        e.vulE = Math.max(e.vulE || 0, sk.vulE || 0);
+        ev.push({ t: 'st', i, s: sk.vulE ? '元素弱化' : '脆弱', col: '#ff9aa4', at: t + 88 });
+      }
+      if (sk.dmark) {
+        e.dmark = 3;
+        ev.push({ t: 'st', i, s: '死亡印記', col: '#c86aff', at: t + 92 });
+      }
+      if (sk.spreadSt)
+        for (const j of live())
+          if (j !== i) {
+            const o = es[j];
+            for (const k of ['curse', 'mark', 'vul', 'slow', 'dmark']) if (e[k] > 0) o[k] = Math.max(o[k] || 0, e[k]);
+            for (const k of ['curseP', 'curseW', 'markP', 'vulP', 'vulE']) if (e[k]) o[k] = Math.max(o[k] || 0, e[k]);
+            ev.push({ t: 'st', i: j, s: '擴散', col: '#c86aff', at: t + 140 });
+          }
       if ((sk.mark || st.markFirst) && !e.mark) {
         e.mark = 99;
         e.markP = Math.max(sk.mark || 0, st.markFirst || 0);
@@ -704,6 +922,21 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       }
     } else {
       ev.push({ t: 'kill', i, at: t + 100 });
+      /* 死亡印記：目標死亡時回 10% 生命與魔力 */
+      if (e.dmark > 0) {
+        const hv = Math.round(st.maxhp * 0.1);
+        me.hp = Math.min(st.maxhp, me.hp + hv);
+        me.mp = Math.min(st.maxmp, me.mp + Math.round(st.maxmp * 0.1));
+        ev.push({ t: 'heal', who, from: who, v: hv, at: t + 150 });
+      }
+      if (sk.killBoom)
+        for (const j of live()) {
+          const o = es[j],
+            x = Math.max(1, Math.round((d * sk.killBoom) / 100));
+          o.hp = Math.max(0, o.hp - x);
+          ev.push({ t: 'hit', i: j, d: x, col: '#ffb15a', fx: 'whirl', from: who, at: t + 180 });
+          if (o.hp <= 0) ev.push({ t: 'kill', i: j, at: t + 260 });
+        }
       if (st.killStack) me.stacks = Math.min(st.killMax || 10, (me.stacks || 0) + 1);
       if (st.killHeal) me.hp = Math.min(st.maxhp, me.hp + Math.round((st.maxhp * st.killHeal) / 100));
       if (st.killMana) me.mp = Math.min(st.maxmp, me.mp + Math.round((st.maxmp * st.killMana) / 100));
@@ -729,7 +962,10 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
         1,
         (sk.hits || 1) + (sup.hits || 0) + extraHit(st, sk) + (st.legWrath && me.hp < st.maxhp / 2 ? 1 : 0)
       ),
-      chain = (sk.chain || 0) + (sup.chain || 0),
+      chain =
+        (sk.chain || 0) +
+        (sup.chain || 0) +
+        (sk.shockChain && es[target()] && es[target()].shock > 0 ? sk.shockChain : 0),
       proj = (sk.proj || 0) + (sup.proj || 0);
     for (let h = 0; h < hits; h++) {
       if (!live().length) break;
@@ -747,7 +983,7 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
           if (!L.length) break;
           const j = L[fl(Math.random() * L.length)];
           seen.add(j);
-          one(j, sk.mult * Math.pow(0.8, c + 1), at + 120 * (c + 1), 'chain');
+          one(j, sk.mult * Math.pow(Math.min(1, 0.8 + (sk.chainDecay || 0) / 100), c + 1), at + 120 * (c + 1), 'chain');
         }
       }
       for (let p = 0; p < proj; p++) {
@@ -770,9 +1006,153 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
   ev.push({ t: 'end', at: at + 200 });
   return ev;
 }
+/* ---- 0.3.22 戰場單位 ----
+   圖騰（totem）：放在自己旁邊，有生命、敵人會打它（taunt 越高越常被打），每次自己行動後施放這個技能（mul 倍率），最多 2 個；
+   砲台（turret）：打不到、存在 turns 回合，每次自己行動後自動射擊，最多 2 個；
+   陷阱（trap）：佈置好之後，下一隻行動的敵人會先觸發（mul 倍率），最多 3 個；
+   地雷（mine）：一直疊（最多 5 顆），用「引爆地雷」一次炸掉，每多一顆每顆 +10% */
+const UNIT_MAX = { totem: 2, turret: 2, trap: 3, mine: 5 };
+const UNIT_N = { totem: '圖騰', turret: '砲台', trap: '陷阱', mine: '地雷' };
+/* 單位施放的技能：拿掉單位欄位、條件中的連續與蓄力，乘上倍率 */
+function unitSk(sk, mul) {
+  const o = { ...sk, mult: (sk.mult || 0) * mul, gid: (sk.gid || sk.name) + ':u' };
+  for (const k of ['totem', 'turret', 'trap', 'mine', 'charge', 'combo', 'cd', 'lifeCost']) delete o[k];
+  return o;
+}
+function placeUnit(me, st, sk, ev) {
+  const kind = sk.totem ? 'totem' : sk.turret ? 'turret' : sk.trap ? 'trap' : 'mine',
+    u = sk[kind],
+    who = me.uid,
+    list =
+      kind === 'trap'
+        ? (me.traps = me.traps || [])
+        : kind === 'mine'
+          ? (me.mines = me.mines || [])
+          : (me.units = me.units || []),
+    same = kind === 'trap' || kind === 'mine' ? list : list.filter(x => x.kind === kind),
+    o = {
+      kind,
+      n: u.n || sk.name + UNIT_N[kind],
+      sk: unitSk(sk, u.mul || 1),
+      turns: u.turns || 4,
+      cry: u.cry,
+      taunt: u.taunt || 0
+    };
+  if (kind === 'totem') o.hp = o.maxhp = Math.max(1, Math.round(st.maxhp * (u.hp || 0.35)));
+  /* 滿了就換掉最舊的 */
+  if (same.length >= UNIT_MAX[kind]) list.splice(list.indexOf(same[0]), 1);
+  list.push(o);
+  const n = kind === 'trap' || kind === 'mine' ? list.length : list.filter(x => x.kind === kind).length;
+  ev.push({ t: 'msg', s: `放置${o.n}（${UNIT_N[kind]} ${n}/${UNIT_MAX[kind]}）`, at: 0 });
+  ev.push({ t: 'fx', type: 'summon', who, at: 150 });
+  ev.push({ t: 'st', who, s: o.n, col: '#d8c8ff', at: 200 });
+  ev.push({ t: 'end', at: 650 });
+  return ev;
+}
+/* 單位用的施放者（不影響自己的連續、蓄力、冷卻） */
+const unitCaster = (me, hp) => ({
+  uid: me.uid,
+  hp: hp || me.hp,
+  mp: 9999,
+  lv: me.lv,
+  buffs: me.buffs,
+  stacks: 0,
+  pets: []
+});
+const shiftEv = (list, t0) => list.filter(f => f.t !== 'end').map(f => ({ ...f, at: (f.at || 0) + t0 }));
+const evEnd = list => list.reduce((a, f) => Math.max(a, f.at || 0), 0);
+/* 引爆地雷：每顆打目前的目標（範圍技能打全部），每多一顆每顆 +10% */
+function mineBlast(me, st, es, ti, party, ext = {}) {
+  const ms = me.mines || [],
+    n = ms.length;
+  let ev = [{ t: 'msg', s: `引爆 ${n} 顆地雷！`, at: 0 }],
+    at = 150;
+  me.mines = [];
+  for (const m of ms) {
+    if (!aliveIdx(es).length) break;
+    const e2 = actResolve(unitCaster(me), st, { ...m.sk, mult: m.sk.mult * (1 + 0.1 * (n - 1)) }, es, ti, party, ext);
+    ev = ev.concat(shiftEv(e2, at));
+    at = evEnd(ev) + 120;
+  }
+  ev.push({ t: 'end', at: at + 200 });
+  return ev;
+}
+/* 自己行動後：圖騰與砲台施放（petsAct 呼叫） */
+function unitsAct(me, st, es, t0) {
+  let ev = [],
+    at = t0;
+  me.units = (me.units || []).filter(u => u.turns > 0 && (u.kind !== 'totem' || u.hp > 0));
+  for (const u of me.units) {
+    if (u.cry) {
+      const tmp = [];
+      addBuff(me, { name: u.n, buff: { ...u.cry, id: 'u_' + u.n, n: u.n } }, tmp);
+      ev.push({ t: 'msg', s: `${u.n}：${u.cry.n || '鼓舞'}`, at }, ...shiftEv(tmp, at));
+      at += 400;
+    } else if (u.sk.mult > 0 && aliveIdx(es).length) {
+      const L = aliveIdx(es),
+        e2 = actResolve(unitCaster(me, u.hp), st, u.sk, es, L[fl(Math.random() * L.length)], [me]);
+      ev.push({ t: 'msg', s: `${u.n}施放`, at });
+      ev = ev.concat(shiftEv(e2, at + 80));
+      at = evEnd(ev) + 120;
+    }
+    u.turns--;
+  }
+  me.units = me.units.filter(u => u.turns > 0);
+  return ev;
+}
+/* 戰吼：吼全部敵人，效果常常跟敵人數有關（最多算 5 隻） */
+function cryResolve(me, st, sk, es, party, ext, ev) {
+  const L = aliveIdx(es),
+    c = Math.min(5, L.length),
+    who = me.uid;
+  ev.push({ t: 'msg', s: `${sk.name}！吼到 ${L.length} 隻敵人`, at: 0 });
+  ev.push({ t: 'fx', type: 'summon', who, at: 100 });
+  L.forEach((i, n) => ev.push({ t: 'lunge', i, at: 150 + n * 40 }));
+  if (sk.buff) {
+    const b = { ...sk.buff };
+    if (sk.perFoe) for (const k in sk.perFoe) b[k] = (b[k] || 0) + sk.perFoe[k] * c * (1 + (sk.cryMul || 0) / 100);
+    if (sk.lowMeBuff) b.more = (b.more || 0) + sk.lowMeBuff * fl((1 - me.hp / st.maxhp) * 10);
+    (sk.party ? party.filter(q => q.alive !== false) : [me]).forEach(q => addBuff(q, { ...sk, buff: b }, ev));
+  }
+  if (sk.emp) {
+    me.empN = c;
+    me.empMore = sk.emp;
+    ev.push({ t: 'st', who, s: `強化 ${c} 次`, col: '#ffd166', at: 260 });
+  }
+  if (sk.fear)
+    L.forEach(i => {
+      const e = es[i];
+      if (e.hp < (e.maxhp * sk.fear) / 100) {
+        e.stun = 1;
+        ev.push({ t: 'st', i, s: '恐懼', col: '#c8b0ff', at: 300 });
+      }
+    });
+  if (sk.cryCurse)
+    L.forEach(i => {
+      const e = es[i];
+      e.curse = 3;
+      e.curseP = Math.max(e.curseP || 0, sk.cryCurse);
+      e.curseW = Math.max(e.curseW || 0, sk.cryWeak || 0);
+      ev.push({ t: 'st', i, s: '震懾', col: '#c86aff', at: 320 });
+    });
+  if (sk.avUp && ext.av)
+    party
+      .filter(q => q.alive !== false)
+      .forEach(q => {
+        ext.av[q.uid] = (ext.av[q.uid] || 0) + sk.avUp;
+        ev.push({ t: 'st', who: q.uid, s: '行動提前', col: '#9fd4ef', at: 340 });
+      });
+  ev.push({ t: 'end', at: 700 });
+  return ev;
+}
 function addBuff(me, sk, ev) {
   me.buffs = (me.buffs || []).filter(b => b.id !== sk.buff.id);
-  me.buffs.push({ ...sk.buff, id: sk.buff.id || sk.name, turns: sk.buff.turns || 3 });
+  me.buffs.push({
+    ...sk.buff,
+    id: sk.buff.id || sk.name,
+    turns: (sk.buff.turns || 3) + (sk.buffT || 0),
+    cry: sk.cry ? 1 : 0
+  });
   if (sk.buff.shield) me.shield = Math.round((me.st ? me.st.maxhp : 100) * sk.buff.shield);
   ev.push({ t: 'st', who: me.uid, s: sk.buff.n || sk.name, col: '#9fd4ef', at: 200 });
   ev.push({ t: 'fx', type: 'heal', who: me.uid, at: 150 });
@@ -797,6 +1177,9 @@ function petsAct(me, st, es) {
     p.turns--;
     at += 260;
   }
+  const ue = unitsAct(me, st, es, at);
+  ev.push(...ue);
+  if (ue.length) at = evEnd(ev) + 100;
   if (ev.length) ev.push({ t: 'end', at: at + 150 });
   return ev;
 }
@@ -812,18 +1195,21 @@ function enemyResolve(es, i, party, ext = {}) {
   };
   if (e.poison > 0) {
     dot(poisonTick(e, e), '#9be36b');
-    e.poison--;
+    if (!--e.poison) e.poisonN = 0;
   }
   if (e.burn > 0) {
     dot(e.burnDmg, '#ffb15a');
     e.burn--;
   }
   if (e.bleed > 0) {
-    dot(e.bleedDmg, '#ff5a5a');
-    e.bleed--;
+    dot(bleedTick(e), '#ff5a5a');
+    if (!--e.bleed) e.bleedN = 0;
   }
   if (e.shock > 0) e.shock--;
   if (e.curse > 0) e.curse--;
+  if (e.slow > 0) e.slow--;
+  if (e.vul > 0) e.vul--;
+  if (e.dmark > 0) e.dmark--;
   if (e.hp <= 0) {
     ev.push({ t: 'kill', i, at }, { t: 'end', at: at + 300 });
     return ev;
@@ -834,6 +1220,27 @@ function enemyResolve(es, i, party, ext = {}) {
     ev.push({ t: 'end', at: at + 700 });
     return ev;
   }
+  /* 0.3.22 陷阱：敵人行動時先觸發一個 */
+  {
+    const owner = party.find(p => p.alive !== false && p.traps && p.traps.length);
+    if (owner) {
+      const tr = owner.traps.shift();
+      ev.push({ t: 'msg', s: `${e.name} 觸發了${tr.n}！`, at });
+      const e2 = actResolve(unitCaster(owner), owner.st, tr.sk, es, i, party, ext);
+      ev.push(...shiftEv(e2, at + 100));
+      at = evEnd(ev) + 150;
+      if (e.hp <= 0) {
+        ev.push({ t: 'end', at: at + 200 });
+        return ev;
+      }
+      if (e.frozen || e.stun) {
+        ev.push({ t: 'msg', s: `${e.name} ${e.frozen ? '被凍住' : '暈眩中'}，無法行動`, at });
+        e.frozen = e.stun = 0;
+        ev.push({ t: 'end', at: at + 700 });
+        return ev;
+      }
+    }
+  }
   if (e.sin && ext.sinTurn) ext.sinTurn(e, i);
   /* 0.3.10：迅捷改成靠速度（行動值）多行動，不再另外骰行動兩次 */
   const acts = 1,
@@ -842,10 +1249,24 @@ function enemyResolve(es, i, party, ext = {}) {
     const alive = party.filter(p => p.alive !== false && p.hp > 0);
     if (!alive.length) break;
     /* 嘲諷：每 1% 嘲諷讓自己被選中的權重 +1% */
-    const wt = alive.map(q => 1 + ((q.st.taunt || 0) + bsum(q, 'taunt')) / 100);
+    /* 0.3.22 圖騰也會被打（嘲諷越高越常被選） */
+    const tots = alive.flatMap(q => (q.units || []).filter(u => u.kind === 'totem' && u.hp > 0).map(u => ({ q, u }))),
+      wt = alive
+        .map(q => 1 + ((q.st.taunt || 0) + bsum(q, 'taunt')) / 100)
+        .concat(tots.map(o => 0.7 + (o.u.taunt || 0) / 100));
     let x = Math.random() * wt.reduce((a, b) => a + b, 0),
       pi = 0;
-    while (pi < alive.length - 1 && (x -= wt[pi]) >= 0) pi++;
+    while (pi < wt.length - 1 && (x -= wt[pi]) >= 0) pi++;
+    if (pi >= alive.length) {
+      const { q, u } = tots[pi - alive.length],
+        d = Math.max(1, Math.round(e.atk * rnd(0.9, 1.1) * (1 - Math.min(60, q.st.dmgRed || 0) / 100)));
+      u.hp = Math.max(0, u.hp - d);
+      ev.push({ t: 'msg', s: `${e.name} 攻擊${u.n}`, at });
+      ev.push({ t: 'lunge', i, at });
+      ev.push({ t: 'st', who: q.uid, s: `${u.n} -${d}${u.hp <= 0 ? '（毀壞）' : ''}`, col: '#ffb27a', at: at + 210 });
+      at += 600;
+      continue;
+    }
     const p = alive[pi],
       st = p.st,
       strong = Math.random() < 0.15;
@@ -897,6 +1318,11 @@ function enemyResolve(es, i, party, ext = {}) {
       ev.push({ t: 'st', who: p.uid, s: '格擋', col: '#9fd4ef', at });
     }
     const toMp = takeDmg(p, st, d);
+    /* 蓄力中被打：倍數 ×0.75（最低 1） */
+    if (p.chg && d > 0) {
+      p.chg.mul = Math.max(1, Math.round(p.chg.mul * 0.75 * 100) / 100);
+      ev.push({ t: 'st', who: p.uid, s: '蓄力受干擾', col: '#ffb27a', at: at + 60 });
+    }
     ev.push({
       t: 'dmg',
       who: p.uid,
@@ -935,7 +1361,9 @@ function enemyResolve(es, i, party, ext = {}) {
 /* 0.3.10 行動值：每個單位依速度累積行動值，先滿 AV_MAX 的先行動（滿了扣掉 AV_MAX 繼續累積）。
    速度是對方兩倍就能連續行動兩次；units 是 [{id, spd}]，av 是 {id: 目前的行動值}（同時滿的照 units 的順序） */
 const AV_MAX = 100;
-const avSpd = u => Math.max(1, (u.st ? u.st.speed : u.speed) || 10);
+/* 0.3.19：衰老讓敵人行動值變慢（×0.6）；增益的 spd 讓自己變快 */
+const avSpd = u =>
+  Math.max(1, ((u.st ? u.st.speed : u.speed) || 10) * (u.slow > 0 ? 0.6 : 1) * (1 + bsum(u, 'spd') / 100));
 function avNext(av, units) {
   let best = null,
     bt = Infinity;
@@ -963,9 +1391,13 @@ function roundEnd(p) {
   if (p.alive === false || p.hp <= 0) return;
   if (st.regen) p.hp = Math.min(st.maxhp, p.hp + st.regen);
   if (st.manaRegen) p.mp = Math.min(st.maxmp, p.mp + st.manaRegen);
+  /* 0.3.21 隊友光環的回血（每回合 hot% 生命） */
+  if (bsum(p, 'hot')) p.hp = Math.min(st.maxhp, p.hp + Math.round((st.maxhp * bsum(p, 'hot')) / 100));
   if (st.hpDrain) p.hp = Math.max(1, p.hp - Math.round((st.maxhp * st.hpDrain) / 100));
   if (p.guard > 0) p.guard--;
   p.buffs = (p.buffs || []).filter(b => --b.turns > 0);
+  /* 0.3.19 冷卻：每次輪到自己少 1 */
+  if (p.cd) for (const k in p.cd) if (--p.cd[k] <= 0) delete p.cd[k];
 }
 /* 開場：昇華的護盾、先制增益 */
 function battleOpen(p) {
@@ -1109,7 +1541,7 @@ function renderBHud() {
     big = bossBar(B.boss ? es[0] : es.find(o => (o.rar || 0) >= 3 && o.hp > 0), B.boss && es[0].hp > 0);
   $('bname').hidden = big && (B.ti === 0 || !B.boss);
   $('eail').innerHTML = '';
-  placeAil('hail', p.hx + 6 * sc, p.hy - 16 * sc, ailHTML(B.me, AIL_H));
+  placeAil('hail', p.hx + 6 * sc, p.hy - 16 * sc, heroAilHTML(B.me));
   const hp = $('hpills');
   hp.style.left = p.hx + 'px';
   hp.style.top = p.hy + 14 + 'px';
@@ -1130,10 +1562,10 @@ function renderBHud() {
       ? cb(
           q.name,
           q.icon,
-          [costTxt(st, q), skShort(q)].filter(Boolean).join('・'),
+          skSub(st, q, B.me, es, B.ti),
           'skill',
           `data-k="${k}"`,
-          canPay(S, st, q) ? '' : 'disabled'
+          skReady(S, B.me, skSt(st, q), q) ? '' : 'disabled'
         )
       : cb(
           '生命藥水',
@@ -1145,21 +1577,37 @@ function renderBHud() {
         );
   };
   /* 0.3.1.9：四個技能欄都直接放在面板上（空的欄位放藥水）；普攻固定在右上角最好點，物品與逃跑擠在右下一格 */
-  const four = [0, 1, 2, 3].map(i =>
+  /* 0.3.22：技能欄 6 格，3 欄排（空的前兩格放藥水）；有地雷時多一顆「引爆地雷」 */
+  const six = [0, 1, 2, 3, 4, 5].map(i =>
     sks[i]
       ? slot('s' + i)
       : i === 1
         ? cb('魔力藥水', 'ice', '×' + S.ethers, 'bitem', 'data-k="ethers"', S.ethers ? '' : 'disabled')
         : i === 0
           ? slot(null)
-          : `<button class="cb empty" data-act="bsub" data-k="items" ${dis}><img src="${iconURL('book')}" alt="">空的技能欄<small>到「角色 → 技能」裝備</small></button>`
+          : `<button class="cb empty" data-act="bsub" data-k="items" ${dis}><img src="${iconURL('book')}" alt="">空的技能欄</button>`
   );
+  const mn = (B.me.mines || []).length,
+    x = mn
+      ? cb('引爆地雷', 'flame', `×${mn}`, 'skill', 'data-k="mines"', '', 'mine')
+      : cb(
+          '生命藥水',
+          'heart',
+          noPot ? '無法使用' : '×' + S.potions,
+          'bitem',
+          'data-k="potions"',
+          S.potions && !noPot ? '' : 'disabled'
+        );
+  $('bcmd').classList.add('six');
   let html =
-    four[0] +
+    six[0] +
+    six[1] +
     cb('攻擊', 'axe', '', 'skill', 'data-k="attack"', '', 'atk') +
-    four[1] +
-    four[2] +
-    four[3] +
+    six[2] +
+    six[3] +
+    six[4] +
+    six[5] +
+    x +
     `<div class="brow2">${cb('物品', 'bag', '', 'bsub', 'data-k="items"', '')}${cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D ? 'disabled' : '', 'run')}</div>`;
   if (B.sub === 'skills')
     html += `<div class="bsub">${sk.length ? sk.map(slot).join('') : '<p class="sub">技能欄是空的，到「角色 → 技能」裝上技能石</p>'}${cb('返回', 'run', '', 'bsub', 'data-k=""', '')}</div>`;
@@ -1236,19 +1684,36 @@ const soloExt = () => ({
   ew: curSpec() && curSpec().eleweak ? 20 : 0
 });
 function useSkill(k) {
+  /* 0.3.22 引爆地雷：不花魔力，用掉這一回合 */
+  if (k === 'mines') {
+    if (!B || B.busy || !(B.me.mines || []).length) return;
+    B.busy = true;
+    B.sub = null;
+    sfx('select');
+    bmsg('引爆地雷');
+    B.me.st = stats();
+    const ev = mineBlast(B.me, B.me.st, B.es, B.ti, [B.me], { ...soloExt(), av: B.av });
+    renderBHud();
+    later(playEv(ev) + 150, () => {
+      const pe = petsAct(B.me, B.me.st, B.es);
+      later(playEv(pe) + 100, afterPlayer);
+    });
+    return;
+  }
   const sk = skByKey(k, mySkills()),
     st0 = sk && skSt(stats(), sk);
-  if (!B || B.busy || !sk || !canPay(S, st0, sk)) return;
+  if (!B || B.busy || !sk || !skReady(S, B.me, st0, sk)) return;
   B.busy = true;
   B.sub = null;
-  payCost(S, stats(), sk);
+  if (!charging(B.me, sk)) payCost(S, stats(), sk);
   sfx('select');
   bmsg(sk.name);
   B.me.st = stats();
   B.me.lv = S.lv;
   const ev = actResolve(B.me, B.me.st, sk, B.es, B.ti, [B.me], {
     ...soloExt(),
-    allyMul: 1
+    allyMul: 1,
+    av: B.av
   });
   if (sk.kind === 'spell') {
     anim(BFX.hero, 'cast', 500);
@@ -1603,7 +2068,7 @@ function dropLoot(e, boss, sp, remote, minion) {
   }
   return out;
 }
-/* 技能石材料：靈魂與刻印石系列（昇華稜鏡、神聖刻印石在冥府內容出來前先由紅名怪掉落） */
+/* 技能石材料：靈魂與刻印石系列（開插槽）；0.3.20 寶石稜鏡與輔助寶石在 supLoot */
 /* 靈魂隨怪物強度增加：稀有度底數 + 每條詞綴 2（冥府詞綴 3）+ 每 4 級 1，首領再加 */
 /* 0.3.1.8：靈魂全部來源 ×1.5（0.3.11 起靈魂拿來升級技能石） */
 const SOUL_MUL = 1.5;
@@ -1630,8 +2095,41 @@ function gemLoot(e, boss, hell, rem, out) {
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
   if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
   if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');
-  if (r === 4 && ch(0.08)) add('prism');
   if (r === 4 && ch(0.08)) add('engD');
+  supLoot(e, boss, rem, out);
+}
+/* 0.3.20：寶石稜鏡與族裔輔助只從野外機制掉（菁英低機率、首領高機率），一般輔助寶石菁英與首領都會掉 */
+const mechOf = e =>
+  e.ud
+    ? 'ud'
+    : e.sin || e.mist
+      ? 'sin'
+      : e.uw
+        ? 'uw'
+        : e.hunt || e.zod || (typeof B !== 'undefined' && B && B.hunt && !e.minion)
+          ? 'hunt'
+          : '';
+function supLoot(e, boss, rem, out) {
+  const r = e.rar || 0,
+    m = mechOf(e),
+    big = boss || r >= 3,
+    pick = a => a[fl(Math.random() * a.length)],
+    giveS = sp => {
+      giveSup(sp.k);
+      out.push(
+        `<span style="color:${sp.lin ? '#ffd166' : '#9fd4ef'}">${sp.lin ? '族裔輔助・' : '輔助寶石・'}${sp.n}</span>`
+      );
+    };
+  if (m) {
+    const n = big ? 1 + (Math.random() < 0.5 ? 1 : 0) : r >= 1 && Math.random() < 0.08 * rem ? 1 : 0;
+    if (n) {
+      giveCur('prism', n);
+      out.push(curDot('prism') + GCURI.prism.n + (n > 1 ? ' ×' + n : ''));
+    }
+    if (Math.random() < (big ? 0.25 : r >= 1 ? 0.015 : 0) * rem) giveS(pick(SUPG.filter(sp => sp.lin && sp.m === m)));
+  } else if (r === 4 && Math.random() < 0.04 * rem) giveS(pick(SUPG.filter(sp => sp.lin && sp.m === 'wild')));
+  if (Math.random() < (boss ? 0.15 : [0, 0.01, 0.03, 0.05, 0.1][r] || 0) * rem)
+    giveS(pick(SUPG.filter(sp => !sp.lin && sp.t <= Math.max(1, Math.min(5, tierNow())))));
 }
 /* 現場加成：人實際走到互動範圍內（150 公尺，城鎮 200）打（不是靠據點、營旗、絲綢之路遠端），掉寶數量與稀有度 +20% */
 const ONSITE_BONUS = 20;
@@ -1660,6 +2158,21 @@ function dunReward(D) {
   }
   if (sp.dt === 'stele') curs.push(makeTablet(D.lv, sp.mods));
   if (sp.dt === 'sin' || sp.dt === 'sinking') curs.push(...sinReward(sp));
+  /* 0.3.20：冥府傳送門與七宗罪的首領：寶石稜鏡、族裔輔助 */
+  const lm = sp.dt === 'portal' ? 'uw' : sp.dt === 'sin' || sp.dt === 'sinking' ? 'sin' : '';
+  if (lm) {
+    giveCur('prism', 2);
+    curs.push(curDot('prism') + GCURI.prism.n + ' ×2');
+    if (Math.random() < (sp.dt === 'sinking' ? 0.6 : 0.3)) {
+      const l = SUPG.filter(x => x.lin && x.m === lm),
+        x = l[fl(Math.random() * l.length)];
+      giveSup(x.k);
+      curs.push(`<span style="color:#ffd166">族裔輔助・${x.n}</span>`);
+    }
+  } else if (sp.dt === 'hell' && Math.random() < 0.4) {
+    giveCur('prism');
+    curs.push(curDot('prism') + GCURI.prism.n);
+  }
   return { gold, cry, items, curs };
 }
 function dunModsHTML(sp) {

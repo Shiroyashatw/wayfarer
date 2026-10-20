@@ -64,105 +64,22 @@ const SKILLS = {
   cleave: { name: '裂地斬', mp: 14, kind: 'attack', mult: 1.7, tg: 'all', fx: 'whirl', icon: 'axe', r: 5 },
   sanct: { name: '聖域', mp: 14, kind: 'heal', heal: 0.6, healAll: 40, icon: 'heart', r: 5 }
 };
-/* 技能石：等級上限 30，每 5 級開 1 個空的刻印槽，要用刻印石點下去才會抽出詞綴 */
+/* 技能石：等級上限 30；0.3.20 起有 2～5 個輔助插槽（刻印石系列開槽） */
 const GEM_MAX = 30;
 /* 0.3.11：技能石在城鎮商店購買，用擊殺怪物得到的靈魂升級（取代粉塵）；祈願每抽 1 個祈願石 */
 const GEM_DRAW = 1;
 const soulNeed = lv => Math.round(8 * Math.pow(lv, 1.5));
-/* 刻印詞綴：t 是 T1～T3 的數值範圍（T1 最高、最少見），k 是可以出現的技能種類 */
-const GAFF = [
-  {
-    id: 'dmg',
-    n: v => `技能傷害 +${v}%`,
-    k: ['attack', 'spell'],
-    t: [
-      [24, 32],
-      [14, 20],
-      [8, 12]
-    ]
-  },
-  {
-    id: 'cost',
-    n: v => `魔力消耗 -${v}%`,
-    k: ['attack', 'spell', 'heal', 'buff'],
-    t: [
-      [18, 25],
-      [12, 16],
-      [6, 10]
-    ]
-  },
-  {
-    id: 'crit',
-    n: v => `暴擊率 +${v}%`,
-    k: ['attack', 'spell'],
-    t: [
-      [5, 7],
-      [3, 4],
-      [1, 2]
-    ]
-  },
-  {
-    id: 'ail',
-    n: v => `燃燒、凍結、感電機率 +${v}%`,
-    k: ['attack', 'spell'],
-    t: [
-      [50, 70],
-      [30, 45],
-      [15, 25]
-    ]
-  },
-  {
-    id: 'brk',
-    n: v => `碎甲：無視敵人 ${v}% 護甲`,
-    k: ['attack'],
-    t: [
-      [30, 40],
-      [18, 25],
-      [10, 15]
-    ]
-  },
-  {
-    id: 'leech',
-    n: v => `吸血 +${v}%`,
-    k: ['attack'],
-    t: [
-      [3, 4],
-      [2, 2],
-      [1, 1]
-    ]
-  },
-  {
-    id: 'dbl',
-    n: v => `${v}% 機率多打一下`,
-    k: ['attack'],
-    t: [
-      [16, 22],
-      [10, 14],
-      [5, 8]
-    ]
-  },
-  {
-    id: 'heal',
-    n: v => `治癒量 +${v}%`,
-    k: ['heal'],
-    t: [
-      [30, 40],
-      [18, 25],
-      [10, 15]
-    ]
-  }
-];
-const GAFFI = Object.fromEntries(GAFF.map(a => [a.id, a]));
+/* 0.3.20：技能石的刻印詞綴拿掉，改成輔助寶石（skills.js 的 SUPG） */
 /* 技能石專用通貨（存在 S.cur，但不列在裝備製作） */
 const GCUR = [
   { id: 'soul', n: '靈魂', d: '擊殺怪物得到，用來替技能石升級', c: '#b7a6ff' },
   { id: 'wish', n: '祈願石', d: `契靈祈願用，每抽 ${GEM_DRAW} 個`, c: '#ffd66a' },
-  { id: 'eng', n: '刻印石', d: '在空的刻印槽抽一條隨機詞綴', c: '#9fd4ef' },
-  { id: 'engC', n: '混沌刻印石', d: '隨機重洗一條刻印詞綴', c: '#e58a3a' },
-  { id: 'engX', n: '崇高刻印石', d: '在空的刻印槽抽一條 T1～T2 詞綴', c: '#fff2b0' },
-  { id: 'prism', n: '昇華稜鏡', d: '重洗階級最低的那條刻印詞綴', c: '#ff8fd8' },
-  { id: 'engD', n: '神聖刻印石', d: '不換詞綴種類，重骰所有刻印詞綴的數值', c: '#ffe27a' },
-  { id: 'vaal', n: '冥府之血', d: '腐化 Lv30 技能石：超限、擴槽、毀滅或降等（各 25%）', c: '#ff3a5a' }
+  { id: 'eng', n: '刻印石', d: '技能石的插槽從 2 格開到 3 格', c: '#9fd4ef' },
+  { id: 'engX', n: '崇高刻印石', d: '技能石的插槽從 3 格開到 4 格', c: '#fff2b0' },
+  { id: 'engD', n: '神聖刻印石', d: '技能石的插槽從 4 格開到 5 格', c: '#ffe27a' },
+  { id: 'engC', n: '混沌刻印石', d: '技能石的插槽數重骰（2～5 格，變少時多的輔助寶石退回）', c: '#e58a3a' },
+  { id: 'prism', n: '寶石稜鏡', d: '技能石品質 +1～5%（最多 20%，越高加越少）；野外機制的獎勵', c: '#ff8fd8' },
+  { id: 'vaal', n: '冥府之血', d: '腐化 Lv30 技能石：超限、品質超限、擴槽、沒變化或毀滅', c: '#ff3a5a' }
 ];
 const GCURI = Object.fromEntries(GCUR.map(c => [c.id, c]));
 const EL = { phys: '物理', fire: '火焰', cold: '冰冷', light: '閃電' };
@@ -1659,6 +1576,7 @@ const STATN = {
   critPct: v => `暴擊率 +${v}%`,
   critMulti: v => `暴擊傷害 ${v > 0 ? '+' : ''}${v}%`,
   speed: v => `速度 ${v > 0 ? '+' : ''}${v}`,
+  spirit: v => `精魄 +${v}`,
   leech: v => `傷害的 ${v}% 轉為生命`,
   spellPct: v => `法術傷害 +${v}%`,
   elePct: v => `元素傷害 +${v}%`,
@@ -1690,7 +1608,7 @@ Object.assign(STATN, {
   taunt: v => `嘲諷：組隊時怪物攻擊你的機率 +${v}%`,
   healAll: v => `治癒技能同時替其他隊友回復 ${v}% 的量`,
   allyDmg: v => `組隊時每位活著的隊友，傷害 +${v}%`,
-  engPct: v => `技能石每條刻印詞綴，該技能傷害 +${v}%`,
+  engPct: v => `技能石每插一顆輔助寶石，該技能傷害 +${v}%`,
   addCold: v => `附加 ${v} 冰冷傷害`,
   addLight: v => `附加 ${v} 閃電傷害`,
   dmgMore: v => `傷害 ${sg(v)}%（總乘）`,
@@ -2728,7 +2646,15 @@ const TREE = (() => {
     if (!n) return;
     Object.assign(n, { n: '珠寶槽', st: {}, ic: 'gem', type: 'socket' });
   });
+  /* 0.3.21 精魄：魔力、法術、技藝類的重要節點多給精魄（光環要花精魄），跟傷害節點搶點數 */
+  for (const n of N)
+    if (
+      (n.type === 'notable' || n.type === 'key') &&
+      n.st &&
+      (n.st.mana || n.st.manaRegen || n.st.mpCost || n.st.engPct || n.st.spellPct >= 20)
+    )
+      n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.17';
+const VER = '0.3.22';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

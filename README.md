@@ -3,7 +3,7 @@
 以真實台灣地圖為舞台的回合制 RPG 網頁 demo。出門走路是冒險，在家經營據點也能推進。
 
 - 線上遊玩：https://shiroyashatw.github.io/wayfarer/
-- 目前版本：v0.3.17（[更新紀錄](CHANGELOG.md)）
+- 目前版本：v0.3.22（[更新紀錄](CHANGELOG.md)）
 - 企劃書：[docs/企劃書.md](docs/企劃書.md)
 - 建議用手機直式開啟
 

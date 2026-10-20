@@ -355,6 +355,7 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .gaRes .btns{justify-content:center}
 /* ---------- skill gems ---------- */
 .gslots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.gslots.g6{grid-template-columns:repeat(3,1fr)}
 .gslot{display:grid;justify-items:center;gap:4px;background:#0004;border:1px dashed #fff3;border-radius:12px;padding:8px 2px;font-size:12px;text-align:center;color:inherit}
 .gslot .gtile{width:56px;height:56px}
 .gslot.empty{color:var(--dim)}
@@ -365,6 +366,8 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .gen{position:absolute;top:-4px;right:-4px;display:flex;gap:1px}
 .gen i{width:6px;height:6px;border-radius:2px;background:#fff3;border:1px solid #0008}
 .gen i.f{background:#7fd6ff}
+/* 0.3.20 技能石品質（左下） */
+.gq{position:absolute;bottom:-5px;left:-5px;font-style:normal;font-size:9px;background:#ff8fd8;color:#000;border-radius:6px;padding:0 3px}
 .geq{position:absolute;bottom:-5px;right:-5px;font-style:normal;font-size:10px;background:var(--good);color:#000;border-radius:6px;padding:0 4px}
 .gcor{outline:2px solid #e5304a;outline-offset:1px}
 
@@ -533,7 +536,8 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .lu.big b{font-size:12.5px}
 .luhunt{margin-top:6px;padding:4px 8px;border-radius:8px;background:#c8141e33;color:#ff9a9a;font-size:12px}
 /* 0.3.1.8 技能標籤 */
-.sktags{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:2px 0}
+.sktags{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:2px 0;max-width:100%}
+.t .sktags{justify-content:flex-start}
 .skt{font-style:normal;font-size:10px;line-height:1;padding:3px 5px;border-radius:5px;background:#ffffff1a;color:#e8e2d4;white-space:nowrap}
 .skt.tg{background:#5a6a8a55;color:#cfe0ff}
 .skt.tg.all{background:#c9a45c55;color:#ffe2a0}
@@ -542,11 +546,16 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .skt.el.fire{background:#e5484d44;color:#ffb0a0}
 .skt.el.cold{background:#3a8ae044;color:#a8d8ff}
 .skt.el.light{background:#f2d25e44;color:#fff0a0}
-.skt.ail{background:#a0202a44;color:#ffa0a8}
+.skt.eff{background:#a0202a44;color:#ffa0a8}
+.skt.ty{background:#ffffff14;color:#f0e6c8;border:1px solid #ffffff22;padding:2px 4px}
+.skt.w{background:#8a6a3a44;color:#f0d0a0}
 .skt.buf,.skt.heal{background:#3a9a5a44;color:#a8f0b8}
 .skt.pet{background:#6a4a2a55;color:#f0d0a0}
-.skt.w{background:#ffffff12;color:var(--dim)}
 .gcell .sktags,.gslot .sktags{margin-top:1px}
+/* 0.3.18 說明文字的關鍵字上色 */
+.kw{font-weight:500;font-style:normal}
+.kw.fire{color:#ffb08a}.kw.cold{color:#9fdcff}.kw.light{color:#fff08a}.kw.phys{color:#e8e2d4}
+.kw.eff{color:#ff9aa4}.kw.tg{color:#c8d8ff}.kw.buf{color:#a8f0b8}.kw.num{color:var(--gold)}.kw.bad{color:#ff7a7a}
 .card .sktags{justify-content:flex-start;margin:4px 0}
 .skf{grid-template-columns:repeat(6,1fr);margin-bottom:8px}
 .skf button{font-size:12px;padding:6px 0}
@@ -605,4 +614,12 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .brow2 .cb{min-height:62px!important;font-size:13px!important;padding:4px!important}
 .brow2 .cb img{width:20px!important;height:20px!important}
 .brow2 .cb small{display:none}
+.bcmd.six{grid-template-columns:repeat(3,1fr);gap:6px}
+.bcmd.six>.cb{min-height:58px;font-size:14px;padding:4px}
+.bcmd.six .cb small{font-size:10.5px;line-height:1.2;text-align:center}
+.bcmd.six .cb img{width:20px;height:20px}
+.bcmd.six .brow2{grid-template-columns:1fr;gap:4px}
+.bcmd.six .brow2 .cb{min-height:27px!important;display:flex;gap:4px;padding:2px!important}
+.bcmd.six .brow2 .cb img{width:14px!important;height:14px!important}
+.bcmd>.cb.mine{background:linear-gradient(#6a3a20,#3a2010);border-color:#ff8a3a88}
 .bcmd>.cb.atk{background:linear-gradient(#5a4630,#3a2c20);border-color:#c9a45c88}

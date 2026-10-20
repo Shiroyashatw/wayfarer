@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 22,
+    v: 25,
     cls: 'destiny',
     lv: 1,
     tier: 1,
@@ -20,6 +20,8 @@ function newGame() {
     cur: { trans: 4, aug: 4, regal: 2, alch: 1, chaos: 1, exalt: 0, soul: 0, wish: 10, eng: 1 },
     pact: { list: [], eq: [], follow: null },
     gems: [],
+    sups: [],
+    aura: [],
     flags: [],
     scrolls: { stele: 0, circle: 0 },
     insc: [],
@@ -38,7 +40,7 @@ function newGame() {
     sins: {},
     jewels: [],
     jsock: {},
-    sk: [null, null, null, null],
+    sk: [null, null, null, null, null, null],
     autoHp: 0,
     autoMp: 0,
     regenAt: 0,
@@ -257,111 +259,204 @@ function craft(it, id) {
 }
 
 /* ================= skill gems ================= */
-const newGem = k => ({ id: uid(), k, lv: 1, dust: 0, en: [] });
-const gemSlots = g => Math.min(6, fl(g.lv / 5)) + (g.xs || 0);
-const gemOpen = g => gemSlots(g) - g.en.length;
+/* 0.3.20（比照 PoE2）：技能石一開始有 2 個輔助插槽，用刻印石／崇高刻印石／神聖刻印石開第 3／4／5 格；
+   sp 是插著的輔助寶石 [{u, k}]（拆下來回到 S.sups）、q 是品質 0～20%（寶石稜鏡，腐化可以超過）、sock 插槽數 */
+const newGem = k => ({ id: uid(), k, lv: 1, dust: 0, sock: 2, sp: [], q: 0 });
+const SOCK_MAX = 5;
 const gemOf = id => S.gems.find(g => g.id === id);
 const GEMK = () => Object.keys(SKILLS).filter(k => k !== 'attack');
+/* 品質效果：依技能本身的特色自動決定（技能再多也不用一顆一顆寫），每 1% 品質給一點點 */
+function gemQFx(b) {
+  if (b.kind === 'aura')
+    return {
+      t: q => `光環效果 +${q}%`,
+      f: (sk, q) => {
+        for (const o of [sk.aura, sk.avs, sk.pb])
+          if (o) for (const k in o) o[k] = Math.round(o[k] * (1 + q / 100) * 10) / 10;
+      }
+    };
+  if (b.cry && b.perFoe)
+    return { t: q => `依敵人數的效果 +${q * 2}%`, f: (sk, q) => (sk.cryMul = (sk.cryMul || 0) + q * 2) };
+  if (b.det) return { t: q => `引爆傷害 +${q * 2}%`, f: (sk, q) => (sk.detMul = (sk.detMul || 1) + q * 0.02) };
+  if (b.charge) return { t: q => `蓄力倍數 +${(q * 0.03).toFixed(2)}`, f: (sk, q) => (sk.charge += q * 0.03) };
+  if (b.combo) return { t: q => `連續使用每層 +${q * 0.5}%`, f: (sk, q) => (sk.combo += q * 0.5) };
+  if (b.vs)
+    return {
+      t: q => `對有狀態的目標加傷再 +${q * 2}%`,
+      f: (sk, q) => (sk.vs = Object.fromEntries(Object.entries(sk.vs).map(([k, v]) => [k, v + q * 2])))
+    };
+  if (b.foes > 0) return { t: q => `每多一隻敵人再 +${(q * 0.3).toFixed(1)}%`, f: (sk, q) => (sk.foes += q * 0.3) };
+  if (b.foes < 0)
+    return {
+      t: q => `多敵人的傷害懲罰減少 ${(q * 0.25).toFixed(1)}%`,
+      f: (sk, q) => (sk.foes = Math.min(0, sk.foes + q * 0.25))
+    };
+  if (b.pet) return { t: q => `召喚物傷害 +${q * 2}%`, f: (sk, q) => (sk.pet.mult *= 1 + q / 50) };
+  if (b.kind === 'heal') return { t: q => `治療量 +${q}%`, f: (sk, q) => (sk.heal *= 1 + q / 100) };
+  if (b.buff) return { t: q => `增益效果 +${q}%`, f: (sk, q) => (sk.qBuff = q) };
+  if (b.chain) return { t: q => `連鎖傷害衰減減少 ${q}%`, f: (sk, q) => (sk.chainDecay = q) };
+  if (b.stun || b.freeze || b.bleed || b.poison)
+    return {
+      t: q => `異常狀態機率 +${q}%`,
+      f: (sk, q) => {
+        if (sk.stun) sk.stun += q / 100;
+        if (sk.freeze) sk.freeze += q / 100;
+        if (sk.bleed) sk.bleed += q;
+        sk.ail = (sk.ail || 0) + q * 2;
+      }
+    };
+  return { t: q => `傷害 +${q}%`, f: (sk, q) => sk.mult && (sk.mult *= 1 + q / 100) };
+}
 /* 技能石換算成戰鬥用的技能：攻擊每級 +6% 倍率，法術的基礎傷害隨等級提高，治癒每級 +6%，消耗每級 +3%。
-   0.3.12：契靈的「技能等級 +N」直接加在等級上（可以超過上限，刻印槽數照技能石本身的等級） */
+   0.3.12：契靈的「技能等級 +N」直接加在等級上（可以超過上限）。0.3.20：加上品質與輔助寶石 */
 function gemSkill(g) {
   const b = SKILLS[g.k],
     plus = typeof pactSkLv === 'function' ? pactSkLv(g.k) : 0,
     L = g.lv - 1 + plus,
-    t = {};
-  g.en.forEach(a => (t[a.id] = (t[a.id] || 0) + a.v));
+    sps = (g.sp || []).map(x => SUPGI[x.k]).filter(Boolean);
   const sk = {
     ...b,
+    vs: b.vs ? { ...b.vs } : undefined,
     gid: g.id,
     lv: g.lv + plus,
     plus,
-    nEn: g.en.length,
-    mp: Math.round(b.mp * (1 + 0.03 * L) * (1 - (t.cost || 0) / 100))
+    q: g.q || 0,
+    nEn: sps.length,
+    mp: Math.round(b.mp * (1 + 0.03 * L) * (1 + sps.reduce((a, x) => a + (x.mp || 0), 0) / 100))
   };
-  if (b.kind === 'attack') sk.mult = b.mult * (1 + 0.06 * L) * (1 + (t.dmg || 0) / 100);
+  if (b.kind === 'attack') sk.mult = b.mult * (1 + 0.06 * L);
   if (b.kind === 'spell') {
-    sk.mult = b.mult * (1 + (t.dmg || 0) / 100);
+    sk.mult = b.mult;
     sk.sb = 9 + 4 * L;
   }
-  if (b.kind === 'heal') sk.heal = (b.heal || 0.35) * (1 + 0.06 * L) * (1 + (t.heal || 0) / 100);
-  ['crit', 'ail', 'brk', 'leech', 'dbl'].forEach(k => (sk[k] = (b[k] || 0) + (t[k] || 0)));
+  if (b.kind === 'heal') sk.heal = (b.heal || 0.35) * (1 + 0.06 * L);
+  ['crit', 'ail', 'brk', 'leech', 'dbl'].forEach(k => (sk[k] = b[k] || 0));
   /* 召喚物與增益也隨等級變強（每級 +4%，回合數不變） */
-  if (b.pet) sk.pet = { ...b.pet, mult: b.pet.mult * (1 + 0.06 * L) * (1 + (t.dmg || 0) / 100) };
+  if (b.pet) sk.pet = { ...b.pet, mult: b.pet.mult * (1 + 0.06 * L) };
   if (b.buff)
     sk.buff = Object.fromEntries(
       Object.entries(b.buff).map(([k, v]) =>
         typeof v === 'number' && k !== 'turns' ? [k, Math.round(v * (1 + 0.04 * L) * 100) / 100] : [k, v]
       )
     );
+  /* 光環：每級 +3% */
+  if (b.aura) {
+    const m = 1 + 0.03 * L;
+    sk.aura = Object.fromEntries(Object.entries(b.aura).map(([k, v]) => [k, Math.round(v * m * 10) / 10]));
+    if (b.avs) sk.avs = Object.fromEntries(Object.entries(b.avs).map(([k, v]) => [k, Math.round(v * m)]));
+    if (b.pb) sk.pb = Object.fromEntries(Object.entries(b.pb).map(([k, v]) => [k, Math.round(v * m * 10) / 10]));
+  }
+  /* 品質 */
+  if (sk.q) gemQFx(b).f(sk, sk.q);
+  if (sk.qBuff && sk.buff)
+    for (const k in sk.buff)
+      if (typeof sk.buff[k] === 'number' && k !== 'turns')
+        sk.buff[k] = Math.round(sk.buff[k] * (1 + sk.qBuff / 100) * 100) / 100;
+  /* 輔助寶石：sup 給戰鬥的輔助效果（gsup），sk 的條件欄位加在技能上 */
+  sk.gsup = {};
+  for (const x of sps) {
+    for (const k in x.sup || {}) sk.gsup[k] = (sk.gsup[k] || 0) + x.sup[k];
+    for (const k in x.sk || {}) {
+      const v = x.sk[k];
+      if (k === 'vs')
+        sk.vs = {
+          ...(sk.vs || {}),
+          ...Object.fromEntries(Object.entries(v).map(([s2, n]) => [s2, ((sk.vs || {})[s2] || 0) + n]))
+        };
+      else if (typeof v === 'number' && k !== 'charge') sk[k] = Math.max(0, (sk[k] || 0) + v);
+      else if (k === 'charge') sk.charge = sk.charge ? sk.charge + 0.5 : v;
+      else sk[k] = v;
+    }
+  }
+  if (sk.cd <= 0) delete sk.cd;
   return sk;
 }
-/* 目前技能欄的 4 個技能（空格是 null），戰鬥用 's0'～'s3' 指定 */
+/* 目前技能欄的 6 個技能（0.3.22 起 6 格，空格是 null），戰鬥用 's0'～'s5' 指定 */
 const mySkills = () => S.sk.map(id => (gemOf(id) ? gemSkill(gemOf(id)) : null));
-function rollGAff(g, hi) {
-  const kind = SKILLS[g.k].kind,
-    have = g.en.map(a => a.id);
-  let pool = GAFF.filter(a => a.k.includes(kind) && !have.includes(a.id));
-  if (!pool.length) pool = GAFF.filter(a => a.k.includes(kind));
-  const a = pool[fl(Math.random() * pool.length)],
-    x = Math.random(),
-    t = hi ? (x < 0.35 ? 1 : 2) : x < 0.1 ? 1 : x < 0.4 ? 2 : 3;
-  return gAffVal({ id: a.id, t });
+/* 輔助寶石：S.sups 是還沒插的 [{u, k}]；族裔輔助同名一個角色只能用一顆（插在任何技能石上都算） */
+const supUsed = k => S.gems.some(g => (g.sp || []).some(x => x.k === k));
+function supBlock(g, x) {
+  const sp = SUPGI[x.k],
+    q = SKILLS[g.k];
+  if (!sp) return '沒有這種輔助';
+  if ((g.sp || []).length >= (g.sock || 2)) return '插槽滿了';
+  if (!SUPREQ[sp.req](q)) return `只能插${SUPREQN[sp.req]}`;
+  if ((g.sp || []).some(y => y.k === x.k)) return '這顆已經插了一樣的';
+  if (sp.conv && (g.sp || []).some(y => SUPGI[y.k] && SUPGI[y.k].conv)) return '轉換類一顆只能插一個';
+  if (sp.lin && supUsed(x.k)) return '族裔輔助同名只能用一顆';
+  return '';
 }
-function gAffVal(e) {
-  const [lo, hi] = GAFFI[e.id].t[e.t - 1];
-  e.v = lo + fl(Math.random() * (hi - lo + 1));
-  return e;
+function supIn(g, u) {
+  const i = S.sups.findIndex(x => x.u === u);
+  if (i < 0 || supBlock(g, S.sups[i])) return false;
+  (g.sp = g.sp || []).push(S.sups.splice(i, 1)[0]);
+  return true;
 }
-const gAffTxt = e => `${GAFFI[e.id].n(e.v)} <span class="sub" style="font-weight:400">T${e.t}</span>`;
+function supOut(g, u) {
+  const i = (g.sp || []).findIndex(x => x.u === u);
+  if (i < 0) return false;
+  S.sups.push(g.sp.splice(i, 1)[0]);
+  return true;
+}
+const giveSup = k => {
+  S.sups = S.sups || [];
+  S.sups.push({ u: uid(), k });
+};
+/* 寶石稜鏡：+1～5% 品質，越接近 20% 加越少 */
+const Q_GEM = 20;
+const prismAdd = g => Math.max(1, Math.round(5 * (1 - (g.q || 0) / Q_GEM)));
+/* 技能石通貨：刻印石開第 3 格、崇高刻印石第 4 格、神聖刻印石第 5 格；混沌刻印石把插槽數重骰（2～5）；寶石稜鏡加品質；冥府之血腐化 */
+const SOCK_CUR = { eng: 2, engX: 3, engD: 4 };
 function gemCraftable(g, id) {
   if (!g) return false;
-  /* 腐化後只能用刻印石／崇高刻印石填空槽 */
-  if (g.cor) return (id === 'eng' || id === 'engX') && gemOpen(g) > 0;
-  return {
-    vaal: g.lv >= GEM_MAX,
-    eng: gemOpen(g) > 0,
-    engX: gemOpen(g) > 0,
-    engC: g.en.length > 0,
-    prism: g.en.length > 0,
-    engD: g.en.length > 0
-  }[id];
+  if (g.cor) return false;
+  if (SOCK_CUR[id] != null) return (g.sock || 2) === SOCK_CUR[id];
+  return { engC: true, prism: (g.q || 0) < Q_GEM, vaal: g.lv >= GEM_MAX }[id];
 }
 function gemCraft(g, id) {
   if (!gemCraftable(g, id) || !(S.cur[id] > 0)) return false;
   S.cur[id]--;
-  if (id === 'eng' || id === 'engX') g.en.push(rollGAff(g, id === 'engX'));
-  else if (id === 'engC') {
-    const i = fl(Math.random() * g.en.length);
-    g.en.splice(i, 1);
-    g.en.splice(i, 0, rollGAff(g, false));
-  } else if (id === 'prism') {
-    let i = 0;
-    g.en.forEach((a, j) => a.t > g.en[i].t && (i = j));
-    g.en.splice(i, 1);
-    g.en.splice(i, 0, rollGAff(g, false));
-  } else if (id === 'engD') g.en.forEach(gAffVal);
-  else if (id === 'vaal') return corrupt(g);
+  if (SOCK_CUR[id] != null) {
+    g.sock = SOCK_CUR[id] + 1;
+    return `插槽 → ${g.sock} 格`;
+  }
+  if (id === 'engC') {
+    const x = Math.random();
+    g.sock = x < 0.35 ? 2 : x < 0.7 ? 3 : x < 0.92 ? 4 : 5;
+    /* 插槽變少：多的輔助寶石退回背包 */
+    while ((g.sp || []).length > g.sock) S.sups.push(g.sp.pop());
+    return `插槽重骰 → ${g.sock} 格`;
+  }
+  if (id === 'prism') {
+    const n = Math.min(Q_GEM - (g.q || 0), prismAdd(g));
+    g.q = (g.q || 0) + n;
+    return `品質 +${n}%（${g.q}%）`;
+  }
+  if (id === 'vaal') return corrupt(g);
   return true;
 }
-/* 腐化：超限（等級 +1）、擴槽（刻印槽 +1）、毀滅、降等，各 25%。回傳結果文字 */
+/* 腐化（只能用在 Lv30）：超限（等級 +1）20%、品質超限（+3～5%）20%、擴槽（第 6 格）15%、沒變化 20%、毀滅 25%。回傳結果文字 */
 function corrupt(g) {
   g.cor = true;
-  const x = fl(Math.random() * 4);
-  if (x === 0) {
+  const x = Math.random();
+  if (x < 0.2) {
     g.lv++;
     return '超限突破！等級 +1';
   }
-  if (x === 1) {
-    g.xs = (g.xs || 0) + 1;
-    return '擴槽！刻印槽 +1';
+  if (x < 0.4) {
+    const n = 3 + fl(Math.random() * 3);
+    g.q = (g.q || 0) + n;
+    return `品質超限！品質 +${n}%（${g.q}%）`;
   }
-  if (x === 2) {
-    S.gems = S.gems.filter(q => q !== g);
-    S.sk = S.sk.map(id => (id === g.id ? null : id));
-    return '技能石在冥府之血中碎裂了……';
+  if (x < 0.55) {
+    g.sock = (g.sock || 2) + 1;
+    return `擴槽！插槽 +1（${g.sock} 格）`;
   }
-  g.lv--;
-  return '劣化：等級 -1';
+  if (x < 0.75) return '沒有變化，但已經腐化了';
+  for (const y of g.sp || []) S.sups.push(y);
+  S.gems = S.gems.filter(q => q !== g);
+  S.sk = S.sk.map(id => (id === g.id ? null : id));
+  return '技能石在冥府之血中碎裂了……（插著的輔助寶石退回背包）';
 }
 /* 升級：要靈魂（擊殺怪物得到），而且技能石等級不能超過角色等級 */
 function gemLvBlock(g) {
@@ -374,7 +469,7 @@ function gemLvBlock(g) {
 /* 分解：退回升級花掉的靈魂的 70%（g.dust 是累積投入的靈魂） */
 const gemSoulBack = g => Math.round((g.dust || 0) * 0.7);
 /* 0.3.11 技能石商店：每種技能有需求等級（開局技能 Lv1，其餘依強度分組平均分散到 Lv1～28，也就是 T1～T5），
-   城鎮商店只賣已解鎖 T 的技能石；買下來是 Lv1，每種技能只能有一顆 */
+   城鎮商店只賣已解鎖 T 的技能石；買下來是 Lv1。0.3.18 起可以重複購買同一種（同名技能石不能互吃） */
 /* 需求 Lv1 的入門技能石（開局送強力一擊與治癒） */
 const GEM_START = ['power', 'bash', 'double', 'fire', 'heal', 'poison', 'skeleton', 'talisman'];
 let GEMREQ = null;
@@ -393,8 +488,8 @@ function gemReq(k) {
 const gemTier = k => tierOfLv(gemReq(k));
 const gemPrice = k => Math.round(30 + 8 * Math.pow(gemReq(k), 1.6));
 const hasGem = k => S.gems.some(g => g.k === k);
+const gemCount = k => S.gems.filter(g => g.k === k).length;
 function gemBuyBlock(k) {
-  if (hasGem(k)) return '已擁有';
   if (gemTier(k) > tierMax()) return `T${gemTier(k)} 解鎖`;
   if (S.lv < gemReq(k)) return `需要 Lv${gemReq(k)}`;
   if (S.gold < gemPrice(k)) return '金幣不足';
@@ -404,6 +499,7 @@ function giveGem(k) {
   const g = newGem(k);
   S.gems.push(g);
   const i = S.sk.indexOf(null);
+  if (SKILLS[k].kind === 'aura') return g;
   if (i >= 0 && !S.sk.some(id => gemOf(id) && gemOf(id).k === k)) S.sk[i] = g.id;
   return g;
 }
@@ -511,6 +607,7 @@ const STAT0 = [
   'ailDur',
   'dotPct',
   'anyWep',
+  'spirit',
   'petStart'
 ];
 function sumStats() {
@@ -534,7 +631,36 @@ function sumStats() {
   zodStats(A);
   if (typeof pactStats === 'function') pactStats(A);
   if (typeof ascStats === 'function') ascStats(A);
+  /* 0.3.21 光環：精魄（基礎 SPIRIT0 + 天賦、契靈、裝備）夠的才生效，照光環欄的順序 */
+  for (const q of auraOn(SPIRIT0 + t.spirit)) for (const k in q.aura) A(k, q.aura[k]);
   return t;
+}
+function auraExtra(budget) {
+  const on = auraOn(budget),
+    avs = {},
+    pb = {};
+  for (const q of on) {
+    for (const k in q.avs || {}) avs[k] = (avs[k] || 0) + q.avs[k];
+    if (q.party) for (const k in q.pb || {}) pb[k] = (pb[k] || 0) + q.pb[k];
+  }
+  return { auraVs: avs, paura: pb, spiritUsed: on.reduce((a, q) => a + auraCost(q), 0) };
+}
+/* 0.3.21 精魄與光環欄（S.aura 是光環技能石的 id，最多 AURA_MAX 個） */
+const SPIRIT0 = 30,
+  AURA_MAX = 4;
+const auraCost = q => q.spirit || 0;
+function auraOn(budget) {
+  let used = 0;
+  const out = [];
+  for (const id of S.aura || []) {
+    const g = gemOf(id);
+    if (!g || SKILLS[g.k].kind !== 'aura') continue;
+    const q = gemSkill(g);
+    if (used + auraCost(q) > budget) continue;
+    used += auraCost(q);
+    out.push(q);
+  }
+  return out;
 }
 /* 升級只成長生命與魔力（所有人相同），其他數值靠裝備、天賦與技能石 */
 const HP_LV = 10,
@@ -604,6 +730,9 @@ function stats() {
     critMulti: Math.max(110, 150 + t.critMulti),
     leech: t.leech * (t.vaal ? 2 : 1),
     speed: 10 + t.speed,
+    /* 0.3.21 精魄、光環的條件加傷（所有技能）與給隊友的增益 */
+    spirit: SPIRIT0 + t.spirit,
+    ...auraExtra(SPIRIT0 + t.spirit),
     regen: t.vaal ? 0 : t.regen,
     dodge: t.ironReflex || t.noDodge ? 0 : Math.max(0, Math.min(30 + t.dodgeCap, dodgeRaw)),
     vision: Math.round((dayPhase().night > 0.5 ? 260 : 600) * (1 + t.vision / 100)),

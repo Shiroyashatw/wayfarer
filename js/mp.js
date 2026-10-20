@@ -368,6 +368,11 @@ function mpStart() {
     es: []
   };
   MB.ps.forEach(battleOpen);
+  /* 0.3.21 組隊光環：隊友開的戰旗、再生光環給其他人增益（整場戰鬥） */
+  for (const p of MB.ps)
+    for (const q of MB.ps)
+      if (q !== p && q.st.paura && Object.keys(q.st.paura).length)
+        p.buffs.push({ id: 'aura_' + q.uid, n: `${q.name}的光環`, turns: 999, ...q.st.paura });
   mpSpawn();
   ptSend('start', { mb: pub() });
   mpEnter(null);
@@ -460,16 +465,34 @@ function mpResolve(uid, k, auto, tg = 0) {
     MBT = setTimeout(mpNext, 900);
     return;
   }
-  if (!sk || !canPay(p, skSt(p.st, sk), sk)) {
+  /* 0.3.22 引爆地雷 */
+  if (k === 'mines' && (p.mines || []).length) {
+    const alive = MB.ps.filter(q => q.alive),
+      ev = mineBlast(p, p.st, MB.es, tg, alive, { ew: MB.spec.eleweak ? 20 : 0, av: MB.av }),
+      end = ev.reduce((a, f) => Math.max(a, f.at || 0), 0),
+      pe = petsAct(p, p.st, MB.es).map(f => ({ ...f, at: (f.at || 0) + end + 150 })),
+      tot = pe.reduce((a, f) => Math.max(a, f.at || 0), end);
+    fx = fx.concat([{ t: 'msg', s: `${p.name}：引爆地雷` }], ev, pe);
+    mpPush(fx);
+    clearTimeout(MBT);
+    MBT = setTimeout(() => {
+      if (!MB) return;
+      if (MB.es.every(e => e.hp <= 0)) mpRoomClear();
+      else mpNext();
+    }, tot + 500);
+    return;
+  }
+  if (!sk || !skReady(p, p, skSt(p.st, sk), sk)) {
     sk = SKILLS.attack;
     k = 'attack';
   }
-  payCost(p, p.st, sk);
+  if (!charging(p, sk)) payCost(p, p.st, sk);
   fx.push({ t: 'msg', s: auto ? `${p.name} 時間到，自動攻擊` : `${p.name}：${sk.name}` });
   const alive = MB.ps.filter(q => q.alive),
     ev = actResolve(p, p.st, sk, MB.es, tg, alive, {
       allyMul: 1 + ((p.st.allyDmg || 0) * (alive.length - 1)) / 100,
-      ew: MB.spec.eleweak ? 20 : 0
+      ew: MB.spec.eleweak ? 20 : 0,
+      av: MB.av
     }),
     end = ev.reduce((a, f) => Math.max(a, f.at || 0), 0),
     pe = petsAct(p, p.st, MB.es).map(f => ({ ...f, at: (f.at || 0) + end + 150 })),
@@ -660,7 +683,7 @@ function mpMy(k) {
     S[key]--;
   } else {
     const sk = skByKey(k, me.sks || []);
-    if (!sk || !canPay(me, skSt(me.st, sk), sk)) return;
+    if (k === 'mines' ? !(me.mines || []).length : !sk || !skReady(me, me, skSt(me.st, sk), sk)) return;
   }
   MB.sent = MB.tok;
   MB.sub = null;
@@ -850,7 +873,7 @@ function renderMBHud() {
         low = q.alive && hr < 0.3;
       return (
         `<div class="mp ${q.uid === MB.actor ? 'on' : ''} ${q.alive ? '' : 'down'} ${low ? 'low' : ''} ${q.uid === CLOUD.uid ? 'mine' : ''}" style="left:${ps.x}px;top:${ps.y + 8}px"><b>${esc(q.name)}${q.gone ? '（離線）' : q.alive ? '' : '（倒下）'}</b><i class="mh"><i style="width:${hr * 100}%"></i><em>${hp}/${q.st.maxhp}</em></i><i class="mm"><i style="width:${(q.mp / q.st.maxmp) * 100}%"></i><em>${Math.max(0, Math.round(q.mp))}</em></i></div>` +
-        `<div class="ailbox" style="left:${ps.x + 5 * (battleSc() - 1)}px;top:${ps.y - 16 * (battleSc() - 1)}px">${ailHTML(q, AIL_H)}</div>`
+        `<div class="ailbox" style="left:${ps.x + 5 * (battleSc() - 1)}px;top:${ps.y - 16 * (battleSc() - 1)}px">${heroAilHTML(q)}</div>`
       );
     })
     .join('');
@@ -865,13 +888,14 @@ function renderMBHud() {
     return cb(
       q.name,
       q.icon,
-      [costTxt(me ? me.st : stats(), q), skShort(q)].filter(Boolean).join('・'),
+      skSub(me ? me.st : stats(), q, me, MB.es, MB.tg || 0),
       `data-k="${k}"`,
-      me && canPay(me, skSt(me.st, q), q) ? '' : 'disabled'
+      me && skReady(me, me, skSt(me.st, q), q) ? '' : 'disabled'
     );
   };
   /* 0.3.1.9：四個技能欄都直接放在面板上；普攻固定在右上角，物品與撤退擠在右下一格 */
-  const four = [0, 1, 2, 3].map(i =>
+  /* 0.3.22：技能欄 6 格、3 欄排；有地雷時多一顆「引爆地雷」 */
+  const six = [0, 1, 2, 3, 4, 5].map(i =>
     sks[i]
       ? slot('s' + i)
       : i === 0
@@ -886,13 +910,26 @@ function renderMBHud() {
           ? cb('魔力藥水', 'ice', '×' + S.ethers, 'data-k="ether"', S.ethers ? '' : 'disabled')
           : `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
   );
+  const mn = me ? (me.mines || []).length : 0;
+  $('bcmd').classList.add('six');
   let html =
     `<div class="mpturn" id="mpTurn"></div>` +
-    four[0] +
+    six[0] +
+    six[1] +
     cb('攻擊', 'axe', '', 'data-k="attack"', '', 'atk') +
-    four[1] +
-    four[2] +
-    four[3] +
+    six[2] +
+    six[3] +
+    six[4] +
+    six[5] +
+    (mn
+      ? cb('引爆地雷', 'flame', `×${mn}`, 'data-k="mines"', '', 'mine')
+      : cb(
+          '生命藥水',
+          'heart',
+          noPot ? '無法使用' : '×' + S.potions,
+          'data-k="potion"',
+          S.potions && !noPot ? '' : 'disabled'
+        )) +
     `<div class="brow2"><button class="cb" data-act="mpSub" data-k="items" ${dis}><img src="${iconURL('bag')}" alt="">物品</button><button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button></div>`;
   if (MB.sub === 'skills' && my)
     html += `<div class="bsub">${sk.map(slot).join('')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
