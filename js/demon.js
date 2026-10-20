@@ -1040,7 +1040,7 @@ const SINF = {
     { n: '黃金傭兵', t: 'merc', spr: 'scare', d: '還活著時，其他信徒受傷 -20%' }
   ],
   gluttony: [
-    { n: '蒼蠅群', t: 'flies', spr: 'bat', d: '打牠有 30% 打空' },
+    { n: '腐食鬣狗', t: 'flies', spr: 'wolf', d: '打牠有 30% 打空' },
     { n: '腐肉胖子', t: 'devour', spr: 'boar', d: '吃掉旁邊的信徒回血' },
     { n: '嘔吐蛆蟲', t: 'venom', spr: 'beetle', d: '命中讓你中毒（每回合扣血）' },
     { n: '吞噬口', t: 'maw', spr: 'frog', d: '偷吃你的生命藥水' },
