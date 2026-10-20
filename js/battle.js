@@ -849,6 +849,11 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
   const one = (i, mult, t, kind) => {
     const e = es[i];
     if (!e || e.hp <= 0) return;
+    /* 燭龍的黑夜：30% 打空 */
+    if (me.blind && Math.random() < 0.3) {
+      ev.push({ t: 'st', i, s: '打空了', col: '#8a8aa0', at: t });
+      return;
+    }
     const had = sk.consume && e[sk.consume] > 0,
       S3 = sk.vsCrit && e[sk.vsCrit] > 0 ? { ...S2, crit: 100 } : S2,
       pk = heroPacket(S3, sk, mult * more * condMul(sk, e, me, st, n0, me.comboN || 0));
@@ -1243,6 +1248,16 @@ function enemyResolve(es, i, party, ext = {}) {
     }
   }
   if (e.sin && ext.sinTurn) ext.sinTurn(e, i);
+  /* 0.3.24 四凶與燭龍 */
+  if (e.xiong || e.zhulong) {
+    const r = beastTurn(e, i, party, at);
+    ev.push(...r.ev);
+    at = r.at;
+    if (r.done) {
+      ev.push({ t: 'end', at: at + 200 });
+      return ev;
+    }
+  }
   /* 0.3.23 閻羅王：每 3 次行動用生死簿點名一人（下一次受到的傷害加倍），每 4 次用判官筆抹掉一人的增益 */
   if (e.yama) {
     e.yt = (e.yt || 0) + 1;
@@ -1279,6 +1294,9 @@ function enemyResolve(es, i, party, ext = {}) {
     let x = Math.random() * wt.reduce((a, b) => a + b, 0),
       pi = 0;
     while (pi < wt.length - 1 && (x -= wt[pi]) >= 0) pi++;
+    /* 窮奇：專挑生命比例最低的人 */
+    if (e.xiong === 'qiongqi')
+      pi = alive.reduce((b, q, k) => (q.hp / q.st.maxhp < alive[b].hp / alive[b].st.maxhp ? k : b), 0);
     if (pi >= alive.length) {
       const { q, u } = tots[pi - alive.length],
         d = Math.max(1, Math.round(e.atk * rnd(0.9, 1.1) * (1 - Math.min(60, q.st.dmgRed || 0) / 100)));
@@ -1556,7 +1574,11 @@ function renderBHud() {
   {
     /* 0.3.10：依行動值預測接下來的 7 次行動；正在行動的放最前面 */
     const me = { n: S.name || '你', c: 'me', img: portrait(heroSpr('F'), heroPal()) },
-      eo = i => ({ n: es[i].name, c: 'e', img: portrait(es[i].spr, es[i].pal) }),
+      /* 0.3.24 混沌、夜晚的燭龍：行動順序看不到 */
+      eo = i =>
+        es[i].hideAv
+          ? { n: '？？？', c: 'e', img: iconURL('eye') }
+          : { n: es[i].name, c: 'e', img: portrait(es[i].spr, es[i].pal) },
       cur = B.act >= 0 ? { ...eo(B.act), on: 1 } : { ...me, on: !B.busy },
       nx = avPreview(B.av || {}, soloUnits(), 6).map(id => (id === 'me' ? me : eo(+id.slice(1))));
     renderOrder([cur, ...nx]);
@@ -1618,14 +1640,16 @@ function renderBHud() {
   const mn = (B.me.mines || []).length,
     x = mn
       ? cb('引爆地雷', 'flame', `×${mn}`, 'skill', 'data-k="mines"', '', 'mine')
-      : cb(
-          '生命藥水',
-          'heart',
-          noPot ? '無法使用' : '×' + S.potions,
-          'bitem',
-          'data-k="potions"',
-          S.potions && !noPot ? '' : 'disabled'
-        );
+      : !sks[0]
+        ? `<button class="cb empty" data-act="bsub" data-k="items" ${dis}><img src="${iconURL('book')}" alt="">空的技能欄</button>`
+        : cb(
+            '生命藥水',
+            'heart',
+            noPot ? '無法使用' : '×' + S.potions,
+            'bitem',
+            'data-k="potions"',
+            S.potions && !noPot ? '' : 'disabled'
+          );
   $('bcmd').classList.add('six');
   let html =
     six[0] +
@@ -2266,6 +2290,8 @@ function winBattle() {
   bonus += ob + ud + mi;
   if (B.commander) bonus += commanderWin(B.commander);
   if (B.king) bonus += kingWin();
+  if (B.xiong) bonus += xiongWin(B.xiong);
+  if (B.zhulong) bonus += zhulongWin();
   if (B.watcher) bonus += watcherWin(B.watcher);
   if (B.hunt) bonus += huntWin(B);
   bonus += huntKills(es);

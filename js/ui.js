@@ -821,11 +821,15 @@ function openEnt(id) {
   } else if (e.kind === 'mseal') {
     const z = MZ.find(q => q.id === e.id),
       p = mistProg(e.id);
+    const x = z && xiongOf(z);
     desc = z
-      ? `強度 ${ROMAN[z.tier]}：方圓 ${z.r} 公尺被魔霧籠罩（地圖上的紫色圓圈），範圍內的怪物帶魔霧詞綴、等級 +${z.tier}，還會出現魔霧專屬怪。在範圍內打怪累積進度（目前 <b>${p}%</b>），滿 100% 魔霧碎裂，得到 ${z.tier + 1} 片魔霧碎片。剩 ${Math.max(1, Math.ceil((z.until - now()) / 60e3))} 分鐘散去。` +
-        bar('魔霧進度', p, 100, '#b06bff')
-      : '這團魔霧已經碎裂了。';
-    act = '';
+      ? `強度 ${ROMAN[z.tier]}：方圓 ${z.r} 公尺被魔霧籠罩（地圖上的紫色圓圈），範圍內的怪物帶魔霧詞綴、等級 +${z.tier}，還會出現魔霧專屬怪。在範圍內打怪累積進度（目前 <b>${p}%</b>），滿 100% 霧的中心會出現四凶之一・<b>${x.n}</b>（${x.d}），打倒得到${x.n}之印。四種凶獸之印各 1 個可以在魔霧中心召喚尾王<b>燭龍</b>。剩 ${Math.max(1, Math.ceil((z.until - now()) / 60e3))} 分鐘散去。` +
+        bar('魔霧進度', p, 100, '#b06bff') +
+        `<p class="sub">凶獸之印：${XIONG.map(q => `${q.n} ${xseal(q.k)}`).join('、')}</p>`
+      : '這團魔霧已經散去了。';
+    act = z
+      ? `${p >= 100 ? `<button class="btn pri" data-act="xiongGo" data-id="${id}" ${inR ? '' : 'disabled'}>挑戰${x.n}</button>` : ''}${xsealAll() ? `<button class="btn pri" data-act="zhulongGo" data-id="${id}" ${inR ? '' : 'disabled'}>用四種凶獸之印召喚燭龍</button>` : ''}`
+      : '';
   } else if (e.kind === 'sinst') {
     const x = Math.min(SIN_EXTRA, SEL.sinX || 0),
       need = SIN_COST + x,

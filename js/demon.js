@@ -398,38 +398,7 @@ function demonSpawns(out, cells, hp) {
       lc: '#d8b8ff'
     });
   }
-  /* 七宗罪雕像：每 2 小時換一輪，Lv8 起 */
-  if (S.lv >= 8) {
-    const e2 = ep2();
-    cells(SIN_CELL, 2600, (i, j) => {
-      const r = h(i, j, e2 * 29 + 1709);
-      if (r % 100 >= 32) return;
-      const id = `sn${i}_${j}_${e2}`,
-        sin = SINS[(r >>> 7) % 7];
-      let x = (i + 0.2 + ((r >>> 10) % 60) / 100) * SIN_CELL,
-        y = (j + 0.2 + ((r >>> 16) % 60) / 100) * SIN_CELL;
-      if (nearTown(x, y, 250)) return;
-      const p = snapRoad(x, y, 200);
-      if (!p) return;
-      [x, y] = p;
-      const [la, ln] = toLL(x, y);
-      out.set(id, {
-        id,
-        kind: 'sinst',
-        x,
-        y,
-        lat: la,
-        lng: ln,
-        sin: sin.k,
-        name: `${sin.n}的雕像`,
-        lv: aLv() + 3,
-        pal: sin.pal,
-        gl: '255,58,90',
-        lbl: sin.n,
-        lc: '#ff8a9a'
-      });
-    });
-  }
+  /* 0.3.24：七宗罪雕像拿掉（七宗罪在 0.3.25 改成攻佔城鎮） */
   if (!MZ.length) return;
   /* 魔霧區裡的怪物加魔霧詞綴，約 1/3 換成魔霧專屬怪 */
   for (const e of out.values()) {
@@ -605,13 +574,10 @@ function mistWin(b) {
   const p = Math.min(100, Math.round(mistProg(z.id) + inc));
   S.mistp[z.id] = p;
   if (p < 100) return `<p style="color:#d8b8ff">魔霧 ${ROMAN[z.tier]} 進度 ${p}%</p>`;
-  const n = z.tier + 1;
-  giveCur('mfrag', n);
-  quest('mist');
-  addLog(`魔霧 ${ROMAN[z.tier]} 碎裂，得到 ${n} 片魔霧碎片`);
-  S.defeated[z.id] = 1;
+  /* 0.3.24：進度滿了，霧的中心出現四凶（打倒才會散去） */
+  addLog(`魔霧 ${ROMAN[z.tier]} 的中心出現了${xiongOf(z).n}`);
   refreshEntities(true);
-  return `<p style="color:#e0c8ff">魔霧碎裂了！得到 ${curDot('mfrag')}魔霧碎片 ×${n}</p>`;
+  return `<p style="color:#e0c8ff">魔霧翻湧……四凶之一・<b>${xiongOf(z).n}</b>在霧的中心現身！</p>`;
 }
 
 /* ================= sin lords ================= */
@@ -757,8 +723,9 @@ const sinMods = e => {
 };
 function demonHTML() {
   const sins = S.sins || {};
-  return `<p class="sub">地圖上的魔霧區（紫色圓圈）打滿進度碎裂，得到魔霧碎片，放進七宗罪雕像挑戰各宗罪的王。集齊 7 種殘魂可以組隊挑戰七宗罪之王。</p>
-  <div class="curs"><span><img class="cico lg" src="${curIcon('mfrag')}" alt=""><span>魔霧碎片<b>${S.cur.mfrag || 0}</b></span></span>${SINS.map(s => `<span title="${s.boss}"><span>${s.n}的殘魂<b style="color:${sins[s.k] ? 'var(--gold)' : 'var(--dim)'}">${sins[s.k] || 0}</b></span></span>`).join('')}</div>
+  return `<p class="sub">地圖上的魔霧區（紫色圓圈）打滿進度，霧的中心會出現山海經的四凶之一，打倒得到牠的凶獸之印；四種印各 1 個可以在魔霧中心召喚尾王燭龍。七宗罪的殘魂集齊 7 種可以組隊挑戰七宗罪之王。</p>
+  <div class="curs">${XIONG.map(x => `<span title="${x.d}"><span>${x.n}之印<b style="color:${xseal(x.k) ? 'var(--gold)' : 'var(--dim)'}">${xseal(x.k)}</b></span></span>`).join('')}</div>
+  <div class="curs">${SINS.map(s => `<span title="${s.boss}"><span>${s.n}的殘魂<b style="color:${sins[s.k] ? 'var(--gold)' : 'var(--dim)'}">${sins[s.k] || 0}</b></span></span>`).join('')}</div>
   ${S.title ? `<p class="sub" style="color:var(--gold)">稱號：${S.title}</p>` : ''}
   <h3>傳奇裝備圖鑑</h3>${LEGENDS.map(l => `<div class="card"><b style="color:${RCOL[3]}">${l.n}</b><small class="sub" style="display:block">${SLOTN[l.slot]}・${l.lines.join('、')}・${l.zod ? `${ZODI[l.zod].t}之印 ×${ZLEG_COST} 兌換` : `${SINI[l.k].n}之王掉落`}</small></div>`).join('')}`;
 }
@@ -795,7 +762,10 @@ function socketCardHTML(n) {
     p: { p: '#b06bff', w: '#f0dcff', d: '#5a2a8a' }
   };
 })();
-MAT_TABS.push(['demon', '魔霧', () => S.cur.mfrag || 0], ['jewels', '珠寶', () => (S.jewels || []).length]);
+MAT_TABS.push(
+  ['demon', '魔霧', () => XIONG.reduce((a, x) => a + xseal(x.k), 0)],
+  ['jewels', '珠寶', () => (S.jewels || []).length]
+);
 
 /* ================= actions ================= */
 Object.assign(A, {
@@ -858,6 +828,196 @@ Object.assign(A, {
     delete (S.jsock || {})[d.n];
     renderTreeCard();
     renderHud();
+    save();
+  }
+});
+
+/* ================= 0.3.24 魔霧：山海經四凶與燭龍 ================= */
+/* 魔霧進度滿 100% 時，霧的中心出現一隻四凶（依位置固定是哪一隻），打倒得到牠的凶獸之印；四種印各 1 個在魔霧中心召喚燭龍。
+   圖先沿用相近的十二生肖圖，PixelLab 提示詞在 docs/怪物提示詞.md */
+const XIONG = [
+  { k: 'hundun', n: '混沌', spr: 'a_z_pig', el: 'phys', d: '看不到牠的行動順序；每次行動換一種元素抗性' },
+  { k: 'qiongqi', n: '窮奇', spr: 'a_z_tiger', el: 'cold', d: '專挑生命比例最低的人打；被打時反刺 15% 傷害' },
+  { k: 'taowu', n: '檮杌', spr: 'a_z_dog', el: 'phys', d: '每次行動護甲 +15%，越打越硬' },
+  { k: 'taotie', n: '饕餮', spr: 'a_z_goat', el: 'fire', d: '吃掉目標身上的增益回血；會偷吃你的生命藥水' }
+];
+const XIONGI = Object.fromEntries(XIONG.map(x => [x.k, x]));
+const xiongOf = z => XIONG[h(fl(z.x), fl(z.y), 31) % 4];
+const xseal = k => (S.xseal && S.xseal[k]) || 0;
+const xsealAll = () => XIONG.every(x => xseal(x.k) > 0);
+function makeXiong(x, lv) {
+  const e = makeEnemy(
+    { name: x.n, bg: 'forest', spr: x.spr, hp: 90, atk: 15, arm: 30, el: x.el, res: [30, 30, 30], xp: 70, gold: 70 },
+    lv,
+    4,
+    ['tough']
+  );
+  e.maxhp = e.hp = Math.round(e.maxhp * 3.2);
+  e.atk = Math.round(e.atk * 1.3);
+  e.name = x.n;
+  e.xiong = x.k;
+  if (x.k === 'qiongqi') e.mods.push('reflect');
+  if (x.k === 'hundun') e.hideAv = 1;
+  return e;
+}
+function makeZhulong(lv) {
+  const e = makeEnemy(
+    {
+      name: '燭龍',
+      bg: 'cave',
+      spr: 'a_z_dragon',
+      hp: 110,
+      atk: 18,
+      arm: 40,
+      el: 'fire',
+      res: [40, 20, 30],
+      xp: 160,
+      gold: 150
+    },
+    lv,
+    4,
+    ['tough', 'armored']
+  );
+  e.maxhp = e.hp = Math.round(e.maxhp * 6);
+  e.atk = Math.round(e.atk * 1.4);
+  e.name = '燭龍（晝）';
+  e.zhulong = 1;
+  e.phase = 'day';
+  e.zt = 0;
+  return e;
+}
+/* 敵人回合開頭的特殊行動（enemyResolve 呼叫）：回傳 {ev, at, done}，done 表示這回合已經做完了 */
+function beastTurn(e, i, party, at) {
+  const ev = [],
+    L = party.filter(p => p.alive !== false && p.hp > 0);
+  if (e.xiong === 'hundun') {
+    const opts = [
+      [60, 0, -20],
+      [0, 60, -20],
+      [-20, 0, 60],
+      [60, -20, 0],
+      [-20, 60, 0],
+      [0, -20, 60]
+    ];
+    e.res = opts[fl(Math.random() * opts.length)];
+    ev.push({ t: 'st', i, s: `混沌之變：${['火', '冰', '電'][e.res.indexOf(60)]}抗性變高`, col: '#d8b8ff', at });
+  }
+  if (e.xiong === 'taowu') {
+    e.arm = Math.round(e.arm * 1.15);
+    ev.push({ t: 'msg', s: '檮杌的皮更硬了（護甲 +15%）', at });
+    at += 400;
+  }
+  if (e.xiong === 'taotie') {
+    const p = L.find(q => (q.buffs || []).length);
+    if (p) {
+      const n = p.buffs.length;
+      p.buffs = [];
+      e.hp = Math.min(e.maxhp, e.hp + Math.round(e.maxhp * 0.08 * n));
+      ev.push({ t: 'msg', s: `饕餮吞掉 ${p.name} 的 ${n} 個增益回血`, at });
+      at += 500;
+    }
+    if (L.some(q => q.uid === 'me') && S.potions > 0 && Math.random() < 0.3) {
+      S.potions--;
+      e.hp = Math.min(e.maxhp, e.hp + Math.round(e.maxhp * 0.12));
+      ev.push({ t: 'msg', s: '饕餮偷吃了你的生命藥水！', at });
+      at += 500;
+    }
+  }
+  if (e.zhulong) {
+    e.zt++;
+    if (e.zt % 3 === 0) {
+      e.phase = e.phase === 'day' ? 'night' : 'day';
+      e.name = `燭龍（${e.phase === 'day' ? '晝' : '夜'}）`;
+      e.hideAv = e.phase === 'night' ? 1 : 0;
+      for (const p of party) p.blind = e.phase === 'night' ? 1 : 0;
+      ev.push({ t: 'msg', s: e.phase === 'night' ? '燭龍閉上眼睛——黑夜降臨' : '燭龍睜開眼睛——白晝灼燒', at });
+      at += 700;
+    }
+    if (e.phase === 'night') {
+      const v = Math.round(e.maxhp * 0.06);
+      e.hp = Math.min(e.maxhp, e.hp + v);
+      ev.push({ t: 'msg', s: `燭龍在黑夜中恢復 ${v} 生命`, at });
+      at += 450;
+    } else {
+      /* 白晝：燭火灼燒全體 */
+      ev.push({ t: 'msg', s: '燭龍的燭火灼燒全體！', at });
+      ev.push({ t: 'lunge', i, at });
+      at += 250;
+      for (const p of L) {
+        const st = p.st,
+          d = Math.max(
+            1,
+            Math.round(
+              mitigate(
+                { phys: 0, fire: e.atk * 0.7 * rnd(0.9, 1.1), cold: 0, light: 0 },
+                st.armor,
+                Array.isArray(st.res) ? st.res : [st.res.fire, st.res.cold, st.res.light],
+                false
+              ) *
+                (1 - Math.min(75, st.dmgRed || 0) / 100)
+            )
+          );
+        const toMp = takeDmg(p, st, d);
+        ev.push({ t: 'dmg', who: p.uid, d: d - toMp, mp: toMp, col: '#ffb15a', at });
+        if (p.hp <= 0) {
+          p.alive = false;
+          ev.push({ t: 'down', who: p.uid, at: at + 200 });
+        }
+      }
+      at += 600;
+      return { ev, at, done: true };
+    }
+  }
+  return { ev, at, done: false };
+}
+function xiongWin(o) {
+  S.xseal = S.xseal || {};
+  S.xseal[o.k] = xseal(o.k) + 1;
+  if (o.zid) S.defeated[o.zid] = 1;
+  quest('mist');
+  addLog(`打倒四凶・${XIONGI[o.k].n}，得到凶獸之印`);
+  refreshEntities(true);
+  return `<p style="color:#e0c8ff">得到 ${XIONGI[o.k].n}之印（${XIONG.map(x => `${x.n} ${xseal(x.k)}`).join('、')}）${xsealAll() ? '・四種都有了，可以在魔霧中心召喚燭龍！' : ''}</p>`;
+}
+function zhulongWin() {
+  const got = [];
+  giveCur('prism', 3);
+  got.push('寶石稜鏡 ×3');
+  giveCur('exalt');
+  got.push('崇高石');
+  giveCur('wish', 2);
+  got.push('祈願石 ×2');
+  const l = SUPG.filter(x => x.lin && x.m === 'sin'),
+    x = l[fl(Math.random() * l.length)];
+  if (Math.random() < 0.6) {
+    giveSup(x.k);
+    got.push(`族裔輔助・${x.n}`);
+  }
+  addLog('打倒魔霧尾王・燭龍');
+  return `<p style="color:#ffd166">燭龍倒下了！得到 ${got.join('、')}</p>`;
+}
+Object.assign(A, {
+  xiongGo: d => {
+    const e = ENT.get(d.id),
+      z = MZ.find(q => q.id === d.id);
+    if (!inRange(e) || !z || mistProg(z.id) < 100 || S.defeated[z.id]) return;
+    const x = xiongOf(z);
+    closeSheet();
+    startBattle(makeXiong(x, aLv() + z.tier + 3), {
+      bg: 'forest',
+      boss: true,
+      xiong: { k: x.k, zid: z.id },
+      onsite: siteBonus(e)
+    });
+    save();
+  },
+  zhulongGo: d => {
+    const e = ENT.get(d.id),
+      z = MZ.find(q => q.id === d.id);
+    if (!inRange(e) || !z || !xsealAll()) return;
+    for (const x of XIONG) S.xseal[x.k]--;
+    closeSheet();
+    startBattle(makeZhulong(aLv() + z.tier + 6), { bg: 'cave', boss: true, zhulong: 1, onsite: siteBonus(e) });
     save();
   }
 });

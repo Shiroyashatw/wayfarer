@@ -290,6 +290,18 @@ function migrate(s) {
     s.hideRest = 0;
     s.v = 26;
   }
+  if (s.v < 27) {
+    // 0.3.24：魔霧碎片不再使用（七宗罪雕像拿掉、魔霧改成四凶與燭龍），每 3 片換 1 個寶石稜鏡，剩下的每片 30 金幣
+    const n = (s.cur && s.cur.mfrag) || 0;
+    if (n) {
+      s.cur.prism = (s.cur.prism || 0) + fl(n / 3);
+      s.gold = (s.gold || 0) + (n % 3) * 30;
+      s.cur.mfrag = 0;
+      if (s.log) s.log.unshift(`魔霧改版：${n} 片魔霧碎片換成 ${fl(n / 3)} 個寶石稜鏡與 ${(n % 3) * 30} 金幣`);
+    }
+    s.xseal = s.xseal || {};
+    s.v = 27;
+  }
   return s;
 }
 function start() {
