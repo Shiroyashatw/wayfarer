@@ -190,6 +190,28 @@ function migrate(s) {
     if (was && s.log) s.log.unshift('天賦樹改版：中間改成契靈圓盤、沒有出發點，已點的天賦全部退回');
     s.v = 19;
   }
+  if (s.v < 20) {
+    // 0.3.14：天賦樹各路線的節點群換成不同形狀、整張拉開；已點的節點保留還存在、而且連得回圓盤的，其餘退回
+    const adj = {};
+    for (const [a, b] of TREE.E) {
+      (adj[a] = adj[a] || []).push(b);
+      (adj[b] = adj[b] || []).push(a);
+    }
+    const have = new Set((s.tree || []).filter(id => TREE.byId[id])),
+      keep = new Set(['start']),
+      q = ['start'];
+    while (q.length)
+      for (const y of adj[q.shift()] || [])
+        if (have.has(y) && !keep.has(y)) {
+          keep.add(y);
+          q.push(y);
+        }
+    const lost = (s.tree || []).length - keep.size;
+    s.tree = [...keep];
+    for (const k in s.jsock || {}) if (!keep.has(k)) delete s.jsock[k];
+    if (lost > 0 && s.log) s.log.unshift(`天賦樹改版：${lost} 個節點的位置變了，點數已退回`);
+    s.v = 20;
+  }
   return s;
 }
 function start() {
