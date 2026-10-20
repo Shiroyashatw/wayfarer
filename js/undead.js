@@ -1,4 +1,4 @@
-/* 漫步勇者 · 亡靈軍團（0.2.6）：亡靈區、亡靈怪、精華、亡靈祭壇與軍團長、亡靈王、據點的亡靈製作（屍化值） */
+/* 漫步勇者 · 亡靈軍團（0.2.6）：亡靈區、亡靈怪、精華、亡靈祭壇與軍團長、亡靈王、藏身處的亡靈製作（屍化值） */
 'use strict';
 /* ================= data ================= */
 const pad16u = rows => rows.map(r => (r + '................').slice(0, 16));
@@ -406,17 +406,14 @@ function kingWin() {
   return `<p style="color:#8fe0a0">亡靈王倒下了！得到 ${got.join('、')}</p>`;
 }
 
-/* ================= undead crafting (at main base) ================= */
-const atBase = () => {
-  const m = mainBase();
-  return !!m && dist(S.lat, S.lng, m.lat, m.lng) <= baseR(m.lv);
-};
+/* ================= undead crafting（0.3.23 起在藏身處） ================= */
+/* 0.3.23：在藏身處做（隨時都能用） */
+const atBase = () => true;
 const ucCost = (it, n) => Math.ceil(n * (1 + 0.5 * (it.uc || 0)));
 function ucBlock(it) {
   if (!it) return '沒有裝備';
   if (it.r !== 1 && it.r !== 2) return '只能用在魔法或稀有裝備';
   if ((it.sh || 0) >= 100) return '屍化值已滿，這件裝備不能再調整';
-  if (!atBase()) return '回到主據點的範圍內才能使用亡靈製作';
   return '';
 }
 const maxPS = it => (it.r === 1 ? 1 : 3);
@@ -538,7 +535,7 @@ function undeadCraftHTML(it) {
 }
 /* 背包「亡靈」分頁 */
 function essHTML() {
-  return `<p class="sub">在亡靈區打亡靈取得，每種最多 ${ESS_MAX} 個。回到主據點範圍內，在裝備詳情頁的「亡靈製作」使用。每次製作都會累積屍化值，滿 100 後裝備鎖定。</p>
+  return `<p class="sub">在亡靈區打亡靈取得，每種最多 ${ESS_MAX} 個。在藏身處（或任何地方）打開裝備詳情頁的「亡靈製作」使用。每次製作都會累積屍化值，滿 100 後裝備鎖定。</p>
   <div class="curs">${ESS.map(e => `<span title="${e.d}"><img class="cico lg" src="${curIcon('ess_' + e.id)}" alt=""><span>${e.n}<b>${(S.ess && S.ess[e.id]) || 0}</b></span></span>`).join('')}${UCUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>
   ${ESS.map(e => `<div class="card"><div class="rowx"><div class="t"><b>${e.n}</b><small>打${e.from}取得・對應：${e.d}</small></div></div></div>`).join('')}
   <div class="card"><div class="rowx"><div class="t"><b>亡靈王的骸骨 ${S.cur.kBone || 0}/${KING_NEED}</b><small>擊敗亡靈軍團長取得，集滿在亡靈祭壇召喚亡靈王</small></div></div></div>`;

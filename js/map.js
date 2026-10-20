@@ -991,10 +991,6 @@ function genEntities() {
     if (!p) return;
     mkEv(`ew${i}_${j}_${ee}`, ['merchant', 'rift', 'fountain', 'bounty', 'rift'][(r >>> 4) % 5], p[0], p[1], r, '路邊');
   });
-  S.bases.forEach(b => {
-    const [x, y] = toM(b.lat, b.lng);
-    out.set('b' + b.id, { id: 'b' + b.id, kind: 'base', x, y, lat: b.lat, lng: b.lng, b, name: baseName(b) });
-  });
   endgameSpawns(out, cells, put, hp);
   huntSpawns(out);
   return out;
@@ -1038,7 +1034,7 @@ const LM_VIS = 500;
 const FAR = new Set(['obelisk', 'sinst', 'ualtar', 'zodiac']),
   FAR_VIS = 1200;
 const visible = e =>
-  e.kind === 'town' || e.kind === 'base' || e.kind === 'flag' || inZone(e)
+  e.kind === 'town'
     ? true
     : MOBILE.has(e.kind)
       ? Math.hypot(e.x - VIS.x, e.y - VIS.y) <= VIS.r
@@ -1223,6 +1219,7 @@ function renderWorld(t) {
   drawObelisks(c, t);
   drawZodiacs(c, t);
   drawSeals(c, t);
+  drawSiege(c, t);
   const s = sprScale(),
     list = [];
   for (const e of ENT.values()) {
@@ -1584,17 +1581,6 @@ function setPos(lat, lng, moved) {
   checkArrive();
 }
 function checkArrive() {
-  const b = S.bases.find(b => dist(S.lat, S.lng, b.lat, b.lng) < 25);
-  if (b && !checkArrive.b) {
-    const st = stats();
-    if (S.hp < st.maxhp || S.mp < st.maxmp) {
-      fullHeal();
-      toast(`回到${baseName(b)}，狀態全滿`);
-      sfx('heal');
-      renderHud();
-    }
-  }
-  checkArrive.b = !!b;
   for (const t of TOWNS) {
     if (!S.found[t.id] && dist(S.lat, S.lng, t.lat, t.lng) < 120) {
       S.found[t.id] = 1;
@@ -1720,7 +1706,6 @@ function placeLabel() {
     (uz => (uz ? `<br><span style="color:#8fe0a0">亡靈區 ${udProg(uz.id)}%</span>` : ''))(
       udZoneAt(...toM(S.lat, S.lng))
     ) +
-    (SILK.view ? `<br><span style="color:#ffc878">正在看 ${esc(SILK.view.name)} 的據點</span>` : '') +
     (buffOn() ? `<br>祝福 ${Math.ceil((S.buff.until - now()) / 60e3)} 分` : '') +
     (mapLoading() ? '<br><span style="color:#9fe7ff">載入地圖中…</span>' : '');
 }

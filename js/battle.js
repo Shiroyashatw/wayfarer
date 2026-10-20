@@ -310,6 +310,7 @@ const AIL_E = [
     ['stacks', 'star', '疊層'],
     ['shield', 'heart', '護盾'],
     ['chgN', 'bolt', '蓄力'],
+    ['doom', 'skull', '生死簿'],
     ['empN', 'horn', '強化'],
     ['comboN', 'sword', '連續']
   ];
@@ -338,6 +339,9 @@ const heroAilHTML = o =>
     .join('') +
   (o && o.traps && o.traps.length
     ? `<span class="ail ail-ice" title="陷阱"><img src="${iconURL('eye')}" alt="陷阱"><b>${o.traps.length}</b></span>`
+    : '') +
+  (o && o.pdot
+    ? `<span class="ail ail-leaf" title="中毒"><img src="${iconURL('leaf')}" alt="中毒"><b>${o.pdot.turns}</b></span>`
     : '') +
   (o && o.mines && o.mines.length
     ? `<span class="ail ail-flame" title="地雷"><img src="${iconURL('flame')}" alt="地雷"><b>${o.mines.length}</b></span>`
@@ -462,11 +466,13 @@ function packBases(lead, n, seed) {
     out = [];
   for (let k = 0; k < Math.min(4, n); k++) {
     const lv = Math.max(1, (lead.lv || S.lv) - (r() < 0.5 ? 1 : 0)),
-      b = lead.ud
-        ? UNDEAD[fl(r() * UNDEAD.length)]
-        : lead.mist && r() < 0.5
-          ? MISTMON[fl(r() * MISTMON.length)]
-          : pickMon(fl(r() * 1e6), lv);
+      b = lead.siege
+        ? followerBase(lead.siege, SINF[lead.siege][fl(r() * 5)])
+        : lead.ud
+          ? UNDEAD[fl(r() * UNDEAD.length)]
+          : lead.mist && r() < 0.5
+            ? MISTMON[fl(r() * MISTMON.length)]
+            : pickMon(fl(r() * 1e6), lv);
     out.push({ b, lv });
   }
   return out;
@@ -483,6 +489,7 @@ function packOf(lead, extra = 0, n = 0, seed) {
     /* 小怪的等級已經跟著帶頭的（含獵殺加的等級），這裡只加生命與攻擊 */
     if (lead.hlv) huntBuff(m, true);
     for (const k2 of ['ud', 'mist', 'uw']) if (lead[k2]) m[k2] = lead[k2];
+    if (lead.siege && b.fol) followerize(m, lead.siege, b.fol);
     if (lead.mist) m.name = (lead.ud ? '霧中亡靈・' : '魔霧・') + m.name;
     out.push(m);
   }
@@ -742,6 +749,8 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     S2.crit = 100;
     me.dc = 0;
   }
+  /* 模仿者看你上一招的元素 */
+  me.lastEl = sk.kind === 'spell' ? sk.el : sk.addEl ? sk.addEl[0] : 'phys';
   /* 連續使用同一招才疊層，換招就歸零 */
   me.comboN = me.combo === key ? Math.min(5, (me.comboN || 0) + 1) : 0;
   me.combo = key;
@@ -848,6 +857,11 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
   const one = (i, mult, t, kind) => {
     const e = es[i];
     if (!e || e.hp <= 0) return;
+    /* 燭龍的黑夜：30% 打空 */
+    if (me.blind && Math.random() < 0.3) {
+      ev.push({ t: 'st', i, s: '打空了', col: '#8a8aa0', at: t });
+      return;
+    }
     const had = sk.consume && e[sk.consume] > 0,
       S3 = sk.vsCrit && e[sk.vsCrit] > 0 ? { ...S2, crit: 100 } : S2,
       pk = heroPacket(S3, sk, mult * more * condMul(sk, e, me, st, n0, me.comboN || 0));
@@ -859,6 +873,13 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     }
     const r = heroDmg(S3, pk, e, e.shock > 0, me);
     let d = r.d;
+    /* 0.3.25 信徒與被攻佔城鎮的特效 */
+    if (e.trait || e.sinAura || me.charmed) {
+      const fh = followerHit(e, es, me, d, i, t);
+      ev.push(...fh.ev);
+      if (fh.miss) return;
+      d = fh.d;
+    }
     /* 引爆：把目標身上剩下的燃燒／中毒／流血一次結算 */
     if (sk.det && e[sk.det] > 0) {
       const per = sk.det === 'burn' ? e.burnDmg : sk.det === 'poison' ? poisonTick(e, e) : bleedTick(e),
@@ -922,6 +943,12 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       }
     } else {
       ev.push({ t: 'kill', i, at: t + 100 });
+      /* 自爆怨火：死亡時爆炸，傷害打倒牠的人 */
+      if (e.trait === 'boom') {
+        const bx = Math.max(1, Math.round(e.atk * 1.5));
+        me.hp = Math.max(1, me.hp - bx);
+        ev.push({ t: 'dmg', who, d: bx, col: '#ffb15a', at: t + 160 });
+      }
       /* 死亡印記：目標死亡時回 10% 生命與魔力 */
       if (e.dmark > 0) {
         const hv = Math.round(st.maxhp * 0.1);
@@ -1242,6 +1269,49 @@ function enemyResolve(es, i, party, ext = {}) {
     }
   }
   if (e.sin && ext.sinTurn) ext.sinTurn(e, i);
+  /* 0.3.25 七罪的信徒 */
+  let fmul = 1;
+  if (e.trait) {
+    const r = followerTurn(e, i, es, party, at);
+    ev.push(...r.ev);
+    at = r.at;
+    fmul = r.mul;
+    if (r.done || e.hp <= 0) {
+      ev.push({ t: 'end', at: at + 200 });
+      return ev;
+    }
+  }
+  /* 0.3.24 四凶與燭龍 */
+  if (e.xiong || e.zhulong) {
+    const r = beastTurn(e, i, party, at);
+    ev.push(...r.ev);
+    at = r.at;
+    if (r.done) {
+      ev.push({ t: 'end', at: at + 200 });
+      return ev;
+    }
+  }
+  /* 0.3.23 閻羅王：每 3 次行動用生死簿點名一人（下一次受到的傷害加倍），每 4 次用判官筆抹掉一人的增益 */
+  if (e.yama) {
+    e.yt = (e.yt || 0) + 1;
+    const L = party.filter(p => p.alive !== false && p.hp > 0),
+      pk = () => L[fl(Math.random() * L.length)];
+    if (L.length && e.yt % 3 === 0) {
+      const p = pk();
+      p.doom = 1;
+      ev.push({ t: 'msg', s: `閻羅王翻開生死簿：點名 ${p.name}！`, at });
+      ev.push({ t: 'st', who: p.uid, s: '生死簿', col: '#c86aff', at: at + 120 });
+      at += 600;
+    }
+    if (L.length && e.yt % 4 === 0) {
+      const p = pk();
+      if ((p.buffs || []).length) {
+        p.buffs = [];
+        ev.push({ t: 'msg', s: `判官筆一揮，${p.name} 的增益全部消失`, at });
+        at += 600;
+      }
+    }
+  }
   /* 0.3.10：迅捷改成靠速度（行動值）多行動，不再另外骰行動兩次 */
   const acts = 1,
     ew = ext.ew || 0;
@@ -1257,6 +1327,9 @@ function enemyResolve(es, i, party, ext = {}) {
     let x = Math.random() * wt.reduce((a, b) => a + b, 0),
       pi = 0;
     while (pi < wt.length - 1 && (x -= wt[pi]) >= 0) pi++;
+    /* 窮奇：專挑生命比例最低的人 */
+    if (e.xiong === 'qiongqi')
+      pi = alive.reduce((b, q, k) => (q.hp / q.st.maxhp < alive[b].hp / alive[b].st.maxhp ? k : b), 0);
     if (pi >= alive.length) {
       const { q, u } = tots[pi - alive.length],
         d = Math.max(1, Math.round(e.atk * rnd(0.9, 1.1) * (1 - Math.min(60, q.st.dmgRed || 0) / 100)));
@@ -1294,7 +1367,9 @@ function enemyResolve(es, i, party, ext = {}) {
       at += 480;
       continue;
     }
-    let atk = e.atk * (strong ? 1.5 : 1) * rnd(0.9, 1.1);
+    let atk = e.atk * (strong ? 1.5 : 1) * rnd(0.9, 1.1) * fmul;
+    /* 金冠貴族：對生命比例比自己低的目標 ×1.5 */
+    if (e.trait === 'bully' && p.hp / st.maxhp < e.hp / e.maxhp) atk *= 1.5;
     if (e.mods && e.mods.includes('fury') && e.hp < e.maxhp / 2) atk *= 1.5;
     if (e.curse > 0 && e.curseW) atk *= 1 - e.curseW / 100;
     const pk = { phys: 0, fire: 0, cold: 0, light: 0 };
@@ -1317,7 +1392,14 @@ function enemyResolve(es, i, party, ext = {}) {
       d = Math.round(d * 0.3);
       ev.push({ t: 'st', who: p.uid, s: '格擋', col: '#9fd4ef', at });
     }
+    /* 生死簿應驗：被點名的人這一下傷害加倍 */
+    if (p.doom) {
+      d *= 2;
+      p.doom = 0;
+      ev.push({ t: 'st', who: p.uid, s: '生死簿應驗', col: '#c86aff', at });
+    }
     const toMp = takeDmg(p, st, d);
+    if (e.trait) ev.push(...followerAfter(e, p, d, ext, at + 80));
     /* 蓄力中被打：倍數 ×0.75（最低 1） */
     if (p.chg && d > 0) {
       p.chg.mul = Math.max(1, Math.round(p.chg.mul * 0.75 * 100) / 100);
@@ -1391,6 +1473,11 @@ function roundEnd(p) {
   if (p.alive === false || p.hp <= 0) return;
   if (st.regen) p.hp = Math.min(st.maxhp, p.hp + st.regen);
   if (st.manaRegen) p.mp = Math.min(st.maxmp, p.mp + st.manaRegen);
+  /* 0.3.25 信徒造成的中毒、流血（每回合扣血） */
+  if (p.pdot && p.pdot.turns > 0) {
+    p.hp = Math.max(1, p.hp - p.pdot.n);
+    if (!--p.pdot.turns) p.pdot = null;
+  }
   /* 0.3.21 隊友光環的回血（每回合 hot% 生命） */
   if (bsum(p, 'hot')) p.hp = Math.min(st.maxhp, p.hp + Math.round((st.maxhp * bsum(p, 'hot')) / 100));
   if (st.hpDrain) p.hp = Math.max(1, p.hp - Math.round((st.maxhp * st.hpDrain) / 100));
@@ -1453,6 +1540,11 @@ function startBattle(e, opts = {}) {
     Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0, opts.packN || 0, opts.packSeed) : [])]
   ).map(eInit);
   B = { ...opts, e: es[0], es, ti: 0, me: heroMe(), busy: true, sub: null, act: -1, av: {}, turns: 0 };
+  /* 0.3.25 在被攻佔的城鎮裡：套用城鎮特效 */
+  {
+    const sm = siegeApply(B);
+    if (sm) setTimeout(() => toast(sm), 400);
+  }
   battleOpen(B.me);
   simTarget = null;
   BFX.pops = [];
@@ -1528,7 +1620,11 @@ function renderBHud() {
   {
     /* 0.3.10：依行動值預測接下來的 7 次行動；正在行動的放最前面 */
     const me = { n: S.name || '你', c: 'me', img: portrait(heroSpr('F'), heroPal()) },
-      eo = i => ({ n: es[i].name, c: 'e', img: portrait(es[i].spr, es[i].pal) }),
+      /* 0.3.24 混沌、夜晚的燭龍：行動順序看不到 */
+      eo = i =>
+        es[i].hideAv
+          ? { n: '？？？', c: 'e', img: iconURL('eye') }
+          : { n: es[i].name, c: 'e', img: portrait(es[i].spr, es[i].pal) },
       cur = B.act >= 0 ? { ...eo(B.act), on: 1 } : { ...me, on: !B.busy },
       nx = avPreview(B.av || {}, soloUnits(), 6).map(id => (id === 'me' ? me : eo(+id.slice(1))));
     renderOrder([cur, ...nx]);
@@ -1590,14 +1686,16 @@ function renderBHud() {
   const mn = (B.me.mines || []).length,
     x = mn
       ? cb('引爆地雷', 'flame', `×${mn}`, 'skill', 'data-k="mines"', '', 'mine')
-      : cb(
-          '生命藥水',
-          'heart',
-          noPot ? '無法使用' : '×' + S.potions,
-          'bitem',
-          'data-k="potions"',
-          S.potions && !noPot ? '' : 'disabled'
-        );
+      : !sks[0]
+        ? `<button class="cb empty" data-act="bsub" data-k="items" ${dis}><img src="${iconURL('book')}" alt="">空的技能欄</button>`
+        : cb(
+            '生命藥水',
+            'heart',
+            noPot ? '無法使用' : '×' + S.potions,
+            'bitem',
+            'data-k="potions"',
+            S.potions && !noPot ? '' : 'disabled'
+          );
   $('bcmd').classList.add('six');
   let html =
     six[0] +
@@ -1737,7 +1835,8 @@ function bItem(k) {
     hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1) * (1 + (st.potPct || 0) / 100);
   S[k]--;
   if (k === 'potions') {
-    const v = Math.round(st.maxhp * 0.4 * hm);
+    /* 0.3.25 暴食攻佔的城鎮：藥水回復量減半 */
+    const v = Math.round(st.maxhp * 0.4 * hm * (B.siegeK === 'gluttony' ? 0.5 : 1));
     S.hp = Math.min(st.maxhp, S.hp + v);
     pop('+' + v, p.hx, p.hy - 90, '#7bd36b');
     if (st.legGlut) S.mp = Math.min(st.maxmp, S.mp + v);
@@ -1864,6 +1963,7 @@ function dunSpec(t) {
     em: [...new Set([...mods.filter(m => m.em).map(m => m.em), ...(t.umods || [])])],
     norevive: !!dt.norevive,
     sin: t.sin,
+    siege: t.siege || 0,
     xk: t.xk || 0,
     noregen: has('noregen'),
     eleweak: has('eleweak'),
@@ -1880,7 +1980,8 @@ const dunName = t =>
         : t.kind === 'tier'
           ? '突破試煉'
           : DTYPES[t.dt || 'normal'].n;
-const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '冥府之主', stele: '石碑守衛' },
+/* 0.3.23 冥府傳送門的最終王改成閻羅王（圖先沿用冥府之主的 b_hades，PixelLab 提示詞在 docs/怪物提示詞.md） */
+const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '閻羅王', stele: '石碑守衛' },
   BOSSSPR = { hell: 'b_hellord', circle: 'b_arcane', portal: 'b_hades', stele: 'b_stelekeeper' };
 /* 第 room 層的敵人群（0.3 起一層是一群，最多 5 隻）。boss 在最後一層；extra 是組隊多出來的隻數 */
 function dunEnemy(D, room, extra = 0) {
@@ -1908,7 +2009,15 @@ function dunEnemy(D, room, extra = 0) {
     group = (lead, n) => {
       const out = [lead];
       for (let k = 0; k < Math.min(4, n + extra); k++) {
-        const m = mob(k + 1, Math.max(1, D.lv - (k % 2)));
+        /* 0.3.25 攻佔城鎮的七罪挑戰：小怪是那個罪的信徒 */
+        const m = sp.siege
+          ? makeFollower(
+              sp.sin,
+              SINF[sp.sin][h(r, k, 13) % 5],
+              Math.max(1, D.lv - (k % 2)),
+              h(r, k, 3) % 100 < 30 ? 1 : 0
+            )
+          : mob(k + 1, Math.max(1, D.lv - (k % 2)));
         /* 同一群的其他怪稍微弱一點，避免一層的總傷害爆掉 */
         m.maxhp = m.hp = Math.round(m.maxhp * 0.7);
         m.atk = Math.round(m.atk * 0.7);
@@ -1925,6 +2034,17 @@ function dunEnemy(D, room, extra = 0) {
           ? makeSinLord(SINS[room].k, D.lv)
           : makeSinKing(D.lv + 2)
         : makeSinLord(sp.sin, D.lv + 1);
+    /* 0.3.25 攻佔城鎮的七罪之王：終局難度，還帶著兩個信徒 */
+    if (sp.siege) {
+      e.maxhp = e.hp = Math.round(e.maxhp * 2.2);
+      e.atk = Math.round(e.atk * 1.3);
+      const fs = SINF[sp.sin],
+        es = [
+          e,
+          ...[0, 1].map(k => makeFollower(sp.sin, fs[h(r, k, 9) % fs.length], D.lv, 1, rollMods(h(r, k, 11), 1)))
+        ];
+      return { e, es, bg: 'cave', boss: true };
+    }
     const es = group(e, 0);
     return { e: es[0], es, bg: 'cave', boss: true };
   }
@@ -1978,10 +2098,11 @@ function dunEnemy(D, room, extra = 0) {
     e.xp *= hell ? 4 : 2;
     e.rar = hell ? 4 : 3;
     e.minion = 0;
+    if (sp.dt === 'portal') e.yama = 1;
     bg = 'cave';
     n = hell ? 2 : 1 + (sp.dt === 'party' ? 1 : 0);
   } else {
-    e = mob(0);
+    e = sp.siege ? makeFollower(sp.sin, SINF[sp.sin][r % 5], D.lv, r % 3 === 0 ? 2 : 1, rollMods(r, 1)) : mob(0);
     bg = D.lm ? 'forest' : 'cave';
     n = (sp.dt === 'hell' ? 2 : 1) + (r % 2) + (sp.elite ? 1 : 0);
   }
@@ -2102,13 +2223,15 @@ function gemLoot(e, boss, hell, rem, out) {
 const mechOf = e =>
   e.ud
     ? 'ud'
-    : e.sin || e.mist
+    : e.sin || e.siege
       ? 'sin'
-      : e.uw
-        ? 'uw'
-        : e.hunt || e.zod || (typeof B !== 'undefined' && B && B.hunt && !e.minion)
-          ? 'hunt'
-          : '';
+      : e.mist || e.xiong || e.zhulong
+        ? 'mist'
+        : e.uw
+          ? 'uw'
+          : e.hunt || e.zod || (typeof B !== 'undefined' && B && B.hunt && !e.minion)
+            ? 'hunt'
+            : '';
 function supLoot(e, boss, rem, out) {
   const r = e.rar || 0,
     m = mechOf(e),
@@ -2236,6 +2359,9 @@ function winBattle() {
   bonus += ob + ud + mi;
   if (B.commander) bonus += commanderWin(B.commander);
   if (B.king) bonus += kingWin();
+  if (B.xiong) bonus += xiongWin(B.xiong);
+  bonus += siegeWin(es);
+  if (B.zhulong) bonus += zhulongWin();
   if (B.watcher) bonus += watcherWin(B.watcher);
   if (B.hunt) bonus += huntWin(B);
   bonus += huntKills(es);

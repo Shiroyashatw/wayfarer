@@ -73,30 +73,11 @@ Object.assign(KIND, {
 });
 const ep2 = () => fl(now() / ZONE_MS);
 
-/* ================= zones: base radius, flags, silk-road view ================= */
-const BASE_R = [50, 100, 150, 225, 300];
-const baseR = lv => BASE_R[Math.max(0, Math.min(4, lv - 1))];
-const mainBase = () => S.bases.find(b => b.type === 'main');
-const flagR = () => {
-  const m = mainBase();
-  return m && m.lv > 1 ? baseR(m.lv - 1) : 30;
-};
-const flagMs = () => 3600e3 + 600e3 * ((mainBase() ? mainBase().lv : 1) - 1);
-const FLAG_MAX = 2,
-  FLAG_COST = 100;
-const flagsOn = () => (S.flags || []).filter(f => f.until > now());
-/* 可以遠端互動的範圍：主據點、冒險營旗、絲綢之路正在看的好友據點 */
+/* ================= zones（0.3.23 起沒有遠端範圍） ================= */
+const flagsOn = () => [];
+/* 可以遠端互動的範圍：0.3.23 起拿掉（據點改成藏身處、冒險營旗與絲綢之路拿掉），所有東西都要實地走到 */
 function zones() {
-  const out = [],
-    add = (lat, lng, r, kind, name) => {
-      const [x, y] = toM(lat, lng);
-      out.push({ x, y, r, lat, lng, kind, name });
-    };
-  const m = mainBase();
-  if (m) add(m.lat, m.lng, baseR(m.lv), 'base', '主據點');
-  flagsOn().forEach((f, i) => add(f.lat, f.lng, flagR(), 'flag', `冒險營旗 ${i + 1}`));
-  if (SILK.view) add(SILK.view.base_lat, SILK.view.base_lng, baseR(SILK.view.base_lv || 1), 'silk', SILK.view.name);
-  return out;
+  return [];
 }
 const zonesKey = () =>
   zones()
@@ -111,9 +92,8 @@ function drawZones(c) {
       r = Math.abs(SX(z.x + z.r) - x);
     if (x < -r || x > VW + r || y < -r || y > VH + r) continue;
     c.save();
-    c.strokeStyle =
-      z.kind === 'silk' ? 'rgba(255,200,120,.7)' : z.kind === 'flag' ? 'rgba(140,220,140,.6)' : 'rgba(255,210,120,.55)';
-    c.fillStyle = z.kind === 'silk' ? 'rgba(255,200,120,.06)' : 'rgba(255,230,160,.05)';
+    c.strokeStyle = 'rgba(255,210,120,.55)';
+    c.fillStyle = 'rgba(255,230,160,.05)';
     c.lineWidth = 1.5;
     c.setLineDash([6, 5]);
     c.beginPath();
@@ -426,141 +406,24 @@ function summonWatcher(e) {
   startBattle(en, { bg: 'cave', boss: true, watcher: e.id });
 }
 
-/* ================= silk road (Supabase) ================= */
-const SILK = { roads: [], loaded: false, view: null };
-const SILK_FREE = 1;
-async function silkLoad() {
-  if (!CLOUD.sb || CLOUD.anon) return;
-  try {
-    const { data, error } = await CLOUD.sb.rpc('silk_list');
-    if (error) throw error;
-    SILK.roads = data || [];
-    SILK.loaded = true;
-    caravans();
-    if (sheetName === 'base') renderSheet();
-  } catch (e) {
-    SILK.err = e.message;
-  }
-}
-async function baseSync() {
-  if (!CLOUD.sb || CLOUD.anon || !CLOUD.uid) return;
-  const m = mainBase();
-  try {
-    await CLOUD.sb
-      .from('profiles')
-      .update({ base_lat: m ? m.lat : null, base_lng: m ? m.lng : null, base_lv: m ? m.lv : 0 })
-      .eq('user_id', CLOUD.uid);
-  } catch (e) {}
-}
-const SILK_MSG = {
-  ok: '絲綢之路建立了！',
-  not_friend: '只能和好友建立',
-  no_base: '你還沒有主據點',
-  friend_no_base: '對方還沒有主據點',
-  limit: `商路已達上限 ${SILK_FREE} 條`,
-  friend_limit: '對方的商路已滿',
-  already: '已經連線了',
-  guest: '註冊帳號才能建立商路'
-};
-async function silkCreate(other) {
-  if (!CLOUD.sb) return;
-  await baseSync();
-  const { data, error } = await CLOUD.sb.rpc('silk_create', { other });
-  toast(error ? '建立失敗：' + error.message : SILK_MSG[data] || data);
-  silkLoad();
-}
-async function silkRemove(other) {
-  if (!CLOUD.sb) return;
-  await CLOUD.sb.rpc('silk_remove', { other });
-  if (SILK.view && SILK.view.user_id === other) silkView(null);
-  silkLoad();
-}
-/* 商隊：每條商路每天帶回一次對方地區的特產（依對方據點位置決定的一種通貨）與金幣、靈魂、祈願石 */
-const specialty = r => ['eng', 'engC', 'engX'][h(fl(r.base_lat * 100), fl(r.base_lng * 100), 5) % 3];
-function caravans() {
-  const day = fl((now() + 8 * 3600e3) / 864e5),
-    got = [];
-  S.caravan = S.caravan || {};
-  for (const r of SILK.roads) {
-    if (r.base_lat == null || S.caravan[r.user_id] === day) continue;
-    S.caravan[r.user_id] = day;
-    const g = 60 + S.lv * 10,
-      sp = specialty(r);
-    S.gold += g;
-    giveCur('soul', 15);
-    giveCur('wish');
-    giveCur(sp);
-    got.push(`${esc(r.name)}：${g} 金幣、靈魂 ×15、祈願石、${GCURI[sp].n}`);
-  }
-  if (got.length) {
-    addLog('商隊回來了：' + got.join('；'));
-    toast('絲綢之路的商隊回來了');
-    save();
-  }
-}
-function silkView(r) {
-  SILK.view = r || null;
-  if (r) {
-    const [x, y] = toM(r.base_lat, r.base_lng);
-    follow = false;
-    cam.x = x;
-    cam.y = y;
-    cam.z = Math.max(cam.z, 0.6);
-    toast(`切換到 ${r.name} 的據點，範圍內的怪物和石碑都可以直接打`);
-  } else follow = true;
-  refreshEntities(true);
-  renderHud();
-}
-
+/* 0.3.23 絲綢之路拿掉（之後改成城鎮之間的商路）；Supabase 的 silk_* 資料表與 RPC 留著不動 */
 /* ================= sheets ================= */
 const SEL = { insc: new Set(), tabs: new Set(), site: null, bag: 'eq' };
 const chip = (on, act, id, txt) =>
   `<button class="btn sm${on ? ' pri' : ''}" data-act="${act}" data-id="${id}" style="text-align:left">${txt}</button>`;
-function baseHTML() {
-  const m = mainBase(),
-    fc = flagCheck();
-  if (!SILK.loaded) silkLoad();
-  if (!SOC.loaded) friendsLoad();
-  let html = `<p class="sub">主據點是你自己的家：持續產出金幣（最多累積 8 小時），回到這裡會恢復全部狀態。據點半徑內的怪物、寶箱、空白石碑與靈脈不用出門就能直接互動，半徑隨等級擴大（${BASE_R.join('／')} 公尺）。</p>`;
-  if (!m)
-    html += `<div class="card"><div class="rowx"><div class="t"><b>建立主據點</b><small>${nearTownE() ? '城鎮範圍內不能建立據點' : '在你現在的位置免費建立'}</small></div><button class="btn pri" data-act="buildMain" ${nearTownE() ? 'disabled' : ''}>在此建立</button></div></div>`;
-  else {
-    const cost = 120 * m.lv,
-      cc = 2 * m.lv;
-    html += `<div class="card"><div class="rowx"><div class="t"><b>主據點 Lv${m.lv}</b><small>距離你 ${fmtD(dist(S.lat, S.lng, m.lat, m.lng))}・半徑 ${baseR(m.lv)} 公尺・產出 ${prodRate(m)} 金/小時</small></div><div style="color:var(--gold);font-family:var(--f-pix)">● ${stored(m)}</div></div>
-    <div class="btns"><button class="btn sm" data-act="collect" data-id="${m.id}" ${stored(m) ? '' : 'disabled'}>領取</button><button class="btn sm" data-act="upgrade" data-id="${m.id}" ${m.lv < 5 && S.gold >= cost && S.crystal >= cc ? '' : 'disabled'}>${m.lv < 5 ? `升級 ${cost}● ${cc}◆（半徑 ${baseR(m.lv + 1)}m）` : '已滿級'}</button><button class="btn sm" data-act="goto" data-id="${m.id}">查看</button></div></div>`;
-  }
-  html += `<h3>冒險營旗</h3><p class="sub">到熱門地點（夜市、觀光區）現場插旗，之後 ${Math.round(flagMs() / 60e3)} 分鐘內離開也能遠端打旗子半徑 ${flagR()} 公尺內的怪物與石碑。最多同時 ${FLAG_MAX} 支，每支 ${FLAG_COST} 金幣；主據點每升 1 級多 10 分鐘，半徑比主據點小一級。</p>
-  ${flagsOn()
-    .map(
-      (f, i) =>
-        `<div class="card"><div class="rowx"><div class="t"><b>營旗 ${i + 1}</b><small>距離你 ${fmtD(dist(S.lat, S.lng, f.lat, f.lng))}・還有 ${Math.ceil((f.until - now()) / 60e3)} 分鐘</small></div><button class="btn sm" data-act="flagGo" data-id="${f.id}">查看</button></div></div>`
-    )
-    .join('')}
-  <div class="card"><div class="rowx"><div class="t"><b>在這裡插旗</b><small>${fc || `${FLAG_COST} 金幣`}</small></div><button class="btn pri sm" data-act="flagPlant" ${fc ? 'disabled' : ''}>插旗</button></div></div>`;
-  html += `<h3>絲綢之路</h3>${silkHTML()}`;
-  html += `<div class="card"><div class="rowx"><div class="t"><b>測試用：時間快轉</b><small>據點產出、怪物與地城刷新、營旗時間</small></div><button class="btn sm" data-act="ff">快轉 1 小時</button></div></div>`;
-  return html;
-}
-function silkHTML() {
-  if (!CLOUD.sb || CLOUD.anon) return '<p class="sub">註冊帳號、加好友後，雙方都有主據點就能建立絲綢之路。</p>';
-  let html = `<p class="sub">和好友的主據點連線：可以切換到對方據點的視角，直接打對方據點範圍內的怪物與石碑；每天商隊會自動帶回對方地區的特產。免費 ${SILK_FREE} 條。</p>`;
-  if (SILK.view)
-    html += `<div class="card"><div class="rowx"><div class="t"><b>正在看 ${esc(SILK.view.name)} 的據點</b><small>範圍內的東西可以直接互動</small></div><button class="btn pri sm" data-act="silkEnd">回到自己</button></div></div>`;
-  html += SILK.roads
-    .map(
-      r =>
-        `<div class="card"><div class="rowx"><div class="t"><b>${esc(r.name)}</b><small>${r.base_lat == null ? '對方目前沒有主據點' : `據點 Lv${r.base_lv}・距離 ${fmtD(dist(S.lat, S.lng, r.base_lat, r.base_lng))}・特產 ${GCURI[specialty(r)].n}`}</small></div></div><div class="btns"><button class="btn sm pri" data-act="silkGo" data-id="${r.user_id}" ${r.base_lat == null ? 'disabled' : ''}>切換視角</button><button class="btn sm" data-act="silkDel" data-id="${r.user_id}">斷開</button></div></div>`
-    )
-    .join('');
-  if (SILK.roads.length < SILK_FREE) {
-    const fr = SOC.friends.filter(f => f.status === 'accepted' && !SILK.roads.some(r => r.user_id === f.user_id));
-    html += fr.length
-      ? `<div class="btns">${fr.map(f => `<button class="btn sm" data-act="silkNew" data-id="${f.user_id}">與 ${esc(f.name)} 建立商路</button>`).join('')}</div>`
-      : '<p class="sub">還沒有可以連線的好友。</p>';
-  }
-  if (SILK.err) html += `<p class="sub" style="color:#ffb27a">${esc(SILK.err)}</p>`;
-  return html;
+/* 0.3.23 藏身處（取代據點）：從選單隨時進出；休息回滿（有冷卻）、亡靈製作、賣東西、整理裝備與技能石、魔晶兌換通貨 */
+const HIDE_REST = 10 * 60e3,
+  CRY_COST = 5;
+const hideRestLeft = () => Math.max(0, (S.hideRest || 0) + HIDE_REST - now());
+function hideoutHTML() {
+  const st = stats(),
+    left = hideRestLeft(),
+    full = S.hp >= st.maxhp && S.mp >= st.maxmp;
+  return `<p class="sub">藏身處隨時都能進來，不用走回去。七罪攻佔城鎮時，被攻佔的城鎮不能補給，這裡就是保底的補給點。</p>
+  <div class="card"><div class="rowx"><div class="t"><b>休息</b><small>回滿生命與魔力・每 ${HIDE_REST / 60e3} 分鐘一次${left ? `・還要 ${Math.ceil(left / 60e3)} 分鐘` : ''}</small></div><button class="btn pri sm" data-act="hideRest" ${left || full ? 'disabled' : ''}>${full ? '狀態全滿' : left ? '冷卻中' : '休息'}</button></div></div>
+  <div class="card"><div class="rowx"><div class="t"><b>魔晶兌換</b><small>${CRY_COST} 魔晶換 1 個隨機通貨（你有 ${S.crystal} 魔晶）</small></div><button class="btn sm" data-act="cryTrade" ${S.crystal >= CRY_COST ? '' : 'disabled'}>兌換</button></div></div>
+  <div class="btns"><button class="btn" data-act="sheet" data-s="bag">裝備與背包（賣東西、亡靈製作）</button><button class="btn" data-act="sheet" data-s="skills">技能石</button></div>
+  <div class="card"><div class="rowx"><div class="t"><b>測試用：時間快轉</b><small>怪物與地城刷新、休息冷卻</small></div><button class="btn sm" data-act="ff">快轉 1 小時</button></div></div>`;
 }
 /* 現場挑戰的對象（從地圖上的石碑／魔法陣按「當場挑戰」進來），已經不在範圍或用掉了就取消 */
 function siteEnt() {
@@ -732,26 +595,7 @@ Object.assign(A, {
     closeSheet();
     summonWatcher(e);
   },
-  flagPlant: () => {
-    if (flagCheck()) return;
-    S.gold -= FLAG_COST;
-    S.flags = flagsOn();
-    S.flags.push({ id: uid(), lat: S.lat, lng: S.lng, until: now() + flagMs() });
-    sfx('level');
-    toast(`插好營旗了，${Math.round(flagMs() / 60e3)} 分鐘內可以遠端互動`);
-    addLog('插下冒險營旗');
-    refreshEntities(true);
-    renderHud();
-    renderSheet();
-    save();
-  },
-  flagGo: d => {
-    const f = flagsOn().find(q => q.id === d.id);
-    if (!f) return;
-    closeSheet();
-    follow = false;
-    [cam.x, cam.y] = toM(f.lat, f.lng);
-  },
+
   selI: d => {
     SEL.insc.has(d.id) ? SEL.insc.delete(d.id) : SEL.insc.size < 3 && SEL.insc.add(d.id);
     renderSheet();
@@ -820,16 +664,25 @@ Object.assign(A, {
       pay: { frags: fr.map(f => f.id) }
     });
   },
-  silkNew: d => silkCreate(d.id),
-  silkDel: d => silkRemove(d.id),
-  silkGo: d => {
-    const r = SILK.roads.find(q => q.user_id === d.id);
-    if (!r || r.base_lat == null) return;
-    closeSheet();
-    silkView(r);
-  },
-  silkEnd: () => {
-    silkView(null);
+  hideRest: () => {
+    if (hideRestLeft()) return;
+    S.hideRest = now();
+    fullHeal();
+    sfx('heal');
+    toast('在藏身處休息，狀態全滿');
+    renderHud();
     renderSheet();
+    save();
+  },
+  cryTrade: () => {
+    if (S.crystal < CRY_COST) return;
+    S.crystal -= CRY_COST;
+    const c = rollCur(2);
+    giveCur(c);
+    sfx('coin');
+    toast(`兌換到 ${CURI[c].n}`);
+    renderHud();
+    renderSheet();
+    save();
   }
 });

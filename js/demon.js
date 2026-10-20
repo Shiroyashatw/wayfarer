@@ -217,8 +217,6 @@ const SINS = [
   }
 ];
 const SINI = Object.fromEntries(SINS.map(s => [s.k, s]));
-const SIN_COST = 3,
-  SIN_EXTRA = 4;
 /* 傳奇裝備：詞綴固定、不能用通貨或亡靈製作改造；st 直接加進屬性（leg* 是特效旗標） */
 const LEGENDS = [
   {
@@ -398,38 +396,8 @@ function demonSpawns(out, cells, hp) {
       lc: '#d8b8ff'
     });
   }
-  /* 七宗罪雕像：每 2 小時換一輪，Lv8 起 */
-  if (S.lv >= 8) {
-    const e2 = ep2();
-    cells(SIN_CELL, 2600, (i, j) => {
-      const r = h(i, j, e2 * 29 + 1709);
-      if (r % 100 >= 32) return;
-      const id = `sn${i}_${j}_${e2}`,
-        sin = SINS[(r >>> 7) % 7];
-      let x = (i + 0.2 + ((r >>> 10) % 60) / 100) * SIN_CELL,
-        y = (j + 0.2 + ((r >>> 16) % 60) / 100) * SIN_CELL;
-      if (nearTown(x, y, 250)) return;
-      const p = snapRoad(x, y, 200);
-      if (!p) return;
-      [x, y] = p;
-      const [la, ln] = toLL(x, y);
-      out.set(id, {
-        id,
-        kind: 'sinst',
-        x,
-        y,
-        lat: la,
-        lng: ln,
-        sin: sin.k,
-        name: `${sin.n}的雕像`,
-        lv: aLv() + 3,
-        pal: sin.pal,
-        gl: '255,58,90',
-        lbl: sin.n,
-        lc: '#ff8a9a'
-      });
-    });
-  }
+  /* 0.3.24：七宗罪雕像拿掉；0.3.25 七罪改成攻佔城鎮 */
+  siegeSpawns(out);
   if (!MZ.length) return;
   /* 魔霧區裡的怪物加魔霧詞綴，約 1/3 換成魔霧專屬怪 */
   for (const e of out.values()) {
@@ -605,13 +573,10 @@ function mistWin(b) {
   const p = Math.min(100, Math.round(mistProg(z.id) + inc));
   S.mistp[z.id] = p;
   if (p < 100) return `<p style="color:#d8b8ff">魔霧 ${ROMAN[z.tier]} 進度 ${p}%</p>`;
-  const n = z.tier + 1;
-  giveCur('mfrag', n);
-  quest('mist');
-  addLog(`魔霧 ${ROMAN[z.tier]} 碎裂，得到 ${n} 片魔霧碎片`);
-  S.defeated[z.id] = 1;
+  /* 0.3.24：進度滿了，霧的中心出現四凶（打倒才會散去） */
+  addLog(`魔霧 ${ROMAN[z.tier]} 的中心出現了${xiongOf(z).n}`);
   refreshEntities(true);
-  return `<p style="color:#e0c8ff">魔霧碎裂了！得到 ${curDot('mfrag')}魔霧碎片 ×${n}</p>`;
+  return `<p style="color:#e0c8ff">魔霧翻湧……四凶之一・<b>${xiongOf(z).n}</b>在霧的中心現身！</p>`;
 }
 
 /* ================= sin lords ================= */
@@ -709,12 +674,14 @@ function sinBattleWin(e) {
 /* 七宗罪挑戰通關：殘魂、傳奇、珠寶 */
 function sinReward(sp) {
   const out = [];
+  /* 0.3.25 攻佔城鎮的七罪之王：解放城鎮，傳奇裝備機率較高 */
+  if (sp.siege) out.push(...siegeDone());
   if (sp.dt === 'sin') {
     const s = SINI[sp.sin];
     S.sins = S.sins || {};
     S.sins[s.k] = (S.sins[s.k] || 0) + 1;
     out.push(`${s.n}的殘魂`);
-    if (Math.random() < (0.1 + 0.05 * (sp.xk || 0)) * tierBoss()) {
+    if (Math.random() < (sp.siege ? 0.35 : 0.1 + 0.05 * (sp.xk || 0)) * tierBoss()) {
       const it = makeLegend(s.k);
       giveItem(it);
       out.push(itemName(it));
@@ -737,14 +704,6 @@ function sinReward(sp) {
 }
 
 /* ================= sheets ================= */
-function sinHTML(e) {
-  const s = SINI[e.sin],
-    x = Math.min(SIN_EXTRA, SEL.sinX || 0),
-    have = S.cur.mfrag || 0,
-    need = SIN_COST + x,
-    ms = sinMods(e);
-  return `<b style="color:#ff8a9a">${s.boss}</b><br>${s.d}。<br>挑戰需要 ${SIN_COST} 片魔霧碎片，3 層，怪物 Lv${aLv() + 3}，自帶 6 條詞綴：${ms.map(m => DMODI[m].n).join('、')}。每多放 1 片加 1 條魔霧詞綴（最多 +${SIN_EXTRA}），掉寶數量與稀有度各 +15%。<br>固定掉${s.n}的殘魂，${Math.round((0.1 + 0.05 * x) * 100)}% 掉傳奇裝備「${LEGI[s.k].n}」，35% 掉惡魔珠寶。<br><span class="sub">魔霧碎片：${have}・這次放 ${need} 片</span>`;
-}
 const sinMods = e => {
   const pool = DMODS.map(m => m.id),
     out = [];
@@ -757,8 +716,9 @@ const sinMods = e => {
 };
 function demonHTML() {
   const sins = S.sins || {};
-  return `<p class="sub">地圖上的魔霧區（紫色圓圈）打滿進度碎裂，得到魔霧碎片，放進七宗罪雕像挑戰各宗罪的王。集齊 7 種殘魂可以組隊挑戰七宗罪之王。</p>
-  <div class="curs"><span><img class="cico lg" src="${curIcon('mfrag')}" alt=""><span>魔霧碎片<b>${S.cur.mfrag || 0}</b></span></span>${SINS.map(s => `<span title="${s.boss}"><span>${s.n}的殘魂<b style="color:${sins[s.k] ? 'var(--gold)' : 'var(--dim)'}">${sins[s.k] || 0}</b></span></span>`).join('')}</div>
+  return `<p class="sub">地圖上的魔霧區（紫色圓圈）打滿進度，霧的中心會出現山海經的四凶之一，打倒得到牠的凶獸之印；四種印各 1 個可以在魔霧中心召喚尾王燭龍。Lv15 起七罪之一會攻佔你附近的城鎮，解放城鎮、打倒那個罪的王得到殘魂；集齊 7 種殘魂可以組隊挑戰七宗罪之王。</p>${S.siege && siegeTown() ? `<p class="sub" style="color:#ff9aa4">目前：${SINI[S.siege.sin].boss}攻佔${siegeTown().n}（解放 ${S.siege.prog}%）</p>` : ''}
+  <div class="curs">${XIONG.map(x => `<span title="${x.d}"><span>${x.n}之印<b style="color:${xseal(x.k) ? 'var(--gold)' : 'var(--dim)'}">${xseal(x.k)}</b></span></span>`).join('')}</div>
+  <div class="curs">${SINS.map(s => `<span title="${s.boss}"><span>${s.n}的殘魂<b style="color:${sins[s.k] ? 'var(--gold)' : 'var(--dim)'}">${sins[s.k] || 0}</b></span></span>`).join('')}</div>
   ${S.title ? `<p class="sub" style="color:var(--gold)">稱號：${S.title}</p>` : ''}
   <h3>傳奇裝備圖鑑</h3>${LEGENDS.map(l => `<div class="card"><b style="color:${RCOL[3]}">${l.n}</b><small class="sub" style="display:block">${SLOTN[l.slot]}・${l.lines.join('、')}・${l.zod ? `${ZODI[l.zod].t}之印 ×${ZLEG_COST} 兌換` : `${SINI[l.k].n}之王掉落`}</small></div>`).join('')}`;
 }
@@ -795,42 +755,13 @@ function socketCardHTML(n) {
     p: { p: '#b06bff', w: '#f0dcff', d: '#5a2a8a' }
   };
 })();
-MAT_TABS.push(['demon', '魔霧', () => S.cur.mfrag || 0], ['jewels', '珠寶', () => (S.jewels || []).length]);
+MAT_TABS.push(
+  ['demon', '魔霧', () => XIONG.reduce((a, x) => a + xseal(x.k), 0)],
+  ['jewels', '珠寶', () => (S.jewels || []).length]
+);
 
 /* ================= actions ================= */
 Object.assign(A, {
-  sinX: d => {
-    SEL.sinX = Math.max(0, Math.min(SIN_EXTRA, (SEL.sinX || 0) + +d.v));
-    openEnt(d.id);
-  },
-  sinGo: d => {
-    const e = ENT.get(d.id),
-      x = Math.min(SIN_EXTRA, SEL.sinX || 0),
-      need = SIN_COST + x;
-    if (!inRange(e) || isDone(e) || (S.cur.mfrag || 0) < need) return;
-    S.cur.mfrag -= need;
-    S.cleared[e.id] = ep2();
-    SEL.sinX = 0;
-    const ids = MMODS.map(m => m.id),
-      um = [];
-    for (let i = 0; i < x; i++) um.push(ids.splice(fl(Math.random() * ids.length), 1)[0]);
-    closeSheet();
-    enterDungeon({
-      id: e.id,
-      kind: 'dungeon',
-      dt: 'sin',
-      sin: e.sin,
-      mods: sinMods(e),
-      umods: um,
-      xk: x,
-      lv: aLv() + 3,
-      lat: e.lat,
-      lng: e.lng,
-      floors: 3,
-      onsite: siteBonus(e)
-    });
-    save();
-  },
   sinKing: () => {
     const sins = S.sins || {};
     if (!SINS.every(s => sins[s.k] > 0)) return;
@@ -861,3 +792,628 @@ Object.assign(A, {
     save();
   }
 });
+
+/* ================= 0.3.24 魔霧：山海經四凶與燭龍 ================= */
+/* 魔霧進度滿 100% 時，霧的中心出現一隻四凶（依位置固定是哪一隻），打倒得到牠的凶獸之印；四種印各 1 個在魔霧中心召喚燭龍。
+   圖先沿用相近的十二生肖圖，PixelLab 提示詞在 docs/怪物提示詞.md */
+const XIONG = [
+  { k: 'hundun', n: '混沌', spr: 'a_z_pig', el: 'phys', d: '看不到牠的行動順序；每次行動換一種元素抗性' },
+  { k: 'qiongqi', n: '窮奇', spr: 'a_z_tiger', el: 'cold', d: '專挑生命比例最低的人打；被打時反刺 15% 傷害' },
+  { k: 'taowu', n: '檮杌', spr: 'a_z_dog', el: 'phys', d: '每次行動護甲 +15%，越打越硬' },
+  { k: 'taotie', n: '饕餮', spr: 'a_z_goat', el: 'fire', d: '吃掉目標身上的增益回血；會偷吃你的生命藥水' }
+];
+const XIONGI = Object.fromEntries(XIONG.map(x => [x.k, x]));
+const xiongOf = z => XIONG[h(fl(z.x), fl(z.y), 31) % 4];
+const xseal = k => (S.xseal && S.xseal[k]) || 0;
+const xsealAll = () => XIONG.every(x => xseal(x.k) > 0);
+function makeXiong(x, lv) {
+  const e = makeEnemy(
+    { name: x.n, bg: 'forest', spr: x.spr, hp: 90, atk: 15, arm: 30, el: x.el, res: [30, 30, 30], xp: 70, gold: 70 },
+    lv,
+    4,
+    ['tough']
+  );
+  e.maxhp = e.hp = Math.round(e.maxhp * 3.2);
+  e.atk = Math.round(e.atk * 1.3);
+  e.name = x.n;
+  e.xiong = x.k;
+  if (x.k === 'qiongqi') e.mods.push('reflect');
+  if (x.k === 'hundun') e.hideAv = 1;
+  return e;
+}
+function makeZhulong(lv) {
+  const e = makeEnemy(
+    {
+      name: '燭龍',
+      bg: 'cave',
+      spr: 'a_z_dragon',
+      hp: 110,
+      atk: 18,
+      arm: 40,
+      el: 'fire',
+      res: [40, 20, 30],
+      xp: 160,
+      gold: 150
+    },
+    lv,
+    4,
+    ['tough', 'armored']
+  );
+  e.maxhp = e.hp = Math.round(e.maxhp * 6);
+  e.atk = Math.round(e.atk * 1.4);
+  e.name = '燭龍（晝）';
+  e.zhulong = 1;
+  e.phase = 'day';
+  e.zt = 0;
+  return e;
+}
+/* 敵人回合開頭的特殊行動（enemyResolve 呼叫）：回傳 {ev, at, done}，done 表示這回合已經做完了 */
+function beastTurn(e, i, party, at) {
+  const ev = [],
+    L = party.filter(p => p.alive !== false && p.hp > 0);
+  if (e.xiong === 'hundun') {
+    const opts = [
+      [60, 0, -20],
+      [0, 60, -20],
+      [-20, 0, 60],
+      [60, -20, 0],
+      [-20, 60, 0],
+      [0, -20, 60]
+    ];
+    e.res = opts[fl(Math.random() * opts.length)];
+    ev.push({ t: 'st', i, s: `混沌之變：${['火', '冰', '電'][e.res.indexOf(60)]}抗性變高`, col: '#d8b8ff', at });
+  }
+  if (e.xiong === 'taowu') {
+    e.arm = Math.round(e.arm * 1.15);
+    ev.push({ t: 'msg', s: '檮杌的皮更硬了（護甲 +15%）', at });
+    at += 400;
+  }
+  if (e.xiong === 'taotie') {
+    const p = L.find(q => (q.buffs || []).length);
+    if (p) {
+      const n = p.buffs.length;
+      p.buffs = [];
+      e.hp = Math.min(e.maxhp, e.hp + Math.round(e.maxhp * 0.08 * n));
+      ev.push({ t: 'msg', s: `饕餮吞掉 ${p.name} 的 ${n} 個增益回血`, at });
+      at += 500;
+    }
+    if (L.some(q => q.uid === 'me') && S.potions > 0 && Math.random() < 0.3) {
+      S.potions--;
+      e.hp = Math.min(e.maxhp, e.hp + Math.round(e.maxhp * 0.12));
+      ev.push({ t: 'msg', s: '饕餮偷吃了你的生命藥水！', at });
+      at += 500;
+    }
+  }
+  if (e.zhulong) {
+    e.zt++;
+    if (e.zt % 3 === 0) {
+      e.phase = e.phase === 'day' ? 'night' : 'day';
+      e.name = `燭龍（${e.phase === 'day' ? '晝' : '夜'}）`;
+      e.hideAv = e.phase === 'night' ? 1 : 0;
+      for (const p of party) p.blind = e.phase === 'night' ? 1 : 0;
+      ev.push({ t: 'msg', s: e.phase === 'night' ? '燭龍閉上眼睛——黑夜降臨' : '燭龍睜開眼睛——白晝灼燒', at });
+      at += 700;
+    }
+    if (e.phase === 'night') {
+      const v = Math.round(e.maxhp * 0.06);
+      e.hp = Math.min(e.maxhp, e.hp + v);
+      ev.push({ t: 'msg', s: `燭龍在黑夜中恢復 ${v} 生命`, at });
+      at += 450;
+    } else {
+      /* 白晝：燭火灼燒全體 */
+      ev.push({ t: 'msg', s: '燭龍的燭火灼燒全體！', at });
+      ev.push({ t: 'lunge', i, at });
+      at += 250;
+      for (const p of L) {
+        const st = p.st,
+          d = Math.max(
+            1,
+            Math.round(
+              mitigate(
+                { phys: 0, fire: e.atk * 0.7 * rnd(0.9, 1.1), cold: 0, light: 0 },
+                st.armor,
+                Array.isArray(st.res) ? st.res : [st.res.fire, st.res.cold, st.res.light],
+                false
+              ) *
+                (1 - Math.min(75, st.dmgRed || 0) / 100)
+            )
+          );
+        const toMp = takeDmg(p, st, d);
+        ev.push({ t: 'dmg', who: p.uid, d: d - toMp, mp: toMp, col: '#ffb15a', at });
+        if (p.hp <= 0) {
+          p.alive = false;
+          ev.push({ t: 'down', who: p.uid, at: at + 200 });
+        }
+      }
+      at += 600;
+      return { ev, at, done: true };
+    }
+  }
+  return { ev, at, done: false };
+}
+function xiongWin(o) {
+  S.xseal = S.xseal || {};
+  S.xseal[o.k] = xseal(o.k) + 1;
+  if (o.zid) S.defeated[o.zid] = 1;
+  quest('mist');
+  addLog(`打倒四凶・${XIONGI[o.k].n}，得到凶獸之印`);
+  refreshEntities(true);
+  return `<p style="color:#e0c8ff">得到 ${XIONGI[o.k].n}之印（${XIONG.map(x => `${x.n} ${xseal(x.k)}`).join('、')}）${xsealAll() ? '・四種都有了，可以在魔霧中心召喚燭龍！' : ''}</p>`;
+}
+function zhulongWin() {
+  const got = [];
+  giveCur('prism', 3);
+  got.push('寶石稜鏡 ×3');
+  giveCur('exalt');
+  got.push('崇高石');
+  giveCur('wish', 2);
+  got.push('祈願石 ×2');
+  const l = SUPG.filter(x => x.lin && x.m === 'mist'),
+    x = l[fl(Math.random() * l.length)];
+  if (Math.random() < 0.6) {
+    giveSup(x.k);
+    got.push(`族裔輔助・${x.n}`);
+  }
+  addLog('打倒魔霧尾王・燭龍');
+  return `<p style="color:#ffd166">燭龍倒下了！得到 ${got.join('、')}</p>`;
+}
+Object.assign(A, {
+  xiongGo: d => {
+    const e = ENT.get(d.id),
+      z = MZ.find(q => q.id === d.id);
+    if (!inRange(e) || !z || mistProg(z.id) < 100 || S.defeated[z.id]) return;
+    const x = xiongOf(z);
+    closeSheet();
+    startBattle(makeXiong(x, aLv() + z.tier + 3), {
+      bg: 'forest',
+      boss: true,
+      xiong: { k: x.k, zid: z.id },
+      onsite: siteBonus(e)
+    });
+    save();
+  },
+  zhulongGo: d => {
+    const e = ENT.get(d.id),
+      z = MZ.find(q => q.id === d.id);
+    if (!inRange(e) || !z || !xsealAll()) return;
+    for (const x of XIONG) S.xseal[x.k]--;
+    closeSheet();
+    startBattle(makeZhulong(aLv() + z.tier + 6), { bg: 'cave', boss: true, zhulong: 1, onsite: siteBonus(e) });
+    save();
+  }
+});
+
+/* ================= 0.3.25 七罪攻佔城鎮 ================= */
+/* 七罪之一帶著信徒攻佔一座城鎮（Lv15 起、玩家 3 公里內、同時一座、24 小時沒解放就撤離、解放或撤離後冷卻 3 小時）。
+   被攻佔的城鎮：範圍變成那個罪的顏色、城鎮的服務不能用（藏身處保底）、範圍內的戰鬥套用城鎮特效、怪物換成信徒；
+   打信徒累積解放度，滿 100% 挑戰那個罪的王（終局難度）。信徒的圖先用現有怪物圖＋罪的配色，提示詞在 docs/怪物提示詞.md */
+const SIEGE_LV = 15,
+  SIEGE_DUR = 24 * 3600e3,
+  SIEGE_CD = 3 * 3600e3,
+  SIEGE_R = 350,
+  SIEGE_PICK = 3000;
+/* 城鎮特效（範圍內的戰鬥） */
+const SIEGE_FX = {
+  pride: '怪物生命高於一半時受到的傷害 -30%',
+  envy: '怪物攻擊依你的傷害提高',
+  wrath: '怪物狂暴（生命越低攻擊越高）、速度提高',
+  sloth: '你的行動值變慢（×0.6）',
+  greed: '每場戰鬥被偷金幣，解放後加倍還',
+  gluttony: '藥水回復量減半',
+  lust: '你的攻擊有 10% 機率打到自己（魅惑）'
+};
+/* 信徒：t 是特色（battle.js 的 followerTurn／followerHit）、spr 是先用的現有圖 */
+const SINF = {
+  pride: [
+    { n: '墮天騎士', t: 'proud', spr: 'golem', d: '生命高於一半時受傷 -30%' },
+    { n: '光輪祭司', t: 'healer', spr: 'spirit', d: '替生命最低的信徒回血' },
+    { n: '鏡面衛兵', t: 'mirror', spr: 'golem', d: '反射 15% 傷害' },
+    { n: '金冠貴族', t: 'bully', spr: 'scare', d: '對生命比例比自己低的目標傷害 ×1.5' },
+    { n: '聖像傀儡', t: 'idol', spr: 'golem', d: '護甲極高、很慢' }
+  ],
+  envy: [
+    { n: '妒火魚人', t: 'envy', spr: 'fish', d: '攻擊依你的傷害提高' },
+    { n: '竊影者', t: 'thief', spr: 'spirit', d: '偷走你一個增益' },
+    { n: '綠眼海蛇', t: 'venom', spr: 'snake', d: '命中讓你中毒（每回合扣血）' },
+    { n: '模仿者', t: 'mimic', spr: 'slime', d: '對你上一招的元素抗性變高' },
+    { n: '深海觸手', t: 'grab', spr: 'jelly', d: '纏住你：行動值延後' }
+  ],
+  wrath: [
+    { n: '狂戰惡魔', t: 'fury', spr: 'monkey', d: '生命越低攻擊越高' },
+    { n: '熔岩獵犬', t: 'hound', spr: 'wolf', d: '火焰攻擊、速度快' },
+    { n: '自爆怨火', t: 'boom', spr: 'lantern', d: '死亡時爆炸，傷害打倒牠的人' },
+    { n: '血角鬥士', t: 'stack', spr: 'boar', d: '每次行動攻擊 +12%' },
+    { n: '怒焰狂信者', t: 'zealot', spr: 'scare', d: '讓其他信徒攻擊 +10%' }
+  ],
+  sloth: [
+    { n: '沉睡巨人', t: 'sleep', spr: 'bear', d: '前兩次輪到都在睡，醒來猛擊（×2）' },
+    { n: '泥沼史萊姆', t: 'mud', spr: 'slime', d: '命中讓你行動值延後' },
+    { n: '夢魘綿羊', t: 'dream', spr: 'deer', d: '25% 讓你睡著（跳過一回合）' },
+    { n: '苔蘚樹人', t: 'regen', spr: 'mush', d: '生命高，每次行動回 10% 生命' },
+    { n: '蝸牛騎士', t: 'snail', spr: 'turtle', d: '護甲極高、很慢' }
+  ],
+  greed: [
+    { n: '金幣竊賊', t: 'coin', spr: 'monkey', d: '偷你的金幣，3 次行動後逃走就拿不回來' },
+    { n: '寶箱怪', t: 'chest', spr: 'crab', d: '傷害很高（×1.6）' },
+    { n: '黃金魔像', t: 'goldg', spr: 'golem', d: '護甲極高，打倒掉很多金幣' },
+    { n: '放貸惡魔', t: 'debt', spr: 'bat', d: '「債務」：每次行動偷的金幣越來越多' },
+    { n: '黃金傭兵', t: 'merc', spr: 'scare', d: '還活著時，其他信徒受傷 -20%' }
+  ],
+  gluttony: [
+    { n: '蒼蠅群', t: 'flies', spr: 'bat', d: '打牠有 30% 打空' },
+    { n: '腐肉胖子', t: 'devour', spr: 'boar', d: '吃掉旁邊的信徒回血' },
+    { n: '嘔吐蛆蟲', t: 'venom', spr: 'beetle', d: '命中讓你中毒（每回合扣血）' },
+    { n: '吞噬口', t: 'maw', spr: 'frog', d: '偷吃你的生命藥水' },
+    { n: '寄生巫婆', t: 'parasite', spr: 'spirit', d: '吸血' }
+  ],
+  lust: [
+    { n: '魅魔', t: 'charm', spr: 'butterfly', d: '打牠有 20% 被魅惑、打到自己' },
+    { n: '薔薇藤妖', t: 'vine', spr: 'mush', d: '纏繞並流血（每回合扣血）' },
+    { n: '假面舞者', t: 'dancer', spr: 'cat', d: '打牠有 35% 被閃過並反擊' },
+    { n: '心碎吟遊詩人', t: 'bard', spr: 'bird', d: '降低你的傷害（2 回合 -20%）' },
+    { n: '傀儡情人', t: 'puppet', spr: 'scare', d: '還活著時，其他信徒受傷 -25%' }
+  ]
+};
+const siegeTown = () => S.siege && TOWNS.find(t => t.id === S.siege.tid);
+const siegeAt = (lat, lng) => {
+  const t = siegeTown();
+  return t && dist(lat, lng, t.lat, t.lng) <= SIEGE_R ? S.siege : null;
+};
+/* 每次刷新地圖時檢查：撤離、開始新的攻佔 */
+function siegeTick() {
+  if (S.siege && now() > S.siege.until) {
+    addLog(`${SINI[S.siege.sin].boss}從${siegeTown() ? siegeTown().n : '城鎮'}撤離了（偷走的金幣拿不回來）`);
+    S.siege = null;
+    S.siegeCd = now() + SIEGE_CD;
+  }
+  if (S.siege || S.lv < SIEGE_LV || now() < (S.siegeCd || 0)) return;
+  const near = TOWNS.filter(
+    t => dist(S.lat, S.lng, t.lat, t.lng) <= SIEGE_PICK && dist(S.lat, S.lng, t.lat, t.lng) > TOWN_R
+  );
+  if (!near.length) return;
+  const t = near[fl(Math.random() * near.length)],
+    s = SINS[fl(Math.random() * SINS.length)];
+  S.siege = { tid: t.id, sin: s.k, at: now(), until: now() + SIEGE_DUR, prog: 0, stolen: 0 };
+  addLog(`${s.boss}帶著信徒攻佔了${t.n}！`);
+  if (typeof toast === 'function') toast(`${s.n}攻佔了${t.n}！`);
+}
+/* 信徒：用現有怪物的圖、罪的配色；followerBase 是地圖上的怪物資料（fol 記住是哪一種），followerize 套上特色 */
+function followerBase(sk, f) {
+  const s = SINI[sk];
+  return {
+    name: f.n,
+    bg: 'city',
+    spr: f.spr,
+    pal: { ...(MONS.find(m => m.spr === f.spr) || {}).pal, b: s.pal.b, e: s.pal.e },
+    hp: f.t === 'regen' || f.t === 'idol' || f.t === 'snail' || f.t === 'goldg' ? 75 : 48,
+    atk: f.t === 'chest' ? 16 : 11,
+    arm: f.t === 'idol' || f.t === 'snail' || f.t === 'goldg' ? 60 : 22,
+    el: f.t === 'hound' ? 'fire' : s.el,
+    res: [20, 20, 20],
+    xp: 18,
+    gold: f.t === 'goldg' ? 60 : 16,
+    fol: f
+  };
+}
+function followerize(e, sk, f) {
+  e.name = (e.rar ? e.name.replace(f.n, '') : '') + f.n;
+  e.siege = sk;
+  e.trait = f.t;
+  if (f.t === 'mirror') e.mods = [...(e.mods || []), 'reflect'];
+  if (f.t === 'fury') e.mods = [...(e.mods || []), 'fury'];
+  if (f.t === 'parasite') e.mods = [...(e.mods || []), 'leech'];
+  if (f.t === 'idol' || f.t === 'snail') e.speed = 6;
+  if (f.t === 'hound') e.speed = 16;
+  return e;
+}
+const makeFollower = (sk, f, lv, rar = 0, mods = []) =>
+  followerize(makeEnemy(followerBase(sk, f), lv, rar, mods), sk, f);
+/* 地圖：被攻佔城鎮裡的信徒（每 4 分鐘一輪、每 120 公尺方格約 60%） */
+function siegeSpawns(out) {
+  siegeTick();
+  const t = siegeTown();
+  if (!t) return;
+  const [tx, ty] = toM(t.lat, t.lng),
+    me = mistEp(),
+    list = SINF[S.siege.sin];
+  for (let i = fl((tx - SIEGE_R) / MQ_CELL); i <= fl((tx + SIEGE_R) / MQ_CELL); i++)
+    for (let j = fl((ty - SIEGE_R) / MQ_CELL); j <= fl((ty + SIEGE_R) / MQ_CELL); j++) {
+      const r = h(i, j, me * 11 + 4243);
+      if (r % 100 >= 60) continue;
+      const id = `sg${i}_${j}_${me}`;
+      if (S.defeated[id] || out.has(id)) continue;
+      let x = (i + ((r >>> 8) % 100) / 100) * MQ_CELL,
+        y = (j + ((r >>> 16) % 100) / 100) * MQ_CELL;
+      if (Math.hypot(x - tx, y - ty) > SIEGE_R) continue;
+      const p = snapRoad(x, y, 70);
+      if (p) [x, y] = p;
+      const q = r >>> 4,
+        rar = q % 100 < 6 ? 2 : q % 100 < 30 ? 1 : 0,
+        lv = Math.max(1, aLv() + 3 + ((r >>> 3) % 2)),
+        f = list[(q >>> 6) % list.length],
+        [la, ln] = toLL(x, y);
+      out.set(id, {
+        id,
+        lat: la,
+        lng: ln,
+        kind: 'monster',
+        x,
+        y,
+        lv,
+        base: followerBase(S.siege.sin, f),
+        rar,
+        mods: rar ? rollMods(h(i, j, me + 5), rar === 2 ? 3 : 1) : [],
+        siege: S.siege.sin,
+        trait: f.t,
+        ph: (r % 628) / 100
+      });
+    }
+}
+/* 地圖：被攻佔的城鎮畫成那個罪的顏色 */
+function drawSiege(c, t) {
+  const tw = siegeTown();
+  if (!tw) return;
+  const [mx, my] = toM(tw.lat, tw.lng),
+    x = SX(mx),
+    y = SY(my),
+    r = Math.abs(SX(mx + SIEGE_R) - x),
+    col = SINI[S.siege.sin].pal.b,
+    pu = 0.5 + 0.5 * Math.sin(t / 420);
+  if (x < -r - 40 || x > VW + r + 40 || y < -r - 40 || y > VH + r + 40) return;
+  c.save();
+  c.globalAlpha = 0.16 + 0.08 * pu;
+  c.fillStyle = col;
+  c.beginPath();
+  c.arc(x, y, r, 0, 6.28);
+  c.fill();
+  c.globalAlpha = 0.8;
+  c.strokeStyle = col;
+  c.lineWidth = 3;
+  c.setLineDash([10, 6]);
+  c.stroke();
+  c.setLineDash([]);
+  c.globalAlpha = 1;
+  c.font = '600 13px "Noto Sans TC"';
+  c.textAlign = 'center';
+  c.fillStyle = '#000a';
+  c.fillText(`${SINI[S.siege.sin].n}・攻佔中　解放 ${S.siege.prog}%`, x + 1, y - r - 7);
+  c.fillStyle = '#fff';
+  c.fillText(`${SINI[S.siege.sin].n}・攻佔中　解放 ${S.siege.prog}%`, x, y - r - 8);
+  c.restore();
+}
+/* 開打時：在被攻佔的城鎮裡就套用城鎮特效（startBattle 呼叫） */
+function siegeApply(B) {
+  const sg = siegeAt(S.lat, S.lng);
+  if (!sg) return '';
+  B.siegeK = sg.sin;
+  const st = stats();
+  for (const e of B.es) {
+    if (sg.sin === 'pride') e.sinAura = 'pride';
+    if (sg.sin === 'envy') e.atk += Math.round((st.physLo + st.physHi) / 6 + 4 * (st.spellMul || 1));
+    if (sg.sin === 'wrath') {
+      e.mods = [...(e.mods || []), 'fury'];
+      e.speed = Math.max(e.speed || 10, 14);
+    }
+  }
+  if (sg.sin === 'sloth') B.me.slow = 999;
+  if (sg.sin === 'lust') B.me.charmed = 1;
+  if (sg.sin === 'greed' && S.gold > 0) {
+    const n = Math.min(S.gold, 10 + S.lv * 3);
+    S.gold -= n;
+    sg.stolen = (sg.stolen || 0) + n;
+    return `貪婪：被偷走 ${n} 金幣`;
+  }
+  return `${SINI[sg.sin].n}的城鎮：${SIEGE_FX[sg.sin]}`;
+}
+/* 打倒信徒：累積解放度（winBattle 呼叫） */
+function siegeWin(es) {
+  const sg = S.siege;
+  if (!sg) return '';
+  let inc = 0;
+  for (const o of es) if (o.siege === sg.sin) inc += [4, 7, 12, 12, 20][o.rar || 0];
+  if (!inc) return '';
+  sg.prog = Math.min(100, sg.prog + inc);
+  quest('kill');
+  return sg.prog >= 100
+    ? `<p style="color:#ffd166">${siegeTown().n}的解放度 100%！可以到城鎮挑戰${SINI[sg.sin].boss}</p>`
+    : `<p style="color:#ff9aa4">${siegeTown().n}的解放度 ${sg.prog}%</p>`;
+}
+/* 打倒七罪的王：解放城鎮、還回偷走的金幣（sinReward 呼叫） */
+function siegeDone() {
+  const sg = S.siege;
+  if (!sg) return [];
+  const t = siegeTown(),
+    out = [];
+  if (sg.stolen) {
+    S.gold += sg.stolen * 2;
+    out.push(`<span style="color:var(--gold)">貪婪吐回 ${sg.stolen * 2} 金幣</span>`);
+  }
+  addLog(`解放了${t ? t.n : '城鎮'}，打倒${SINI[sg.sin].boss}`);
+  S.siege = null;
+  S.siegeCd = now() + SIEGE_CD;
+  refreshEntities(true);
+  return out;
+}
+/* 城鎮面板：被攻佔時顯示攻佔資訊（ui.js 的 openEnt 呼叫） */
+function siegeTownHTML(e, inR) {
+  const sg = S.siege;
+  if (!sg || sg.tid !== e.t.id) return null;
+  const s = SINI[sg.sin];
+  return {
+    desc: `<b style="color:#ff8a9a">${s.boss}</b>帶著信徒攻佔了這座城鎮！城鎮的服務都不能用（藏身處可以補給）。<br>城鎮特效：${SIEGE_FX[sg.sin]}。<br>打倒範圍內的信徒累積解放度（一般 4%、魔法 7%、稀有 12%、紅名 20%），滿 100% 挑戰${s.boss}（3 層、終局難度）。剩 ${Math.max(1, Math.ceil((sg.until - now()) / 3600e3))} 小時，沒解放就會撤離。${bar('解放度', sg.prog, 100, s.pal.b)}<p class="sub">信徒：${SINF[sg.sin].map(f => `<b>${f.n}</b>（${f.d}）`).join('、')}</p>`,
+    act: `<button class="btn pri" data-act="siegeGo" data-id="${e.id}" ${inR && sg.prog >= 100 ? '' : 'disabled'}>${sg.prog >= 100 ? `挑戰${s.boss}` : `解放度 ${sg.prog}%`}</button>`
+  };
+}
+Object.assign(A, {
+  siegeGo: d => {
+    const e = ENT.get(d.id),
+      sg = S.siege;
+    if (!inRange(e) || !sg || sg.tid !== e.t.id || sg.prog < 100) return;
+    closeSheet();
+    enterDungeon({
+      id: 'siege_' + e.id,
+      kind: 'dungeon',
+      dt: 'sin',
+      sin: sg.sin,
+      siege: 1,
+      mods: sinMods(e),
+      umods: [],
+      xk: 4,
+      lv: aLv() + 6,
+      lat: e.lat,
+      lng: e.lng,
+      floors: 3,
+      onsite: siteBonus(e)
+    });
+    save();
+  }
+});
+/* ---- 信徒的特色（battle.js 呼叫） ---- */
+/* 信徒的回合開頭：回傳 {ev, at, done, mul}，mul 是這回合攻擊的倍率 */
+function followerTurn(e, i, es, party, at) {
+  const ev = [],
+    L = party.filter(p => p.alive !== false && p.hp > 0),
+    me = L.find(p => p.uid === 'me');
+  let mul = 1,
+    done = false;
+  e.ft = (e.ft || 0) + 1;
+  const T = e.trait;
+  if (T === 'sleep' && e.ft <= 2) {
+    ev.push({ t: 'msg', s: `${e.name} 呼呼大睡中……`, at });
+    return { ev, at: at + 600, done: true, mul };
+  }
+  if (T === 'sleep' && e.ft === 3) {
+    ev.push({ t: 'msg', s: `${e.name} 醒了，猛力一擊！`, at });
+    at += 300;
+    mul = 2;
+  }
+  if (T === 'healer') {
+    const o = es.filter(x => x.hp > 0 && x !== e).sort((a, b) => a.hp / a.maxhp - b.hp / b.maxhp)[0];
+    if (o) {
+      const v = Math.round(o.maxhp * 0.1);
+      o.hp = Math.min(o.maxhp, o.hp + v);
+      ev.push({ t: 'msg', s: `${e.name} 替 ${o.name} 回復 ${v} 生命`, at });
+      at += 450;
+    }
+  }
+  if (T === 'regen') {
+    e.hp = Math.min(e.maxhp, e.hp + Math.round(e.maxhp * 0.1));
+    ev.push({ t: 'st', i, s: '再生', col: '#9be36b', at });
+  }
+  if (T === 'stack') {
+    e.atk = Math.round(e.atk * 1.12);
+    ev.push({ t: 'st', i, s: '攻擊 +12%', col: '#ff8a3a', at });
+  }
+  if (T === 'zealot')
+    for (const o of es)
+      if (o !== e && o.hp > 0) {
+        o.atk = Math.round(o.atk * 1.1);
+        ev.push({ t: 'st', i: es.indexOf(o), s: '狂熱', col: '#ff8a3a', at });
+      }
+  if (T === 'mimic' && me && me.lastEl) {
+    const k = ['fire', 'cold', 'light'].indexOf(me.lastEl);
+    if (k >= 0) {
+      e.res = e.res.map((v, j) => (j === k ? 75 : v));
+      ev.push({ t: 'st', i, s: `模仿：${EL[me.lastEl]}抗性 75%`, col: '#9fe7ff', at });
+    }
+  }
+  if (T === 'thief') {
+    const p = L.find(q => (q.buffs || []).some(b => b.turns < 900));
+    if (p) {
+      const b = p.buffs.find(q => q.turns < 900);
+      p.buffs = p.buffs.filter(q => q !== b);
+      ev.push({ t: 'msg', s: `${e.name} 偷走了 ${p.name} 的「${b.n || '增益'}」`, at });
+      at += 450;
+    }
+  }
+  if ((T === 'coin' || T === 'debt') && me && S.gold > 0) {
+    const n = Math.min(S.gold, T === 'debt' ? 4 * e.ft + e.lv : 6 + e.lv * 2);
+    S.gold -= n;
+    if (S.siege) S.siege.stolen = (S.siege.stolen || 0) + (T === 'debt' ? n : 0);
+    e.stolen = (e.stolen || 0) + n;
+    ev.push({ t: 'msg', s: `${e.name} 偷走 ${n} 金幣${T === 'debt' ? '（債務越滾越大）' : ''}`, at });
+    at += 450;
+    if (T === 'coin' && e.ft >= 3) {
+      e.hp = 0;
+      e.fled = 1;
+      ev.push({ t: 'msg', s: `${e.name} 帶著 ${e.stolen} 金幣逃走了！`, at }, { t: 'kill', i, at: at + 100 });
+      return { ev, at: at + 500, done: true, mul };
+    }
+  }
+  if (T === 'devour') {
+    const o = es.filter(x => x.hp > 0 && x !== e).sort((a, b) => a.hp - b.hp)[0];
+    if (o && Math.random() < 0.35) {
+      o.hp = 0;
+      e.hp = Math.min(e.maxhp, e.hp + Math.round(e.maxhp * 0.3));
+      ev.push({ t: 'msg', s: `${e.name} 把 ${o.name} 吃掉了！`, at }, { t: 'kill', i: es.indexOf(o), at: at + 100 });
+      at += 600;
+    }
+  }
+  if (T === 'maw' && me && S.potions > 0 && Math.random() < 0.3) {
+    S.potions--;
+    e.hp = Math.min(e.maxhp, e.hp + Math.round(e.maxhp * 0.15));
+    ev.push({ t: 'msg', s: `${e.name} 偷吃了你的生命藥水！`, at });
+    at += 450;
+  }
+  if (T === 'chest') mul *= 1.6;
+  return { ev, at, done, mul };
+}
+/* 信徒打中人之後 */
+function followerAfter(e, p, d, ext, at) {
+  const ev = [],
+    T = e.trait;
+  if ((T === 'venom' || T === 'vine') && d > 0) {
+    p.pdot = { n: Math.max(1, Math.round(p.st.maxhp * 0.04)), turns: 3 };
+    ev.push({ t: 'st', who: p.uid, s: T === 'vine' ? '纏繞流血' : '中毒', col: '#9be36b', at });
+  }
+  if ((T === 'mud' || T === 'grab') && ext.av) {
+    ext.av[p.uid] = (ext.av[p.uid] || 0) - 30;
+    ev.push({ t: 'st', who: p.uid, s: T === 'grab' ? '被纏住' : '陷入泥沼', col: '#c8b0ff', at });
+  }
+  if (T === 'dream' && Math.random() < 0.25) {
+    p.frozen = 1;
+    ev.push({ t: 'st', who: p.uid, s: '睡著了', col: '#c8c8ff', at });
+  }
+  if (T === 'bard') {
+    p.buffs = (p.buffs || []).filter(b => b.id !== 'heartbreak');
+    p.buffs.push({ id: 'heartbreak', n: '心碎', turns: 2, more: -20 });
+    ev.push({ t: 'st', who: p.uid, s: '心碎（傷害 -20%）', col: '#ff8ad8', at });
+  }
+  return ev;
+}
+/* 你打信徒（或被攻佔城鎮裡的怪）時：回傳 {d, miss, self, ev} */
+function followerHit(e, es, me, d, i, t) {
+  const ev = [],
+    T = e.trait,
+    other = k => es.some(o => o !== e && o.hp > 0 && o.trait === k);
+  if (T === 'flies' && Math.random() < 0.3)
+    return { d: 0, miss: 1, ev: [{ t: 'st', i, s: '打空了', col: '#8a8aa0', at: t }] };
+  if (T === 'dancer' && Math.random() < 0.35) {
+    const c = Math.max(1, Math.round(e.atk * 0.6));
+    me.hp = Math.max(1, me.hp - c);
+    return {
+      d: 0,
+      miss: 1,
+      ev: [
+        { t: 'st', i, s: '閃過了', col: '#ff8ad8', at: t },
+        { t: 'dmg', who: me.uid, d: c, col: '#ff8ad8', at: t + 120 }
+      ]
+    };
+  }
+  if ((T === 'charm' && Math.random() < 0.2) || (me.charmed && Math.random() < 0.1)) {
+    const c = Math.max(1, Math.round(d * 0.4));
+    me.hp = Math.max(1, me.hp - c);
+    return {
+      d: 0,
+      miss: 1,
+      ev: [
+        { t: 'dmg', who: me.uid, d: c, col: '#ff8ad8', at: t },
+        { t: 'st', i, s: '魅惑！', col: '#ff8ad8', at: t }
+      ]
+    };
+  }
+  if ((T === 'proud' || e.sinAura === 'pride') && e.hp > e.maxhp / 2) d = Math.round(d * 0.7);
+  if (other('merc')) d = Math.round(d * 0.8);
+  if (other('puppet')) d = Math.round(d * 0.75);
+  return { d, ev };
+}

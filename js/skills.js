@@ -1158,10 +1158,49 @@ const SUPG = [
     mp: 20,
     sk: { buffT: 2, cd: -1 },
     d: '增益多 2 回合、冷卻 -1'
+  },
+  /* 0.3.25：魔霧（四凶、燭龍）從七宗罪拆開，有自己的族裔輔助 */
+  {
+    k: 'ln_chaos',
+    n: '混沌無面',
+    lin: 1,
+    m: 'mist',
+    req: 'dmg',
+    mp: 30,
+    sup: { echo: 30, more: -10 },
+    d: '30% 機率整個技能再放一次，傷害 -10%'
+  },
+  {
+    k: 'ln_candle',
+    n: '燭照',
+    lin: 1,
+    m: 'mist',
+    req: 'dmg',
+    mp: 20,
+    sk: { ignite: 1, vs: { burn: 40 } },
+    d: '必定燃燒，對燃燒的目標傷害 +40%'
+  },
+  {
+    k: 'ln_maw',
+    n: '饕餮之口',
+    lin: 1,
+    m: 'mist',
+    req: 'dmg',
+    mp: 20,
+    sup: { leech: 5 },
+    sk: { lowT: 50 },
+    d: '吸血 +5%，對生命低於 30% 的目標傷害 +50%'
   }
 ];
 const SUPGI = Object.fromEntries(SUPG.map(s => [s.k, s]));
-const SUPM = { ud: '亡靈軍團', sin: '魔霧與七宗罪', uw: '冥府', hunt: '狩獵十二生肖', wild: '野外紅名危險怪' };
+const SUPM = {
+  ud: '亡靈軍團',
+  mist: '魔霧（四凶、燭龍）',
+  sin: '七罪（攻佔城鎮、七罪的王）',
+  uw: '冥府',
+  hunt: '狩獵十二生肖',
+  wild: '野外紅名危險怪'
+};
 /* 輔助寶石能不能插在這個技能上（看技能標籤） */
 const SUPREQ = {
   dmg: q => !q.pet && !q.sac && (q.kind === 'attack' || q.kind === 'spell'),

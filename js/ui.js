@@ -1,4 +1,4 @@
-/* 漫步勇者 · HUD、底部面板、互動、據點、動作表 */
+/* 漫步勇者 · HUD、底部面板、互動、藏身處、動作表 */
 'use strict';
 /* ================= HUD & sheets ================= */
 function renderHud() {
@@ -78,7 +78,7 @@ const TITLES = {
   bag: '背包',
   item: '裝備',
   tree: '天賦樹',
-  base: '據點',
+  base: '藏身處',
   quest: '委託',
   settings: '設定',
   log: '冒險日誌',
@@ -97,7 +97,7 @@ const TITLES = {
 const NAVG = {
   adv: [
     ['quest', '委託', 'flag'],
-    ['base', '據點', 'castle'],
+    ['base', '藏身處', 'castle'],
     ['stele', '石碑', 'key'],
     ['log', '冒險日誌', 'book']
   ],
@@ -157,7 +157,7 @@ const KIND = {
   dungeon: '地城',
   shrine: '廟宇',
   town: '城鎮',
-  base: '據點',
+  base: '藏身處',
   chest: '寶箱',
   event: '限時事件'
 };
@@ -624,7 +624,7 @@ function renderSheet() {
     <div class="btns">${selItem.eq ? `<button class="btn" data-act="unequip" data-s="${selItem.eq}">卸下</button>` : it.slot === 'ring' ? `<button class="btn pri" data-act="equip" data-s="ring1">裝在戒指 1</button><button class="btn pri" data-act="equip" data-s="ring2">裝在戒指 2</button>` : `<button class="btn pri" data-act="equip" data-s="${it.slot}">裝備</button>`}
     ${selItem.eq ? '' : `<button class="btn" data-act="lock">${it.lock ? '解鎖' : '上鎖'}</button><button class="btn" data-act="sell" ${canSell() && !it.lock ? '' : 'disabled'}>${it.lock ? '已上鎖' : canSell() ? `賣出 ${sellVal(it)} 金` : '城鎮或據點才能賣'}</button>`}${selSlot ? `<button class="btn" data-act="eqslot" data-s="${selSlot}">返回${SLOTN[selSlot]}</button>` : `<button class="btn" data-act="sheet" data-s="bag">返回背包</button>`}</div>`;
   } else if (sheetName === 'base') {
-    html = baseHTML();
+    html = hideoutHTML();
   } else if (sheetName === 'stele') {
     html = steleHTML();
   } else if (sheetName === 'quest') {
@@ -696,15 +696,11 @@ function shopSellHTML() {
       return `<button class="stile${on ? ' on' : ''}${it.lock ? ' sold' : ''}" data-act="shopPick" data-i="${i}" style="border-color:${RCOL[it.r]}${on ? '' : '88'}" aria-label="${esc(itemTitle(it))}"><img src="${slotIcon(it)}" alt="">${on ? '<i class="ok">✓</i>' : it.lock ? '<i>鎖</i>' : ''}<small>${sellVal(it)} 金</small></button>`;
     })
     .join('')}</div>
-  <p class="sub">${ok ? `點裝備勾選；上鎖的不會被選到。背包 ${S.inv.length}/30` : '⚠ 要在城鎮或據點才能賣出裝備。'}</p>
+  <p class="sub">${ok ? `點裝備勾選；上鎖的不會被選到。背包 ${S.inv.length}/30` : ''}</p>
   <button class="btn pri" data-act="shopSellGo" style="width:100%" ${ok && sel.length ? '' : 'disabled'}>賣出 ${sel.length} 件　+${gold} 金</button>`;
 }
-/* 0.3.1 賣裝備：只有在城鎮或據點（主據點半徑內、分支據點旁）才能賣 */
-function canSell() {
-  return (
-    nearTownE() || (S.bases || []).some(b => dist(S.lat, S.lng, b.lat, b.lng) <= (b.type === 'main' ? baseR(b.lv) : 60))
-  );
-}
+/* 賣裝備：0.3.23 起藏身處隨時都能進，所以隨時都能賣 */
+const canSell = () => true;
 /* 比身上穿的差：同部位穿戴中的稀有度與物品等級都不低於它（戒指跟比較差的那枚比） */
 function worseThanEq(it) {
   const eqs = it.slot === 'ring' ? [S.eq.ring1, S.eq.ring2] : [S.eq[it.slot]];
@@ -813,9 +809,6 @@ function openEnt(id) {
     const n = (S.obel && S.obel[e.id]) || 0;
     desc = `冥府之力從地底湧出，方圓 ${OB_R} 公尺內的怪物帶著冥府詞綴（名字前有「冥府・」，非常危險）。在範圍內擊敗被侵蝕的怪物替柱子充能（${n}/${OB_NEED}），滿了就能召喚「冥府看門人」，打倒它可以解除侵蝕並得到冥府碎片。`;
     act = `<button class="btn pri" data-act="summon" data-id="${id}" ${inR && n >= OB_NEED ? '' : 'disabled'}>${n >= OB_NEED ? '召喚冥府看門人' : `充能 ${n}/${OB_NEED}`}</button>`;
-  } else if (e.kind === 'flag') {
-    desc = `你插下的冒險營旗，還有 ${Math.ceil((e.f.until - now()) / 60e3)} 分鐘。半徑 ${flagR()} 公尺內的東西不用在現場也能互動。`;
-    act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
   } else if (e.kind === 'ualtar') {
     const p = udProg(e.zid),
       used = isDone(e);
@@ -828,24 +821,20 @@ function openEnt(id) {
   } else if (e.kind === 'mseal') {
     const z = MZ.find(q => q.id === e.id),
       p = mistProg(e.id);
+    const x = z && xiongOf(z);
     desc = z
-      ? `強度 ${ROMAN[z.tier]}：方圓 ${z.r} 公尺被魔霧籠罩（地圖上的紫色圓圈），範圍內的怪物帶魔霧詞綴、等級 +${z.tier}，還會出現魔霧專屬怪。在範圍內打怪累積進度（目前 <b>${p}%</b>），滿 100% 魔霧碎裂，得到 ${z.tier + 1} 片魔霧碎片。剩 ${Math.max(1, Math.ceil((z.until - now()) / 60e3))} 分鐘散去。` +
-        bar('魔霧進度', p, 100, '#b06bff')
-      : '這團魔霧已經碎裂了。';
-    act = '';
-  } else if (e.kind === 'sinst') {
-    const x = Math.min(SIN_EXTRA, SEL.sinX || 0),
-      need = SIN_COST + x,
-      done = isDone(e);
-    desc = done ? '這座雕像已經挑戰過了，每 2 小時會換一輪。' : sinHTML(e);
-    act = done
-      ? ''
-      : `<div class="btns"><button class="btn sm" data-act="sinX" data-id="${id}" data-v="-1" ${x > 0 ? '' : 'disabled'}>－ 少放 1 片</button><button class="btn sm" data-act="sinX" data-id="${id}" data-v="1" ${x < SIN_EXTRA ? '' : 'disabled'}>＋ 多放 1 片</button></div><button class="btn pri" data-act="sinGo" data-id="${id}" ${inR && (S.cur.mfrag || 0) >= need ? '' : 'disabled'}>放入 ${need} 片魔霧碎片挑戰</button>`;
+      ? `強度 ${ROMAN[z.tier]}：方圓 ${z.r} 公尺被魔霧籠罩（地圖上的紫色圓圈），範圍內的怪物帶魔霧詞綴、等級 +${z.tier}，還會出現魔霧專屬怪。在範圍內打怪累積進度（目前 <b>${p}%</b>），滿 100% 霧的中心會出現四凶之一・<b>${x.n}</b>（${x.d}），打倒得到${x.n}之印。四種凶獸之印各 1 個可以在魔霧中心召喚尾王<b>燭龍</b>。剩 ${Math.max(1, Math.ceil((z.until - now()) / 60e3))} 分鐘散去。` +
+        bar('魔霧進度', p, 100, '#b06bff') +
+        `<p class="sub">凶獸之印：${XIONG.map(q => `${q.n} ${xseal(q.k)}`).join('、')}</p>`
+      : '這團魔霧已經散去了。';
+    act = z
+      ? `${p >= 100 ? `<button class="btn pri" data-act="xiongGo" data-id="${id}" ${inR ? '' : 'disabled'}>挑戰${x.n}</button>` : ''}${xsealAll() ? `<button class="btn pri" data-act="zhulongGo" data-id="${id}" ${inR ? '' : 'disabled'}>用四種凶獸之印召喚燭龍</button>` : ''}`
+      : '';
   } else if (e.kind === 'zodiac') {
     ({ desc, act } = zodEntHTML(e, inR));
-  } else if (e.kind === 'base') {
-    desc = `你的${baseName(e.b)}，回到這裡會恢復全部狀態。`;
-    act = `<button class="btn pri" data-act="sheet" data-s="base">管理據點</button>`;
+  } else if (e.kind === 'town' && siegeTownHTML(e, inR)) {
+    /* 0.3.25 被七罪攻佔的城鎮：服務都不能用，只能解放 */
+    ({ desc, act } = siegeTownHTML(e, inR));
   } else if (e.kind === 'town') {
     const t = e.t,
       done = S.cleared[t.id] === hepoch(),
@@ -922,24 +911,12 @@ function tierInfoHTML() {
     <div class="tlist">${TIERS.map(([a, z], i) => `<button class="tl${i + 1 === cur ? ' on' : ''}" data-act="tierSet" data-v="${i + 1}" ${i + 1 <= mx && i + 1 !== cur && !B && !D && !MB ? '' : 'disabled'}><b>T${i + 1}</b><small>Lv${a}～${z}</small></button>`).join('')}</div>
     <p class="sub">點已解鎖的 T 可以切換（戰鬥與地城中不能換）。</p>`;
 }
-/* 人實際在現場（不是靠據點、營旗、絲綢之路的遠端範圍） */
+/* 人實際在現場（0.3.23 起沒有遠端範圍，一律在現場） */
 const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e);
 /* 現場掉寶加成只給可以封印帶走的石碑、魔法陣（人在現場當場挑戰）；路邊野怪、地城、首領都不算（0.3.1.5） */
 const ONSITE_K = new Set(['stele', 'circle']);
 const siteBonus = e => !!e && ONSITE_K.has(e.kind) && onSite(e);
 const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e) || inZone(e));
-
-/* ================= bases ================= */
-const prodRate = b => 60 * b.lv;
-const stored = b => Math.floor(Math.min(prodRate(b) * 8, (prodRate(b) * (now() - b.last)) / 3.6e6));
-const baseName = () => '主據點';
-function flagCheck() {
-  if (!mainBase()) return '先建立主據點';
-  if (flagsOn().length >= FLAG_MAX) return `營旗最多同時 ${FLAG_MAX} 支`;
-  if (S.gold < FLAG_COST) return `需要 ${FLAG_COST} 金幣`;
-  if (flagsOn().some(f => dist(f.lat, f.lng, S.lat, S.lng) < 200)) return '這附近已經有營旗了';
-  return '';
-}
 
 /* ================= actions ================= */
 /* 帳號表單：檢查輸入、執行期間鎖住按鈕、錯誤訊息顯示在表單下方 */
@@ -1027,7 +1004,7 @@ const A = {
   },
   ibInfo: d =>
     toast(
-      d.k === 'gold' ? `金幣 ${S.gold}：買東西、住旅店、升級據點` : `魔晶 ${S.crystal}：升級據點用，打菁英怪與事件取得`
+      d.k === 'gold' ? `金幣 ${S.gold}：買東西、住旅店` : `魔晶 ${S.crystal}：在藏身處兌換通貨，打菁英怪與事件取得`
     ),
   tierInfo: () => {
     sfx('tap');
@@ -1089,7 +1066,6 @@ const A = {
     f && f();
   },
   recenter: () => {
-    if (SILK.view) silkView(null);
     follow = true;
     cam.z = Math.max(cam.z, 0.5);
     sfx('tap');
@@ -1110,6 +1086,7 @@ const A = {
     /* 狩獵中：獵殺等級加的等級直接用來產生怪物，再加生命與攻擊 */
     const en = makeEnemy(e.base, e.lv + (huntLv() ? huntCfg().lv : 0), e.rar, e.mods);
     if (e.hunt) en.name = e.name;
+    if (e.siege && e.base.fol) followerize(en, e.siege, e.base.fol);
     if (huntLv()) huntBuff(en, true);
     startBattle(en, {
       entId: e.id,
@@ -1720,52 +1697,6 @@ const A = {
   treeFit: () => {
     treeFit();
     sfx('tap');
-  },
-  buildMain: () => {
-    if (S.bases.some(b => b.type === 'main') || nearTownE()) return;
-    S.bases.push({ id: uid(), type: 'main', lat: S.lat, lng: S.lng, lv: 1, last: now() });
-    sfx('level');
-    addLog('建立了主據點');
-    toast('主據點建立完成！');
-    refreshEntities(true);
-    renderSheet();
-    save();
-    baseSync();
-  },
-  collect: d => {
-    const b = S.bases.find(q => q.id === d.id),
-      v = stored(b);
-    S.gold += v;
-    b.last = now();
-    sfx('coin');
-    toast(`領取 ${v} 金幣`);
-    addLog(`從${baseName(b)}領取 ${v} 金幣`);
-    renderHud();
-    renderSheet();
-  },
-  upgrade: d => {
-    const b = S.bases.find(q => q.id === d.id),
-      c = 120 * b.lv,
-      cc = 2 * b.lv;
-    if (b.lv >= 5 || S.gold < c || S.crystal < cc) return;
-    S.gold += stored(b);
-    b.last = now();
-    S.gold -= c;
-    S.crystal -= cc;
-    b.lv++;
-    sfx('level');
-    toast(`${baseName(b)} 升級到 Lv${b.lv}，半徑 ${baseR(b.lv)} 公尺`);
-    refreshEntities(true);
-    renderHud();
-    renderSheet();
-    save();
-    baseSync();
-  },
-  goto: d => {
-    const b = S.bases.find(q => q.id === d.id);
-    closeSheet();
-    follow = false;
-    [cam.x, cam.y] = toM(b.lat, b.lng);
   },
   setName: () => {
     const v = ($('nameInp').value || '').trim().slice(0, 12);

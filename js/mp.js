@@ -851,7 +851,11 @@ function renderMBHud() {
           img: portrait(heroSpr('F', q.look || '.....'), palFor(q))
         };
       const o = a[0] === 'e' && es[+a.slice(1)];
-      return o && o.hp > 0 ? { n: o.name, c: 'e', on, img: portrait(o.spr, o.pal) } : null;
+      return o && o.hp > 0
+        ? o.hideAv
+          ? { n: '？？？', c: 'e', on, img: iconURL('eye') }
+          : { n: o.name, c: 'e', on, img: portrait(o.spr, o.pal) }
+        : null;
     };
     const cur = row(MB.actor === 'E' ? 'e' + MB.ea : MB.actor, true);
     renderOrder([cur, ...(MB.order || []).map(a => row(a, false))].filter(Boolean));
@@ -923,13 +927,15 @@ function renderMBHud() {
     six[5] +
     (mn
       ? cb('引爆地雷', 'flame', `×${mn}`, 'data-k="mines"', '', 'mine')
-      : cb(
-          '生命藥水',
-          'heart',
-          noPot ? '無法使用' : '×' + S.potions,
-          'data-k="potion"',
-          S.potions && !noPot ? '' : 'disabled'
-        )) +
+      : !sks[0]
+        ? `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
+        : cb(
+            '生命藥水',
+            'heart',
+            noPot ? '無法使用' : '×' + S.potions,
+            'data-k="potion"',
+            S.potions && !noPot ? '' : 'disabled'
+          )) +
     `<div class="brow2"><button class="cb" data-act="mpSub" data-k="items" ${dis}><img src="${iconURL('bag')}" alt="">物品</button><button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button></div>`;
   if (MB.sub === 'skills' && my)
     html += `<div class="bsub">${sk.map(slot).join('')}<button class="cb" data-act="mpSub" data-k=""><img src="${iconURL('run')}" alt="">返回</button></div>`;
