@@ -21,17 +21,20 @@ let S,
 
 /* ================= game data ================= */
 /* 天賦盤起點（0.2 起職業不再決定技能與成長，只決定起點、起點數值、角色主色與開局技能石） */
+/* 0.3.13 起天賦樹沒有出發點（從中間的契靈圓盤往外點），CLASSES 只剩角色主色與名稱（好友列表、組隊大廳）；
+   舊的四個「之魂」用 clsOf 換成對應的名稱 */
 const CLASSES = {
-  novice: {
-    name: '冒險者之魂',
-    color: '#a9a3b8',
-    gem: 'power',
-    desc: '起點在天賦盤正中央，往任何方向都一樣近，起點數值最平均'
-  },
-  knight: { name: '戰士之魂', color: '#c94a4a', gem: 'bash', desc: '起點在左下，力量路線：生命、護甲、近戰' },
-  ranger: { name: '遊俠之魂', color: '#3f9a52', gem: 'double', desc: '起點在右下，敏捷路線：暴擊、閃避、連擊與毒' },
-  mage: { name: '術士之魂', color: '#5865d6', gem: 'fire', desc: '起點在上方，智力路線：法術、魔力、抗性' }
+  warlord: { name: '鬥神', color: '#c94a4a' },
+  guardian: { name: '守護者', color: '#d8a24a' },
+  destiny: { name: '冒險者', color: '#a9a3b8' },
+  necro: { name: '死靈師', color: '#7a5ad6' },
+  elemental: { name: '元素使', color: '#5865d6' },
+  taoist: { name: '道士', color: '#e8c860' },
+  assassin: { name: '刺客', color: '#3a8a6a' },
+  amazon: { name: '亞馬遜', color: '#3f9a52' }
 };
+const OLDCLS = { novice: 'destiny', knight: 'warlord', ranger: 'amazon', mage: 'elemental' };
+const clsOf = k => CLASSES[k] || CLASSES[OLDCLS[k]] || CLASSES.destiny;
 /* r 是技能的強度分組（0.3.11 起只用來排商店的需求等級，見 items.js 的 gemReq） */
 const SKILLS = {
   attack: { name: '攻擊', mp: 0, kind: 'attack', mult: 1, icon: 'axe' },
@@ -2150,56 +2153,11 @@ const TREE = (() => {
       used[t]++;
       return L[i % L.length];
     };
-  const CLS = {
-    knight: { a: 150, name: '戰士', st: { life: 20, armorPct: 10 }, ic: 'shield' },
-    ranger: { a: 30, name: '遊俠', st: { critPct: 1, speed: 2 }, ic: 'target' },
-    mage: { a: -90, name: '術士', st: { spellPct: 10, mana: 10 }, ic: 'book' }
-  };
-  const R0 = 125,
-    RS = 210,
+  /* 0.3.13：中間是放契靈的圓盤（半徑 130 以內沒有天賦節點，tree.js 畫）。比照 PoE 沒有出發點：
+     看不見的根節點 start 在圓心，接到每一條輻射路線的第一格，從圓盤旁邊的任何一條路線都可以開始點 */
+  const RS = 210,
     STEP = 42;
-  add('start_novice', 0, 0, ['冒險者之魂', { life: 8, physPct: 4, spellPct: 4 }, 'star'], 'start', { cls: 'novice' });
-  const fork = {};
-  for (const [c, v] of Object.entries(CLS)) {
-    const [x, y] = P(R0, v.a);
-    add('start_' + c, x, y, [v.name + '之魂', v.st, v.ic], 'start', { cls: c });
-    const [fx, fy] = P(168, v.a),
-      f = add('f_' + c, fx, fy, [...TH[{ knight: 'life', ranger: 'crit', mage: 'spell' }[c]].s], 'small');
-    ln('start_' + c, f);
-    fork[c] = f;
-  }
-  // 內圈弧線（職業起點之間）與中央輻條
-  const arcs = {};
-  [
-    ['knight', 'mage', 210],
-    ['mage', 'ranger', -30],
-    ['ranger', 'knight', 90]
-  ].forEach(([a, b, mid], hi) => {
-    const A1 = CLS[a].a,
-      A2 = A1 + (((CLS[b].a - A1 + 540) % 360) - 180),
-      arc = [],
-      h = ['si', 'id', 'ds'][hi];
-    const pool = [TH[{ si: 'armor', id: 'crit', ds: 'phys' }[h]].s, TH[{ si: 'res', id: 'mana', ds: 'life' }[h]].s];
-    for (let q = 0; q < 5; q++) {
-      const t = (q + 1) / 6,
-        [x, y] = P(R0, A1 + (A2 - A1) * t);
-      arc.push(add(`r${h}${q}`, x, y, pool[q % 2], 'small'));
-    }
-    ln('start_' + a, arc[0]);
-    ln(fork[a], arc[0]);
-    for (let q = 0; q < 4; q++) ln(arc[q], arc[q + 1]);
-    ln(arc[4], 'start_' + b);
-    ln(arc[4], fork[b]);
-    let pv = 'start_novice';
-    for (let q = 0; q < 2; q++) {
-      const [x, y] = P(42 + q * 40, mid);
-      const id = add(`sp${h}${q}`, x, y, pool[(q + 1) % 2], 'small');
-      ln(pv, id);
-      pv = id;
-    }
-    ln(pv, arc[2]);
-    arcs[h] = arc;
-  });
+  add('start', 0, 0, ['契靈圓盤', {}, 'star'], 'start');
   // 輻射路線
   const sp = SPOKES.map((s, j) => {
     const ids = [];
@@ -2250,19 +2208,8 @@ const TREE = (() => {
     });
     return ids;
   });
-  // 每條路線的起點
-  for (const [c, v] of Object.entries(CLS))
-    SPOKES.forEach((s, j) => {
-      const d = ((((s.a - v.a) % 360) + 540) % 360) - 180;
-      if (Math.abs(d) <= 24) ln(fork[c], sp[j][0]);
-    });
-  SPOKES.forEach((s, j) => {
-    if (s.k.length === 2) {
-      const arc = arcs[s.k],
-        first = SPOKES.findIndex(q => q.k === s.k) === j;
-      ln(first ? arc[1] : arc[3], sp[j][0]);
-    }
-  });
+  // 每條路線的第一格都接到圓盤
+  sp.forEach(ids => ln('start', ids[0]));
   /* 0.2.4 外圈：每條路線往外分出兩個 9 節點的專精群（左邊武器、右邊組隊），最外圈再把所有專精群接成一圈 */
   const WEP = [
       'axe',
@@ -2390,5 +2337,5 @@ const TREE = (() => {
   });
   return { N, E, byId };
 })();
-const VER = '0.3.11';
+const VER = '0.3.13';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

@@ -599,9 +599,8 @@ function mistWin(b) {
     z = MZ.find(q => q.id === b.mist);
   if (!z) return '';
   const inc =
-    ((([4, 7, 12, 12, 18][e.rar || 0] + (MISTMON.some(m => m.name === b.mistBase) ? 2 : 0)) * (b.ud ? 1.5 : 1)) /
-      (1 + 0.15 * z.tier)) *
-    pactK('mist');
+    (([4, 7, 12, 12, 18][e.rar || 0] + (MISTMON.some(m => m.name === b.mistBase) ? 2 : 0)) * (b.ud ? 1.5 : 1)) /
+    (1 + 0.15 * z.tier);
   S.mistp = S.mistp || { _ep: ep2() };
   const p = Math.min(100, Math.round(mistProg(z.id) + inc));
   S.mistp[z.id] = p;
@@ -715,12 +714,12 @@ function sinReward(sp) {
     S.sins = S.sins || {};
     S.sins[s.k] = (S.sins[s.k] || 0) + 1;
     out.push(`${s.n}的殘魂`);
-    if (Math.random() < (0.1 + 0.05 * (sp.xk || 0)) * tierBoss() * pactK('sin')) {
+    if (Math.random() < (0.1 + 0.05 * (sp.xk || 0)) * tierBoss()) {
       const it = makeLegend(s.k);
       giveItem(it);
       out.push(itemName(it));
     }
-    if (Math.random() < 0.35 * tierBoss() * pactK('sin')) out.push(giveJewel(1 + fl(Math.random() * 3)));
+    if (Math.random() < 0.35 * tierBoss()) out.push(giveJewel(1 + fl(Math.random() * 3)));
   } else if (sp.dt === 'sinking') {
     const it = makeLegend(SINS[fl(Math.random() * 7)].k, aLv() + 5);
     giveItem(it);

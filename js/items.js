@@ -3,8 +3,8 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 17,
-    cls: 'novice',
+    v: 19,
+    cls: 'destiny',
     lv: 1,
     tier: 1,
     tmax: 1,
@@ -18,7 +18,7 @@ function newGame() {
     inv: [],
     eq: {},
     cur: { trans: 4, aug: 4, regal: 2, alch: 1, chaos: 1, exalt: 0, soul: 0, wish: 10, eng: 1 },
-    pact: { have: {}, eq: { fight: [], drop: [] }, board: {}, follow: null },
+    pact: { list: [], eq: [], follow: null },
     gems: [],
     flags: [],
     scrolls: { stele: 0, circle: 0 },
@@ -42,7 +42,7 @@ function newGame() {
     autoHp: 0,
     autoMp: 0,
     regenAt: 0,
-    tree: ['start_novice'],
+    tree: ['start'],
     lat: START.lat - 0.0009,
     lng: START.lng,
     walked: 0,
@@ -262,16 +262,19 @@ const gemSlots = g => Math.min(6, fl(g.lv / 5)) + (g.xs || 0);
 const gemOpen = g => gemSlots(g) - g.en.length;
 const gemOf = id => S.gems.find(g => g.id === id);
 const GEMK = () => Object.keys(SKILLS).filter(k => k !== 'attack');
-/* 技能石換算成戰鬥用的技能：攻擊每級 +6% 倍率，法術的基礎傷害隨等級提高，治癒每級 +6%，消耗每級 +3% */
+/* 技能石換算成戰鬥用的技能：攻擊每級 +6% 倍率，法術的基礎傷害隨等級提高，治癒每級 +6%，消耗每級 +3%。
+   0.3.12：契靈的「技能等級 +N」直接加在等級上（可以超過上限，刻印槽數照技能石本身的等級） */
 function gemSkill(g) {
   const b = SKILLS[g.k],
-    L = g.lv - 1,
+    plus = typeof pactSkLv === 'function' ? pactSkLv(g.k) : 0,
+    L = g.lv - 1 + plus,
     t = {};
   g.en.forEach(a => (t[a.id] = (t[a.id] || 0) + a.v));
   const sk = {
     ...b,
     gid: g.id,
-    lv: g.lv,
+    lv: g.lv + plus,
+    plus,
     nEn: g.en.length,
     mp: Math.round(b.mp * (1 + 0.03 * L) * (1 - (t.cost || 0) / 100))
   };
@@ -372,7 +375,8 @@ function gemLvBlock(g) {
 const gemSoulBack = g => Math.round((g.dust || 0) * 0.7);
 /* 0.3.11 技能石商店：每種技能有需求等級（開局技能 Lv1，其餘依強度分組平均分散到 Lv1～28，也就是 T1～T5），
    城鎮商店只賣已解鎖 T 的技能石；買下來是 Lv1，每種技能只能有一顆 */
-const GEM_START = ['power', 'bash', 'double', 'fire', 'heal'];
+/* 需求 Lv1 的入門技能石（開局送強力一擊與治癒） */
+const GEM_START = ['power', 'bash', 'double', 'fire', 'heal', 'poison', 'skeleton', 'talisman'];
 let GEMREQ = null;
 function gemReq(k) {
   if (!GEMREQ) {

@@ -349,9 +349,9 @@ function undeadWin(b) {
   S.und = S.und || {};
   for (const k in S.und) if (!k.endsWith('_' + udEp())) delete S.und[k];
   /* 霧中亡靈：精華 +1、進度 ×1.5 */
-  const n = Math.round((([1, 2, 3, 3, 5][r] || 1) + (b.mist ? 1 : 0)) * pactK('ud')),
+  const n = ([1, 2, 3, 3, 5][r] || 1) + (b.mist ? 1 : 0),
     got = giveEss(u.ess, n);
-  S.und[b.ud] = Math.min(100, udProg(b.ud) + Math.round([5, 8, 14, 14, 20][r] * (b.mist ? 1.5 : 1) * pactK('ud')));
+  S.und[b.ud] = Math.min(100, udProg(b.ud) + Math.round([5, 8, 14, 14, 20][r] * (b.mist ? 1.5 : 1)));
   let extra = '';
   if (r >= 2 && Math.random() < 0.1) {
     const c = Math.random() < 0.5 ? 'boneRm' : 'boneSw';

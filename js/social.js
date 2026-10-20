@@ -151,7 +151,7 @@ function friendsHTML() {
     out = SOC.friends.filter(f => f.status === 'pending' && !f.incoming),
     ok = SOC.friends.filter(f => f.status === 'accepted');
   const row = (f, btns) =>
-    `<div class="card"><div class="rowx"><div class="t"><b>${esc(f.name)} <span class="sub">#${String(f.player_no).padStart(6, '0')}</span></b><small><span style="color:${(CLASSES[f.cls] || CLASSES.novice).color}">${(CLASSES[f.cls] || CLASSES.novice).name}</span> Lv${f.lv}・${isOnline(f) ? '<span style="color:var(--good)">在線</span>' : '離線'}</small></div><div class="btns">${btns}</div></div></div>`;
+    `<div class="card"><div class="rowx"><div class="t"><b>${esc(f.name)} <span class="sub">#${String(f.player_no).padStart(6, '0')}</span></b><small><span style="color:${clsOf(f.cls).color}">${clsOf(f.cls).name}</span> Lv${f.lv}・${isOnline(f) ? '<span style="color:var(--good)">在線</span>' : '離線'}</small></div><div class="btns">${btns}</div></div></div>`;
   let h = '';
   if (CLOUD.anon)
     return `<div class="card"><p class="sub">註冊帳號、拿到玩家編號後就能加好友，並直接邀請好友一起打地城。</p><div class="btns"><button class="btn pri" data-act="sheet" data-s="settings">前往註冊</button></div></div>`;

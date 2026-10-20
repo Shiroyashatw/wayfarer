@@ -89,7 +89,7 @@ const TITLES = {
   gem: '技能石',
   gemshop: '技能石商店',
   pact: '契靈',
-  pboard: '契約板',
+  pbrk: '契靈突破',
   seal: '印記兌換',
   asc: '昇華'
 };
@@ -302,7 +302,7 @@ function sheetParent() {
   if (sheetName === 'item') return selSlot ? ['slot', SLOTN[selSlot]] : ['bag'];
   if (sheetName === 'slot') return ['bag'];
   if (sheetName === 'gem') return ['skills'];
-  if (sheetName === 'pboard') return ['pact'];
+  if (sheetName === 'pbrk') return ['pact'];
   if (sheetName === 'seal') return ['hunt'];
   if (sheetName === 'bag' && (SEL.bag !== 'eq' || SEL.sell)) return ['bagHome'];
   return null;
@@ -315,7 +315,7 @@ function renderSheet() {
   if (!sheetName || sheetName === 'ent') return;
   const el = $('sbody'),
     st = stats(),
-    c = CLASSES[S.cls] || CLASSES.novice;
+    c = clsOf(S.cls);
   let html = '';
   if (sheetName === 'hero') {
     const avg = (st.physLo + st.physHi) / 2 + st.fire + st.cold + st.light * 1;
@@ -323,7 +323,7 @@ function renderSheet() {
     <button class="btn pri" data-act="openTree">天賦樹${treePts() > 0 ? `（剩 ${treePts()} 點未分配）` : ''}</button><button class="btn" data-act="sheet" data-s="pact">契靈${
       pactsOn().length
         ? `・${pactsOn()
-            .map(id => PACTI[id].n)
+            .map(u => pactKind(u).n)
             .join('、')}`
         : ''
     }</button><button class="btn" data-act="asc">昇華${S.asc && S.asc.br ? `・${ASCB[S.asc.br].n}` : ''}${ascPts() > ascUsed() ? `（剩 ${ascPts() - ascUsed()} 點）` : ''}</button>${(() => {
@@ -366,8 +366,8 @@ function renderSheet() {
         )
         .join('') || `<p class="sub">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石，到城鎮的技能石商店買吧'}</p>`
     }</div>`;
-  } else if (sheetName === 'pboard') {
-    html = pboardHTML();
+  } else if (sheetName === 'pbrk') {
+    html = pactBrkHTML();
   } else if (sheetName === 'pact') {
     html = pactHTML();
   } else if (sheetName === 'gemshop') {
@@ -382,7 +382,7 @@ function renderSheet() {
       at = S.sk.indexOf(g.id),
       blk = gemLvBlock(g),
       n = gemSlots(g);
-    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span></b>${skTagHTML(q)}<small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
+    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span>${q.plus ? ` <span style="color:var(--gold)">+${q.plus}（契靈）</span>` : ''}</b>${skTagHTML(q)}<small>${gemDesc(q)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
     <h3>刻印槽 ${g.en.length}/${n}${g.lv < GEM_MAX ? `<small class="sub">・下一個在 Lv${(fl(g.lv / 5) + 1) * 5}</small>` : ''}</h3><div class="card">${
       n
         ? [
@@ -1352,6 +1352,11 @@ const A = {
     renderHud();
     renderTreeCard();
     save();
+  },
+  /* 0.3.13：從天賦樹的契靈圓盤去契靈面板 */
+  treePact: () => {
+    closeTree();
+    openSheet('pact');
   },
   treeReset: () => {
     S.tree = [startOf(S.cls)];
