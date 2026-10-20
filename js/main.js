@@ -269,6 +269,27 @@ function migrate(s) {
     while (s.sk.length < 6) s.sk.push(null);
     s.v = 25;
   }
+  if (s.v < 26) {
+    // 0.3.23：據點改成藏身處，拿掉冒險營旗與絲綢之路；據點的累積金幣與升級花費退回
+    let g = 0,
+      c = 0;
+    for (const b of s.bases || []) {
+      g += Math.floor(Math.min(60 * b.lv * 8, (60 * b.lv * ((s.savedAt || Date.now()) - (b.last || 0))) / 3.6e6));
+      for (let l = 1; l < b.lv; l++) {
+        g += 120 * l;
+        c += 2 * l;
+      }
+    }
+    if ((s.bases || []).length) {
+      s.gold = (s.gold || 0) + g;
+      s.crystal = (s.crystal || 0) + c;
+      if (s.log) s.log.unshift(`據點改成藏身處：退回 ${g} 金幣、${c} 魔晶（據點的累積產出與升級花費）`);
+    }
+    s.bases = [];
+    s.flags = [];
+    s.hideRest = 0;
+    s.v = 26;
+  }
   return s;
 }
 function start() {

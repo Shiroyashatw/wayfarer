@@ -310,6 +310,7 @@ const AIL_E = [
     ['stacks', 'star', '疊層'],
     ['shield', 'heart', '護盾'],
     ['chgN', 'bolt', '蓄力'],
+    ['doom', 'skull', '生死簿'],
     ['empN', 'horn', '強化'],
     ['comboN', 'sword', '連續']
   ];
@@ -1242,6 +1243,27 @@ function enemyResolve(es, i, party, ext = {}) {
     }
   }
   if (e.sin && ext.sinTurn) ext.sinTurn(e, i);
+  /* 0.3.23 閻羅王：每 3 次行動用生死簿點名一人（下一次受到的傷害加倍），每 4 次用判官筆抹掉一人的增益 */
+  if (e.yama) {
+    e.yt = (e.yt || 0) + 1;
+    const L = party.filter(p => p.alive !== false && p.hp > 0),
+      pk = () => L[fl(Math.random() * L.length)];
+    if (L.length && e.yt % 3 === 0) {
+      const p = pk();
+      p.doom = 1;
+      ev.push({ t: 'msg', s: `閻羅王翻開生死簿：點名 ${p.name}！`, at });
+      ev.push({ t: 'st', who: p.uid, s: '生死簿', col: '#c86aff', at: at + 120 });
+      at += 600;
+    }
+    if (L.length && e.yt % 4 === 0) {
+      const p = pk();
+      if ((p.buffs || []).length) {
+        p.buffs = [];
+        ev.push({ t: 'msg', s: `判官筆一揮，${p.name} 的增益全部消失`, at });
+        at += 600;
+      }
+    }
+  }
   /* 0.3.10：迅捷改成靠速度（行動值）多行動，不再另外骰行動兩次 */
   const acts = 1,
     ew = ext.ew || 0;
@@ -1316,6 +1338,12 @@ function enemyResolve(es, i, party, ext = {}) {
     if (st.block && Math.random() * 100 < st.block) {
       d = Math.round(d * 0.3);
       ev.push({ t: 'st', who: p.uid, s: '格擋', col: '#9fd4ef', at });
+    }
+    /* 生死簿應驗：被點名的人這一下傷害加倍 */
+    if (p.doom) {
+      d *= 2;
+      p.doom = 0;
+      ev.push({ t: 'st', who: p.uid, s: '生死簿應驗', col: '#c86aff', at });
     }
     const toMp = takeDmg(p, st, d);
     /* 蓄力中被打：倍數 ×0.75（最低 1） */
@@ -1880,7 +1908,8 @@ const dunName = t =>
         : t.kind === 'tier'
           ? '突破試煉'
           : DTYPES[t.dt || 'normal'].n;
-const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '冥府之主', stele: '石碑守衛' },
+/* 0.3.23 冥府傳送門的最終王改成閻羅王（圖先沿用冥府之主的 b_hades，PixelLab 提示詞在 docs/怪物提示詞.md） */
+const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '閻羅王', stele: '石碑守衛' },
   BOSSSPR = { hell: 'b_hellord', circle: 'b_arcane', portal: 'b_hades', stele: 'b_stelekeeper' };
 /* 第 room 層的敵人群（0.3 起一層是一群，最多 5 隻）。boss 在最後一層；extra 是組隊多出來的隻數 */
 function dunEnemy(D, room, extra = 0) {
@@ -1978,6 +2007,7 @@ function dunEnemy(D, room, extra = 0) {
     e.xp *= hell ? 4 : 2;
     e.rar = hell ? 4 : 3;
     e.minion = 0;
+    if (sp.dt === 'portal') e.yama = 1;
     bg = 'cave';
     n = hell ? 2 : 1 + (sp.dt === 'party' ? 1 : 0);
   } else {

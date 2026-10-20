@@ -59,9 +59,6 @@ function socialOnUser() {
   profileSync(true);
   friendsLoad();
   invitesListen();
-  SILK.roads = [];
-  SILK.loaded = false;
-  baseSync().then(silkLoad);
 }
 
 /* ================= party invites ================= */

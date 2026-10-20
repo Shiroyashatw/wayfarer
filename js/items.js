@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 25,
+    v: 26,
     cls: 'destiny',
     lv: 1,
     tier: 1,
