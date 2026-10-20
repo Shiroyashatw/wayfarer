@@ -1,4 +1,4 @@
-/* 漫步勇者 · 今日委託、附近面板分組、足跡（0.2.13） */
+/* 漫步勇者 · 今日委託、委託面板（0.3.15 起取代「附近」）、足跡（0.2.13） */
 'use strict';
 /* ================= 今日委託 ================= */
 /* 每天 3 個小目標，完成就自動給獎勵；三個都完成再加碼 */
@@ -73,7 +73,7 @@ function dailyHTML() {
   const dl = daily(),
     done = dl.q.filter(q => q.c >= QUESTI[q.k].need).length,
     left = 864e5 - ((now() - new Date(now()).getTimezoneOffset() * 60e3) % 864e5);
-  return `<div class="card"><div class="rowx"><div class="t"><b>今日委託 ${done}/${dl.q.length}</b><small>每項完成給金幣、通貨、1 個惡魔結晶；全部完成再加碼。${fl(left / 36e5)} 小時 ${fl((left % 36e5) / 60e3)} 分後換新。</small></div></div>${dl.q
+  return `<div class="card"><div class="rowx"><div class="t"><b>今日委託 ${done}/${dl.q.length}</b><small>每項完成給金幣、通貨、惡魔結晶與祈願石；全部完成再加碼。${fl(left / 36e5)} 小時 ${fl((left % 36e5) / 60e3)} 分後換新。</small></div></div>${dl.q
     .map(q => {
       const Q = QUESTI[q.k],
         ok = q.c >= Q.need;
@@ -82,90 +82,60 @@ function dailyHTML() {
     .join('')}</div>`;
 }
 
-/* ================= 附近面板分組 ================= */
-const NGROUP = [
-  ['all', '全部'],
-  ['ev', '限時'],
-  ['hunt', '狩獵'],
-  ['ud', '亡靈'],
-  ['mist', '魔霧'],
-  ['uw', '冥府'],
-  ['dun', '地城石碑'],
-  ['mon', '怪物'],
-  ['etc', '城鎮設施']
-];
-const ngroup = e =>
-  e.id[0] === 'z' || e.kind === 'zodiac'
-    ? 'hunt'
-    : e.ev || e.kind === 'event'
-      ? 'ev'
-      : e.kind === 'ualtar' || e.ud
-        ? 'ud'
-        : e.kind === 'mseal' || e.kind === 'sinst' || e.mist
-          ? 'mist'
-          : e.kind === 'obelisk' || e.uw
-            ? 'uw'
-            : ['dungeon', 'stele', 'circle', 'vein'].includes(e.kind)
-              ? 'dun'
-              : e.kind === 'monster'
-                ? 'mon'
-                : 'etc';
-/* 每條線目前的進度 */
-function nearProg() {
+/* ================= 委託面板（0.3.15，原本的「附近」） ================= */
+/* 地圖上的限時事件、狩獵、亡靈、魔霧都直接看得到，面板只留今日委託、所在區域的機制進度與刷新倒數 */
+/* 所在區域的機制進度：[名稱, 數值文字, 進度 0～1 或 null, 顏色, 說明] */
+function questProg() {
   const out = [],
     [px, py] = toM(S.lat, S.lng),
     uz = udZoneAt(px, py),
-    hu = S.hunt || {};
+    hu = S.hunt || {},
+    mz = mistAt(px, py),
+    ob = [...ENT.values()]
+      .filter(e => e.kind === 'obelisk')
+      .sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py))[0],
+    fl0 = footLv(px, py);
   if (hu.on || hu.blood)
-    out.push(`<span style="color:#ff8a9a">追蹤之血 ${hu.blood || 0}・結晶 ${S.cur.dcrys || 0}</span>`);
-  if (uz) out.push(`<span style="color:#8fe0a0">亡靈區 ${udProg(uz.id)}%</span>`);
-  const mz = mistAt(px, py);
-  if (mz) out.push(`<span style="color:#d8b8ff">魔霧 ${ROMAN[mz.tier]} ${mistProg(mz.id)}%</span>`);
-  const ob = [...ENT.values()]
-    .filter(e => e.kind === 'obelisk')
-    .sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py))[0];
-  if (ob) out.push(`<span style="color:#ff8a9a">侵蝕柱 ${(S.obel && S.obel[ob.id]) || 0}/${OB_NEED}</span>`);
-  const fl0 = footLv(px, py);
-  if (fl0) out.push(`<span style="color:#ffd877">足跡 Lv${fl0}</span>`);
-  return out.length ? `<div class="nprog">${out.join('')}</div>` : '';
+    out.push([
+      '追蹤之血',
+      `${hu.blood || 0}/${BLOOD_MAX}`,
+      (hu.blood || 0) / BLOOD_MAX,
+      '#ff8a9a',
+      `惡魔結晶 ${S.cur.dcrys || 0}`
+    ]);
+  if (uz) out.push(['亡靈區', `${udProg(uz.id)}%`, udProg(uz.id) / 100, '#8fe0a0', '滿了去亡靈祭壇挑戰軍團長']);
+  if (mz)
+    out.push([
+      `魔霧 ${ROMAN[mz.tier]}`,
+      `${mistProg(mz.id)}%`,
+      mistProg(mz.id) / 100,
+      '#d8b8ff',
+      '打到 100% 碎裂得到魔霧碎片'
+    ]);
+  if (ob)
+    out.push([
+      '侵蝕柱',
+      `${(S.obel && S.obel[ob.id]) || 0}/${OB_NEED}`,
+      ((S.obel && S.obel[ob.id]) || 0) / OB_NEED,
+      '#ff8a9a',
+      '最近的一根，充滿可以召喚看門人'
+    ]);
+  if (fl0) out.push(['足跡', `Lv${fl0}`, null, '#ffd877', '常走的路，怪物比較多、比較容易出稀有']);
+  out.push(['T 級', `T${tierNow()}`, null, '#ffd9a0', `地圖怪物 Lv${tierRange().join('～')}`]);
+  return out;
 }
-function nearCard(e) {
-  return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="openEnt" data-id="${e.id}"><div class="ent"><canvas data-ent="${e.id}" width="18" height="18" style="width:44px;height:44px"></canvas><div style="flex:1;min-width:0"><b style="font-weight:500;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(e.kind === 'monster' ? `${e.name} Lv${e.lv}` : e.kind === 'town' && !S.found[e.id] ? '未探索的城鎮' : e.name)}</b><small class="sub" style="display:block">${e.bounty ? '懸賞目標' : KIND[e.kind]}・${dirName(S.lat, S.lng, e.lat, e.lng)}方 ${fmtD(e.d)}${inRange(ENT.get(e.id)) ? '・<span style="color:var(--good)">可互動</span>' : ''}</small></div></div></button>`;
-}
-function nearHTML() {
-  const g = SEL.near || 'all',
-    all = [...ENT.values()]
-      .filter(e => e.kind !== 'base' && visible(e) && !isDone(e))
-      .map(e => ({ ...e, d: dist(S.lat, S.lng, e.lat, e.lng), g: ngroup(e) }))
-      .sort((a, b) => a.d - b.d),
-    cnt = {};
-  all.forEach(e => (cnt[e.g] = (cnt[e.g] || 0) + 1));
-  const tabs = `<div class="seg bagtabs">${NGROUP.filter(([k]) => k === 'all' || cnt[k])
-    .map(
-      ([k, n]) =>
-        `<button data-act="nearTab" data-k="${k}" aria-pressed="${g === k}">${n}${k === 'all' ? '' : ` <b>${cnt[k]}</b>`}</button>`
-    )
-    .join('')}</div>`;
-  let body;
-  if (g === 'all')
-    body = NGROUP.slice(1)
-      .filter(([k]) => cnt[k])
+function questHTML() {
+  const pr = questProg(),
+    zm = zoneAt(S.lat, S.lng).m;
+  return `${dailyHTML()}
+    <h3>所在區域</h3><div class="card qzone"><div class="rowx"><div class="t"><b>${esc(zm.n)}</b><small>${esc(zm.d)}</small></div></div>${pr
       .map(
-        ([k, n]) =>
-          `<h3>${n}${cnt[k] > 5 ? ` <button class="btn sm" style="float:right" data-act="nearTab" data-k="${k}">全部 ${cnt[k]}</button>` : ''}</h3>${all
-            .filter(e => e.g === k)
-            .slice(0, 5)
-            .map(nearCard)
-            .join('')}`
+        ([n, v, r, c, d]) =>
+          `<div class="qp"><span style="color:${c}">${n}</span><b>${v}</b>${r == null ? '' : `<i><i style="width:${Math.round(Math.min(1, r) * 100)}%;background:${c}"></i></i>`}<small>${d}</small></div>`
       )
-      .join('');
-  else
-    body = all
-      .filter(e => e.g === g)
-      .slice(0, 40)
-      .map(nearCard)
-      .join('');
-  return `${dailyHTML()}${nearProg()}${tabs}<p class="sub">怪物 ${mmss(REFRESH - (now() % REFRESH))} 後刷新，地城、寶箱、石碑 ${mmss(REFRESH_H - (now() % REFRESH_H))} 後刷新。</p>${body || '<p class="sub">附近沒有東西，打開狩獵模式走一走，或用惡魔結晶召喚事件。</p>'}`;
+      .join('')}</div>
+    <h3>刷新</h3><div class="card qref"><div><span>怪物、限時事件</span><b>${mmss(REFRESH - (now() % REFRESH))}</b></div><div><span>地城、寶箱、石碑、商店、廟宇</span><b>${mmss(REFRESH_H - (now() % REFRESH_H))}</b></div></div>
+    <p class="sub">限時事件、狩獵、亡靈區、魔霧、侵蝕柱都直接畫在地圖上，點地圖上的東西就能看說明。</p>`;
 }
 
 /* ================= 足跡 ================= */
@@ -226,11 +196,3 @@ function drawFoot(c, t) {
   }
   c.restore();
 }
-
-Object.assign(A, {
-  nearTab: d => {
-    SEL.near = d.k;
-    renderSheet();
-    $('sbody').scrollTop = 0;
-  }
-});

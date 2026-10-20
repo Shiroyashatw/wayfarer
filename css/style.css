@@ -59,7 +59,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .srow{display:flex;gap:8px;align-items:center}.srow .irow{flex:1;min-width:0}
 .shead h2{margin:0;font-family:var(--f-pix);font-weight:400;font-size:19px;color:var(--gold);letter-spacing:.06em}
 .x{background:var(--btn);border:0;border-radius:10px;width:40px;height:40px;font-size:18px}
-.sbody{overflow:auto;padding:0 16px 18px;padding-left:max(16px,var(--sal));padding-right:max(16px,var(--sar));display:grid;gap:10px;align-content:start;-webkit-overflow-scrolling:touch}
+.sbody{overflow:auto;padding:0 16px 18px;padding-left:max(16px,var(--sal));padding-right:max(16px,var(--sar));display:grid;gap:10px;align-content:start;grid-auto-rows:max-content;-webkit-overflow-scrolling:touch}
 h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-weight:500}
 .sub{color:var(--dim);font-size:13px;margin:0;line-height:1.5}
 .card{background:#00000038;border:1px solid #0000004d;border-radius:12px;padding:12px;display:grid;gap:8px}
@@ -441,8 +441,15 @@ h3{margin:4px 0 0;font-size:12px;letter-spacing:.14em;color:var(--gild);font-wei
 .qrow b{font-family:var(--f-pix);font-weight:400;color:var(--gold);font-size:12px;white-space:nowrap}
 .qrow.ok{color:var(--good)}
 .qrow.ok i{background:var(--good)}
-.nprog{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;font-size:12px}
-.nprog span{padding:3px 8px;border-radius:10px;background:#0004}
+.qzone{display:grid;gap:8px}
+.qp{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 8px;padding:6px 8px;border-radius:8px;background:#0003;font-size:13px}
+.qp b{font-family:var(--f-pix);font-weight:400;font-size:13px}
+.qp>i{grid-column:1/-1;height:3px;border-radius:2px;background:#fff1;overflow:hidden;display:block}
+.qp>i>i{display:block;height:100%}
+.qp small{grid-column:1/-1;color:var(--dim);font-size:11px}
+.qref{display:grid;gap:6px}
+.qref div{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.qref b{font-family:var(--f-pix);font-weight:400;color:var(--gold)}
 .jpick{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .jpick .btn{text-align:left;font-size:12px;min-height:36px}
 
