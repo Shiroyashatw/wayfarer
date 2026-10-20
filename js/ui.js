@@ -1397,6 +1397,18 @@ const A = {
   },
 
   bitem: d => bItem(d.k),
+  /* 0.3.27 戰鬥中的狀態與紀錄面板 */
+  binfo: () => {
+    const el = $('binfo');
+    el.hidden = !el.hidden;
+    sfx('tap');
+    if (!el.hidden) binfoRender();
+  },
+  binfoTab: d => {
+    BINFO = d.k;
+    sfx('tap');
+    binfoRender();
+  },
   flee: () => flee(),
   bsub: d => {
     if (!B || B.busy) return;

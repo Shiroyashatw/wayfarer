@@ -404,12 +404,148 @@ function renderOrder(list) {
     )
     .join('');
 }
-function bmsg(t) {
+function bmsg(t, lg) {
+  blog(lg || t, 'msg');
   const el = $('bmsg');
   el.textContent = t;
   el.style.opacity = 1;
   clearTimeout(bmsg.t);
   bmsg.t = setTimeout(() => (el.style.opacity = 0), 1300);
+}
+/* 0.3.27 戰鬥紀錄：訊息、傷害、狀態各記一行（最多 80 行），右上角「狀態」面板的「紀錄」分頁看 */
+let BLOG = [],
+  BINFO = 'st';
+function blog(s, c) {
+  if (!s) return;
+  BLOG.push({ s, c });
+  if (BLOG.length > 80) BLOG.shift();
+  if (!$('binfo').hidden && BINFO === 'log') binfoRender();
+}
+/* 把一個結算事件寫進紀錄；nm(uid) 回傳隊員名字（單人是「你」） */
+function logEv(f, es, nm) {
+  const en = f.i != null && es[f.i] ? es[f.i].name : '';
+  if (f.t === 'hit')
+    blog(`${en} 受到 ${f.d}${f.crit ? '（暴擊）' : ''}${f.dot ? '（持續傷害）' : f.pet ? '（召喚物）' : ''}`, 'hit');
+  else if (f.t === 'kill') blog(`${en} 倒下了`, 'kill');
+  else if (f.t === 'st') blog(`${f.i != null ? en : nm(f.who)}：${f.s}`, 'st');
+  else if (f.t === 'dmg') blog(`${nm(f.who)}受到 ${f.d} 傷害`, 'dmg');
+  else if (f.t === 'heal') blog(`${nm(f.who)}回復 ${f.v} 生命`, 'heal');
+  else if (f.t === 'dodge') blog(`${nm(f.who)}閃過了攻擊`, 'st');
+}
+/* 0.3.27 狀態面板：自己與每隻敵人身上的增益、異常、詞綴與特色，都寫成文字 */
+const BUFFK = {
+    more: v => `傷害 +${v}%`,
+    dodge: v => `閃避 +${v}%`,
+    arm: v => `護甲 +${v}%`,
+    dmgRed: v => `受到傷害 -${v}%`,
+    crit: v => `暴擊率 +${v}%`,
+    spd: v => `速度 +${v}%`,
+    taunt: v => `嘲諷 +${v}%`,
+    hot: v => `每回合回復 ${v}% 生命`,
+    shield: v => `護盾 ${Math.round(v * 100)}% 生命`
+  },
+  AILD = {
+    burn: '每回合受到火焰傷害',
+    frozen: '跳過行動',
+    shock: '受到的傷害提高',
+    poison: '每回合受到傷害（層數越多越痛）',
+    bleed: '每回合受到傷害（層數越多越痛）',
+    stun: '跳過行動',
+    curse: '受到的傷害提高、攻擊降低',
+    mark: '受到的傷害提高',
+    slow: '速度變慢',
+    vul: '受到的傷害提高',
+    dmark: '受到的傷害提高，打倒時有額外效果',
+    guard: '受到的傷害減半',
+    stacks: '技能的疊層',
+    shield: '先扣護盾再扣生命',
+    chgN: '蓄力中，放出時傷害提高',
+    doom: '生死簿：歸零時受到大量傷害',
+    empN: '接下來的技能傷害提高',
+    comboN: '連續使用同一招，傷害越來越高'
+  };
+function binfoAil(o, keys) {
+  return keys
+    .filter(([k]) => o && o[k] > 0)
+    .map(([k, ic, n]) => {
+      const v = AIL_NUM[k] ? o[AIL_NUM[k]] + ' 層' : k === 'shield' ? o[k] : o[k] + (k.endsWith('N') ? ' 次' : ' 回合');
+      return `<li><img src="${iconURL(ic)}" alt=""><b>${n}</b> ${v}<small>${AILD[k] || ''}</small></li>`;
+    })
+    .join('');
+}
+function binfoBuffs(o) {
+  return ((o && o.buffs) || [])
+    .map(b => {
+      const fx = Object.keys(BUFFK)
+        .filter(k => b[k])
+        .map(k => BUFFK[k](b[k]))
+        .join('、');
+      return `<li><img src="${iconURL(b.cry ? 'horn' : 'star')}" alt=""><b>${esc(b.n || b.id || '增益')}</b> ${b.turns >= 99 ? '常駐' : b.turns + ' 回合'}<small>${fx}</small></li>`;
+    })
+    .join('');
+}
+function binfoTrait(e) {
+  if (e.siege) {
+    const f = (SINF[e.siege] || []).find(f => f.t === e.trait);
+    if (f) return f.d;
+  }
+  if (e.xiong && XIONGI[e.xiong]) return XIONGI[e.xiong].d;
+  if (e.zhulong) return '白晝燭火灼燒全體；每 3 次行動睜眼閉眼交替，黑夜回血、看不到行動順序、你的攻擊 30% 打空';
+  if (e.yama) return '生死簿：替你記下回合數，歸零時受到大量傷害；判官筆';
+  return '';
+}
+function binfoRender() {
+  const el = $('binfo'),
+    mp = !B && typeof MB !== 'undefined' && MB,
+    me = B ? B.me : mp ? MB.ps.find(p => p.uid === CLOUD.uid) : null,
+    es = B ? B.es : mp ? MB.es : [];
+  let body = '';
+  if (BINFO === 'log')
+    body = BLOG.length
+      ? `<ol class="blog">${BLOG.slice()
+          .reverse()
+          .map(l => `<li class="l-${l.c}">${esc(l.s)}</li>`)
+          .join('')}</ol>`
+      : '<p class="sub">還沒有紀錄</p>';
+  else {
+    const st = stats(),
+      au = auraOn(st.spirit)
+        .map(q => esc(q.name))
+        .join('、'),
+      mine =
+        binfoAil(me, AIL_H) +
+        binfoBuffs(me) +
+        ((me && me.units) || [])
+          .map(
+            u =>
+              `<li><img src="${iconURL(u.kind === 'totem' ? 'rune' : 'xbow')}" alt=""><b>${esc(u.n)}</b> ${u.kind === 'totem' ? `生命 ${Math.ceil(u.hp)}` : u.turns + ' 回合'}</li>`
+          )
+          .join('') +
+        (me && me.traps && me.traps.length
+          ? `<li><img src="${iconURL('eye')}" alt=""><b>陷阱</b> ×${me.traps.length}<small>敵人行動時觸發</small></li>`
+          : '') +
+        (me && me.mines && me.mines.length
+          ? `<li><img src="${iconURL('flame')}" alt=""><b>地雷</b> ×${me.mines.length}<small>按「引爆地雷」一次炸掉</small></li>`
+          : '') +
+        (me && me.pdot
+          ? `<li><img src="${iconURL('leaf')}" alt=""><b>中毒／流血</b> ${me.pdot.turns} 回合<small>每回合扣血</small></li>`
+          : '');
+    body =
+      `<h4>你</h4><ul class="bil">${mine || '<li class="none">沒有增益或異常</li>'}</ul>${au ? `<p class="bau">光環：${au}</p>` : ''}` +
+      es
+        .filter(e => e.hp > 0)
+        .map(e => {
+          const mods = (e.mods || [])
+              .filter(id => EMODI[id])
+              .map(id => `<li><b>${EMODI[id].n}</b><small>${EMODI[id].d}</small></li>`)
+              .join(''),
+            tr = binfoTrait(e),
+            ail = binfoAil(e, AIL_E) + binfoBuffs(e);
+          return `<h4 style="color:${RCOL[e.rar || 0]}">${esc(e.name)} <small>Lv${e.lv}・生命 ${Math.ceil(e.hp).toLocaleString()} / ${e.maxhp.toLocaleString()}</small></h4><ul class="bil">${tr ? `<li><b>特色</b><small>${esc(tr)}</small></li>` : ''}${mods}${ail || (mods || tr ? '' : '<li class="none">沒有詞綴或異常</li>')}</ul>`;
+        })
+        .join('');
+  }
+  el.innerHTML = `<div class="binfo-tabs"><button class="${BINFO === 'st' ? 'on' : ''}" data-act="binfoTab" data-k="st">狀態</button><button class="${BINFO === 'log' ? 'on' : ''}" data-act="binfoTab" data-k="log">紀錄</button><button class="x" data-act="binfo" aria-label="關閉">✕</button></div><div class="binfo-body">${body}</div>`;
 }
 function pop(text, x, y, col) {
   BFX.pops.push({ text, x, y, col, t: performance.now() });
@@ -1540,6 +1676,8 @@ function startBattle(e, opts = {}) {
     Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0, opts.packN || 0, opts.packSeed) : [])]
   ).map(eInit);
   B = { ...opts, e: es[0], es, ti: 0, me: heroMe(), busy: true, sub: null, act: -1, av: {}, turns: 0 };
+  BLOG = [];
+  $('binfo').hidden = true;
   /* 0.3.25 在被攻佔的城鎮裡：套用城鎮特效 */
   {
     const sm = siegeApply(B);
@@ -1672,30 +1810,23 @@ function renderBHud() {
           S.potions && !noPot ? '' : 'disabled'
         );
   };
-  /* 0.3.1.9：四個技能欄都直接放在面板上（空的欄位放藥水）；普攻固定在右上角最好點，物品與逃跑擠在右下一格 */
-  /* 0.3.22：技能欄 6 格，3 欄排（空的前兩格放藥水）；有地雷時多一顆「引爆地雷」 */
+  /* 0.3.27：左邊兩欄 6 格都是技能；右邊一欄是攻擊、生命／魔力藥水、逃跑（有地雷時逃跑上面多一顆「引爆地雷」） */
   const six = [0, 1, 2, 3, 4, 5].map(i =>
-    sks[i]
-      ? slot('s' + i)
-      : i === 1
-        ? cb('魔力藥水', 'ice', '×' + S.ethers, 'bitem', 'data-k="ethers"', S.ethers ? '' : 'disabled')
-        : i === 0
-          ? slot(null)
-          : `<button class="cb empty" data-act="bsub" data-k="items" ${dis}><img src="${iconURL('book')}" alt="">空的技能欄</button>`
-  );
-  const mn = (B.me.mines || []).length,
-    x = mn
-      ? cb('引爆地雷', 'flame', `×${mn}`, 'skill', 'data-k="mines"', '', 'mine')
-      : !sks[0]
-        ? `<button class="cb empty" data-act="bsub" data-k="items" ${dis}><img src="${iconURL('book')}" alt="">空的技能欄</button>`
-        : cb(
-            '生命藥水',
-            'heart',
-            noPot ? '無法使用' : '×' + S.potions,
-            'bitem',
-            'data-k="potions"',
-            S.potions && !noPot ? '' : 'disabled'
-          );
+      sks[i]
+        ? slot('s' + i)
+        : `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
+    ),
+    pot = cb(
+      '生命藥水',
+      'heart',
+      noPot ? '無法使用' : '×' + S.potions,
+      'bitem',
+      'data-k="potions"',
+      S.potions && !noPot ? '' : 'disabled'
+    ),
+    eth = cb('魔力藥水', 'ice', '×' + S.ethers, 'bitem', 'data-k="ethers"', S.ethers ? '' : 'disabled'),
+    run = cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D ? 'disabled' : '', 'run'),
+    mn = (B.me.mines || []).length;
   $('bcmd').classList.add('six');
   let html =
     six[0] +
@@ -1703,15 +1834,18 @@ function renderBHud() {
     cb('攻擊', 'axe', '', 'skill', 'data-k="attack"', '', 'atk') +
     six[2] +
     six[3] +
+    `<div class="brow2">${pot}${eth}</div>` +
     six[4] +
     six[5] +
-    x +
-    `<div class="brow2">${cb('物品', 'bag', '', 'bsub', 'data-k="items"', '')}${cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D ? 'disabled' : '', 'run')}</div>`;
+    (mn
+      ? `<div class="brow2">${cb('引爆地雷', 'flame', `×${mn}`, 'skill', 'data-k="mines"', '', 'mine')}${run}</div>`
+      : run);
   if (B.sub === 'skills')
     html += `<div class="bsub">${sk.length ? sk.map(slot).join('') : '<p class="sub">技能欄是空的，到「角色 → 技能」裝上技能石</p>'}${cb('返回', 'run', '', 'bsub', 'data-k=""', '')}</div>`;
   if (B.sub === 'items')
     html += `<div class="bsub">${cb('生命藥水', 'heart', noPot ? '昇華代價：無法使用' : '×' + S.potions + '・恢復 40%', 'bitem', 'data-k="potions"', S.potions && !noPot ? '' : 'disabled')}${cb('魔力藥水', 'ice', '×' + S.ethers + '・恢復 50%', 'bitem', 'data-k="ethers"', S.ethers ? '' : 'disabled')}${cb('返回', 'run', '', 'bsub', 'data-k=""', '')}</div>`;
   $('bcmd').innerHTML = html;
+  if (!$('binfo').hidden) binfoRender();
 }
 /* 把結算事件排進畫面：跳數字、特效、動畫；回傳這段要播多久 */
 function playEv(ev) {
@@ -1722,6 +1856,7 @@ function playEv(ev) {
     later(f.at || 0, () => {
       const es = B.es,
         q = f.i != null ? epos(f.i, es, B.boss) : null;
+      logEv(f, es, () => '你');
       if (f.t === 'hit') {
         const fe = BFX.en[f.i] || (BFX.en[f.i] = {});
         fe.flash = performance.now();
@@ -1805,7 +1940,7 @@ function useSkill(k) {
   B.sub = null;
   if (!charging(B.me, sk)) payCost(S, stats(), sk);
   sfx('select');
-  bmsg(sk.name);
+  bmsg(sk.name, `你使用 ${sk.name}`);
   B.me.st = stats();
   B.me.lv = S.lv;
   const ev = actResolve(B.me, B.me.st, sk, B.es, B.ti, [B.me], {
@@ -1846,7 +1981,7 @@ function bItem(k) {
     pop('+' + v + ' MP', p.hx, p.hy - 90, '#6ab8ff');
   }
   BFX.fx.push({ type: 'heal', t: performance.now(), dur: 700 });
-  bmsg(k === 'potions' ? '生命藥水' : '魔力藥水');
+  bmsg(k === 'potions' ? '生命藥水' : '魔力藥水', `你喝了${k === 'potions' ? '生命藥水' : '魔力藥水'}`);
   /* 鍊金術士：喝藥水時順便丟藥瓶炸所有敵人 */
   let t = 0;
   if (st.potBomb) {
