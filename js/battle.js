@@ -340,6 +340,9 @@ const heroAilHTML = o =>
   (o && o.traps && o.traps.length
     ? `<span class="ail ail-ice" title="陷阱"><img src="${iconURL('eye')}" alt="陷阱"><b>${o.traps.length}</b></span>`
     : '') +
+  (o && o.pdot
+    ? `<span class="ail ail-leaf" title="中毒"><img src="${iconURL('leaf')}" alt="中毒"><b>${o.pdot.turns}</b></span>`
+    : '') +
   (o && o.mines && o.mines.length
     ? `<span class="ail ail-flame" title="地雷"><img src="${iconURL('flame')}" alt="地雷"><b>${o.mines.length}</b></span>`
     : '') +
@@ -463,11 +466,13 @@ function packBases(lead, n, seed) {
     out = [];
   for (let k = 0; k < Math.min(4, n); k++) {
     const lv = Math.max(1, (lead.lv || S.lv) - (r() < 0.5 ? 1 : 0)),
-      b = lead.ud
-        ? UNDEAD[fl(r() * UNDEAD.length)]
-        : lead.mist && r() < 0.5
-          ? MISTMON[fl(r() * MISTMON.length)]
-          : pickMon(fl(r() * 1e6), lv);
+      b = lead.siege
+        ? followerBase(lead.siege, SINF[lead.siege][fl(r() * 5)])
+        : lead.ud
+          ? UNDEAD[fl(r() * UNDEAD.length)]
+          : lead.mist && r() < 0.5
+            ? MISTMON[fl(r() * MISTMON.length)]
+            : pickMon(fl(r() * 1e6), lv);
     out.push({ b, lv });
   }
   return out;
@@ -484,6 +489,7 @@ function packOf(lead, extra = 0, n = 0, seed) {
     /* 小怪的等級已經跟著帶頭的（含獵殺加的等級），這裡只加生命與攻擊 */
     if (lead.hlv) huntBuff(m, true);
     for (const k2 of ['ud', 'mist', 'uw']) if (lead[k2]) m[k2] = lead[k2];
+    if (lead.siege && b.fol) followerize(m, lead.siege, b.fol);
     if (lead.mist) m.name = (lead.ud ? '霧中亡靈・' : '魔霧・') + m.name;
     out.push(m);
   }
@@ -743,6 +749,8 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     S2.crit = 100;
     me.dc = 0;
   }
+  /* 模仿者看你上一招的元素 */
+  me.lastEl = sk.kind === 'spell' ? sk.el : sk.addEl ? sk.addEl[0] : 'phys';
   /* 連續使用同一招才疊層，換招就歸零 */
   me.comboN = me.combo === key ? Math.min(5, (me.comboN || 0) + 1) : 0;
   me.combo = key;
@@ -865,6 +873,13 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     }
     const r = heroDmg(S3, pk, e, e.shock > 0, me);
     let d = r.d;
+    /* 0.3.25 信徒與被攻佔城鎮的特效 */
+    if (e.trait || e.sinAura || me.charmed) {
+      const fh = followerHit(e, es, me, d, i, t);
+      ev.push(...fh.ev);
+      if (fh.miss) return;
+      d = fh.d;
+    }
     /* 引爆：把目標身上剩下的燃燒／中毒／流血一次結算 */
     if (sk.det && e[sk.det] > 0) {
       const per = sk.det === 'burn' ? e.burnDmg : sk.det === 'poison' ? poisonTick(e, e) : bleedTick(e),
@@ -928,6 +943,12 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       }
     } else {
       ev.push({ t: 'kill', i, at: t + 100 });
+      /* 自爆怨火：死亡時爆炸，傷害打倒牠的人 */
+      if (e.trait === 'boom') {
+        const bx = Math.max(1, Math.round(e.atk * 1.5));
+        me.hp = Math.max(1, me.hp - bx);
+        ev.push({ t: 'dmg', who, d: bx, col: '#ffb15a', at: t + 160 });
+      }
       /* 死亡印記：目標死亡時回 10% 生命與魔力 */
       if (e.dmark > 0) {
         const hv = Math.round(st.maxhp * 0.1);
@@ -1248,6 +1269,18 @@ function enemyResolve(es, i, party, ext = {}) {
     }
   }
   if (e.sin && ext.sinTurn) ext.sinTurn(e, i);
+  /* 0.3.25 七罪的信徒 */
+  let fmul = 1;
+  if (e.trait) {
+    const r = followerTurn(e, i, es, party, at);
+    ev.push(...r.ev);
+    at = r.at;
+    fmul = r.mul;
+    if (r.done || e.hp <= 0) {
+      ev.push({ t: 'end', at: at + 200 });
+      return ev;
+    }
+  }
   /* 0.3.24 四凶與燭龍 */
   if (e.xiong || e.zhulong) {
     const r = beastTurn(e, i, party, at);
@@ -1334,7 +1367,9 @@ function enemyResolve(es, i, party, ext = {}) {
       at += 480;
       continue;
     }
-    let atk = e.atk * (strong ? 1.5 : 1) * rnd(0.9, 1.1);
+    let atk = e.atk * (strong ? 1.5 : 1) * rnd(0.9, 1.1) * fmul;
+    /* 金冠貴族：對生命比例比自己低的目標 ×1.5 */
+    if (e.trait === 'bully' && p.hp / st.maxhp < e.hp / e.maxhp) atk *= 1.5;
     if (e.mods && e.mods.includes('fury') && e.hp < e.maxhp / 2) atk *= 1.5;
     if (e.curse > 0 && e.curseW) atk *= 1 - e.curseW / 100;
     const pk = { phys: 0, fire: 0, cold: 0, light: 0 };
@@ -1364,6 +1399,7 @@ function enemyResolve(es, i, party, ext = {}) {
       ev.push({ t: 'st', who: p.uid, s: '生死簿應驗', col: '#c86aff', at });
     }
     const toMp = takeDmg(p, st, d);
+    if (e.trait) ev.push(...followerAfter(e, p, d, ext, at + 80));
     /* 蓄力中被打：倍數 ×0.75（最低 1） */
     if (p.chg && d > 0) {
       p.chg.mul = Math.max(1, Math.round(p.chg.mul * 0.75 * 100) / 100);
@@ -1437,6 +1473,11 @@ function roundEnd(p) {
   if (p.alive === false || p.hp <= 0) return;
   if (st.regen) p.hp = Math.min(st.maxhp, p.hp + st.regen);
   if (st.manaRegen) p.mp = Math.min(st.maxmp, p.mp + st.manaRegen);
+  /* 0.3.25 信徒造成的中毒、流血（每回合扣血） */
+  if (p.pdot && p.pdot.turns > 0) {
+    p.hp = Math.max(1, p.hp - p.pdot.n);
+    if (!--p.pdot.turns) p.pdot = null;
+  }
   /* 0.3.21 隊友光環的回血（每回合 hot% 生命） */
   if (bsum(p, 'hot')) p.hp = Math.min(st.maxhp, p.hp + Math.round((st.maxhp * bsum(p, 'hot')) / 100));
   if (st.hpDrain) p.hp = Math.max(1, p.hp - Math.round((st.maxhp * st.hpDrain) / 100));
@@ -1499,6 +1540,11 @@ function startBattle(e, opts = {}) {
     Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0, opts.packN || 0, opts.packSeed) : [])]
   ).map(eInit);
   B = { ...opts, e: es[0], es, ti: 0, me: heroMe(), busy: true, sub: null, act: -1, av: {}, turns: 0 };
+  /* 0.3.25 在被攻佔的城鎮裡：套用城鎮特效 */
+  {
+    const sm = siegeApply(B);
+    if (sm) setTimeout(() => toast(sm), 400);
+  }
   battleOpen(B.me);
   simTarget = null;
   BFX.pops = [];
@@ -1789,7 +1835,8 @@ function bItem(k) {
     hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1) * (1 + (st.potPct || 0) / 100);
   S[k]--;
   if (k === 'potions') {
-    const v = Math.round(st.maxhp * 0.4 * hm);
+    /* 0.3.25 暴食攻佔的城鎮：藥水回復量減半 */
+    const v = Math.round(st.maxhp * 0.4 * hm * (B.siegeK === 'gluttony' ? 0.5 : 1));
     S.hp = Math.min(st.maxhp, S.hp + v);
     pop('+' + v, p.hx, p.hy - 90, '#7bd36b');
     if (st.legGlut) S.mp = Math.min(st.maxmp, S.mp + v);
@@ -1916,6 +1963,7 @@ function dunSpec(t) {
     em: [...new Set([...mods.filter(m => m.em).map(m => m.em), ...(t.umods || [])])],
     norevive: !!dt.norevive,
     sin: t.sin,
+    siege: t.siege || 0,
     xk: t.xk || 0,
     noregen: has('noregen'),
     eleweak: has('eleweak'),
@@ -1961,7 +2009,15 @@ function dunEnemy(D, room, extra = 0) {
     group = (lead, n) => {
       const out = [lead];
       for (let k = 0; k < Math.min(4, n + extra); k++) {
-        const m = mob(k + 1, Math.max(1, D.lv - (k % 2)));
+        /* 0.3.25 攻佔城鎮的七罪挑戰：小怪是那個罪的信徒 */
+        const m = sp.siege
+          ? makeFollower(
+              sp.sin,
+              SINF[sp.sin][h(r, k, 13) % 5],
+              Math.max(1, D.lv - (k % 2)),
+              h(r, k, 3) % 100 < 30 ? 1 : 0
+            )
+          : mob(k + 1, Math.max(1, D.lv - (k % 2)));
         /* 同一群的其他怪稍微弱一點，避免一層的總傷害爆掉 */
         m.maxhp = m.hp = Math.round(m.maxhp * 0.7);
         m.atk = Math.round(m.atk * 0.7);
@@ -1978,6 +2034,17 @@ function dunEnemy(D, room, extra = 0) {
           ? makeSinLord(SINS[room].k, D.lv)
           : makeSinKing(D.lv + 2)
         : makeSinLord(sp.sin, D.lv + 1);
+    /* 0.3.25 攻佔城鎮的七罪之王：終局難度，還帶著兩個信徒 */
+    if (sp.siege) {
+      e.maxhp = e.hp = Math.round(e.maxhp * 2.2);
+      e.atk = Math.round(e.atk * 1.3);
+      const fs = SINF[sp.sin],
+        es = [
+          e,
+          ...[0, 1].map(k => makeFollower(sp.sin, fs[h(r, k, 9) % fs.length], D.lv, 1, rollMods(h(r, k, 11), 1)))
+        ];
+      return { e, es, bg: 'cave', boss: true };
+    }
     const es = group(e, 0);
     return { e: es[0], es, bg: 'cave', boss: true };
   }
@@ -2035,7 +2102,7 @@ function dunEnemy(D, room, extra = 0) {
     bg = 'cave';
     n = hell ? 2 : 1 + (sp.dt === 'party' ? 1 : 0);
   } else {
-    e = mob(0);
+    e = sp.siege ? makeFollower(sp.sin, SINF[sp.sin][r % 5], D.lv, r % 3 === 0 ? 2 : 1, rollMods(r, 1)) : mob(0);
     bg = D.lm ? 'forest' : 'cave';
     n = (sp.dt === 'hell' ? 2 : 1) + (r % 2) + (sp.elite ? 1 : 0);
   }
@@ -2291,6 +2358,7 @@ function winBattle() {
   if (B.commander) bonus += commanderWin(B.commander);
   if (B.king) bonus += kingWin();
   if (B.xiong) bonus += xiongWin(B.xiong);
+  bonus += siegeWin(es);
   if (B.zhulong) bonus += zhulongWin();
   if (B.watcher) bonus += watcherWin(B.watcher);
   if (B.hunt) bonus += huntWin(B);

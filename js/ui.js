@@ -830,16 +830,11 @@ function openEnt(id) {
     act = z
       ? `${p >= 100 ? `<button class="btn pri" data-act="xiongGo" data-id="${id}" ${inR ? '' : 'disabled'}>挑戰${x.n}</button>` : ''}${xsealAll() ? `<button class="btn pri" data-act="zhulongGo" data-id="${id}" ${inR ? '' : 'disabled'}>用四種凶獸之印召喚燭龍</button>` : ''}`
       : '';
-  } else if (e.kind === 'sinst') {
-    const x = Math.min(SIN_EXTRA, SEL.sinX || 0),
-      need = SIN_COST + x,
-      done = isDone(e);
-    desc = done ? '這座雕像已經挑戰過了，每 2 小時會換一輪。' : sinHTML(e);
-    act = done
-      ? ''
-      : `<div class="btns"><button class="btn sm" data-act="sinX" data-id="${id}" data-v="-1" ${x > 0 ? '' : 'disabled'}>－ 少放 1 片</button><button class="btn sm" data-act="sinX" data-id="${id}" data-v="1" ${x < SIN_EXTRA ? '' : 'disabled'}>＋ 多放 1 片</button></div><button class="btn pri" data-act="sinGo" data-id="${id}" ${inR && (S.cur.mfrag || 0) >= need ? '' : 'disabled'}>放入 ${need} 片魔霧碎片挑戰</button>`;
   } else if (e.kind === 'zodiac') {
     ({ desc, act } = zodEntHTML(e, inR));
+  } else if (e.kind === 'town' && siegeTownHTML(e, inR)) {
+    /* 0.3.25 被七罪攻佔的城鎮：服務都不能用，只能解放 */
+    ({ desc, act } = siegeTownHTML(e, inR));
   } else if (e.kind === 'town') {
     const t = e.t,
       done = S.cleared[t.id] === hepoch(),
@@ -1091,6 +1086,7 @@ const A = {
     /* 狩獵中：獵殺等級加的等級直接用來產生怪物，再加生命與攻擊 */
     const en = makeEnemy(e.base, e.lv + (huntLv() ? huntCfg().lv : 0), e.rar, e.mods);
     if (e.hunt) en.name = e.name;
+    if (e.siege && e.base.fol) followerize(en, e.siege, e.base.fol);
     if (huntLv()) huntBuff(en, true);
     startBattle(en, {
       entId: e.id,

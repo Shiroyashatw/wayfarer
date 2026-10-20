@@ -302,6 +302,12 @@ function migrate(s) {
     s.xseal = s.xseal || {};
     s.v = 27;
   }
+  if (s.v < 28) {
+    // 0.3.25：七罪攻佔城鎮
+    s.siege = s.siege || null;
+    s.siegeCd = s.siegeCd || 0;
+    s.v = 28;
+  }
   return s;
 }
 function start() {
