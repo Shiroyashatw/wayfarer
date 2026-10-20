@@ -221,6 +221,16 @@ function migrate(s) {
     }
     s.v = 21;
   }
+  if (s.v < 22) {
+    // 0.3.17：一小一大改成硬上限（小點、大點各 4 個），0.3.16 點超過的退回重點
+    const ns = (s.asc && s.asc.nodes) || [],
+      sm = ns.filter(id => ASCN[id] && ascSmall(ASCN[id])).length;
+    if (sm > ASC_MAX / 2 || ns.length - sm > ASC_MAX / 2) {
+      if (s.log) s.log.unshift('昇華修正：一小一大最後一定是 4 小 4 大，原本點超過的昇華點數已退回，可以重新點');
+      s.asc.nodes = [];
+    }
+    s.v = 22;
+  }
   return s;
 }
 function start() {

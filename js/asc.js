@@ -1,6 +1,7 @@
 /* 漫步勇者 · 0.3 昇華：城鎮的昇華試煉（Lv20／30／45／60 各 2 點，共 8 點）、昇華職業與分支、分支節點、重選
    0.3.16 每條分支的排法是 ASC_ART 裡自己的一張圖案（24 種，比照 PoE2 的昇華圖：路線短、會分岔）：一般大點是 t1 的 4 個與 t2 的前 2 個，
    「三選一」是一個抉擇大點旁邊掛三個小點、只能點一個，選項是 t2 的第 3 個與 u 的 2 個（原本的終極）；8 點要自己取捨。
+   0.3.17 一小一大：小點（含三選一的小點）、大點（含抉擇）各最多 4 個，點之前先確認剩下的點數補得滿（ascOpen／ascFree）。
    大點的效果：st 直接加到屬性；sup 是輔助效果，依技能標籤套用（'T' 代表分支的標籤）；cost 是代價 */
 'use strict';
 /* 昇華大點用的 8×8 圖示（配色 w 白、k 黑、b 棕、y 金、r 紅、c 青、g 綠） */
@@ -976,6 +977,7 @@ const ASC_ART = {
     P('b5', ['hr', 'b1']);
     L('hr', 'b3');
     P('e', ['sl', 'c']);
+    L('sl', 'b4');
   },
   /* 軍旗：旗桿往外，桿上掛一面飄動的旗（一圈），旗角垂著流蘇；桿底另一邊是抉擇 */
   banner: ({ s, b, ch, L, P }) => {
@@ -1549,6 +1551,7 @@ const ASC_ART = {
     P('e', ['u', 'b3']);
     P('e', ['v', 'b5']);
     P('b4', ['t1', 'b0']);
+    L('t1', 'b3');
     P('b4', ['t2', 'b1']);
     P('b4', ['t3', 'c']);
     P('b4', ['t4', 'b2']);
@@ -1655,28 +1658,40 @@ const ascCostTxt = n => (n.cost ? Object.entries(n.cost).map(([k, v]) => STATN[k
 function ascCan(id) {
   const n = ASCN[id],
     a = ASCD();
-  if (!n || n.kind === 'e' || n.br !== a.br || a.nodes.includes(id) || ascUsed() >= ascPts()) return false;
-  if (n.kind === 'o') return a.nodes.includes(n.hub) && !a.nodes.some(q => ASCN[q] && ASCN[q].hub === n.hub);
-  return ascNear(n) && ascTurn(n.kind === 's' ? 's' : 'b');
+  if (!n || n.br !== a.br || ascUsed() >= ascPts() || !ascOpen(n, a.nodes)) return false;
+  return ascFree(a.br, [...a.nodes, id]);
 }
-/* 旁邊有已點的節點（或入口） */
+/* 小點：一般小點與三選一的三個小點；大點：一般大點與抉擇 */
+const ascSmall = n => n.kind === 's' || n.kind === 'o';
+/* 在 ns 已點的情況下能不能點 n：旁邊有已點的節點（或入口）；三選一的小點要先點抉擇、三個只能點一個；小點、大點各最多 4 個 */
+function ascOpen(n, ns) {
+  if (n.kind === 'e' || ns.includes(n.id)) return false;
+  if (n.kind === 'o') {
+    if (!ns.includes(n.hub) || ns.some(q => ASCN[q] && ASCN[q].hub === n.hub)) return false;
+  } else if (!n.nb.some(q => q === n.br + '_e' || ns.includes(q))) return false;
+  const sm = ns.filter(q => ASCN[q] && ascSmall(ASCN[q])).length;
+  return ascSmall(n) ? sm < ASC_MAX / 2 : ns.length - sm < ASC_MAX / 2;
+}
+/* 一小一大：8 點一定是 4 小 4 大。點了 ns 之後還補得滿 8 點才算能點（不會卡住） */
+const ASCF = new Map();
+function ascFree(br, ns) {
+  if (ns.length >= ASC_MAX) return true;
+  const k = br + ':' + [...ns].sort().join();
+  if (!ASCF.has(k)) {
+    ASCF.set(k, false);
+    ASCF.set(
+      k,
+      Object.values(ASCN).some(m => m.br === br && ascOpen(m, ns) && ascFree(br, [...ns, m.id]))
+    );
+  }
+  return ASCF.get(k);
+}
 const ascNear = n => n.nb.some(q => q === n.br + '_e' || ASCD().nodes.includes(q));
-/* 一小一大：小點跟大點（含抉擇）輪流點；三選一的小點不算。輪到的那種真的沒得點才放行另一種 */
-function ascTurn(want) {
-  const a = ASCD(),
-    k = a.nodes.map(q => ASCN[q] && ASCN[q].kind),
-    sm = k.filter(x => x === 's').length,
-    bg = k.filter(x => x === 'b' || x === 'c').length,
-    turn = sm > bg ? 'b' : 's';
-  if (want === turn) return true;
-  return !Object.values(ASCN).some(
-    m =>
-      m.br === a.br &&
-      !a.nodes.includes(m.id) &&
-      (turn === 's' ? m.kind === 's' : m.kind === 'b' || m.kind === 'c') &&
-      ascNear(m)
-  );
-}
+/* 還能點的小點／大點數 */
+const ascLeft = () => {
+  const sm = ASCD().nodes.filter(q => ASCN[q] && ascSmall(ASCN[q])).length;
+  return { s: ASC_MAX / 2 - sm, b: ASC_MAX / 2 - (ascUsed() - sm) };
+};
 const ascResetCost = () => 300 + S.lv * 60;
 /* 紅點提示：有沒用的昇華點數，或等級已經可以挑戰下一場試煉 */
 const ascAlert = () => ascPts() > ascUsed() || (ascNext() != null && S.lv >= ascNext());
@@ -1917,7 +1932,7 @@ function drawAsc() {
   const pts = ascPts(),
     used = ascUsed();
   $('avPts').innerHTML =
-    `<b>${pts - used}</b> 點可用<small>昇華點數 ${used}/${pts}・共 ${ASC_MAX} 點${ascNext() ? `・下一場試煉 Lv${ascNext()}` : ''}</small>`;
+    `<b>${pts - used}</b> 點可用<small>已點 ${used}/${pts}（小 ${ASC_MAX / 2 - ascLeft().s}/4・大 ${ASC_MAX / 2 - ascLeft().b}/4）${ascNext() ? `・下一場 Lv${ascNext()}` : ''}</small>`;
   $('avCls').innerHTML =
     `<button class="btn sm" data-act="ascCls" data-v="-1">‹</button><b>${c.n}${a.cls === c.k ? '<small>（目前的昇華）</small>' : ''}</b><button class="btn sm" data-act="ascCls" data-v="1">›</button>`;
 }
@@ -1947,7 +1962,7 @@ function renderAscCard() {
     const taken = n.kind === 'o' && a.nodes.some(q => ASCN[q] && ASCN[q].hub === n.hub);
     act = st.on
       ? '<small style="color:var(--good)">已點亮</small>'
-      : `<button class="btn pri" data-act="ascTake" data-id="${n.id}" ${st.can ? '' : 'disabled'}>${st.can ? '點亮（1 點）' : ascUsed() >= pts ? '沒有昇華點數' : taken ? '三選一已經選了別的' : n.kind === 'o' ? '先點旁邊的抉擇' : ascNear(n) ? (n.kind === 's' ? '一小一大：先點一個大點' : '一小一大：先點一個小點') : '還不能點（先點旁邊的節點）'}</button>`;
+      : `<button class="btn pri" data-act="ascTake" data-id="${n.id}" ${st.can ? '' : 'disabled'}>${st.can ? '點亮（1 點）' : ascUsed() >= pts ? '沒有昇華點數' : taken ? '三選一已經選了別的' : n.kind === 'o' ? '先點旁邊的抉擇' : ascNear(n) ? (ascLeft()[ascSmall(n) ? 's' : 'b'] <= 0 ? `${ascSmall(n) ? '小點' : '大點'}已經點滿 4 個` : '這樣點會湊不滿 4 小 4 大') : '還不能點（先點旁邊的節點）'}</button>`;
   } else if (a.cls === c.k)
     act = `<button class="btn" data-act="ascSwitch" data-k="${b.k}">改走${b.n}（重選，${ascResetCost()} 金幣，要在城鎮）</button>`;
   else act = `<small class="sub">目前的昇華是 ${ASCB[a.br].n}，要換成這個職業需要先重選昇華。</small>`;
