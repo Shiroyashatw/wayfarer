@@ -1246,7 +1246,7 @@ Object.assign(SKILLS, {
     r: 4
   },
   vitality: { name: '活力', kind: 'aura', mp: 0, spirit: 15, aura: { regen: 4 }, icon: 'heart', r: 3 },
-  clarity: { name: '清晰', kind: 'aura', mp: 0, spirit: 15, aura: { manaRegen: 3 }, icon: 'mana', r: 3 },
+  clarity: { name: '清晰', kind: 'aura', mp: 0, spirit: 15, aura: { manaRegen: 3 }, icon: 'drop', r: 3 },
   scorch: {
     name: '灼燒光環',
     kind: 'aura',

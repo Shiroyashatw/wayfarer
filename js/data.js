@@ -2656,5 +2656,5 @@ const TREE = (() => {
       n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.28';
+const VER = '0.3.29';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

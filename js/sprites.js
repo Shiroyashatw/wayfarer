@@ -715,8 +715,9 @@ function iconURL(n) {
   return u;
 }
 function paintIcon(c, n) {
+  /* 0.3.29：圖示名稱打錯或還沒定義時改畫星星，不要讓整個面板當掉 */
   const x = c.getContext('2d'),
-    r = ICONS[n];
+    r = ICONS[n] || ICONS.star;
   x.clearRect(0, 0, 8, 8);
   for (let j = 0; j < 8; j++)
     for (let i = 0; i < 8; i++) {
