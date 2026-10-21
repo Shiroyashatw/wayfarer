@@ -254,7 +254,7 @@ def slice_(png, name=None):
     cw, ch = im.width / COLS, im.height / (h // CELL)
     out = ROOT / 'art/icons'
     out.mkdir(parents=True, exist_ok=True)
-    fixed = []
+    fixed, empty = [], []
     for k, f in enumerate(files):
         x, y = (k % COLS) * cw, (k // COLS) * ch
         cell = im.crop((round(x), round(y), round(x + cw), round(y + ch)))
@@ -262,10 +262,16 @@ def slice_(png, name=None):
             cell = cell.resize((CELL, CELL), Image.NEAREST)
         if clear_bg(cell):
             fixed.append(f)
+        # 空白格（PixelLab 沒畫出來）不存，遊戲會繼續用原本的小圖示
+        if sum(1 for a in cell.getchannel('A').getdata() if a > 40) < 15:
+            empty.append(f)
+            continue
         cell.save(out / f'{f}.png')
     print(f'{name}：切成 {len(files)} 張 → art/icons/（原圖 {im.width}×{im.height}）')
     if fixed:
         print('  這幾格有實心背景，已經自動去背（請再看一下）：' + '、'.join(fixed))
+    if empty:
+        print('  這幾格是空白，沒有存（改提示詞後重產）：' + '、'.join(empty))
 
 
 def main():
