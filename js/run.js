@@ -136,8 +136,9 @@ function startRun(opts = {}) {
     t0: Date.now()
   };
   S.run.map = genMap(S.run.seed, 0);
-  giveGem('power');
-  giveGem('heal');
+  S.run.cls = opts.cls || 'warlord';
+  applyKit(S.run.cls);
+  applyMeta();
   fullHeal();
   S.meta.runs++;
   addLog('新的一局開始了');
@@ -150,15 +151,16 @@ function startRun(opts = {}) {
 function endRun(won) {
   const r = R(),
     prog = r.ch * RUN_FLOORS + Math.max(0, curFloor() + 1),
-    soul = prog * 3 + r.elites * 8 + r.bosses * 25 + (won ? 60 : 0),
+    soul = Math.round((prog * 3 + r.elites * 8 + r.bosses * 25 + (won ? 60 : 0)) * (r.daily ? 1.5 : 1)),
     wish = r.bosses * 2 + (won ? 4 : 0) + fl(prog / 6);
   S.meta.soul += soul;
   S.cur.wish = (S.cur.wish || 0) + wish;
   if (won) S.meta.wins++;
   S.meta.best = Math.max(S.meta.best || 0, prog);
+  if (r.daily && S.meta.daily) S.meta.daily.prog = prog;
   const html = `<p>${won ? '三章都打通了！' : `倒在第 ${r.ch + 1} 章・${CH[r.ch].n}，第 ${Math.max(1, curFloor() + 1)} 層。`}</p>
     <div class="kv"><div><span>等級</span><b>Lv${S.lv}</b></div><div><span>擊倒</span><b>${r.kills}</b></div><div><span>菁英</span><b>${r.elites}</b></div><div><span>首領</span><b>${r.bosses}</b></div></div>
-    <p>得到 <b style="color:#9fe7ff">◆ ${soul} 魂晶</b>、<b style="color:var(--gold)">${wish} 祈願石</b></p>`;
+    <p>得到 <b style="color:#9fe7ff">◆ ${soul} 魂晶</b>、<b style="color:var(--gold)">${wish} 祈願石</b>${r.daily ? '（每日挑戰 ×1.5）' : ''}</p>`;
   addLog(won ? '通關了！' : `這一局結束：第 ${r.ch + 1} 章第 ${Math.max(1, curFloor() + 1)} 層`);
   S.run = null;
   save();
@@ -400,15 +402,16 @@ function rewardPicks(lv, elite) {
   return pool;
 }
 /* 三選一的彈窗：選完才能繼續 */
-function pickModal(title, head, picks, done, auto) {
+function pickModal(title, head, picks, done, auto, regen) {
   let got = null;
+  const rr = () => (S.run && S.run.rerolls) || 0;
   const render = () =>
     showModal(
       title,
       head +
         (got
           ? `<div class="loot">${got.map(t => `<span>${t}</span>`).join('')}</div>`
-          : `<h3>選一個</h3><div class="bpick">${picks.map((p, i) => `<button class="bpk" data-act="mbtn" data-i="${i + 1}"><img src="${p.ic}" alt=""><b>${p.n}</b><small>${p.d}</small></button>`).join('')}</div>`),
+          : `<h3>選一個</h3><div class="bpick">${picks.map((p, i) => `<button class="bpk" data-act="mbtn" data-i="${i + 1 + (regen && rr() ? 1 : 0)}"><img src="${p.ic}" alt=""><b>${p.n}</b><small>${p.d}</small></button>`).join('')}</div>`),
       [
         {
           label: got ? '繼續' : '跳過',
@@ -418,6 +421,19 @@ function pickModal(title, head, picks, done, auto) {
             done(!!got);
           }
         },
+        ...(regen && !got && rr()
+          ? [
+              {
+                label: `重抽（剩 ${rr()} 次）`,
+                fn: () => {
+                  S.run.rerolls--;
+                  picks = regen();
+                  sfx('select');
+                  render();
+                }
+              }
+            ]
+          : []),
         ...picks.map(p => ({
           label: '',
           hide: 1,
@@ -458,12 +474,20 @@ function runWin(w) {
       : ''
   }${w.bonus}`;
   const lv = es[0].lv,
-    picks = n.t === 'boss' ? bossPicks(lv) : rewardPicks(lv, n.t === 'elite');
-  pickModal(n.t === 'boss' ? '首領倒下了！' : '勝利！', head, picks, () =>
-    passModal(() => {
-      endBattle();
-      nodeDone();
-    })
+    regen = () => (n.t === 'boss' ? bossPicks(lv) : rewardPicks(lv, n.t === 'elite'));
+  pickModal(
+    n.t === 'boss' ? '首領倒下了！' : '勝利！',
+    head,
+    regen(),
+    () =>
+      (n.t === 'boss' ? ascModal : f => f())(() =>
+        passModal(() => {
+          endBattle();
+          nodeDone();
+        })
+      ),
+    false,
+    regen
   );
 }
 function runLose() {
@@ -491,6 +515,57 @@ function chapterClear() {
       }
     }
   ]);
+}
+
+/* ================= 首領之後：昇華三選一 =================
+   第一章首領：選這個角色的分支（3 條）；第二章首領：從分支的大點（含三選一的終極選項）抽 3 個。每打倒一個首領多一個契靈欄位 */
+function ascModal(done) {
+  const r = R(),
+    a = ASCD(),
+    c = ASCI_[a.cls];
+  a.trials = r.bosses;
+  if (!c) return done();
+  const txt = n => [...ascTxt(n), ...ascCostTxt(n).map(s => `代價：${s}`)].join('、');
+  let picks;
+  if (!a.br)
+    picks = c.br.map(b => ({
+      n: b.n,
+      d: b.d,
+      ic: ascIcon(ASCN[b.k + '_e'], true),
+      give: () => {
+        a.br = b.k;
+        addLog(`昇華分支：${b.n}`);
+        return [b.n];
+      }
+    }));
+  else {
+    const pool = Object.values(ASCN).filter(
+      n => n.br === a.br && (n.kind === 'b' || n.kind === 'o') && !a.nodes.includes(n.id)
+    );
+    picks = [];
+    while (picks.length < 3 && pool.length) {
+      const n = pool.splice(fl(Math.random() * pool.length), 1)[0];
+      picks.push({
+        n: n.n,
+        d: txt(n),
+        ic: ascIcon(n, true),
+        give: () => {
+          a.nodes.push(n.id);
+          clampHP();
+          addLog(`昇華：${n.n}`);
+          return [n.n];
+        }
+      });
+    }
+  }
+  if (!picks.length) return done();
+  pickModal(
+    a.br ? '昇華三選一' : `昇華：${c.n}的分支`,
+    `<p class="sub">${a.br ? '昇華的大點會強化這個分支的技能。' : '選一條分支，之後的昇華都會從這條分支出。'}</p>`,
+    picks,
+    () => done(),
+    true
+  );
 }
 
 /* ================= 升級：天賦三選一 =================
@@ -690,16 +765,6 @@ function eventNode(n) {
 }
 
 /* ================= 畫面：主選單、章節地圖 ================= */
-function homeRender() {
-  const el = $('home');
-  if (!el || !S) return;
-  el.hidden = !!S.run;
-  if (S.run) return;
-  const m = S.meta;
-  el.innerHTML = `<div class="hm"><h1 class="hm-t">漫步勇者</h1><p class="sub">v${VER}</p>
-    <div class="hm-b"><button class="btn pri" data-act="runStart">開始新局</button><button class="btn" data-act="gacha">契靈祈願</button></div>
-    <div class="kv"><div><span>魂晶</span><b>${m.soul}</b></div><div><span>局數</span><b>${m.runs}</b></div><div><span>通關</span><b>${m.wins}</b></div></div></div>`;
-}
 function runmapRender() {
   const el = $('runmap');
   if (!el) return;
@@ -740,9 +805,10 @@ function viewRender() {
 
 /* ================= actions ================= */
 Object.assign(A, {
+  /* 測試用：直接用鬥神開一局 */
   runStart: () => {
     if (S.run) return;
-    startRun();
+    startRun({ cls: 'warlord' });
   },
   runGo: d => enterNode(d.id),
   runPick: () => passModal(() => viewRender())
