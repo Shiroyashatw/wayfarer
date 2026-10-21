@@ -26,8 +26,8 @@ function blob(x, cx, cy, r, col) {
   x.fillRect(cx - r, cy - r, r * 2, r * 2);
 }
 function paintBG(kind) {
-  const x = bbg.getContext('2d'),
-    W = bbg.width,
+  let x = bbg.getContext('2d');
+  const W = bbg.width,
     H = bbg.height,
     r = rng(h(fl(S.lat * 1e3), fl(S.lng * 1e3), kind.length)),
     HZ = H * 0.6;
@@ -35,10 +35,22 @@ function paintBG(kind) {
   const hr = new Date(now()).getHours(),
     night = hr < 6 || hr >= 19,
     dusk = !night && hr >= 16;
+  /* 0.3.52 柔焦：以前用 filter: blur 對整張畫布做模糊，桌面大螢幕（像素是手機的好幾倍）要好幾秒、畫面卡住；
+     改成把這一層畫在縮小的畫布上，再平滑放大貼回來，效果接近、成本很低 */
   const soft = (px, fn) => {
-    x.save();
-    if ('filter' in x) x.filter = `blur(${px * DPR}px)`;
+    const f = Math.max(1, px * DPR),
+      o = document.createElement('canvas');
+    o.width = Math.max(1, Math.ceil(W / f));
+    o.height = Math.max(1, Math.ceil(H / f));
+    const main = x;
+    x = o.getContext('2d');
+    x.scale(o.width / W, o.height / H);
     fn();
+    x = main;
+    x.save();
+    x.imageSmoothingEnabled = true;
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(o, 0, 0, W, H);
     x.restore();
   };
   const pal = {

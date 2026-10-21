@@ -202,14 +202,14 @@
 - **enemies**（920），16 個宣告
 - **modal**（1058），5 個宣告
 
-### js/battle.js（3455 行）
+### js/battle.js（3467 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
-- **battle: logic**（239），42 個宣告
-- **battle: rules（單人與組隊共用）**（631），66 個宣告
-- **battle: solo**（1834），20 個宣告
-- **dungeons (shared by solo and party)**（2351），24 個宣告
-- **battle: drawing**（3098），7 個宣告
+- **battle: logic**（251），42 個宣告
+- **battle: rules（單人與組隊共用）**（643），66 個宣告
+- **battle: solo**（1846），20 個宣告
+- **dungeons (shared by solo and party)**（2363），24 個宣告
+- **battle: drawing**（3110），7 個宣告
 
 ### js/monskill.js（226 行）
 
