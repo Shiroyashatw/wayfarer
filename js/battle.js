@@ -314,34 +314,39 @@ const AIL_E = [
     ['empN', 'horn', '強化'],
     ['comboN', 'sword', '連續']
   ];
-/* 圖示右下的數字：中毒、流血顯示層數，其他顯示剩下的回合 */
-const AIL_NUM = { poison: 'poisonN', bleed: 'bleedN' };
+/* 圖示右下的數字：中毒、流血顯示層數；0.3.35 有時間的狀態顯示剩下幾秒（AIL_T），其他是次數 */
+const AIL_NUM = { poison: 'poisonN', bleed: 'bleedN' },
+  AIL_T = new Set(['burn', 'shock', 'curse', 'slow', 'vul', 'dmark', 'guard']);
+/* 剩下 n 跳 → 大約剩幾秒（扣掉這一跳已經過的時間） */
+const tLeft = n =>
+  Math.max(1, Math.ceil(n * TURN_S - ((B && B.tick) || (typeof MB !== 'undefined' && MB && MB.tick) || 0)));
 const ailHTML = (o, keys) =>
   keys
     .filter(([k]) => o && o[k] > 0)
     .map(
       ([k, ic, n]) =>
         `<span class="ail ail-${ic}" title="${n}"><img src="${iconURL(ic)}" alt="${n}">${(() => {
+          if (AIL_T.has(k)) return `<b>${tLeft(o[k])}</b>`;
           const v = AIL_NUM[k] ? o[AIL_NUM[k]] : o[k];
-          return v > 1 && k !== 'shield' && k !== 'chgN' ? `<b>${v}</b>` : '';
+          return v > 1 && k !== 'shield' && k !== 'chgN' && k !== 'mark' ? `<b>${v}</b>` : '';
         })()}</span>`
     )
     .join('');
-/* 0.3.19 自己身上的狀態＋增益（增益顯示剩下的回合） */
+/* 0.3.19 自己身上的狀態＋增益（增益顯示剩下幾秒） */
 const heroAilHTML = o =>
   ailHTML(o, AIL_H) +
-  /* 0.3.22 圖騰（剩下的生命 %）、砲台（剩下的回合）、陷阱、地雷（數量） */
+  /* 0.3.22 圖騰（剩下的生命 %）、砲台（剩下幾秒）、陷阱、地雷（數量） */
   ((o && o.units) || [])
     .map(
       u =>
-        `<span class="ail ail-shield" title="${u.n}"><img src="${iconURL(u.kind === 'totem' ? 'rune' : 'xbow')}" alt="${u.n}"><b>${u.kind === 'totem' ? Math.ceil((u.hp / u.maxhp) * 100) + '%' : u.turns}</b></span>`
+        `<span class="ail ail-shield" title="${u.n}"><img src="${iconURL(u.kind === 'totem' ? 'rune' : 'xbow')}" alt="${u.n}"><b>${u.kind === 'totem' ? Math.ceil((u.hp / u.maxhp) * 100) + '%' : tLeft(u.turns)}</b></span>`
     )
     .join('') +
   (o && o.traps && o.traps.length
     ? `<span class="ail ail-ice" title="陷阱"><img src="${iconURL('eye')}" alt="陷阱"><b>${o.traps.length}</b></span>`
     : '') +
   (o && o.pdot
-    ? `<span class="ail ail-leaf" title="中毒"><img src="${iconURL('leaf')}" alt="中毒"><b>${o.pdot.turns}</b></span>`
+    ? `<span class="ail ail-leaf" title="中毒"><img src="${iconURL('leaf')}" alt="中毒"><b>${tLeft(o.pdot.turns)}</b></span>`
     : '') +
   (o && o.mines && o.mines.length
     ? `<span class="ail ail-flame" title="地雷"><img src="${iconURL('flame')}" alt="地雷"><b>${o.mines.length}</b></span>`
@@ -349,7 +354,7 @@ const heroAilHTML = o =>
   ((o && o.buffs) || [])
     .map(
       b =>
-        `<span class="ail ail-shield" title="${b.n || ''}"><img src="${iconURL(b.cry ? 'horn' : 'star')}" alt="${b.n || ''}"><b>${b.turns}</b></span>`
+        `<span class="ail ail-shield" title="${b.n || ''}"><img src="${iconURL(b.cry ? 'horn' : 'star')}" alt="${b.n || ''}"><b>${b.turns >= 99 ? '' : tLeft(b.turns)}</b></span>`
     )
     .join('');
 function placeAil(id, x, y, html) {
@@ -365,8 +370,26 @@ function bossBar(e, boss) {
   el.hidden = !on;
   $('bview').classList.toggle('bossmode', on);
   if (!on) return false;
-  el.innerHTML = `<div class="bbname" style="color:${RCOL[e.rar || 3]}">${esc(e.name)} <small>Lv${e.lv}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small></div><div class="bbar"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><span>${Math.max(0, Math.ceil(e.hp)).toLocaleString()} / ${e.maxhp.toLocaleString()}</span></div>`;
+  el.innerHTML = `<div class="bbname" style="color:${RCOL[e.rar || 3]}">${esc(e.name)} <small>Lv${e.lv}${e.mods && e.mods.length ? '・' + modNames(e) : ''}</small></div><div class="bbar"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><span>${Math.max(0, Math.ceil(e.hp)).toLocaleString()} / ${e.maxhp.toLocaleString()}</span></div>${avBar('e' + (B ? B.es : MB ? MB.es : []).indexOf(e))}`;
   return true;
+}
+/* 0.3.35 行動條（每幀由 atbPaint 更新寬度）；cd 遮罩在技能按鈕上 */
+const avBar = id => `<i class="avb" data-av="${id}"><i></i></i>`;
+const cdMask = q => (q ? `<i class="cdm" data-cdk="${skKey(q)}"></i>` : '');
+/* 每幀更新：行動條寬度、滿了發亮；技能冷卻遮罩的高度與剩下秒數（單人與組隊共用） */
+function atbPaint(av, me) {
+  for (const el of document.querySelectorAll('#battle [data-av]')) {
+    const w = Math.min(100, ((av[el.dataset.av] || 0) / AV_MAX) * 100);
+    el.firstChild.style.width = w + '%';
+    el.classList.toggle('full', w >= 100);
+  }
+  for (const el of document.querySelectorAll('#battle [data-cdk]')) {
+    const k = el.dataset.cdk,
+      left = (me && me.cd && me.cd[k]) || 0,
+      max = (me && me.cdMax && me.cdMax[k]) || 1;
+    el.style.height = left > 0 ? Math.min(100, (left / max) * 100) + '%' : '0';
+    el.textContent = left > 0 ? Math.ceil(left) : '';
+  }
 }
 /* 每隻敵人腳下的小血條與異常狀態；目前目標加框 */
 function enemyBars(es, ti, boss) {
@@ -374,7 +397,7 @@ function enemyBars(es, ti, boss) {
     .map((e, i) => {
       if (e.hp <= 0 || (boss && i === 0)) return '';
       const q = epos(i, es, boss);
-      return `<div class="ebar${i === ti ? ' tg' : ''}" style="left:${q.x}px;top:${q.y + 6}px"><i class="hb hhp"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><em>${Math.max(0, Math.ceil(e.hp)).toLocaleString()}</em></i><span class="eails">${ailHTML(e, AIL_E)}</span></div>`;
+      return `<div class="ebar${i === ti ? ' tg' : ''}" style="left:${q.x}px;top:${q.y + 6}px"><i class="hb hhp"><i style="width:${Math.max(0, (e.hp / e.maxhp) * 100)}%"></i><em>${Math.max(0, Math.ceil(e.hp)).toLocaleString()}</em></i>${avBar('e' + i)}<span class="eails">${ailHTML(e, AIL_E)}</span></div>`;
     })
     .join('');
 }
@@ -443,16 +466,16 @@ const BUFFK = {
     crit: v => `暴擊率 +${v}%`,
     spd: v => `速度 +${v}%`,
     taunt: v => `嘲諷 +${v}%`,
-    hot: v => `每回合回復 ${v}% 生命`,
+    hot: v => `每 3 秒回復 ${v}% 生命`,
     shield: v => `護盾 ${Math.round(v * 100)}% 生命`
   },
   AILD = {
-    burn: '每回合受到火焰傷害',
-    frozen: '跳過行動',
+    burn: '每 3 秒受到火焰傷害',
+    frozen: '跳過下一次行動',
     shock: '受到的傷害提高',
-    poison: '每回合受到傷害（層數越多越痛）',
-    bleed: '每回合受到傷害（層數越多越痛）',
-    stun: '跳過行動',
+    poison: '每 3 秒受到傷害（層數越多越痛）',
+    bleed: '每 3 秒受到傷害（層數越多越痛）',
+    stun: '跳過下一次行動',
     curse: '受到的傷害提高、攻擊降低',
     mark: '受到的傷害提高',
     slow: '速度變慢',
@@ -470,7 +493,13 @@ function binfoAil(o, keys) {
   return keys
     .filter(([k]) => o && o[k] > 0)
     .map(([k, ic, n]) => {
-      const v = AIL_NUM[k] ? o[AIL_NUM[k]] + ' 層' : k === 'shield' ? o[k] : o[k] + (k.endsWith('N') ? ' 次' : ' 回合');
+      const v = AIL_NUM[k]
+        ? o[AIL_NUM[k]] + ' 層'
+        : AIL_T.has(k)
+          ? '剩 ' + tLeft(o[k]) + ' 秒'
+          : k === 'shield' || k === 'mark' || k === 'frozen' || k === 'stun'
+            ? ''
+            : o[k] + ' 次';
       return `<li><img src="${iconURL(ic)}" alt=""><b>${n}</b> ${v}<small>${AILD[k] || ''}</small></li>`;
     })
     .join('');
@@ -482,7 +511,7 @@ function binfoBuffs(o) {
         .filter(k => b[k])
         .map(k => BUFFK[k](b[k]))
         .join('、');
-      return `<li><img src="${iconURL(b.cry ? 'horn' : 'star')}" alt=""><b>${esc(b.n || b.id || '增益')}</b> ${b.turns >= 99 ? '常駐' : b.turns + ' 回合'}<small>${fx}</small></li>`;
+      return `<li><img src="${iconURL(b.cry ? 'horn' : 'star')}" alt=""><b>${esc(b.n || b.id || '增益')}</b> ${b.turns >= 99 ? '常駐' : '剩 ' + tLeft(b.turns) + ' 秒'}<small>${fx}</small></li>`;
     })
     .join('');
 }
@@ -493,7 +522,7 @@ function binfoTrait(e) {
   }
   if (e.xiong && XIONGI[e.xiong]) return XIONGI[e.xiong].d;
   if (e.zhulong) return '白晝燭火灼燒全體；每 3 次行動睜眼閉眼交替，黑夜回血、看不到行動順序、你的攻擊 30% 打空';
-  if (e.yama) return '生死簿：替你記下回合數，歸零時受到大量傷害；判官筆';
+  if (e.yama) return '生死簿：點名一人，下一次受到的傷害加倍；判官筆抹掉增益';
   return '';
 }
 function binfoRender() {
@@ -520,7 +549,7 @@ function binfoRender() {
         ((me && me.units) || [])
           .map(
             u =>
-              `<li><img src="${iconURL(u.kind === 'totem' ? 'rune' : 'xbow')}" alt=""><b>${esc(u.n)}</b> ${u.kind === 'totem' ? `生命 ${Math.ceil(u.hp)}` : u.turns + ' 回合'}</li>`
+              `<li><img src="${iconURL(u.kind === 'totem' ? 'rune' : 'xbow')}" alt=""><b>${esc(u.n)}</b> ${u.kind === 'totem' ? `生命 ${Math.ceil(u.hp)}` : '剩 ' + tLeft(u.turns) + ' 秒'}</li>`
           )
           .join('') +
         (me && me.traps && me.traps.length
@@ -530,7 +559,7 @@ function binfoRender() {
           ? `<li><img src="${iconURL('flame')}" alt=""><b>地雷</b> ×${me.mines.length}<small>按「引爆地雷」一次炸掉</small></li>`
           : '') +
         (me && me.pdot
-          ? `<li><img src="${iconURL('leaf')}" alt=""><b>中毒／流血</b> ${me.pdot.turns} 回合<small>每回合扣血</small></li>`
+          ? `<li><img src="${iconURL('leaf')}" alt=""><b>中毒／流血</b> 剩 ${tLeft(me.pdot.turns)} 秒<small>每 3 秒扣血</small></li>`
           : '');
     body =
       `<h4>你</h4><ul class="bil">${mine || '<li class="none">沒有增益或異常</li>'}</ul>${au ? `<p class="bau">光環：${au}</p>` : ''}` +
@@ -670,7 +699,7 @@ const skSub = (st, q, me, es, ti) =>
   !wOk(st, q)
     ? `需要${WTAGN[q.w]}`
     : cdLeft(me, q)
-      ? `冷卻 ${cdLeft(me, q)}`
+      ? '冷卻中'
       : [charging(me, q) ? '' : costTxt(st, q), (me && condTxt(q, me, st, es, ti)) || skShort(q)]
           .filter(Boolean)
           .join('・');
@@ -808,7 +837,7 @@ const hitCol = pk =>
         : '#ffffff';
 const aliveIdx = es => es.map((e, i) => (e.hp > 0 ? i : -1)).filter(i => i >= 0);
 /* ---- 0.3.19 技能的通用條件與狀態連動 ----
-   技能欄位：cd 冷卻（自己的回合數）、foes 每多一隻敵人傷害 ±%（最多算 4 隻）、vs {狀態: %} 對有該狀態的目標加傷（中毒、流血每層算一次）、
+   技能欄位：cd 冷卻（秒，0.3.35 起）、foes 每多一隻敵人傷害 ±%（最多算 4 隻）、vs {狀態: %} 對有該狀態的目標加傷（中毒、流血每層算一次）、
    vsCrit 對有該狀態的目標必定暴擊、lowT／fullT 目標低血（30% 以下）／滿血加傷、lowMe 自己每少 10% 生命加傷、combo 連續使用每層加傷（最多 5 層）、
    petN 每隻召喚物加傷、consume 命中後消耗目標的狀態、det 引爆目標的持續傷害（一次結算剩下的回合）、shockChain 目標感電時多連鎖、
    charge 先蓄力一回合、下次放同一招 ×倍數（蓄力時被打會減弱）、slow 衰老、vulP／vulE 物理／元素易傷、dmark 死亡印記、spreadSt 狀態擴散、
@@ -908,7 +937,14 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     ev.push({ t: 'msg', s: `${sk.name}・釋放！`, at: 0 });
     me.chg = me.chgN = 0;
   }
-  if (sk.cd) (me.cd = me.cd || {})[key] = sk.cd + 1;
+  /* 0.3.35 冷卻以秒計（cdTick 倒數），cdMax 給按鈕畫冷卻遮罩 */
+  {
+    const c = skCdS(st0, sk);
+    if (c > 0) {
+      (me.cd = me.cd || {})[key] = c;
+      (me.cdMax = me.cdMax || {})[key] = c;
+    }
+  }
   /* 戰意激昂：接下來 N 次攻擊強化 */
   if (me.empN > 0 && sk.kind === 'attack' && !sk.pet) {
     more *= 1 + (me.empMore || 0) / 100;
@@ -1173,7 +1209,7 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
 }
 /* ---- 0.3.22 戰場單位 ----
    圖騰（totem）：放在自己旁邊，有生命、敵人會打它（taunt 越高越常被打），每次自己行動後施放這個技能（mul 倍率），最多 2 個；
-   砲台（turret）：打不到、存在 turns 回合，每次自己行動後自動射擊，最多 2 個；
+   砲台（turret）：打不到、存在 turns 跳（每跳 TURN_S 秒），每一跳自動射擊，最多 2 個；
    陷阱（trap）：佈置好之後，下一隻行動的敵人會先觸發（mul 倍率），最多 3 個；
    地雷（mine）：一直疊（最多 5 顆），用「引爆地雷」一次炸掉，每多一顆每顆 +10% */
 const UNIT_MAX = { totem: 2, turret: 2, trap: 3, mine: 5 };
@@ -1349,7 +1385,8 @@ function petsAct(me, st, es) {
   return ev;
 }
 /* 敵人 i 的行動（單人與組隊共用）：先結算持續傷害，再攻擊隊員；party 是 [{uid, hp, mp, st, guard, …}] */
-function enemyResolve(es, i, party, ext = {}) {
+/* 0.3.35 敵人身上的持續傷害與狀態倒數：每 TURN_S 秒一跳（以前是敵人自己行動時才算） */
+function enemyDot(es, i) {
   const e = es[i],
     ev = [];
   let at = 0;
@@ -1375,10 +1412,26 @@ function enemyResolve(es, i, party, ext = {}) {
   if (e.slow > 0) e.slow--;
   if (e.vul > 0) e.vul--;
   if (e.dmark > 0) e.dmark--;
-  if (e.hp <= 0) {
-    ev.push({ t: 'kill', i, at }, { t: 'end', at: at + 300 });
-    return ev;
+  if (e.hp <= 0) ev.push({ t: 'kill', i, at });
+  return ev;
+}
+/* 一跳（TURN_S 秒）要結算的全部事件：每隻敵人的持續傷害、隊員的回復與增益倒數、召喚物與圖騰行動（單人與組隊共用） */
+function tickResolve(es, party) {
+  let ev = [];
+  for (const i of aliveIdx(es)) ev = ev.concat(shiftEv(enemyDot(es, i), ev.length ? evEnd(ev) + 120 : 0));
+  for (const p of party) {
+    if (p.alive === false || p.hp <= 0) continue;
+    roundEnd(p);
+    const pe = petsAct(p, p.st, es);
+    if (pe.length) ev = ev.concat(shiftEv(pe, ev.length ? evEnd(ev) + 120 : 0));
   }
+  if (ev.length) ev.push({ t: 'end', at: evEnd(ev) + 150 });
+  return ev;
+}
+function enemyResolve(es, i, party, ext = {}) {
+  const e = es[i],
+    ev = [];
+  let at = 0;
   if (e.frozen || e.stun) {
     ev.push({ t: 'msg', s: `${e.name} ${e.frozen ? '被凍住' : '暈眩中'}，無法行動`, at });
     e.frozen = e.stun = 0;
@@ -1605,24 +1658,51 @@ const avPreview = (av, units, n) => {
   const c = { ...av };
   return Array.from({ length: n }, () => avNext(c, units));
 };
-/* 每輪結束：回復、防禦與增益倒數、昇華的扣血代價（0.3.10 起是自己每次輪到行動之前） */
+/* ================= 0.3.35 即時行動條（單人與組隊共用） =================
+   時間照真的跑：每個單位的行動條依速度填滿（速度 10 每 TURN_S 秒滿一次），滿了就能行動；
+   持續效果（中毒、燃燒、增益、回復、召喚物與圖騰…）每 TURN_S 秒結算一跳，資料裡的「回合」就是 TURN_S 秒；
+   技能冷卻以秒計（sk.cd），冷卻縮減 cdr 最多 CDR_MAX%。結算動畫播放時時間暫停。 */
+const TURN_S = 3,
+  ATB_K = AV_MAX / (10 * TURN_S),
+  CDR_MAX = 40,
+  AUTO_WAIT = 0.8;
+/* 回合數 → 秒（說明文字用） */
+const secs = n => Math.round(n * TURN_S * 10) / 10;
+/* 冷卻縮減（%）：屬性 cdr（裝備、天賦、契靈）＋輔助寶石，上限 CDR_MAX */
+const cdrOf = (st, sk) => Math.min(CDR_MAX, ((st && st.cdr) || 0) + (supOf(st, sk).cdr || 0));
+/* 這招放完的冷卻秒數：技能本身 cd ＋ 輔助寶石加的 cdAdd（自動施放），再套冷卻縮減 */
+const skCdS = (st, sk) =>
+  Math.round(Math.max(0, (sk.cd || 0) + (supOf(st, sk).cdAdd || 0)) * (1 - cdrOf(st, sk) / 100) * 10) / 10;
+/* 時間前進 dt 秒：冷卻倒數，有技能冷卻好了回傳 true（要重畫按鈕） */
+function cdTick(p, dt) {
+  let done = false;
+  if (p.cd)
+    for (const k in p.cd)
+      if ((p.cd[k] -= dt) <= 0) {
+        delete p.cd[k];
+        done = true;
+      }
+  return done;
+}
+/* 自動施放：輔助寶石 auto 插著的技能，冷卻好、付得起就自動放（照技能欄順序，第一個能放的）；
+   行動條滿了先等 AUTO_WAIT 秒，這段時間自己下指令就不會自動放 */
+const autoPick = (o, me, st, sks) => sks.findIndex(q => q && supOf(st, q).auto && skReady(o, me, skSt(st, q), q));
+/* 每一跳（TURN_S 秒）：回復、防禦與增益倒數、昇華的扣血代價（0.3.35 起照時間，不再是輪到自己才算） */
 function roundEnd(p) {
   const st = p.st;
   if (p.alive === false || p.hp <= 0) return;
   if (st.regen) p.hp = Math.min(st.maxhp, p.hp + st.regen);
   if (st.manaRegen) p.mp = Math.min(st.maxmp, p.mp + st.manaRegen);
-  /* 0.3.25 信徒造成的中毒、流血（每回合扣血） */
+  /* 0.3.25 信徒造成的中毒、流血（每跳扣血） */
   if (p.pdot && p.pdot.turns > 0) {
     p.hp = Math.max(1, p.hp - p.pdot.n);
     if (!--p.pdot.turns) p.pdot = null;
   }
-  /* 0.3.21 隊友光環的回血（每回合 hot% 生命） */
+  /* 0.3.21 隊友光環的回血（每跳 hot% 生命） */
   if (bsum(p, 'hot')) p.hp = Math.min(st.maxhp, p.hp + Math.round((st.maxhp * bsum(p, 'hot')) / 100));
   if (st.hpDrain) p.hp = Math.max(1, p.hp - Math.round((st.maxhp * st.hpDrain) / 100));
   if (p.guard > 0) p.guard--;
   p.buffs = (p.buffs || []).filter(b => --b.turns > 0);
-  /* 0.3.19 冷卻：每次輪到自己少 1 */
-  if (p.cd) for (const k in p.cd) if (--p.cd[k] <= 0) delete p.cd[k];
 }
 /* 開場：昇華的護盾、先制增益 */
 function battleOpen(p) {
@@ -1669,6 +1749,12 @@ function heroMe() {
     buffs: []
   };
 }
+/* 0.3.35 開場的行動條：你先有一半，敵人隨機 0～30（不會全部同時出手） */
+const atbStart = es => {
+  const av = { me: AV_MAX * 0.5 };
+  es.forEach((_, i) => (av['e' + i] = Math.random() * AV_MAX * 0.3));
+  return av;
+};
 /* e 可以是一隻敵人或陣列；opts.pack 會依稀有度帶小怪 */
 function startBattle(e, opts = {}) {
   if (B) return;
@@ -1677,7 +1763,21 @@ function startBattle(e, opts = {}) {
   const es = (
     Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0, opts.packN || 0, opts.packSeed) : [])]
   ).map(eInit);
-  B = { ...opts, e: es[0], es, ti: 0, me: heroMe(), busy: true, sub: null, act: -1, av: {}, turns: 0 };
+  B = {
+    ...opts,
+    e: es[0],
+    es,
+    ti: 0,
+    me: heroMe(),
+    hold: true,
+    anim: false,
+    over: false,
+    ready: false,
+    sub: null,
+    act: -1,
+    av: atbStart(es),
+    tick: 0
+  };
   BLOG = [];
   $('binfo').hidden = true;
   /* 0.3.25 在被攻佔的城鎮裡：套用城鎮特效 */
@@ -1713,7 +1813,7 @@ function startBattle(e, opts = {}) {
         ? `${RNAME[es[0].rar]}怪物：${es[0].name}`
         : `${es[0].name} 出現了！`
   );
-  later(700, nextTurn);
+  later(700, () => (B.hold = false));
 }
 /* 點畫面上的敵人換目標（單人與組隊共用） */
 function pickTarget(x, y) {
@@ -1765,7 +1865,7 @@ function renderBHud() {
         es[i].hideAv
           ? { n: '？？？', c: 'e', img: iconURL('eye') }
           : { n: shortName(es[i]), c: 'e', img: portrait(es[i].spr, es[i].pal) },
-      cur = B.act >= 0 ? { ...eo(B.act), on: 1 } : { ...me, on: !B.busy },
+      cur = B.act >= 0 ? { ...eo(B.act), on: 1 } : { ...me, on: B.ready && !B.anim && !B.over },
       nx = avPreview(B.av || {}, soloUnits(), 6).map(id => (id === 'me' ? me : eo(+id.slice(1))));
     renderOrder([cur, ...nx]);
   }
@@ -1784,11 +1884,11 @@ function renderBHud() {
   /* 單人的玩家面板：名字與等級、生命（數值）、魔力（數值）、經驗細條 */
   const bar = (cls, v, max, txt) =>
     `<i class="hb ${cls}"><i style="width:${Math.max(0, Math.min(100, (v / max) * 100))}%"></i>${txt ? `<em>${txt}</em>` : ''}</i>`;
-  hp.innerHTML = `<div class="hpanel${S.hp < st.maxhp * 0.3 ? ' low' : ''}"><div class="hrow"><b>${esc(S.name || '你')}</b><span>Lv${S.lv}</span></div>${bar('hhp', S.hp, st.maxhp, `${Math.max(0, Math.ceil(S.hp))} / ${st.maxhp}`)}${bar('hmp', S.mp, st.maxmp, `${Math.max(0, Math.round(S.mp))} / ${st.maxmp}`)}${bar('hxp', S.xp, xpNeed(S.lv))}</div>`;
+  hp.innerHTML = `<div class="hpanel${S.hp < st.maxhp * 0.3 ? ' low' : ''}"><div class="hrow"><b>${esc(S.name || '你')}</b><span>Lv${S.lv}</span></div>${bar('hhp', S.hp, st.maxhp, `${Math.max(0, Math.ceil(S.hp))} / ${st.maxhp}`)}${bar('hmp', S.mp, st.maxmp, `${Math.max(0, Math.round(S.mp))} / ${st.maxmp}`)}${avBar('me')}</div>`;
   $('epills').innerHTML = enemyBars(es, es.length > 1 ? B.ti : -1, B.boss);
   const sks = mySkills(),
     sk = sks.map((q, i) => q && 's' + i).filter(Boolean),
-    dis = B.busy ? 'disabled' : '';
+    dis = pBusy() ? 'disabled' : '';
   const cb = (label, icon, sub, act, data, disabled, extra = '') =>
     `<button class="cb ${extra}" data-act="${act}" ${data} ${disabled || dis}><img src="${iconURL(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
   const noPot = st.noPotion;
@@ -1796,7 +1896,7 @@ function renderBHud() {
     const q = k && sks[+k.slice(1)];
     return q
       ? cb(
-          q.name,
+          q.name + cdMask(q),
           q.icon,
           skSub(st, q, B.me, es, B.ti),
           'skill',
@@ -1918,31 +2018,47 @@ const soloExt = () => ({
   },
   ew: curSpec() && curSpec().eleweak ? 20 : 0
 });
-function useSkill(k) {
-  /* 0.3.22 引爆地雷：不花魔力，用掉這一回合 */
+/* ================= 0.3.35 單人的即時行動條 =================
+   每幀 soloStep 推進時間：敵人行動條滿了就出手；你的行動條滿了（B.ready）才能下指令，等你的時候時間照樣跑；
+   時間一直跑（動畫疊著播），只有開場、換層、打完時停（B.hold／B.over）；B.anim 是你自己的動作還在播，這時不能再下指令。
+   敵人出手之間至少隔 STAGGER 毫秒，畫面才不會擠成一團。每 TURN_S 秒結算一跳持續效果（tickResolve）。 */
+const STAGGER = 450;
+const pBusy = () => !B || !B.ready || !!B.anim || !!B.over;
+/* 結算後馬上判斷勝負：t 是這段動畫多長，播完才進結算畫面 */
+function soloEnd(t) {
+  if (S.hp > 0 && !allDead(B.es)) return false;
+  B.over = true;
+  later(t + 500, S.hp <= 0 ? loseBattle : winBattle);
+  return true;
+}
+function beginAct() {
+  B.ready = false;
+  B.av.me = Math.max(0, (B.av.me || 0) - AV_MAX);
+  B.anim = true;
+  B.sub = null;
+  B.nextAct = Math.max(B.nextAct || 0, performance.now() + STAGGER);
+}
+function useSkill(k, auto) {
+  /* 0.3.22 引爆地雷：不花魔力，用掉這次行動 */
   if (k === 'mines') {
-    if (!B || B.busy || !(B.me.mines || []).length) return;
-    B.busy = true;
-    B.sub = null;
+    if (pBusy() || !(B.me.mines || []).length) return;
+    beginAct();
     sfx('select');
     bmsg('引爆地雷');
     B.me.st = stats();
-    const ev = mineBlast(B.me, B.me.st, B.es, B.ti, [B.me], { ...soloExt(), av: B.av });
+    const ev = mineBlast(B.me, B.me.st, B.es, B.ti, [B.me], { ...soloExt(), av: B.av }),
+      t = playEv(ev);
     renderBHud();
-    later(playEv(ev) + 150, () => {
-      const pe = petsAct(B.me, B.me.st, B.es);
-      later(playEv(pe) + 100, afterPlayer);
-    });
+    if (!soloEnd(t)) later(t + 150, afterPlayer);
     return;
   }
   const sk = skByKey(k, mySkills()),
     st0 = sk && skSt(stats(), sk);
-  if (!B || B.busy || !sk || !skReady(S, B.me, st0, sk)) return;
-  B.busy = true;
-  B.sub = null;
+  if (pBusy() || !sk || !skReady(S, B.me, st0, sk)) return;
+  beginAct();
   if (!charging(B.me, sk)) payCost(S, stats(), sk);
   sfx('select');
-  bmsg(sk.name, `你使用 ${sk.name}`);
+  bmsg(auto ? `自動施放・${sk.name}` : sk.name, `你${auto ? '自動施放' : '使用'} ${sk.name}`);
   B.me.st = stats();
   B.me.lv = S.lv;
   const ev = actResolve(B.me, B.me.st, sk, B.es, B.ti, [B.me], {
@@ -1956,17 +2072,13 @@ function useSkill(k) {
   }
   renderBHud();
   const t = playEv(ev);
-  later(t + 150, () => {
-    const pe = petsAct(B.me, B.me.st, B.es);
-    later(playEv(pe) + 100, afterPlayer);
-  });
+  if (!soloEnd(t)) later(t + 150, afterPlayer);
 }
 function bItem(k) {
-  if (!B || B.busy || !S[k]) return;
+  if (pBusy() || !S[k]) return;
   const st = stats();
   if (k === 'potions' && st.noPotion) return;
-  B.busy = true;
-  B.sub = null;
+  beginAct();
   sfx('heal');
   const p = POS(),
     hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1) * (1 + (st.potPct || 0) / 100);
@@ -2005,17 +2117,17 @@ function bItem(k) {
     t = playEv(ev);
   }
   renderBHud();
-  later(Math.max(800, t + 300), afterPlayer);
+  if (!soloEnd(t)) later(Math.max(800, t + 300), afterPlayer);
 }
 function flee() {
-  if (!B || B.busy || D) return;
-  B.busy = true;
-  B.sub = null;
+  if (pBusy() || D) return;
+  beginAct();
   sfx('select');
   renderBHud();
   if (Math.random() < 0.7) {
     bmsg('成功逃跑！');
     addLog(`從 ${B.e.name} 身邊逃走了`);
+    B.over = true;
     later(700, () => endBattle());
   } else {
     bmsg('逃跑失敗！');
@@ -2023,54 +2135,83 @@ function flee() {
   }
 }
 const allDead = es => es.every(e => e.hp <= 0);
+/* 你的行動播完：全滅就勝利；昇華的「再行動一次」直接把行動條補滿 */
 function afterPlayer() {
-  if (allDead(B.es)) return later(700, winBattle);
-  /* 昇華：有機率再行動一次 */
+  if (B.over) return;
   if (B.me.st.extraTurn && Math.random() * 100 < B.me.st.extraTurn) {
     bmsg('再行動一次！');
-    B.busy = false;
-    renderBHud();
-    return;
+    B.av.me = AV_MAX;
   }
-  later(250, nextTurn);
+  B.anim = false;
+  renderBHud();
 }
 /* 0.3.10 行動值：單人戰鬥裡的你（id 'me'）與每隻活著的敵人（'e' + 索引） */
 const soloUnits = () => [
   { id: 'me', spd: avSpd(B.me) },
   ...aliveIdx(B.es).map(i => ({ id: 'e' + i, spd: avSpd(B.es[i]) }))
 ];
-/* 下一個行動的是誰：速度快的可以在對方行動前連續行動 */
-function nextTurn() {
-  if (!B) return;
-  B.me.st = stats();
-  const id = avNext(B.av, soloUnits());
-  if (id !== 'me') return enemyAct(+id.slice(1));
-  B.act = -1;
-  /* 上一次行動之後的回復、防禦與增益倒數 */
-  if (B.turns++) roundEnd(B.me);
-  if (B.me.frozen) {
-    B.me.frozen = 0;
-    bmsg('你被凍住了，跳過這回合');
+/* 每幀推進 dt 秒（renderBattle 呼叫） */
+function soloStep(dt) {
+  if (!B || B.hold || B.over) return;
+  dt = Math.min(dt, 0.1);
+  const me = B.me;
+  if (cdTick(me, dt)) renderBHud();
+  for (const u of soloUnits())
+    B.av[u.id] = Math.min(u.id === 'me' ? AV_MAX : AV_MAX * 2, (B.av[u.id] || 0) + u.spd * ATB_K * dt);
+  if ((B.tick += dt) >= TURN_S) {
+    B.tick -= TURN_S;
+    me.st = stats();
+    /* 持續效果與召喚物不暫停時間（動畫疊著播）；打完或倒下才停 */
+    const ev = tickResolve(B.es, [me]),
+      end = ev.length ? playEv(ev) : 0;
     renderBHud();
-    later(900, nextTurn);
+    if (soloEnd(end)) return;
+  }
+  /* 敵人：行動條滿了就出手（同時滿的，滿越多的先） */
+  const rd = aliveIdx(B.es)
+    .filter(i => B.av['e' + i] >= AV_MAX)
+    .sort((a, b) => B.av['e' + b] - B.av['e' + a]);
+  if (rd.length && performance.now() >= (B.nextAct || 0)) {
+    B.av['e' + rd[0]] -= AV_MAX;
+    return enemyAct(rd[0]);
+  }
+  if (B.av.me >= AV_MAX && !B.ready && !B.anim) meReady();
+  else if (B.ready && (B.readyT += dt) >= AUTO_WAIT && !B.autoDone) {
+    B.autoDone = true;
+    const ai = autoPick(S, me, (me.st = stats()), mySkills());
+    if (ai >= 0) useSkill('s' + ai, true);
+  }
+}
+/* 你的行動條滿了：凍結就跳過這次；有自動施放的技能就直接放 */
+function meReady() {
+  const me = B.me;
+  me.st = stats();
+  if (me.frozen) {
+    me.frozen = 0;
+    B.av.me = 0;
+    bmsg('你被凍住了，這次行動跳過');
+    renderBHud();
     return;
   }
-  B.busy = false;
+  B.ready = true;
+  B.readyT = 0;
+  B.autoDone = false;
+  sfx('tap');
   renderBHud();
 }
 /* 一隻敵人行動 */
 function enemyAct(i) {
   const es = B.es;
-  B.busy = true;
   B.act = i;
-  renderBHud();
+  B.nextAct = performance.now() + STAGGER;
   const ev = enemyResolve(es, i, [B.me], soloExt()),
     t = playEv(ev);
-  later(t + 150, () => {
+  renderBHud();
+  if (soloEnd(t)) return;
+  later(t + 100, () => {
+    if (B.act !== i) return;
     B.act = -1;
-    if (S.hp <= 0) return later(400, loseBattle);
-    if (allDead(es)) return later(500, winBattle);
-    nextTurn();
+    renderBHud();
   });
 }
 
@@ -2651,7 +2792,18 @@ function nextRoom() {
   const { es, bg, boss } = dunEnemy(D, D.room);
   if (B) {
     es.forEach(eInit);
-    Object.assign(B, { e: es[0], es, ti: 0, boss, busy: true, act: -1 });
+    Object.assign(B, {
+      e: es[0],
+      es,
+      ti: 0,
+      boss,
+      hold: true,
+      anim: false,
+      over: false,
+      ready: false,
+      act: -1,
+      tick: 0
+    });
     Object.assign(B.me, { guard: 0, frozen: 0 });
     BFX.en = es.map(() => ({ a: null, flash: 0 }));
     BFX.pops = [];
@@ -2662,9 +2814,8 @@ function nextRoom() {
     bmsg(es.length > 1 ? `${es[0].name} 等 ${es.length} 隻出現了！` : `${es[0].name} 出現了！`);
     sfx('encounter');
     /* 每層重新累積行動值 */
-    B.av = {};
-    B.turns = 0;
-    later(800, nextTurn);
+    B.av = atbStart(es);
+    later(800, () => (B.hold = false));
   } else startBattle(es, { boss, bg });
 }
 function dungeonClear() {
@@ -2906,6 +3057,14 @@ function drawPets(c, t, pets, x, y, s) {
   });
 }
 function renderBattle(t) {
+  /* 0.3.35 推進即時行動條與冷卻，並更新畫面上的行動條、冷卻遮罩 */
+  {
+    const dt = B.lt ? (t - B.lt) / 1000 : 0;
+    B.lt = t;
+    soloStep(dt);
+    if (!B) return;
+    atbPaint(B.av, B.me);
+  }
   const c = bctx,
     now_ = performance.now(),
     p = POS();
@@ -2922,7 +3081,7 @@ function renderBattle(t) {
   c.save();
   c.translate(sx, sy);
   const sc = battleSc();
-  drawEnemies(c, t, B.es, B.boss, BFX.en, B.busy ? -1 : B.ti);
+  drawEnemies(c, t, B.es, B.boss, BFX.en, pBusy() ? -1 : B.ti);
   const [hox, hoy] = animOff(BFX.hero, 1),
     hx = p.hx + hox,
     hy = p.hy + hoy + Math.sin(t / 320) * 1.5,

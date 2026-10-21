@@ -42,7 +42,7 @@
 | 升級曲線 | `js/items.js` | `xpNeed`、`gainXP`、`treePts` |
 | 獲取倍率（0.3.34，設定滑條） | `js/items.js`、`js/battle.js`、`js/mp.js`、`js/ui.js` | `RATES`／`RATE_MAX`／`rate(k)`（`S.rates`：`xp`、`gold`、`drop`）；套用在 `winBattle`、`mpRoomReward`（經驗、金幣）、`dropLoot`／`gemLoot`／`supLoot`（掉寶）、`dunReward`（金幣、通貨）；滑條 `input[data-rate]`（`ui.js` 的 `input`／`change` 監聽） |
 | 怪物生成（等級、稀有度） | `js/items.js` | `pickMon`、`makeEnemy` |
-| 單人戰鬥流程 | `js/battle.js` | `startBattle`、`useSkill`（呼叫 `actResolve`）、`playEv`、`nextTurn`、`enemyAct`、`winBattle`、`loseBattle`；七宗罪等掛鉤 `soloExt` |
+| 單人戰鬥流程 | `js/battle.js` | `startBattle`、`useSkill`（呼叫 `actResolve`）、`playEv`、每幀 `soloStep`（`renderBattle` 呼叫）、`meReady`、`enemyAct`、勝負 `soloEnd`、`winBattle`、`loseBattle`；七宗罪等掛鉤 `soloExt` |
 | 戰鬥規則（單人＋多人共用） | `js/battle.js` | `skCost`、`canPay`、`payCost`、`heroPacket`、`heroDmg`、`heroAil`、`takeDmg`、`mitigate` |
 | 掉寶、地城獎勵 | `js/battle.js` | `dropLoot`、`dunReward`；靈魂、祈願石與刻印石 `gemLoot`；現場加成 `ONSITE_BONUS`、`onsiteNow`（判定現場用 `ui.js` 的 `onSite`；只有石碑、魔法陣有加成：`ONSITE_K`／`siteBonus`） |
 | 亡靈區、亡靈怪、亡靈祭壇與軍團長、亡靈王 | `js/undead.js` | `undeadSpawns`（由 `endgameSpawns` 呼叫）、`UDZ`、`UNDEAD`、`drawUndead`、`undeadWin`、`commanderWin`、`kingWin`、`A.udBoss`、`A.udKing` |
@@ -55,7 +55,8 @@
 | 惡魔珠寶與天賦盤珠寶槽 | `js/demon.js`、`js/data.js`、`js/tree.js` | `JAFF`、`makeJewel`、`jewelCap`、`jewelStats`、`socketCardHTML`、`A.jIn`／`A.jOut`；槽位在 `TREE` 結尾（`type: 'socket'`），鑲嵌狀態 `S.jsock` |
 | 今日委託、委託面板、足跡（0.2.13；0.3.15 委託面板取代附近） | `js/daily.js` | `QUESTS`、`daily`、`quest(k, n)`（各處呼叫：`winBattle`、`dungeonClear`、`pray`、`openChest`、`gather`、`obeliskCharge`、`mistWin`、`huntWalk`、`setPos`）、`dailyHTML`、`questHTML`／`questProg`（`quest` 面板：今日委託、所在區域進度、刷新倒數）、`footStep`（`trailStep`）、`footLv`／`footDens`／`footRare`（`genEntities` 怪物生成）、`drawFoot`；狀態 `S.daily`、`S.foot` |
 | 多隻敵人戰鬥（0.3） | `js/battle.js`、`js/mp.js` | 野外群體隻數 `packN`（機率表 `PACK_P`）、同伴種類 `packBases`＋`packSeed`（位置與週期固定）、`packOf(lead, extra, n, seed)`；開打前陣容 `lineupHTML`（`ui.js`，`openEnt` 呼叫）；互動範圍 `RANGE`／`TOWN_R`／`reachOf`（core.js）；結算核心 `actResolve`（玩家行動→事件）、`enemyResolve`（敵人行動）、`petsAct`（召喚物）、`roundEnd`／`battleOpen`；單人 `startBattle`（`pack` 帶小怪 `packOf`）、`useSkill`、`playEv`（播事件）、`enemyAct`；站位 `epos`／`ESLOT`、`drawEnemies`（選取特效 `drawSel`、換目標名字淡出 `selTrack`）、`enemyBars`、點敵人換目標 `pickTarget`；地城一層一群 `dunEnemy(D, room, extra)`；組隊 `mpResolve`／`mpEnemy`／`mpFx`、經驗平均 `mpRoomReward` |
-| 行動值（戰鬥行動順序，0.3.10） | `js/battle.js`、`js/mp.js` | `AV_MAX`、`avSpd`、`avNext`（下一個行動的單位）、`avPreview`（橫列預測）；單人 `soloUnits`、`nextTurn`、`enemyAct`（`B.av`、`B.turns`）；組隊 `mpUnits`、`mpRound`（每層重置）、`mpNext`、`mpEnemy`（`MB.av`、`MB.ea`、`MB.order`） |
+| 行動值（戰鬥行動順序，0.3.10） | `js/battle.js`、`js/mp.js` | `AV_MAX`、`avSpd`、`avNext`／`avPreview`（橫列預測）；單人 `soloUnits`（`B.av`）；組隊 `mpUnits`、`mpRound`（每層重置）、`mpEnemy`（`MB.av`、`MB.ea`、`MB.order`） |
+| 即時行動條、冷卻（秒）、自動施放（0.3.35） | `js/battle.js`、`js/mp.js`、`js/skills.js`、`js/ui.js` | 規則在 `battle.js` 的「即時行動條」註解：`TURN_S`（一跳 3 秒，資料的「回合」= 一跳）、`ATB_K`、`CDR_MAX`（40%）、`AUTO_WAIT`、`STAGGER`；冷卻 `skCdS`／`cdrOf`／`cdTick`（`me.cd`、`me.cdMax` 秒）、自動施放 `autoPick`（輔助 `sp_auto`：`sup.auto`／`cdAdd`）；每跳 `tickResolve`（`enemyDot`、`roundEnd`、`petsAct`）；單人 `soloStep`／`meReady`／`soloEnd`（`B.hold`／`B.anim`／`B.over`／`B.ready`／`B.tick`）、開場 `atbStart`；組隊隊長 `mpClock`（每 100 毫秒）、`mpRun`、`mpOnAct`（`MB.ready`／`MB.rt`／`MB.q`／`MB.lock`）、隊員補間 `mpLocal`（`MBloc`）、`mpMine`；畫面 `avBar`／`cdMask`／`atbPaint`、說明文字秒數 `secs`／`tLeft`；技能冷卻表 `SK_CD`（`skills.js` 結尾）；冷卻縮減詞綴 `cdr`（`AFF`、`PAFF`、`STATN`）；地圖「走過去戰鬥」`A.engage`／`engageCheck`（`setPos` 呼叫） |
 | T 級 T1～T16（0.3.10） | `js/items.js`、`js/ui.js`、`js/map.js` | `TIERS`、`T_MAX`、`tierNow`／`tierMax`、`tierRange`、`aLv`（地圖基準等級，生成怪物與地城都用這個，不要直接用 `S.lv`）、`dunLv`、`tierBonus`／`tierBoss`、`tierNeed`；強度在 `makeEnemy`、掉寶在 `dropLoot`／`dunReward`；突破試煉 `tierTownHTML`／`A.tierTrial`／`tierUpDone`（`dungeonClear`）；說明與切換 `tierInfoHTML`／`A.tierInfo`／`A.tierSet`；狀態 `S.tier`、`S.tmax` |
 | 武器種類、雙手武器 | `js/data.js`、`js/sprites.js`、`js/battle.js` | `BASES.weapon`（`k` 外觀、`t` 類別、`th` 雙手；只能加在最後）、`wepKind`／`wepType`／`twoHand`、`WTAGN`；裝備衝突在 `A.equip`；手上武器圖 `drawWeapon` |
 | 裝備品質、尾王三選一、單人地城（0.3.1.9） | `js/items.js`、`js/battle.js`、`js/map.js` | 品質 `Q_CAP`／`hasQ`／`qPhys`／`qArm`（`sumStats`、`stats`、`itemCard`）、通貨 `whet`／`scrap`（`CUR`、`craftable`、`craft`）；三選一 `bossPicks`（`dungeonClear`）；額外單人地城 `soloDunAt`（`SDCELL`，`genEntities`）；戰鬥面板四技能在 `renderBHud`／`mp.js` 的 `renderMBHud`（普攻 `.atk` 在右上、物品／逃跑 `.brow2`） |
@@ -158,7 +159,7 @@
 
 - **utils**（6），15 個宣告
 
-### js/data.js（2661 行）
+### js/data.js（2671 行）
 
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
@@ -176,31 +177,31 @@
 ### js/art.js（124 行）
 
 
-### js/skills.js（1416 行）
+### js/skills.js（1540 行）
 
 
 ### js/audio.js（221 行）
 
 - **audio**（3），14 個宣告
 
-### js/items.js（1135 行）
+### js/items.js（1137 行）
 
 - **player & items**（3），27 個宣告
 - **skill gems**（261），29 個宣告
 - **stats**（507），23 個宣告
-- **enemies**（887），16 個宣告
-- **modal**（1025），5 個宣告
+- **enemies**（889），16 個宣告
+- **modal**（1027），5 個宣告
 
-### js/battle.js（3159 行）
+### js/battle.js（3318 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
-- **battle: logic**（238），32 個宣告
-- **battle: rules（單人與組隊共用）**（579），57 個宣告
-- **battle: solo**（1641），14 個宣告
-- **dungeons (shared by solo and party)**（2077），24 個宣告
-- **battle: drawing**（2810），7 個宣告
+- **battle: logic**（238），36 個宣告
+- **battle: rules（單人與組隊共用）**（608），65 個宣告
+- **battle: solo**（1721），20 個宣告
+- **dungeons (shared by solo and party)**（2218），24 個宣告
+- **battle: drawing**（2961），7 個宣告
 
-### js/map.js（1758 行）
+### js/map.js（1760 行）
 
 - **world coordinates: meters from 台中車站 (x 東, y 南)**（3），5 個宣告
 - **OpenStreetMap vector tiles**（63），26 個宣告
@@ -210,18 +211,18 @@
 - **spawns**（773），18 個宣告
 - **world rendering**（1069），18 個宣告
 - **input**（1484），5 個宣告
-- **movement**（1576），5 個宣告
-- **GPS**（1630），11 個宣告
+- **movement**（1577），5 個宣告
+- **GPS**（1632），11 個宣告
 
 ### js/tree.js（496 行）
 
 - **passive tree (full screen)**（3），18 個宣告
 
-### js/ui.js（1923 行）
+### js/ui.js（1953 行）
 
 - **HUD & sheets**（3），48 個宣告
-- **entity interaction**（750），9 個宣告
-- **actions**（942），2 個宣告
+- **entity interaction**（755），11 個宣告
+- **actions**（962），2 個宣告
 
 ### js/endgame.js（691 行）
 
@@ -276,13 +277,13 @@
 - **trials**（2080），2 個宣告
 - **actions**（2096），0 個宣告
 
-### js/gacha.js（767 行）
+### js/gacha.js（781 行）
 
 - **pacts**（6），28 個宣告
-- **banners**（505），8 個宣告
-- **ui**（576），8 個宣告
+- **banners**（519），8 個宣告
+- **ui**（590），8 個宣告
 
-### js/tutor.js（160 行）
+### js/tutor.js（164 行）
 
 - **tutorial**（3），5 個宣告
 
@@ -297,12 +298,12 @@
 - **party invites**（64），7 個宣告
 - **friends sheet**（145），1 個宣告
 
-### js/mp.js（1055 行）
+### js/mp.js（1153 行）
 
-- **party / lobby**（34），11 個宣告
-- **battle state (leader authoritative)**（268），15 個宣告
-- **battle (every client)**（574），11 個宣告
-- **battle rendering**（823），5 個宣告
+- **party / lobby**（35），11 個宣告
+- **battle state (leader authoritative)**（269），17 個宣告
+- **battle (every client)**（642），11 個宣告
+- **battle rendering**（904），6 個宣告
 
 ### js/main.js（393 行）
 

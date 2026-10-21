@@ -894,7 +894,7 @@ const SUPN = {
   exec: v => `對生命低於 35% 的敵人傷害 +${v}%`,
   dot: v => `持續傷害 +${v}%`,
   petMax: v => `召喚上限 +${v}`,
-  petTurns: v => `召喚物多存在 ${v} 回合`
+  petTurns: v => `召喚物多存在 ${v * 3} 秒`
 };
 /* 分支的節點：id → {id, br, kind: 'e'|'s'|'b', p: 父節點, n, g, st, sup, cost, col, row} */
 /* 小點的圖示（依屬性） */

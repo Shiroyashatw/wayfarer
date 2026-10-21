@@ -1510,6 +1510,15 @@ const AFF = [
     tiers: T5([10, 12], [8, 9], [6, 7], [4, 5], [2, 3]),
     f: v => `速度 +${v}`
   },
+  /* 0.3.35 冷卻縮減（全部來源加起來最多 40%） */
+  {
+    id: 'cdr',
+    t: 'S',
+    n: '迅思',
+    slots: ['helm', 'gloves', 'amulet'],
+    tiers: T5([10, 12], [8, 9], [6, 7], [4, 5], [2, 3]),
+    f: v => `冷卻縮減 +${v}%`
+  },
   {
     id: 'vision',
     t: 'S',
@@ -1532,7 +1541,7 @@ const AFF = [
     n: '再生',
     slots: ['chest', 'helm', 'amulet', 'ring', 'belt'],
     tiers: T5([10, 13], [7, 9], [5, 6], [3, 4], [1, 2]),
-    f: v => `每回合回復 ${v} 生命`
+    f: v => `每 3 秒回復 ${v} 生命`
   }
 ];
 const AFFI = Object.fromEntries(AFF.map(a => [a.id, a]));
@@ -1552,18 +1561,19 @@ const STATN = {
   killHeal: v => `擊倒敵人回復 ${v}% 生命`,
   killMana: v => `擊倒敵人回復 ${v}% 魔力`,
   noPotion: () => '無法使用生命藥水',
-  hpDrain: v => `每回合失去 ${v}% 最大生命`,
+  hpDrain: v => `每 3 秒失去 ${v}% 最大生命`,
   block: v => `${v}% 機率格擋（受到的傷害 -70%）`,
   reflectPct: v => `受到攻擊時反彈 ${v}% 傷害`,
   shieldPct: v => `戰鬥開始時獲得 ${v}% 最大生命的護盾`,
   extraTurn: v => `行動後 ${v}% 機率再行動一次`,
-  curseCh: v => `命中有 ${v}% 機率詛咒敵人（3 回合）`,
+  cdr: v => `冷卻縮減 +${v}%（最多 40%）`,
+  curseCh: v => `命中有 ${v}% 機率詛咒敵人（9 秒）`,
   curseP: v => `詛咒中的敵人受傷 +${v}%`,
   spread: () => '敵人死亡時，身上的燃燒、中毒、流血擴散給其他敵人',
   petPct: v => `召喚物傷害 +${v}%`,
   potPct: v => `藥水效果 +${v}%`,
   potBomb: v => `喝藥水時對所有敵人丟藥瓶（物理傷害 ${v}% 的火焰）`,
-  ailDur: v => `燃燒、中毒、流血、感電多持續 ${v} 回合`,
+  ailDur: v => `燃燒、中毒、流血、感電多持續 ${v * 3} 秒`,
   dotPct: v => `持續傷害 +${v}%`,
   anyWep: () => '技能不再需要特定武器',
   petStart: v => `每場戰鬥開始時帶著 ${v} 隻野狼`,
@@ -1581,7 +1591,7 @@ const STATN = {
   spellPct: v => `法術傷害 +${v}%`,
   elePct: v => `元素傷害 +${v}%`,
   mana: v => `最大魔力 +${v}`,
-  regen: v => `每回合回復 ${v} 生命`,
+  regen: v => `每 3 秒回復 ${v} 生命`,
   resAll: v => `全部抗性 +${v}%`,
   physMore: v => `物理傷害 ${v}%（總乘）`,
   resFire: v => `火焰抗性 +${v}%`,
@@ -1624,7 +1634,7 @@ Object.assign(STATN, {
   mpCost: v => `技能消耗 -${v}%`,
   healPct: v => `治癒與藥水效果 +${v}%`,
   goldPct: v => `金幣獲得 +${v}%`,
-  manaRegen: v => `每回合回復 ${v} 魔力`,
+  manaRegen: v => `每 3 秒回復 ${v} 魔力`,
   evade: v => `閃避率 +${v}%`,
   dodgeCap: v => `閃避上限 +${v}%`,
   conv: v => `${v}% 物理傷害轉換為火焰傷害`,
@@ -1632,7 +1642,7 @@ Object.assign(STATN, {
   blood: () => '技能改為消耗生命，不再消耗魔力',
   mom: v => `受到傷害的 ${v}% 改由魔力承受`,
   lowLife: v => `生命低於一半時，傷害 +${v}%（總乘）`,
-  vaal: () => '吸血效果加倍，但每回合不再回復生命',
+  vaal: () => '吸血效果加倍，但不再自然回復生命',
   ironReflex: () => '無法閃避，原本每 1% 閃避轉為 +3% 護甲',
   noFreeze: () => '無法被凍結',
   noDodge: () => '無法閃避'
@@ -2656,5 +2666,5 @@ const TREE = (() => {
       n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.34';
+const VER = '0.3.35';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

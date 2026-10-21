@@ -1,7 +1,8 @@
 /* 漫步勇者 · 組隊與多人地城戰鬥（Supabase Realtime 廣播，隊長的裝置負責計算） */
 'use strict';
 /* 流程：隊長在地城按「組隊進入」→ 拿到 6 碼代碼 → 好友用邀請或代碼加入 → 隊長開始。
-   每回合依速度排順序，輪到的人有 15 秒；時間到自動普攻，換下一個人。怪物在每輪最後行動。
+   0.3.35 即時行動條：隊長的裝置每 100 毫秒推進時間（mpClock），每個人的行動條滿了就能行動（有 15 秒，時間到自動普攻），
+   怪物的行動條滿了就出手；結算動畫播放時（MB.lock）時間暫停，這時送來的行動排隊（MB.q）。
    戰鬥狀態只在隊長那邊算，算完廣播 state 給大家；每個人的經驗、金幣、掉寶在自己的裝置結算。 */
 let PT = null;
 const TURN_MS = 15000,
@@ -155,8 +156,8 @@ function ptGone(uid) {
       const p = MB.ps.find(q => q.uid === uid);
       if (p && !p.gone) {
         p.gone = true;
-        mpPush([{ t: 'msg', s: `${p.name} 斷線了，之後的回合自動普攻` }]);
-        if (MB.actor === uid) mpArm(1500);
+        mpPush([{ t: 'msg', s: `${p.name} 斷線了，之後都自動普攻` }]);
+        if (MB.ready[uid]) MB.ready[uid] = Math.min(MB.ready[uid], Date.now() + 1500);
       }
     } else if (PT.members.delete(uid)) ptLobby();
   }
@@ -267,7 +268,10 @@ function partyHTML() {
 
 /* ================= battle state (leader authoritative) ================= */
 let MBT = null,
-  MBbg = null;
+  MBbg = null,
+  MBloc = null;
+/* 0.3.35 輪到自己了沒（行動條滿了、還沒送出） */
+const mpMine = () => !!MB && !!MB.rl && CLOUD.uid in MB.rl && MB.sent !== (MB.rt || {})[CLOUD.uid];
 const MBFX = { pops: [], fx: [], shake: 0, hurt: {}, lunge: {}, en: [], t0: 0 };
 /* 廣播用的狀態：去掉只屬於自己的欄位（戰利品、選單、已送出的回合） */
 const pub = () => {
@@ -276,23 +280,20 @@ const pub = () => {
   delete o.sub;
   delete o.sent;
   delete o.dl;
+  delete o.rdl;
+  delete o.q;
   return JSON.parse(JSON.stringify(o));
 };
 function mpPush(fx) {
   if (!MB) return;
-  MB.left = MB.dl ? Math.max(0, MB.dl - Date.now()) : 0;
+  /* 每個人剩多少毫秒可以下指令（各裝置的時鐘不同，送剩下的時間） */
+  MB.rl = {};
+  for (const u in MB.ready || {}) MB.rl[u] = Math.max(0, MB.ready[u] - Date.now());
+  MB.order = avPreview(MB.av, mpUnits(), 6);
   ptSend('state', { mb: pub(), fx: fx || [] });
   mpApply(null, fx || []);
 }
-function mpArm(ms) {
-  clearTimeout(MBT);
-  const tok = MB.tok,
-    uid = MB.actor;
-  MB.dl = Date.now() + ms;
-  MBT = setTimeout(() => {
-    if (MB && MB.tok === tok && MB.actor === uid) mpResolve(uid, 'attack', true);
-  }, ms);
-}
+let MBclk = null;
 /* 隊長按開始 */
 function ptReady() {
   if (!PT || PT.started) return;
@@ -342,6 +343,11 @@ function mpStart() {
     floors: spec.floors,
     n: mem.length,
     av: {},
+    ready: {},
+    rt: {},
+    q: [],
+    lock: true,
+    tick: 0,
     tok: 0,
     ea: -1,
     order: [],
@@ -399,140 +405,202 @@ const mpUnits = () => [
   ...MB.ps.filter(p => p.alive).map(p => ({ id: p.uid, spd: avSpd(p) })),
   ...aliveIdx(MB.es).map(i => ({ id: 'e' + i, spd: avSpd(MB.es[i]) }))
 ];
-/* 每層重新累積行動值 */
+/* 每層重新累積行動值，開始跑時間 */
 function mpRound() {
   if (!MB) return;
-  MB.av = {};
-  for (const p of MB.ps) p.turns = 0;
-  mpNext();
+  MB.av = atbStart(MB.es);
+  delete MB.av.me;
+  for (const p of MB.ps) MB.av[p.uid] = AV_MAX * 0.5;
+  MB.ready = {};
+  MB.q = [];
+  MB.tick = 0;
+  MB.actor = null;
+  MB.lock = false;
+  MB.lastT = performance.now();
+  clearInterval(MBclk);
+  MBclk = setInterval(mpClock, 100);
+  mpPush();
 }
-function mpNext() {
-  if (!MB) return;
-  const a = avNext(MB.av || (MB.av = {}), mpUnits());
-  if (a == null) return;
-  /* 廣播接下來 6 次行動的預測，給每個人的行動順序橫列 */
-  MB.order = avPreview(MB.av, mpUnits(), 6);
-  MB.tok++;
-  MB.ea = -1;
-  if (a[0] === 'e' && !MB.ps.some(p => p.uid === a)) {
-    MB.actor = 'E';
-    MB.ea = +a.slice(1);
-    MB.dl = 0;
+/* 隊長每 100 毫秒推進一次：冷卻、行動條、每 TURN_S 秒一跳持續效果、怪物出手、隊員輪到與逾時 */
+function mpClock() {
+  if (!MB || !amLeader()) return clearInterval(MBclk);
+  const now = performance.now(),
+    dt = Math.min(0.25, (now - (MB.lastT || now)) / 1000);
+  MB.lastT = now;
+  if (MB.lock) return;
+  let dirty = false;
+  const alive = MB.ps.filter(p => p.alive);
+  for (const p of alive) if (cdTick(p, dt)) dirty = true;
+  for (const u of mpUnits()) {
+    const pl = MB.ps.some(p => p.uid === u.id);
+    MB.av[u.id] = Math.min(pl ? AV_MAX : AV_MAX * 2, (MB.av[u.id] || 0) + u.spd * ATB_K * dt);
+  }
+  if ((MB.tick += dt) >= TURN_S) {
+    MB.tick -= TURN_S;
+    /* 持續效果與召喚物不暫停時間；打完這層或全滅才走 mpRun 結算 */
+    const ev = tickResolve(MB.es, alive);
+    if (!MB.ps.some(p => p.alive) || MB.es.every(e => e.hp <= 0)) return mpRun(ev, '');
+    if (ev.length) {
+      for (const f of ev) if (f.t === 'down') f.s = `${(MB.ps.find(p => p.uid === f.who) || {}).name} 倒下了！`;
+      mpPush(ev);
+    }
+    dirty = !ev.length;
+  }
+  /* 怪物：行動條滿了就出手（同時滿的，滿越多的先） */
+  const rd = aliveIdx(MB.es)
+    .filter(i => MB.av['e' + i] >= AV_MAX)
+    .sort((a, b) => MB.av['e' + b] - MB.av['e' + a]);
+  if (rd.length && now >= (MB.nextAct || 0)) {
+    MB.av['e' + rd[0]] -= AV_MAX;
+    MB.ea = rd[0];
+    MB.nextAct = now + STAGGER;
+    return mpEnemy();
+  }
+  /* 隊員：行動條滿了就輪到他（凍結跳過；插了自動施放就直接放） */
+  for (const p of alive) {
+    if (MB.av[p.uid] < AV_MAX || MB.ready[p.uid]) continue;
+    if (p.frozen) {
+      p.frozen = 0;
+      MB.av[p.uid] = 0;
+      mpPush([{ t: 'msg', s: `${p.name} 被凍住了，這次行動跳過` }]);
+      continue;
+    }
+    MB.ready[p.uid] = Date.now() + (p.gone ? 1500 : TURN_MS);
+    (MB.rAt = MB.rAt || {})[p.uid] = Date.now();
+    MB.rt[p.uid] = ++MB.tok;
+    mpPush([{ t: 'turn', uid: p.uid }]);
+    dirty = false;
+  }
+  /* 排隊的行動（動畫播放時送來的） */
+  if (MB.q.length) {
+    const a = MB.q.shift();
+    return mpResolve(a.uid, a.k, false, a.tg);
+  }
+  /* 自動施放：輪到之後 AUTO_WAIT 秒還沒下指令，就放插了自動施放的技能 */
+  for (const u in MB.ready) {
+    const p = MB.ps.find(q => q.uid === u);
+    if (!p || Date.now() - ((MB.rAt || {})[u] || 0) < AUTO_WAIT * 1000 || (MB.rAt || {})[u] < 0) continue;
+    MB.rAt[u] = -1;
+    const ai = autoPick(p, p, p.st, p.sks || []);
+    if (ai >= 0) return mpResolve(u, 's' + ai, false, p.tg || 0, true);
+  }
+  /* 時間到：自動普攻 */
+  for (const u in MB.ready)
+    if (Date.now() > MB.ready[u]) return mpResolve(u, 'attack', true, MB.ps.find(p => p.uid === u).tg || 0);
+  if (dirty || now - (MB.syncT || 0) > 1000) {
+    MB.syncT = now;
     mpPush();
+  }
+}
+/* 播一段結算：鎖住時間，播完解鎖並檢查全滅與過關 */
+/* 播一段結算（時間不停，動畫疊著播）；打完這層或全滅才停下來，播完進結算 */
+function mpRun(fx, actor) {
+  const tot = fx.reduce((a, f) => Math.max(a, f.at || 0), 0),
+    wipe = !MB.ps.some(p => p.alive),
+    clear = MB.es.every(e => e.hp <= 0);
+  for (const f of fx) if (f.t === 'down') f.s = `${(MB.ps.find(p => p.uid === f.who) || {}).name} 倒下了！`;
+  /* 倒下的人不能行動 */
+  for (const u in MB.ready) if (!(MB.ps.find(p => p.uid === u) || {}).alive) delete MB.ready[u];
+  MB.actor = actor;
+  if (wipe || clear) MB.lock = true;
+  mpPush(fx);
+  if (wipe || clear) {
+    clearInterval(MBclk);
     clearTimeout(MBT);
-    MBT = setTimeout(mpEnemy, 650);
+    MBT = setTimeout(() => {
+      if (!MB) return;
+      MB.actor = null;
+      if (wipe) {
+        ptSend('wipe', {});
+        mpWipe();
+      } else mpRoomClear();
+    }, tot + 400);
     return;
   }
-  const p = MB.ps.find(q => q.uid === a);
-  if (!p || !p.alive) return mpNext();
-  /* 上一次行動之後的回復、防禦與增益倒數 */
-  if (p.turns++) roundEnd(p);
-  if (p.frozen) {
-    p.frozen = 0;
-    MB.actor = a;
-    MB.dl = 0;
-    mpPush([{ t: 'msg', s: `${p.name} 被凍住了，跳過這回合` }]);
-    clearTimeout(MBT);
-    MBT = setTimeout(mpNext, 1100);
-    return;
-  }
-  MB.actor = a;
-  mpArm(p.gone ? 1500 : TURN_MS);
-  mpPush([{ t: 'turn', uid: a }]);
+  setTimeout(() => MB && MB.actor === actor && (MB.actor = null), tot);
 }
 function mpOnAct(uid, k, tok, tg) {
-  if (!MB || MB.actor !== uid || tok !== MB.tok) return;
-  clearTimeout(MBT);
+  if (!MB || !MB.ready[uid] || tok !== MB.rt[uid]) return;
+  if (MB.lock) {
+    if (!MB.q.some(a => a.uid === uid)) MB.q.push({ uid, k, tg });
+    return;
+  }
   mpResolve(uid, k, false, tg);
 }
-/* 一位玩家的行動（共用 actResolve），tg 是他選的目標 */
-function mpResolve(uid, k, auto, tg = 0) {
+/* 一位玩家的行動（共用 actResolve），tg 是他選的目標；auto 是逾時普攻、ac 是自動施放 */
+function mpResolve(uid, k, auto, tg = 0, ac) {
   const p = MB.ps.find(q => q.uid === uid);
-  if (!p || !MB.es) return;
-  MB.tok++;
-  MB.actor = null;
-  MB.dl = 0;
-  let sk = skByKey(k, p.sks || []),
-    fx = [];
+  if (!p || !MB.es || !MB.ready[uid]) return;
+  delete MB.ready[uid];
+  MB.q = MB.q.filter(a => a.uid !== uid);
+  MB.av[uid] = Math.max(0, (MB.av[uid] || 0) - AV_MAX);
+  MB.nextAct = Math.max(MB.nextAct || 0, performance.now() + STAGGER);
+  p.tg = tg;
+  let sk = skByKey(k, p.sks || []);
+  const done = ev => {
+    /* 昇華：有機率再行動一次（行動條直接補滿） */
+    if (p.st.extraTurn && Math.random() * 100 < p.st.extraTurn) {
+      MB.av[uid] = AV_MAX;
+      ev.push({ t: 'msg', s: `${p.name} 再行動一次！`, at: ev.reduce((a, f) => Math.max(a, f.at || 0), 0) + 100 });
+    }
+    mpRun(ev, uid);
+  };
   if (k === 'potion' || k === 'ether') {
     const hm = (p.st.healMul || 1) * (MB.spec.noregen ? 0.5 : 1) * (1 + (p.st.potPct || 0) / 100),
       v = k === 'potion' ? Math.round(p.st.maxhp * 0.4 * hm) : Math.round(p.st.maxmp * 0.5 * hm);
     if (k === 'potion') p.hp = Math.min(p.st.maxhp, p.hp + v);
     else p.mp = Math.min(p.st.maxmp, p.mp + v);
-    fx.push(
+    return done([
       { t: 'msg', s: `${p.name} 使用${k === 'potion' ? '生命' : '魔力'}藥水` },
-      { t: 'heal', who: uid, v, mp: k === 'ether' }
-    );
-    mpPush(fx);
-    MBT = setTimeout(mpNext, 900);
-    return;
+      { t: 'heal', who: uid, v, mp: k === 'ether', at: 100 },
+      { t: 'end', at: 500 }
+    ]);
   }
   /* 0.3.22 引爆地雷 */
   if (k === 'mines' && (p.mines || []).length) {
-    const alive = MB.ps.filter(q => q.alive),
-      ev = mineBlast(p, p.st, MB.es, tg, alive, { ew: MB.spec.eleweak ? 20 : 0, av: MB.av }),
-      end = ev.reduce((a, f) => Math.max(a, f.at || 0), 0),
-      pe = petsAct(p, p.st, MB.es).map(f => ({ ...f, at: (f.at || 0) + end + 150 })),
-      tot = pe.reduce((a, f) => Math.max(a, f.at || 0), end);
-    fx = fx.concat([{ t: 'msg', s: `${p.name}：引爆地雷` }], ev, pe);
-    mpPush(fx);
-    clearTimeout(MBT);
-    MBT = setTimeout(() => {
-      if (!MB) return;
-      if (MB.es.every(e => e.hp <= 0)) mpRoomClear();
-      else mpNext();
-    }, tot + 500);
-    return;
+    const alive = MB.ps.filter(q => q.alive);
+    return done(
+      [{ t: 'msg', s: `${p.name}：引爆地雷` }].concat(
+        mineBlast(p, p.st, MB.es, tg, alive, { ew: MB.spec.eleweak ? 20 : 0, av: MB.av })
+      )
+    );
   }
   if (!sk || !skReady(p, p, skSt(p.st, sk), sk)) {
     sk = SKILLS.attack;
     k = 'attack';
   }
   if (!charging(p, sk)) payCost(p, p.st, sk);
-  fx.push({ t: 'msg', s: auto ? `${p.name} 時間到，自動攻擊` : `${p.name}：${sk.name}` });
-  const alive = MB.ps.filter(q => q.alive),
-    ev = actResolve(p, p.st, sk, MB.es, tg, alive, {
-      allyMul: 1 + ((p.st.allyDmg || 0) * (alive.length - 1)) / 100,
-      ew: MB.spec.eleweak ? 20 : 0,
-      av: MB.av
-    }),
-    end = ev.reduce((a, f) => Math.max(a, f.at || 0), 0),
-    pe = petsAct(p, p.st, MB.es).map(f => ({ ...f, at: (f.at || 0) + end + 150 })),
-    tot = pe.reduce((a, f) => Math.max(a, f.at || 0), end);
-  fx = fx.concat(ev, pe);
-  mpPush(fx);
-  clearTimeout(MBT);
-  MBT = setTimeout(() => {
-    if (!MB) return;
-    if (MB.es.every(e => e.hp <= 0)) mpRoomClear();
-    else mpNext();
-  }, tot + 500);
+  const alive = MB.ps.filter(q => q.alive);
+  done(
+    [
+      {
+        t: 'msg',
+        s: auto ? `${p.name} 時間到，自動攻擊` : ac ? `${p.name} 自動施放・${sk.name}` : `${p.name}：${sk.name}`
+      }
+    ].concat(
+      actResolve(p, p.st, sk, MB.es, tg, alive, {
+        allyMul: 1 + ((p.st.allyDmg || 0) * (alive.length - 1)) / 100,
+        ew: MB.spec.eleweak ? 20 : 0,
+        av: MB.av
+      })
+    )
+  );
 }
-/* 怪物行動：輪到的那一隻敵人結算（共用 enemyResolve） */
+/* 怪物行動：行動條滿的那一隻敵人結算（共用 enemyResolve） */
 function mpEnemy() {
   if (!MB) return;
-  const i = MB.ea;
-  let fx = [],
-    off = 0;
-  if (MB.es[i] && MB.es[i].hp > 0 && MB.ps.some(p => p.alive)) {
-    fx = enemyResolve(MB.es, i, MB.ps, { ew: MB.spec.eleweak ? 20 : 0 });
-    off = fx.reduce((a, f) => Math.max(a, f.at || 0), 0) + 150;
-  }
-  for (const f of fx) if (f.t === 'down') f.s = `${(MB.ps.find(p => p.uid === f.who) || {}).name} 倒下了！`;
-  mpPush(fx);
-  clearTimeout(MBT);
-  MBT = setTimeout(() => {
-    if (!MB) return;
-    if (!MB.ps.some(p => p.alive)) {
-      ptSend('wipe', {});
-      mpWipe();
-    } else if (MB.es.every(e => e.hp <= 0)) mpRoomClear();
-    else mpNext();
-  }, off + 400);
+  const i = MB.ea,
+    fx =
+      MB.es[i] && MB.es[i].hp > 0 && MB.ps.some(p => p.alive)
+        ? enemyResolve(MB.es, i, MB.ps, { ew: MB.spec.eleweak ? 20 : 0 })
+        : [];
+  mpRun(fx, 'E');
 }
 /* 打倒這層的怪物群：經驗大家平均分，金幣與掉寶各自結算；倒下的隊員以 20% 生命復活，進下一層 */
 function mpRoomClear() {
   if (!MB) return;
+  MB.lock = true;
+  MB.ready = {};
   const info = MB.es.map((e, i) => ({
     name: e.name,
     lv: e.lv,
@@ -605,7 +673,18 @@ function mpApply(mb, fx) {
   if (mb) {
     const keep = MB ? { loot: MB.loot, sub: MB.sub, sent: MB.sent, tg: MB.tg } : { loot: [] };
     MB = Object.assign(mb, keep);
-    MB.dl = MB.left ? Date.now() + MB.left : 0;
+  }
+  /* 0.3.35 各人的剩下時間換成自己裝置的時間；行動條與冷卻在每幀補間（mpLocal） */
+  MB.rdl = {};
+  for (const u in MB.rl || {}) MB.rdl[u] = Date.now() + MB.rl[u];
+  {
+    const me = MB.ps.find(p => p.uid === CLOUD.uid);
+    MBloc = {
+      av: { ...(MB.av || {}) },
+      cd: { ...((me && me.cd) || {}) },
+      cdMax: (me && me.cdMax) || {},
+      t: performance.now()
+    };
   }
   const me = MB.ps.find(p => p.uid === CLOUD.uid);
   if (me) {
@@ -678,7 +757,7 @@ function mpFx(f) {
 }
 /* 自己的行動：隊長直接算，隊員送給隊長；tg 是自己選的目標 */
 function mpMy(k) {
-  if (!MB || MB.actor !== CLOUD.uid || MB.sent === MB.tok) return;
+  if (!mpMine()) return;
   const me = MB.ps.find(p => p.uid === CLOUD.uid);
   if (!me) return;
   if (k === 'potion' || k === 'ether') {
@@ -689,13 +768,14 @@ function mpMy(k) {
     const sk = skByKey(k, me.sks || []);
     if (k === 'mines' ? !(me.mines || []).length : !sk || !skReady(me, me, skSt(me.st, sk), sk)) return;
   }
-  MB.sent = MB.tok;
+  const tok = MB.rt[CLOUD.uid];
+  MB.sent = tok;
   MB.sub = null;
   sfx('select');
   renderMBHud();
   const tg = MB.tg || 0;
-  if (amLeader()) mpOnAct(CLOUD.uid, k, MB.tok, tg);
-  else ptSend('act', { uid: CLOUD.uid, k, tok: MB.tok, tg });
+  if (amLeader()) mpOnAct(CLOUD.uid, k, tok, tg);
+  else ptSend('act', { uid: CLOUD.uid, k, tok, tg });
 }
 /* 一層的獎勵：經驗是整群加總後依人數平均，金幣與掉寶各自結算 */
 function mpRoomReward(info, n = 1) {
@@ -796,6 +876,7 @@ function mpEnd(reason) {
 }
 function mpStop() {
   clearTimeout(MBT);
+  clearInterval(MBclk);
   MB = null;
   $('battle').hidden = true;
   $('mpills').innerHTML = '';
@@ -833,7 +914,7 @@ function renderMBHud() {
   const es = MB.es || [],
     p = POS(),
     me = MB.ps.find(q => q.uid === CLOUD.uid),
-    my = MB.actor === CLOUD.uid && MB.sent !== MB.tok && me && me.alive;
+    my = mpMine() && me && me.alive;
   if (es.length && (!es[MB.tg || 0] || es[MB.tg || 0].hp <= 0)) MB.tg = Math.max(0, aliveIdx(es)[0] ?? 0);
   const ti = MB.tg || 0,
     e = es[ti];
@@ -861,7 +942,7 @@ function renderMBHud() {
           : { n: shortName(o), c: 'e', on, img: portrait(o.spr, o.pal) }
         : null;
     };
-    const cur = row(MB.actor === 'E' ? 'e' + MB.ea : MB.actor, true);
+    const cur = row(MB.actor === 'E' ? 'e' + MB.ea : MB.actor || null, true);
     renderOrder([cur, ...(MB.order || []).map(a => row(a, false))].filter(Boolean));
   }
   const big = bossBar(
@@ -880,7 +961,7 @@ function renderMBHud() {
         hr = hp / q.st.maxhp,
         low = q.alive && hr < 0.3;
       return (
-        `<div class="mp ${q.uid === MB.actor ? 'on' : ''} ${q.alive ? '' : 'down'} ${low ? 'low' : ''} ${q.uid === CLOUD.uid ? 'mine' : ''}" style="left:${ps.x}px;top:${ps.y + 8}px"><b>${esc(q.name)}${q.gone ? '（離線）' : q.alive ? '' : '（倒下）'}</b><i class="mh"><i style="width:${hr * 100}%"></i><em>${hp}/${q.st.maxhp}</em></i><i class="mm"><i style="width:${(q.mp / q.st.maxmp) * 100}%"></i><em>${Math.max(0, Math.round(q.mp))}</em></i></div>` +
+        `<div class="mp ${q.uid === MB.actor || (MB.rl && q.uid in MB.rl) ? 'on' : ''} ${q.alive ? '' : 'down'} ${low ? 'low' : ''} ${q.uid === CLOUD.uid ? 'mine' : ''}" style="left:${ps.x}px;top:${ps.y + 8}px"><b>${esc(q.name)}${q.gone ? '（離線）' : q.alive ? '' : '（倒下）'}</b><i class="mh"><i style="width:${hr * 100}%"></i><em>${hp}/${q.st.maxhp}</em></i><i class="mm"><i style="width:${(q.mp / q.st.maxmp) * 100}%"></i><em>${Math.max(0, Math.round(q.mp))}</em></i>${avBar(q.uid)}</div>` +
         `<div class="ailbox" style="left:${ps.x + 5 * (battleSc() - 1)}px;top:${ps.y - 16 * (battleSc() - 1)}px">${heroAilHTML(q)}</div>`
       );
     })
@@ -894,7 +975,7 @@ function renderMBHud() {
   const slot = k => {
     const q = sks[+k.slice(1)];
     return cb(
-      q.name,
+      q.name + cdMask(q),
       q.icon,
       skSub(me ? me.st : stats(), q, me, MB.es, MB.tg || 0),
       `data-k="${k}"`,
@@ -941,22 +1022,39 @@ let mpTurnT = 0;
 function mpTurnBar() {
   const el = $('mpTurn');
   if (!el || !MB) return;
+  /* 0.3.35：輪到自己時顯示剩下的秒數，否則顯示誰在行動 */
   const a = MB.actor,
-    p = MB.ps.find(q => q.uid === a),
-    left = MB.dl ? Math.max(0, MB.dl - Date.now()) : 0,
-    mine = p && p.uid === CLOUD.uid;
+    mine = mpMine(),
+    p = mine ? MB.ps.find(q => q.uid === CLOUD.uid) : MB.ps.find(q => q.uid === a),
+    left = mine ? Math.max(0, (MB.rdl || {})[CLOUD.uid] - Date.now()) : 0;
   setFloor(`第 ${Math.min(MB.room + 1, MB.floors)}/${MB.floors} 層`);
   /* 倒數條：一開始是滿的，從右往左縮短；輪到自己是金色，剩 5 秒變紅 */
   el.className = `mpturn${mine ? ' mine' : ''}${left && left < 5000 ? ' hurry' : ''}`;
-  el.innerHTML =
-    a === 'E'
+  el.innerHTML = mine
+    ? `<i style="width:${(left / TURN_MS) * 100}%"></i><span><b>輪到你了</b></span><span>${Math.ceil(left / 1000)} 秒</span>`
+    : a === 'E'
       ? '<span>怪物行動中…</span>'
       : p
-        ? `<i style="width:${(left / TURN_MS) * 100}%"></i><span>${mine ? '<b>輪到你了</b>' : `輪到 ${esc(p.name)}`}</span><span>${Math.ceil(left / 1000)} 秒</span>`
-        : '<span>準備中…</span>';
+        ? `<span>${esc(p.name)} 行動中…</span>`
+        : '<span>行動條累積中…</span>';
   $('bstat').hidden = true;
 }
+/* 0.3.35 每幀補間：沒在播結算時，行動條照速度往前、自己的冷卻往下數（下一次 state 會校正） */
+function mpLocal() {
+  if (!MB || !MBloc) return;
+  const now = performance.now(),
+    dt = Math.min(0.25, (now - MBloc.t) / 1000);
+  MBloc.t = now;
+  if (MB.lock) return;
+  for (const u of mpUnits()) {
+    const pl = MB.ps.some(p => p.uid === u.id);
+    MBloc.av[u.id] = Math.min(pl ? AV_MAX : AV_MAX * 2, (MBloc.av[u.id] || 0) + u.spd * ATB_K * dt);
+  }
+  for (const k in MBloc.cd) if ((MBloc.cd[k] -= dt) <= 0) delete MBloc.cd[k];
+}
 function renderMB(t) {
+  mpLocal();
+  if (MBloc) atbPaint(MBloc.av, MBloc);
   const c = bctx,
     now_ = performance.now(),
     p = POS();

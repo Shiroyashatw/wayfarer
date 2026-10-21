@@ -254,12 +254,12 @@ function gemDesc(q, st) {
         kw('組隊時隊友也受益', 'tg') +
           '：' +
           Object.entries(q.pb || {})
-            .map(([k, v]) => (k === 'hot' ? `每回合回復 ${v}% 生命` : `${BUFFN[k] || k} +${v}%`))
+            .map(([k, v]) => (k === 'hot' ? `每 ${TURN_S} 秒回復 ${v}% 生命` : `${BUFFN[k] || k} +${v}%`))
             .join('、')
       );
     return out.join('・');
   }
-  if (q.pet) out.push(`召喚 ${q.pet.n || 1} 隻${kw(q.pet.name, 'buf')}（${q.pet.turns} 回合、最多 ${q.pet.max}）`);
+  if (q.pet) out.push(`召喚 ${q.pet.n || 1} 隻${kw(q.pet.name, 'buf')}（${secs(q.pet.turns)} 秒、最多 ${q.pet.max}）`);
   else if (q.kind === 'spell')
     out.push(`${kw(EL[q.el] + '法術', elc)}・基礎傷害 ${kw(Math.round(q.sb * q.mult), 'num')}`);
   else if (q.kind === 'attack')
@@ -276,15 +276,15 @@ function gemDesc(q, st) {
   if (q.stun) out.push(`${Math.round(q.stun * 100)}% 機率${kw('暈眩', 'eff')}`);
   if (q.freeze) out.push(`${Math.round(q.freeze * 100)}% 機率${kw('凍結', 'eff')}`);
   if (q.bleed) out.push(`${q.bleed}% 機率${kw('流血', 'eff')}`);
-  if (q.poison) out.push(`造成${kw('中毒', 'eff')}（${q.poison} 回合）`);
+  if (q.poison) out.push(`造成${kw('中毒', 'eff')}（${secs(q.poison)} 秒）`);
   if (q.mark) out.push(`${kw('標記', 'eff')}目標（受傷 +${q.mark}%）`);
   if (q.curse) out.push(`${kw('詛咒', 'eff')}目標（受傷 +${q.curse}%）`);
   if (q.exec) out.push(`${kw('斬殺', 'eff')}：低血敵人傷害 +${q.exec}%`);
   if (q.brk) out.push(`${kw('碎甲', 'eff')}：無視 ${q.brk}% 護甲`);
-  if (q.guard) out.push(`${kw('格擋', 'buf')} ${q.guard} 回合（護甲加倍）`);
+  if (q.guard) out.push(`${kw('格擋', 'buf')} ${secs(q.guard)} 秒（護甲加倍）`);
   if (q.buff)
     out.push(
-      `${kw(q.buff.n, 'buf')} ${q.buff.turns} 回合：` +
+      `${kw(q.buff.n, 'buf')} ${secs(q.buff.turns)} 秒：` +
         Object.entries(q.buff)
           .filter(([k]) => BUFFN[k])
           .map(([k, v]) => `${BUFFN[k]} ${k === 'dmgRed' ? '-' : '+'}${Math.round(v)}%`)
@@ -314,11 +314,11 @@ function gemDesc(q, st) {
   if (q.combo) out.push(`${kw('連續使用', 'eff')}每次傷害 ${kw('+' + q.combo + '%', 'num')}（最多 5 層，換招歸零）`);
   if (q.petN) out.push(`每隻召喚物讓傷害 ${kw('+' + q.petN + '%', 'num')}`);
   if (q.charge)
-    out.push(`${kw('蓄力', 'eff')}：先蓄一回合，下次放同一招傷害 ${kw('×' + q.charge, 'num')}（蓄力時被打會減弱）`);
-  if (q.slow) out.push(`${kw('衰老', 'eff')}：目標行動變慢 ${q.slow} 回合`);
-  if (q.vulP) out.push(`${kw('脆弱', 'eff')}：目標受到的物理傷害 +${q.vulP}%（3 回合）`);
-  if (q.vulE) out.push(`${kw('元素弱化', 'eff')}：目標受到的元素傷害 +${q.vulE}%（3 回合）`);
-  if (q.dmark) out.push(`${kw('死亡印記', 'eff')}：目標 3 回合內死亡時，回復 10% 生命與魔力`);
+    out.push(`${kw('蓄力', 'eff')}：這次行動先蓄力，下次放同一招傷害 ${kw('×' + q.charge, 'num')}（蓄力時被打會減弱）`);
+  if (q.slow) out.push(`${kw('衰老', 'eff')}：目標行動條變慢 ${secs(q.slow)} 秒`);
+  if (q.vulP) out.push(`${kw('脆弱', 'eff')}：目標受到的物理傷害 +${q.vulP}%（${secs(3)} 秒）`);
+  if (q.vulE) out.push(`${kw('元素弱化', 'eff')}：目標受到的元素傷害 +${q.vulE}%（${secs(3)} 秒）`);
+  if (q.dmark) out.push(`${kw('死亡印記', 'eff')}：目標 ${secs(3)} 秒內死亡時，回復 10% 生命與魔力`);
   if (q.spreadSt) out.push(`把目標身上的${kw('詛咒、印記、易傷、衰老', 'eff')}${kw('擴散', 'tg')}給全部敵人`);
   if (q.killBoom) out.push(`擊殺時${kw('爆炸', 'fire')}：這下傷害的 ${q.killBoom}% 打其他敵人`);
   if (q.sac) out.push(`${kw('引爆', 'eff')}一隻召喚物，炸全部敵人（召喚物傷害 ×${q.sac}）`);
@@ -334,21 +334,21 @@ function gemDesc(q, st) {
       );
     if (q.lowMeBuff) out.push(`自己每少 10% 生命，傷害再 ${kw('+' + q.lowMeBuff + '%', 'num')}`);
     if (q.emp) out.push(`強化接下來的 ${kw('N 次攻擊', 'num')}（N = 吼到的敵人數）：傷害 +${q.emp}%`);
-    if (q.fear) out.push(`生命低於 ${q.fear}% 的敵人${kw('恐懼', 'eff')}，跳過下一回合`);
+    if (q.fear) out.push(`生命低於 ${q.fear}% 的敵人${kw('恐懼', 'eff')}，跳過下一次行動`);
     if (q.cryCurse)
       out.push(
-        `全部敵人${kw('震懾', 'eff')}：受傷 +${q.cryCurse}%${q.cryWeak ? `、攻擊 -${q.cryWeak}%` : ''}（3 回合）`
+        `全部敵人${kw('震懾', 'eff')}：受傷 +${q.cryCurse}%${q.cryWeak ? `、攻擊 -${q.cryWeak}%` : ''}（${secs(3)} 秒）`
       );
-    if (q.avUp) out.push(`全隊${kw('行動值提前', 'buf')} ${q.avUp}`);
+    if (q.avUp) out.push(`全隊${kw('行動條', 'buf')} +${q.avUp}%`);
   }
   /* 0.3.22 戰場單位 */
   if (q.totem)
     out.push(
-      `${kw('放置圖騰', 'buf')}（生命 ${Math.round((q.totem.hp || 0.35) * 100)}%、${q.totem.turns || 4} 回合，敵人會打它${q.totem.taunt ? '，很會吸引攻擊' : ''}）${q.totem.cry ? `：每回合給你 ${q.totem.cry.n} 傷害 +${q.totem.cry.more}%` : q.mult ? `：每次你行動後施放（${Math.round((q.totem.mul || 1) * 100)}% 傷害）` : ''}`
+      `${kw('放置圖騰', 'buf')}（生命 ${Math.round((q.totem.hp || 0.35) * 100)}%、${secs(q.totem.turns || 4)} 秒，敵人會打它${q.totem.taunt ? '，很會吸引攻擊' : ''}）${q.totem.cry ? `：每 ${TURN_S} 秒給你 ${q.totem.cry.n} 傷害 +${q.totem.cry.more}%` : q.mult ? `：每 ${TURN_S} 秒施放（${Math.round((q.totem.mul || 1) * 100)}% 傷害）` : ''}`
     );
   if (q.turret)
     out.push(
-      `${kw('放置砲台', 'buf')}（${q.turret.turns || 4} 回合、打不到）：每次你行動後射擊（${Math.round((q.turret.mul || 1) * 100)}% 傷害）`
+      `${kw('放置砲台', 'buf')}（${secs(q.turret.turns || 4)} 秒、打不到）：每 ${TURN_S} 秒射擊（${Math.round((q.turret.mul || 1) * 100)}% 傷害）`
     );
   if (q.trap)
     out.push(
@@ -358,7 +358,12 @@ function gemDesc(q, st) {
     out.push(
       `${kw('放置地雷', 'eff')}：最多疊 5 顆，按「引爆地雷」一次炸掉（每顆 ${Math.round((q.mine.mul || 1) * 100)}%，每多一顆每顆 +10%）`
     );
-  if (q.cd) out.push(kw(`冷卻 ${q.cd} 回合`, 'bad'));
+  /* 0.3.35 冷卻以秒計（含輔助寶石加的、冷卻縮減）；自動施放 */
+  {
+    const c = skCdS(st || {}, q);
+    if (c > 0) out.push(kw(`冷卻 ${c} 秒`, 'bad'));
+    if (supOf(st || {}, q).auto) out.push(kw('自動施放', 'buf'));
+  }
   if (q.lifeCost) out.push(kw(`消耗 ${Math.round(q.lifeCost * 100)}% 生命`, 'bad'));
   if (q.w) out.push(st && !wOk(st, q) ? kw(`需要${WTAGN[q.w]}（目前不能用）`, 'bad') : `需要${WTAGN[q.w]}`);
   return out.join('・');
@@ -782,7 +787,10 @@ function openEnt(id) {
     desc += `<br><span class="sub">攻擊屬性：${EL[e.base.el]}${e.base.res.some(v => v) ? '・抗性 火' + e.base.res[0] + '% 冰' + e.base.res[1] + '% 雷' + e.base.res[2] + '%' : ''}</span>`;
     if (e.bounty) desc += '<br><span style="color:#ff8a6a">懸賞：擊敗可得額外金幣與混沌石。</span>';
     pre = lineupHTML(e);
-    act = `<button class="btn pri" data-act="fight" data-id="${id}" ${inR ? '' : 'disabled'}>戰鬥</button>`;
+    /* 0.3.35 太遠時一鍵「走過去戰鬥」：走到範圍內自動開打（GPS 模式是標記目標，自己走到就開打） */
+    act = inR
+      ? `<button class="btn pri" data-act="fight" data-id="${id}">戰鬥</button>`
+      : `<button class="btn pri" data-act="engage" data-id="${id}">${S.gps ? '標記目標，走到就開打' : '走過去戰鬥'}</button>`;
   } else if (e.kind === 'dungeon') {
     const sp = dunSpec(e),
       T = DTYPES[e.dt],
@@ -880,7 +888,7 @@ function openEnt(id) {
   $('sbody').innerHTML =
     `<div class="ent">${e.kind === 'monster' ? '' : '<canvas id="entBig" width="18" height="18" style="width:84px;height:84px"></canvas>'}<div style="flex:1;min-width:0;display:grid;gap:4px"><b style="font-family:var(--f-pix);font-size:19px;font-weight:400;color:${e.kind === 'monster' ? RCOL[e.rar || 0] : 'inherit'}">${esc(title)}${e.lv && e.kind !== 'town' ? ` <span class="sub">Lv${e.lv}</span>` : ''}</b><span class="sub">${d < 5 ? '就在這裡' : dirName(S.lat, S.lng, e.lat, e.lng) + '方 ' + fmtD(d)}</span></div></div>
     ${pre}<p class="sub" style="color:var(--ink)">${desc}</p>${siteBonus(e) ? `<p class="sub" style="color:var(--gold)">✦ 現場加成：人在這裡當場挑戰，掉寶數量與稀有度 +${ONSITE_BONUS}%</p>` : ''}${zn ? `<p class="sub" style="color:var(--good)">在${esc(zn.name)}的範圍內，不用走過去就能互動（遠端沒有現場加成）。</p>` : ''}${inR ? '' : `<p class="sub" style="color:#ffb27a">距離太遠，需要走到 ${lim} 公尺內（還差 ${fmtD(d - lim)}）。</p>`}
-    <div class="btns" style="flex-direction:column">${act}${!inR ? `<button class="btn" data-act="walkto" data-id="${id}">走過去</button>` : ''}</div>`;
+    <div class="btns" style="flex-direction:column">${act}${!inR && e.kind !== 'monster' ? `<button class="btn" data-act="walkto" data-id="${id}">走過去</button>` : ''}</div>`;
   if ($('entBig')) {
     /* PNG 怪物圖比 18×18 大：畫布跟著圖的大小，CSS 一樣顯示 84px */
     const ic = entIcon(e),
@@ -938,6 +946,18 @@ const onSite = e => !!e && dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e);
 const ONSITE_K = new Set(['stele', 'circle']);
 const siteBonus = e => !!e && ONSITE_K.has(e.kind) && onSite(e);
 const inRange = e => !!e && (dist(S.lat, S.lng, e.lat, e.lng) <= reachOf(e) || inZone(e));
+/* 0.3.35 走過去戰鬥的目標：走到範圍內（setPos 呼叫）就自動開打；怪物不見了或已打過就取消 */
+let engageId = null;
+function engageCheck() {
+  if (!engageId || busy()) return;
+  const e = ENT.get(engageId);
+  if (!e || isDone(e)) return (engageId = null);
+  if (!inRange(e)) return;
+  engageId = null;
+  simTarget = null;
+  closeSheet();
+  A.fight({ id: e.id });
+}
 
 /* ================= actions ================= */
 /* 帳號表單：檢查輸入、執行期間鎖住按鈕、錯誤訊息顯示在表單下方 */
@@ -1096,9 +1116,19 @@ const A = {
     cam.z = Math.max(cam.z, 0.5);
     sfx('tap');
   },
-  walkto: d => {
+  engage: d => {
     const e = ENT.get(d.id);
     if (!e) return;
+    engageId = d.id;
+    if (S.gps) {
+      closeSheet();
+      toast(`走到 ${reachOf(e)} 公尺內就會自動開打`);
+    } else A.walkto(d, true);
+  },
+  walkto: (d, keep) => {
+    const e = ENT.get(d.id);
+    if (!e) return;
+    if (!keep) engageId = null;
     const lim = reachOf(e) * 0.6,
       dd = dist(S.lat, S.lng, e.lat, e.lng),
       k = Math.max(0, 1 - lim / dd);
@@ -1437,7 +1467,7 @@ const A = {
   },
   flee: () => flee(),
   bsub: d => {
-    if (!B || B.busy) return;
+    if (pBusy()) return;
     sfx('tap');
     B.sub = d.k || null;
     renderBHud();

@@ -1568,6 +1568,7 @@ function tapWorld(x, y) {
   const wxm = (x - VW / 2) / cam.z + cam.x,
     wym = (y - VH * 0.46) / cam.z + cam.y;
   const p = snapRoad(wxm, wym, 60) || [wxm, wym];
+  engageId = null;
   simTarget = toLL(p[0], p[1]);
   follow = true;
   sfx('tap');
@@ -1609,6 +1610,7 @@ function setPos(lat, lng, moved) {
   trailStep();
   refreshEntities();
   checkArrive();
+  engageCheck();
 }
 function checkArrive() {
   for (const t of TOWNS) {

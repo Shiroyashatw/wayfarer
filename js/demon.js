@@ -273,7 +273,7 @@ const LEGENDS = [
     slot: 'offhand',
     bi: 4,
     st: { spellPct: 40, mana: 20, legLust: 1 },
-    lines: ['法術傷害 +40%', '最大魔力 +20', '命中時 15% 機率魅惑敵人，使它跳過一回合']
+    lines: ['法術傷害 +40%', '最大魔力 +20', '命中時 15% 機率魅惑敵人，使它跳過下一次行動']
   }
 ];
 const LEGI = Object.fromEntries(LEGENDS.map(l => [l.k, l]));
@@ -1014,7 +1014,7 @@ const SINF = {
   envy: [
     { n: '妒火魚人', t: 'envy', spr: 'a_sin_envy_fishman', d: '攻擊依你的傷害提高' },
     { n: '竊影者', t: 'thief', spr: 'a_sin_envy_thief', d: '偷走你一個增益' },
-    { n: '綠眼海蛇', t: 'venom', spr: 'a_sin_envy_serpent', d: '命中讓你中毒（每回合扣血）' },
+    { n: '綠眼海蛇', t: 'venom', spr: 'a_sin_envy_serpent', d: '命中讓你中毒（每 3 秒扣血）' },
     { n: '模仿者', t: 'mimic', spr: 'a_sin_envy_mimic', d: '對你上一招的元素抗性變高' },
     { n: '深海觸手', t: 'grab', spr: 'a_sin_envy_tentacle', d: '纏住你：行動值延後' }
   ],
@@ -1028,7 +1028,7 @@ const SINF = {
   sloth: [
     { n: '沉睡巨人', t: 'sleep', spr: 'a_sin_sloth_giant', d: '前兩次輪到都在睡，醒來猛擊（×2）' },
     { n: '泥沼史萊姆', t: 'mud', spr: 'a_sin_sloth_slime', d: '命中讓你行動值延後' },
-    { n: '夢魘綿羊', t: 'dream', spr: 'a_sin_sloth_sheep', d: '25% 讓你睡著（跳過一回合）' },
+    { n: '夢魘綿羊', t: 'dream', spr: 'a_sin_sloth_sheep', d: '25% 讓你睡著（跳過下一次行動）' },
     { n: '苔蘚樹人', t: 'regen', spr: 'a_sin_sloth_treant', d: '生命高，每次行動回 10% 生命' },
     { n: '蝸牛騎士', t: 'snail', spr: 'a_sin_sloth_snail', d: '護甲極高、很慢' }
   ],
@@ -1042,15 +1042,15 @@ const SINF = {
   gluttony: [
     { n: '腐食鬣狗', t: 'flies', spr: 'a_sin_glut_hyena', d: '打牠有 30% 打空' },
     { n: '腐肉胖子', t: 'devour', spr: 'a_sin_glut_glutton', d: '吃掉旁邊的信徒回血' },
-    { n: '嘔吐蛆蟲', t: 'venom', spr: 'a_sin_glut_maggot', d: '命中讓你中毒（每回合扣血）' },
+    { n: '嘔吐蛆蟲', t: 'venom', spr: 'a_sin_glut_maggot', d: '命中讓你中毒（每 3 秒扣血）' },
     { n: '吞噬口', t: 'maw', spr: 'a_sin_glut_maw', d: '偷吃你的生命藥水' },
     { n: '寄生巫婆', t: 'parasite', spr: 'a_sin_glut_witch', d: '吸血' }
   ],
   lust: [
     { n: '魅魔', t: 'charm', spr: 'a_sin_lust_succubus', d: '打牠有 20% 被魅惑、打到自己' },
-    { n: '薔薇藤妖', t: 'vine', spr: 'a_sin_lust_vine', d: '纏繞並流血（每回合扣血）' },
+    { n: '薔薇藤妖', t: 'vine', spr: 'a_sin_lust_vine', d: '纏繞並流血（每 3 秒扣血）' },
     { n: '假面舞者', t: 'dancer', spr: 'a_sin_lust_dancer', d: '打牠有 35% 被閃過並反擊' },
-    { n: '心碎吟遊詩人', t: 'bard', spr: 'a_sin_lust_bard', d: '降低你的傷害（2 回合 -20%）' },
+    { n: '心碎吟遊詩人', t: 'bard', spr: 'a_sin_lust_bard', d: '降低你的傷害（6 秒 -20%）' },
     { n: '傀儡情人', t: 'puppet', spr: 'a_sin_lust_puppet', d: '還活著時，其他信徒受傷 -25%' }
   ]
 };

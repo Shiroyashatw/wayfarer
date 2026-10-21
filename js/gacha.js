@@ -335,6 +335,20 @@ const PAFF = [
     ]
   },
   { id: 'sk', sk: 1, tg: ['skill'], v: [null, null, null, [1, 1], [2, 2], [3, 3]] },
+  /* 0.3.35 冷卻縮減 */
+  {
+    id: 'cdr',
+    k: 'cdr',
+    tg: ['speed'],
+    v: [
+      [1, 2],
+      [2, 3],
+      [3, 4],
+      [4, 5],
+      [5, 6],
+      [6, 8]
+    ]
+  },
   /* SSR 專屬 */
   { id: 'dmgMore', k: 'dmgMore', ssr: 1, tg: ['attack', 'spell'], v: [null, null, null, [4, 6], [6, 8], [8, 10]] },
   { id: 'lifeMore', k: 'lifeMore', ssr: 1, tg: ['life'], v: [null, null, null, [4, 6], [6, 8], [8, 10]] },

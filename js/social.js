@@ -108,7 +108,7 @@ function nextInvite() {
     i = iv.info || {};
   showModal(
     '組隊邀請',
-    `<p><b>${esc(i.from || '好友')}</b> ${i.no ? `<span class="sub">#${String(i.no).padStart(6, '0')}</span>` : ''} 邀請你一起打</p><p style="color:${(DTYPES[i.dt] || DTYPES.normal).col}">${esc(i.dn || '地城')} Lv${i.lv || '?'}</p><p class="sub">不用在附近也能加入。戰鬥中每人每回合 15 秒，沒動作會自動普攻。</p>`,
+    `<p><b>${esc(i.from || '好友')}</b> ${i.no ? `<span class="sub">#${String(i.no).padStart(6, '0')}</span>` : ''} 邀請你一起打</p><p style="color:${(DTYPES[i.dt] || DTYPES.normal).col}">${esc(i.dn || '地城')} Lv${i.lv || '?'}</p><p class="sub">不用在附近也能加入。戰鬥是即時行動條，輪到你時有 15 秒，沒動作會自動普攻。</p>`,
     [
       {
         label: '拒絕',
