@@ -1191,7 +1191,7 @@ const SUPGI = Object.fromEntries(SUPG.map(s => [s.k, s]));
 const SUPM = {
   ud: '亡靈軍團',
   mist: '魔霧（四凶、燭龍）',
-  sin: '七罪（攻佔城鎮、七罪的王）',
+  sin: '七罪（七罪信徒、七宗罪之王）',
   uw: '冥府',
   hunt: '狩獵十二生肖',
   wild: '野外紅名危險怪'

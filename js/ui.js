@@ -47,6 +47,7 @@ function ibarRender() {
 }
 /* 面板的選取狀態（背包分頁、批量賣出、篩選、商店） */
 const SEL = { bag: 'eq' };
+let quitArm = false;
 let toastT;
 function toast(t) {
   const el = $('toast');
@@ -74,16 +75,12 @@ const TITLES = {
   bag: '背包',
   item: '裝備',
   tree: '天賦樹',
-  base: '藏身處',
   quest: '委託',
   settings: '設定',
   log: '冒險日誌',
   friends: '好友',
-  party: '組隊',
   skills: '技能',
-  stele: '石碑與傳送門',
   gem: '技能石',
-  gemshop: '技能石商店',
   pact: '契靈',
   pbrk: '契靈突破',
   seal: '印記兌換',
@@ -267,7 +264,7 @@ function gemDesc(q, st) {
       );
     if (q.party)
       out.push(
-        kw('組隊時隊友也受益', 'tg') +
+        kw('召喚物也受益', 'tg') +
           '：' +
           Object.entries(q.pb || {})
             .map(([k, v]) => (k === 'hot' ? `每 ${TURN_S} 秒回復 ${v}% 生命` : `${BUFFN[k] || k} +${v}%`))
@@ -491,47 +488,6 @@ const supN = k => (S.sups || []).filter(x => x.k === k).length;
 const supHint = () => (S.sups || []).some(x => S.sk.some(id => gemOf(id) && !supBlock(gemOf(id), x)));
 const supLine = sp =>
   `${sp.lin ? '<i class="kw num">族裔</i> ' : ''}<b>${supIcon(sp)}${sp.n}</b><small>${sp.d}・只能插${SUPREQN[sp.req]}${sp.mp ? `・魔力消耗 +${sp.mp}%` : ''}${sp.conv ? '・轉換類（一顆技能石只能一個）' : ''}${sp.lin ? `・同名一個角色只能用一顆・${SUPM[sp.m]}掉落` : ''}</small>`;
-/* 0.3.11 技能石商店：依 T 分頁（T1～T5），未解鎖的 T 只能看 */
-function gemShopHTML() {
-  if (SEL.gshopK === 'sup') return supShopHTML();
-  const st = stats(),
-    mx = tierMax(),
-    cur = Math.min(5, SEL.gtier || 1),
-    ks = GEMK()
-      .filter(k => gemTier(k) === cur && skfOk({ k }) && skwOk(k))
-      .sort((a, b) => gemReq(a) - gemReq(b) || a.localeCompare(b));
-  return `${gshopKind()}<p class="sub" style="margin:0">金幣 <b class="c-gold">${S.gold}</b>・解鎖到 T${mx}・買到的是 Lv1，可以重複買</p>
-    <div class="seg gst5">${[1, 2, 3, 4, 5].map(t => `<button data-act="gshopTier" data-v="${t}" aria-pressed="${t === cur}">T${t}${t > mx ? '🔒' : ''}</button>`).join('')}</div>
-    ${cur > mx ? `<p class="sub" style="color:#ffb27a">T${cur} 還沒解鎖：到城鎮挑戰突破試煉。</p>` : ''}
-    ${skfRows()}
-    <div class="card">${ks
-      .map(k => {
-        const q = SKILLS[k],
-          blk = gemBuyBlock(k);
-        return `<div class="rowx"><div class="t"><b><img class="cico sk" src="${skIcon(k, q.icon)}" alt=""> ${q.name} <span class="sub">需要 Lv${gemReq(k)}${gemCount(k) ? `・<span style="color:var(--gold)">已有 ${gemCount(k)} 顆</span>` : ''}</span></b>${skTagHTML(q)}<small>${gemDesc(gemSkill(newGem(k)), st)}</small></div><button class="btn sm ${blk ? '' : 'buy'}" data-act="gemBuy" data-k="${k}" ${blk ? 'disabled' : ''}>${blk || `${gemPrice(k)} 金`}</button></div>`;
-      })
-      .join('')}</div>`;
-}
-const gshopKind = () =>
-  `<div class="seg" style="grid-template-columns:1fr 1fr">${[
-    ['gem', '技能石'],
-    ['sup', '輔助寶石']
-  ]
-    .map(
-      ([k, n]) => `<button data-act="gshopK" data-k="${k}" aria-pressed="${(SEL.gshopK || 'gem') === k}">${n}</button>`
-    )
-    .join('')}</div>`;
-function supShopHTML() {
-  const mx = tierMax();
-  return `${gshopKind()}<p class="sub" style="margin:0">金幣 <b style="color:var(--gold)">${S.gold}</b>・目前解鎖到 T${mx}。輔助寶石插在技能石的插槽裡（一開始 2 格），可以隨時拆下來換到別顆；同一種可以買很多顆。族裔輔助只會從野外機制的菁英與首領掉落。</p>
-    <div class="ptagf">${SUPF.map(([k, n]) => `<button data-act="supF" data-k="${k}" aria-pressed="${(SEL.supf || 'all') === k}">${n}</button>`).join('')}</div>
-    <div class="card">${SUPG.filter(sp => !sp.lin && supfOk(sp))
-      .map(sp => {
-        const blk = supBuyBlock(sp);
-        return `<div class="rowx"><div class="t">${supLine(sp)}<small class="sub">T${sp.t}${supN(sp.k) ? `・<span style="color:var(--gold)">已有 ${supN(sp.k)} 顆</span>` : ''}</small></div><button class="btn sm ${blk ? '' : 'buy'}" data-act="supBuy" data-k="${sp.k}" ${blk ? 'disabled' : ''}>${blk || `${supPrice(sp)} 金`}</button></div>`;
-      })
-      .join('')}</div>`;
-}
 const prayed = id => !!S.prayed && S.prayed[id] === hepoch();
 /* 0.3.1.8：子頁面在右上角有「‹ 返回」（裝備詳情 → 背包或該部位、部位 → 背包、技能石 → 技能、印記兌換 → 狩獵、背包的材料分頁 → 裝備） */
 function sheetParent() {
@@ -569,7 +525,7 @@ function renderSheet() {
         : '';
     })()}
     <h3>攻擊</h3><div class="kv"><div><span>物理傷害</span><b>${fmt1(st.physLo)}–${fmt1(st.physHi)}</b></div><div><span>元素附加</span><b>${fmt1(st.fire + st.cold + st.light)}</b></div><div><span>法術加成</span><b>${Math.round((st.spellMul - 1) * 100)}%</b></div><div><span>暴擊率</span><b>${st.crit}%</b></div><div><span>暴擊傷害</span><b>${st.critMulti}%</b></div><div><span>吸血</span><b>${st.leech}%</b></div></div>
-    <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>視線範圍</span><b>${st.vision}m</b></div><div><span>精魄</span><b>${st.spiritUsed}/${st.spirit}</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div><div><span style="color:#c86aff">混沌抗性</span><b>${st.res.chaos}%</b></div></div>
+    <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>速度</span><b>${st.speed}</b></div><div><span>精魄</span><b>${st.spiritUsed}/${st.spirit}</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div><div><span style="color:#c86aff">混沌抗性</span><b>${st.res.chaos}%</b></div></div>
     <h3>技能</h3><div class="card">${mySkills()
       .map((q, i) =>
         q
@@ -606,18 +562,16 @@ function renderSheet() {
       }
     ).join('')}</div>
     <div class="baghd"><h3>技能石 ${S.gems.length}</h3>${skfSel()}</div>
-    ${shown.length ? `<div class="sgrid6">${shown.map(g => tile(g)).join('')}</div>` : `<p class="empty">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石，到城鎮的技能石商店買吧'}</p>`}
+    ${shown.length ? `<div class="sgrid6">${shown.map(g => tile(g)).join('')}</div>` : `<p class="empty">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石：打贏戰鬥、逛商店都能拿到'}</p>`}
     <h3>技能石通貨</h3><div class="chips">${GCUR.map(c => `<span class="chip${S.cur[c.id] ? '' : ' zero'}" aria-label="${c.n}"><img src="${curIcon(c.id)}" alt=""><b>${S.cur[c.id] || 0}</b></span>`).join('')}</div>
     ${ns.length ? moreK('sups', `輔助寶石 ${(S.sups || []).length} 顆沒插`, ns.map(sp => `<div class="rowx"><div class="t">${supLine(sp)}</div><small class="sub">×${supN(sp.k)}</small></div>`).join('')) : ''}
-    ${more('技能石、輔助寶石與光環', `<p>技能石在城鎮的「技能石商店」買，用靈魂（${S.cur.soul || 0}）升級；另外有固定的普通攻擊。</p><p>技能石有 2～5 個插槽，插上輔助寶石改變技能怎麼運作；品質用寶石稜鏡提高。</p><p>光環要預留精魄才會生效，精魄來自天賦的魔力、法術節點與契靈。</p>${GCUR.map(c => `<p><img class="cico" src="${curIcon(c.id)}" alt=""><b>${c.n}</b>：${c.d}</p>`).join('')}`)}`;
+    ${more('技能石、輔助寶石與光環', `<p>技能石從戰鬥獎勵、商店取得，用靈魂（${S.cur.soul || 0}）升級；另外有固定的普通攻擊。</p><p>技能石有 2～5 個插槽，插上輔助寶石改變技能怎麼運作；品質用寶石稜鏡提高。</p><p>光環要預留精魄才會生效，精魄來自天賦的魔力、法術節點與契靈。</p>${GCUR.map(c => `<p><img class="cico" src="${curIcon(c.id)}" alt=""><b>${c.n}</b>：${c.d}</p>`).join('')}`)}`;
   } else if (sheetName === 'pbrk') {
     html = pactBrkHTML();
   } else if (sheetName === 'pact') {
     html = pactHTML();
   } else if (sheetName === 'pdet') {
     html = pactDetHTML();
-  } else if (sheetName === 'gemshop') {
-    html = gemShopHTML();
   } else if (sheetName === 'gem') {
     const g = gemOf(selGem);
     if (!g) {
@@ -731,7 +685,8 @@ function renderSheet() {
     <h3>製作</h3>${ok.length ? `<div class="crafts2">${ok.map(cu => `<button class="chip" data-act="craft" data-c="${cu.id}"><img src="${curIcon(cu.id)}" alt=""><span>${cu.n}</span><b>${S.cur[cu.id]}</b></button>`).join('')}</div>` : ''}
     <p class="sub">${no ? `其他 ${no} 種現在不能用` : ''}</p>${curHelp()}`;
   } else if (sheetName === 'settings') {
-    html = `<h3>聲音</h3><div class="seg"><button data-act="toggle" data-k="music" aria-pressed="${S.music}">音樂 ${S.music ? '開' : '關'}</button><button data-act="toggle" data-k="sfx" aria-pressed="${S.sfx}">音效・震動 ${S.sfx ? '開' : '關'}</button></div>
+    html = `${S.run ? `<div class="card"><div class="rowx"><div class="t"><b>放棄這一局</b><small>直接結算，照目前的進度給魂晶</small></div><button class="btn sm" data-act="runQuit">${quitArm ? '再按一次確認' : '放棄'}</button></div></div>` : ''}<h3>戰鬥速度</h3><div class="seg">${[1, 1.5, 2].map(v => `<button data-act="bspd" data-v="${v}" aria-pressed="${bSpd() === v}">×${v}</button>`).join('')}</div>
+    <h3>聲音</h3><div class="seg"><button data-act="toggle" data-k="music" aria-pressed="${S.music}">音樂 ${S.music ? '開' : '關'}</button><button data-act="toggle" data-k="sfx" aria-pressed="${S.sfx}">音效・震動 ${S.sfx ? '開' : '關'}</button></div>
     <h3>自動喝水</h3><div class="card"><p class="sub" style="margin-bottom:6px">戰鬥結束後低於門檻就自動喝藥水（每種最多 3 瓶）。戰鬥勝利不會自動回復。</p>${[
       ['autoHp', '生命藥水', S.potions],
       ['autoMp', '魔力藥水', S.ethers]
@@ -805,7 +760,7 @@ const sellSel = () => S.inv.filter(it => SEL.sell && SEL.sell.has(it.id) && !it.
 /* 背包清單：一般模式點開物品；批量賣出模式點一下勾選 */
 function bagListHTML() {
   const head = `<div class="baghd"><h3>背包 ${S.inv.length}/30</h3>${S.inv.length ? `<button class="btn sm${SEL.sell ? ' pri' : ''}" data-act="sellMode">${SEL.sell ? '完成' : '批量賣出'}</button>` : ''}</div>`;
-  if (!S.inv.length) return head + '<p class="empty">背包是空的：打怪、開寶箱、地城尾王都會掉裝備。</p>';
+  if (!S.inv.length) return head + '<p class="empty">背包是空的：打怪、開寶箱、首領都會掉裝備。</p>';
   /* 0.3.43 格子：框色 = 稀有度，角標 ▲ 可能比穿戴的好、鎖、批量賣出的勾 */
   const row = (it, i) => {
     const on = SEL.sell && SEL.sell.has(it.id) && !it.lock;
@@ -818,9 +773,9 @@ function bagListHTML() {
     ok = canSell(),
     q = (k, n) => `<button class="btn sm" data-act="sellQuick" data-k="${k}">${n}</button>`;
   return `${head}<div class="sellbar">${q('r0', '普通')}${q('r1', '魔法')}${q('r2', '稀有')}${q('worse', '比穿戴的差')}${q('all', '全選')}${q('none', '清除')}</div>
-    <p class="sub">${ok ? '點裝備勾選；上鎖的不會被選到。' : '⚠ 要在城鎮或據點才能賣，現在只能先勾選。'}</p>
+    <p class="sub">${ok ? '點裝備勾選；上鎖的不會被選到。' : '⚠ 要在商店才能賣，現在只能先勾選。'}</p>
     ${grid}
-    <div class="sellgo"><button class="btn pri" data-act="sellMany" ${ok && sel.length ? '' : 'disabled'}>${ok ? `賣出 ${sel.length} 件　+${gold} 金` : '不在城鎮或據點'}</button></div>`;
+    <div class="sellgo"><button class="btn pri" data-act="sellMany" ${ok && sel.length ? '' : 'disabled'}>${ok ? `賣出 ${sel.length} 件　+${gold} 金` : '不在商店'}</button></div>`;
 }
 
 /* ================= entity interaction ================= */
@@ -1027,29 +982,6 @@ const A = {
       ]
     );
   },
-  /* 技能石商店（一局裡的商店節點打開，SEL.gshop 有值才能買） */
-  gemShop: () => {
-    SEL.gshop = 'run';
-    SEL.gtier = SEL.gtier || Math.min(tierMax(), 5);
-    openSheet('gemshop');
-  },
-  gshopK: d => {
-    SEL.gshopK = d.k;
-    sfx('tap');
-    renderSheet();
-  },
-  supBuy: d => {
-    const sp = SUPGI[d.k];
-    if (!sp || !SEL.gshop || supBuyBlock(sp)) return;
-    S.gold -= supPrice(sp);
-    giveSup(sp.k);
-    sfx('coin');
-    toast(`買下輔助寶石：${sp.n}`);
-    addLog(`在商店買下輔助寶石：${sp.n}`);
-    renderSheet();
-    renderHud();
-    save();
-  },
   /* 插入：列出背包裡的輔助寶石，不能插的寫原因 */
   supPick: () => {
     const g = gemOf(selGem);
@@ -1065,7 +997,7 @@ const A = {
               return `<div class="rowx"><div class="t">${supLine(SUPGI[k])}<small class="sub">×${supN(k)}</small></div><button class="btn sm ${blk ? '' : 'pri'}" data-act="supIn" data-u="${x.u}" ${blk ? 'disabled' : ''}>${blk || '插入'}</button></div>`;
             })
             .join('')}</div>`
-        : '<p class="sub">背包裡沒有輔助寶石。到城鎮的技能石商店買，或打菁英、首領掉落。</p>',
+        : '<p class="sub">背包裡沒有輔助寶石。從戰鬥獎勵、商店取得，或打菁英、首領掉落。</p>',
       [{ label: '關閉', fn: hideModal }]
     );
   },
@@ -1084,24 +1016,6 @@ const A = {
     renderSheet();
     save();
   },
-  gshopTier: d => {
-    SEL.gtier = +d.v;
-    sfx('tap');
-    renderSheet();
-  },
-  gemBuy: d => {
-    const k = d.k;
-    if (!SKILLS[k] || !SEL.gshop || gemBuyBlock(k)) return;
-    S.gold -= gemPrice(k);
-    giveGem(k);
-    sfx('coin');
-    toast(`買下 ${SKILLS[k].name}`);
-    addLog(`在商店買下技能石：${SKILLS[k].name}`);
-    renderSheet();
-    renderHud();
-    save();
-  },
-
   bitem: d => bItem(d.k),
   /* 0.3.27 戰鬥中的狀態與紀錄面板 */
   binfo: () => {
@@ -1237,7 +1151,7 @@ const A = {
   },
   sell: () => {
     const cur = S.inv[selItem.i];
-    if (!cur || cur.lock || !canSell()) return toast('要在城鎮或據點才能賣出裝備');
+    if (!cur || cur.lock || !canSell()) return toast('要在商店才能賣出裝備');
     const it = S.inv.splice(selItem.i, 1)[0];
     S.gold += sellVal(it);
     sfx('coin');
@@ -1281,7 +1195,7 @@ const A = {
     renderSheet();
   },
   sellMany: () => {
-    if (!canSell()) return toast('要在城鎮或據點才能賣出裝備');
+    if (!canSell()) return toast('要在商店才能賣出裝備');
     const sel = sellSel();
     if (!sel.length) return;
     const gold = sel.reduce((n, it) => n + sellVal(it), 0);
@@ -1391,6 +1305,22 @@ const A = {
     audioInit();
     sfx('tap');
     navOpen(d.g);
+  },
+  runQuit: () => {
+    if (!S.run || B) return;
+    if (!quitArm) {
+      quitArm = true;
+      return renderSheet();
+    }
+    quitArm = false;
+    closeSheet();
+    endRun(false);
+  },
+  bspd: d => {
+    S.bspd = +d.v;
+    sfx('tap');
+    save();
+    renderSheet();
   },
   autoPot: d => {
     S[d.k] = +d.v;

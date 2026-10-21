@@ -2,9 +2,10 @@
 
 ## 溝通規則
 - **一律用繁體中文回覆**（包含進度說明與 commit 訊息）。
-- 版本號：目前是 0.3.x（0.3.0 是昇華系統；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
+- 版本號：0.1.0 起是肉鴿版，版本號重新從 0.1 開始（走路版到 0.3.52 為止；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
-- 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。系統規則改了要同步更新。
+- 企劃書：`docs/企劃書.md`（肉鴿版）；走路版的企劃與更新紀錄在 `docs/archive/`（技能石、詞綴、天賦、昇華、怪物的細節設計可以去那裡查）。系統規則改了要同步更新。
+- 遊戲型態：**短局肉鴿**（三章節點地圖、勝利三選一、局外魂晶）。不要再加真實地圖、GPS、走路、刷新週期、組隊相關的東西。
 - 介面：照 `docs/設計規範.md`（字級、顏色變數、間距、元件、資訊量規則）；改介面用 skill `ui-design`，改完在手機尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
 - 怪物／首領的 PixelLab 提示詞：`docs/怪物提示詞.md`（新增怪物圖用 skill `pixel-art`，採用後把提示詞記進去）。裝備、技能、輔助寶石圖示的提示詞另外放在 `docs/圖示提示詞.md`（只留還沒產的；做完的在 `docs/提示詞封存.md`，要重產時再複製回去）。
 
@@ -21,39 +22,37 @@
 
 | 檔案 | 內容 |
 | --- | --- |
-| `index.html` | 頁面骨架與 DOM、載入順序 |
-| `css/style.css` | 全部樣式（手機直式優先）；開頭 `:root` 是設計規範的變數（`--fs-*`、`--sp-*`、`--r-*`、顏色），結尾是共用元件（`.c-*`、`details.more`、`.tiers`、`.g2`） |
-| `js/core.js` | `$`、`fl`、`m` 與共用工具（座標、繪圖輔助） |
-| `js/data.js` | 地點／城鎮、怪物、詞綴、通貨、天賦樹 `TREE`、`VER` |
-| `js/sprites.js` | 16x16 像素圖（自動描邊陰影）、8x8 圖示 |
-| `js/gear.js` | 0.3.1 裝備外觀：每種底材的 12×12 圖示 `GEAR`、材質階級 `tierOf`、`gearIcon`、角色外觀疊圖 `heroLook`／`heroSpr`／`heroPal`（`sprites.js` 之後載入） |
-| `js/art.js` | 自動產生（`tools/art.py`）：0.3.30 起只放座標，`ART_SHEET` 大圖網址（`img/組名.hash.png`）、`ART` 每張圖在大圖裡的位置，圖名 `a_檔名`；不要手改 |
+| `index.html` | 頁面骨架與 DOM（主選單 `#home`、章節地圖 `#runmap`、面板、戰鬥、彈窗）、載入順序 |
+| `css/style.css` | 全部樣式（手機直式優先）；開頭 `:root` 是設計規範的變數（`--fs-*`、`--sp-*`、`--r-*`、顏色），中間是共用元件（`.c-*`、`details.more`、`.tiers`、`.g2`），結尾是主選單與章節地圖（`.hm`、`.rm-*`、`.rn`、`.clsg`） |
+| `js/core.js` | `$`、`fl`、`h`／`rng`（種子亂數）與共用工具（繪圖輔助 `glow`） |
+| `js/data.js` | 怪物 `MONS`、詞綴、通貨、天賦樹 `TREE`、屬性文字 `STATN`、`VER`、存檔鍵 `KEY` |
+| `js/sprites.js` | 16x16 像素圖（自動描邊陰影）、8x8 圖示、PNG 大圖載入 `artSheet`（背景預載不重畫面板） |
+| `js/gear.js` | 裝備外觀：每種底材的 12×12 圖示 `GEAR`、材質階級 `tierOf`、`gearIcon`、角色外觀疊圖 `heroLook`／`heroSpr`／`heroPal`（`sprites.js` 之後載入） |
+| `js/art.js` | 自動產生（`tools/art.py`）：`ART_SHEET` 大圖網址（`img/組名.hash.png`）、`ART` 每張圖在大圖裡的位置，圖名 `a_檔名`；不要手改 |
 | `js/iconmap.js` | 自動產生（`tools/icon_sheets.py build`）：天賦樹節點名 → `art/icons/tree_代號.png` 的對照 `TREE_IC`；不要手改 |
-| `js/skills.js` | 0.3 技能石擴充（約 130 種，武器／元素標籤、召喚、增益、0.3.19 條件 `SK_COND` 與戰吼）、0.3.20 輔助寶石 `SUPG`、新圖示（`sprites.js` 之後載入） |
-| `js/monskill.js` | 0.3.38 怪物招式：招式表 `MSK`、依階級分配 `monSkills`（越強的王越多招）、放招 `monPick`／`monCast`（`enemyResolve` 呼叫，`battle.js` 之後載入） |
-| `js/audio.js` | Web Audio 合成音樂與音效 |
-| `js/items.js` | `newGame`、裝備、詞綴、通貨製作、屬性計算 |
-| `js/battle.js` | 戰鬥背景、多隻敵人的回合邏輯（`actResolve`／`enemyResolve` 單人與組隊共用）、繪製 |
-| `js/map.js` | 世界地圖（以台中車站為原點、公尺座標）、OpenFreeMap 向量圖磚（z14）解碼與 IndexedDB 快取、45 個地標城鎮、分塊迷霧、晝夜視野、生成（`dungeonAt`）、攝影機、GPS |
-| `js/tree.js` | 天賦樹全螢幕介面（縮放、拖曳、多節點路徑）、0.3.13 中間的契靈圓盤（沒有出發點，從圓盤往外點） |
-| `js/ui.js` | HUD、底部面板、互動、據點、`data-act` 動作表 |
-| `js/endgame.js` | 0.2 終局：0.3.23 藏身處（取代據點，`hideoutHTML`）、空白石碑／魔法陣、靈脈、區域特性、冥府侵蝕柱與碎片（`ui.js` 之後載入；據點半徑、冒險營旗、絲綢之路 0.3.23 拿掉） |
-| `js/undead.js` | 亡靈軍團：亡靈區、亡靈怪、精華、亡靈祭壇與軍團長、亡靈王、據點的亡靈製作（屍化值）（`endgame.js` 之後載入） |
-| `js/demon.js` | 魔霧封印、七宗罪雕像與 7 個王、傳奇裝備、惡魔珠寶與天賦盤珠寶槽、七宗罪之王（0.2.7～0.2.11，`undead.js` 之後載入） |
-| `js/hunt.js` | 狩獵墮落十二生肖：追蹤之血、墮落獸、惡魔結晶召喚事件、十二生肖首領（0.2.12，`demon.js` 之後載入） |
-| `js/daily.js` | 今日委託、「委託」面板（0.3.15 取代附近：委託、所在區域進度、刷新倒數）、足跡（0.2.13，`hunt.js` 之後載入） |
-| `js/asc.js` | 0.3 昇華：昇華職業與 24 條分支資料（0.3.16 起每條分支是 `ASC_ART` 裡自己的一張圖案，路線短、會分岔，「抉擇」大點旁三個小點只能點一個）、節點圖示、昇華面板、城鎮的昇華試煉、重選（`daily.js` 之後載入） |
-| `js/gacha.js` | 0.3.12 契靈祈願：契靈 `PACTS`（R／SR／SSR）、詞綴池 `PAFF`（T6～T1、標籤、技能等級 +N）、卡池、保底、突破解鎖詞綴、欄位（隨昇華試煉）、跟隨、結果動畫 |
-| `js/tutor.js` | 新手引導：`TUT` 步驟清單，新增功能時順手補一步 |
+| `js/skills.js` | 技能石（約 130 種，武器／元素標籤、召喚、增益、條件 `SK_COND` 與戰吼）、輔助寶石 `SUPG`、圖示（`sprites.js` 之後載入） |
+| `js/audio.js` | Web Audio 合成音樂與音效（背景回來時不補排落後的音符） |
+| `js/items.js` | `newChar`（一局的角色）／`newGame`（整份存檔）、裝備、詞綴、通貨製作、屬性計算 `sumStats`／`stats`（`runStats` 掛點）、怪物產生 `makeEnemy`、商店 `openShop` |
+| `js/battle.js` | 戰鬥背景（柔焦用縮小畫布，不用 filter blur）、多隻敵人的即時行動條戰鬥（`actResolve`／`enemyResolve`）、戰鬥結算 `winBattle`／`loseBattle`（交給 `run.js`）、畫面迴圈 `tick`、戰鬥速度 `bSpd` |
+| `js/monskill.js` | 怪物招式：招式表 `MSK`、依階級分配 `monSkills`、放招 `monPick`／`monCast`（`battle.js` 之後載入） |
+| `js/ui.js` | HUD、底部面板（角色、技能、背包、裝備、契靈、設定、日誌）、`data-act` 動作表 `A` |
+| `js/foes.js` | 各章的首領與怪物池資料：冥府看門人 `WATCHERS`、台灣鬼怪 `GHOSTS`、第三章 `HELLMON`、墮落帝雉 `BEAST_X`、海盜王 `PIRATE_KING` |
+| `js/undead.js` | 亡靈怪 `UNDEAD`、亡靈軍團長外觀 `UD_LORDS`、`udBoss`（亡靈王） |
+| `js/demon.js` | 七宗罪之王與 7 個王的機制、傳奇裝備、惡魔珠寶、魔霧詞綴與魔霧怪 `MISTMON`、四凶與燭龍、七罪信徒 `SINF`／`makeFollower` |
+| `js/zodiac.js` | 墮落十二生肖 `ZODIAC`／`makeZodiac`、墮落配色 `corruptPal`、墮落獸 `HUNT_SPR`／`beastBase` |
+| `js/asc.js` | 昇華：8 個職業與 24 條分支（`ASC`、節點 `ASCN`、`ascStats`）、節點圖示、昇華盤（0.1.0 起只能看，昇華由首領三選一給） |
+| `js/gacha.js` | 契靈祈願：契靈 `PACTS`（R／SR／SSR）、詞綴池 `PAFF`、卡池、保底、突破、出戰欄（一局裡每打倒一個首領 +1）、結果動畫 |
+| `js/events.js` | 事件節點 `EVENTS`（13 個台灣民俗事件）、祝福 `bless`／`runStats`、每級成長 `RUN_LV` |
+| `js/run.js` | 一局：章 `CH`、節點 `NODE`、地圖 `genMap`、開始與結算 `startRun`／`endRun`、節點 `enterNode`／`nodeDone`、怪物群 `fightGroup`／`eliteGroup`／`bossGroup`、獎勵三選一 `rewardPicks`／`pickModal`、昇華三選一 `ascModal`、天賦三選一 `passModal`、經驗金幣 `runGain`、章節地圖 `runmapRender`、`viewRender` |
+| `js/meta.js` | 局外：角色起始配置 `RUN_CLS`／`applyKit`、局外升級 `META_UP`／`applyMeta`、每日挑戰 `dailySeed`、主選單 `homeRender`、選角 `clsModal` |
 | `js/cloud.js` | Supabase 匿名登入、信箱註冊／登入、玩家編號、存檔上傳（每 15 秒／切到背景時） |
-| `js/social.js` | 好友（`friend_*` RPC）、名字同步到 `profiles`、組隊邀請（`party_invites` + Realtime） |
-| `js/mp.js` | 隊伍（6 碼代碼、Realtime 廣播頻道 `wf-party-代碼`）與多人戰鬥；隊長的裝置計算、廣播 `state` |
-| `js/main.js` | `load`/`save`/`migrate`/`start`，最後執行 `start()` |
+| `js/main.js` | `load`/`save`/`migrate`（用新遊戲預設值補欄位）/`start`，最後執行 `start()` |
 | `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽（`img/` 大圖在這裡轉 base64 內嵌） |
 | `tools/art.py` | `art/monsters/` 的 PNG 像素圖（裁邊）與 `art/icons/` 的 32×32 圖示（不裁邊）→ 拼成 `img/` 的調色盤大圖（無損、帶 hash）＋`js/art.js` 座標；使用者說「放了新圖」就跑（skill `pixel-art`） |
 | `tools/pixellab_batch.py` | PixelLab API 批次產圖：讀 `docs/怪物提示詞.md`／`docs/圖示提示詞.md` 的提示詞，輸出到 `art/new/`（不進 git）；金鑰用環境變數 `PIXELLAB_API_KEY`，不要寫進專案 |
 | `tools/icon_sheets.py` | 圖示圖表：從 `docs/圖示提示詞.md` 組出 `docs/圖示圖表.md`（8×8 一張 64 個、同類系同一張、共用風格），圖表原圖放 `art/sheets/`（進 git），`process` 全部切成 `art/icons/` 的單張、跑 `art.py` 打包，最後 `archive`（有圖的提示詞搬到 `docs/提示詞封存.md`；切過的圖表整張移除、原圖搬到 `art/sheets/done/`，沒畫出來的格子重新排進新圖表）；圖表編號固定，重跑 build 不會變 |
-| `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（函式行號），並檢查 CODEMAP 裡失效的名稱 |
+| `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（函式行號，照 `index.html` 的載入順序），並檢查 CODEMAP 裡失效的名稱 |
+| `tools/bot.js` | 平衡測試用的代打機器人（加速時間、自動出招、換裝、升級技能石、選路線），不會被遊戲載入；用法寫在檔案開頭 |
 | `supabase/migrations/` | 資料庫結構 |
 
 ## 本機執行
@@ -61,9 +60,9 @@
 python3 -m http.server 8000   # 開 http://localhost:8000
 python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 ```
-存檔在 localStorage；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換（存檔版本是 `S.v`）。
-測多人：同一個瀏覽器開兩個分頁，第二個網址加 `?p=2`（不同存檔與帳號）。
-地圖資料要標示「© OpenStreetMap 貢獻者」（畫面左下角）。
+存檔在 localStorage（鍵 `wayfarer_rogue_v1`，格式標記 `fmt: 'rogue1'`）。新增欄位放進 `newGame()`／`newChar()` 就好，`migrate()` 會用預設值補；真的要改既有欄位的意思才需要寫轉換。
+測試用存檔：網址加 `?p=2`（不同存檔與帳號）。
+平衡測試：本機開遊戲，在 console 載入 `tools/bot.js`（見檔案開頭），看 `__bot.fights`。
 
 ## Supabase
 - 專案 ref：`eugkdfhkoaxvqhztvptc`，URL `https://eugkdfhkoaxvqhztvptc.supabase.co`

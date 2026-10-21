@@ -1974,21 +1974,15 @@ function renderAscCard() {
   const b = ASCB[n.br],
     st = ascState(n),
     ok = ascMine(c);
-  let act = '';
-  if (!a.br) {
-    act = !ok
-      ? '<small class="sub">起點不同，不能選這個昇華。</small>'
-      : pts
-        ? `<button class="btn pri" data-act="ascPick" data-k="${b.k}">選擇${b.n}</button>`
-        : `<small class="sub">先通過昇華試煉（Lv${ASC_LV[0]} 起，在城鎮）才能選擇分支。</small>`;
-  } else if (st.mine) {
-    const taken = n.kind === 'o' && a.nodes.some(q => ASCN[q] && ASCN[q].hub === n.hub);
-    act = st.on
-      ? '<small style="color:var(--good)">已點亮</small>'
-      : `<button class="btn pri" data-act="ascTake" data-id="${n.id}" ${st.can ? '' : 'disabled'}>${st.can ? '點亮（1 點）' : ascUsed() >= pts ? '沒有昇華點數' : taken ? '三選一已經選了別的' : n.kind === 'o' ? '先點旁邊的抉擇' : ascNear(n) ? (ascLeft()[ascSmall(n) ? 's' : 'b'] <= 0 ? `${ascSmall(n) ? '小點' : '大點'}已經點滿 4 個` : '這樣點會湊不滿 4 小 4 大') : '還不能點（先點旁邊的節點）'}</button>`;
-  } else if (a.cls === c.k)
-    act = `<button class="btn" data-act="ascSwitch" data-k="${b.k}">改走${b.n}（重選，${ascResetCost()} 金幣，要在城鎮）</button>`;
-  else act = `<small class="sub">目前的昇華是 ${ASCB[a.br].n}，要換成這個職業需要先重選昇華。</small>`;
+  /* 0.1.0 肉鴿：昇華由章節首領的三選一給（run.js 的 ascModal），這裡只能看 */
+  const act = !a.br
+    ? `<small class="sub">${a.cls === c.k ? '打倒第一章首領後，從這個角色的三條分支選一條。' : '不是這一局角色的職業。'}</small>`
+    : st.mine
+      ? st.on
+        ? '<small style="color:var(--good)">已點亮</small>'
+        : '<small class="sub">打倒第二章首領時，可能出現在昇華三選一。</small>'
+      : '<small class="sub">不是這一局的分支。</small>';
+  void ok;
   el.innerHTML = `<div class="rowx"><b style="color:${b.col}">${n.kind === 'e' ? '入口・' : n.kind === 's' ? '小點・' : n.kind === 'o' ? '三選一・' : ''}${n.n}</b><small class="sub">${b.n}</small></div>${
     n.kind === 'c'
       ? '<small class="sub">點了之後，旁邊三個小點可以挑一個點（三個只能點一個）。</small>'
@@ -2131,7 +2125,7 @@ Object.assign(A, {
   ascPick: d => {
     const b = ASCB[d.k],
       a = ASCD();
-    if (!b || a.br || !ascPts()) return;
+    if (S.run || !b || a.br || !ascPts()) return;
     const c = ASC.find(q => q.k === b.cls);
     if (!ascMine(c)) return;
     showModal(

@@ -2259,9 +2259,11 @@ const soloUnits = () => [
   ...aliveIdx(B.es).map(i => ({ id: 'e' + i, spd: avSpd(B.es[i]) }))
 ];
 /* 每幀推進 dt 秒（renderBattle 呼叫） */
+/* 0.1.0 戰鬥速度（設定）：行動條、冷卻、持續傷害都照倍率推進，動畫維持原速 */
+const bSpd = () => (S && S.bspd) || 1;
 function soloStep(dt) {
   if (!B || B.hold || B.over) return;
-  dt = Math.min(dt, 0.1);
+  dt = Math.min(dt, 0.1) * bSpd();
   const me = B.me;
   if (cdTick(me, dt)) renderBHud();
   for (const u of soloUnits())

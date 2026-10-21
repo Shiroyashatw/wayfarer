@@ -76,7 +76,8 @@ function homeRender() {
   el.innerHTML = `<div class="hm"><h1 class="hm-t">漫步勇者</h1><p class="sub">台灣妖怪肉鴿・v${VER}</p>
     <div class="hm-b"><button class="btn pri" data-act="clsPick">開始新局</button>
     <button class="btn" data-act="dailyGo" ${dailyDone() ? 'disabled' : ''}>每日挑戰・${dc.n}${dailyDone() ? '（今天挑戰過了）' : ''}</button>
-    <div class="hm-r"><button class="btn" data-act="metaShop">局外升級</button><button class="btn" data-act="gacha">契靈祈願</button></div></div>
+    <div class="hm-r"><button class="btn" data-act="metaShop">局外升級</button><button class="btn" data-act="gacha">契靈祈願</button></div>
+    <button class="btn" data-act="sheet" data-s="settings">設定</button></div>
     <div class="kv"><div><span>魂晶</span><b>${m.soul}</b></div><div><span>局數</span><b>${m.runs}</b></div><div><span>通關</span><b>${m.wins}</b></div></div></div>`;
 }
 /* 選角：8 個昇華職業，沒解鎖的顯示魂晶花費 */

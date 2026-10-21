@@ -146,6 +146,22 @@ function startRun(opts = {}) {
   closeSheet();
   playSong('field');
   viewRender();
+  if (S.meta.runs === 1 && !opts.daily) howTo();
+}
+/* 第一局的玩法說明 */
+function howTo() {
+  showModal(
+    '怎麼玩',
+    `<p>① 從地圖最下面往上走，點金框的節點前進。</p><p>② 打贏給經驗和獎勵三選一；升級時天賦三選一。</p><p>③ 打倒第三章首領就通關；倒下這一局就結束，結算魂晶解鎖新角色。</p>${more(
+      '節點與規則',
+      `<p>${Object.values(NODE)
+        .map(q => `<b>${q.n}</b>：${q.d}`)
+        .join(
+          '<br>'
+        )}</p><p>每場勝利回 25% 生命、魔力全滿。血量不會自己回，營火、藥水、事件可以補。</p><p>商店可以賣掉不要的裝備；背包裡的裝備可以用通貨製作。</p>`
+    )}`,
+    [{ label: '出發', pri: 1, fn: hideModal }]
+  );
 }
 /* 一局結束：結算魂晶與祈願石，回主選單 */
 function endRun(won) {
@@ -794,12 +810,23 @@ function runmapRender() {
     })
     .join('');
   el.innerHTML = `<div class="rm-hd"><b>第 ${r.ch + 1} 章・${CH[r.ch].n}</b><small class="sub">第 ${Math.max(0, curFloor()) + 1}/${RUN_FLOORS} 層</small></div>${pendPicks() ? `<button class="btn pri rm-pick" data-act="runPick">天賦三選一 ×${pendPicks()}</button>` : ''}
-    <div class="rm-map" style="height:${H}px"><svg class="rm-ln" viewBox="0 0 100 ${H}" preserveAspectRatio="none">${lines}</svg>${dots}</div>`;
+    <div class="rm-map" style="height:${H}px"><svg class="rm-ln" viewBox="0 0 100 ${H}" preserveAspectRatio="none">${lines}</svg>${dots}</div>
+    <div class="rm-lg">${more(
+      '圖例',
+      `<div class="chips">${Object.values(NODE)
+        .map(q => `<span class="chip"><img src="${iconURL(q.ic)}" alt=""><span>${q.n}</span></span>`)
+        .join('')}</div>`
+    )}</div>`;
+  /* 捲到能走的節點（放在畫面約一半的高度，不要被底部導覽蓋住） */
+  const nb = el.querySelector('.rn.next');
+  if (nb) el.scrollTop = Math.max(0, nb.offsetTop + el.querySelector('.rm-map').offsetTop - innerHeight * 0.5);
 }
 /* 戰鬥結束、換存檔後重畫目前的畫面（主選單或章節地圖） */
 function viewRender() {
   homeRender();
   runmapRender();
+  /* 底部導覽只在一局裡顯示（主選單沒有角色可看） */
+  $('nav').hidden = !S.run;
   renderHud();
 }
 

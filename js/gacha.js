@@ -1,7 +1,7 @@
 /* 漫步勇者 · 祈願（抽卡）：0.3.12 起契靈只有一種，稀有度 SSR／SR／R。
    每抽一次都是一隻新的契靈（同名也各自獨立），帶 6 條隨機的戰鬥詞綴（T6～T1，SSR 保底 T3 以上、另有 SSR 專屬詞綴），一開始只解鎖第 1 條；
    拿另一隻同名的契靈當材料吃掉就突破一次，解鎖下一條。抽到詞綴更好的同名契靈，可以改培養那一隻。契靈的標籤由詞綴決定。
-   欄位 2 格起跳，每通過一場昇華試煉 +1 格（最多 6 格）；任選一隻跟隨，互動範圍 +30 公尺。主畫面左上角的圖示可以直接打開 */
+   欄位 2 格起跳，一局裡每打倒一個章節首領 +1 格（最多 6 格）。主選單的「契靈祈願」打開 */
 'use strict';
 /* ================= pacts ================= */
 /* 稀有度 0～2：R、SR、SSR */
@@ -713,7 +713,7 @@ function pactHTML() {
     <div class="baghd"><h3>擁有 ${list.length}<small class="sub">・${new Set(list.map(o => o.k)).size}/${PACTS.length} 種</small></h3>${tags.length ? `<select class="sel" data-chg="ptag" aria-label="篩選"><option value="">全部</option>${tags.map(t => `<option value="${t}"${flt === t ? ' selected' : ''}>${PTAG[t]}</option>`).join('')}</select>` : ''}</div>
     ${shown.length ? `<div class="pgrid">${shown.map(pactCell).join('')}</div>` : '<p class="empty">還沒有契靈，去祈願吧</p>'}
     <div class="btns"><button class="btn pri" data-act="gacha">${curDot('wish')}契靈祈願（${S.cur.wish || 0}）</button></div>
-    ${more('契靈怎麼用', `<p>出戰欄：每通過一場昇華試煉 +1 格（最多 ${PSLOT_MAX}），同名的只能裝一隻。</p><p>突破：拿同名的契靈當材料，解鎖下一條詞綴（最多 ${PBRK_MAX} 次）。</p><p>跟隨：任選一隻在地圖上跟著你，互動範圍 +${PFOLLOW_R} 公尺。</p>`)}`;
+    ${more('契靈怎麼用', `<p>出戰欄：2 格起跳，一局裡每打倒一個章節首領 +1 格（最多 ${PSLOT_MAX}），同名的只能裝一隻。出戰的契靈詞綴每一局都有效。</p><p>突破：拿同名的契靈當材料，解鎖下一條詞綴（最多 ${PBRK_MAX} 次）。</p>`)}`;
 }
 /* 0.3.43 契靈詳情（sheet 'pdet'）：標題列 → 動作 → 標籤 → 6 條詞綴 */
 function pactDetHTML() {
@@ -725,8 +725,8 @@ function pactDetHTML() {
     nf = pactFodder(o.u).length,
     on = pactsOn(),
     full = !eq && on.length >= pactSlots() && !on.some(u => pactOf(u).k === o.k);
-  return `<div class="ihd">${pactTile(o.k)}<div><b style="color:${PCOL[p.r]}">${PRAR[p.r]} ${p.n}</b><small>突破 ${o.brk}/${PBRK_MAX}${eq ? '・出戰中' : ''}${fo ? '・跟隨中' : ''}</small></div></div>
-    <div class="btns iact"><button class="btn${eq || full ? '' : ' pri'}" data-act="pactEq" data-id="${o.u}" ${full ? 'disabled' : ''}>${eq ? '卸下' : '出戰'}${full ? '<small class="bnote">欄位滿了</small>' : ''}</button><button class="btn" data-act="pactBrk" data-id="${o.u}" ${o.brk < PBRK_MAX && nf ? '' : 'disabled'}>${o.brk >= PBRK_MAX ? '已全開' : `突破（${nf}）`}${o.brk < PBRK_MAX && !nf ? '<small class="bnote">沒有同名的</small>' : ''}</button><button class="btn" data-act="pactFollow" data-id="${o.u}" aria-pressed="${fo}">${fo ? '跟隨中' : '跟隨'}</button></div>
+  return `<div class="ihd">${pactTile(o.k)}<div><b style="color:${PCOL[p.r]}">${PRAR[p.r]} ${p.n}</b><small>突破 ${o.brk}/${PBRK_MAX}${eq ? '・出戰中' : ''}</small></div></div>
+    <div class="btns iact"><button class="btn${eq || full ? '' : ' pri'}" data-act="pactEq" data-id="${o.u}" ${full ? 'disabled' : ''}>${eq ? '卸下' : '出戰'}${full ? '<small class="bnote">欄位滿了</small>' : ''}</button><button class="btn" data-act="pactBrk" data-id="${o.u}" ${o.brk < PBRK_MAX && nf ? '' : 'disabled'}>${o.brk >= PBRK_MAX ? '已全開' : `突破（${nf}）`}${o.brk < PBRK_MAX && !nf ? '<small class="bnote">沒有同名的</small>' : ''}</button></div>
     ${pactTagHTML(pactTags(o.u, true))}
     <h3>詞綴 ${pactOpen(o.u).length}/${PAFF_N}</h3><div class="pdet">${pactAffHTML(o.u)}</div>`;
 }

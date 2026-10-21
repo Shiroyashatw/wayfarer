@@ -5,7 +5,7 @@ window.audit = function (label) {
     res = { label, overflowX: [], offscreen: [], tinyText: [], smallTap: [], tallCards: [], emptyFrames: [], textChars: 0, foldChars: 0, pri: 0 };
   const roots = [
     ...document.querySelectorAll(
-      '#sheet:not(.off), #treeView:not([hidden]), #ascView:not([hidden]), #gacha:not([hidden]), #battle:not([hidden])'
+      '#home:not([hidden]), #runmap:not([hidden]), #sheet:not(.off), #ascView:not([hidden]), #gacha:not([hidden]), #battle:not([hidden]), #modal:not([hidden])'
     )
   ];
   const root = roots.pop() || document.body;
