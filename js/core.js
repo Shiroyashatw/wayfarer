@@ -68,3 +68,11 @@ const RANGE = 150,
 /* 0.3.11：有契靈跟隨時再 +30 公尺（gacha.js 的 pactFollow） */
 const reachOf = e =>
   (e && e.kind === 'town' ? TOWN_R : RANGE) + (typeof pactFollow === 'function' && pactFollow() ? PFOLLOW_R : 0);
+/* 放射狀光暈（col 是 'r,g,b'） */
+function glow(c, x, y, r, col, a) {
+  const g = c.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(${col},${a})`);
+  g.addColorStop(1, `rgba(${col},0)`);
+  c.fillStyle = g;
+  c.fillRect(x - r, y - r, r * 2, r * 2);
+}

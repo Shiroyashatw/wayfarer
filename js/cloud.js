@@ -27,7 +27,6 @@ async function cloudUser(user) {
     const { data, error } = await CLOUD.sb.rpc('claim_player_no');
     if (!error && data) CLOUD.no = data;
   }
-  if (typeof socialOnUser === 'function') socialOnUser();
 }
 async function cloudFetch() {
   const { data, error } = await CLOUD.sb.from('saves').select('data').eq('user_id', CLOUD.uid).maybeSingle();
@@ -87,7 +86,6 @@ async function cloudPush() {
       ? '同步失敗：' + error.message
       : `已同步 ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
     if (error) CLOUD.dirty = true;
-    else profileSync();
   } catch (e) {
     CLOUD.status = '同步失敗，稍後重試';
     CLOUD.dirty = true;
@@ -137,13 +135,12 @@ async function authLogin(email, password) {
   CLOUD.pending = null;
   await cloudUser(data.user);
   const remote = await cloudFetch();
-  if (remote) {
+  if (saveOk(remote)) {
     S = migrate(remote);
-    delete S.intro;
     try {
       localStorage.setItem(KEY, JSON.stringify(S));
     } catch (e) {}
-    rebuildWorld();
+    refreshAll();
     return 'loaded';
   }
   CLOUD.dirty = true;

@@ -3,7 +3,7 @@
 /* ================= state ================= */
 /* 測試用：網址加 ?p=2 可以在同一個瀏覽器開第二個角色（不同存檔與帳號），用來測多人連線 */
 const SLOT = new URLSearchParams(location.search).get('p') || '';
-const KEY = 'wayfarer_art_v6' + (SLOT ? '_p' + SLOT : '');
+const KEY = 'wayfarer_rogue_v1' + (SLOT ? '_p' + SLOT : '');
 let S,
   B = null,
   D = null,

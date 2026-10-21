@@ -649,20 +649,6 @@ function eInit(e) {
   Object.assign(e, { poisonN: 0, bleedN: 0, slow: 0, vul: 0, vulP: 0, vulE: 0, dmark: 0 });
   return e;
 }
-/* 怪物群：地圖上的一隻怪代表一群，依稀有度帶 0～3 隻小怪（最多 5 隻）；小怪跟著帶頭的種族（亡靈、魔霧） */
-/* 野外怪物帶幾隻同伴（0.3.1.5 調低）：依地圖上那隻怪的位置與刷新週期固定，開打前的說明就能顯示 */
-const PACK_P = { 0: [0.75, 0.95], 1: [0.45, 0.85], 2: [0.25, 0.7], 4: [0.6, 0.9] };
-function packN(e) {
-  if (S.lv < 3 || !PACK_P[e.rar || 0]) return 0;
-  const q = (h(fl(e.lat * 1e5), fl(e.lng * 1e5), epoch() + 77) % 1000) / 1000,
-    /* 狩獵中：獵殺等級越高越常成群 */
-    hp = huntLv() ? huntCfg().pack : [0, 0],
-    a = PACK_P[e.rar || 0][0] - hp[0],
-    b = PACK_P[e.rar || 0][1] - hp[1];
-  return q < a ? 0 : q < b ? 1 : 2;
-}
-/* 同伴的種類與等級也依位置與刷新週期固定（packSeed），開打前的說明就能畫出這場會遇到的每一隻 */
-const packSeed = e => h(fl(e.lat * 1e5), fl(e.lng * 1e5), epoch() + 91);
 function packBases(lead, n, seed) {
   const r = rng(seed),
     out = [];
@@ -688,8 +674,6 @@ function packOf(lead, extra = 0, n = 0, seed) {
     m.xp = Math.round(m.xp * 0.6);
     m.gold = Math.round(m.gold * 0.6);
     m.minion = 1;
-    /* 小怪的等級已經跟著帶頭的（含獵殺加的等級），這裡只加生命與攻擊 */
-    if (lead.hlv) huntBuff(m, true);
     for (const k2 of ['ud', 'mist', 'uw']) if (lead[k2]) m[k2] = lead[k2];
     if (lead.siege && b.fol) followerize(m, lead.siege, b.fol);
     if (lead.mist) m.name = (lead.ud ? '霧中亡靈・' : '魔霧・') + m.name;
@@ -1906,13 +1890,7 @@ function startBattle(e, opts = {}) {
   };
   BLOG = [];
   $('binfo').hidden = true;
-  /* 0.3.25 在被攻佔的城鎮裡：套用城鎮特效 */
-  {
-    const sm = siegeApply(B);
-    if (sm) setTimeout(() => toast(sm), 400);
-  }
   battleOpen(B.me);
-  simTarget = null;
   BFX.pops = [];
   BFX.fx = [];
   BFX.en = es.map(() => ({ a: null, flash: 0 }));
@@ -1959,13 +1937,9 @@ function pickTarget(x, y) {
   });
   if (best < 0) return;
   sfx('tap');
-  if (B) {
-    B.ti = best;
-    renderBHud();
-  } else {
-    MB.tg = best;
-    renderMBHud();
-  }
+  if (!B) return;
+  B.ti = best;
+  renderBHud();
 }
 $('bview').addEventListener('pointerdown', ev => {
   if (ev.target.closest('button')) return;
@@ -2360,232 +2334,15 @@ function enemyAct(i) {
   });
 }
 
-/* ================= dungeons (shared by solo and party) ================= */
-/* 把地圖上的地城／裂隙／試煉整理成一份規格：層數、怪物倍率、附加詞綴、掉寶加成 */
-function dunSpec(t) {
-  const dt = DTYPES[t.dt || 'normal'],
-    mods = (t.mods || []).map(id => DMODI[id]).filter(Boolean),
-    dm = { hp: dt.hp, atk: 1, arm: 1 };
-  let q = dt.q,
-    r = dt.r;
-  q += (t.xk || 0) * 15;
-  r += (t.xk || 0) * 15;
-  for (const m of mods) {
-    q += m.q;
-    r += m.r;
-    if (m.dm) for (const k in m.dm) dm[k] *= m.dm[k];
-  }
-  const has = id => mods.some(m => m.id === id);
-  return {
-    dt: t.dt || 'normal',
-    floors: t.floors || (t.kind === 'rift' || t.kind === 'landmark' ? 3 : dt.floors),
-    mods: mods.map(m => m.id),
-    q,
-    r,
-    dm,
-    em: [...new Set([...mods.filter(m => m.em).map(m => m.em), ...(t.umods || [])])],
-    norevive: !!dt.norevive,
-    sin: t.sin,
-    siege: t.siege || 0,
-    xk: t.xk || 0,
-    noregen: has('noregen'),
-    eleweak: has('eleweak'),
-    elite: has('elite')
-  };
-}
-const dunName = t =>
-  t.kind === 'rift'
-    ? '魔物裂隙'
-    : t.kind === 'landmark'
-      ? t.dn
-      : t.kind === 'asc'
-        ? '昇華試煉'
-        : t.kind === 'tier'
-          ? '突破試煉'
-          : DTYPES[t.dt || 'normal'].n;
-/* 0.3.23 冥府傳送門的最終王是閻羅王；0.3.26 換成 PNG 圖 */
-const BIGBOSS = { hell: '地獄領主', circle: '魔法陣主宰', portal: '閻羅王', stele: '石碑守衛' },
-  BOSSSPR = { hell: 'b_hellord', circle: 'b_arcane', portal: 'a_yanluo', stele: 'b_stelekeeper' };
-/* 0.3.26 地城、石碑、魔法陣、地獄、組隊地城的首領：從台灣鬼怪裡抽一隻（每座地城固定，看種子） */
-const GHOSTS = [
-  { n: '魔神仔', spr: 'a_mosina', el: 'cold' },
-  { n: '虎姑婆', spr: 'a_hugupo', el: 'phys' },
-  { n: '陳守娘', spr: 'a_chenshouniang', el: 'cold' },
-  { n: '椅仔姑', spr: 'a_yiagu', el: 'light' },
-  { n: '林投姐', spr: 'a_lintoujie', el: 'cold' },
-  { n: '水鬼', spr: 'a_shuigui', el: 'cold' },
-  { n: '冥婚新娘', spr: 'a_guixinniang', el: 'fire' },
-  { n: '紅衣小女孩', spr: 'a_hongy', el: 'phys' },
-  { n: '吊死鬼', spr: 'a_diaosi', el: 'phys' }
-];
-const ghostOf = D => GHOSTS[h(D.seed, 77, 7) % GHOSTS.length];
-/* 第 room 層的敵人群（0.3 起一層是一群，最多 5 隻）。boss 在最後一層；extra 是組隊多出來的隻數 */
-function dunEnemy(D, room, extra = 0) {
-  const sp = D.spec,
-    boss = room === sp.floors - 1,
-    r = h(D.seed, room, 9),
-    addEm = e => {
-      for (const m of sp.em)
-        if (!e.mods.includes(m)) {
-          e.mods.push(m);
-          if (m === 'swift') e.speed = Math.max(e.speed || 10, 18);
-          uwApply(e, m);
-        }
-      if (sp.em.some(m => EMODI[m] && EMODI[m].uw) && !e.name.startsWith('冥府')) e.name = '冥府・' + e.name;
-      return e;
-    },
-    /* 一般小怪（菁英詞綴的地城比較常出魔法、稀有） */
-    mob = (k, lv = D.lv) => {
-      const q = h(r, k, 3) % 100,
-        el = sp.elite ? 55 : 25,
-        rar = sp.elite && q < 12 ? 2 : q < el ? 1 : 0,
-        rr = h(r, k, 5);
-      return makeEnemy(pickMon(rr, lv), lv, rar, rar ? rollMods(rr, rar === 2 ? 3 : 1) : [], sp.dm);
-    },
-    group = (lead, n) => {
-      const out = [lead];
-      for (let k = 0; k < Math.min(4, n + extra); k++) {
-        /* 0.3.25 攻佔城鎮的七罪挑戰：小怪是那個罪的信徒 */
-        const m = sp.siege
-          ? makeFollower(
-              sp.sin,
-              SINF[sp.sin][h(r, k, 13) % 5],
-              Math.max(1, D.lv - (k % 2)),
-              h(r, k, 3) % 100 < 30 ? 1 : 0
-            )
-          : mob(k + 1, Math.max(1, D.lv - (k % 2)));
-        /* 同一群的其他怪稍微弱一點，避免一層的總傷害爆掉 */
-        m.maxhp = m.hp = Math.round(m.maxhp * 0.7);
-        m.atk = Math.round(m.atk * 0.7);
-        m.minion = 1;
-        out.push(m);
-      }
-      return out.map(addEm);
-    };
-  /* 七宗罪：雕像挑戰的最後一層是該宗罪的王；七宗罪之王 7 層依序是 7 個王，第 8 層是七宗罪之王 */
-  if (sp.dt === 'sinking' || (boss && sp.sin)) {
-    const e =
-      sp.dt === 'sinking'
-        ? room < 7
-          ? makeSinLord(SINS[room].k, D.lv)
-          : makeSinKing(D.lv + 2)
-        : makeSinLord(sp.sin, D.lv + 1);
-    /* 0.3.25 攻佔城鎮的七罪之王：終局難度，還帶著兩個信徒 */
-    if (sp.siege) {
-      e.maxhp = e.hp = Math.round(e.maxhp * 2.2);
-      e.atk = Math.round(e.atk * 1.3);
-      const fs = SINF[sp.sin],
-        es = [
-          e,
-          ...[0, 1].map(k => makeFollower(sp.sin, fs[h(r, k, 9) % fs.length], D.lv, 1, rollMods(h(r, k, 11), 1)))
-        ];
-      return { e, es, bg: 'cave', boss: true };
-    }
-    const es = group(e, 0);
-    return { e: es[0], es, bg: 'cave', boss: true };
-  }
-  let e, bg, n;
-  if (D.kind === 'rift') {
-    const b = pickMon(r, D.lv);
-    e = boss
-      ? makeEnemy(b, D.lv + 1, 2, rollMods(r, 3), sp.dm)
-      : makeEnemy(b, D.lv, 1, rollMods(r, 1 + (r % 2)), sp.dm);
-    bg = b.bg;
-    n = boss ? 1 : 1 + (r % 2);
-  } else if (boss) {
-    const hell = (!!BIGBOSS[sp.dt] && sp.dt !== 'stele') || D.kind === 'asc' || D.kind === 'tier',
-      /* 地標是石獅、昇華試煉是鍾馗、突破之門是門神、冥府是閻羅王，其他抽台灣鬼怪 */
-      gh = ghostOf(D),
-      fix = D.lm
-        ? { n: `${D.lm.dn}守護者`, spr: 'a_lion', el: 'cold' }
-        : D.kind === 'tier'
-          ? { n: '門神・秦叔寶', spr: 'a_menshen_qin', el: 'light' }
-          : D.kind === 'asc'
-            ? { n: '鍾馗', spr: 'a_zhongkui', el: 'fire' }
-            : sp.dt === 'portal'
-              ? { n: BIGBOSS.portal, spr: BOSSSPR.portal, el: 'fire' }
-              : gh,
-      bn = fix.n,
-      bspr = fix.spr;
-    e = makeEnemy(
-      {
-        name: bn,
-        bg: 'cave',
-        hp: 70,
-        atk: 12,
-        arm: 30,
-        el: fix.el,
-        res: [25, 25, 25],
-        xp: 30,
-        gold: 30,
-        spr: bspr,
-        pal: BOSSPAL[bspr]
-      },
-      D.lv + 1,
-      0,
-      hell ? rollMods(r, 2) : [],
-      sp.dm
-    );
-    e.maxhp = Math.round(e.maxhp * (hell ? 2.8 : 2));
-    e.hp = e.maxhp;
-    e.atk = Math.round(e.atk * (hell ? 1.4 : 1.15));
-    e.xp *= hell ? 4 : 2;
-    e.rar = hell ? 4 : 3;
-    e.big = hell ? 1 : 0;
-    e.minion = 0;
-    if (sp.dt === 'portal') e.yama = 1;
-    bg = 'cave';
-    n = hell ? 2 : 1 + (sp.dt === 'party' ? 1 : 0);
-    /* 突破之門：兩位門神一起守門，尉遲恭是第二隻（生命 70%） */
-    if (D.kind === 'tier') {
-      const es = group(e, n - 1),
-        e2 = makeEnemy(
-          {
-            name: '門神・尉遲恭',
-            bg: 'cave',
-            hp: 70,
-            atk: 12,
-            arm: 30,
-            el: 'phys',
-            res: [25, 25, 25],
-            xp: 30,
-            gold: 30,
-            spr: 'a_menshen_yu'
-          },
-          D.lv + 1,
-          0,
-          rollMods(h(r, 2, 21), 2),
-          sp.dm
-        );
-      e2.maxhp = e2.hp = Math.round(e.maxhp * 0.7);
-      e2.atk = e.atk;
-      e2.xp = e.xp;
-      e2.rar = 4;
-      e2.minion = 0;
-      es.splice(1, 0, e2);
-      return { e: es[0], es: es.slice(0, 5), bg, boss: true };
-    }
-  } else {
-    e = sp.siege ? makeFollower(sp.sin, SINF[sp.sin][r % 5], D.lv, r % 3 === 0 ? 2 : 1, rollMods(r, 1)) : mob(0);
-    bg = D.lm ? 'forest' : 'cave';
-    n = (sp.dt === 'hell' ? 2 : 1) + (r % 2) + (sp.elite ? 1 : 0);
-  }
-  if (S.lv < 3) n = Math.min(n, 1);
-  const es = group(e, n);
-  return { e: es[0], es, bg, boss: boss && D.kind !== 'rift' };
-}
-function dropLoot(e, boss, sp, remote, minion) {
+/* ================= 戰鬥結算（0.1.0 肉鴿：原本的地城、裂隙、試煉、石碑拿掉，改成一局裡的節點，流程在 run.js） ================= */
+/* 0.1.0 肉鴿：掉寶只看怪物稀有度、是不是首領（區域特性、現場加成、T 級拿掉）；Q／R 是數量與稀有度加成（一局的進度加，runLootQ） */
+function dropLoot(e, boss, minion) {
   const buf = buffOn() ? 1.2 : 1,
-    rem = remote ? 0.8 : 1,
+    rem = 1,
     out = [],
     r = e.rar || 0,
-    zm = zoneAt(S.lat, S.lng).m,
-    os = onsiteNow() ? ONSITE_BONUS : 0,
-    /* 0.3.10：T 級的掉寶數量與稀有度；首領與災厄另外加上機制王的加成 */
-    tb = tierBonus(),
-    tk = boss || r >= 3 ? tb.boss : 0,
-    Q = 1 + ((sp ? sp.q : 0) + (zm.q || 0) + os + tb.q + tk) / 100,
-    R = 1 + ((sp ? sp.r : 0) + (zm.r || 0) + os + tb.r + tk) / 100;
+    Q = 1 + (typeof runLootQ === 'function' ? runLootQ() : 0) / 100,
+    R = Q;
   const mm = (minion ? 0.5 : 1) * rate('drop'),
     itemCh = ([0.22, 0.5, 1, 1, 1][r] || 0.22) * buf * rem * Q * mm,
     curN =
@@ -2630,24 +2387,7 @@ function dropLoot(e, boss, sp, remote, minion) {
     giveCur(c);
     out.push(curDot(c) + CURI[c].n);
   }
-  gemLoot(e, boss, sp && sp.dt !== 'normal' && sp.dt !== 'party' && sp.dt !== 'stele', rem, out);
-  if (boss && sp && sp.dt === 'circle') {
-    giveCur('engX', 1 + (Math.random() < 0.5 ? 1 : 0));
-    out.push(curDot('engX') + '崇高刻印石');
-  }
-  if (boss && sp && sp.dt === 'portal') {
-    giveCur('vaal');
-    out.push(curDot('vaal') + '冥府之血');
-    for (const id of ['prism', 'engD'])
-      if (Math.random() < 0.5) {
-        giveCur(id);
-        out.push(curDot(id) + GCURI[id].n);
-      }
-  }
-  if (r >= 1 || boss) {
-    const ins = rollInsc(r, boss);
-    if (ins) out.push(ins);
-  }
+  gemLoot(e, boss, rem, out);
   if (Math.random() < 0.12) {
     S.potions++;
     out.push('生命藥水');
@@ -2658,30 +2398,29 @@ function dropLoot(e, boss, sp, remote, minion) {
 /* 靈魂隨怪物強度增加：稀有度底數 + 每條詞綴 2（冥府詞綴 3）+ 每 4 級 1，首領再加 */
 /* 0.3.1.8：靈魂全部來源 ×1.5（0.3.11 起靈魂拿來升級技能石） */
 const SOUL_MUL = 1.5;
-function gemLoot(e, boss, hell, rem, out) {
+function gemLoot(e, boss, rem, out) {
   const r = e.rar || 0,
     mods = e.mods || [],
     soul =
       [2, 4, 7, 8, 15][r] +
       mods.reduce((a, m) => a + (EMODI[m] && EMODI[m].uw ? 3 : 2), 0) +
       fl((e.lv || 1) / 4) +
-      (boss ? 6 + (hell ? 6 : 0) : 0),
-    z = zoneAt(S.lat, S.lng).m,
+      (boss ? 8 : 0),
     dm = rate('drop'),
-    ch = p => Math.random() < p * rem * (z.eng || 1) * dm,
+    ch = p => Math.random() < p * rem * dm,
     add = (id, n = 1) => {
       if (n <= 0) return;
       giveCur(id, n);
       out.push(curDot(id) + GCURI[id].n + (n > 1 ? ' ×' + n : ''));
     };
-  add('soul', Math.round(soul * rem * (z.soul || 1) * SOUL_MUL * dm));
+  add('soul', Math.round(soul * rem * SOUL_MUL * dm));
   /* 0.3.11 祈願石：菁英與首領比較常掉 */
   const wm = rem * dm;
-  if (boss) add('wish', Math.round((1 + (hell ? 1 : 0)) * wm) || 1);
+  if (boss) add('wish', Math.round(wm) || 1);
   else if (Math.random() < [0.01, 0.04, 0.12, 0.12, 0.4][r] * wm) add('wish');
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
-  if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
-  if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');
+  if (ch(boss ? 0.45 : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
+  if (ch(boss ? 0.12 : r === 4 ? 0.05 : 0)) add('engX');
   if (r === 4 && ch(0.08)) add('engD');
   supLoot(e, boss, rem * dm, out);
 }
@@ -2720,55 +2459,6 @@ function supLoot(e, boss, rem, out) {
   if (Math.random() < (boss ? 0.15 : [0, 0.01, 0.03, 0.05, 0.1][r] || 0) * rem)
     giveS(pick(SUPG.filter(sp => !sp.lin && sp.t <= Math.max(1, Math.min(5, tierNow())))));
 }
-/* 現場加成：人實際走到互動範圍內（150 公尺，城鎮 200）打（不是靠據點、營旗、絲綢之路遠端），掉寶數量與稀有度 +20% */
-const ONSITE_BONUS = 20;
-const onsiteNow = () => (D ? !!D.onsite : B ? !!B.onsite : MB ? !!(MB.d && MB.d.onsite && amLeader()) : false);
-/* 地城通關獎勵 */
-function dunReward(D) {
-  const sp = D.spec,
-    mult = D.remote ? 0.8 : 1,
-    tb = tierBonus(),
-    Q = 1 + (sp.q + (D.onsite ? ONSITE_BONUS : 0) + tb.q + tb.boss) / 100,
-    bonus = (D.lm ? 1.6 : 1) * Q,
-    gold = Math.round((40 + D.lv * 25) * mult * bonus * rate('gold')),
-    cry = D.kind === 'rift' ? 0 : Math.max(1, Math.round((2 + fl(D.lv / 2)) * mult * bonus));
-  const items = [
-    makeItem(DROPS[fl(Math.random() * DROPS.length)], D.lv + 1, D.lm || D.kind === 'rift' || sp.dt !== 'normal' ? 2 : 1)
-  ];
-  if (sp.dt === 'hell') items.push(makeItem(DROPS[fl(Math.random() * DROPS.length)], D.lv + 2, 2));
-  S.gold += gold;
-  S.crystal += cry;
-  items.forEach(giveItem);
-  const curs = [];
-  for (let i = 0; i < Math.round((D.kind === 'rift' ? 4 : 2) * Q * rate('drop')); i++) {
-    const c = rollCur(sp.dt === 'hell' ? 5 : 3);
-    giveCur(c);
-    curs.push(curDot(c) + CURI[c].n);
-  }
-  if (sp.dt === 'stele') curs.push(makeTablet(D.lv, sp.mods));
-  if (sp.dt === 'sin' || sp.dt === 'sinking') curs.push(...sinReward(sp));
-  /* 0.3.20：冥府傳送門與七宗罪的首領：寶石稜鏡、族裔輔助 */
-  const lm = sp.dt === 'portal' ? 'uw' : sp.dt === 'sin' || sp.dt === 'sinking' ? 'sin' : '';
-  if (lm) {
-    giveCur('prism', 2);
-    curs.push(curDot('prism') + GCURI.prism.n + ' ×2');
-    if (Math.random() < (sp.dt === 'sinking' ? 0.6 : 0.3)) {
-      const l = SUPG.filter(x => x.lin && x.m === lm),
-        x = l[fl(Math.random() * l.length)];
-      giveSup(x.k);
-      curs.push(`<span style="color:#ffd166">族裔輔助・${x.n}</span>`);
-    }
-  } else if (sp.dt === 'hell' && Math.random() < 0.4) {
-    giveCur('prism');
-    curs.push(curDot('prism') + GCURI.prism.n);
-  }
-  return { gold, cry, items, curs };
-}
-function dunModsHTML(sp) {
-  return sp.mods.length
-    ? `<div class="dmods">${sp.mods.map(id => `<div><b>${DMODI[id].n}</b><small>${DMODI[id].d}</small></div>`).join('')}</div>`
-    : '<p class="sub">沒有地城詞綴。</p>';
-}
 /* 戰利品清單：同樣的東西合併成「×n」 */
 function lootList(a) {
   const m = new Map();
@@ -2779,98 +2469,30 @@ function lootList(a) {
   }
   return [...m].map(([s, n]) => (n > 1 ? `${s} ×${n}` : s));
 }
+/* 勝利：經驗、金幣、掉寶；在一局裡交給 runWin（獎勵三選一、下一個節點） */
 function winBattle() {
   const es = B.es,
     e = es[0],
-    zm = zoneAt(S.lat, S.lng).m,
     st = stats(),
-    mult = (D && D.remote ? 0.8 : 1) * (buffOn() ? 1.2 : 1);
+    mult = buffOn() ? 1.2 : 1;
   let xp = 0,
     gold = 0;
   const drops = [];
   es.forEach((o, i) => {
-    xp += Math.round(o.xp * mult * (zm.xp || 1) * rate('xp'));
-    gold += Math.round(o.gold * rnd(0.8, 1.2) * mult * st.goldMul * (zm.gold || 1) * rate('gold'));
-    drops.push(...dropLoot(o, B.boss && i === 0, D && D.spec, D && D.remote, o.minion));
+    xp += Math.round(o.xp * mult * rate('xp'));
+    gold += Math.round(o.gold * rnd(0.8, 1.2) * mult * st.goldMul * rate('gold'));
+    drops.push(...dropLoot(o, B.boss && i === 0, o.minion));
   });
   S.gold += gold;
   const up = gainXP(xp);
-  if (B.entId) {
-    S.defeated[B.entId] = 1;
-    ENT.delete(B.entId);
-  }
   S.stacks = st.keepStacks ? B.me.stacks || 0 : 0;
   let bonus = autoPot();
-  if (B.bounty) {
-    const g = 100 + S.lv * 30;
-    S.gold += g;
-    giveCur('chaos');
-    bonus += `<p style="color:var(--gold)">懸賞完成！額外 ${g} 金幣與 1 個混沌石</p>`;
-    S.cleared[B.bounty] = evEp();
-  }
-  if (onsiteNow()) bonus += `<p class="sub" style="color:var(--gold)">✦ 現場加成：掉寶 +${ONSITE_BONUS}%</p>`;
-  /* 每隻敵人各自算：侵蝕柱充能、亡靈區與魔霧進度（同一種只顯示最後一行） */
-  let ob = '',
-    ud = '',
-    mi = '';
-  for (const o of es) {
-    if (o.uw) ob = obeliskCharge(o.uw);
-    if (o.ud) ud = undeadWin({ e: o, ud: o.ud, udBase: o.bn, mist: o.mist }) || ud;
-    if (o.mist) mi = mistWin({ e: o, ud: o.ud, mist: o.mist, mistBase: o.bn }) || mi;
-    if (o.sin) bonus += sinBattleWin(o);
-    quest('kill');
-    if (o.rar >= 2) quest('rare');
-    if (o.ud) quest('ud');
-  }
-  bonus += ob + ud + mi;
-  if (B.commander) bonus += commanderWin(B.commander);
-  if (B.king) bonus += kingWin();
-  if (B.xiong) bonus += xiongWin(B.xiong);
-  bonus += siegeWin(es);
-  if (B.zhulong) bonus += zhulongWin();
-  if (B.watcher) bonus += watcherWin(B.watcher);
-  if (B.hunt) bonus += huntWin(B);
-  bonus += huntKills(es);
-  if (B.hunt === 'beast') quest('beast');
+  for (const o of es) if (o.sin) bonus += sinBattleWin(o);
   addLog(`擊敗 ${e.name}${es.length > 1 ? ` 等 ${es.length} 隻` : ''} Lv${e.lv}，獲得 ${xp} 經驗、${gold} 金幣`);
   if (up) setTimeout(() => sfx('level'), 500);
   renderBHud();
   save();
-  const inD = !!D;
-  const next = () => {
-    if (inD) {
-      D.room++;
-      const F = D.spec.floors;
-      if (D.room >= F) return dungeonClear();
-      const st = stats();
-      showModal(
-        D.kind === 'rift' ? `裂隙第 ${D.room + 1}/${F} 波` : `第 ${D.room + 1}/${F} 層`,
-        `<p>${D.room === F - 1 ? (D.kind === 'rift' ? '裂隙深處湧出一隻稀有怪物。' : '更深處傳來強大的氣息，首領就在前方。') : '下一波敵人正在逼近。'}</p><p class="sub">生命 ${S.hp}/${st.maxhp}・魔力 ${S.mp}/${st.maxmp}</p>`,
-        [
-          {
-            label: '撤退',
-            fn: () => {
-              hideModal();
-              addLog('撤退了');
-              D = null;
-              endBattle();
-            }
-          },
-          {
-            label: '繼續',
-            pri: 1,
-            fn: () => {
-              hideModal();
-              nextRoom();
-            }
-          }
-        ]
-      );
-    } else {
-      hideModal();
-      endBattle();
-    }
-  };
+  if (S.run && typeof runWin === 'function') return runWin({ xp, gold, drops, up, bonus, boss: !!B.boss });
   showModal(
     '勝利！',
     `<p>獲得 <span style="color:var(--good)">${xp} 經驗</span>、<span style="color:var(--gold)">${gold} 金幣</span></p>${
@@ -2879,25 +2501,10 @@ function winBattle() {
             .map(d => `<span>${d}</span>`)
             .join('')}</div>`
         : ''
-    }${bonus}${up ? `<p style="color:var(--gold)">升級到 Lv${S.lv}！獲得 1 天賦點</p>` : ''}`,
-    [{ label: '繼續', pri: 1, fn: next }]
-  );
-}
-function loseBattle() {
-  sfx('lose');
-  buzz(300);
-  const lost = fl(S.gold * 0.1);
-  S.gold -= lost;
-  fullHeal();
-  D = null;
-  addLog(`戰敗，損失 ${lost} 金幣`);
-  /* 0.3.1.7 起一律原地復活（不再送回主據點） */
-  showModal(
-    '你倒下了……',
-    `<p>損失 ${lost} 金幣，在原地醒來，狀態已恢復。</p><p class="sub">提示：看看角色頁的抗性，元素怪物對低抗性很痛。</p>`,
+    }${bonus}`,
     [
       {
-        label: '重新出發',
+        label: '繼續',
         pri: 1,
         fn: () => {
           hideModal();
@@ -2907,6 +2514,23 @@ function loseBattle() {
     ]
   );
 }
+/* 戰敗：在一局裡就是這局結束（runLose 結算） */
+function loseBattle() {
+  sfx('lose');
+  buzz(300);
+  if (S.run && typeof runLose === 'function') return runLose();
+  fullHeal();
+  showModal('你倒下了……', '<p>狀態已恢復。</p>', [
+    {
+      label: '返回',
+      pri: 1,
+      fn: () => {
+        hideModal();
+        endBattle();
+      }
+    }
+  ]);
+}
 function endBattle() {
   $('battle').hidden = true;
   $('eail').innerHTML = $('hail').innerHTML = $('epills').innerHTML = '';
@@ -2914,113 +2538,8 @@ function endBattle() {
   B = null;
   playSong('field');
   renderHud();
+  if (typeof viewRender === 'function') viewRender();
   save();
-}
-function enterDungeon(t, remote) {
-  D = {
-    id: t.id,
-    kind: t.kind,
-    lat: t.lat,
-    lng: t.lng,
-    lv: t.lv,
-    room: 0,
-    remote,
-    onsite: !!t.onsite,
-    lm: t.kind === 'landmark' ? t : null,
-    seed: h(fl(t.lat * 1e4), fl(t.lng * 1e4), hepoch()),
-    spec: dunSpec(t)
-  };
-  sfx('door');
-  addLog(`${remote ? '從據點遠征' : '進入'}${dunName(t)}（Lv${t.lv}）`);
-  nextRoom();
-}
-function nextRoom() {
-  const { es, bg, boss } = dunEnemy(D, D.room);
-  if (B) {
-    es.forEach(eInit);
-    es.forEach((x, k) => (x.msk = monSkills(x, !!boss && k === 0)));
-    Object.assign(B, {
-      e: es[0],
-      es,
-      ti: 0,
-      boss,
-      hold: true,
-      anim: false,
-      over: false,
-      ready: false,
-      act: -1,
-      tick: 0
-    });
-    /* 0.3.44 進下一層：技能與藥水冷卻清空 */
-    Object.assign(B.me, { guard: 0, frozen: 0, cd: {}, cdMax: {} });
-    B.queued = null;
-    BFX.en = es.map(() => ({ a: null, flash: 0 }));
-    BFX.pops = [];
-    paintBG(bg);
-    BFX.t0 = performance.now();
-    playSong(boss ? 'boss' : 'battle');
-    renderBHud();
-    bmsg(es.length > 1 ? `${es[0].name} 等 ${es.length} 隻出現了！` : `${es[0].name} 出現了！`);
-    sfx('encounter');
-    /* 每層重新累積行動值 */
-    B.av = atbStart(es);
-    later(800, () => (B.hold = false));
-  } else startBattle(es, { boss, bg });
-}
-function dungeonClear() {
-  const kind = D.kind,
-    rw = dunReward(D);
-  S.cleared[D.id] = kind === 'rift' ? evEp() : hepoch();
-  const ascMsg = kind === 'asc' ? ascTrialDone() : kind === 'tier' ? tierUpDone() : '';
-  quest('dun');
-  const nm =
-      kind === 'rift'
-        ? '魔物裂隙'
-        : D.lm
-          ? D.lm.dn
-          : kind === 'asc' || kind === 'tier'
-            ? dunName(D)
-            : DTYPES[D.spec.dt].n,
-    rem = D.remote;
-  addLog(`攻略${nm}（Lv${D.lv}）`);
-  sfx('level');
-  const lv = D.lv;
-  D = null;
-  /* 0.3.1.9：打倒尾王後三選一（昇華試煉除外）；選完才能離開 */
-  const picks = kind === 'asc' ? [] : bossPicks(lv),
-    head = `<p><span style="color:var(--gold)">${rw.gold} 金幣</span>${rw.cry ? `・<span style="color:#9fe7ff">${rw.cry} 魔晶</span>` : ''}</p>${rw.items.map(it => itemCard(it, '首領寶箱')).join('')}<div class="loot">${rw.curs.map(c => `<span>${c}</span>`).join('')}</div>${ascMsg}${rem ? '<p class="sub">遠征獎勵為實地攻略的 80%。</p>' : ''}`;
-  let got = null;
-  const render = () =>
-    showModal(
-      '攻略完成！',
-      head +
-        (picks.length
-          ? got
-            ? `<h3>首領的獎勵</h3><div class="loot">${got.map(t => `<span>${t}</span>`).join('')}</div>`
-            : `<h3>首領的獎勵：三選一</h3><div class="bpick">${picks.map((p, i) => `<button class="bpk" data-act="mbtn" data-i="${i + 1}"><img src="${p.ic}" alt=""><b>${p.n}</b><small>${p.d}</small></button>`).join('')}</div>`
-          : ''),
-      [
-        {
-          label: picks.length && !got ? '先選一個獎勵' : '返回地圖',
-          pri: 1,
-          dis: picks.length && !got,
-          fn: () => {
-            if (picks.length && !got) return;
-            hideModal();
-            endBattle();
-          }
-        },
-        ...picks.map(p => () => {
-          if (got) return;
-          got = p.give();
-          sfx('coin');
-          addLog(`首領獎勵：${p.n}`);
-          save();
-          render();
-        })
-      ].map(f => (typeof f === 'function' ? { label: '', fn: f, hide: 1 } : f))
-    );
-  render();
 }
 /* 尾王三選一的獎勵池：稀有裝備、通貨、或一批高品質的普通裝備（品質超過一般上限 20%，拿來自己做裝） */
 const BP_ARMOR = ['helm', 'chest', 'gloves', 'boots', 'belt'],
@@ -3106,6 +2625,12 @@ function bossPicks(lv) {
     out.push(p);
   }
   return out;
+}
+/* ================= 畫面迴圈 ================= */
+/* 0.1.0 肉鴿：地圖拿掉，每幀只有戰鬥要畫（原本在 map.js） */
+function tick(t) {
+  requestAnimationFrame(tick);
+  if (B && !$('battle').hidden) renderBattle(t);
 }
 /* ================= battle: drawing ================= */
 /* 畫一群敵人（單人與組隊共用）：fx 是 BFX.en／MBFX.en，ti 是目前目標（-1 不畫箭頭） */

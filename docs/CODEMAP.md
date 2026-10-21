@@ -165,9 +165,9 @@
 
 <!-- index:start -->
 
-### js/core.js（71 行）
+### js/core.js（79 行）
 
-- **utils**（6），15 個宣告
+- **utils**（6），16 個宣告
 
 ### js/data.js（2890 行）
 
@@ -187,6 +187,9 @@
 ### js/art.js（1217 行）
 
 
+### js/iconmap.js（132 行）
+
+
 ### js/skills.js（2080 行）
 
 
@@ -194,101 +197,61 @@
 
 - **audio**（3），14 個宣告
 
-### js/items.js（1181 行）
+### js/items.js（1158 行）
 
-- **player & items**（3），30 個宣告
-- **skill gems**（279），29 個宣告
-- **stats**（530），23 個宣告
-- **enemies**（920），16 個宣告
-- **modal**（1058），5 個宣告
+- **player & items**（3），31 個宣告
+- **skill gems**（257），29 個宣告
+- **stats**（508），23 個宣告
+- **enemies**（897），16 個宣告
+- **modal**（1035），5 個宣告
 
-### js/battle.js（3467 行）
+### js/battle.js（2992 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
 - **battle: logic**（251），42 個宣告
-- **battle: rules（單人與組隊共用）**（643），66 個宣告
-- **battle: solo**（1846），20 個宣告
-- **dungeons (shared by solo and party)**（2363），24 個宣告
-- **battle: drawing**（3110），7 個宣告
+- **battle: rules（單人與組隊共用）**（643），63 個宣告
+- **battle: solo**（1830），20 個宣告
+- **戰鬥結算（0.1.0 肉鴿：原本的地城、裂隙、試煉、石碑拿掉，改成一局裡的節點，流程在 run.js）**（2337），11 個宣告
+- **畫面迴圈**（2629），1 個宣告
+- **battle: drawing**（2635），7 個宣告
 
 ### js/monskill.js（226 行）
 
 
-### js/map.js（1761 行）
+### js/ui.js（1450 行）
 
-- **world coordinates: meters from 台中車站 (x 東, y 南)**（3），5 個宣告
-- **OpenStreetMap vector tiles**（63），26 個宣告
-- **extra sprites for the game map**（506），3 個宣告
-- **extra sprites**（608），0 個宣告
-- **fog of war (chunked)**（675），11 個宣告
-- **spawns**（773），18 個宣告
-- **world rendering**（1070），18 個宣告
-- **input**（1485），5 個宣告
-- **movement**（1578），5 個宣告
-- **GPS**（1633），11 個宣告
+- **HUD & sheets**（3），58 個宣告
+- **entity interaction**（824），0 個宣告
+- **actions**（826），2 個宣告
 
-### js/tree.js（502 行）
+### js/undead.js（196 行）
 
-- **passive tree (full screen)**（3），19 個宣告
+- **data**（3），4 個宣告
+- **bosses**（187），1 個宣告
 
-### js/ui.js（2168 行）
-
-- **HUD & sheets**（3），63 個宣告
-- **entity interaction**（937），11 個宣告
-- **actions**（1150），2 個宣告
-
-### js/endgame.js（691 行）
-
-- **map objects**（3），2 個宣告
-- **zones（0.3.23 起沒有遠端範圍）**（76），6 個宣告
-- **zone modifiers**（107），2 個宣告
-- **spawns**（116），3 個宣告
-- **scrolls, inscriptions, tablets**（280），6 個宣告
-- **underworld**（330），5 個宣告
-- **sheets**（410），12 個宣告
-- **actions**（538），0 個宣告
-
-### js/undead.js（619 行）
-
-- **data**（3），10 個宣告
-- **zones**（233），8 個宣告
-- **battle**（342），5 個宣告
-- **undead crafting（0.3.23 起在藏身處）**（409），15 個宣告
-- **actions**（545），0 個宣告
-
-### js/demon.js（1456 行）
+### js/demon.js（799 行）
 
 - **sprites & data**（3），19 個宣告
-- **map: mist seals, active mist, sin statues**（341），10 個宣告
-- **sin lords**（582），7 個宣告
-- **sheets**（706），4 個宣告
-- **actions**（763），0 個宣告
-- **0.3.24 魔霧：山海經四凶與燭龍**（796），10 個宣告
-- **0.3.25 七罪（0.3.37 改成地圖上的七罪據點）**（986），21 個宣告
+- **sin lords**（340），6 個宣告
+- **山海經四凶與燭龍（首領）**（433），5 個宣告
+- **七罪信徒（第二章的菁英）**（567），7 個宣告
 
-### js/hunt.js（889 行）
+### js/zodiac.js（387 行）
 
-- **data**（3），9 個宣告
-- **state**（387），16 個宣告
-- **enemies**（514），6 個宣告
-- **sheet**（608），2 個宣告
-- **印記兌換**（651），6 個宣告
-- **actions**（723），1 個宣告
+- **data**（3），6 個宣告
+- **enemies**（336），5 個宣告
 
-### js/daily.js（199 行）
+### js/foes.js（46 行）
 
-- **今日委託**（3），8 個宣告
-- **委託面板（0.3.15，原本的「附近」）**（85），2 個宣告
-- **足跡**（141），8 個宣告
 
-### js/asc.js（2264 行）
+### js/asc.js（2229 行）
 
 - **data**（69），10 個宣告
 - **state & stats**（1625），18 個宣告
 - **icons**（1699），3 個宣告
 - **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1743），17 個宣告
-- **trials**（2103），2 個宣告
-- **actions**（2119），0 個宣告
+- **trials**（2103），1 個宣告
+- **actions**（2112），0 個宣告
 
 ### js/gacha.js（825 行）
 
@@ -296,29 +259,17 @@
 - **banners**（549），8 個宣告
 - **ui**（620），10 個宣告
 
-### js/tutor.js（164 行）
+### js/run.js（62 行）
 
-- **tutorial**（3），5 個宣告
+- **主選單**（3），2 個宣告
+- **一局（第 2 階段實作）**（17），3 個宣告
 
-### js/cloud.js（161 行）
+### js/cloud.js（158 行）
 
 - **cloud save (Supabase)**（4），7 個宣告
-- **accounts**（104），5 個宣告
+- **accounts**（102），5 個宣告
 
-### js/social.js（178 行）
+### js/main.js（70 行）
 
-- **profile & friends**（3），9 個宣告
-- **party invites**（64），7 個宣告
-- **friends sheet**（145），1 個宣告
-
-### js/mp.js（1201 行）
-
-- **party / lobby**（35），11 個宣告
-- **battle state (leader authoritative)**（269），18 個宣告
-- **battle (every client)**（661），11 個宣告
-- **battle rendering**（943），6 個宣告
-
-### js/main.js（415 行）
-
-- **boot**（3），7 個宣告
+- **boot**（3），9 個宣告
 <!-- index:end -->

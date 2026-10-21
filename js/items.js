@@ -1,80 +1,58 @@
 /* 漫步勇者 · 玩家狀態、裝備、詞綴、通貨製作、屬性計算 */
 'use strict';
 /* ================= player & items ================= */
-function newGame() {
+/* 0.1.0 肉鴿：存檔分成局外（meta、契靈、設定）與「這一局的角色」（等級、裝備、技能石…放在最上層，戰鬥與屬性計算照舊讀 S.xxx）。
+   開新局時用 newChar() 蓋掉角色欄位 */
+function newChar() {
   const g = {
-    v: 31,
     cls: 'destiny',
     lv: 1,
     tier: 1,
     tmax: 1,
     xp: 0,
     gold: 80,
-    crystal: 0,
     hp: 60,
     mp: 20,
     potions: 3,
     ethers: 1,
     inv: [],
     eq: {},
-    cur: { trans: 4, aug: 4, regal: 2, alch: 1, chaos: 1, exalt: 0, soul: 0, wish: 10, eng: 1 },
-    pact: { list: [], eq: [], follow: null },
+    cur: { trans: 2, aug: 2, regal: 1, alch: 0, chaos: 0, exalt: 0, soul: 0, eng: 1 },
     gems: [],
     sups: [],
     aura: [],
-    flags: [],
-    scrolls: { stele: 0, circle: 0 },
-    insc: [],
-    tabs: [],
-    frags: [],
-    obel: {},
-    caravan: {},
-    ess: {},
-    und: {},
-    mistp: {},
-    hunt: { on: false, blood: 0, acc: 0, marks: {} },
-    summons: [],
-    daily: null,
-    foot: {},
     asc: { cls: null, br: null, trials: 0, nodes: [] },
-    sins: {},
     jewels: [],
     jsock: {},
     sk: [null, null, null, null, null, null],
     autoHp: 0,
     autoMp: 0,
-    regenAt: 0,
     tree: ['start'],
-    lat: START.lat - 0.0009,
-    lng: START.lng,
-    walked: 0,
-    walkCur: 0,
-    bases: [],
-    defeated: {},
-    cleared: {},
-    bought: {},
-    found: {},
+    stacks: 0,
+    buff: null,
+    bonusPts: 0
+  };
+  SLOTS.forEach(s => (g.eq[s] = null));
+  g.eq.weapon = makeItem('weapon', 1, 0, 0);
+  return g;
+}
+function newGame() {
+  const c = newChar();
+  /* 祈願石是局外貨幣（開新局時保留，startRun） */
+  c.cur.wish = 10;
+  return {
+    fmt: SAVE_FMT,
+    v: 1,
+    name: '',
+    meta: { soul: 0, runs: 0, wins: 0, best: 0, unlock: [], daily: null },
+    pact: { list: [], eq: [], follow: null },
+    run: null,
     log: [],
     timeOffset: 0,
     music: true,
     sfx: true,
-    intro: true,
-    trail: [],
-    explMs: 0,
-    buff: null,
-    bonusPts: 0,
-    treeV: 3
+    ...c
   };
-  SLOTS.forEach(s => (g.eq[s] = null));
-  g.eq.weapon = makeItem('weapon', 1, 0, 0);
-  g.inv.push(
-    makeItem('offhand', 1, 0, 0),
-    makeItem('belt', 1, 0, 0),
-    makeItem('ring', 2, 1, 0),
-    makeItem('chest', 2, 0, 0),
-    makeItem('boots', 2, 1, 1)
-  );
-  return g;
 }
 function makeItem(slot, ilvl, rar, baseIdx, r = Math.random) {
   const bl = BASES[slot],
@@ -655,7 +633,6 @@ function sumStats() {
     if (n) for (const k in n.st) A(k, n.st[k]);
   }
   jewelStats(A);
-  zodStats(A);
   if (typeof pactStats === 'function') pactStats(A);
   if (typeof ascStats === 'function') ascStats(A);
   /* 0.3.21 光環：精魄（基礎 SPIRIT0 + 天賦、契靈、裝備）夠的才生效，照光環欄的順序 */

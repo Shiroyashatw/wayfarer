@@ -2101,13 +2101,6 @@ function renderAscCard() {
 })();
 
 /* ================= trials ================= */
-/* 城鎮面板呼叫：下一場試煉的按鈕 */
-function ascTownHTML(e, inR) {
-  const nx = ascNext();
-  if (nx == null) return '';
-  const ok = inR && S.lv >= nx;
-  return `<button class="btn" data-act="ascTrial" data-id="${e.id}" ${ok ? '' : 'disabled'}>昇華試煉 ${ASCD().trials + 1}/${ASC_LV.length}${S.lv < nx ? `（需要 Lv${nx}）` : '・通關得 2 點昇華點數'}</button>`;
-}
 /* 試煉通關（dungeonClear 呼叫） */
 function ascTrialDone() {
   const a = ASCD();
@@ -2171,7 +2164,6 @@ Object.assign(A, {
       a = ASCD(),
       cost = ascResetCost();
     if (!b || !a.br || b.cls !== a.cls) return;
-    if (!nearTownE()) return toast('要在城鎮附近才能重選昇華');
     if (S.gold < cost) return toast(`需要 ${cost} 金幣`);
     showModal(
       '改走其他分支',
@@ -2210,7 +2202,6 @@ Object.assign(A, {
     const a = ASCD(),
       cost = ascResetCost();
     if (!a.br) return;
-    if (!nearTownE()) return toast('要在城鎮附近才能重選昇華');
     if (S.gold < cost) return toast(`需要 ${cost} 金幣`);
     showModal(
       '重選昇華',
@@ -2232,32 +2223,6 @@ Object.assign(A, {
           }
         }
       ]
-    );
-  },
-  ascTrial: d => {
-    const e = ENT.get(d.id),
-      nx = ascNext();
-    if (!e || nx == null || S.lv < nx || !inRange(e)) return;
-    closeSheet();
-    /* 0.3.44 進昇華試煉前自動回滿生命與魔力 */
-    {
-      const st = stats();
-      S.hp = st.maxhp;
-      S.mp = st.maxmp;
-      toast('生命、魔力已回滿');
-    }
-    enterDungeon(
-      {
-        id: `asc${ASCD().trials}_${e.id}`,
-        kind: 'asc',
-        dt: 'normal',
-        lat: e.lat,
-        lng: e.lng,
-        lv: nx + 2,
-        floors: 3,
-        onsite: siteBonus(e)
-      },
-      false
     );
   }
 });
