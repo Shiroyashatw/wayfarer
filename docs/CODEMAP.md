@@ -22,6 +22,7 @@
 | 圖騰、砲台、陷阱、地雷、技能欄 6 格（0.3.22） | `js/battle.js`、`js/skills.js`、`js/mp.js`、`js/ui.js` | 規則在 `battle.js` 的「戰場單位」註解：`UNIT_MAX`／`UNIT_N`、`unitSk`、`placeUnit`（`actResolve` 開頭）、`unitCaster`、`unitsAct`（`petsAct` 呼叫）、`mineBlast`（單人 `useSkill('mines')`、組隊 `mpResolve`）；陷阱在 `enemyResolve` 開頭觸發、圖騰被選為目標也在 `enemyResolve`；狀態 `me.units`／`me.traps`／`me.mines`，顯示在 `heroAilHTML`；技能資料在 `skills.js` 結尾（`totem`／`turret`／`trap`／`mine` 欄位）、轉換輔助 `sp_totem`／`sp_trap`／`sp_mine`（`SUPREQ.unit`）；技能欄 6 格：`renderBHud`／`renderMBHud` 的 `six`（CSS `.bcmd.six`）、技能頁 `.gslots.g6` |
 | 技能石在戰鬥中的效果 | `js/battle.js` | `skSt`（技能石數值只對該技能生效、刻印共鳴 `engPct` 改成每顆輔助）、`supOf`（昇華＋技能石的 `gsup`）、`skByKey`（`'attack'`／`'s0'`～`'s3'`）、`gemLoot`（靈魂與刻印石系列）、0.3.20 `supLoot`／`mechOf`（寶石稜鏡與族裔輔助從野外機制掉、一般輔助從菁英與首領掉）；`dunReward` 的冥府傳送門與七宗罪首領 |
 | 怪物種類與數值 | `js/data.js` | `MONS`、`MIMIC`、`EMODS`（菁英詞綴） |
+| 怪物招式（0.3.38） | `js/monskill.js`、`js/battle.js`、`js/mp.js`、`js/ui.js` | 招式表 `MSK`（`m` 倍率、`t` 單體／全體、`dot`、`stun`／`frz`、`debuff`、`self` 狂暴／護盾／再生／召喚）、元素與階級招式池 `MSK_EL`／`MSK_T2`～`MSK_T5`；階級 `monTier`（一般 1、稀有 2、菁英紅名 3、首領 4、大王 5、七宗罪之王 6）、清單 `monSkills`（依本名固定）、`monSkillNames`；放招 `monPick`（冷卻 `e.mcd`）、`monCast`、打人 `mHit`；`enemyResolve` 一開始呼叫（`ext.boss`、`ext.av`）；戰鬥開始時 `e.msk`；怪物的 `rage`（`enemyDot` 倒數）、`eshield`（`actResolve` 先扣）；說明在 `openEnt` 與狀態面板 |
 | 地城種類與地城詞綴 | `js/data.js` | `DTYPES`、`DMODS`；規格換算在 `js/battle.js` 的 `dunSpec` |
 | 裝備底材、詞綴、通貨 | `js/data.js` | `BASES`、`AFF`、`CUR`、`STATN`（屬性的顯示文字） |
 | 天賦樹節點與基石 | `js/data.js` | `TH`（主題與重要節點）、`SPOKES`（15 條路線與基石）、`TREE`（產生節點座標與連線） |
@@ -193,14 +194,17 @@
 - **enemies**（896），16 個宣告
 - **modal**（1034），5 個宣告
 
-### js/battle.js（3391 行）
+### js/battle.js（3414 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
 - **battle: logic**（239），36 個宣告
-- **battle: rules（單人與組隊共用）**（609），66 個宣告
-- **battle: solo**（1794），20 個宣告
-- **dungeons (shared by solo and party)**（2291），24 個宣告
-- **battle: drawing**（3034），7 個宣告
+- **battle: rules（單人與組隊共用）**（610），66 個宣告
+- **battle: solo**（1812），20 個宣告
+- **dungeons (shared by solo and party)**（2312），24 個宣告
+- **battle: drawing**（3057），7 個宣告
+
+### js/monskill.js（203 行）
+
 
 ### js/map.js（1761 行）
 
@@ -219,11 +223,11 @@
 
 - **passive tree (full screen)**（3），18 個宣告
 
-### js/ui.js（2018 行）
+### js/ui.js（2019 行）
 
 - **HUD & sheets**（3），53 個宣告
 - **entity interaction**（810），11 個宣告
-- **actions**（1017），2 個宣告
+- **actions**（1018），2 個宣告
 
 ### js/endgame.js（691 行）
 
@@ -299,12 +303,12 @@
 - **party invites**（64），7 個宣告
 - **friends sheet**（145），1 個宣告
 
-### js/mp.js（1153 行）
+### js/mp.js（1154 行）
 
 - **party / lobby**（35），11 個宣告
 - **battle state (leader authoritative)**（269），17 個宣告
-- **battle (every client)**（642），11 個宣告
-- **battle rendering**（904），6 個宣告
+- **battle (every client)**（643），11 個宣告
+- **battle rendering**（905），6 個宣告
 
 ### js/main.js（401 行）
 

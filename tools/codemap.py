@@ -6,7 +6,7 @@
 import re, sys, pathlib
 sys.stdout.reconfigure(encoding='utf-8')
 root = pathlib.Path(__file__).resolve().parent.parent
-order = ['core', 'data', 'sprites', 'gear', 'art', 'skills', 'audio', 'items', 'battle', 'map', 'tree', 'ui', 'endgame', 'undead', 'demon', 'hunt', 'daily', 'asc', 'gacha', 'tutor', 'cloud', 'social', 'mp', 'main']
+order = ['core', 'data', 'sprites', 'gear', 'art', 'skills', 'audio', 'items', 'battle', 'monskill', 'map', 'tree', 'ui', 'endgame', 'undead', 'demon', 'hunt', 'daily', 'asc', 'gacha', 'tutor', 'cloud', 'social', 'mp', 'main']
 pat = re.compile(r'^(?:async\s+)?function\s+([\w$]+)|^(?:const|let|var)\s+([\w$]+)\s*=')
 out, syms, srcs = [], [], []
 for name in order:

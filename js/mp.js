@@ -389,6 +389,7 @@ function mpStart() {
 function mpSpawn() {
   const n = MB.n,
     { es, bg, boss } = dunEnemy(MB.d, MB.room, n - 1);
+  es.forEach((x, k) => (x.msk = monSkills(x, !!boss && k === 0)));
   for (const e of es) {
     e.maxhp = Math.round(e.maxhp * (1 + 0.3 * (n - 1)));
     e.atk = Math.round(e.atk * (1 + 0.08 * (n - 1)));
@@ -592,7 +593,7 @@ function mpEnemy() {
   const i = MB.ea,
     fx =
       MB.es[i] && MB.es[i].hp > 0 && MB.ps.some(p => p.alive)
-        ? enemyResolve(MB.es, i, MB.ps, { ew: MB.spec.eleweak ? 20 : 0 })
+        ? enemyResolve(MB.es, i, MB.ps, { ew: MB.spec.eleweak ? 20 : 0, boss: !!MB.boss, av: MB.av })
         : [];
   mpRun(fx, 'E');
 }

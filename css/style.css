@@ -397,6 +397,7 @@ h3{margin:4px 0 0;font-size:var(--fs-sm);letter-spacing:.14em;color:var(--gild);
 .ail-flame{border-color:#ff8a3a;box-shadow:0 0 6px #ff8a3a88}.ail-ice{border-color:#7fe0ff;box-shadow:0 0 6px #7fe0ff88}
 .ail-bolt{border-color:#fff27a;box-shadow:0 0 6px #fff27a88}.ail-leaf{border-color:var(--good);box-shadow:0 0 6px #7bd36b88}
 .ail-shield{border-color:#9fd4ef}
+.ail-skull{border-color:#c86aff}
 @keyframes ailin{from{transform:scale(1.6);opacity:0}}
 .bboss{position:absolute;top:calc(42px + var(--sat));left:calc(14px + var(--sal));right:calc(14px + var(--sar));display:grid;gap:3px;pointer-events:none;z-index:2}
 .bbname{text-align:center;font-family:var(--f-pix);font-size:var(--fs-title);text-shadow:0 1px 0 #000,0 0 8px #000}

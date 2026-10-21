@@ -355,7 +355,7 @@ const heroAilHTML = o =>
   ((o && o.buffs) || [])
     .map(
       b =>
-        `<span class="ail ail-shield" title="${b.n || ''}"><img src="${iconURL(b.cry ? 'horn' : 'star')}" alt="${b.n || ''}"><b>${b.turns >= 99 ? '' : tLeft(b.turns)}</b></span>`
+        `<span class="ail ${b.bad ? 'ail-skull' : 'ail-shield'}" title="${b.n || ''}"><img src="${iconURL(b.bad ? 'skull' : b.cry ? 'horn' : 'star')}" alt="${b.n || ''}"><b>${b.turns >= 99 ? '' : tLeft(b.turns)}</b></span>`
     )
     .join('');
 function placeAil(id, x, y, html) {
@@ -460,9 +460,9 @@ function logEv(f, es, nm) {
 }
 /* 0.3.27 狀態面板：自己與每隻敵人身上的增益、異常、詞綴與特色，都寫成文字 */
 const BUFFK = {
-    more: v => `傷害 +${v}%`,
+    more: v => `傷害 ${v > 0 ? '+' : ''}${v}%`,
     dodge: v => `閃避 +${v}%`,
-    arm: v => `護甲 +${v}%`,
+    arm: v => `護甲 ${v > 0 ? '+' : ''}${v}%`,
     dmgRed: v => `受到傷害 -${v}%`,
     crit: v => `暴擊率 +${v}%`,
     spd: v => `速度 +${v}%`,
@@ -512,7 +512,7 @@ function binfoBuffs(o) {
         .filter(k => b[k])
         .map(k => BUFFK[k](b[k]))
         .join('、');
-      return `<li><img src="${iconURL(b.cry ? 'horn' : 'star')}" alt=""><b>${esc(b.n || b.id || '增益')}</b> ${b.turns >= 99 ? '常駐' : '剩 ' + tLeft(b.turns) + ' 秒'}<small>${fx}</small></li>`;
+      return `<li><img src="${iconURL(b.bad ? 'skull' : b.cry ? 'horn' : 'star')}" alt=""><b>${esc(b.n || b.id || '增益')}</b> ${b.turns >= 99 ? '常駐' : '剩 ' + tLeft(b.turns) + ' 秒'}<small>${fx}</small></li>`;
     })
     .join('');
 }
@@ -572,8 +572,9 @@ function binfoRender() {
               .map(id => `<li><b>${EMODI[id].n}</b><small>${EMODI[id].d}</small></li>`)
               .join(''),
             tr = binfoTrait(e),
+            mk = (e.msk || []).map(k => MSK[k].n).join('、'),
             ail = binfoAil(e, AIL_E) + binfoBuffs(e);
-          return `<h4 style="color:${RCOL[e.rar || 0]}">${esc(e.name)} <small>Lv${e.lv}・生命 ${Math.ceil(e.hp).toLocaleString()} / ${e.maxhp.toLocaleString()}</small></h4><ul class="bil">${tr ? `<li><b>特色</b><small>${esc(tr)}</small></li>` : ''}${mods}${ail || (mods || tr ? '' : '<li class="none">沒有詞綴或異常</li>')}</ul>`;
+          return `<h4 style="color:${RCOL[e.rar || 0]}">${esc(e.name)} <small>Lv${e.lv}・生命 ${Math.ceil(e.hp).toLocaleString()} / ${e.maxhp.toLocaleString()}</small></h4><ul class="bil">${tr ? `<li><b>特色</b><small>${esc(tr)}</small></li>` : ''}${mk ? `<li><b>招式</b><small>${mk}</small></li>` : ''}${mods}${ail || (mods || tr ? '' : '<li class="none">沒有詞綴或異常</li>')}</ul>`;
         })
         .join('');
   }
@@ -1126,6 +1127,13 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       ev.push({ t: 'st', i, s: COND_ST[sk.consume] ? '碎' + COND_ST[sk.consume] : '消耗', col: '#9fe7ff', at: t + 30 });
     }
     if (e.sin && ext.sinHit) d = ext.sinHit(e, d, i);
+    /* 0.3.38 怪物的護盾先吸收 */
+    if (e.eshield > 0) {
+      const a = Math.min(e.eshield, d);
+      e.eshield -= a;
+      d -= a;
+      if (a) ev.push({ t: 'st', i, s: `護盾 -${a}`, col: '#9fd4ef', at: t + 20 });
+    }
     e.hp = Math.max(0, e.hp - d);
     ev.push({ t: 'hit', i, d, crit: r.crit, col: r.crit ? '#ffd166' : hitCol(pk), fx: kind || fx, from: who, at: t });
     if (S2.leech && d > 0) me.hp = Math.min(st.maxhp, me.hp + Math.max(1, Math.round((d * S2.leech) / 100)));
@@ -1474,6 +1482,7 @@ function enemyDot(es, i) {
   if (e.slow > 0) e.slow--;
   if (e.vul > 0) e.vul--;
   if (e.dmark > 0) e.dmark--;
+  if (e.rage > 0) e.rage--;
   if (e.hp <= 0) ev.push({ t: 'kill', i, at });
   return ev;
 }
@@ -1565,6 +1574,15 @@ function enemyResolve(es, i, party, ext = {}) {
       }
     }
   }
+  /* 0.3.38 怪物招式：冷卻好的招式有機率放出來（monskill.js） */
+  {
+    const mk = monPick(e, !!ext.boss && i === 0, es);
+    if (mk) {
+      const r = monCast(mk, e, i, es, party, at, ext);
+      ev.push(...r.ev);
+      return ev;
+    }
+  }
   /* 0.3.10：迅捷改成靠速度（行動值）多行動，不再另外骰行動兩次 */
   const acts = 1,
     ew = ext.ew || 0;
@@ -1620,7 +1638,7 @@ function enemyResolve(es, i, party, ext = {}) {
       at += 480;
       continue;
     }
-    let atk = e.atk * (strong ? 1.5 : 1) * rnd(0.9, 1.1) * fmul;
+    let atk = e.atk * (strong ? 1.5 : 1) * rnd(0.9, 1.1) * fmul * (e.rage > 0 ? 1.35 : 1);
     /* 金冠貴族：對生命比例比自己低的目標 ×1.5 */
     if (e.trait === 'bully' && p.hp / st.maxhp < e.hp / e.maxhp) atk *= 1.5;
     if (e.mods && e.mods.includes('fury') && e.hp < e.maxhp / 2) atk *= 1.5;
@@ -1836,6 +1854,7 @@ function startBattle(e, opts = {}) {
   const es = (
     Array.isArray(e) ? e : [e, ...(opts.pack ? packOf(e, opts.extra || 0, opts.packN || 0, opts.packSeed) : [])]
   ).map(eInit);
+  es.forEach((x, k) => (x.msk = monSkills(x, !!opts.boss && k === 0)));
   B = {
     ...opts,
     e: es[0],
@@ -2089,7 +2108,9 @@ const soloExt = () => ({
       p = POS();
     sinTurn(e, { hx: p.hx, hy: p.hy, ex: q.x, y: q.y });
   },
-  ew: curSpec() && curSpec().eleweak ? 20 : 0
+  ew: curSpec() && curSpec().eleweak ? 20 : 0,
+  boss: !!B.boss,
+  av: B.av
 });
 /* ================= 0.3.35 單人的即時行動條 =================
    每幀 soloStep 推進時間：敵人行動條滿了就出手；你的行動條滿了（B.ready）才能下指令，等你的時候時間照樣跑；
@@ -2459,6 +2480,7 @@ function dunEnemy(D, room, extra = 0) {
     e.atk = Math.round(e.atk * (hell ? 1.4 : 1.15));
     e.xp *= hell ? 4 : 2;
     e.rar = hell ? 4 : 3;
+    e.big = hell ? 1 : 0;
     e.minion = 0;
     if (sp.dt === 'portal') e.yama = 1;
     bg = 'cave';
@@ -2865,6 +2887,7 @@ function nextRoom() {
   const { es, bg, boss } = dunEnemy(D, D.room);
   if (B) {
     es.forEach(eInit);
+    es.forEach((x, k) => (x.msk = monSkills(x, !!boss && k === 0)));
     Object.assign(B, {
       e: es[0],
       es,

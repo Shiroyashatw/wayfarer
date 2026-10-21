@@ -839,6 +839,7 @@ function openEnt(id) {
       : `野生的 ${esc(e.name)} 在路上徘徊。`;
     if (e.rar === 4)
       desc = `<span class="danger">⚠ 危險怪物</span> 比你高 ${e.lv - S.lv} 級，生命約一般怪的 3 倍、攻擊 1.6 倍，還帶 ${e.mods.length} 個詞綴：${e.mods.map(id => `<b>${EMODS.find(q => q.id === id).n}</b>`).join('、')}。打贏保證掉 2 件稀有裝備與大量通貨，但很可能會輸。`;
+    desc += `<br><span class="sub">招式：${monSkillNames({ bn: e.base.name, rar: e.rar, el: e.base.el, ud: e.ud }, false).join('、')}</span>`;
     desc += `<br><span class="sub">攻擊屬性：${EL[e.base.el]}${e.base.res.some(v => v) ? '・抗性 火' + e.base.res[0] + '% 冰' + e.base.res[1] + '% 雷' + e.base.res[2] + '%' : ''}</span>`;
     if (e.bounty) desc += '<br><span style="color:#ff8a6a">懸賞：擊敗可得額外金幣與混沌石。</span>';
     pre = lineupHTML(e);
