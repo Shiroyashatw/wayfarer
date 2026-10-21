@@ -14,7 +14,7 @@
 1. 功能 → 檔案與函式：用 Grep 搜 `docs/CODEMAP.md` 的關鍵字（中文功能名或函式名，例：`Grep "昇華" docs/CODEMAP.md`），一列就是一個功能。**不要 Read 整份 CODEMAP**，需要面板／全域變數表時再用 offset 讀那一段。
 2. 函式 → 行號：Grep `docs/SYMBOLS.txt` 的 `^函式名 `（一行一個頂層宣告：`名稱 檔案:行號 [區段]`），或直接 Grep `js/` 的 `function 函式名`。
 3. 用 Read 的 offset/limit 只讀那一段（通常 40～120 行）。不要整個 JS 讀進來，也不要 `cat`。
-- 大檔只讀需要的部分：`docs/企劃書.md`、`docs/*提示詞.md` 用 Grep 找段落；`CHANGELOG.md` 新增條目只讀開頭 30 行；`js/art.js` 是 base64 圖檔，永遠不要讀（`.rgignore` 已讓 Grep 略過）。
+- 大檔只讀需要的部分：`docs/企劃書.md`、`docs/*提示詞.md` 用 Grep 找段落；`CHANGELOG.md` 新增條目只讀開頭 30 行。
 - 改完 JS 後：`npx prettier@3.3.3 --write js/*.js`（設定在 `.prettierrc`），再 `python3 tools/codemap.py`（更新大綱、`SYMBOLS.txt`，並列出 CODEMAP 裡已失效的名稱，有的話順手修）。
 - 新增功能、檔案或區段時，在 `docs/CODEMAP.md` 對照表補一列（一個功能一列，方便 Grep）。
 
@@ -26,7 +26,7 @@
 | `js/data.js` | 地點／城鎮、怪物、詞綴、通貨、天賦樹 `TREE`、`VER` |
 | `js/sprites.js` | 16x16 像素圖（自動描邊陰影）、8x8 圖示 |
 | `js/gear.js` | 0.3.1 裝備外觀：每種底材的 12×12 圖示 `GEAR`、材質階級 `tierOf`、`gearIcon`、角色外觀疊圖 `heroLook`／`heroSpr`／`heroPal`（`sprites.js` 之後載入） |
-| `js/art.js` | 自動產生（`tools/art.py`）：`art/monsters/*.png` 的 PNG 怪物圖（base64），圖名 `a_檔名`；不要手改 |
+| `js/art.js` | 自動產生（`tools/art.py`）：0.3.30 起只放座標，`ART_SHEET` 大圖網址（`img/組名.hash.png`）、`ART` 每張圖在大圖裡的位置，圖名 `a_檔名`；不要手改 |
 | `js/skills.js` | 0.3 技能石擴充（約 130 種，武器／元素標籤、召喚、增益、0.3.19 條件 `SK_COND` 與戰吼）、0.3.20 輔助寶石 `SUPG`、新圖示（`sprites.js` 之後載入） |
 | `js/audio.js` | Web Audio 合成音樂與音效 |
 | `js/items.js` | `newGame`、裝備、詞綴、通貨製作、屬性計算 |
@@ -46,8 +46,8 @@
 | `js/social.js` | 好友（`friend_*` RPC）、名字同步到 `profiles`、組隊邀請（`party_invites` + Realtime） |
 | `js/mp.js` | 隊伍（6 碼代碼、Realtime 廣播頻道 `wf-party-代碼`）與多人戰鬥；隊長的裝置計算、廣播 `state` |
 | `js/main.js` | `load`/`save`/`migrate`/`start`，最後執行 `start()` |
-| `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽 |
-| `tools/art.py` | `art/` 的 PNG 像素圖 → `js/art.js`（裁邊、內嵌）；新增怪物圖先用 skill `pixel-art` 產生 PixelLab 提示詞 |
+| `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽（`img/` 大圖在這裡轉 base64 內嵌） |
+| `tools/art.py` | `art/monsters/` 的 PNG 像素圖 → 裁邊、拼成 `img/` 的調色盤大圖（無損、帶 hash）＋`js/art.js` 座標；使用者說「放了新圖」就跑（skill `pixel-art`） |
 | `tools/pixellab_batch.py` | PixelLab API 批次產圖：讀 `docs/怪物提示詞.md`／`docs/圖示提示詞.md` 的提示詞，輸出到 `art/new/`（不進 git）；金鑰用環境變數 `PIXELLAB_API_KEY`，不要寫進專案 |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（函式行號），並檢查 CODEMAP 裡失效的名稱 |
 | `supabase/migrations/` | 資料庫結構 |

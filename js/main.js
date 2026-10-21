@@ -23,9 +23,22 @@ function save() {
         (k[0] === 'z' && !(S.summons || []).some(z => z.id === k))
       )
         delete S.defeated[k];
-    if (S.trail.length > 4000) S.trail = S.trail.slice(-4000);
     localStorage.setItem(KEY, JSON.stringify(S));
-  } catch (e) {}
+  } catch (e) {
+    saveFail(e);
+  }
+}
+/* 0.3.30 存檔寫不進 localStorage（多半是手機空間滿了）：提示玩家，最多 5 分鐘一次；雲端存檔照常上傳 */
+let saveErrAt = 0;
+function saveFail(e) {
+  console.error('save failed', e);
+  if (Date.now() - saveErrAt < 300e3) return;
+  saveErrAt = Date.now();
+  toast(
+    CLOUD.uid
+      ? '本機存檔失敗（空間可能不足），進度改存在雲端'
+      : '本機存檔失敗（空間可能不足），請清出手機空間或登入帳號備份'
+  );
 }
 function rebuildWorld() {
   FOOTA = null;
@@ -308,6 +321,15 @@ function migrate(s) {
     s.siegeCd = s.siegeCd || 0;
     s.v = 28;
   }
+  if (s.v < 29) {
+    // 0.3.30：迷霧點每 40 公尺一格只留一點，不再截斷（舊存檔先去掉重複）
+    const seen = new Set();
+    s.trail = (s.trail || []).filter(([x, y]) => {
+      const k = trailKey(x, y);
+      return !seen.has(k) && seen.add(k);
+    });
+    s.v = 29;
+  }
   return s;
 }
 function start() {
@@ -319,7 +341,9 @@ function start() {
       delete S.intro;
       try {
         localStorage.setItem(KEY, JSON.stringify(S));
-      } catch (e) {}
+      } catch (e) {
+        saveFail(e);
+      }
       rebuildWorld();
       toast('已從雲端載入存檔');
     } else cloudPush();

@@ -591,33 +591,46 @@ const PAL = {
 const FIXED = { k: '#120e1a' },
   SPC = new Map();
 /* ---------- PNG 像素圖（art/monsters → js/art.js，圖名 a_檔名）：比 16×16 精細，畫的時候每個像素是 s × ART_U（首領也用 64 格） ---------- */
+/* 0.3.30 圖拼在幾張大圖裡（ART_SHEET，ART 是每張圖在大圖裡的位置），用到才載入那張大圖 */
 const ART_U = 0.36,
   ARTIMG = {};
-function artImg(k) {
-  if (!ARTIMG[k] && typeof ART !== 'undefined' && ART[k]) {
+function artSheet(s) {
+  if (!ARTIMG[s]) {
     const im = new Image();
-    im.src = ART[k];
-    ARTIMG[k] = im;
+    im.src = ART_SHEET[s];
+    ARTIMG[s] = im;
   }
-  return ARTIMG[k];
+  return ARTIMG[s];
 }
+/* 回傳 { im: 大圖, r: [x, y, 寬, 高] } */
+function artImg(k) {
+  const a = typeof ART !== 'undefined' && ART[k];
+  return a ? { im: artSheet(a[0]), r: a.slice(1) } : null;
+}
+/* 開場 5 秒後在背景陸續把其他大圖也載好，首領、地城的圖開打時才不會空白一下 */
+setTimeout(() => {
+  if (typeof ART_SHEET !== 'undefined')
+    Object.keys(ART_SHEET).forEach((s, i) => setTimeout(() => artSheet(s), i * 200));
+}, 5000);
 /* 回傳正方形畫布（圖貼底置中、留 1 格邊），c.art 標記給 drawSpr 換算大小；還沒載好時回傳空白（不快取） */
 function artSprite(name, white) {
   const key = name + (white ? '|w' : '');
   let c = SPC.get(key);
   if (c) return c;
-  const im = artImg(name.slice(2));
+  const a = artImg(name.slice(2)),
+    im = a && a.im;
   c = document.createElement('canvas');
   if (!im || !im.complete || !im.naturalWidth) {
     c.width = c.height = 18;
     c.pending = true;
     return c;
   }
-  const N = Math.max(im.naturalWidth, im.naturalHeight) + 2;
+  const [sx, sy, w, h] = a.r,
+    N = Math.max(w, h) + 2;
   c.width = c.height = N;
   c.art = true;
   const x = c.getContext('2d');
-  x.drawImage(im, fl((N - im.naturalWidth) / 2), N - 1 - im.naturalHeight);
+  x.drawImage(im, sx, sy, w, h, fl((N - w) / 2), N - 1 - h, w, h);
   if (white) {
     x.globalCompositeOperation = 'source-in';
     x.fillStyle = '#fff';

@@ -683,6 +683,7 @@ let fogCount = 0;
 function fogReset() {
   FOG.clear();
   fogCount = 0;
+  trailC = lastStep = null;
 }
 function fogChunk(cx, cy) {
   const k = ckey(cx, cy);
@@ -737,11 +738,22 @@ function revealed(x, y) {
 /* 探索面積（平方公里）。里程碑沿用舊的 1%～20%，換算成面積 */
 const explKm2 = () => (fogCount * FOGR * FOGR) / 1e6;
 const MILES = [0.2, 0.4, 0.8, 1.4, 2, 3, 4];
+/* 0.3.30 S.trail 是揭開迷霧的點（存檔只靠它重建迷霧），每 TRAIL_G 公尺一格只留一點、不再截斷，走過的地方不會被迷霧蓋回去 */
+const TRAIL_G = 40,
+  trailKey = (x, y) => fl(x / TRAIL_G) + ',' + fl(y / TRAIL_G);
+let trailC = null,
+  lastStep = null;
 function trailStep(force) {
   const [x, y] = toM(S.lat, S.lng),
-    last = S.trail[S.trail.length - 1];
+    last = lastStep;
   if (force || !last || Math.hypot(last[0] - x, last[1] - y) > 30) {
-    S.trail.push([Math.round(x), Math.round(y)]);
+    lastStep = [x, y];
+    if (!trailC) trailC = new Set(S.trail.map(([a, b]) => trailKey(a, b)));
+    const k = trailKey(x, y);
+    if (!trailC.has(k)) {
+      trailC.add(k);
+      S.trail.push([Math.round(x), Math.round(y)]);
+    }
     reveal(x, y);
     footStep(x, y);
     const ms = MILES[S.explMs];
@@ -1126,7 +1138,7 @@ let camLoadT = 0;
 function renderWorld(t) {
   const c = wx,
     [pmx, pmy] = toM(S.lat, S.lng),
-    st = stats(),
+    st = worldStats(t),
     dp = dayPhase();
   VIS = { x: pmx, y: pmy, r: st.vision };
   if (follow) {
@@ -1666,10 +1678,23 @@ function tick(t) {
       setPos(S.lat + (simTarget[0] - S.lat) * k, S.lng + (simTarget[1] - S.lng) * k, Math.min(d, v * dt));
     }
   }
-  renderWorld(t);
+  if (!mapCovered()) renderWorld(t);
   placeLabel();
   timeRegen();
   huntTick();
+}
+/* 0.3.30 面板、天賦樹、昇華盤、祈願蓋滿整個畫面時不畫地圖（省電），走路與回復照常 */
+const mapCovered = () =>
+  !$('sheet').classList.contains('off') || !$('treeView').hidden || !$('ascView').hidden || !$('gacha').hidden;
+/* 0.3.30 地圖每幀只用到視野，屬性每 0.5 秒重算一次就好 */
+let worldSt = null,
+  worldStAt = -1e9;
+function worldStats(t) {
+  if (!worldSt || t - worldStAt > 500 || t < worldStAt) {
+    worldSt = stats();
+    worldStAt = t;
+  }
+  return worldSt;
 }
 /* 靜止時每分鐘回復 2%（戰鬥中不累積） */
 function timeRegen() {

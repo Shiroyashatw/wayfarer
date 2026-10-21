@@ -33,7 +33,7 @@
 | 回復規則（自然回復、自動喝水） | `js/items.js`、`js/map.js` | `naturalRegen`、`autoPot`；走路在 `setPos`、時間在 `timeRegen` |
 | 刷新週期 | `js/core.js` | `REFRESH`／`epoch`（怪物、事件 15 分鐘）、`REFRESH_H`／`hepoch`（地城、寶箱、商店、廟宇 1 小時） |
 | 角色外觀（跟著裝備） | `js/gear.js` | `heroLook`（外觀代碼，多人傳 `look`）、`heroSpr(view, look)`（組出 `heroF:…`／`heroS:…` 像素圖）、`heroPal`（材質階級配色）、`GLOOK`、正面武器 `WFRONT`、副手 `OFRONT`；側面武器 `battle.js` 的 `drawWeapon`（`mc` 刃色） |
-| PNG 怪物圖（0.3.1.3） | `art/monsters/`、`tools/art.py`、`js/art.js`、`js/sprites.js` | 原圖放 `art/monsters/檔名.png` → `python3 tools/art.py` → `ART`（圖名 `a_檔名`，怪物 `spr` 填這個）；載入 `artImg`、畫布 `artSprite`（`sprite` 遇到 `a_` 開頭時呼叫）、大小 `ART_U`（`drawSpr` 的 `sp.art`）、列表小圖 `paintIcon18`；提示詞與流程見 skill `.claude/skills/pixel-art` |
+| PNG 怪物圖（0.3.1.3） | `art/monsters/`、`tools/art.py`、`js/art.js`、`js/sprites.js` | 原圖放 `art/monsters/檔名.png`（或子資料夾 `art/monsters/組名/`）→ `python3 tools/art.py` → 拼成 `img/組名.hash.png` 調色盤大圖（0.3.30，每張最多 255 色、12 張圖，沿用上次的分配）＋`ART_SHEET`／`ART`（圖名 `a_檔名`，怪物 `spr` 填這個）；用到才載大圖 `artSheet`（開場 5 秒後背景載其他張）、`artImg`、畫布 `artSprite`（`sprite` 遇到 `a_` 開頭時呼叫）、大小 `ART_U`（`drawSpr` 的 `sp.art`）、列表小圖 `paintIcon18`；提示詞與流程見 skill `.claude/skills/pixel-art` |
 | 裝備圖示、材質階級（0.3.1） | `js/gear.js` | `GEAR`（每個底材一張 12×12，索引對應 `BASES`，新底材要補圖）、`MATC`／`BLADEC`／`TRIMC`／`GEMC`、`tierOf`／`TIERN`、`gearPal`、`gearIcon`（`slotIcon` 呼叫） |
 | 點地圖移動速度（0.3.1.1） | `js/map.js`、`js/ui.js` | `SIM_SPEED`、`simSpeed()`（乘上 `S.simSpd`）；設定面板 `A.simSpd` |
 | 背包批量賣出、上鎖（0.3.1） | `js/ui.js` | `canSell`（城鎮或據點）、`bagListHTML`、`worseThanEq`、`sellSel`、`A.sellMode`／`A.sellPick`／`A.sellQuick`／`A.sellMany`／`A.lock`、單件 `A.sell`；勾選狀態 `SEL.sell`、上鎖 `it.lock` |
@@ -66,7 +66,7 @@
 | 技能石資料與效果 | `js/skills.js`、`js/items.js`、`js/battle.js` | `SKILLS` 擴充欄位（`w`、`tg`、`hits`、`chain`、`proj`、`addEl`、`bleed`、`stun`、`mark`、`curse`、`exec`、`pet`、`buff`、`lifeCost`）；等級成長 `gemSkill`；說明 `gemDesc`（`ui.js`） |
 | 昇華（0.3） | `js/asc.js`、`js/items.js` | 資料 `ASC`（職業→分支→`t1`／`t2`／`u`）、節點表 `ASCN`／`ASCB`、輔助效果文字 `SUPN`；屬性 `ascStats`（`sumStats`）、`ascSup`（`stats` 的 `sup`，戰鬥用 `supOf`）；昇華盤 `openAsc`／`drawAsc`／`renderAscCard`（座標 `ascXY`、視角 `AV`、`ascFit`）、小點圖示 `SMG`、圖示 `ascIcon`、換分支 `A.ascSwitch`；試煉 `ascTownHTML`（城鎮面板）、`A.ascTrial`、`ascTrialDone`（`dungeonClear`）；狀態 `S.asc` |
 | 首領專屬圖（0.2.13.1） | `js/sprites.js`、`js/demon.js`、`js/battle.js`、`js/undead.js` | `SPR.b_*` 與 `BOSSPAL`（sprites.js 結尾）；七宗罪 `SINSPR`（`makeSinLord`）、`makeSinKing`、地城首領 `BOSSSPR`（`dunEnemy`）、亡靈王 `A.udKing` |
-| 地城首領抽籤、PNG 怪物圖（0.3.26） | `js/battle.js`、`tools/art.py`、`js/art.js` | `GHOSTS`／`ghostOf`（9 種台灣鬼怪，依地城種子抽）、`dunEnemy` 的固定首領（石獅、鍾馗、門神兩隻、閻羅王）；PNG 圖放 `art/monsters/`，`python3 tools/art.py` 產生 `js/art.js`，`spr` 填 `a_檔名` |
+| 地城首領抽籤、PNG 怪物圖（0.3.26） | `js/battle.js`、`tools/art.py`、`js/art.js` | `GHOSTS`／`ghostOf`（9 種台灣鬼怪，依地城種子抽）、`dunEnemy` 的固定首領（石獅、鍾馗、門神兩隻、閻羅王）；PNG 圖放 `art/monsters/`，`python3 tools/art.py` 產生 `img/` 大圖與 `js/art.js`，`spr` 填 `a_檔名` |
 | 戰鬥的狀態與紀錄面板（0.3.27） | `js/battle.js`、`js/ui.js`、`index.html` | `BLOG`／`blog`／`logEv`（紀錄，`playEv` 與 `mpFx` 寫入）、`binfoRender`（狀態頁：`BUFFK` 增益說明、`AILD` 異常說明、`binfoTrait` 特色）、動作 `A.binfo`／`A.binfoTab`；按鈕排版在 `renderBHud`／`renderMBHud` |
 | 印記兌換、生肖傳奇（0.2.13） | `js/hunt.js`、`js/items.js` | `ZLEG`（加進 `LEGENDS`／`LEGI`，`k` 是 `z_生肖`）、`zodStats`（`sumStats` 呼叫，生肖共鳴）、`sealHTML`（`seal` 面板）、`A.sealLeg`／`A.sealJewel`、`spendMarks`；`S.hunt.marks`（可消耗）、`S.hunt.slain`（稱號） |
 | 地圖事件連動（0.2.13） | `js/demon.js`、`js/undead.js`、`js/hunt.js` | 霧中亡靈：`mistify`（`e.ud`）、`mistWin`／`undeadWin`（×1.5）；冥府生肖：`A.huntZod`（`ZOD_UW_R`、`uwz`）、`huntWin`；夜晚：`undeadSpawns` 半徑、魔霧刷新機率 |
@@ -82,9 +82,9 @@
 | 地圖道路資料、圖磚快取 | `js/map.js` | `OpenStreetMap vector tiles` 區段 |
 | 地標城鎮清單 | `js/map.js` | `TOWNS`（前 11 個 id 不能改） |
 | 地圖上的怪物、寶箱、地城、廟宇生成 | `js/map.js` | `spawns` 區段、`dungeonAt` |
-| 迷霧、探索面積 | `js/map.js` | `fog of war` 區段、`explKm2` |
+| 迷霧、探索面積 | `js/map.js`、`js/main.js` | `fog of war` 區段、`explKm2`；存檔只存揭開的點 `S.trail`（`trailStep`，0.3.30 每 `TRAIL_G` 公尺一格一點、不截斷，`trailKey`／`trailC`），讀檔時 `rebuildWorld` 重播 `reveal` |
 | 地圖物件什麼時候看得到 | `js/map.js` | `visible`（`MOBILE` 跟視野、`LANDMARK` 至少 `LM_VIS` 公尺） |
-| 地圖繪製、右上角資訊 | `js/map.js` | `renderWorld`、`placeLabel` |
+| 地圖繪製、右上角資訊 | `js/map.js` | `renderWorld`、`placeLabel`；每幀 `tick`，0.3.30 被面板蓋住時不畫 `mapCovered`、屬性快取 `worldStats` |
 | 點地圖、走路、GPS | `js/map.js` | `input`、`movement`、`GPS` 區段 |
 | 主畫面 HUD、底部導覽 | `js/ui.js` | `renderHud`、`NAVG`、`navOpen`；DOM 在 `index.html` 的 `#nav` |
 | 各個面板（角色、背包、藏身處、設定…） | `js/ui.js` | `renderSheet` 的 `sheetName` 分支（見下表） |
@@ -104,7 +104,7 @@
 | 帳號、雲端存檔 | `js/cloud.js` | `cloudInit`、`cloudPush`、`authRegister`、`authLogin`、`authLogout` |
 | 好友、組隊邀請 | `js/social.js` | `friendsLoad`、`friendsHTML`、`inviteFriend` |
 | 組隊大廳、多人戰鬥 | `js/mp.js` | `partyCreate`、`partyJoin`、`partyHTML`、`mpResolve`、`mpEnemy`、`renderMBHud` |
-| 存讀檔、存檔轉換、啟動 | `js/main.js` | `load`、`save`、`migrate`、`start` |
+| 存讀檔、存檔轉換、啟動 | `js/main.js` | `load`、`save`、`migrate`、`start`；存檔失敗提示 `saveFail`（0.3.30） |
 | 樣式 | `css/style.css` | 依區塊註解（`/* ---------- shop ---------- */` 等）搜尋 |
 
 ## 面板（`renderSheet` 的 `sheetName`）
@@ -161,17 +161,17 @@
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
 
-### js/sprites.js（1334 行）
+### js/sprites.js（1347 行）
 
-- **pixel sprites (original art)**（3），20 個宣告
-- **icons: currency, item slots, passive nodes**（737），7 個宣告
-- **boss sprites**（989），1 個宣告
+- **pixel sprites (original art)**（3），21 個宣告
+- **icons: currency, item slots, passive nodes**（750），7 個宣告
+- **boss sprites**（1002），1 個宣告
 
 ### js/gear.js（685 行）
 
 - **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1），17 個宣告
 
-### js/art.js（101 行）
+### js/art.js（124 行）
 
 
 ### js/skills.js（1416 行）
@@ -198,18 +198,18 @@
 - **dungeons (shared by solo and party)**（2075），24 個宣告
 - **battle: drawing**（2806），7 個宣告
 
-### js/map.js（1712 行）
+### js/map.js（1737 行）
 
 - **world coordinates: meters from 台中車站 (x 東, y 南)**（3），5 個宣告
 - **OpenStreetMap vector tiles**（63），26 個宣告
 - **extra sprites for the game map**（506），3 個宣告
 - **extra sprites**（608），0 個宣告
-- **fog of war (chunked)**（675），9 個宣告
-- **spawns**（761），18 個宣告
-- **world rendering**（1057），15 個宣告
-- **input**（1455），5 個宣告
-- **movement**（1547），5 個宣告
-- **GPS**（1600），8 個宣告
+- **fog of war (chunked)**（675），11 個宣告
+- **spawns**（773），18 個宣告
+- **world rendering**（1069），15 個宣告
+- **input**（1467），5 個宣告
+- **movement**（1559），5 個宣告
+- **GPS**（1612），11 個宣告
 
 ### js/tree.js（496 行）
 
@@ -302,7 +302,7 @@
 - **battle (every client)**（574），11 個宣告
 - **battle rendering**（823），5 個宣告
 
-### js/main.js（369 行）
+### js/main.js（393 行）
 
-- **boot**（3），5 個宣告
+- **boot**（3），7 個宣告
 <!-- index:end -->
