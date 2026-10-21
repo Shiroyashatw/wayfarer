@@ -6,7 +6,8 @@
     python3 tools/icon_sheets.py build --per 32        # 免費方案（畫布最大 200×200 面積）：每張 32 格（8×4，256×128）
     python3 tools/icon_sheets.py list                  # 列出有哪些圖表
     python3 tools/icon_sheets.py run --only sheet_skill_1   # 用 PixelLab API 產圖表（需要 PIXELLAB_API_KEY，存到 art/new/）
-    python3 tools/icon_sheets.py slice art/new/sheet_skill_1.png        # 切成一張張 32×32，存到 art/icons/（檔名照圖表的對照表）
+    python3 tools/icon_sheets.py process               # art/sheets/ 裡的圖表全部切好、打包進遊戲（最常用）
+    python3 tools/icon_sheets.py slice art/sheets/sheet_skill_1.png        # 只切一張，存到 art/icons/（檔名照圖表的對照表）
 
 - 單張圖示的提示詞還是寫在 docs/圖示提示詞.md（要單獨重產某一張時用）；圖表的提示詞由這支程式從那份自動組出來，兩邊不會不同步。
 - 新增技能、輔助寶石、節點時：先在 docs/圖示提示詞.md 補一列，再跑 build。
@@ -17,6 +18,7 @@ import argparse, pathlib, re, sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / 'docs/圖示提示詞.md'
 DOC = ROOT / 'docs/圖示圖表.md'
+SHEETS = ROOT / 'art/sheets'  # PixelLab 產的圖表原圖放這裡（檔名 sheet_xxx.png，進 git 保存）
 COLS, CELL = 8, 32
 TAIL = re.compile(r',?\s*(bold simple|readable at small size|centered, readable|no text).*$')
 HEAD = re.compile(r'^(game skill icon of|game icon of|single item icon of)\s+(an? )?')
@@ -40,6 +42,7 @@ GROUPS = [
     ('sup_lin', '族裔輔助', 'each is a dark violet and blood red faceted lineage gem with a small symbol inside'),
     ('tree', '天賦樹節點', 'talent tree emblems, rich colors'),
     ('asc', '昇華節點', 'ascendancy emblems, rich colors with gold trim'),
+    ('ui', '介面圖示', 'status effects, currencies, monster skills and materials as clear readable symbols'),
 ]
 GN = {k: n for k, n, _ in GROUPS}
 GH = {k: h for k, _, h in GROUPS}
@@ -76,6 +79,8 @@ def group_of(f, kind, p):
         return 'tree'
     if f.startswith('asc_'):
         return 'asc'
+    if re.match(r'(ail|cur|msk|mat)_', f):
+        return 'ui'
     if f.startswith('sk_'):
         if kind == '光環':
             return 'skill_aura'
@@ -127,6 +132,13 @@ def sheets(per, words):
                 it2.extend(items)
                 del out[k]
                 break
+    # 介面圖示（狀態、通貨、怪物招式、材料）拿來填滿各張的空格，填不完才另外開一張
+    ui = [(f, n, d, 'ui') for f, n, d in bucket['ui']]
+    for name, sg, items in out:
+        while ui and len(items) < per:
+            items.append(ui.pop(0))
+    for i in range(0, len(ui), per):
+        out.append((f'sheet_ui_{i // per + 1}', 'ui', ui[i : i + per]))
     return out
 
 
@@ -157,8 +169,8 @@ def build(per, words):
         '1. PixelLab → Create image（Pixflux）：Width／Height 照每張的尺寸、勾 **Transparent background**、Outline 選 **Black outline**、Detail **Medium**，'
         '把該張的提示詞整段貼上。畫布面積上限：免費方案 200×200、Tier 1 320×320、Tier 2 以上 400×400；**每張 64 格（256×256）要 Tier 1 以上**，免費方案用 `--per 32` 重產這份（256×128）。',
         '2. **先產 `sheet_skill_1` 當風格基準**，滿意了再產其他張；其他張都把這張當 **Style／Init Image** 參考，整套才會一致。',
-        '3. 下載 PNG 放進 `art/new/`（檔名就是圖表名稱，例如 `sheet_skill_1.png`），跑 `python3 tools/icon_sheets.py slice art/new/sheet_skill_1.png`，'
-        '會切成一格一張、照下面的對照表存到 `art/icons/`。有 API 金鑰也可以直接 `python3 tools/icon_sheets.py run --only sheet_skill_1`。',
+        '3. 下載 PNG 放進 **`art/sheets/`**（檔名就是圖表名稱，例如 `sheet_skill_1.png`），跑 `python3 tools/icon_sheets.py process`：'
+        '全部切成一格一張（照下面的對照表存到 `art/icons/`，實心背景自動去背）、再打包進遊戲。跟 Claude 說「放了新圖」它會幫你跑。',
         '4. 格子歪掉或某幾格不好：那幾個用 `docs/圖示提示詞.md` 的單張提示詞補產。',
         '5. 提示詞太長被截斷（後面幾格畫不出來）：`python3 tools/icon_sheets.py build --words 6` 縮短每格的描述，或 `--per 32` 改成每張 32 格。',
         '',
@@ -258,7 +270,7 @@ def slice_(png, name=None):
 
 def main():
     ap = argparse.ArgumentParser(description='PixelLab 圖示圖表')
-    ap.add_argument('cmd', choices=['build', 'list', 'run', 'slice'])
+    ap.add_argument('cmd', choices=['build', 'list', 'run', 'slice', 'process'])
     ap.add_argument('png', nargs='?', help='slice：圖表 PNG')
     ap.add_argument('--per', type=int, default=64, help='每張幾格（64 或 32）')
     ap.add_argument('--words', type=int, default=9, help='每個圖示描述最多幾個字（太長 PixelLab 可能吃不下）')
@@ -269,6 +281,16 @@ def main():
         return build(a.per, a.words)
     if a.cmd == 'slice':
         return slice_(a.png, a.sheet or None)
+    if a.cmd == 'process':
+        # art/sheets/ 裡的圖表原圖全部切好，再打包進遊戲（tools/art.py）
+        pngs = sorted(SHEETS.glob('sheet_*.png'))
+        if not pngs:
+            sys.exit('art/sheets/ 裡沒有圖表（檔名要是 sheet_xxx.png）')
+        for f in pngs:
+            slice_(f)
+        import subprocess
+        subprocess.run([sys.executable, str(ROOT / 'tools/art.py')], check=True)
+        return
     sh = read_doc()
     if a.cmd == 'list':
         for k, (p, (w, h), files) in sh.items():

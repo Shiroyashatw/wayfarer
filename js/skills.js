@@ -1970,3 +1970,30 @@ for (const sp of [
   SUPG.push(sp);
   SUPGI[sp.k] = sp;
 }
+/* 0.3.40 召喚與戰場單位的輔助 */
+SUPREQ.unitsk = q => !!(q.totem || q.turret || q.trap || q.mine);
+SUPREQN.unitsk = '圖騰、砲台、陷阱、地雷';
+for (const sp of [
+  {
+    k: 'sp_deploy',
+    n: '部署強化',
+    t: 3,
+    req: 'unitsk',
+    mp: 20,
+    sup: { more: 30 },
+    d: '圖騰、砲台、陷阱、地雷的傷害 +30%（總乘）'
+  },
+  {
+    k: 'sp_deployfast',
+    n: '快速部署',
+    t: 2,
+    req: 'unitsk',
+    mp: 15,
+    sup: { avBack: 30 },
+    d: '放置後行動條先補 30%（更快再行動）'
+  },
+  { k: 'sp_horde', n: '召喚狂熱', t: 3, req: 'pet', mp: 20, sup: { petPct: 35 }, d: '召喚物傷害 +35%' }
+]) {
+  SUPG.push(sp);
+  SUPGI[sp.k] = sp;
+}

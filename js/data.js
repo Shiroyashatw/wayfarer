@@ -1312,7 +1312,22 @@ const BASES = {
     { n: '匕首', k: 'dagger', t: 'dagger', phys: [3, 7], crit: 9 },
     { n: '爪', k: 'claw', t: 'dagger', phys: [4, 8], crit: 7, imp: ['leech', 2] },
     { n: '權杖', k: 'scepter', t: 'staff', phys: [3, 6], crit: 5, imp: ['spellPct', 12] },
-    { n: '桃木劍', k: 'peach', t: 'sword', phys: [4, 8], crit: 5, imp: ['spellPct', 10] }
+    { n: '桃木劍', k: 'peach', t: 'sword', phys: [4, 8], crit: 5, imp: ['spellPct', 10] },
+    { n: '彎刀', k: 'sword', t: 'sword', phys: [5, 10], crit: 7 },
+    { n: '太刀', k: 'gsword', t: 'sword', th: 1, phys: [8, 17], crit: 8 },
+    { n: '細劍', k: 'sword', t: 'sword', phys: [3, 8], crit: 10, imp: ['critMulti', 15] },
+    { n: '符文劍', k: 'sword', t: 'sword', phys: [5, 10], crit: 5, imp: ['elePct', 10] },
+    { n: '雙刃斧', k: 'gaxe', t: 'axe', th: 1, phys: [12, 20], crit: 4, imp: ['bleedCh', 8] },
+    { n: '流星錘', k: 'mace', t: 'axe', phys: [5, 14], crit: 5, imp: ['stunCh', 6] },
+    { n: '戰鎚', k: 'gmace', t: 'axe', th: 1, phys: [13, 21], crit: 3, imp: ['armorPct', 10] },
+    { n: '複合弓', k: 'lbow', t: 'bow', th: 1, phys: [7, 14], crit: 8, imp: ['critPct', 2] },
+    { n: '竹弓', k: 'bow', t: 'bow', th: 1, phys: [4, 11], crit: 6, imp: ['speed', 2] },
+    { n: '重弩', k: 'xbow', t: 'bow', th: 1, phys: [12, 20], crit: 5, imp: ['penRes', 10] },
+    { n: '拳刃', k: 'claw', t: 'dagger', phys: [5, 9], crit: 8, imp: ['dbl', 4] },
+    { n: '蛇牙匕首', k: 'dagger', t: 'dagger', phys: [3, 8], crit: 9, imp: ['poisonCh', 10] },
+    { n: '三叉戟', k: 'spear', t: 'spear', th: 1, phys: [9, 17], crit: 6, imp: ['coldPct', 12] },
+    { n: '關刀', k: 'halberd', t: 'spear', th: 1, phys: [11, 21], crit: 5, imp: ['physPct', 10] },
+    { n: '骨杖', k: 'staff', t: 'staff', th: 1, phys: [2, 6], crit: 5, imp: ['chaosPct', 20] }
   ],
   /* 防具與飾品一樣只能往後加（存檔用索引）；外觀與圖示在 gear.js */
   helm: [
@@ -1320,45 +1335,89 @@ const BASES = {
     { n: '鐵盔', arm: 1.6 },
     { n: '兜帽', arm: 0.7, imp: ['mana', 15] },
     { n: '角盔', arm: 1.9 },
-    { n: '王冠', arm: 0.8, imp: ['critPct', 2] }
+    { n: '王冠', arm: 0.8, imp: ['critPct', 2] },
+    { n: '頭巾', arm: 0.6, imp: ['evade', 5] },
+    { n: '鐵面罩', arm: 1.8, imp: ['life', 15] },
+    { n: '羽冠', arm: 0.7, imp: ['speed', 2] },
+    { n: '骨盔', arm: 1.4, imp: ['resChaos', 10] },
+    { n: '武士盔', arm: 1.7, imp: ['critMulti', 10] },
+    { n: '祭司冠', arm: 0.8, imp: ['cdr', 3] },
+    { n: '惡魔角盔', arm: 2, imp: ['physPct', 8] }
   ],
   chest: [
     { n: '皮甲', arm: 2 },
     { n: '鎖子甲', arm: 3 },
     { n: '法袍', arm: 1.4, imp: ['spellPct', 10] },
     { n: '板甲', arm: 4 },
-    { n: '鱗甲', arm: 3.4, imp: ['resAll', 5] }
+    { n: '鱗甲', arm: 3.4, imp: ['resAll', 5] },
+    { n: '布衣', arm: 0.8, imp: ['evade', 6] },
+    { n: '武道服', arm: 1.6, imp: ['dbl', 4] },
+    { n: '獵人皮甲', arm: 2.2, imp: ['speed', 2] },
+    { n: '道袍', arm: 1.2, imp: ['cdr', 4] },
+    { n: '骨甲', arm: 2.8, imp: ['resChaos', 12] },
+    { n: '龍鱗甲', arm: 3.8, imp: ['resFire', 15] },
+    { n: '聖袍', arm: 1.5, imp: ['healPct', 15] }
   ],
   gloves: [
     { n: '皮手套', arm: 0.8 },
     { n: '鐵手甲', arm: 1.2 },
     { n: '法術手套', arm: 0.6, imp: ['spellPct', 6] },
-    { n: '臂鎧', arm: 1.6 }
+    { n: '臂鎧', arm: 1.6 },
+    { n: '綁手', arm: 0.5, imp: ['dbl', 3] },
+    { n: '拳套', arm: 1, imp: ['physPct', 6] },
+    { n: '鉤爪手套', arm: 0.9, imp: ['bleedCh', 6] },
+    { n: '祭司手套', arm: 0.6, imp: ['cdr', 3] },
+    { n: '龍皮手套', arm: 1.3, imp: ['resFire', 10] },
+    { n: '骨手甲', arm: 1.4, imp: ['addChaos', 3] }
   ],
   boots: [
     { n: '皮靴', arm: 0.8, imp: ['speed', 2] },
     { n: '鐵靴', arm: 1.2 },
     { n: '法師鞋', arm: 0.6, imp: ['mana', 10] },
-    { n: '戰靴', arm: 1.5, imp: ['life', 15] }
+    { n: '戰靴', arm: 1.5, imp: ['life', 15] },
+    { n: '草鞋', arm: 0.4, imp: ['speed', 3] },
+    { n: '布靴', arm: 0.6, imp: ['evade', 5] },
+    { n: '獵靴', arm: 1, imp: ['speed', 2] },
+    { n: '板甲靴', arm: 1.8 },
+    { n: '羽靴', arm: 0.7, imp: ['speed', 4] },
+    { n: '龍皮靴', arm: 1.3, imp: ['resCold', 10] }
   ],
   ring: [
     { n: '紅寶石戒指', imp: ['resFire', 12] },
     { n: '藍寶石戒指', imp: ['resCold', 12] },
     { n: '黃玉戒指', imp: ['resLight', 12] },
     { n: '鐵戒指', imp: ['flatPhys', 2] },
-    { n: '月石戒指', imp: ['mana', 12] }
+    { n: '月石戒指', imp: ['mana', 12] },
+    { n: '金戒指', imp: ['goldPct', 10] },
+    { n: '骨戒指', imp: ['leech', 1] },
+    { n: '紫晶戒指', imp: ['resChaos', 10] },
+    { n: '翡翠戒指', imp: ['regen', 2] },
+    { n: '血戒', imp: ['lifePct', 4] },
+    { n: '雙石戒指', imp: ['resAll', 6] },
+    { n: '黑曜戒指', imp: ['cdr', 2] }
   ],
   amulet: [
     { n: '琥珀護身符', imp: ['life', 20] },
     { n: '翡翠護身符', imp: ['critPct', 2] },
     { n: '青金護身符', imp: ['mana', 15] },
-    { n: '骨護身符', imp: ['leech', 1] }
+    { n: '骨護身符', imp: ['leech', 1] },
+    { n: '玉珮', imp: ['resAll', 8] },
+    { n: '平安符', imp: ['lifePct', 5] },
+    { n: '獸牙項鍊', imp: ['physPct', 10] },
+    { n: '星辰護身符', imp: ['spellPct', 12] },
+    { n: '紫晶護身符', imp: ['chaosPct', 12] },
+    { n: '龍珠', imp: ['elePct', 10] }
   ],
   belt: [
     { n: '皮腰帶', imp: ['life', 15] },
     { n: '重腰帶', arm: 0.6 },
     { n: '鏈腰帶', imp: ['regen', 2] },
-    { n: '符文腰帶', imp: ['spellPct', 6] }
+    { n: '符文腰帶', imp: ['spellPct', 6] },
+    { n: '布腰帶', imp: ['evade', 4] },
+    { n: '寬腰帶', arm: 0.8, imp: ['life', 20] },
+    { n: '藥包腰帶', imp: ['potPct', 20] },
+    { n: '鱗腰帶', arm: 0.6, imp: ['resAll', 5] },
+    { n: '武鬥腰帶', imp: ['dbl', 3] }
   ],
   /* 副手：k 是副手種類，詞綴可以只開放給某一種（例如誘引只出現在提燈） */
   offhand: [
@@ -1368,7 +1427,13 @@ const BASES = {
     { n: '塔盾', k: 'shield', arm: 2.2 },
     { n: '符文法珠', k: 'focus', imp: ['spellPct', 15] },
     { n: '月光法器', k: 'focus', imp: ['spellPct', 20] },
-    { n: '符咒', k: 'talisman', imp: ['elePct', 14] }
+    { n: '符咒', k: 'talisman', imp: ['elePct', 14] },
+    { n: '燈籠', k: 'lantern', imp: ['vision', 35], lure: 25 },
+    { n: '圓盾', k: 'shield', arm: 1.6 },
+    { n: '鳶盾', k: 'shield', arm: 2, imp: ['block', 4] },
+    { n: '骨盾', k: 'shield', arm: 1.8, imp: ['resChaos', 10] },
+    { n: '水晶球', k: 'focus', imp: ['spellPct', 18] },
+    { n: '八卦鏡', k: 'talisman', imp: ['cdr', 5] }
   ]
 };
 const DROPS = ['weapon', 'offhand', 'helm', 'chest', 'gloves', 'boots', 'belt', 'ring', 'amulet'];
@@ -2713,5 +2778,5 @@ const TREE = (() => {
       n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.39';
+const VER = '0.3.40';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

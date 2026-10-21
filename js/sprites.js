@@ -616,19 +616,17 @@ setTimeout(() => {
 /* 0.3.39 技能的 PNG 圖示（art/icons/sk_代號.png，tools/art.py 一起打包）：有就用；沒有或大圖還沒載好就用原本的 8×8 圖示
    （大圖載好時 artRepaint 會重畫開著的面板） */
 const SKURL = new Map();
-function skIcon(k, fb) {
-  const n = 'sk_' + k;
-  if (typeof ART !== 'undefined' && ART[n]) {
-    if (SKURL.has(n)) return SKURL.get(n);
-    const c = artSprite('a_' + n);
-    if (!c.pending) {
-      const u = c.toDataURL();
-      SKURL.set(n, u);
-      return u;
-    }
-  }
-  return iconURL(fb);
+/* PNG 圖示（art/icons 的檔名）轉成圖片網址；沒有或還沒載好回傳 null */
+function artIconURL(n) {
+  if (typeof ART === 'undefined' || !ART[n]) return null;
+  if (SKURL.has(n)) return SKURL.get(n);
+  const c = artSprite('a_' + n);
+  if (c.pending) return null;
+  const u = c.toDataURL();
+  SKURL.set(n, u);
+  return u;
 }
+const skIcon = (k, fb) => artIconURL('sk_' + k) || iconURL(fb);
 /* 按鈕的圖示：可以是圖示名稱或已經算好的圖片網址 */
 const icoSrc = x => (String(x).startsWith('data:') ? x : iconURL(x));
 /* 回傳正方形畫布（圖貼底置中、留 1 格邊），c.art 標記給 drawSpr 換算大小；還沒載好時回傳空白（不快取） */
@@ -1004,6 +1002,11 @@ function pixURL(key, tint) {
 }
 const curIcon = id => pixURL('cur_' + id);
 function slotIcon(it, slot) {
+  /* 0.3.40 有 PNG 圖示（art/icons/gear_欄位_序號.png）就用 */
+  if (it) {
+    const u = artIconURL(`gear_${it.slot}_${it.bi}`);
+    if (u) return u;
+  }
   if (it && typeof gearIcon === 'function') {
     const u = gearIcon(it);
     if (u) return u;
@@ -1015,6 +1018,7 @@ function slotIcon(it, slot) {
     key = n.includes('斧') ? 'sl_axe' : n.includes('弓') ? 'sl_bow' : n.includes('杖') ? 'sl_staff' : 'sl_sword';
   }
   if (s === 'offhand') key = 'sl_' + (it ? baseOf(it).k : 'shield');
+  if (!PIX[key]) key = 'sl_shield'; /* 符咒、仙桃等沒有小圖示的副手 */
   return pixURL(key, it ? shade(RCOL[it.r] === '#e8e2d4' ? '#b8b2a4' : RCOL[it.r], 0) : '#5a5064');
 }
 const ICIMG = new Map();

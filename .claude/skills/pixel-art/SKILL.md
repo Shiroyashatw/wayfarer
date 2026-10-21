@@ -9,7 +9,7 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 
 ## 1. 產出提示詞
 
-**圖示（裝備、技能、輔助寶石、節點）改用圖表一次產 64 個**：在 `docs/圖示提示詞.md` 補單張的列 → `python3 tools/icon_sheets.py build` → 把 `docs/圖示圖表.md` 裡那張圖表的提示詞給使用者（或有金鑰時 `run`）→ 使用者丟回圖表 PNG → `python3 tools/icon_sheets.py slice art/new/圖表名.png` 切到 `art/icons/`。先產 `sheet_skill_1` 當風格基準，其他張拿它當 Style／Init Image。
+**圖示（裝備、技能、輔助寶石、節點）改用圖表一次產 64 個**：在 `docs/圖示提示詞.md` 補單張的列 → `python3 tools/icon_sheets.py build` → 把 `docs/圖示圖表.md` 裡那張圖表的提示詞給使用者（或有金鑰時 `run`）→ 使用者把圖表 PNG 放進 `art/sheets/`（檔名就是圖表名，例如 `sheet_gear_1.png`）→ `python3 tools/icon_sheets.py process` 全部切到 `art/icons/` 並打包。每張要填滿 64 格，不夠的會自動拿「介面圖示」（狀態、通貨、怪物招式、材料）補空格。先產 `sheet_skill_1` 當風格基準，其他張拿它當 Style／Init Image。
 
 **先讀 `docs/怪物提示詞.md`**：共用設定、固定句型、世界觀方向，以及已採用的提示詞。新提示詞要沿用同系列的句型與用字（例如七宗罪的王對照路西法那份），畫風才會一致。裝備、技能圖示看 `docs/圖示提示詞.md`。量大時可以請使用者在自己電腦跑 `tools/pixellab_batch.py`（PixelLab API，金鑰放環境變數 `PIXELLAB_API_KEY`，產圖到 `art/new/` 再挑）。
 
@@ -51,7 +51,7 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 ## 2. 接入遊戲（使用者丟回 PNG 後）
 
 > 使用者說「我放了新圖」這類話（自己把 PNG 放進 `art/`）時，先做這段，再接下面第 1 步：
-> - 用 `git status --short art/` 找出新增（`??`）和變更（`M`）的 PNG，列給使用者確認。`art/new/` 是批次產圖的暫存區（不進 git），除非使用者指定，否則不用處理。
+> - 用 `git status --short art/` 找出新增（`??`）和變更（`M`）的 PNG，列給使用者確認。`art/new/` 是批次產圖的暫存區（不進 git），除非使用者指定，否則不用處理。`art/sheets/` 有新的或變更的圖表時跑 `python3 tools/icon_sheets.py process`。
 > - 只是換圖（檔名不變）：檢查（第 1 步）→ 跑 `tools/art.py`（第 3 步）→ 截圖確認（第 6 步）就好，資料不用改。
 > - 新檔名：從檔名猜要接到哪隻怪物（Grep `docs/CODEMAP.md`／`js/data.js` 的怪物名稱）；猜不到或可能接錯的，先問使用者，不要亂接。
 > - 跑完 `tools/art.py` 後，回報每張圖的尺寸、接到哪裡，以及哪些新圖還沒接到資料。
