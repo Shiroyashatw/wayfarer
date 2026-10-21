@@ -510,10 +510,10 @@ function undeadCraftHTML(it) {
     list
       .map(
         id =>
-          `<button class="btn sm${id === cur ? ' pri' : ''}" data-act="${act}" data-k="${id}">${curDot('ess_' + id)}${ESSI[id].n.slice(0, 1)} <b>${(S.ess && S.ess[id]) || 0}</b></button>`
+          `<button class="btn sm" aria-pressed="${id === cur}" data-act="${act}" data-k="${id}">${curDot('ess_' + id)}${ESSI[id].n.slice(0, 1)} <b>${(S.ess && S.ess[id]) || 0}</b></button>`
       )
       .join('');
-  return `<h3>亡靈製作 <small class="sub">・屍化 ${it.sh || 0}/100・已製作 ${it.uc || 0} 次（花費 ×${1 + 0.5 * (it.uc || 0)}）</small></h3>
+  return `<p class="sub">已製作 ${it.uc || 0} 次（花費 ×${1 + 0.5 * (it.uc || 0)}）</p>
   ${blk ? `<p class="sub" style="color:#ffb27a">${blk}</p>` : ''}
   <div class="card" style="display:grid;gap:6px"><small class="sub">選擇類別：${ESSI[sel].d}</small><div class="btns" style="flex-wrap:wrap">${chips(
     'ucCat',

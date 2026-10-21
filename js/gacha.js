@@ -691,37 +691,44 @@ function pactCard(o, mode) {
           : `<button class="btn sm${eq ? '' : ' buy'}" data-act="pactEq" data-id="${o.u}">${eq ? '卸下' : '裝備'}</button><button class="btn sm" data-act="pactBrk" data-id="${o.u}" ${o.brk < PBRK_MAX && nf ? '' : 'disabled'}>${o.brk >= PBRK_MAX ? '已全解鎖' : `突破（材料 ${nf}）`}</button><button class="btn sm" data-act="pactFollow" data-id="${o.u}">${fo ? '跟隨中' : '跟隨'}</button>`;
   return `<div class="card pcard${eq ? ' on' : ''}"><div class="rowx"><div class="t" style="display:flex;gap:10px;align-items:center">${pactTile(o.k)}<div style="display:grid;gap:3px"><b><span style="color:${PCOL[p.r]}">${PRAR[p.r]}</span> ${p.n} <span class="sub">突破 ${o.brk}/${PBRK_MAX}${eq ? '・裝備中' : ''}</span></b>${pactTagHTML(pactTags(o.u, true))}</div></div>${btn ? `<div style="display:grid;gap:4px">${btn}</div>` : ''}</div>${pactAffHTML(o.u)}</div>`;
 }
-/* 「我的契靈」面板（sheet 'pact'）：欄位、標籤篩選、擁有的每一隻契靈 */
+/* 0.3.43 契靈格子：框色 = 稀有度，角標 = 突破次數、裝備中、跟隨中；點開是詳情（sheet 'pdet'） */
+const pactCell = o => {
+  const p = PACTI[o.k],
+    on = pactIsOn(o.u);
+  return `<button class="slot-g pg p${p.r}${on ? ' on' : ''}" data-act="pactDet" data-id="${o.u}" aria-label="${p.n}"><img src="${pactImg(o.k)}" alt="">${o.brk ? `<i class="badge up">+${o.brk}</i>` : ''}${on ? '<i class="badge ck">裝</i>' : pactFollow() === o.u ? '<i class="badge lk">隨</i>' : ''}</button>`;
+};
+/* 「我的契靈」面板（sheet 'pact'）：0.3.43 設計規範第 11 節，出戰欄、篩選下拉、擁有的格子、祈願 */
 function pactHTML() {
-  const fo = pactFollow(),
-    on = pactsOn(),
+  const on = pactsOn(),
     ns = pactSlots(),
     list = PD().list,
     own = [...list].sort(
       (a, b) => pactIsOn(b.u) - pactIsOn(a.u) || PACTI[b.k].r - PACTI[a.k].r || a.k.localeCompare(b.k) || b.brk - a.brk
     ),
     flt = SEL.ptag || '',
-    tags = [...new Set(own.flatMap(o => pactTags(o.u, true)))];
-  return `<h3>契靈欄位 ${on.length}/${ns}<small class="sub">・每通過一場昇華試煉 +1 格（最多 ${PSLOT_MAX}），同名的只能裝一隻</small></h3>
-    <div class="pslots">${Array.from({ length: PSLOT_MAX }, (_, i) => {
-      const u = on[i],
-        o = u && pactOf(u);
-      return i >= ns
-        ? `<div class="pslot lock"><span class="ptile"></span><span>昇華試煉 ${i - PSLOT0 + 1}</span></div>`
-        : o
-          ? `<button class="pslot" data-act="pactEq" data-id="${u}">${pactTile(o.k)}<span style="color:${PCOL[PACTI[o.k].r]}">${PACTI[o.k].n}</span><small>${pactOpen(u).length}/${PAFF_N} 詞綴</small></button>`
-          : `<div class="pslot empty"><span class="ptile"></span><span>空</span></div>`;
-    }).join('')}</div>
-    <h3>擁有 ${list.length} 隻<small class="sub">・${new Set(list.map(o => o.k)).size}/${PACTS.length} 種</small></h3>
-    ${tags.length ? `<div class="ptagf"><button data-act="ptag" data-k="" aria-pressed="${!flt}">全部</button>${tags.map(t => `<button data-act="ptag" data-k="${t}" aria-pressed="${flt === t}">${PTAG[t]}</button>`).join('')}</div>` : ''}
-    ${
-      own
-        .filter(o => !flt || pactTags(o.u, true).includes(flt))
-        .map(o => pactCard(o))
-        .join('') || '<p class="sub">還沒有契靈，去祈願吧</p>'
-    }
-    <p class="sub">跟隨：任選一隻契靈（不用裝上）在地圖上跟著你，互動範圍 +${PFOLLOW_R} 公尺。${fo ? `目前是${pactKind(fo).n}。` : ''}</p>
-    <div class="btns"><button class="btn pri" data-act="gacha">${curDot('wish')}契靈祈願（${S.cur.wish || 0}）</button></div>`;
+    tags = [...new Set(own.flatMap(o => pactTags(o.u, true)))],
+    shown = own.filter(o => !flt || pactTags(o.u, true).includes(flt));
+  return `<h3>出戰 ${on.length}/${ns}</h3>
+    <div class="pgrid">${on.map(u => pactCell(pactOf(u))).join('')}${'<div class="slot-g emp"></div>'.repeat(Math.max(0, ns - on.length))}${ns < PSLOT_MAX ? `<div class="slot-g lockg"><small>昇華試煉<br>+1 格</small></div>` : ''}</div>
+    <div class="baghd"><h3>擁有 ${list.length}<small class="sub">・${new Set(list.map(o => o.k)).size}/${PACTS.length} 種</small></h3>${tags.length ? `<select class="sel" data-chg="ptag" aria-label="篩選"><option value="">全部</option>${tags.map(t => `<option value="${t}"${flt === t ? ' selected' : ''}>${PTAG[t]}</option>`).join('')}</select>` : ''}</div>
+    ${shown.length ? `<div class="pgrid">${shown.map(pactCell).join('')}</div>` : '<p class="empty">還沒有契靈，去祈願吧</p>'}
+    <div class="btns"><button class="btn pri" data-act="gacha">${curDot('wish')}契靈祈願（${S.cur.wish || 0}）</button></div>
+    ${more('契靈怎麼用', `<p>出戰欄：每通過一場昇華試煉 +1 格（最多 ${PSLOT_MAX}），同名的只能裝一隻。</p><p>突破：拿同名的契靈當材料，解鎖下一條詞綴（最多 ${PBRK_MAX} 次）。</p><p>跟隨：任選一隻在地圖上跟著你，互動範圍 +${PFOLLOW_R} 公尺。</p>`)}`;
+}
+/* 0.3.43 契靈詳情（sheet 'pdet'）：標題列 → 動作 → 標籤 → 6 條詞綴 */
+function pactDetHTML() {
+  const o = pactOf(SEL.pdet);
+  if (!o) return '<p class="sub">找不到這隻契靈</p>';
+  const p = PACTI[o.k],
+    eq = pactIsOn(o.u),
+    fo = pactFollow() === o.u,
+    nf = pactFodder(o.u).length,
+    on = pactsOn(),
+    full = !eq && on.length >= pactSlots() && !on.some(u => pactOf(u).k === o.k);
+  return `<div class="ihd">${pactTile(o.k)}<div><b style="color:${PCOL[p.r]}">${PRAR[p.r]} ${p.n}</b><small>突破 ${o.brk}/${PBRK_MAX}${eq ? '・出戰中' : ''}${fo ? '・跟隨中' : ''}</small></div></div>
+    <div class="btns iact"><button class="btn${eq || full ? '' : ' pri'}" data-act="pactEq" data-id="${o.u}" ${full ? 'disabled' : ''}>${eq ? '卸下' : '出戰'}${full ? '<small class="bnote">欄位滿了</small>' : ''}</button><button class="btn" data-act="pactBrk" data-id="${o.u}" ${o.brk < PBRK_MAX && nf ? '' : 'disabled'}>${o.brk >= PBRK_MAX ? '已全開' : `突破（${nf}）`}${o.brk < PBRK_MAX && !nf ? '<small class="bnote">沒有同名的</small>' : ''}</button><button class="btn" data-act="pactFollow" data-id="${o.u}" aria-pressed="${fo}">${fo ? '跟隨中' : '跟隨'}</button></div>
+    ${pactTagHTML(pactTags(o.u, true))}
+    <h3>詞綴 ${pactOpen(o.u).length}/${PAFF_N}</h3><div class="pdet">${pactAffHTML(o.u)}</div>`;
 }
 /* 突破面板（sheet 'pbrk'）：上面是要培養的那隻，下面列出可以吃掉的同名契靈 */
 function pactBrkHTML() {
@@ -801,6 +808,13 @@ Object.assign(A, {
     addLog(`${PACTI[o.k].n} 突破 ${o.brk}`);
     if (o.brk >= PBRK_MAX || !pactFodder(o.u).length) openSheet('pact');
     pactRefresh();
+  },
+  pactDet: d => {
+    const o = pactOf(d.id);
+    if (!o) return;
+    SEL.pdet = d.id;
+    sfx('tap');
+    openSheet('pdet', PACTI[o.k].n);
   },
   ptag: d => {
     SEL.ptag = d.k || '';

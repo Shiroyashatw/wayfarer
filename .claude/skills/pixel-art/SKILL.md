@@ -51,7 +51,7 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 ## 2. 接入遊戲（使用者丟回 PNG 後）
 
 > 使用者說「我放了新圖」這類話（自己把 PNG 放進 `art/`）時，先做這段，再接下面第 1 步：
-> - 用 `git status --short art/` 找出新增（`??`）和變更（`M`）的 PNG，列給使用者確認。`art/new/` 是批次產圖的暫存區（不進 git），除非使用者指定，否則不用處理。`art/sheets/` 有新的或變更的圖表時跑 `python3 tools/icon_sheets.py process`。
+> - 用 `git status --short art/` 找出新增（`??`）和變更（`M`）的 PNG，列給使用者確認。`art/new/` 是批次產圖的暫存區（不進 git），除非使用者指定，否則不用處理。`art/sheets/` 有新的或變更的圖表時跑 `python3 tools/icon_sheets.py process`。process 最後會自動 archive：做完的提示詞搬到 `docs/提示詞封存.md`、做完的圖表原圖搬到 `art/sheets/done/`；圖表編號固定（使用者手上正在產的圖表不會對不上）。
 > - 只是換圖（檔名不變）：檢查（第 1 步）→ 跑 `tools/art.py`（第 3 步）→ 截圖確認（第 6 步）就好，資料不用改。
 > - 新檔名：從檔名猜要接到哪隻怪物（Grep `docs/CODEMAP.md`／`js/data.js` 的怪物名稱）；猜不到或可能接錯的，先問使用者，不要亂接。
 > - 跑完 `tools/art.py` 後，回報每張圖的尺寸、接到哪裡，以及哪些新圖還沒接到資料。

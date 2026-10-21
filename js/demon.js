@@ -984,11 +984,11 @@ Object.assign(A, {
 });
 
 /* ================= 0.3.25 七罪（0.3.37 改成地圖上的七罪據點） ================= */
-/* 七罪據點：跟魔霧一樣每 2 小時換一輪，隨機出現在地圖上（Lv5 起；每 SG_CELL 公尺方格約 30%，不在城鎮旁、不跟魔霧重疊）。
+/* 七罪據點：跟魔霧一樣每 2 小時換一輪，隨機出現在地圖上（Lv5 起；每 SG_CELL 公尺方格約 45%，0.3.44 密度提高約 4 倍，不在城鎮旁、不跟魔霧重疊）。
    範圍畫成那個罪的顏色，範圍內冒出信徒、戰鬥套用那個罪的特效；打信徒累積解放度（S.sgp，每輪換新），
    滿 100% 在據點中心挑戰那個罪的王（3 層、終局難度），打完這一輪這個據點就消失。信徒的圖先用現有怪物圖＋罪的配色 */
 const SIEGE_LV = 5,
-  SG_CELL = 3000,
+  SG_CELL = 1800,
   SIEGE_R = 320;
 let SZ = [];
 /* 城鎮特效（範圍內的戰鬥） */
@@ -1072,7 +1072,7 @@ function siegeZones(cells) {
   const e2 = ep2();
   cells(SG_CELL, 4000, (i, j) => {
     const r = h(i, j, e2 * 29 + 7717);
-    if (r % 100 >= 30) return;
+    if (r % 100 >= 45) return;
     const id = `sz${i}_${j}_${e2}`;
     let x = (i + 0.2 + ((r >>> 12) % 60) / 100) * SG_CELL,
       y = (j + 0.2 + ((r >>> 18) % 60) / 100) * SG_CELL;
@@ -1132,8 +1132,8 @@ function siegeSpawns(out, cells) {
       lat: la,
       lng: ln,
       name: `${s.n}據點`,
-      spr: 'sinst',
-      pal: { ...PAL.sinst, e: s.pal.b },
+      /* 0.3.44 據點中心直接畫那個罪的王（新的 PNG），不再用舊的雕像 */
+      spr: SINSPR[z.sin],
       lv: aLv() + 6,
       gl: hex2rgb(s.pal.b).join(','),
       lbl: `${s.n}據點 ${p}%`,
@@ -1155,7 +1155,9 @@ function siegeSpawns(out, cells) {
           rar = q % 100 < 6 ? 2 : q % 100 < 30 ? 1 : 0,
           lv = Math.max(1, aLv() + 3 + ((r >>> 3) % 2)),
           f = list[(q >>> 6) % list.length],
-          [la2, ln2] = toLL(x, y);
+          [la2, ln2] = toLL(x, y),
+          base = followerBase(z.sin, f),
+          mods = rar ? rollMods(h(i, j, me + 5), rar === 2 ? 3 : 1) : [];
         out.set(id, {
           id,
           lat: la2,
@@ -1164,9 +1166,11 @@ function siegeSpawns(out, cells) {
           x,
           y,
           lv,
-          base: followerBase(z.sin, f),
+          base,
           rar,
-          mods: rar ? rollMods(h(i, j, me + 5), rar === 2 ? 3 : 1) : [],
+          mods,
+          /* 0.3.44 地圖上的名字（以前沒有，面板顯示 undefined）；跟 followerize 的規則一樣 */
+          name: (rar ? makeEnemy(base, lv, rar, mods).name.replace(f.n, '') : '') + f.n,
           siege: z.sin,
           trait: f.t,
           ph: (r % 628) / 100

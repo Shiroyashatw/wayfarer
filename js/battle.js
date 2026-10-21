@@ -377,6 +377,15 @@ function bossBar(e, boss) {
 /* 0.3.35 行動條（每幀由 atbPaint 更新寬度）；cd 遮罩在技能按鈕上 */
 const avBar = id => `<i class="avb" data-av="${id}"><i></i></i>`;
 const cdMask = q => (q ? `<i class="cdm" data-cdk="${skKey(q)}"></i>` : '');
+/* 0.3.44 戰鬥中喝藥水：不用掉行動，但同一種藥水要冷卻 POT_CD 秒（冷卻放在 me.cd['pot_potions'／'pot_ethers']，遮罩共用 cdMask） */
+const POT_CD = 10;
+const potKey = k => 'pot_' + (k === 'potion' || k === 'potions' ? 'potions' : 'ethers');
+const potMask = k => `<i class="cdm" data-cdk="${potKey(k)}"></i>`;
+const potLeft = (me, k) => (me && me.cd && me.cd[potKey(k)]) || 0;
+function potStart(me, k) {
+  (me.cd = me.cd || {})[potKey(k)] = POT_CD;
+  (me.cdMax = me.cdMax || {})[potKey(k)] = POT_CD;
+}
 /* 每幀更新：行動條寬度、滿了發亮；技能冷卻遮罩的高度與剩下秒數（單人與組隊共用） */
 function atbPaint(av, me) {
   for (const el of document.querySelectorAll('#battle [data-av]')) {
@@ -1980,9 +1989,10 @@ function renderBHud() {
   $('epills').innerHTML = enemyBars(es, es.length > 1 ? B.ti : -1, B.boss);
   const sks = mySkills(),
     sk = sks.map((q, i) => q && 's' + i).filter(Boolean),
-    dis = pBusy() ? 'disabled' : '';
+    dis = !B || B.over ? 'disabled' : '';
+  /* 0.3.44 還沒輪到你時按技能＝預選（B.queued，按鈕閃金框），輪到你就自動放 */
   const cb = (label, icon, sub, act, data, disabled, extra = '') =>
-    `<button class="cb ${extra}" data-act="${act}" ${data} ${disabled || dis}><img src="${icoSrc(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
+    `<button class="cb ${extra}${B.queued && data === `data-k="${B.queued}"` ? ' q' : ''}" data-act="${act}" ${data} ${disabled || dis}><img src="${icoSrc(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
   const noPot = st.noPotion;
   const slot = k => {
     const q = k && sks[+k.slice(1)];
@@ -1995,31 +2005,26 @@ function renderBHud() {
           `data-k="${k}"`,
           skReady(S, B.me, skSt(st, q), q) ? '' : 'disabled'
         )
-      : cb(
-          '生命藥水',
-          'heart',
-          noPot ? '無法使用' : '×' + S.potions,
-          'bitem',
-          'data-k="potions"',
-          S.potions && !noPot ? '' : 'disabled'
-        );
+      : '';
   };
+  const potB = (k, label, icon, no) =>
+    cb(
+      label + potMask(k),
+      icon,
+      no ? '無法使用' : '×' + S[k],
+      'bitem',
+      `data-k="${k}"`,
+      S[k] && !no && !potLeft(B.me, k) ? '' : 'disabled'
+    );
   /* 0.3.27：左邊兩欄 6 格都是技能；右邊一欄是攻擊、生命／魔力藥水、逃跑（有地雷時逃跑上面多一顆「引爆地雷」） */
   const six = [0, 1, 2, 3, 4, 5].map(i =>
       sks[i]
         ? slot('s' + i)
         : `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
     ),
-    pot = cb(
-      '生命藥水',
-      'heart',
-      noPot ? '無法使用' : '×' + S.potions,
-      'bitem',
-      'data-k="potions"',
-      S.potions && !noPot ? '' : 'disabled'
-    ),
-    eth = cb('魔力藥水', 'ice', '×' + S.ethers, 'bitem', 'data-k="ethers"', S.ethers ? '' : 'disabled'),
-    run = cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D ? 'disabled' : '', 'run'),
+    pot = potB('potions', '生命藥水', 'heart', noPot),
+    eth = potB('ethers', '魔力藥水', 'ice'),
+    run = cb('逃跑', 'run', D ? '無法逃跑' : '', 'flee', '', D || pBusy() ? 'disabled' : '', 'run'),
     mn = (B.me.mines || []).length;
   $('bcmd').classList.add('six');
   let html =
@@ -2126,6 +2131,7 @@ function soloEnd(t) {
   return true;
 }
 function beginAct() {
+  B.queued = null;
   B.ready = false;
   B.av.me = Math.max(0, (B.av.me || 0) - AV_MAX);
   B.anim = true;
@@ -2133,6 +2139,14 @@ function beginAct() {
   B.nextAct = Math.max(B.nextAct || 0, performance.now() + STAGGER);
 }
 function useSkill(k, auto) {
+  /* 0.3.44 預選：還沒輪到你（或動畫還在播）時按的技能先記著，再按一次取消 */
+  if (B && !B.over && !auto && (!B.ready || B.anim)) {
+    B.queued = B.queued === k ? null : k;
+    sfx('tap');
+    if (B.queued) bmsg(`預選：${k === 'mines' ? '引爆地雷' : (skByKey(k, mySkills()) || {}).name || '攻擊'}`);
+    renderBHud();
+    return;
+  }
   /* 0.3.22 引爆地雷：不花魔力，用掉這次行動 */
   if (k === 'mines') {
     if (pBusy() || !(B.me.mines || []).length) return;
@@ -2169,10 +2183,11 @@ function useSkill(k, auto) {
   if (!soloEnd(t)) later(t + 150, afterPlayer);
 }
 function bItem(k) {
-  if (pBusy() || !S[k]) return;
+  if (!B || B.over || !S[k] || potLeft(B.me, k)) return;
   const st = stats();
   if (k === 'potions' && st.noPotion) return;
-  beginAct();
+  /* 0.3.44 喝藥水不用掉行動條，改成這種藥水冷卻 POT_CD 秒 */
+  potStart(B.me, k);
   sfx('heal');
   const p = POS(),
     hm = st.healMul * (curSpec() && curSpec().noregen ? 0.5 : 1) * (1 + (st.potPct || 0) / 100);
@@ -2211,7 +2226,7 @@ function bItem(k) {
     t = playEv(ev);
   }
   renderBHud();
-  if (!soloEnd(t)) later(Math.max(800, t + 300), afterPlayer);
+  soloEnd(t);
 }
 function flee() {
   if (pBusy() || D) return;
@@ -2290,6 +2305,17 @@ function meReady() {
   B.ready = true;
   B.readyT = 0;
   B.autoDone = false;
+  /* 0.3.44 有預選的技能：還能放就馬上放（不用等自動施放） */
+  const q = B.queued;
+  B.queued = null;
+  if (q) {
+    const sk = q === 'mines' ? null : skByKey(q, mySkills());
+    if (q === 'mines' ? (me.mines || []).length : sk && skReady(S, me, skSt(me.st, sk), sk)) {
+      B.autoDone = true;
+      return useSkill(q);
+    }
+    bmsg('預選的技能現在不能放');
+  }
   sfx('tap');
   renderBHud();
 }
@@ -2900,7 +2926,9 @@ function nextRoom() {
       act: -1,
       tick: 0
     });
-    Object.assign(B.me, { guard: 0, frozen: 0 });
+    /* 0.3.44 進下一層：技能與藥水冷卻清空 */
+    Object.assign(B.me, { guard: 0, frozen: 0, cd: {}, cdMax: {} });
+    B.queued = null;
     BFX.en = es.map(() => ({ a: null, flash: 0 }));
     BFX.pops = [];
     paintBG(bg);

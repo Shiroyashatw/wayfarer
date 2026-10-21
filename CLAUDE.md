@@ -6,7 +6,7 @@
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。系統規則改了要同步更新。
 - 介面：照 `docs/設計規範.md`（字級、顏色變數、間距、元件、資訊量規則）；改介面用 skill `ui-design`，改完在手機尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
-- 怪物／首領的 PixelLab 提示詞：`docs/怪物提示詞.md`（新增怪物圖用 skill `pixel-art`，採用後把提示詞記進去）。裝備、技能、輔助寶石圖示的提示詞另外放在 `docs/圖示提示詞.md`。
+- 怪物／首領的 PixelLab 提示詞：`docs/怪物提示詞.md`（新增怪物圖用 skill `pixel-art`，採用後把提示詞記進去）。裝備、技能、輔助寶石圖示的提示詞另外放在 `docs/圖示提示詞.md`（只留還沒產的；做完的在 `docs/提示詞封存.md`，要重產時再複製回去）。
 
 ## 專案結構
 純靜態網頁，沒有建置步驟。所有 JS 是一般 `<script>`（非 module），依序載入、共用全域；`main.js` 必須最後。
@@ -52,7 +52,7 @@
 | `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽（`img/` 大圖在這裡轉 base64 內嵌） |
 | `tools/art.py` | `art/monsters/` 的 PNG 像素圖（裁邊）與 `art/icons/` 的 32×32 圖示（不裁邊）→ 拼成 `img/` 的調色盤大圖（無損、帶 hash）＋`js/art.js` 座標；使用者說「放了新圖」就跑（skill `pixel-art`） |
 | `tools/pixellab_batch.py` | PixelLab API 批次產圖：讀 `docs/怪物提示詞.md`／`docs/圖示提示詞.md` 的提示詞，輸出到 `art/new/`（不進 git）；金鑰用環境變數 `PIXELLAB_API_KEY`，不要寫進專案 |
-| `tools/icon_sheets.py` | 圖示圖表：從 `docs/圖示提示詞.md` 組出 `docs/圖示圖表.md`（8×8 一張 64 個、同類系同一張、共用風格），圖表原圖放 `art/sheets/`（進 git），`process` 全部切成 `art/icons/` 的單張並跑 `art.py` 打包 |
+| `tools/icon_sheets.py` | 圖示圖表：從 `docs/圖示提示詞.md` 組出 `docs/圖示圖表.md`（8×8 一張 64 個、同類系同一張、共用風格），圖表原圖放 `art/sheets/`（進 git），`process` 全部切成 `art/icons/` 的單張、跑 `art.py` 打包，最後 `archive`（做完的提示詞搬到 `docs/提示詞封存.md`、圖表原圖搬到 `art/sheets/done/`）；圖表編號固定，重跑 build 不會變 |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（函式行號），並檢查 CODEMAP 裡失效的名稱 |
 | `supabase/migrations/` | 資料庫結構 |
 

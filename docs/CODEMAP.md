@@ -13,7 +13,7 @@
 | 版本號 | `tools/setver.py` | `python3 tools/setver.py 版本` 會改 `js/data.js` 的 `VER` 與 `index.html` 的 `?v=`（同時更新 CHANGELOG、README、企劃書） |
 | 天賦盤起點（之魂）、技能 | `js/data.js` | `CLASSES`（起點名稱、主色、開局技能石）、`SKILLS` |
 | 技能石：等級、插槽、輔助寶石、品質（0.3.20） | `js/data.js`、`js/items.js`、`js/skills.js` | `GEM_MAX`、`soulNeed`、`GCUR`（刻印石系列開插槽、混沌刻印石重骰插槽數、寶石稜鏡加品質、冥府之血腐化）；技能石 `newGem`（`sock` 插槽數、`sp` 插著的輔助、`q` 品質）、`gemSkill`（技能石→戰鬥技能，加上品質與輔助：`gsup` 給 `supOf`）、品質效果 `gemQFx`（依技能特色自動決定）、`Q_GEM`／`prismAdd`、`mySkills`、`gemCraftable`／`gemCraft`（`SOCK_CUR`）、`corrupt`；輔助寶石資料 `SUPG`／`SUPGI`（`skills.js`，`sup` 戰鬥效果、`sk` 技能條件欄位、`req` 能插的技能 `SUPREQ`／`SUPREQN`、`conv` 轉換類、`lin` 族裔＋`m` 機制 `SUPM`）、`supFits`、`supBlock`／`supIn`／`supOut`／`giveSup`／`supUsed`（族裔同名限一顆）；背包 `S.sups` |
-| 技能石面板（圖示格子、插槽、商店、分解） | `js/ui.js` | `renderSheet` 的 `skills`／`gem` 分支、`gemCell`（底色 `gemKc`、插槽點、品質 `.gq`）、輔助寶石列 `supLine`、紅點 `supHint`；商店 `gemShopHTML`／`supShopHTML`（切換 `gshopKind`、`SEL.gshopK`，價格 `supPrice`、`supBuyBlock`、數量 `supN`）；`A.gemLv`、`A.gemBreak`（輔助退回背包）、`A.gemCraft`、`A.supPick`／`A.supIn`／`A.supOut`、`A.supBuy`、`A.gshopK` |
+| 技能石面板（圖示格子、插槽、商店、分解；0.3.44 格子化 `.sgrid6`、下拉 `skfSel`） | `js/ui.js` | `renderSheet` 的 `skills`／`gem` 分支、`gemCell`（底色 `gemKc`、插槽點、品質 `.gq`）、輔助寶石列 `supLine`、紅點 `supHint`；商店 `gemShopHTML`／`supShopHTML`（切換 `gshopKind`、`SEL.gshopK`，價格 `supPrice`、`supBuyBlock`、數量 `supN`）；`A.gemLv`、`A.gemBreak`（輔助退回背包）、`A.gemCraft`、`A.supPick`／`A.supIn`／`A.supOut`、`A.supBuy`、`A.gshopK` |
 | 新手引導（步驟、框選的按鈕） | `js/tutor.js` | `TUT`（每步的標題、說明、要框起來的選擇器）、`tutorStart`、`tutorShow`；存檔旗標 `S.tut` |
 | 契靈祈願（0.3.12）：卡池、詞綴、突破、欄位、跟隨 | `js/gacha.js`、`js/items.js` | 契靈 `PACTS`／`PACTI`（`r` 0～2 是 R／SR／SSR）、`PRAR`／`PCOL`／`PRATE`、保底 `P_SOFT`／`P_HARD`（`pityOf`）；詞綴 `PAFF`／`PAFFI`（`v` 是 T6～T1 的範圍、`tg` 標籤、`ssr` 專屬、`sk` 特定技能等級、`allSk`）、階級權重 `PTW`、`rollTier`／`rollPAff`／`rollPact`、文字 `paffTxt`、標籤 `PTAG`／`paffTags`／`pactTags`；個體 `pactOf(u)`／`pactKind(u)`、新抽到 `pactGive`、突破 `pactFodder`／`A.pactBrk`／`A.pactEat`（sheet `pbrk`，`pactBrkHTML`、`PBRK_MAX`、`pactOpen` 已解鎖的詞綴）、卡片 `pactCard`；欄位 `pactSlots`（`PSLOT0` + 昇華試煉）、`pactsOn`；屬性 `pactStats`（`sumStats`）、技能等級 `pactSkLv`（`gemSkill` 的 `plus`）；跟隨 `pactFollow`（`reachOf`、`map.js` 畫在玩家旁邊）；介面 `renderGacha`、`pactHTML`（sheet `pact`）、`A.pactEq`／`A.pactFollow`／`A.ptag`；狀態 `S.pact`（`list = [{u, k, brk, aff}]`、`eq`／`follow` 存個體編號 `u`）、`S.pity` |
 | 技能石商店、靈魂升級（0.3.11） | `js/items.js`、`js/ui.js` | `gemReq`（需求等級，`GEM_START` 是 Lv1 的開局技能）、`gemTier`、`gemPrice`、`gemBuyBlock`、`soulNeed`、`gemSoulBack`；`gemShopHTML`（sheet `gemshop`）、`A.gemShop`／`A.gshopTier`／`A.gemBuy`；祈願石掉落在 `gemLoot` |
@@ -39,6 +39,9 @@
 | 技能／裝備 PNG 圖示（0.3.39～0.3.40） | `art/sheets/`（圖表原圖）、`art/icons/`、`tools/icon_sheets.py`、`tools/art.py`、`js/sprites.js` | 圖表 `docs/圖示圖表.md` → 原圖放 `art/sheets/`、`icon_sheets.py process` 切到 `art/icons/sk_代號.png`／`gear_欄位_序號.png`（實心背景自動去背，icon_sheets.py 的 clear_bg）→ `art.py` 打包（大圖 `ic_*`）；顯示 `skIcon(代號, 原本圖示)`、裝備 `slotIcon`（都走 `artIconURL`）（沒有就用 8×8 `iconURL`）、按鈕 `icoSrc`；技能石要有 `k`（`gemSkill`）；用在 `gemCell`、`gemRow`、技能石商店、戰鬥按鈕（`renderBHud`／`renderMBHud`）；CSS `.cico.sk`、`.bcmd.six .cb img` |
 | 裝備圖示、材質階級（0.3.1） | `js/gear.js` | `GEAR`（每個底材一張 12×12，索引對應 `BASES`，新底材要補圖）、`MATC`／`BLADEC`／`TRIMC`／`GEMC`、`tierOf`／`TIERN`、`gearPal`、`gearIcon`（`slotIcon` 呼叫） |
 | 點地圖移動速度（0.3.1.1，0.3.33 滑條） | `js/map.js`、`js/ui.js` | `SIM_SPEED`、`SIM_MAX`（10 倍）、`simSpeed()`（乘上 `S.simSpd`）；設定面板的滑條 `#simSpd`（`ui.js` 的 `input`／`change` 監聽，`.slider`） |
+| 戰鬥預選技能、藥水冷卻、下一層冷卻清空（0.3.44） | `js/battle.js`、`js/mp.js` | 單人 `B.queued`（`useSkill` 沒輪到時記下、`meReady` 放出、`beginAct` 清掉）、按鈕 `.cb.q`；藥水 `POT_CD`、`potKey`／`potStart`／`potLeft`／`potMask`（冷卻放 `me.cd`）、`bItem` 不再 `beginAct`；組隊 `MB.queued`（`mpMy`、`mpApply` 輪到時送出）、`mpDrink`（`mpOnAct` 收到藥水直接喝）；`nextRoom`／`mpRoomClear` 清 `cd` |
+| 藥水百分比與預覽、商店多買、特殊倉庫、快速比較（0.3.44） | `js/ui.js`、`js/items.js`、`index.html` | HUD `hpt`／`mpt`；`potVal`（items.js，共用回復量）、`potRow`（`.potr`／`.pbar`）；商店 `openShop` 的 `.buyn`；倉庫 `stashRow`／`MAT_IC`；比較 `eqPower`／`eqCmp`／`cmpBadge`／`cmpTxt`；人形裝備欄 `.doll2` |
+| 背包、裝備詳情、契靈的格子版面（0.3.43） | `js/ui.js`、`js/items.js`、`js/gacha.js`、`css/style.css` | 共用元件 `.slot-g`（格子，`.r0`～`.r3`、`.fill` 給自帶外框的 `slotFramed` 圖示、`i.badge`）、`.chip`、`.sel`（`<select data-chg="動作">`，`change` 監聽呼叫 `A[動作]({k})`）、`moreK`（記住開關的摺疊）；背包 `renderSheet` 的 `bag` 分支、`curRow`／`curHelp`；裝備詳情 `item` 分支、`itemType`、`itemCard(it, title, {head, cmp})`、`dlt`；契靈 `pactHTML`／`pactCell`／`pactDetHTML`（sheet `pdet`，`SEL.pdet`，`A.pactDet`） |
 | 背包批量賣出、上鎖（0.3.1） | `js/ui.js` | `canSell`（城鎮或據點）、`bagListHTML`、`worseThanEq`、`sellSel`、`A.sellMode`／`A.sellPick`／`A.sellQuick`／`A.sellMany`／`A.lock`、單件 `A.sell`；勾選狀態 `SEL.sell`、上鎖 `it.lock` |
 | 裝備生成、詞綴、通貨製作 | `js/items.js` | `makeItem`、`rollAffix`、`craftable`、`craft` |
 | 商店 | `js/items.js` | `openShop` |
@@ -82,7 +85,7 @@
 | 七宗罪之王（4 人，0.2.11） | `js/demon.js`、`js/data.js` | `makeSinKing`、`A.sinKing`、`DTYPES.sinking`；付出殘魂在 `payDun` 的 `souls` |
 | 等級上限 | `js/items.js` | `LV_MAX`（`gainXP`） |
 | 石碑／魔法陣當場挑戰 | `js/endgame.js` | `A.siteGo` 設定 `SEL.site` 後打開石碑面板（`steleHTML` 的現場模式、`siteEnt`），開打走 `A.steleRun`／`A.circleOpen` |
-| 背包材料分頁（碑文碎片、石碑、冥府碎片、卷軸） | `js/endgame.js`、`js/ui.js` | `MAT_TABS`、`matsHTML`、`A.matTab`、`A.matDrop`；分頁列 `bagTabs`（`ui.js`），目前分頁 `SEL.bag` |
+| 背包材料分頁（碑文碎片、石碑、冥府碎片、卷軸） | `js/endgame.js`、`js/ui.js` | `MAT_TABS`、`matsHTML`、`A.matTab`、`A.matDrop`；目前分頁 `SEL.bag` |
 | 戰鬥畫面（背景、特效、按鈕） | `js/battle.js` | `paintBG`、`renderBHud`、`renderBattle`、`drawFx`；怪物頭上名字 `placeBName`、左上角層數 `setFloor`、異常狀態圖示 `ailHTML`／`placeAil`（`AIL_E`、`AIL_H`）、頭目血條 `bossBar`、站位 `POS`（`y` 怪物、`hy` 玩家）、底部橫列行動順序 `renderOrder`（名字用 `shortName`，小頭像 `portrait`；多人在 `mp.js` 的 `renderMBHud`、倒數條 `mpTurnBar`、站位 `mpPos`） |
 | 冥府看門人（牛頭、馬面、黑白無常） | `js/endgame.js` | `WATCHERS`、`summonWatcher` |
 | 地圖道路資料、圖磚快取 | `js/map.js` | `OpenStreetMap vector tiles` 區段 |
@@ -168,11 +171,11 @@
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
 
-### js/sprites.js（1397 行）
+### js/sprites.js（1400 行）
 
-- **pixel sprites (original art)**（3），29 個宣告
-- **icons: currency, item slots, passive nodes**（794），7 個宣告
-- **boss sprites**（1052），1 個宣告
+- **pixel sprites (original art)**（3），30 個宣告
+- **icons: currency, item slots, passive nodes**（797），7 個宣告
+- **boss sprites**（1055），1 個宣告
 
 ### js/gear.js（685 行）
 
@@ -188,22 +191,22 @@
 
 - **audio**（3），14 個宣告
 
-### js/items.js（1145 行）
+### js/items.js（1175 行）
 
-- **player & items**（3），27 個宣告
-- **skill gems**（261），29 個宣告
-- **stats**（508），23 個宣告
-- **enemies**（897），16 個宣告
-- **modal**（1035），5 個宣告
+- **player & items**（3），30 個宣告
+- **skill gems**（278），29 個宣告
+- **stats**（525），23 個宣告
+- **enemies**（914），16 個宣告
+- **modal**（1052），5 個宣告
 
-### js/battle.js（3414 行）
+### js/battle.js（3442 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
-- **battle: logic**（239），36 個宣告
-- **battle: rules（單人與組隊共用）**（610），66 個宣告
-- **battle: solo**（1812），20 個宣告
-- **dungeons (shared by solo and party)**（2312），24 個宣告
-- **battle: drawing**（3057），7 個宣告
+- **battle: logic**（239），41 個宣告
+- **battle: rules（單人與組隊共用）**（619），66 個宣告
+- **battle: solo**（1821），20 個宣告
+- **dungeons (shared by solo and party)**（2338），24 個宣告
+- **battle: drawing**（3085），7 個宣告
 
 ### js/monskill.js（203 行）
 
@@ -225,11 +228,11 @@
 
 - **passive tree (full screen)**（3），18 個宣告
 
-### js/ui.js（2021 行）
+### js/ui.js（2155 行）
 
-- **HUD & sheets**（3），53 個宣告
-- **entity interaction**（812），11 個宣告
-- **actions**（1020），2 個宣告
+- **HUD & sheets**（3），63 個宣告
+- **entity interaction**（935），11 個宣告
+- **actions**（1148），2 個宣告
 
 ### js/endgame.js（691 行）
 
@@ -250,7 +253,7 @@
 - **undead crafting（0.3.23 起在藏身處）**（409），15 個宣告
 - **actions**（545），0 個宣告
 
-### js/demon.js（1452 行）
+### js/demon.js（1456 行）
 
 - **sprites & data**（3），19 個宣告
 - **map: mist seals, active mist, sin statues**（341），10 個宣告
@@ -275,7 +278,7 @@
 - **委託面板（0.3.15，原本的「附近」）**（85），2 個宣告
 - **足跡**（141），8 個宣告
 
-### js/asc.js（2257 行）
+### js/asc.js（2264 行）
 
 - **data**（69），10 個宣告
 - **state & stats**（1625），18 個宣告
@@ -284,11 +287,11 @@
 - **trials**（2103），2 個宣告
 - **actions**（2119），0 個宣告
 
-### js/gacha.js（811 行）
+### js/gacha.js（825 行）
 
 - **pacts**（6），28 個宣告
 - **banners**（549），8 個宣告
-- **ui**（620），8 個宣告
+- **ui**（620），10 個宣告
 
 ### js/tutor.js（164 行）
 
@@ -305,12 +308,12 @@
 - **party invites**（64），7 個宣告
 - **friends sheet**（145），1 個宣告
 
-### js/mp.js（1154 行）
+### js/mp.js（1201 行）
 
 - **party / lobby**（35），11 個宣告
-- **battle state (leader authoritative)**（269），17 個宣告
-- **battle (every client)**（643），11 個宣告
-- **battle rendering**（905），6 個宣告
+- **battle state (leader authoritative)**（269），18 個宣告
+- **battle (every client)**（661），11 個宣告
+- **battle rendering**（943），6 個宣告
 
 ### js/main.js（401 行）
 

@@ -8,9 +8,13 @@
     python3 tools/icon_sheets.py run --only sheet_skill_1   # 用 PixelLab API 產圖表（需要 PIXELLAB_API_KEY，存到 art/new/）
     python3 tools/icon_sheets.py process               # art/sheets/ 裡的圖表全部切好、打包進遊戲（最常用）
     python3 tools/icon_sheets.py slice art/sheets/sheet_skill_1.png        # 只切一張，存到 art/icons/（檔名照圖表的對照表）
+    python3 tools/icon_sheets.py archive               # 已經有圖的提示詞搬到 docs/提示詞封存.md、做完的圖表原圖搬到 art/sheets/done/（process 最後會自動跑）
 
 - 單張圖示的提示詞還是寫在 docs/圖示提示詞.md（要單獨重產某一張時用）；圖表的提示詞由這支程式從那份自動組出來，兩邊不會不同步。
 - 新增技能、輔助寶石、節點時：先在 docs/圖示提示詞.md 補一列，再跑 build。
+- 圖表編號是固定的：已經在 docs/圖示圖表.md 的圖表，內容與提示詞不會因為 build 改變（產到一半的不會對不上）；
+  新的提示詞才會排進新的圖表，編號接在後面。全部格子都有圖的圖表會從圖示圖表移除（原圖搬到 art/sheets/done/）。
+  要整個重排用 build --fresh（只排還沒有圖的）。
 - 分組：裝備、攻擊技能、元素法術、混沌與黑暗法術、增益／治療／召喚／戰場單位、光環、輔助寶石、族裔輔助、天賦樹、昇華；同組依序填滿一張再開下一張。
 """
 import argparse, pathlib, re, sys
@@ -19,6 +23,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / 'docs/圖示提示詞.md'
 DOC = ROOT / 'docs/圖示圖表.md'
 SHEETS = ROOT / 'art/sheets'  # PixelLab 產的圖表原圖放這裡（檔名 sheet_xxx.png，進 git 保存）
+ARCH = ROOT / 'docs/提示詞封存.md'  # 已經接進遊戲的提示詞（要重產時再拿出來）
+MON = ROOT / 'docs/怪物提示詞.md'
+ICONS = ROOT / 'art/icons'
+done = lambda f: (ICONS / f'{f}.png').exists()
 COLS, CELL = 8, 32
 TAIL = re.compile(r',?\s*(bold simple|readable at small size|centered, readable|no text).*$')
 HEAD = re.compile(r'^(game skill icon of|game icon of|single item icon of)\s+(an? )?')
@@ -57,9 +65,10 @@ SUPER = [
 
 
 def rows_of():
-    """讀 docs/圖示提示詞.md 的表格：回傳 [(檔名, 中文名, 類型, 提示詞)]"""
+    """讀 docs/圖示提示詞.md 與封存的表格：回傳 [(檔名, 中文名, 類型, 提示詞)]"""
     out = []
-    for line in SRC.read_text(encoding='utf-8').splitlines():
+    text = SRC.read_text(encoding='utf-8') + ('\n' + ARCH.read_text(encoding='utf-8') if ARCH.exists() else '')
+    for line in text.splitlines():
         m = re.match(r'^\| `([\w-]+)` \|(.*)\| `([^`]+)` \|$', line)
         if not m:
             continue
@@ -110,36 +119,61 @@ def short(p, words):
     return ' '.join(w)
 
 
-def sheets(per, words):
+def used_names():
+    """用過的圖表名稱（圖示圖表、封存、art/sheets/done/），新圖表的編號接在後面"""
+    t = (DOC.read_text(encoding='utf-8') if DOC.exists() else '') + (ARCH.read_text(encoding='utf-8') if ARCH.exists() else '')
+    names = set(re.findall(r'`(sheet_[a-z]+_\d+)`', t))
+    names |= {f.stem for f in (SHEETS / 'done').glob('sheet_*.png')}
+    return names
+
+
+def sheets(per, words, fresh=False):
+    """回傳 [(圖表名, 大類, [(檔名, 名稱, 描述, 組)], 固定的提示詞或 None)]"""
     rows = rows_of()
+    info = {f: (n, kind, p) for f, n, kind, p in rows}
+    kept, inkept = [], set()
+    if not fresh and DOC.exists():
+        for name, (pr, _, files) in read_doc().items():
+            if all(done(f) for f in files):
+                continue
+            items = [(f, info.get(f, ('', '', ''))[0], '', group_of(f, *info[f][1:]) if f in info else 'ui') for f in files]
+            kept.append((name, name.split('_')[1], items, pr))
+            inkept |= set(files)
+    used = used_names()
+    nxt = {}
+
+    def new_name(sg):
+        nxt[sg] = nxt.get(sg, max([int(x.rsplit('_', 1)[1]) for x in used if x.startswith(f'sheet_{sg}_')] or [0])) + 1
+        return f'sheet_{sg}_{nxt[sg]}'
+
     bucket = {k: [] for k, _, _ in GROUPS}
     for f, n, kind, p in rows:
         g = group_of(f, kind, p)
-        if g:
+        if g and not done(f) and f not in inkept:
             bucket[g].append((f, n, short(p, words)))
     out = []
     for sg, gs in SUPER:
         items = [(f, n, d, g) for g in gs for f, n, d in bucket[g]]
         for i in range(0, len(items), per):
-            out.append((f'sheet_{sg}_{i // per + 1}', sg, items[i : i + per]))
+            out.append([sg, items[i : i + per]])
     # 剩下不到 8 個的零頭，塞進前面還有空格的圖表（少產一張）
     for k in range(len(out) - 1, -1, -1):
-        name, sg, items = out[k]
+        sg, items = out[k]
         if len(items) >= COLS:
             continue
-        for j, (n2, sg2, it2) in enumerate(out):
+        for j, (sg2, it2) in enumerate(out):
             if j != k and len(it2) + len(items) <= per:
                 it2.extend(items)
                 del out[k]
                 break
     # 介面圖示（狀態、通貨、怪物招式、材料）拿來填滿各張的空格，填不完才另外開一張
     ui = [(f, n, d, 'ui') for f, n, d in bucket['ui']]
-    for name, sg, items in out:
+    for sg, items in out:
         while ui and len(items) < per:
             items.append(ui.pop(0))
     for i in range(0, len(ui), per):
-        out.append((f'sheet_ui_{i // per + 1}', 'ui', ui[i : i + per]))
-    return out
+        out.append(['ui', ui[i : i + per]])
+    return kept + [(new_name(sg), sg, items, None) for sg, items in out]
 
 
 def prompt_of(items):
@@ -157,7 +191,10 @@ def kinds(items):
 def write_iconmap():
     """天賦樹節點是照名字對應圖示（同名共用一張），把 docs/圖示提示詞.md 的「檔名 → 節點名」寫成 js/iconmap.js"""
     m = {}
-    for f, n in re.findall(r'^\| `tree_([ns]\d+)` \| ([^|]+?) \|', SRC.read_text(encoding='utf-8'), re.M):
+    for f, n, _, _ in rows_of():
+        if not re.match(r'tree_[ns]\d+$', f):
+            continue
+        f, n = f[5:], n
         m.setdefault(n.strip(), f)
     body = ',\n'.join(f"  '{n}': '{f}'" for n, f in m.items())
     (ROOT / 'js/iconmap.js').write_text(
@@ -167,8 +204,8 @@ def write_iconmap():
     )
 
 
-def build(per, words):
-    sh = sheets(per, words)
+def build(per, words, fresh=False):
+    sh = sheets(per, words, fresh)
     rows_ = per // COLS
     L = [
         '# 圖示圖表（PixelLab 一次產 64 個）',
@@ -183,7 +220,8 @@ def build(per, words):
         '把該張的提示詞整段貼上。畫布面積上限：免費方案 200×200、Tier 1 320×320、Tier 2 以上 400×400；**每張 64 格（256×256）要 Tier 1 以上**，免費方案用 `--per 32` 重產這份（256×128）。',
         '2. **先產 `sheet_skill_1` 當風格基準**，滿意了再產其他張；其他張都把這張當 **Style／Init Image** 參考，整套才會一致。',
         '3. 下載 PNG 放進 **`art/sheets/`**（檔名就是圖表名稱，例如 `sheet_skill_1.png`），跑 `python3 tools/icon_sheets.py process`：'
-        '全部切成一格一張（照下面的對照表存到 `art/icons/`，實心背景自動去背）、再打包進遊戲。跟 Claude 說「放了新圖」它會幫你跑。',
+        '全部切成一格一張（照下面的對照表存到 `art/icons/`，實心背景自動去背）、打包進遊戲，再把做完的提示詞與圖表封存。跟 Claude 說「放了新圖」它會幫你跑。',
+        '   圖表編號固定不變：這裡列的都是還有格子沒圖的；做完的移到 `docs/提示詞封存.md`，原圖在 `art/sheets/done/`。',
         '4. 格子歪掉或某幾格不好：那幾個用 `docs/圖示提示詞.md` 的單張提示詞補產。',
         '5. 提示詞太長被截斷（後面幾格畫不出來）：`python3 tools/icon_sheets.py build --words 6` 縮短每格的描述，或 `--per 32` 改成每張 32 格。',
         '',
@@ -198,17 +236,17 @@ def build(per, words):
         '| 圖表 | 類系 | 數量 | 尺寸 |',
         '| --- | --- | --- | --- |',
     ]
-    for name, g, items in sh:
+    for name, g, items, _ in sh:
         r = (len(items) + COLS - 1) // COLS
         L.append(f'| `{name}` | {kinds(items)} | {len(items)} | {COLS * CELL}×{r * CELL} |')
-    for name, g, items in sh:
+    for name, g, items, pr in sh:
         r = (len(items) + COLS - 1) // COLS
         L += [
             '',
             f'### `{name}`（{kinds(items)}，{len(items)} 個，{COLS * CELL}×{r * CELL}）',
             '',
             '```',
-            prompt_of(items),
+            pr or prompt_of(items),
             '```',
             '',
             '| 格 | 檔名 | 名稱 |',
@@ -217,7 +255,7 @@ def build(per, words):
         L += [f'| {k // COLS + 1}-{k % COLS + 1} | `{f}` | {n} |' for k, (f, n, _, _) in enumerate(items)]
     DOC.write_text('\n'.join(L) + '\n', encoding='utf-8')
     write_iconmap()
-    print(f'已輸出 {DOC.relative_to(ROOT)}：{len(sh)} 張圖表、{sum(len(i) for _, _, i in sh)} 個圖示（每張 {per} 格）')
+    print(f'已輸出 {DOC.relative_to(ROOT)}：{len(sh)} 張圖表、{sum(len(i) for _, _, i, _ in sh)} 個圖示（每張 {per} 格）')
 
 
 def read_doc():
@@ -288,9 +326,63 @@ def slice_(png, name=None):
         print('  這幾格是空白，沒有存（改提示詞後重產）：' + '、'.join(empty))
 
 
+def archive():
+    """已經有圖的提示詞搬進 docs/提示詞封存.md；做完的圖表原圖搬到 art/sheets/done/；再 build（編號不變）"""
+    arch = ARCH.read_text(encoding='utf-8') if ARCH.exists() else (
+        '# 提示詞封存\n\n已經產好圖、接進遊戲的提示詞（`tools/icon_sheets.py archive` 自動搬過來）。要重產某一張時，從這裡複製回原本的文件。\n'
+    )
+    moved = {}
+    # 圖示：表格列，圖檔已經在 art/icons/
+    out, sec, head = [], '', None
+    for line in SRC.read_text(encoding='utf-8').splitlines():
+        if line.startswith('#'):
+            sec = line.lstrip('#').strip()
+        if line.startswith('| 檔名'):
+            head = line
+        m = re.match(r'^\| `([\w-]+)` \|', line)
+        if m and done(m.group(1)):
+            moved.setdefault(('圖示・' + sec, head), []).append(line)
+            continue
+        out.append(line)
+    SRC.write_text('\n'.join(out) + '\n', encoding='utf-8')
+    # 怪物：「待生成」裡圖檔已經在 art/monsters/ 的（**名稱**　`檔名.png` 加一段 ``` 提示詞）
+    t = MON.read_text(encoding='utf-8')
+    i = t.find('## 待生成')
+    if i >= 0:
+        def take(m):
+            if (ROOT / 'art/monsters' / m.group(2)).exists():
+                moved.setdefault(('怪物', None), []).append(m.group(0).strip('\n'))
+                return ''
+            return m.group(0)
+        rest = re.sub(r'\n\*\*([^*\n]+)\*\*\u3000`([\w-]+\.png)`\n```\n.*?\n```\n', take, t[i:], flags=re.S)
+        MON.write_text(t[:i] + rest, encoding='utf-8')
+    n = 0
+    for (sec, head), lines in moved.items():
+        n += len(lines)
+        if head:
+            arch += f'\n## {sec}\n\n{head}\n| --- | --- | --- | --- |\n' + '\n'.join(lines) + '\n'
+        else:
+            arch += f'\n## {sec}\n\n' + '\n\n'.join(lines) + '\n'
+    # 做完的圖表：原圖搬走、名稱記在封存（編號不再用）
+    cur = read_doc()
+    fin = [k for k, (_, _, files) in cur.items() if all(done(f) for f in files)]
+    fin += [f.stem for f in SHEETS.glob('sheet_*.png') if f.stem not in cur and f.stem not in fin]
+    if fin:
+        (SHEETS / 'done').mkdir(parents=True, exist_ok=True)
+        for k in fin:
+            src = SHEETS / f'{k}.png'
+            if src.exists():
+                src.replace(SHEETS / 'done' / f'{k}.png')
+        arch += '\n## 已完成的圖表\n\n' + '、'.join(f'`{k}`' for k in fin) + '\n'
+    ARCH.write_text(arch, encoding='utf-8')
+    print(f'封存 {n} 條提示詞、{len(fin)} 張做完的圖表 → {ARCH.relative_to(ROOT)}')
+    build(64, 9)
+
+
 def main():
     ap = argparse.ArgumentParser(description='PixelLab 圖示圖表')
-    ap.add_argument('cmd', choices=['build', 'list', 'run', 'slice', 'process'])
+    ap.add_argument('cmd', choices=['build', 'list', 'run', 'slice', 'process', 'archive'])
+    ap.add_argument('--fresh', action='store_true', help='build：不保留現有圖表，還沒有圖的全部重排')
     ap.add_argument('png', nargs='?', help='slice：圖表 PNG')
     ap.add_argument('--per', type=int, default=64, help='每張幾格（64 或 32）')
     ap.add_argument('--words', type=int, default=9, help='每個圖示描述最多幾個字（太長 PixelLab 可能吃不下）')
@@ -298,7 +390,9 @@ def main():
     ap.add_argument('--sheet', default='', help='slice：圖表名稱（預設用檔名）')
     a = ap.parse_args()
     if a.cmd == 'build':
-        return build(a.per, a.words)
+        return build(a.per, a.words, a.fresh)
+    if a.cmd == 'archive':
+        return archive()
     if a.cmd == 'slice':
         return slice_(a.png, a.sheet or None)
     if a.cmd == 'process':
@@ -306,11 +400,15 @@ def main():
         pngs = sorted(SHEETS.glob('sheet_*.png'))
         if not pngs:
             sys.exit('art/sheets/ 裡沒有圖表（檔名要是 sheet_xxx.png）')
+        known = read_doc()
         for f in pngs:
-            slice_(f)
+            if f.stem in known:
+                slice_(f)
+            else:
+                print(f'{f.name}：圖示圖表裡沒有（已經做完？），略過')
         import subprocess
         subprocess.run([sys.executable, str(ROOT / 'tools/art.py')], check=True)
-        return
+        return archive()
     sh = read_doc()
     if a.cmd == 'list':
         for k, (p, (w, h), files) in sh.items():

@@ -645,6 +645,9 @@ const supIcon = sp => {
   return u ? `<img class="cico sk" src="${u}" alt=""> ` : '';
 };
 /* 戰場單位（art/icons/unit_技能代號.png）：圖騰、砲台、陷阱、地雷身上帶著放置它的技能 sk */
+/* 0.3.43 slotIcon 給的是不是自帶稀有度外框的 16px 裝備圖（gearIcon）：格子就不再畫一層框 */
+const slotFramed = it =>
+  !!it && !artIconURL(`gear_${it.slot}_${it.bi}`) && typeof gearArt === 'function' && !!gearArt(it);
 const unitIcon = (u, fb) => (u && u.sk && artIconURL('unit_' + u.sk.k)) || iconURL(fb);
 /* 按鈕的圖示：可以是圖示名稱或已經算好的圖片網址 */
 const icoSrc = x => (String(x).startsWith('data:') ? x : iconURL(x));

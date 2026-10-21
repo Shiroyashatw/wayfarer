@@ -2239,6 +2239,13 @@ Object.assign(A, {
       nx = ascNext();
     if (!e || nx == null || S.lv < nx || !inRange(e)) return;
     closeSheet();
+    /* 0.3.44 進昇華試煉前自動回滿生命與魔力 */
+    {
+      const st = stats();
+      S.hp = st.maxhp;
+      S.mp = st.maxmp;
+      toast('生命、魔力已回滿');
+    }
     enterDungeon(
       {
         id: `asc${ASCD().trials}_${e.id}`,

@@ -174,21 +174,35 @@ function itemSum(it) {
   it.aff.slice(0, 2).forEach(a => out.push(AFFI[a.id].f(a.v)));
   return out.join('・') + (it.aff.length > 2 ? `・另 ${it.aff.length - 2} 條` : '');
 }
-function itemCard(it, title) {
-  const b = baseOf(it);
-  let h = `<div class="icard" style="border-color:${RCOL[it.r]}88"><div class="ihead" style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</div><div class="isub">${it.r === 2 ? esc(b.n) + '・' : ''}${RNAME[it.r]}${SLOTN[it.slot]}・物品等級 ${it.ilvl}${typeof gearArt === 'function' && gearArt(it) ? '・' + TIERN[tierOf(it.ilvl)] + '材質' : ''}${title ? '・' + title : ''}</div>`;
-  const base = [];
+/* 物品的一行類型說明：「稀有胸甲・iLv30・精工」 */
+const itemType = it =>
+  `${it.r === 2 ? esc(baseOf(it).n) + '・' : ''}${RNAME[it.r]}${SLOTN[it.slot]}・iLv${it.ilvl}${typeof gearArt === 'function' && gearArt(it) ? '・' + TIERN[tierOf(it.ilvl)] : ''}`;
+/* 0.3.43 跟穿戴中的比：▲ 變好、▼ 變差（設計規範第 9 節） */
+const dlt = (a, b) => {
+  const d = Math.round(a - b);
+  return d ? ` <em class="dlt ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</em>` : '';
+};
+function itemCard(it, title, o = {}) {
+  const b = baseOf(it),
+    c = o.cmp;
+  let h = `<div class="icard" style="border-color:${RCOL[it.r]}88">${o.head === false ? '' : `<div class="ihead" style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</div><div class="isub">${it.r === 2 ? esc(b.n) + '・' : ''}${RNAME[it.r]}${SLOTN[it.slot]}・物品等級 ${it.ilvl}${typeof gearArt === 'function' && gearArt(it) ? '・' + TIERN[tierOf(it.ilvl)] + '材質' : ''}${title ? '・' + title : ''}</div>`}`;
+  const base = [],
+    avg = x => (x && x.phys ? (qPhys(x)[0] + qPhys(x)[1]) / 2 : 0);
   if (it.phys)
     base.push(
-      `${WTAGN[b.t] || ''}${b.th ? '・雙手武器（不能裝副手）' : '・單手武器'}`,
-      `物理傷害 ${qPhys(it)[0]}–${qPhys(it)[1]}${it.q ? `（品質 +${it.q}%）` : ''}`,
-      `暴擊率 ${it.crit}%`
+      esc(`${WTAGN[b.t] || ''}${b.th ? '・雙手' : '・單手'}`),
+      esc(`物理傷害 ${qPhys(it)[0]}–${qPhys(it)[1]}${it.q ? `（品質 +${it.q}%）` : ''}`) +
+        (c ? dlt(avg(it), avg(c)) : ''),
+      esc(`暴擊率 ${it.crit}%`) + (c ? dlt(it.crit, c.crit || 0) : '')
     );
-  if (it.arm) base.push(`護甲 ${qArm(it)}${it.q ? `（品質 +${it.q}%）` : ''}`);
+  if (it.arm)
+    base.push(
+      esc(`護甲 ${qArm(it)}${it.q ? `（品質 +${it.q}%）` : ''}`) + (c ? dlt(qArm(it), c.arm ? qArm(c) : 0) : '')
+    );
   if (hasQ(it) && !it.q) base.push('品質 0%');
-  if (it.imp) base.push(STATN[it.imp[0]](it.imp[1]));
-  if (it.lure) base.push(STATN.lure(it.lure));
-  if (base.length) h += `<div class="ibase">${base.map(esc).join('<br>')}</div>`;
+  if (it.imp) base.push(esc(STATN[it.imp[0]](it.imp[1])));
+  if (it.lure) base.push(esc(STATN.lure(it.lure)));
+  if (base.length) h += `<div class="ibase">${base.join('<br>')}</div>`;
   if (it.leg)
     h += `<div class="iaff">${LEGI[it.leg].lines.map(l => `<div><span style="color:${RCOL[3]}">${esc(l)}</span><small>傳奇</small></div>`).join('')}</div>`;
   if (it.sh)
@@ -203,6 +217,9 @@ function itemCard(it, title) {
       .join('')}</div>`;
   return h + '</div>';
 }
+/* 0.3.44 一瓶藥水回多少（地圖上喝、背包預覽共用；戰鬥另外再乘場地效果） */
+const potVal = (k, st) =>
+  Math.round((k === 'potions' ? st.maxhp * 0.4 : st.maxmp * 0.5) * (st.healMul || 1) * (1 + (st.potPct || 0) / 100));
 const sellVal = it => Math.round((6 + it.ilvl * 3) * [1, 2.5, 6, 10][it.r]);
 function giveItem(it) {
   if (S.inv.length >= 30) {
@@ -1081,7 +1098,12 @@ function openShop(e, merchant) {
     if (!g) return '<p class="sub shint">點上面的商品看詳細資訊。</p>';
     if (!g.it)
       return `<div class="card"><div class="ent"><img class="bigico" src="${g.ic}" alt=""><div class="t" style="flex:1;min-width:0"><b>${g.n}</b><div class="sub">${g.d}・持有 ${g.have()}</div></div></div>
-      <button class="btn pri" data-act="mbtn" data-i="1" ${S.gold < g.p ? 'disabled' : ''}>購買 ${g.p} 金</button></div>`;
+      <div class="buyn">${[1, 10, 100]
+        .map(
+          (n, j) =>
+            `<button class="btn${j ? '' : ' pri'}" data-act="mbtn" data-i="${j ? 1 + goods.length + j : 1}" ${S.gold < g.p * n ? 'disabled' : ''}>×${n}<small class="bnote">${g.p * n} 金</small></button>`
+        )
+        .join('')}</div></div>`;
     const it = g.it,
       sold = S.bought[key(g.i)],
       cur = it.slot === 'ring' ? S.eq.ring1 : S.eq[it.slot];
@@ -1132,6 +1154,14 @@ function openShop(e, merchant) {
       ...goods.map((q, i) => () => {
         sel = sel === i ? null : i;
         sfx('tap');
+        render();
+      }),
+      /* ×10、×100（只給藥水這類消耗品） */
+      ...[10, 100].map(n => () => {
+        if (!g || g.it || S.gold < g.p * n) return;
+        for (let k = 0; k < n; k++) g.buy();
+        S.gold -= g.p * n;
+        sfx('coin');
         render();
       })
     );

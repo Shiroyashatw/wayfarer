@@ -520,7 +520,22 @@ function mpRun(fx, actor) {
   }
   setTimeout(() => MB && MB.actor === actor && (MB.actor = null), tot);
 }
+/* 0.3.44 喝藥水：隨時可以喝、不用掉行動，同一種藥水冷卻 POT_CD 秒（隊長算） */
+function mpDrink(uid, k) {
+  const p = MB && MB.ps.find(q => q.uid === uid);
+  if (!p || !p.alive || potLeft(p, k)) return;
+  const hm = (p.st.healMul || 1) * (MB.spec.noregen ? 0.5 : 1) * (1 + (p.st.potPct || 0) / 100),
+    v = k === 'potion' ? Math.round(p.st.maxhp * 0.4 * hm) : Math.round(p.st.maxmp * 0.5 * hm);
+  if (k === 'potion') p.hp = Math.min(p.st.maxhp, p.hp + v);
+  else p.mp = Math.min(p.st.maxmp, p.mp + v);
+  potStart(p, k);
+  mpPush([
+    { t: 'msg', s: `${p.name} 喝了${k === 'potion' ? '生命' : '魔力'}藥水` },
+    { t: 'heal', who: uid, v, mp: k === 'ether', at: 50 }
+  ]);
+}
 function mpOnAct(uid, k, tok, tg) {
+  if (k === 'potion' || k === 'ether') return mpDrink(uid, k);
   if (!MB || !MB.ready[uid] || tok !== MB.rt[uid]) return;
   if (MB.lock) {
     if (!MB.q.some(a => a.uid === uid)) MB.q.push({ uid, k, tg });
@@ -627,6 +642,9 @@ function mpRoomClear() {
       p.alive = true;
       p.hp = Math.round(p.st.maxhp * 0.2);
     }
+    /* 0.3.44 進下一層：技能與藥水冷卻清空 */
+    p.cd = {};
+    p.cdMax = {};
   }
   MBT = setTimeout(() => {
     if (!MB) return;
@@ -672,7 +690,7 @@ function mpBG() {
 }
 function mpApply(mb, fx) {
   if (mb) {
-    const keep = MB ? { loot: MB.loot, sub: MB.sub, sent: MB.sent, tg: MB.tg } : { loot: [] };
+    const keep = MB ? { loot: MB.loot, sub: MB.sub, sent: MB.sent, tg: MB.tg, queued: MB.queued } : { loot: [] };
     MB = Object.assign(mb, keep);
   }
   /* 0.3.35 各人的剩下時間換成自己裝置的時間；行動條與冷卻在每幀補間（mpLocal） */
@@ -694,6 +712,12 @@ function mpApply(mb, fx) {
   }
   for (const f of fx || []) setTimeout(() => MB && mpFx(f), f.at || 0);
   renderMBHud();
+  /* 0.3.44 輪到你了而且有預選：直接送出 */
+  if (MB.queued && mpMine()) {
+    const q = MB.queued;
+    MB.queued = null;
+    setTimeout(() => MB && mpMy(q, true), 50);
+  }
 }
 /* 播一個事件（跳數字、動畫、音效） */
 function mpFx(f) {
@@ -757,15 +781,29 @@ function mpFx(f) {
   renderMBHud();
 }
 /* 自己的行動：隊長直接算，隊員送給隊長；tg 是自己選的目標 */
-function mpMy(k) {
-  if (!mpMine()) return;
-  const me = MB.ps.find(p => p.uid === CLOUD.uid);
-  if (!me) return;
+function mpMy(k, fromQ) {
+  const me = MB && MB.ps.find(p => p.uid === CLOUD.uid);
+  if (!me || !me.alive) return;
   if (k === 'potion' || k === 'ether') {
     const key = k === 'potion' ? 'potions' : 'ethers';
-    if (!S[key] || (k === 'potion' && me.st.noPotion)) return;
+    if (!S[key] || (k === 'potion' && me.st.noPotion) || potLeft(MBloc, k)) return;
     S[key]--;
-  } else {
+    sfx('heal');
+    /* 冷卻先在自己這邊開始算（隊長的狀態傳回來會蓋過） */
+    potStart(MBloc, k);
+    if (amLeader()) mpDrink(CLOUD.uid, k);
+    else ptSend('act', { uid: CLOUD.uid, k, tok: -1, tg: 0 });
+    return renderMBHud();
+  }
+  /* 0.3.44 預選：還沒輪到你時按的技能先記著，輪到你就自動送出；再按一次取消 */
+  if (!mpMine()) {
+    if (fromQ) return;
+    MB.queued = MB.queued === k ? null : k;
+    sfx('tap');
+    return renderMBHud();
+  }
+  MB.queued = null;
+  {
     const sk = skByKey(k, me.sks || []);
     if (k === 'mines' ? !(me.mines || []).length : !sk || !skReady(me, me, skSt(me.st, sk), sk)) return;
   }
@@ -969,10 +1007,10 @@ function renderMBHud() {
     .join('');
   const sks = (me && me.sks) || mySkills(),
     sk = sks.map((q, i) => q && 's' + i).filter(Boolean),
-    dis = my ? '' : 'disabled',
+    dis = me && me.alive ? '' : 'disabled',
     noPot = me && me.st.noPotion;
   const cb = (label, icon, sub, data, disabled, extra = '') =>
-    `<button class="cb ${extra}" data-act="mpAct" ${data} ${disabled || dis}><img src="${icoSrc(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
+    `<button class="cb ${extra}${MB.queued && data === `data-k="${MB.queued}"` ? ' q' : ''}" data-act="mpAct" ${data} ${disabled || dis}><img src="${icoSrc(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
   const slot = k => {
     const q = sks[+k.slice(1)];
     return cb(
@@ -990,13 +1028,19 @@ function renderMBHud() {
         : `<button class="cb empty" disabled><img src="${iconURL('book')}" alt="">空的技能欄</button>`
     ),
     pot = cb(
-      '生命藥水',
+      '生命藥水' + potMask('potion'),
       'heart',
       noPot ? '無法使用' : '×' + S.potions,
       'data-k="potion"',
-      S.potions && !noPot ? '' : 'disabled'
+      S.potions && !noPot && !potLeft(MBloc, 'potion') ? '' : 'disabled'
     ),
-    eth = cb('魔力藥水', 'ice', '×' + S.ethers, 'data-k="ether"', S.ethers ? '' : 'disabled'),
+    eth = cb(
+      '魔力藥水' + potMask('ether'),
+      'ice',
+      '×' + S.ethers,
+      'data-k="ether"',
+      S.ethers && !potLeft(MBloc, 'ether') ? '' : 'disabled'
+    ),
     run = `<button class="cb run" data-act="mpQuit"><img src="${iconURL('run')}" alt="">撤退<small>離開隊伍</small></button>`,
     mn = me ? (me.mines || []).length : 0;
   $('bcmd').classList.add('six');
@@ -1051,7 +1095,10 @@ function mpLocal() {
     const pl = MB.ps.some(p => p.uid === u.id);
     MBloc.av[u.id] = Math.min(pl ? AV_MAX : AV_MAX * 2, (MBloc.av[u.id] || 0) + u.spd * ATB_K * dt);
   }
-  for (const k in MBloc.cd) if ((MBloc.cd[k] -= dt) <= 0) delete MBloc.cd[k];
+  let done = false;
+  for (const k in MBloc.cd) if ((MBloc.cd[k] -= dt) <= 0) delete MBloc.cd[k], (done = true);
+  /* 0.3.44 冷卻好了（技能、藥水）就重畫按鈕 */
+  if (done) renderMBHud();
 }
 function renderMB(t) {
   mpLocal();

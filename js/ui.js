@@ -6,6 +6,9 @@ function renderHud() {
   const st = stats();
   $('hpb').style.width = (S.hp / st.maxhp) * 100 + '%';
   $('mpb').style.width = (S.mp / st.maxmp) * 100 + '%';
+  /* 0.3.44 條上寫百分比 */
+  $('hpt').textContent = Math.round((S.hp / st.maxhp) * 100) + '%';
+  $('mpt').textContent = Math.round((S.mp / st.maxmp) * 100) + '%';
   $('lvTag').textContent = 'Lv' + S.lv;
   ibarRender();
   const a = $('ava').getContext('2d');
@@ -163,6 +166,18 @@ const KIND = {
 };
 /* 0.3.31 摺疊說明（設計規範：規則、機制預設收起，點了才看） */
 const more = (title, html) => `<details class="more"><summary>${title}</summary><div>${html}</div></details>`;
+/* 0.3.43 會記住開關的摺疊（裡面有按鈕、按了會重畫面板的用這個，不然一按就收起來） */
+const OPEN = new Set();
+const moreK = (k, title, html) =>
+  `<details class="more" data-keep="${k}"${OPEN.has(k) ? ' open' : ''}><summary>${title}</summary><div>${html}</div></details>`;
+document.addEventListener(
+  'toggle',
+  e => {
+    const k = e.target.dataset && e.target.dataset.keep;
+    if (k) e.target.open ? OPEN.add(k) : OPEN.delete(k);
+  },
+  true
+);
 function bar(label, v, max, col) {
   return `<div style="display:grid;gap:3px"><div class="rowx" style="font-size:12px;color:var(--dim)"><span>${label}</span><span>${Math.ceil(v)} / ${max}</span></div><div class="mbar" style="height:8px"><i style="width:${Math.max(0, Math.min(100, (v / max) * 100))}%;background:${col}"></i></div></div>`;
 }
@@ -202,16 +217,89 @@ function entIcon(e) {
 }
 const fmt1 = v => Math.round(v);
 function curRow() {
-  return `<div class="curs">${CUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>`;
+  return `<div class="chips">${CUR.map(c => `<span class="chip${S.cur[c.id] ? '' : ' zero'}" aria-label="${c.n}"><img src="${curIcon(c.id)}" alt=""><b>${S.cur[c.id] || 0}</b></span>`).join('')}</div>`;
 }
+/* 0.3.44 藥水列：目前的量＋喝了會回到哪裡（閃爍的那段），按右邊直接喝 */
+function potRow(k) {
+  const st = stats(),
+    hp = k === 'potions',
+    cur = hp ? S.hp : S.mp,
+    max = hp ? st.maxhp : st.maxmp,
+    v = potVal(k, st),
+    to = Math.min(max, cur + v),
+    pc = x => Math.round((x / max) * 100),
+    full = cur >= max;
+  return `<div class="potr"><img src="${pixURL(hp ? 'ic_potion' : 'ic_ether')}" alt=""><div class="pbar ${hp ? 'php' : 'pmp'}"><i class="now" style="width:${pc(cur)}%"></i><i class="gain" style="left:${pc(cur)}%;width:${pc(to) - pc(cur)}%"></i><em>${pc(cur)}%${full ? '' : ` → ${pc(to)}%`}</em></div><button class="btn sm" data-act="use" data-k="${k}" ${S[k] && !full ? '' : 'disabled'}>${full ? '已滿' : `喝 ×${S[k]}`}</button></div>`;
+}
+/* 0.3.43 通貨的名稱與效果（背包、裝備詳情的摺疊說明） */
+const curHelp = () =>
+  more(
+    '通貨說明',
+    CUR.map(c => `<p><img class="cico" src="${curIcon(c.id)}" alt=""><b>${c.n}</b>：${c.d}</p>`).join('')
+  );
 /* 背包上方分頁：裝備與各種地城材料 */
-const bagTabs = () =>
-  `<div class="seg bagtabs">${[['eq', '裝備', () => S.inv.length], ...MAT_TABS]
+/* 0.3.44 特殊倉庫（像 PoE 的通貨、碎片倉庫頁）：有東西的才出現，點了才進去看 */
+const MAT_IC = {
+  insc: 'book',
+  tabs: 'rune',
+  frags: 'skull',
+  scroll: 'book',
+  ess: 'skull',
+  demon: 'eye',
+  jewels: 'star'
+};
+const stashRow = () => {
+  const t = MAT_TABS.filter(([, , c]) => c());
+  return t.length
+    ? `<h3>倉庫</h3><div class="chips st">${t.map(([k, n, c]) => `<button class="chip stash" data-act="matTab" data-k="${k}"><img src="${artIconURL('mat_' + k) || iconURL(MAT_IC[k] || 'bag')}" alt=""><span>${n}</span><b>${c()}</b></button>`).join('')}</div>`
+    : '';
+};
+/* 0.3.44 跟穿戴中的比：把這件換上去重算屬性（傷害、防禦），回傳差多少（比例）；戒指取比較好的那一格 */
+function eqPower(st) {
+  const hit = Math.max(1, (st.physLo + st.physHi) / 2 + st.fire + st.cold + st.light + st.chaos),
+    cf = 1 + (st.crit / 100) * (st.critMulti / 100 - 1),
+    rs = Math.max(0, (st.res.fire + st.res.cold + st.res.light + st.res.chaos) / 4);
+  return {
+    dmg: hit * cf * (st.spellMul || 1) * (st.speed / 10),
+    def: (st.maxhp / (1 - (st.armor / (st.armor + 400)) * 0.6) / (1 - rs / 100)) * (1 + (st.dodge || 0) / 100)
+  };
+}
+function eqCmp(it) {
+  const base = eqPower(stats());
+  let best = null;
+  for (const sl of it.slot === 'ring' ? ['ring1', 'ring2'] : [it.slot]) {
+    const old = S.eq[sl];
+    let st;
+    S.eq[sl] = it;
+    try {
+      st = stats();
+    } finally {
+      S.eq[sl] = old;
+    }
+    const p = eqPower(st),
+      r = { sl, dmg: p.dmg / base.dmg - 1, def: p.def / base.def - 1 };
+    r.s = r.dmg + r.def * 0.7;
+    if (!best || r.s > best.s) best = r;
+  }
+  return best;
+}
+/* 格子上的角標：▲ 綠（比較強）、▼ 紅（比較弱），差不到 2% 不標 */
+const cmpBadge = it => {
+  const c = eqCmp(it);
+  return c.s > 0.02 ? '<i class="badge up">▲</i>' : c.s < -0.02 ? '<i class="badge dn">▼</i>' : '';
+};
+/* 「傷害 +12%・防禦 -3%」 */
+const cmpTxt = c =>
+  [
+    ['傷害', c.dmg],
+    ['防禦', c.def]
+  ]
+    .filter(([, v]) => Math.abs(v) >= 0.005)
     .map(
-      ([k, n, c]) =>
-        `<button data-act="matTab" data-k="${k}" aria-pressed="${SEL.bag === k}">${n}<b>${c()}</b></button>`
+      ([n, v]) =>
+        `<span class="${v > 0 ? 'c-good' : 'c-bad'}">${n} ${v > 0 ? '▲' : '▼'}${Math.round(Math.abs(v) * 100)}%</span>`
     )
-    .join('')}</div>`;
+    .join('・') || '<span class="c-dim">差不多</span>';
 const curRowG = () =>
   `<div class="curs">${GCUR.map(c => `<span title="${c.d}"><img class="cico lg" src="${curIcon(c.id)}" alt=""><span>${c.n}<b>${S.cur[c.id] || 0}</b></span></span>`).join('')}</div>`;
 /* 技能說明：類別、傷害、目標形式與特殊效果；0.3.18 特殊效果的關鍵字上色（kw） */
@@ -401,8 +489,10 @@ function skwOk(k) {
   if (f === 'none') return !q.w && !q.oh;
   return q.w === f || (q.w === 'melee' && f !== 'bow');
 }
-const skfRows = () =>
-  `<div class="seg skf">${SKF.map(([k, n]) => `<button data-act="skFilter" data-k="${k}" aria-pressed="${(SEL.skf || 'all') === k}">${n}</button>`).join('')}</div><div class="ptagf">${SKW.map(([k, n]) => `<button data-act="skWep" data-k="${k}" aria-pressed="${(SEL.skw || 'all') === k}">${n}</button>`).join('')}</div>`;
+/* 0.3.44 篩選改成兩個下拉（類型、武器），技能頁與商店共用 */
+const skfSel = () =>
+  `<span class="sels"><select class="sel" data-chg="skFilter" aria-label="類型">${SKF.map(([k, n]) => `<option value="${k}"${(SEL.skf || 'all') === k ? ' selected' : ''}>${n}</option>`).join('')}</select><select class="sel" data-chg="skWep" aria-label="武器">${SKW.map(([k, n]) => `<option value="${k}"${(SEL.skw || 'all') === k ? ' selected' : ''}>${n}</option>`).join('')}</select></span>`;
+const skfRows = () => `<div class="selrow">${skfSel()}</div>`;
 /* 0.3.36 輔助寶石商店的分類 */
 const SUPF = [
   ['all', '全部'],
@@ -519,7 +609,8 @@ function sheetParent() {
   if (sheetName === 'item') return selSlot ? ['slot', SLOTN[selSlot]] : ['bag'];
   if (sheetName === 'slot') return ['bag'];
   if (sheetName === 'gem') return ['skills'];
-  if (sheetName === 'pbrk') return ['pact'];
+  if (sheetName === 'pdet') return ['pact'];
+  if (sheetName === 'pbrk') return pactOf(SEL.pdet) ? ['pdet', PACTI[pactOf(SEL.pdet).k].n] : ['pact'];
   if (sheetName === 'seal') return ['hunt'];
   if (sheetName === 'bag' && (SEL.bag !== 'eq' || SEL.sell)) return ['bagHome'];
   return null;
@@ -560,53 +651,43 @@ function renderSheet() {
       .join('')}</div><button class="btn" data-act="sheet" data-s="skills">管理技能石</button>
 `;
   } else if (sheetName === 'skills') {
+    /* 0.3.44 設計規範：技能欄、光環欄、技能石都是小格子（點了看詳情）；篩選兩個下拉；通貨小格子；說明收起來 */
     const eqd = new Set(S.sk),
-      list = [...S.gems].sort((a, b) => eqd.has(b.id) - eqd.has(a.id) || b.lv - a.lv || a.k.localeCompare(b.k));
-    html = `<div class="gslots g6">${S.sk
+      list = [...S.gems].sort((a, b) => eqd.has(b.id) - eqd.has(a.id) || b.lv - a.lv || a.k.localeCompare(b.k)),
+      shown = list.filter(g => skfOk(g) && skwOk(g.k)),
+      tile = (g, noEq) =>
+        `<button class="gpick" data-act="gem" data-id="${g.id}" aria-label="${SKILLS[g.k].name}">${gemCell(g, noEq)}</button>`,
+      empty = n => `<div class="gpick"><span class="gtile emp"><small>${n}</small></span></div>`,
+      ns = [...new Set((S.sups || []).map(x => x.k))].map(k => SUPGI[k]).filter(Boolean);
+    html = `<h3>技能欄</h3><div class="sgrid6">${S.sk
       .map((id, i) => {
         const g = gemOf(id);
         return g
-          ? `<button class="gslot" data-act="gem" data-id="${g.id}">${gemCell(g, true)}<span>${SKILLS[g.k].name}</span>${skTagHTML(gemSkill(g), 2, 1)}${wOk(st, SKILLS[g.k]) ? '' : `<i class="skt eff">需要${WTAGN[SKILLS[g.k].w]}</i>`}</button>`
-          : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>第 ${i + 1} 格</span></div>`;
+          ? tile(g, true).replace('</button>', `${wOk(st, SKILLS[g.k]) ? '' : '<i class="gwarn">武器</i>'}</button>`)
+          : empty(i + 1);
       })
       .join('')}</div>
-    <h3>光環欄<small class="sub">・精魄 ${st.spiritUsed}/${st.spirit}</small></h3><div class="gslots">${Array.from(
+    <h3>光環<small class="sub">・精魄 ${st.spiritUsed}/${st.spirit}</small></h3><div class="sgrid6">${Array.from(
       { length: AURA_MAX },
       (_, i) => {
         const g = gemOf((S.aura || [])[i]),
           on = g && auraOn(st.spirit).some(q => q.gid === g.id);
         return g
-          ? `<button class="gslot" data-act="gem" data-id="${g.id}">${gemCell(g, true)}<span>${SKILLS[g.k].name}</span><i class="skt ${on ? 'buf' : 'eff'}">${on ? `${auraCost(gemSkill(g))} 精魄` : '精魄不夠'}</i></button>`
-          : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>光環 ${i + 1}</span></div>`;
+          ? tile(g, true).replace('</button>', on ? '</button>' : '<i class="gwarn">精魄</i></button>')
+          : empty('光環');
       }
     ).join('')}</div>
-    <p class="sub" style="margin:0">技能石在城鎮的「技能石商店」買，用${curDot('soul')}靈魂（${S.cur.soul || 0}）升級。</p>
-    ${more('技能石、輔助寶石與光環', '<p>另外有固定的普通攻擊。技能石有 2～5 個插槽，插上輔助寶石改變技能怎麼運作；品質用寶石稜鏡提高（野外機制掉落）。</p><p>商店依 T 級解鎖更高階的技能石；靈魂從擊殺怪物得到。</p><p>光環要預留精魄才會生效，精魄來自天賦的魔力、法術節點與契靈。</p>')}
-    ${curRowG()}
-    <h3>技能石（${S.gems.length}）</h3>${skfRows()}
-    <div class="ggrid">${
-      list
-        .filter(g => skfOk(g) && skwOk(g.k))
-        .map(
-          g =>
-            `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span>${skTagHTML(SKILLS[g.k], 2, 1)}</button>`
-        )
-        .join('') || `<p class="sub">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石，到城鎮的技能石商店買吧'}</p>`
-    }</div>
-    <h3>輔助寶石（${(S.sups || []).length} 顆沒插）</h3><div class="card">${
-      [...new Set((S.sups || []).map(x => x.k))]
-        .map(k => SUPGI[k])
-        .filter(Boolean)
-        .map(
-          sp => `<div class="rowx"><div class="t">${supLine(sp)}</div><small class="sub">×${supN(sp.k)}</small></div>`
-        )
-        .join('') ||
-      '<p class="sub">還沒有輔助寶石：到城鎮的技能石商店買（切到「輔助寶石」），或從菁英、首領身上掉落。</p>'
-    }</div>`;
+    <div class="baghd"><h3>技能石 ${S.gems.length}</h3>${skfSel()}</div>
+    ${shown.length ? `<div class="sgrid6">${shown.map(g => tile(g)).join('')}</div>` : `<p class="empty">${S.gems.length ? '沒有符合的技能石' : '還沒有技能石，到城鎮的技能石商店買吧'}</p>`}
+    <h3>技能石通貨</h3><div class="chips">${GCUR.map(c => `<span class="chip${S.cur[c.id] ? '' : ' zero'}" aria-label="${c.n}"><img src="${curIcon(c.id)}" alt=""><b>${S.cur[c.id] || 0}</b></span>`).join('')}</div>
+    ${ns.length ? moreK('sups', `輔助寶石 ${(S.sups || []).length} 顆沒插`, ns.map(sp => `<div class="rowx"><div class="t">${supLine(sp)}</div><small class="sub">×${supN(sp.k)}</small></div>`).join('')) : ''}
+    ${more('技能石、輔助寶石與光環', `<p>技能石在城鎮的「技能石商店」買，用靈魂（${S.cur.soul || 0}）升級；另外有固定的普通攻擊。</p><p>技能石有 2～5 個插槽，插上輔助寶石改變技能怎麼運作；品質用寶石稜鏡提高。</p><p>光環要預留精魄才會生效，精魄來自天賦的魔力、法術節點與契靈。</p>${GCUR.map(c => `<p><img class="cico" src="${curIcon(c.id)}" alt=""><b>${c.n}</b>：${c.d}</p>`).join('')}`)}`;
   } else if (sheetName === 'pbrk') {
     html = pactBrkHTML();
   } else if (sheetName === 'pact') {
     html = pactHTML();
+  } else if (sheetName === 'pdet') {
+    html = pactDetHTML();
   } else if (sheetName === 'gemshop') {
     html = gemShopHTML();
   } else if (sheetName === 'gem') {
@@ -615,55 +696,89 @@ function renderSheet() {
       openSheet('skills');
       return;
     }
+    /* 0.3.44 設計規範：標題 → 動作（升級、技能欄）→ 輔助插槽（一列一顆）→ 能用的通貨；品質、說明、分解收起來 */
     const q = gemSkill(g),
       at = S.sk.indexOf(g.id),
       blk = gemLvBlock(g),
       n = g.sock || 2,
-      qf = gemQFx(SKILLS[g.k]);
-    html = `<div class="card"><div class="rowx" style="justify-content:flex-start;gap:14px">${gemCell(g)}<div class="t"><b style="font-size:17px">${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span>${q.plus ? ` <span style="color:var(--gold)">+${q.plus}（契靈）</span>` : ''}</b>${skTagHTML(q)}<small>${gemDesc(q, st)}・消耗 ${costTxt(st, q) || '無'}${at >= 0 ? `・裝在第 ${at + 1} 格` : ''}${g.cor ? '・<span style="color:#e5484d">已腐化</span>' : ''}</small></div></div></div>
-    <h3>輔助插槽 ${(g.sp || []).length}/${n}</h3><div class="card">${[
-      ...(g.sp || []).map(
-        x =>
-          `<div class="rowx"><div class="t">${SUPGI[x.k] ? supLine(SUPGI[x.k]) : x.k}</div><button class="btn sm" data-act="supOut" data-u="${x.u}">拆下</button></div>`
-      ),
+      qf = gemQFx(SKILLS[g.k]),
+      aura = SKILLS[g.k].kind === 'aura',
+      okc = ['eng', 'engX', 'engD', 'engC', 'prism', 'vaal']
+        .map(id => GCURI[id])
+        .filter(cu => gemCraftable(g, cu.id) && S.cur[cu.id] > 0);
+    html = `<div class="ihd">${gemCell(g)}<div><b>${q.name} Lv${g.lv}<span class="sub">/${GEM_MAX}</span>${q.plus ? ` <span class="c-gold">+${q.plus}</span>` : ''}</b>${skTagHTML(q)}</div></div>
+    <p class="gdesc">${gemDesc(q, st)}・消耗 ${costTxt(st, q) || '無'}${g.cor ? '・<span class="c-bad">已腐化</span>' : ''}</p>
+    <div class="btns iact2"><button class="btn pri" data-act="gemLv" ${blk ? 'disabled' : ''}>${g.lv < GEM_MAX ? '升級' : '已滿級'}<small class="bnote">${blk || `${soulNeed(g.lv)} 靈魂`}</small></button>${
+      aura
+        ? (S.aura || []).includes(g.id)
+          ? '<button class="btn" data-act="auraOff">關閉光環</button>'
+          : `<button class="btn" data-act="auraOn" ${auraBlock(g, st) ? 'disabled' : ''}>開啟光環<small class="bnote">${auraBlock(g, st) || `${auraCost(q)} 精魄`}</small></button>`
+        : at >= 0
+          ? '<button class="btn" data-act="gemOff">卸下</button>'
+          : ''
+    }</div>
+    ${
+      aura
+        ? ''
+        : `<h3>放到技能欄</h3><div class="sgrid6">${S.sk
+            .map((id, i) => {
+              const o = gemOf(id);
+              return `<button class="slot-g${id === g.id ? ' on' : ''}" data-act="gemEquip" data-i="${i}" ${id === g.id ? 'disabled' : ''} aria-label="裝到第 ${i + 1} 格"><img src="${o ? skIcon(o.k, SKILLS[o.k].icon) : iconURL('book')}" alt=""${o ? '' : ' style="opacity:.25"'}><i class="badge lk">${i + 1}</i></button>`;
+            })
+            .join('')}</div>`
+    }
+    <h3>輔助插槽 ${(g.sp || []).length}/${n}</h3><div class="list">${[
+      ...(g.sp || []).map(x => {
+        const sp = SUPGI[x.k];
+        return `<div class="srow2"><span class="t">${sp ? `<b>${supIcon(sp)}${sp.n}</b><small>${sp.d}</small>` : x.k}</span><button class="btn sm" data-act="supOut" data-u="${x.u}">拆下</button></div>`;
+      }),
       ...Array.from(
         { length: Math.max(0, n - (g.sp || []).length) },
         () =>
-          `<div class="rowx"><div class="t"><small class="sub">◇ 空的插槽</small></div><button class="btn sm" data-act="supPick">插入輔助寶石</button></div>`
+          `<div class="srow2 emp"><span class="t"><small>◇ 空的插槽</small></span><button class="btn sm buy" data-act="supPick">插入</button></div>`
       )
     ].join('')}</div>
-    <h3>品質 ${g.q || 0}%<small class="sub">・最多 ${Q_GEM}%（腐化可以超過）</small></h3><div class="card"><div class="rowx"><div class="t"><b>${qf.t(g.q || 0)}</b><small>每 1% 品質：${qf.t(1)}・寶石稜鏡一次 +${prismAdd(g)}%（越高加越少）</small></div></div></div>
-    <h3>技能石通貨</h3><div class="crafts">${['eng', 'engX', 'engD', 'engC', 'prism', 'vaal']
-      .map(id => GCURI[id])
-      .map(
-        cu =>
-          `<button class="btn sm" data-act="gemCraft" data-c="${cu.id}" ${gemCraftable(g, cu.id) && S.cur[cu.id] > 0 ? '' : 'disabled'}>${curDot(cu.id)}${cu.n} <b>${S.cur[cu.id] || 0}</b><small>${cu.d}</small></button>`
-      )
-      .join('')}</div>
-    <h3>升級</h3><div class="card"><div class="rowx"><div class="t"><b>${g.lv < GEM_MAX ? `Lv${g.lv} → Lv${g.lv + 1}` : '已滿級'}</b><small>${g.lv < GEM_MAX ? `需要 ${soulNeed(g.lv)} 靈魂（你有 ${S.cur.soul || 0}）・技能石等級不能超過角色等級` : ''}</small></div><button class="btn pri sm" data-act="gemLv" ${blk ? 'disabled' : ''}>${blk || '升級'}</button></div></div>
-    ${
-      SKILLS[g.k].kind === 'aura'
-        ? `<h3>光環欄<small class="sub">・精魄 ${st.spiritUsed}/${st.spirit}</small></h3><div class="btns">${
-            (S.aura || []).includes(g.id)
-              ? '<button class="btn sm" data-act="auraOff">關閉光環</button>'
-              : `<button class="btn sm pri" data-act="auraOn" ${auraBlock(g, st) ? 'disabled' : ''}>${auraBlock(g, st) || `開啟光環（預留 ${auraCost(q)} 精魄）`}</button>`
-          }</div>`
-        : `<h3>技能欄</h3><div class="btns">${S.sk.map((id, i) => `<button class="btn sm" data-act="gemEquip" data-i="${i}" ${id === g.id ? 'disabled' : ''}>${id === g.id ? '裝在' : '裝到'}第 ${i + 1} 格${id && id !== g.id && gemOf(id) ? `<small>（換下${SKILLS[gemOf(id).k].name}）</small>` : ''}</button>`).join('')}${at >= 0 ? '<button class="btn sm" data-act="gemOff">卸下</button>' : ''}</div>`
-    }
-    <div class="btns"><button class="btn" data-act="gemBreak">分解（退回 ${gemSoulBack(g)} 靈魂）</button><button class="btn" data-act="sheet" data-s="skills">返回技能</button></div>`;
+    <h3>技能石通貨</h3>${okc.length ? `<div class="crafts2">${okc.map(cu => `<button class="chip" data-act="gemCraft" data-c="${cu.id}"><img src="${curIcon(cu.id)}" alt=""><span>${cu.n}</span><b>${S.cur[cu.id]}</b></button>`).join('')}</div>` : '<p class="sub">現在沒有能用的技能石通貨</p>'}
+    ${more(`品質 ${g.q || 0}%・${qf.t(g.q || 0)}`, `<p>每 1% 品質：${qf.t(1)}。最多 ${Q_GEM}%（腐化可以超過），寶石稜鏡一次 +${prismAdd(g)}%（越高加越少）。</p>`)}
+    ${more(
+      '技能石通貨說明',
+      ['eng', 'engX', 'engD', 'engC', 'prism', 'vaal']
+        .map(id => GCURI[id])
+        .map(
+          cu =>
+            `<p><img class="cico" src="${curIcon(cu.id)}" alt=""><b>${cu.n}</b>（${S.cur[cu.id] || 0}）：${cu.d}</p>`
+        )
+        .join('')
+    )}
+    ${more('分解', `<p>分解這顆技能石，退回 ${gemSoulBack(g)} 靈魂（插著的輔助寶石會退回背包）。</p><button class="btn" data-act="gemBreak">分解</button>`)}`;
   } else if (sheetName === 'bag' && SEL.bag !== 'eq') {
-    html = bagTabs() + matsHTML(SEL.bag);
+    html = matsHTML(SEL.bag);
   } else if (sheetName === 'bag' && SEL.sell) {
     html = bagListHTML();
   } else if (sheetName === 'bag') {
-    const cell = (sl, area) => {
+    /* 0.3.43 設計規範第 11 節：裝備欄兩排 × 5、背包格子、通貨與藥水小格子 */
+    const cell = sl => {
       const it = S.eq[sl];
-      return `<button class="doll-s" style="grid-area:${area};${it ? `border-color:${RCOL[it.r]};box-shadow:0 0 10px ${RCOL[it.r]}44 inset` : ''}" data-act="eqslot" data-s="${sl}" aria-label="${SLOTN[sl]}"><img src="${slotIcon(it, sl)}" alt=""><small>${it ? esc(itemTitle(it)) : SLOTN[sl]}</small></button>`;
+      return `<button class="slot-g ${it ? 'r' + it.r : 'emp'}${slotFramed(it) ? ' fill' : ''}" data-act="eqslot" data-s="${sl}" aria-label="${SLOTN[sl]}${it ? '：' + esc(itemTitle(it)) : ''}"><img src="${slotIcon(it, sl)}" alt=""></button>`;
     };
-    html = `${bagTabs()}<div class="doll"><canvas id="dollHero" width="18" height="18"></canvas>${cell('weapon', 'w')}${cell('helm', 'h')}${cell('amulet', 'a')}${cell('offhand', 'o')}${cell('ring1', 'r1')}${cell('chest', 'c')}${cell('ring2', 'r2')}${cell('gloves', 'g')}${cell('belt', 'bt')}${cell('boots', 'b')}</div>
-    <h3>通貨</h3>${curRow()}
-    <h3>消耗品</h3><div class="card"><div class="rowx"><div class="t"><b>生命藥水 ×${S.potions}</b></div><button class="btn sm" data-act="use" data-k="potions" ${S.potions ? '' : 'disabled'}>使用</button></div><div class="rowx"><div class="t"><b>魔力藥水 ×${S.ethers}</b></div><button class="btn sm" data-act="use" data-k="ethers" ${S.ethers ? '' : 'disabled'}>使用</button></div></div>
-    ${bagListHTML()}`;
+    /* 0.3.44 裝備欄照人形排（頭上、手邊、腳下），格子小一點；材料改成下面的「倉庫」格子 */
+    html = `<div class="doll2"><canvas id="dollHero" width="18" height="18"></canvas>${[
+      ['helm', 'h'],
+      ['amulet', 'a'],
+      ['weapon', 'w'],
+      ['ring1', 'r1'],
+      ['chest', 'c'],
+      ['ring2', 'r2'],
+      ['offhand', 'o'],
+      ['gloves', 'g'],
+      ['belt', 'bt'],
+      ['boots', 'b']
+    ]
+      .map(([sl, ar]) => cell(sl).replace('<button ', `<button style="grid-area:${ar}" `))
+      .join('')}</div>
+    ${bagListHTML()}
+    <h3>藥水</h3>${potRow('potions')}${potRow('ethers')}
+    <h3>通貨</h3>${curRow()}${curHelp()}${stashRow()}`;
   } else if (sheetName === 'slot') {
     const cur = S.eq[selSlot],
       cands = S.inv
@@ -671,7 +786,7 @@ function renderSheet() {
         .filter(o => fitsSlot(o.it, selSlot))
         .sort((a, b) => b.it.r - a.it.r || b.it.ilvl - a.it.ilvl);
     html = `${cur ? `${itemCard(cur, '穿戴中')}<div class="btns" style="margin-top:-4px"><button class="btn sm pri" data-act="eqdetail" data-s="${selSlot}">改造</button><button class="btn sm" data-act="unequip" data-s="${selSlot}">卸下</button></div>` : `<p class="sub">${SLOTN[selSlot]}目前是空的。</p>`}
-    <h3>可以裝備 ${cands.length}</h3>${cands.length ? `<div class="list">${cands.map(({ it, i }) => `<div class="srow"><button class="irow" data-act="pick" data-i="${i}" data-from="slot" style="border-left-color:${RCOL[it.r]}"><img src="${slotIcon(it)}" alt=""><span><b>${itemName(it)}</b><small>${it.slot === 'offhand' ? esc(baseOf(it).n) + '・' : ''}iLv${it.ilvl}・${esc(itemSum(it))}</small></span></button><button class="btn sm" data-act="equipTo" data-i="${i}" data-s="${selSlot}">裝備</button></div>`).join('')}</div>` : `<p class="sub">背包裡沒有可以裝在這個位置的裝備。</p>`}
+    <h3>可以裝備 ${cands.length}</h3>${cands.length ? `<div class="list">${cands.map(({ it, i }) => `<div class="srow"><button class="irow" data-act="pick" data-i="${i}" data-from="slot" style="border-left-color:${RCOL[it.r]}"><img src="${slotIcon(it)}" alt=""><span><b>${itemName(it)}</b><small>${cmpTxt(eqCmp(it))}・iLv${it.ilvl}</small></span></button><button class="btn sm" data-act="equipTo" data-i="${i}" data-s="${selSlot}">裝備</button></div>`).join('')}</div>` : `<p class="sub">背包裡沒有可以裝在這個位置的裝備。</p>`}
     <div class="btns"><button class="btn" data-act="sheet" data-s="bag">返回背包</button></div>`;
   } else if (sheetName === 'item') {
     const it = selItem && (selItem.eq ? S.eq[selItem.eq] : S.inv[selItem.i]);
@@ -680,11 +795,17 @@ function renderSheet() {
       return;
     }
     const tgt = it.slot === 'ring' ? (selItem.eq ? null : S.eq.ring1 ? S.eq.ring1 : null) : S.eq[it.slot];
-    html = `<div class="ent"><img class="bigico" src="${slotIcon(it)}" alt=""><div class="sub">${selItem.eq ? '穿戴中' : '背包'}・可以用通貨改造</div></div>${itemCard(it, selItem.eq ? '穿戴中' : '')}${!selItem.eq && tgt ? itemCard(tgt, '目前穿戴') : ''}
-    <h3>製作</h3><div class="crafts">${CUR.map(cu => `<button class="btn sm" data-act="craft" data-c="${cu.id}" ${craftable(it, cu.id) && S.cur[cu.id] > 0 ? '' : 'disabled'}>${curDot(cu.id)}${cu.n} <b>${S.cur[cu.id] || 0}</b><small>${cu.d}</small></button>`).join('')}</div>
-    ${undeadCraftHTML(it)}
-    <div class="btns">${selItem.eq ? `<button class="btn" data-act="unequip" data-s="${selItem.eq}">卸下</button>` : it.slot === 'ring' ? `<button class="btn pri" data-act="equip" data-s="ring1">裝在戒指 1</button><button class="btn" data-act="equip" data-s="ring2">裝在戒指 2</button>` : `<button class="btn pri" data-act="equip" data-s="${it.slot}">裝備</button>`}
-    ${selItem.eq ? '' : `<button class="btn" data-act="lock">${it.lock ? '解鎖' : '上鎖'}</button><button class="btn" data-act="sell" ${canSell() && !it.lock ? '' : 'disabled'}>${it.lock ? '已上鎖' : canSell() ? `賣出 ${sellVal(it)} 金` : '城鎮或據點才能賣'}</button>`}${selSlot ? `<button class="btn" data-act="eqslot" data-s="${selSlot}">返回${SLOTN[selSlot]}</button>` : `<button class="btn" data-act="sheet" data-s="bag">返回背包</button>`}</div>`;
+    /* 0.3.43 設計規範第 11 節：標題列 → 動作 → 數值（▲▼ 比較）→ 能用的通貨；比較、亡靈製作、通貨說明收起來 */
+    const ok = CUR.filter(cu => craftable(it, cu.id) && S.cur[cu.id] > 0),
+      no = CUR.length - ok.length,
+      uc = undeadCraftHTML(it);
+    html = `<div class="ihd"><img class="bigico${slotFramed(it) ? ' fill' : ''}" src="${slotIcon(it)}" alt=""><div><b style="color:${RCOL[it.r]}">${esc(itemTitle(it))}</b><small>${itemType(it)}${selItem.eq ? '・穿戴中' : ''}${it.lock ? '・已上鎖' : ''}</small></div></div>
+    <div class="btns iact">${selItem.eq ? `<button class="btn" data-act="unequip" data-s="${selItem.eq}">卸下</button>` : it.slot === 'ring' ? `<button class="btn pri" data-act="equip" data-s="ring1">戒指 1</button><button class="btn" data-act="equip" data-s="ring2">戒指 2</button>` : `<button class="btn pri" data-act="equip" data-s="${it.slot}">裝備</button>`}${selItem.eq ? '' : `<button class="btn" data-act="sell" ${canSell() && !it.lock ? '' : 'disabled'}>${it.lock ? '已上鎖' : `賣 ${sellVal(it)} 金`}${canSell() || it.lock ? '' : '<small class="bnote">城鎮才能賣</small>'}</button><button class="btn" data-act="lock" aria-pressed="${!!it.lock}">${it.lock ? '解鎖' : '上鎖'}</button>`}</div>
+    ${selItem.eq ? '' : `<p class="cmpl">換上後：${cmpTxt(eqCmp(it))}</p>`}${itemCard(it, '', { head: false, cmp: !selItem.eq && tgt })}
+    ${!selItem.eq && tgt ? more(`比較：穿戴中的${esc(itemTitle(tgt))}`, itemCard(tgt, '目前穿戴')) : ''}
+    <h3>製作</h3>${ok.length ? `<div class="crafts2">${ok.map(cu => `<button class="chip" data-act="craft" data-c="${cu.id}"><img src="${curIcon(cu.id)}" alt=""><span>${cu.n}</span><b>${S.cur[cu.id]}</b></button>`).join('')}</div>` : ''}
+    <p class="sub">${no ? `其他 ${no} 種現在不能用` : ''}</p>${curHelp()}
+    ${uc ? moreK('uc', `亡靈製作・屍化 ${it.sh || 0}/100`, uc) : ''}`;
   } else if (sheetName === 'base') {
     html = hideoutHTML();
   } else if (sheetName === 'stele') {
@@ -793,19 +914,21 @@ const sellSel = () => S.inv.filter(it => SEL.sell && SEL.sell.has(it.id) && !it.
 /* 背包清單：一般模式點開物品；批量賣出模式點一下勾選 */
 function bagListHTML() {
   const head = `<div class="baghd"><h3>背包 ${S.inv.length}/30</h3>${S.inv.length ? `<button class="btn sm${SEL.sell ? ' pri' : ''}" data-act="sellMode">${SEL.sell ? '完成' : '批量賣出'}</button>` : ''}</div>`;
-  if (!S.inv.length) return head + '<p class="sub">背包是空的。</p>';
+  if (!S.inv.length) return head + '<p class="empty">背包是空的：打怪、開寶箱、地城尾王都會掉裝備。</p>';
+  /* 0.3.43 格子：框色 = 稀有度，角標 ▲ 可能比穿戴的好、鎖、批量賣出的勾 */
   const row = (it, i) => {
     const on = SEL.sell && SEL.sell.has(it.id) && !it.lock;
-    return `<button class="irow${on ? ' sel' : ''}${it.lock ? ' locked' : ''}" data-act="${SEL.sell ? 'sellPick' : 'pick'}" data-i="${i}" style="border-left-color:${RCOL[it.r]}">${SEL.sell ? `<i class="ck">${it.lock ? '鎖' : on ? '✓' : ''}</i>` : ''}<img src="${slotIcon(it)}" alt=""><span><b>${itemName(it)}${it.lock && !SEL.sell ? ' <em class="lk">鎖</em>' : ''}</b><small>${SLOTN[it.slot]}・iLv${it.ilvl}・${esc(itemSum(it))}</small></span>${SEL.sell ? `<em class="pr">${sellVal(it)}</em>` : ''}</button>`;
+    return `<button class="slot-g r${it.r}${slotFramed(it) ? ' fill' : ''}${on ? ' sel' : ''}${it.lock ? ' locked' : ''}" data-act="${SEL.sell ? 'sellPick' : 'pick'}" data-i="${i}" aria-label="${esc(itemTitle(it))}"><img src="${slotIcon(it)}" alt="">${SEL.sell && on ? '<i class="badge ck">✓</i>' : !SEL.sell ? cmpBadge(it) : ''}${it.lock ? '<i class="badge lk">鎖</i>' : ''}</button>`;
   };
-  if (!SEL.sell) return head + `<div class="list">${S.inv.map(row).join('')}</div>`;
+  const grid = `<div class="bagg">${S.inv.map(row).join('')}</div>`;
+  if (!SEL.sell) return head + grid;
   const sel = sellSel(),
     gold = sel.reduce((n, it) => n + sellVal(it), 0),
     ok = canSell(),
     q = (k, n) => `<button class="btn sm" data-act="sellQuick" data-k="${k}">${n}</button>`;
   return `${head}<div class="sellbar">${q('r0', '普通')}${q('r1', '魔法')}${q('r2', '稀有')}${q('worse', '比穿戴的差')}${q('all', '全選')}${q('none', '清除')}</div>
-    <p class="sub">${ok ? '點裝備勾選；上鎖的裝備不會被選到（在裝備詳情裡上鎖）。' : '⚠ 要在城鎮或據點才能賣出裝備，現在只能先勾選。'}</p>
-    <div class="list">${S.inv.map(row).join('')}</div>
+    <p class="sub">${ok ? '點裝備勾選；上鎖的不會被選到。' : '⚠ 要在城鎮或據點才能賣，現在只能先勾選。'}</p>
+    ${grid}
     <div class="sellgo"><button class="btn pri" data-act="sellMany" ${ok && sel.length ? '' : 'disabled'}>${ok ? `賣出 ${sel.length} 件　+${gold} 金` : '不在城鎮或據點'}</button></div>`;
 }
 
@@ -827,20 +950,25 @@ function openEnt(id) {
   $('scrim').hidden = false;
   $('sheet').classList.remove('off');
   $('sbody').scrollTop = 0;
+  /* 0.3.44 先清掉上一個面板的內容：後面出錯也不會顯示成上一個面板 */
+  $('sbody').innerHTML = '';
   let desc = '',
     act = '',
     pre = '';
   if (e.kind === 'monster') {
     desc = e.rar
       ? `<span style="color:${RCOL[e.rar]}">${RNAME[e.rar]}怪物</span>：${e.mods
-          .map(id => {
-            const m = EMODS.find(q => q.id === id);
-            return `<b>${m.n}</b>（${m.d}）`;
-          })
+          .map(id => EMODI[id])
+          .filter(Boolean)
+          .map(m => `<b>${m.n}</b>${m.d ? `（${m.d}）` : ''}`)
           .join('、')}。掉落更多更好的東西。`
       : `野生的 ${esc(e.name)} 在路上徘徊。`;
     if (e.rar === 4)
-      desc = `<span class="danger">⚠ 危險怪物</span> 比你高 ${e.lv - S.lv} 級，生命約一般怪的 3 倍、攻擊 1.6 倍，還帶 ${e.mods.length} 個詞綴：${e.mods.map(id => `<b>${EMODS.find(q => q.id === id).n}</b>`).join('、')}。打贏保證掉 2 件稀有裝備與大量通貨，但很可能會輸。`;
+      desc = `<span class="danger">⚠ 危險怪物</span> 比你高 ${e.lv - S.lv} 級，生命約一般怪的 3 倍、攻擊 1.6 倍，還帶 ${e.mods.length} 個詞綴：${e.mods
+        .map(id => EMODI[id])
+        .filter(Boolean)
+        .map(m => `<b>${m.n}</b>`)
+        .join('、')}。打贏保證掉 2 件稀有裝備與大量通貨，但很可能會輸。`;
     desc += `<br><span class="sub">招式：${monSkillNames({ bn: e.base.name, rar: e.rar, el: e.base.el, ud: e.ud }, false).join('、')}</span>`;
     desc += `<br><span class="sub">攻擊屬性：${EL[e.base.el]}${e.base.res.some(v => v) ? '・抗性 火' + e.base.res[0] + '% 冰' + e.base.res[1] + '% 雷' + e.base.res[2] + '%' : ''}</span>`;
     if (e.bounty) desc += '<br><span style="color:#ff8a6a">懸賞：擊敗可得額外金幣與混沌石。</span>';
@@ -1206,7 +1334,9 @@ const A = {
   },
   fight: d => {
     const e = ENT.get(d.id);
-    if (!inRange(e)) return;
+    /* 0.3.44 不在範圍（走開了、GPS 飄了）不要默默沒反應：提示並重開面板（會變成「走過去戰鬥」） */
+    if (!e) return toast('這隻怪已經不在了'), closeSheet();
+    if (!inRange(e)) return toast('離太遠了'), openEnt(d.id);
     /* 狩獵中：獵殺等級加的等級直接用來產生怪物，再加生命與攻擊 */
     const en = makeEnemy(e.base, e.lv + (huntLv() ? huntCfg().lv : 0), e.rar, e.mods);
     if (e.hunt) en.name = e.name;
@@ -1543,14 +1673,15 @@ const A = {
   use: d => {
     const st = stats();
     if (!S[d.k]) return;
+    if (d.k === 'potions' && st.noPotion) return toast('昇華代價：無法使用生命藥水');
     S[d.k]--;
     sfx('heal');
     if (d.k === 'potions') {
-      const v = Math.round(st.maxhp * 0.4 * st.healMul);
+      const v = potVal('potions', st);
       S.hp = Math.min(st.maxhp, S.hp + v);
       toast(`恢復 ${v} 生命`);
     } else {
-      const v = Math.round(st.maxmp * 0.5 * st.healMul);
+      const v = potVal('ethers', st);
       S.mp = Math.min(st.maxmp, S.mp + v);
       toast(`恢復 ${v} 魔力`);
     }
@@ -1993,6 +2124,9 @@ document.addEventListener('input', ev => {
 });
 document.addEventListener('change', ev => {
   if (ev.target.id === 'simSpd' || ev.target.dataset.rate) save();
+  /* 0.3.43 下拉選單：<select data-chg="動作名">，值放在 d.k */
+  const f = ev.target.matches('select[data-chg]') && A[ev.target.dataset.chg];
+  if (f) f({ k: ev.target.value });
 });
 document.addEventListener('click', ev => {
   if (ev.target.id === 'treeCv') return;
