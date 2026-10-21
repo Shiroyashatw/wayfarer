@@ -2299,7 +2299,7 @@ function dropLoot(e, boss, sp, remote, minion) {
     tk = boss || r >= 3 ? tb.boss : 0,
     Q = 1 + ((sp ? sp.q : 0) + (zm.q || 0) + os + tb.q + tk) / 100,
     R = 1 + ((sp ? sp.r : 0) + (zm.r || 0) + os + tb.r + tk) / 100;
-  const mm = minion ? 0.5 : 1,
+  const mm = (minion ? 0.5 : 1) * rate('drop'),
     itemCh = ([0.22, 0.5, 1, 1, 1][r] || 0.22) * buf * rem * Q * mm,
     curN =
       (boss
@@ -2331,7 +2331,8 @@ function dropLoot(e, boss, sp, remote, minion) {
     mk(2);
     if (Math.random() < 0.5) mk(1);
   }
-  if (itemCh > 1 && Math.random() < itemCh - 1) mk(0);
+  /* 機率超過 1 的部分變成額外的裝備（設定的掉寶倍率最多 10 倍） */
+  for (let x = itemCh - 1; x > 0; x--) if (Math.random() < x) mk(0);
   for (let i = 0; i < Math.round(curN * rem); i++) {
     const c = rollCur(boss || r >= 2 ? 3 : 1);
     giveCur(c);
@@ -2379,22 +2380,23 @@ function gemLoot(e, boss, hell, rem, out) {
       fl((e.lv || 1) / 4) +
       (boss ? 6 + (hell ? 6 : 0) : 0),
     z = zoneAt(S.lat, S.lng).m,
-    ch = p => Math.random() < p * rem * (z.eng || 1),
+    dm = rate('drop'),
+    ch = p => Math.random() < p * rem * (z.eng || 1) * dm,
     add = (id, n = 1) => {
       if (n <= 0) return;
       giveCur(id, n);
       out.push(curDot(id) + GCURI[id].n + (n > 1 ? ' ×' + n : ''));
     };
-  add('soul', Math.round(soul * rem * (z.soul || 1) * SOUL_MUL));
+  add('soul', Math.round(soul * rem * (z.soul || 1) * SOUL_MUL * dm));
   /* 0.3.11 祈願石：菁英與首領比較常掉 */
-  const wm = rem;
+  const wm = rem * dm;
   if (boss) add('wish', Math.round((1 + (hell ? 1 : 0)) * wm) || 1);
   else if (Math.random() < [0.01, 0.04, 0.12, 0.12, 0.4][r] * wm) add('wish');
   if (boss || ch([0, 0.25, 0.6, 0.6, 1][r])) add('eng');
   if (ch(boss ? (hell ? 0.6 : 0.3) : [0, 0, 0.2, 0.2, 0.5][r])) add('engC');
   if (ch(boss && hell ? 0.25 : r === 4 ? 0.05 : 0)) add('engX');
   if (r === 4 && ch(0.08)) add('engD');
-  supLoot(e, boss, rem, out);
+  supLoot(e, boss, rem * dm, out);
 }
 /* 0.3.20：寶石稜鏡與族裔輔助只從野外機制掉（菁英低機率、首領高機率），一般輔助寶石菁英與首領都會掉 */
 const mechOf = e =>
@@ -2441,7 +2443,7 @@ function dunReward(D) {
     tb = tierBonus(),
     Q = 1 + (sp.q + (D.onsite ? ONSITE_BONUS : 0) + tb.q + tb.boss) / 100,
     bonus = (D.lm ? 1.6 : 1) * Q,
-    gold = Math.round((40 + D.lv * 25) * mult * bonus),
+    gold = Math.round((40 + D.lv * 25) * mult * bonus * rate('gold')),
     cry = D.kind === 'rift' ? 0 : Math.max(1, Math.round((2 + fl(D.lv / 2)) * mult * bonus));
   const items = [
     makeItem(DROPS[fl(Math.random() * DROPS.length)], D.lv + 1, D.lm || D.kind === 'rift' || sp.dt !== 'normal' ? 2 : 1)
@@ -2451,7 +2453,7 @@ function dunReward(D) {
   S.crystal += cry;
   items.forEach(giveItem);
   const curs = [];
-  for (let i = 0; i < Math.round((D.kind === 'rift' ? 4 : 2) * Q); i++) {
+  for (let i = 0; i < Math.round((D.kind === 'rift' ? 4 : 2) * Q * rate('drop')); i++) {
     const c = rollCur(sp.dt === 'hell' ? 5 : 3);
     giveCur(c);
     curs.push(curDot(c) + CURI[c].n);
@@ -2500,8 +2502,8 @@ function winBattle() {
     gold = 0;
   const drops = [];
   es.forEach((o, i) => {
-    xp += Math.round(o.xp * mult * (zm.xp || 1));
-    gold += Math.round(o.gold * rnd(0.8, 1.2) * mult * st.goldMul * (zm.gold || 1));
+    xp += Math.round(o.xp * mult * (zm.xp || 1) * rate('xp'));
+    gold += Math.round(o.gold * rnd(0.8, 1.2) * mult * st.goldMul * (zm.gold || 1) * rate('gold'));
     drops.push(...dropLoot(o, B.boss && i === 0, D && D.spec, D && D.remote, o.minion));
   });
   S.gold += gold;

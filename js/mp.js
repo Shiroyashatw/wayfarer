@@ -700,11 +700,11 @@ function mpMy(k) {
 /* 一層的獎勵：經驗是整群加總後依人數平均，金幣與掉寶各自結算 */
 function mpRoomReward(info, n = 1) {
   const list = Array.isArray(info) ? info : [info],
-    xp = Math.round(list.reduce((a, e) => a + e.xp, 0) / Math.max(1, n));
+    xp = Math.round((list.reduce((a, e) => a + e.xp, 0) / Math.max(1, n)) * rate('xp'));
   let gold = 0;
   const drops = [];
   for (const e of list) {
-    gold += Math.round(e.gold * rnd(0.8, 1.2) * stats().goldMul);
+    gold += Math.round(e.gold * rnd(0.8, 1.2) * stats().goldMul * rate('gold'));
     drops.push(...dropLoot({ ...e }, e.boss, MB.spec, false, e.minion));
     quest('kill');
   }

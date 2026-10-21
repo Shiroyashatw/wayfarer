@@ -644,6 +644,10 @@ function renderSheet() {
       .join('')}</div>
     <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps ? '開' : '關'}</b><small>${S.gps ? GPS.err || '用手機定位實際走路移動，點地圖不會再走過去' : '目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm${S.gps ? '' : ' buy'}" data-act="gps">${S.gps ? '關閉' : '開啟'}</button></div>
       <div style="margin-top:10px"><div class="rowx"><b>點地圖移動速度</b><b class="c-gold" id="simSpdV">×${S.simSpd || 1}</b></div><small class="sub">GPS 開啟時不影響</small><input type="range" class="slider" id="simSpd" min="1" max="${SIM_MAX}" step="0.5" value="${S.simSpd || 1}" aria-label="點地圖移動速度"></div></div>
+    <h3>獲取倍率</h3><div class="card"><p class="sub" style="margin:0">只影響自己：打怪、地城、組隊得到的量。${more('會影響哪些東西', '<p>經驗值：打贏戰鬥與組隊地城的經驗。</p><p>金幣：打怪與地城通關的金幣。</p><p>掉寶：裝備、通貨、靈魂、刻印石系列、祈願石、輔助寶石的掉落數量與機率，以及地城通關的通貨。背包滿了，多的裝備會自動賣掉。</p>')}${RATES.map(
+      ([k, n]) =>
+        `<div style="margin-top:8px"><div class="rowx"><b>${n}</b><b class="c-gold" id="rateV_${k}">×${rate(k)}</b></div><input type="range" class="slider" data-rate="${k}" min="1" max="${RATE_MAX}" step="0.5" value="${rate(k)}" aria-label="${n}倍率"></div>`
+    ).join('')}</div>
     <h3>新手教學</h3><div class="card"><div class="rowx"><div class="t"><b>重看新手教學</b><small>一步步介紹畫面上的按鈕與玩法</small></div><button class="btn sm" data-act="tutor">開始</button></div></div>
     <h3>名字</h3><div class="card"><div class="srow"><input class="inp" id="nameInp" maxlength="12" value="${esc(S.name || '旅人')}"><button class="btn" data-act="setName">儲存</button></div><p class="sub" style="margin-top:6px">好友列表和組隊時顯示的名字，最多 12 個字。</p></div>
     <h3>帳號</h3><div class="card"><div class="rowx"><div class="t"><b>玩家編號 <span style="color:var(--gold)">${playerTag()}</span></b><small>${CLOUD.anon ? '目前是遊客，存檔綁在這台裝置。註冊後會拿到玩家編號，換手機也能登入，之後的多人地城、副本也需要帳號。' : esc(CLOUD.email || '')}</small></div>${CLOUD.anon ? '' : `<button class="btn sm" data-act="logout">登出</button>`}</div>
@@ -1877,13 +1881,20 @@ const A = {
   }
 };
 /* 0.3.33 設定的移動速度滑條：拖的時候即時生效，放開才存檔 */
+/* 0.3.34 獲取倍率滑條（data-rate）也一樣 */
 document.addEventListener('input', ev => {
-  if (ev.target.id !== 'simSpd') return;
-  S.simSpd = +ev.target.value;
-  $('simSpdV').textContent = '×' + S.simSpd;
+  const t = ev.target,
+    k = t.dataset.rate;
+  if (t.id === 'simSpd') {
+    S.simSpd = +t.value;
+    $('simSpdV').textContent = '×' + S.simSpd;
+  } else if (k) {
+    (S.rates = S.rates || {})[k] = +t.value;
+    $('rateV_' + k).textContent = '×' + rate(k);
+  }
 });
 document.addEventListener('change', ev => {
-  if (ev.target.id === 'simSpd') save();
+  if (ev.target.id === 'simSpd' || ev.target.dataset.rate) save();
 });
 document.addEventListener('click', ev => {
   if (ev.target.id === 'treeCv') return;

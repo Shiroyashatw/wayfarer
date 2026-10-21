@@ -40,6 +40,7 @@
 | 裝備生成、詞綴、通貨製作 | `js/items.js` | `makeItem`、`rollAffix`、`craftable`、`craft` |
 | 商店 | `js/items.js` | `openShop` |
 | 升級曲線 | `js/items.js` | `xpNeed`、`gainXP`、`treePts` |
+| 獲取倍率（0.3.34，設定滑條） | `js/items.js`、`js/battle.js`、`js/mp.js`、`js/ui.js` | `RATES`／`RATE_MAX`／`rate(k)`（`S.rates`：`xp`、`gold`、`drop`）；套用在 `winBattle`、`mpRoomReward`（經驗、金幣）、`dropLoot`／`gemLoot`／`supLoot`（掉寶）、`dunReward`（金幣、通貨）；滑條 `input[data-rate]`（`ui.js` 的 `input`／`change` 監聽） |
 | 怪物生成（等級、稀有度） | `js/items.js` | `pickMon`、`makeEnemy` |
 | 單人戰鬥流程 | `js/battle.js` | `startBattle`、`useSkill`（呼叫 `actResolve`）、`playEv`、`nextTurn`、`enemyAct`、`winBattle`、`loseBattle`；七宗罪等掛鉤 `soloExt` |
 | 戰鬥規則（單人＋多人共用） | `js/battle.js` | `skCost`、`canPay`、`payCost`、`heroPacket`、`heroDmg`、`heroAil`、`takeDmg`、`mitigate` |
@@ -182,22 +183,22 @@
 
 - **audio**（3），14 個宣告
 
-### js/items.js（1127 行）
+### js/items.js（1135 行）
 
 - **player & items**（3），27 個宣告
 - **skill gems**（261），29 個宣告
-- **stats**（507），21 個宣告
-- **enemies**（879），16 個宣告
-- **modal**（1017），5 個宣告
+- **stats**（507），23 個宣告
+- **enemies**（887），16 個宣告
+- **modal**（1025），5 個宣告
 
-### js/battle.js（3157 行）
+### js/battle.js（3159 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
 - **battle: logic**（238），32 個宣告
 - **battle: rules（單人與組隊共用）**（579），57 個宣告
 - **battle: solo**（1641），14 個宣告
 - **dungeons (shared by solo and party)**（2077），24 個宣告
-- **battle: drawing**（2808），7 個宣告
+- **battle: drawing**（2810），7 個宣告
 
 ### js/map.js（1758 行）
 
@@ -216,11 +217,11 @@
 
 - **passive tree (full screen)**（3），18 個宣告
 
-### js/ui.js（1912 行）
+### js/ui.js（1923 行）
 
 - **HUD & sheets**（3），48 個宣告
-- **entity interaction**（746），9 個宣告
-- **actions**（938），2 個宣告
+- **entity interaction**（750），9 個宣告
+- **actions**（942），2 個宣告
 
 ### js/endgame.js（691 行）
 

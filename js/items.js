@@ -850,6 +850,14 @@ function addLog(t) {
   S.log.unshift(t);
   if (S.log.length > 60) S.log.length = 60;
 }
+/* 0.3.34 設定的獲取倍率（自己的存檔，1～RATE_MAX 倍）：經驗值、金幣、掉寶（裝備、通貨、靈魂與刻印石、輔助寶石） */
+const RATE_MAX = 10,
+  RATES = [
+    ['xp', '經驗值'],
+    ['gold', '金幣'],
+    ['drop', '掉寶（裝備、通貨、材料）']
+  ];
+const rate = k => Math.min(RATE_MAX, Math.max(1, (S.rates || {})[k] || 1));
 function gainXP(n) {
   let up = false;
   S.xp += n;
