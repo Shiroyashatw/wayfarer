@@ -174,11 +174,11 @@
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
 
-### js/sprites.js（1418 行）
+### js/sprites.js（1422 行）
 
-- **pixel sprites (original art)**（3），34 個宣告
-- **icons: currency, item slots, passive nodes**（814），7 個宣告
-- **boss sprites**（1073），1 個宣告
+- **pixel sprites (original art)**（3），35 個宣告
+- **icons: currency, item slots, passive nodes**（818），7 個宣告
+- **boss sprites**（1077），1 個宣告
 
 ### js/gear.js（685 行）
 
@@ -190,7 +190,7 @@
 ### js/skills.js（2080 行）
 
 
-### js/audio.js（221 行）
+### js/audio.js（223 行）
 
 - **audio**（3），14 個宣告
 

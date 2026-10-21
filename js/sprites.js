@@ -594,10 +594,14 @@ const FIXED = { k: '#120e1a' },
 /* 0.3.30 圖拼在幾張大圖裡（ART_SHEET，ART 是每張圖在大圖裡的位置），用到才載入那張大圖 */
 const ART_U = 0.36,
   ARTIMG = {};
-function artSheet(s) {
+/* 0.3.51 背景預載（pre）的大圖載好時不重畫面板：以前每 0.2 秒重畫一次，
+   按鈕在按下與放開之間被換掉，桌面版點「戰鬥」常常沒反應；畫面真的有圖在等這張（ARTWANT）才重畫 */
+const ARTWANT = new Set();
+function artSheet(s, pre) {
+  if (!pre) ARTWANT.add(s);
   if (!ARTIMG[s]) {
     const im = new Image();
-    im.onload = () => typeof artRepaint === 'function' && artRepaint();
+    im.onload = () => ARTWANT.has(s) && typeof artRepaint === 'function' && artRepaint();
     im.src = ART_SHEET[s];
     ARTIMG[s] = im;
   }
@@ -611,7 +615,7 @@ function artImg(k) {
 /* 開場 5 秒後在背景陸續把其他大圖也載好，首領、地城的圖開打時才不會空白一下 */
 setTimeout(() => {
   if (typeof ART_SHEET !== 'undefined')
-    Object.keys(ART_SHEET).forEach((s, i) => setTimeout(() => artSheet(s), i * 200));
+    Object.keys(ART_SHEET).forEach((s, i) => setTimeout(() => artSheet(s, true), i * 200));
 }, 5000);
 /* 0.3.39 技能的 PNG 圖示（art/icons/sk_代號.png，tools/art.py 一起打包）：有就用；沒有或大圖還沒載好就用原本的 8×8 圖示
    （大圖載好時 artRepaint 會重畫開著的面板） */

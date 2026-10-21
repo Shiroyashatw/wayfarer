@@ -129,6 +129,8 @@ function schedule() {
   if (!AU.ctx || !AU.song) return;
   const song = SONGS[AU.song],
     dur = 60 / song.bpm / 2;
+  /* 0.3.51 分頁在背景時計時器會被降到一分鐘一次，回來時不要把落後的幾千個音符一次補排（全部擠在同一刻播） */
+  if (AU.next < AU.ctx.currentTime - 0.25) AU.next = AU.ctx.currentTime + 0.05;
   while (AU.next < AU.ctx.currentTime + 0.12) {
     for (const ch of song.ch) {
       const seq = parse(ch.s),
