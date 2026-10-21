@@ -866,6 +866,7 @@ function gainXP(n) {
   return up;
 }
 const LV_MAX = 100;
+/* bonusPts 是 0.3.32 前「測試 +10 點」按鈕給的點數，按鈕拿掉了，已經拿到的保留 */
 const treePts = () => S.lv - 1 + (S.bonusPts || 0) - (S.tree.length - 1);
 function dayPhase() {
   const d = new Date(now()),

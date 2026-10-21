@@ -1719,13 +1719,6 @@ const A = {
         }
       ]
     ),
-  treeBonus: () => {
-    S.bonusPts = (S.bonusPts || 0) + 10;
-    sfx('level');
-    renderHud();
-    renderTreeCard();
-    save();
-  },
   openTree: () => openTree(),
   closeTree: () => closeTree(),
   treeFit: () => {

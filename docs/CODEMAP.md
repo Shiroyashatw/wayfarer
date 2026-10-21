@@ -182,13 +182,13 @@
 
 - **audio**（3），14 個宣告
 
-### js/items.js（1126 行）
+### js/items.js（1127 行）
 
 - **player & items**（3），27 個宣告
 - **skill gems**（261），29 個宣告
 - **stats**（507），21 個宣告
-- **enemies**（878），16 個宣告
-- **modal**（1016），5 個宣告
+- **enemies**（879），16 個宣告
+- **modal**（1017），5 個宣告
 
 ### js/battle.js（3157 行）
 
@@ -216,7 +216,7 @@
 
 - **passive tree (full screen)**（3），18 個宣告
 
-### js/ui.js（1915 行）
+### js/ui.js（1908 行）
 
 - **HUD & sheets**（3），48 個宣告
 - **entity interaction**（746），9 個宣告
