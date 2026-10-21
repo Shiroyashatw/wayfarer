@@ -627,6 +627,25 @@ function artIconURL(n) {
   return u;
 }
 const skIcon = (k, fb) => artIconURL('sk_' + k) || iconURL(fb);
+/* 0.3.42 畫在 canvas 上用的 PNG 圖示（天賦樹）；還沒載好回傳 null、不快取，大圖載好重畫時再試 */
+const ARTIM = new Map();
+function artIconImg(n, onload) {
+  if (ARTIM.has(n)) return ARTIM.get(n);
+  const u = artIconURL(n);
+  if (!u) return null;
+  const im = new Image();
+  im.onload = onload;
+  im.src = u;
+  ARTIM.set(n, im);
+  return im;
+}
+/* 輔助寶石（art/icons/sup_代號.png）：有圖就在名字前面放一個 */
+const supIcon = sp => {
+  const u = artIconURL('sup_' + sp.k);
+  return u ? `<img class="cico sk" src="${u}" alt=""> ` : '';
+};
+/* 戰場單位（art/icons/unit_技能代號.png）：圖騰、砲台、陷阱、地雷身上帶著放置它的技能 sk */
+const unitIcon = (u, fb) => (u && u.sk && artIconURL('unit_' + u.sk.k)) || iconURL(fb);
 /* 按鈕的圖示：可以是圖示名稱或已經算好的圖片網址 */
 const icoSrc = x => (String(x).startsWith('data:') ? x : iconURL(x));
 /* 回傳正方形畫布（圖貼底置中、留 1 格邊），c.art 標記給 drawSpr 換算大小；還沒載好時回傳空白（不快取） */

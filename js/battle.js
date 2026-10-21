@@ -340,17 +340,17 @@ const heroAilHTML = o =>
   ((o && o.units) || [])
     .map(
       u =>
-        `<span class="ail ail-shield" title="${u.n}"><img src="${iconURL(u.kind === 'totem' ? 'rune' : 'xbow')}" alt="${u.n}"><b>${u.kind === 'totem' ? Math.ceil((u.hp / u.maxhp) * 100) + '%' : tLeft(u.turns)}</b></span>`
+        `<span class="ail ail-shield" title="${u.n}"><img src="${unitIcon(u, u.kind === 'totem' ? 'rune' : 'xbow')}" alt="${u.n}"><b>${u.kind === 'totem' ? Math.ceil((u.hp / u.maxhp) * 100) + '%' : tLeft(u.turns)}</b></span>`
     )
     .join('') +
   (o && o.traps && o.traps.length
-    ? `<span class="ail ail-ice" title="陷阱"><img src="${iconURL('eye')}" alt="陷阱"><b>${o.traps.length}</b></span>`
+    ? `<span class="ail ail-ice" title="陷阱"><img src="${unitIcon(o.traps[0], 'eye')}" alt="陷阱"><b>${o.traps.length}</b></span>`
     : '') +
   (o && o.pdot
     ? `<span class="ail ail-leaf" title="中毒"><img src="${iconURL('leaf')}" alt="中毒"><b>${tLeft(o.pdot.turns)}</b></span>`
     : '') +
   (o && o.mines && o.mines.length
-    ? `<span class="ail ail-flame" title="地雷"><img src="${iconURL('flame')}" alt="地雷"><b>${o.mines.length}</b></span>`
+    ? `<span class="ail ail-flame" title="地雷"><img src="${unitIcon(o.mines[0], 'flame')}" alt="地雷"><b>${o.mines.length}</b></span>`
     : '') +
   ((o && o.buffs) || [])
     .map(
@@ -550,14 +550,14 @@ function binfoRender() {
         ((me && me.units) || [])
           .map(
             u =>
-              `<li><img src="${iconURL(u.kind === 'totem' ? 'rune' : 'xbow')}" alt=""><b>${esc(u.n)}</b> ${u.kind === 'totem' ? `生命 ${Math.ceil(u.hp)}` : '剩 ' + tLeft(u.turns) + ' 秒'}</li>`
+              `<li><img src="${unitIcon(u, u.kind === 'totem' ? 'rune' : 'xbow')}" alt=""><b>${esc(u.n)}</b> ${u.kind === 'totem' ? `生命 ${Math.ceil(u.hp)}` : '剩 ' + tLeft(u.turns) + ' 秒'}</li>`
           )
           .join('') +
         (me && me.traps && me.traps.length
-          ? `<li><img src="${iconURL('eye')}" alt=""><b>陷阱</b> ×${me.traps.length}<small>敵人行動時觸發</small></li>`
+          ? `<li><img src="${unitIcon(me.traps[0], 'eye')}" alt=""><b>陷阱</b> ×${me.traps.length}<small>敵人行動時觸發</small></li>`
           : '') +
         (me && me.mines && me.mines.length
-          ? `<li><img src="${iconURL('flame')}" alt=""><b>地雷</b> ×${me.mines.length}<small>按「引爆地雷」一次炸掉</small></li>`
+          ? `<li><img src="${unitIcon(me.mines[0], 'flame')}" alt=""><b>地雷</b> ×${me.mines.length}<small>按「引爆地雷」一次炸掉</small></li>`
           : '') +
         (me && me.pdot
           ? `<li><img src="${iconURL('leaf')}" alt=""><b>中毒／流血</b> 剩 ${tLeft(me.pdot.turns)} 秒<small>每 3 秒扣血</small></li>`

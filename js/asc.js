@@ -1698,14 +1698,24 @@ const ascAlert = () => ascPts() > ascUsed() || (ascNext() != null && S.lv >= asc
 
 /* ================= icons ================= */
 /* 節點圖示：分支顏色的圓底＋效果圖示；中間的職業徽章是金框（kind 'u'） */
-const ASCI = new Map();
+const ASCI = new Map(),
+  ASCW = new Set();
+/* 0.3.42 PNG 圖示：中間徽章 asc_cls_職業、小點 asc_s_圖示（同一種共用）、其他 asc_節點代號 */
+const ascPng = n =>
+  n.id.startsWith('c_') ? 'asc_cls_' + n.id.slice(2) : n.kind === 's' ? 'asc_s_' + n.g : 'asc_' + n.id;
 function ascIcon(n, on) {
   const k = n.id + (on ? 1 : 0);
   if (ASCI.has(k)) return ASCI.get(k);
+  const pn = ascPng(n),
+    sp = typeof ART !== 'undefined' && ART[pn] && artSprite('a_' + pn),
+    png = sp && !sp.pending;
+  /* 大圖還沒載好：先用原本的圖示，記下來等載好再換（ascArtReload） */
+  if (sp && sp.pending) ASCW.add(k);
   const b = ASCB[n.br],
     c = document.createElement('canvas');
-  c.width = c.height = 16;
+  c.width = c.height = png ? 48 : 16;
   const x = c.getContext('2d');
+  if (png) x.scale(3, 3);
   /* 點亮：分支色的深色底＋亮色外框；沒點：灰底暗框 */
   x.fillStyle = on ? shade(b.col, -0.62) : '#221d28';
   x.beginPath();
@@ -1714,11 +1724,17 @@ function ascIcon(n, on) {
   x.strokeStyle = n.kind === 'u' ? '#ffd166' : on ? b.col : shade(b.col, -0.45);
   x.lineWidth = n.kind === 'u' ? 1.8 : 1.2;
   x.stroke();
-  const g = document.createElement('canvas');
-  g.width = g.height = 8;
-  paintIcon(g, ICONS[n.g] ? n.g : 'star');
   x.globalAlpha = on ? 1 : 0.75;
-  x.drawImage(g, 4, 4);
+  if (png) {
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    x.imageSmoothingEnabled = false;
+    x.drawImage(sp, 8, 8, 32, 32);
+  } else {
+    const g = document.createElement('canvas');
+    g.width = g.height = 8;
+    paintIcon(g, ICONS[n.g] ? n.g : 'star');
+    x.drawImage(g, 4, 4);
+  }
   const u = c.toDataURL();
   ASCI.set(k, u);
   return u;
@@ -1759,6 +1775,13 @@ function ascCtl(A, Bn, ct) {
   return [cx + mx * f, cy + my * f];
 }
 const AIMG = new Map();
+/* 大圖載好（artRepaint）時把先用舊圖示的節點清掉重畫 */
+function ascArtReload() {
+  if (!ASCW.size) return;
+  for (const k of ASCW) ASCI.delete(k), AIMG.delete(k);
+  ASCW.clear();
+  drawAsc();
+}
 function ascImg(n, on) {
   const k = n.id + (on ? 1 : 0);
   if (!AIMG.has(k)) {

@@ -247,8 +247,11 @@ function drawTree() {
     } else x.arc(sx, sy, r, 0, 6.28);
     x.fill();
     x.stroke();
-    const im = nodeIcon(n.ic),
-      is = r * (n.type === 'small' ? 1.3 : 1.15);
+    /* 0.3.42 有 PNG 圖示（照節點名，TREE_IC）就用，沒有用原本的 8×8 */
+    const tf = typeof TREE_IC !== 'undefined' && TREE_IC[n.n],
+      pim = tf && artIconImg('tree_' + tf, drawTree),
+      im = pim || nodeIcon(n.ic),
+      is = r * (pim ? 1.6 : n.type === 'small' ? 1.3 : 1.15);
     x.globalAlpha = on || inp ? 1 : can ? 0.85 : 0.42;
     if (im.complete) x.drawImage(im, sx - is / 2, sy - is / 2, is, is);
     else im.onload = drawTree;

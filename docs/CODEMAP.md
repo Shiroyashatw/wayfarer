@@ -35,6 +35,7 @@
 | 刷新週期 | `js/core.js` | `REFRESH`／`epoch`（怪物、事件 15 分鐘）、`REFRESH_H`／`hepoch`（地城、寶箱、商店、廟宇 1 小時） |
 | 角色外觀（跟著裝備） | `js/gear.js` | `heroLook`（外觀代碼，多人傳 `look`）、`heroSpr(view, look)`（組出 `heroF:…`／`heroS:…` 像素圖）、`heroPal`（材質階級配色）、`GLOOK`、正面武器 `WFRONT`、副手 `OFRONT`；側面武器 `battle.js` 的 `drawWeapon`（`mc` 刃色） |
 | PNG 怪物圖（0.3.1.3） | `art/monsters/`、`tools/art.py`、`js/art.js`、`js/sprites.js` | 原圖放 `art/monsters/檔名.png`（或子資料夾 `art/monsters/組名/`）→ `python3 tools/art.py` → 拼成 `img/組名.hash.png` 調色盤大圖（0.3.30，每張最多 255 色、12 張圖，沿用上次的分配）＋`ART_SHEET`／`ART`（圖名 `a_檔名`，怪物 `spr` 填這個）；用到才載大圖 `artSheet`（開場 5 秒後背景載其他張）、`artImg`、畫布 `artSprite`（`sprite` 遇到 `a_` 開頭時呼叫）、大小 `ART_U`（`drawSpr` 的 `sp.art`）、列表小圖 `paintIcon18`；提示詞與流程見 skill `.claude/skills/pixel-art` |
+| 天賦樹／昇華／輔助寶石／戰場單位 PNG 圖示（0.3.42） | `js/iconmap.js`（`TREE_IC`，build 自動產生）、`js/sprites.js`、`js/tree.js`、`js/asc.js`、`js/ui.js`、`js/battle.js` | 天賦樹 `drawTree` 用 `artIconImg('tree_'+TREE_IC[名字])`；昇華 `ascPng`／`ascIcon`（48px，大圖還沒載好記在 `ASCW`，`ascArtReload` 換掉）；輔助寶石 `supIcon`（`supLine`）；單位 `unitIcon`（`heroAilHTML`、狀態面板）；大圖載好時 `artRepaint` 也重畫天賦樹與昇華盤 |
 | 技能／裝備 PNG 圖示（0.3.39～0.3.40） | `art/sheets/`（圖表原圖）、`art/icons/`、`tools/icon_sheets.py`、`tools/art.py`、`js/sprites.js` | 圖表 `docs/圖示圖表.md` → 原圖放 `art/sheets/`、`icon_sheets.py process` 切到 `art/icons/sk_代號.png`／`gear_欄位_序號.png`（實心背景自動去背，icon_sheets.py 的 clear_bg）→ `art.py` 打包（大圖 `ic_*`）；顯示 `skIcon(代號, 原本圖示)`、裝備 `slotIcon`（都走 `artIconURL`）（沒有就用 8×8 `iconURL`）、按鈕 `icoSrc`；技能石要有 `k`（`gemSkill`）；用在 `gemCell`、`gemRow`、技能石商店、戰鬥按鈕（`renderBHud`／`renderMBHud`）；CSS `.cico.sk`、`.bcmd.six .cb img` |
 | 裝備圖示、材質階級（0.3.1） | `js/gear.js` | `GEAR`（每個底材一張 12×12，索引對應 `BASES`，新底材要補圖）、`MATC`／`BLADEC`／`TRIMC`／`GEMC`、`tierOf`／`TIERN`、`gearPal`、`gearIcon`（`slotIcon` 呼叫） |
 | 點地圖移動速度（0.3.1.1，0.3.33 滑條） | `js/map.js`、`js/ui.js` | `SIM_SPEED`、`SIM_MAX`（10 倍）、`simSpeed()`（乘上 `S.simSpd`）；設定面板的滑條 `#simSpd`（`ui.js` 的 `input`／`change` 監聽，`.slider`） |
@@ -167,17 +168,17 @@
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
 
-### js/sprites.js（1378 行）
+### js/sprites.js（1397 行）
 
-- **pixel sprites (original art)**（3），25 個宣告
-- **icons: currency, item slots, passive nodes**（775），7 個宣告
-- **boss sprites**（1033），1 個宣告
+- **pixel sprites (original art)**（3），29 個宣告
+- **icons: currency, item slots, passive nodes**（794），7 個宣告
+- **boss sprites**（1052），1 個宣告
 
 ### js/gear.js（685 行）
 
 - **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1），17 個宣告
 
-### js/art.js（194 行）
+### js/art.js（749 行）
 
 
 ### js/skills.js（2000 行）
@@ -220,15 +221,15 @@
 - **movement**（1578），5 個宣告
 - **GPS**（1633），11 個宣告
 
-### js/tree.js（496 行）
+### js/tree.js（499 行）
 
 - **passive tree (full screen)**（3），18 個宣告
 
-### js/ui.js（2019 行）
+### js/ui.js（2021 行）
 
 - **HUD & sheets**（3），53 個宣告
-- **entity interaction**（810），11 個宣告
-- **actions**（1018），2 個宣告
+- **entity interaction**（812），11 個宣告
+- **actions**（1020），2 個宣告
 
 ### js/endgame.js（691 行）
 
@@ -274,14 +275,14 @@
 - **委託面板（0.3.15，原本的「附近」）**（85），2 個宣告
 - **足跡**（141），8 個宣告
 
-### js/asc.js（2234 行）
+### js/asc.js（2257 行）
 
 - **data**（69），10 個宣告
 - **state & stats**（1625），18 個宣告
-- **icons**（1699），2 個宣告
-- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1727），16 個宣告
-- **trials**（2080），2 個宣告
-- **actions**（2096），0 個宣告
+- **icons**（1699），3 個宣告
+- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1743），17 個宣告
+- **trials**（2103），2 個宣告
+- **actions**（2119），0 個宣告
 
 ### js/gacha.js（811 行）
 

@@ -154,6 +154,19 @@ def kinds(items):
     return '、'.join(GN[g] for g in dict.fromkeys(g for *_, g in items))
 
 
+def write_iconmap():
+    """天賦樹節點是照名字對應圖示（同名共用一張），把 docs/圖示提示詞.md 的「檔名 → 節點名」寫成 js/iconmap.js"""
+    m = {}
+    for f, n in re.findall(r'^\| `tree_([ns]\d+)` \| ([^|]+?) \|', SRC.read_text(encoding='utf-8'), re.M):
+        m.setdefault(n.strip(), f)
+    body = ',\n'.join(f"  '{n}': '{f}'" for n, f in m.items())
+    (ROOT / 'js/iconmap.js').write_text(
+        '/* 自動產生（tools/icon_sheets.py build）：天賦樹節點名 → art/icons/tree_代號.png；不要手改 */\n'
+        f'const TREE_IC = {{\n{body}\n}};\n',
+        encoding='utf-8',
+    )
+
+
 def build(per, words):
     sh = sheets(per, words)
     rows_ = per // COLS
@@ -203,6 +216,7 @@ def build(per, words):
         ]
         L += [f'| {k // COLS + 1}-{k % COLS + 1} | `{f}` | {n} |' for k, (f, n, _, _) in enumerate(items)]
     DOC.write_text('\n'.join(L) + '\n', encoding='utf-8')
+    write_iconmap()
     print(f'已輸出 {DOC.relative_to(ROOT)}：{len(sh)} 張圖表、{sum(len(i) for _, _, i in sh)} 個圖示（每張 {per} 格）')
 
 

@@ -471,7 +471,7 @@ const supN = k => (S.sups || []).filter(x => x.k === k).length;
 /* 紅點：有沒插的輔助寶石，而且技能欄裡有技能石插得進去 */
 const supHint = () => (S.sups || []).some(x => S.sk.some(id => gemOf(id) && !supBlock(gemOf(id), x)));
 const supLine = sp =>
-  `${sp.lin ? '<i class="kw num">族裔</i> ' : ''}<b>${sp.n}</b><small>${sp.d}・只能插${SUPREQN[sp.req]}${sp.mp ? `・魔力消耗 +${sp.mp}%` : ''}${sp.conv ? '・轉換類（一顆技能石只能一個）' : ''}${sp.lin ? `・同名一個角色只能用一顆・${SUPM[sp.m]}掉落` : ''}</small>`;
+  `${sp.lin ? '<i class="kw num">族裔</i> ' : ''}<b>${supIcon(sp)}${sp.n}</b><small>${sp.d}・只能插${SUPREQN[sp.req]}${sp.mp ? `・魔力消耗 +${sp.mp}%` : ''}${sp.conv ? '・轉換類（一顆技能石只能一個）' : ''}${sp.lin ? `・同名一個角色只能用一顆・${SUPM[sp.m]}掉落` : ''}</small>`;
 /* 0.3.11 技能石商店：依 T 分頁（T1～T5），未解鎖的 T 只能看 */
 function gemShopHTML() {
   if (SEL.gshopK === 'sup') return supShopHTML();
@@ -755,6 +755,8 @@ function artRepaint() {
     else if (sheetName) renderSheet();
     sb.scrollTop = top;
     if (!$('gacha').hidden) renderGacha();
+    drawTree();
+    ascArtReload();
   }, 80);
 }
 function nearTownE() {
