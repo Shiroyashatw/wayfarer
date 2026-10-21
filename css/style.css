@@ -682,3 +682,5 @@ details.more p{margin:0}
 .btn.buy:active{background:#c9a45c22}
 .binfo-btn{min-height:38px}
 .avCls .btn{min-width:38px;min-height:38px}
+/* 0.3.33 滑條（設定的移動速度） */
+.slider{width:100%;height:38px;margin:2px 0 0;accent-color:var(--gold);cursor:pointer}

@@ -1576,9 +1576,10 @@ function tapWorld(x, y) {
 /* ================= movement ================= */
 let lastFrame = 0,
   stepAcc = 0;
-/* 點地圖走路的速度（公尺／秒）；設定裡可以調倍率 S.simSpd（測試用：1、1.5、2） */
-const SIM_SPEED = 14;
-const simSpeed = () => SIM_SPEED * (S.simSpd || 1);
+/* 點地圖走路的速度（公尺／秒）；設定裡的滑條調倍率 S.simSpd（0.3.33：1～SIM_MAX 倍，每格 0.5） */
+const SIM_SPEED = 14,
+  SIM_MAX = 10;
+const simSpeed = () => SIM_SPEED * Math.min(SIM_MAX, Math.max(1, S.simSpd || 1));
 function setPos(lat, lng, moved) {
   S.lat = lat;
   S.lng = lng;
