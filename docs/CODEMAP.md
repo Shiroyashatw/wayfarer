@@ -1,8 +1,8 @@
 # 程式碼地圖
 
-給開發者（和 Claude）快速定位用：要改某個功能時，先看這份找到檔案和函式，再用行號只讀那一段，不用整個檔案讀一遍。
+給開發者（和 Claude）快速定位用：要改某個功能時，用關鍵字搜這份找到檔案和函式（一個功能一列），再用行號只讀那一段，不用整個檔案讀一遍。
 
-- 下方「頂層宣告索引」是 `python3 tools/codemap.py` 自動產生的，**改完 JS 後重跑一次**，行號才會對。
+- 函式／常數的行號在 `docs/SYMBOLS.txt`（一行一個，Grep `^名稱 `）；下方「檔案區段大綱」只列區段。兩者都是 `python3 tools/codemap.py` 自動產生的，**改完 JS 後重跑一次**，行號才會對；它也會列出這份表格裡已經找不到的名稱。
 - JS 用 prettier 排版（設定在 `.prettierrc`，寬度 120）：`npx prettier@3.3.3 --write js/*.js`。
 - 所有 JS 是一般 `<script>`，依 `index.html` 的順序載入、共用全域變數；`main.js` 必須最後。
 
@@ -41,7 +41,7 @@
 | 商店 | `js/items.js` | `openShop` |
 | 升級曲線 | `js/items.js` | `xpNeed`、`gainXP`、`treePts` |
 | 怪物生成（等級、稀有度） | `js/items.js` | `pickMon`、`makeEnemy` |
-| 單人戰鬥流程 | `js/battle.js` | `startBattle`、`useSkill`、`playerHit`、`enemyTurn`、`winBattle`、`loseBattle` |
+| 單人戰鬥流程 | `js/battle.js` | `startBattle`、`useSkill`（呼叫 `actResolve`）、`playEv`、`nextTurn`、`enemyAct`、`winBattle`、`loseBattle`；七宗罪等掛鉤 `soloExt` |
 | 戰鬥規則（單人＋多人共用） | `js/battle.js` | `skCost`、`canPay`、`payCost`、`heroPacket`、`heroDmg`、`heroAil`、`takeDmg`、`mitigate` |
 | 掉寶、地城獎勵 | `js/battle.js` | `dropLoot`、`dunReward`；靈魂、祈願石與刻印石 `gemLoot`；現場加成 `ONSITE_BONUS`、`onsiteNow`（判定現場用 `ui.js` 的 `onSite`；只有石碑、魔法陣有加成：`ONSITE_K`／`siteBonus`） |
 | 亡靈區、亡靈怪、亡靈祭壇與軍團長、亡靈王 | `js/undead.js` | `undeadSpawns`（由 `endgameSpawns` 呼叫）、`UDZ`、`UNDEAD`、`drawUndead`、`undeadWin`、`commanderWin`、`kingWin`、`A.udBoss`、`A.udKing` |
@@ -49,11 +49,11 @@
 | 魔霧區、魔霧詞綴與專屬怪、進度與碎片 | `js/demon.js` | `demonSpawns`（由 `endgameSpawns` 呼叫，產生 `MZ` 魔霧區）、`mistAt`、`mistProg`、`MIST_TIERS`、`MMODS`／`mistApply`、`MISTMON`、`mistify(e, q, k, Z)`、`drawSeals`（紫色圓圈與光柱）／`drawSealMark`（遠距離符號）、`mistWin`；各區進度 `S.mistp`（每輪 `_ep` 換新） |
 | 魔霧四凶與燭龍（0.3.24） | `js/demon.js`、`js/battle.js`、`js/ui.js` | `XIONG`／`XIONGI`、`xiongOf`、`xseal`／`xsealAll`（`S.xseal`）、`makeXiong`、`makeZhulong`、`beastTurn`（`enemyResolve` 開頭）、`xiongWin`／`zhulongWin`（`winBattle` 的 `B.xiong`／`B.zhulong`）、`A.xiongGo`／`A.zhulongGo`（`openEnt` 的 `mseal`）；看不到行動順序 `hideAv`（`renderBHud`、`renderMBHud`）、黑夜打空 `blind`（`actResolve`）；魔霧進度滿 `mistWin` |
 | 七罪攻佔城鎮（0.3.25） | `js/demon.js`、`js/battle.js`、`js/ui.js`、`js/map.js` | `SIEGE_LV`／`SIEGE_DUR`／`SIEGE_CD`／`SIEGE_R`／`SIEGE_PICK`、`SIEGE_FX`、信徒 `SINF`（`followerBase`／`followerize`／`makeFollower`）、`siegeTown`／`siegeAt`、`siegeTick`、`siegeSpawns`（`demonSpawns`）、`drawSiege`（`map.js` 繪製）、`siegeApply`（`startBattle`，`B.siegeK`、`B.me.slow`／`charmed`）、`siegeWin`（`winBattle`）、`siegeDone`（`sinReward`）、`siegeTownHTML`（`openEnt` 的城鎮）、`A.siegeGo`（`dt: 'sin'`、`siege: 1`，`dunSpec`／`dunEnemy`）；信徒特色 `followerTurn`（`enemyResolve`）、`followerAfter`、`followerHit`（`actResolve`）、玩家中毒 `pdot`（`roundEnd`）、模仿者 `me.lastEl` |
-| 七宗罪雕像、7 個王的機制、殘魂（0.3.24 雕像拿掉） | `js/demon.js`、`js/battle.js` | `SINS`、`makeSinLord`、`sinTurn`（`enemyTurn` 開頭）、`sinHit`（`playerHit`）、`sinReward`（`dunReward`）、`A.sinGo`；`dunEnemy` 的七宗罪段落 |
+| 七宗罪雕像、7 個王的機制、殘魂（0.3.24 雕像拿掉） | `js/demon.js`、`js/battle.js` | `SINS`、`makeSinLord`、`sinTurn`（`enemyResolve`，經 `soloExt`）、`sinHit`（`actResolve`，經 `soloExt`）、`sinReward`（`dunReward`）；`dunEnemy` 的七宗罪段落 |
 | 傳奇裝備 | `js/demon.js`、`js/items.js` | `LEGENDS`、`makeLegend`；屬性在 `sumStats`（`it.leg`），特效旗標 `legPride` 等在 `heroDmg`／`heroAil`／`useSkill`／`bItem` |
 | 惡魔珠寶與天賦盤珠寶槽 | `js/demon.js`、`js/data.js`、`js/tree.js` | `JAFF`、`makeJewel`、`jewelCap`、`jewelStats`、`socketCardHTML`、`A.jIn`／`A.jOut`；槽位在 `TREE` 結尾（`type: 'socket'`），鑲嵌狀態 `S.jsock` |
 | 今日委託、委託面板、足跡（0.2.13；0.3.15 委託面板取代附近） | `js/daily.js` | `QUESTS`、`daily`、`quest(k, n)`（各處呼叫：`winBattle`、`dungeonClear`、`pray`、`openChest`、`gather`、`obeliskCharge`、`mistWin`、`huntWalk`、`setPos`）、`dailyHTML`、`questHTML`／`questProg`（`quest` 面板：今日委託、所在區域進度、刷新倒數）、`footStep`（`trailStep`）、`footLv`／`footDens`／`footRare`（`genEntities` 怪物生成）、`drawFoot`；狀態 `S.daily`、`S.foot` |
-| 多隻敵人戰鬥（0.3） | `js/battle.js`、`js/mp.js` | 野外群體隻數 `packN`（機率表 `PACK_P`）、同伴種類 `packBases`＋`packSeed`（位置與週期固定）、`packOf(lead, extra, n, seed)`；開打前陣容 `lineupHTML`（`ui.js`，`openEnt` 呼叫）；互動範圍 `RANGE`／`TOWN_R`／`reachOf`（core.js）；結算核心 `actResolve`（玩家行動→事件）、`enemyResolve`（敵人行動）、`petsAct`（召喚物）、`roundEnd`／`battleOpen`；單人 `startBattle`（`pack` 帶小怪 `packOf`）、`useSkill`、`playEv`（播事件）、`enemyPhase`；站位 `epos`／`ESLOT`、`drawEnemies`（選取特效 `drawSel`、換目標名字淡出 `selTrack`）、`enemyBars`、點敵人換目標 `pickTarget`；地城一層一群 `dunEnemy(D, room, extra)`；組隊 `mpResolve`／`mpEnemy`／`mpFx`、經驗平均 `mpRoomReward` |
+| 多隻敵人戰鬥（0.3） | `js/battle.js`、`js/mp.js` | 野外群體隻數 `packN`（機率表 `PACK_P`）、同伴種類 `packBases`＋`packSeed`（位置與週期固定）、`packOf(lead, extra, n, seed)`；開打前陣容 `lineupHTML`（`ui.js`，`openEnt` 呼叫）；互動範圍 `RANGE`／`TOWN_R`／`reachOf`（core.js）；結算核心 `actResolve`（玩家行動→事件）、`enemyResolve`（敵人行動）、`petsAct`（召喚物）、`roundEnd`／`battleOpen`；單人 `startBattle`（`pack` 帶小怪 `packOf`）、`useSkill`、`playEv`（播事件）、`enemyAct`；站位 `epos`／`ESLOT`、`drawEnemies`（選取特效 `drawSel`、換目標名字淡出 `selTrack`）、`enemyBars`、點敵人換目標 `pickTarget`；地城一層一群 `dunEnemy(D, room, extra)`；組隊 `mpResolve`／`mpEnemy`／`mpFx`、經驗平均 `mpRoomReward` |
 | 行動值（戰鬥行動順序，0.3.10） | `js/battle.js`、`js/mp.js` | `AV_MAX`、`avSpd`、`avNext`（下一個行動的單位）、`avPreview`（橫列預測）；單人 `soloUnits`、`nextTurn`、`enemyAct`（`B.av`、`B.turns`）；組隊 `mpUnits`、`mpRound`（每層重置）、`mpNext`、`mpEnemy`（`MB.av`、`MB.ea`、`MB.order`） |
 | T 級 T1～T16（0.3.10） | `js/items.js`、`js/ui.js`、`js/map.js` | `TIERS`、`T_MAX`、`tierNow`／`tierMax`、`tierRange`、`aLv`（地圖基準等級，生成怪物與地城都用這個，不要直接用 `S.lv`）、`dunLv`、`tierBonus`／`tierBoss`、`tierNeed`；強度在 `makeEnemy`、掉寶在 `dropLoot`／`dunReward`；突破試煉 `tierTownHTML`／`A.tierTrial`／`tierUpDone`（`dungeonClear`）；說明與切換 `tierInfoHTML`／`A.tierInfo`／`A.tierSet`；狀態 `S.tier`、`S.tmax` |
 | 武器種類、雙手武器 | `js/data.js`、`js/sprites.js`、`js/battle.js` | `BASES.weapon`（`k` 外觀、`t` 類別、`th` 雙手；只能加在最後）、`wepKind`／`wepType`／`twoHand`、`WTAGN`；裝備衝突在 `A.equip`；手上武器圖 `drawWeapon` |
@@ -72,7 +72,7 @@
 | 地圖事件連動（0.2.13） | `js/demon.js`、`js/undead.js`、`js/hunt.js` | 霧中亡靈：`mistify`（`e.ud`）、`mistWin`／`undeadWin`（×1.5）；冥府生肖：`A.huntZod`（`ZOD_UW_R`、`uwz`）、`huntWin`；夜晚：`undeadSpawns` 半徑、魔霧刷新機率 |
 | 獵殺等級（0.3.1.6） | `js/hunt.js`、`js/map.js`、`js/battle.js`、`js/ui.js` | `HUNT_LV`（三級的強化與倍率）、`huntLv`／`huntCfg`、`huntTick`（每分鐘熱度與關閉後消退，`map.js` 每幀呼叫）、`huntKills`（`winBattle`）、`huntBuff`（`A.fight`、`packOf`）、`packN` 的成群加成；紅圈在 `map.js` 畫玩家範圍圈的地方；狀態 `S.hunt.heat`／`tAt` |
 | 狩獵墮落十二生肖（0.2.12） | `js/hunt.js` | `huntWalk`（`setPos` 呼叫）、`huntSpawns`（`genEntities` 最後）、`ZODIAC`（圖 `SPR.z_*`、配色 `ZBASE`）、`drawZodiacs`、`HSUM`、`makeBeast`、`makeZodiac`、`huntWin`（`winBattle`）、`huntHTML`（`hunt` 面板）、`zodEntHTML`（`openEnt`）；狀態 `S.hunt`、`S.summons`（id 以 `z` 開頭） |
-| 魔霧刷新、亡靈區／魔霧／侵蝕柱的地圖繪製 | `js/demon.js`、`js/undead.js`、`js/endgame.js` | `mistEp`／`mistify`（`q` 開頭的魔霧怪）、`drawMist`、`drawUndead`／`drawUndeadMark`、`drawObelisks`；遠距離顯示 `FAR`（`map.js`） |
+| 魔霧刷新、亡靈區／魔霧／侵蝕柱的地圖繪製 | `js/demon.js`、`js/undead.js`、`js/endgame.js` | `mistEp`／`mistify`（`q` 開頭的魔霧怪）、`drawSeals`／`drawSealMark`、`drawUndead`／`drawUndeadMark`、`drawObelisks`；遠距離顯示 `FAR`（`map.js`） |
 | 七宗罪之王（4 人，0.2.11） | `js/demon.js`、`js/data.js` | `makeSinKing`、`A.sinKing`、`DTYPES.sinking`；付出殘魂在 `payDun` 的 `souls` |
 | 等級上限 | `js/items.js` | `LV_MAX`（`gainXP`） |
 | 石碑／魔法陣當場挑戰 | `js/endgame.js` | `A.siteGo` 設定 `SEL.site` 後打開石碑面板（`steleHTML` 的現場模式、`siteEnt`），開打走 `A.steleRun`／`A.circleOpen` |
@@ -87,7 +87,7 @@
 | 地圖繪製、右上角資訊 | `js/map.js` | `renderWorld`、`placeLabel` |
 | 點地圖、走路、GPS | `js/map.js` | `input`、`movement`、`GPS` 區段 |
 | 主畫面 HUD、底部導覽 | `js/ui.js` | `renderHud`、`NAVG`、`navOpen`；DOM 在 `index.html` 的 `#nav` |
-| 各個面板（角色、背包、據點、設定…） | `js/ui.js` | `renderSheet` 的 `sheetName` 分支（見下表） |
+| 各個面板（角色、背包、藏身處、設定…） | `js/ui.js` | `renderSheet` 的 `sheetName` 分支（見下表） |
 | 點地圖物件後的互動（怪物、城鎮、地城） | `js/ui.js` | `entity interaction` 區段 |
 | 藏身處（0.3.23 取代據點） | `js/endgame.js`、`js/ui.js` | 面板 `hideoutHTML`（sheet `base`，選單「冒險 → 藏身處」）、休息 `A.hideRest`／`hideRestLeft`（`HIDE_REST`、`S.hideRest`）、魔晶兌換 `A.cryTrade`（`CRY_COST`）；隨時能賣 `canSell`、亡靈製作 `atBase`（`undead.js`，一律 true） |
 | 遠端互動範圍（0.3.23 拿掉） | `js/endgame.js` | `zones()` 回傳空的，`zoneOf`／`inZone`／`drawZones` 保留但不會有範圍；`flagsOn` 回傳空的 |
@@ -120,7 +120,7 @@
 | `bag` | 背包 | 底部「背包」 |
 | `slot` | 裝備欄 | 背包裡點裝備欄 |
 | `item` | 裝備 | 背包裡點物品 |
-| `base` | 據點 | 「冒險」→ 據點 |
+| `base` | 藏身處 | 「冒險」→ 藏身處（`hideoutHTML`，在 `endgame.js`） |
 | `quest` | 委託 | 「冒險」→ 委託（`questHTML`，在 `daily.js`） |
 | `stele` | 石碑與傳送門 | 「冒險」→ 石碑（`steleHTML`，在 `endgame.js`） |
 | `log` | 冒險日誌 | 「冒險」→ 冒險日誌 |
@@ -143,11 +143,10 @@
 | `CLOUD` | `cloud.js` | Supabase 連線、目前帳號 `uid`、玩家編號、是否遊客 |
 | `SOC` | `social.js` | 好友清單 |
 | `GA` | `gacha.js` | 祈願畫面目前的卡池（`pact`）與抽卡結果 |
-| `SILK` | `endgame.js` | 絲綢之路清單、目前在看的好友據點 `view` |
 | `SEL` | `endgame.js` | 石碑面板選取中的碑文碎片與石碑 |
 | `TV` | `tree.js` | 天賦樹畫面的縮放與位置 |
 
-## 頂層宣告索引（自動產生）
+## 檔案區段大綱（自動產生）
 
 格式：`名稱:行號`。粗體是檔案裡的區段註解（`/* ===== 區段 ===== */`）。
 
@@ -155,236 +154,155 @@
 
 ### js/core.js（71 行）
 
-  `$:3`
-- **utils**（6）
-  `h:7`、`rng:13`、`rnd:22`、`now:23`、`REFRESH:25`、`epoch:27`、`uid:29`、`esc:30`、`hex2rgb:31`、`shade:41`、`dist:51`、`fmtD:60`、`dirName:61`、`RANGE:66`、`reachOf:69`
+- **utils**（6），15 個宣告
 
 ### js/data.js（2661 行）
 
-- **state**（3）
-  `SLOT:5`、`KEY:6`
-- **game data**（22）
-  `CLASSES:26`、`OLDCLS:36`、`clsOf:37`、`SKILLS:39`、`GEM_MAX:68`、`GEM_DRAW:70`、`soulNeed:71`、`GCUR:74`、`GCURI:84`、`EL:85`、`MONS:86`、`MIMIC:1102`、`EMODS:1115`、`DTYPES:1128`、`DMODS:1239`、`DMODI:1252`、`UMODS:1254`、`EMODI:1261`、`FRAG_PARTS:1263`、`ZONE_CELL:1265`、`ZMODS:1267`、`RCOL:1277`、`RGLOW:1279`、`RAREA:1280`、`SLOTS:1282`、`SLOTN:1283`、`BASES:1296`、`DROPS:1374`、`T5:1375`、`ARMOR:1382`、`AFF:1384`、`AFFI:1538`、`STATN:1539`、`sg:1594`、`CUR:1640`、`CURI:1651`、`TH:1654`、`SPOKES:1946`、`TREE:2053`、`VER:2659`、`START:2660`
+- **state**（3），2 個宣告
+- **game data**（22），41 個宣告
 
 ### js/sprites.js（1334 行）
 
-- **pixel sprites (original art)**（3）
-  `SPR:4`、`ICONS:560`、`ICOPAL:582`、`PAL:583`、`FIXED:591`、`ART_U:594`、`artImg:596`、`artSprite:605`、`sprite:629`、`paintIcon18:668`、`spriteCanvas:674`、`drawSpr:686`、`ICC:706`、`iconURL:707`、`paintIcon:717`、`wepKind:731`、`wepType:733`、`twoHand:734`、`WTAGN:735`、`offType:736`
-- **icons: currency, item slots, passive nodes**（737）
-  `PIX:738`、`PIXC:930`、`pixURL:931`、`curIcon:965`、`slotIcon:966`、`ICIMG:980`、`nodeIcon:981`
-- **boss sprites**（989）
-  `BOSSPAL:1265`
+- **pixel sprites (original art)**（3），20 個宣告
+- **icons: currency, item slots, passive nodes**（737），7 個宣告
+- **boss sprites**（989），1 個宣告
 
 ### js/gear.js（685 行）
 
-- **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1）
-  `GEAR:3`、`TIER_LV:244`、`tierOf:246`、`MATC:247`、`BLADEC:258`、`gearArt:261`、`gearPal:263`、`GIC:286`、`gearIcon:288`、`GLOOK:340`、`heroLook:347`、`WFRONT:355`、`OFRONT:502`、`put:508`、`stamp:513`、`heroSpr:518`、`heroPal:637`
+- **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1），17 個宣告
 
 ### js/art.js（101 行）
 
-  `ART:2`
 
 ### js/skills.js（1416 行）
 
-  `SKKIND:675`、`SKTYPE:691`、`skTags:705`、`skTagHTML:753`、`skShort:759`、`SK_COND:765`、`SUPG:990`、`SUPGI:1195`、`SUPM:1196`、`SUPREQ:1205`、`SUPREQN:1217`、`supFits:1229`
 
 ### js/audio.js（221 行）
 
-- **audio**（3）
-  `AU:4`、`audioInit:5`、`tone:30`、`noise:47`、`NS:65`、`nf:66`、`SONGS:71`、`PARSED:109`、`parse:110`、`playSong:122`、`schedule:128`、`SFX:147`、`sfx:213`、`buzz:216`
+- **audio**（3），14 個宣告
 
 ### js/items.js（1126 行）
 
-- **player & items**（3）
-  `newGame:4`、`makeItem:79`、`baseOf:98`、`Q_CAP:100`、`hasQ:101`、`qMul:102`、`qPhys:103`、`qArm:104`、`affFits:106`、`fitsSlot:108`、`rollAffix:110`、`cnt:131`、`addRandom:132`、`toMagic:142`、`rareName:149`、`toRare:150`、`itemTitle:156`、`itemName:167`、`itemSum:168`、`itemCard:177`、`sellVal:206`、`giveItem:207`、`giveCur:215`、`rollCur:218`、`curDot:228`、`craftable:230`、`craft:243`
-- **skill gems**（261）
-  `newGem:264`、`SOCK_MAX:265`、`gemOf:266`、`GEMK:267`、`gemQFx:269`、`gemSkill:312`、`mySkills:375`、`supUsed:377`、`supBlock:378`、`supIn:389`、`supOut:395`、`giveSup:401`、`Q_GEM:406`、`prismAdd:407`、`SOCK_CUR:409`、`gemCraftable:410`、`gemCraft:416`、`corrupt:439`、`gemLvBlock:462`、`gemSoulBack:470`、`GEM_START:474`、`GEMREQ:475`、`gemReq:476`、`gemTier:488`、`gemPrice:489`、`hasGem:490`、`gemCount:491`、`gemBuyBlock:492`、`giveGem:498`
-- **stats**（507）
-  `curSpec:509`、`STAT0:510`、`sumStats:613`、`auraExtra:638`、`SPIRIT0:649`、`auraCost:651`、`auraOn:652`、`HP_LV:666`、`stats:669`、`MECH:773`、`xpNeed:804`、`fullHeal:808`、`clampHP:813`、`autoPot:819`、`naturalRegen:841`、`addLog:849`、`gainXP:853`、`LV_MAX:868`、`treePts:869`、`dayPhase:870`、`buffOn:876`
-- **enemies**（878）
-  `TIERS:881`、`T_MAX:899`、`tierOfLv:901`、`tierMax:902`、`tierNow:903`、`tierRange:904`、`aLv:906`、`dunLv:911`、`tierBonus:916`、`tierBoss:920`、`tierNeed:922`、`pickMon:923`、`makeEnemy:934`、`rollMods:986`、`modNames:995`、`uwApply:997`
-- **modal**（1016）
-  `showModal:1017`、`hideModal:1023`、`busy:1026`、`openShop:1027`、`SHOP:1125`
+- **player & items**（3），27 個宣告
+- **skill gems**（261），29 個宣告
+- **stats**（507），21 個宣告
+- **enemies**（878），16 個宣告
+- **modal**（1016），5 個宣告
 
 ### js/battle.js（3155 行）
 
-- **battle: painted backgrounds**（3）
-  `bbg:4`、`BW:7`、`sizeBattle:10`、`blob:20`、`paintBG:27`
-- **battle: logic**（238）
-  `BFX:239`、`POS:241`、`ESLOT:246`、`battleSc:271`、`epos:273`、`etop:287`、`placeBName:288`、`AIL_E:294`、`AIL_NUM:318`、`ailHTML:319`、`heroAilHTML:331`、`placeAil:355`、`bossBar:362`、`enemyBars:372`、`setFloor:382`、`PORT:387`、`portrait:388`、`renderOrder:398`、`bmsg:407`、`BLOG:416`、`blog:418`、`logEv:425`、`BUFFK:436`、`binfoAil:467`、`binfoBuffs:476`、`binfoTrait:487`、`binfoRender:497`、`pop:550`、`anim:554`、`animOff:557`、`later:571`
-- **battle: rules（單人與組隊共用）**（577）
-  `eInit:579`、`PACK_P:588`、`packN:589`、`packSeed:599`、`packBases:600`、`packOf:616`、`skTag:635`、`supOf:637`、`bsum:648`、`mitigate:650`、`skCost:658`、`lifeCost:659`、`wOk:661`、`canPay:662`、`skSub:667`、`skReady:676`、`payCost:677`、`costTxt:683`、`skSt:688`、`skByKey:701`、`extraHit:702`、`heroPacket:703`、`heroDmg:718`、`heroAil:732`、`poisonTick:779`、`bleedTick:781`、`addPoison:782`、`takeDmg:788`、`hitCol:799`、`aliveIdx:807`、`skKey:815`、`cdLeft:816`、`charging:817`、`COND_ST:818`、`stackOf:829`、`condMul:831`、`condTxt:846`、`actResolve:859`、`UNIT_MAX:1177`、`UNIT_N:1178`、`unitSk:1180`、`placeUnit:1185`、`unitCaster:1216`、`shiftEv:1225`、`evEnd:1226`、`mineBlast:1228`、`unitsAct:1244`、`cryResolve:1267`、`addBuff:1311`、`petsAct:1324`、`enemyResolve:1350`、`AV_MAX:1581`、`avSpd:1583`、`avNext:1585`、`avPreview:1602`、`roundEnd:1607`、`battleOpen:1626`
-- **battle: solo**（1639）
-  `heroMe:1641`、`startBattle:1671`、`pickTarget:1717`、`renderBHud:1747`、`playEv:1851`、`soloExt:1906`、`useSkill:1919`、`bItem:1962`、`flee:2008`、`allDead:2023`、`afterPlayer:2024`、`soloUnits:2036`、`nextTurn:2041`、`enemyAct:2060`
-- **dungeons (shared by solo and party)**（2075）
-  `dunSpec:2077`、`dunName:2108`、`BIGBOSS:2119`、`GHOSTS:2122`、`ghostOf:2133`、`dunEnemy:2135`、`dropLoot:2288`、`SOUL_MUL:2370`、`gemLoot:2371`、`mechOf:2398`、`supLoot:2410`、`ONSITE_BONUS:2433`、`onsiteNow:2434`、`dunReward:2436`、`dunModsHTML:2476`、`lootList:2482`、`winBattle:2491`、`loseBattle:2595`、`endBattle:2619`、`enterDungeon:2628`、`nextRoom:2646`、`dungeonClear:2666`、`BP_ARMOR:2722`、`bossPicks:2724`
-- **battle: drawing**（2806）
-  `drawEnemies:2808`、`selTrack:2849`、`drawSel:2860`、`drawPets:2895`、`renderBattle:2904`、`drawWeapon:2980`、`drawFx:3058`
+- **battle: painted backgrounds**（3），5 個宣告
+- **battle: logic**（238），31 個宣告
+- **battle: rules（單人與組隊共用）**（577），57 個宣告
+- **battle: solo**（1639），14 個宣告
+- **dungeons (shared by solo and party)**（2075），24 個宣告
+- **battle: drawing**（2806），7 個宣告
 
 ### js/map.js（1712 行）
 
-- **world coordinates: meters from 台中車站 (x 東, y 南)**（3）
-  `O:4`、`KX:5`、`toM:7`、`toLL:8`、`TOWNS:10`
-- **OpenStreetMap vector tiles**（63）
-  `TZ:66`、`lng2tx:70`、`tx2lng:75`、`m2t:77`、`tileRect:81`、`CHUNKS:86`、`chunkVer:87`、`chunkQ:90`、`ckey:91`、`IDB:92`、`decodeMVT:130`、`ROADS:267`、`compactTile:269`、`genChunk:302`、`buildChunk:335`、`setChunk:370`、`tileURL:379`、`tileTemplate:380`、`WANT:394`、`fetchChunk:395`、`pumpChunks:425`、`ensureChunks:436`、`chunkAt:456`、`mapLoading:460`、`tilesIn:465`、`snapRoad:476`
-- **extra sprites for the game map**（506）
-  `HOUSEPALS:566`、`TPAL:571`、`townLayout:577`
-- **extra sprites**（608）
-- **fog of war (chunked)**（675）
-  `CH:677`、`fogCount:682`、`fogReset:683`、`fogChunk:687`、`reveal:701`、`revealed:730`、`explKm2:738`、`MILES:739`、`trailStep:740`
-- **spawns**（761）
-  `spawnAt:762`、`MCELL:763`、`evEp:767`、`nearTown:768`、`SDCELL:772`、`soloDunAt:773`、`dungeonAt:802`、`NOT_TEMPLE:823`、`genEntities:824`、`refreshEntities:998`、`VIS:1017`、`MOBILE:1018`、`LANDMARK:1020`、`LM_VIS:1032`、`FAR:1034`、`visible:1036`、`isDone:1045`、`townLv:1055`
-- **world rendering**（1057）
-  `wv:1058`、`VW:1060`、`cam:1063`、`ZMIN:1064`、`sizeWorld:1066`、`SX:1073`、`BGPAT:1075`、`bgPattern:1076`、`glow:1089`、`label:1096`、`sprScale:1115`、`viewChunks:1117`、`camLoadT:1125`、`renderWorld:1126`、`arrows:1425`
-- **input**（1455）
-  `ptrs:1456`、`drag:1457`、`tapOK:1491`、`endPtr:1492`、`tapWorld:1513`
-- **movement**（1547）
-  `lastFrame:1548`、`SIM_SPEED:1551`、`simSpeed:1552`、`setPos:1553`、`checkArrive:1583`
-- **GPS**（1600）
-  `GPS:1602`、`gpsStart:1603`、`gpsStop:1641`、`tick:1648`、`timeRegen:1675`、`mmss:1684`、`plT:1688`、`placeLabel:1689`
+- **world coordinates: meters from 台中車站 (x 東, y 南)**（3），5 個宣告
+- **OpenStreetMap vector tiles**（63），26 個宣告
+- **extra sprites for the game map**（506），3 個宣告
+- **extra sprites**（608），0 個宣告
+- **fog of war (chunked)**（675），9 個宣告
+- **spawns**（761），18 個宣告
+- **world rendering**（1057），15 個宣告
+- **input**（1455），5 個宣告
+- **movement**（1547），5 個宣告
+- **GPS**（1600），8 個宣告
 
 ### js/tree.js（496 行）
 
-- **passive tree (full screen)**（3）
-  `startOf:5`、`treeAdj:6`、`canAlloc:16`、`pathTo:20`、`canRefund:47`、`treeTotals:64`、`TV:75`、`DISC_R:77`、`openTree:94`、`closeTree:102`、`sizeTree:110`、`treeFit:118`、`TX:124`、`NR:126`、`drawTree:127`、`arcCtl:283`、`drawDisc:293`、`renderTreeCard:334`
+- **passive tree (full screen)**（3），18 個宣告
 
 ### js/ui.js（1893 行）
 
-- **HUD & sheets**（3）
-  `renderHud:4`、`ZICON:22`、`ibarRender:32`、`toast:55`、`openSheet:62`、`closeSheet:70`、`TITLES:76`、`NAVG:97`、`navG:116`、`navClose:117`、`navOpen:126`、`KIND:155`、`bar:164`、`entIcon:167`、`fmt1:201`、`curRow:202`、`bagTabs:206`、`curRowG:213`、`BUFFN:216`、`kw:225`、`wepWarn:227`、`gemDesc:236`、`SKF:365`、`skfOk:373`、`gemKc:385`、`gemCell:386`、`gemRow:391`、`auraBlock:397`、`supPrice:403`、`supBuyBlock:404`、`supN:410`、`supHint:412`、`supLine:413`、`gemShopHTML:416`、`gshopKind:435`、`supShopHTML:444`、`prayed:454`、`sheetParent:456`、`renderSheet:465`、`nearTownE:680`、`shopSellHTML:684`、`canSell:703`、`worseThanEq:705`、`sellSel:710`、`bagListHTML:712`
-- **entity interaction**（730）
-  `openEnt:731`、`lineupHTML:873`、`tierTownHTML:885`、`tierUpDone:893`、`tierInfoHTML:903`、`onSite:915`、`ONSITE_K:917`、`siteBonus:918`、`inRange:919`
-- **actions**（921）
-  `authForm:923`、`A:955`
+- **HUD & sheets**（3），45 個宣告
+- **entity interaction**（730），9 個宣告
+- **actions**（921），2 個宣告
 
 ### js/endgame.js（689 行）
 
-- **map objects**（3）
-  `pad16:4`、`ep2:74`
-- **zones（0.3.23 起沒有遠端範圍）**（76）
-  `flagsOn:77`、`zones:79`、`zonesKey:82`、`zoneOf:86`、`inZone:87`、`drawZones:88`
-- **zone modifiers**（107）
-  `zoneXY:108`、`zoneAt:114`
-- **spawns**（116）
-  `STCELL:117`、`drawObelisks:124`、`endgameSpawns:166`
-- **scrolls, inscriptions, tablets**（280）
-  `INSC_MAX:281`、`rollInsc:285`、`makeTablet:294`、`modList:305`、`capMods:307`、`payDun:312`
-- **underworld**（330）
-  `obeliskCharge:331`、`watcherWin:341`、`makeFrag:347`、`WATCHERS:359`、`summonWatcher:389`
-- **sheets**（410）
-  `SEL:411`、`chip:412`、`HIDE_REST:415`、`hideRestLeft:417`、`hideoutHTML:418`、`siteEnt:429`、`steleHTML:434`、`MAT_TABS:471`、`matsHTML:477`、`ENTURL:524`、`entURL:525`、`portalPick:530`
-- **actions**（536）
+- **map objects**（3），2 個宣告
+- **zones（0.3.23 起沒有遠端範圍）**（76），6 個宣告
+- **zone modifiers**（107），2 個宣告
+- **spawns**（116），3 個宣告
+- **scrolls, inscriptions, tablets**（280），6 個宣告
+- **underworld**（330），5 個宣告
+- **sheets**（410），12 個宣告
+- **actions**（536），0 個宣告
 
 ### js/undead.js（619 行）
 
-- **data**（3）
-  `pad16u:4`、`UNDEAD:100`、`UNDEADN:177`、`ESS:179`、`ESSI:207`、`ESS_MAX:208`、`affCat:209`、`UCUR:211`、`UCURI:217`、`KING_NEED:218`
-- **zones**（233）
-  `UD_CELL:234`、`udEp:237`、`UDZ:238`、`undeadSpawns:240`、`udProg:290`、`udZoneAt:291`、`drawUndead:293`、`drawUndeadMark:326`
-- **battle**（342）
-  `undeadWin:344`、`giveEss:363`、`udBoss:369`、`commanderWin:377`、`kingWin:396`
-- **undead crafting（0.3.23 起在藏身處）**（409）
-  `atBase:411`、`ucCost:412`、`ucBlock:413`、`maxPS:419`、`rollCat:421`、`hasEss:431`、`payEss:432`、`UC_SH:433`、`ucDone:434`、`ucReroll:438`、`ucConv:450`、`ucAdd:467`、`ucAff:478`、`undeadCraftHTML:500`、`essHTML:537`
-- **actions**（545）
+- **data**（3），10 個宣告
+- **zones**（233），8 個宣告
+- **battle**（342），5 個宣告
+- **undead crafting（0.3.23 起在藏身處）**（409），15 個宣告
+- **actions**（545），0 個宣告
 
 ### js/demon.js（1420 行）
 
-- **sprites & data**（3）
-  `pad16d:4`、`MMODS:76`、`mistApply:84`、`MISTMON:100`、`MIST_TIERS:145`、`ROMAN:152`、`SINS:154`、`SINI:219`、`LEGENDS:221`、`LEGI:279`、`makeLegend:280`、`JAFF:290`、`JEWEL_MAX:309`、`makeJewel:310`、`giveJewel:319`、`jewelTxt:326`、`jewelCap:328`、`jewelsIn:329`、`jewelStats:334`
-- **map: mist seals, active mist, sin statues**（341）
-  `MS_CELL:342`、`MZ:345`、`mistAt:346`、`mistProg:347`、`demonSpawns:348`、`MQ_CELL:446`、`mistify:450`、`drawSeals:464`、`drawSealMark:527`、`mistWin:565`
-- **sin lords**（582）
-  `SINSPR:584`、`makeSinLord:593`、`makeSinKing:618`、`sinTurn:640`、`sinHit:658`、`sinBattleWin:669`、`sinReward:675`
-- **sheets**（706）
-  `sinMods:707`、`demonHTML:717`、`jewelHTML:725`、`socketCardHTML:738`
-- **actions**（763）
-- **0.3.24 魔霧：山海經四凶與燭龍**（796）
-  `XIONG:799`、`XIONGI:805`、`xiongOf:806`、`xseal:807`、`xsealAll:808`、`makeXiong:809`、`makeZhulong:824`、`beastTurn:851`、`xiongWin:934`、`zhulongWin:943`
-- **0.3.25 七罪攻佔城鎮**（986）
-  `SIEGE_LV:990`、`SIEGE_FX:996`、`SINF:1006`、`siegeTown:1057`、`siegeAt:1058`、`siegeTick:1063`、`followerBase:1081`、`followerize:1098`、`makeFollower:1109`、`siegeSpawns:1112`、`drawSiege:1153`、`siegeApply:1185`、`siegeWin:1209`、`siegeDone:1222`、`siegeTownHTML:1238`、`followerTurn:1273`、`followerAfter:1362`、`followerHit:1385`
+- **sprites & data**（3），19 個宣告
+- **map: mist seals, active mist, sin statues**（341），10 個宣告
+- **sin lords**（582），7 個宣告
+- **sheets**（706），4 個宣告
+- **actions**（763），0 個宣告
+- **0.3.24 魔霧：山海經四凶與燭龍**（796），10 個宣告
+- **0.3.25 七罪攻佔城鎮**（986），18 個宣告
 
 ### js/hunt.js（868 行）
 
-- **data**（3）
-  `HUNT_STEP:4`、`pad16z:11`、`ZBASE:214`、`ZODIAC:226`、`ZODI:310`、`HSUM:312`、`drawZodiacs:319`、`corruptPal:355`、`zodPal:370`
-- **state**（387）
-  `H:388`、`HUNT_LV:391`、`HEAT_MIN:396`、`huntLv:400`、`huntCfg:407`、`addBlood:408`、`huntWalk:417`、`huntTick:427`、`huntKills:441`、`huntUp:452`、`huntBuff:461`、`huntHud:471`、`nearSpot:484`、`addSummon:494`、`huntSpawns:502`、`zodActive:512`
-- **enemies**（514）
-  `makeBeast:515`、`ZOD_MODS:522`、`rollZodMods:524`、`makeZodiac:530`、`huntWin:553`
-- **sheet**（589）
-  `huntHTML:590`、`huntPaint:623`
-- **印記兌換**（630）
-  `ZLEG:632`、`ZLEG_COST:646`、`zodStats:666`、`markTotal:670`、`sealHTML:671`、`spendMarks:694`
-- **actions**（702）
-  `zodEntHTML:860`
+- **data**（3），9 個宣告
+- **state**（387），16 個宣告
+- **enemies**（514），5 個宣告
+- **sheet**（589），2 個宣告
+- **印記兌換**（630），6 個宣告
+- **actions**（702），1 個宣告
 
 ### js/daily.js（199 行）
 
-- **今日委託**（3）
-  `QUESTS:5`、`QUESTI:19`、`DAILY_N:20`、`today:22`、`daily:23`、`quest:38`、`questReward:55`、`dailyHTML:72`
-- **委託面板（0.3.15，原本的「附近」）**（85）
-  `questProg:88`、`questHTML:127`
-- **足跡**（141）
-  `FOOT_CELL:143`、`FOOTA:147`、`footKey:148`、`footN2Lv:149`、`footLv:150`、`footStep:155`、`footDens:180`、`drawFoot:183`
+- **今日委託**（3），8 個宣告
+- **委託面板（0.3.15，原本的「附近」）**（85），2 個宣告
+- **足跡**（141），8 個宣告
 
 ### js/asc.js（2234 行）
 
-- **data**（69）
-  `ASC_LV:70`、`N:73`、`ASC:74`、`TAGN:859`、`SUPN:877`、`SMG:901`、`ASCN:930`、`ASCB:931`、`ASC_ART:937`、`ASCE:1560`
-- **state & stats**（1625）
-  `ASCD:1626`、`ascPts:1627`、`ascUsed:1628`、`ascNext:1629`、`ascOn:1630`、`ascStats:1635`、`ascSup:1642`、`ascTxt:1644`、`ascCostTxt:1656`、`ascCan:1658`、`ascSmall:1665`、`ascOpen:1667`、`ASCF:1676`、`ascFree:1677`、`ascNear:1689`、`ascLeft:1691`、`ascResetCost:1695`、`ascAlert:1697`
-- **icons**（1699）
-  `ASCI:1701`、`ascIcon:1702`
-- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1727）
-  `AV:1729`、`ascMine:1731`、`AV_ANG:1732`、`AV_E:1736`、`ascXY:1738`、`ascCtl:1749`、`AIMG:1761`、`ascImg:1762`、`AX:1772`、`openAsc:1774`、`closeAsc:1786`、`sizeAsc:1791`、`ascFit:1800`、`ascState:1827`、`drawAsc:1832`、`renderAscCard:1940`
-- **trials**（2080）
-  `ascTownHTML:2082`、`ascTrialDone:2089`
-- **actions**（2096）
+- **data**（69），10 個宣告
+- **state & stats**（1625），18 個宣告
+- **icons**（1699），2 個宣告
+- **board（0.3.0.3：比照天賦樹的全螢幕昇華盤）**（1727），16 個宣告
+- **trials**（2080），2 個宣告
+- **actions**（2096），0 個宣告
 
 ### js/gacha.js（767 行）
 
-- **pacts**（6）
-  `PRAR:8`、`PTW:23`、`PTAG:30`、`PAFF:49`、`PAFFI:345`、`PACTS:347`、`PACTI:380`、`PD:382`、`pactOf:388`、`pactKind:389`、`pactSlots:394`、`pactsOn:395`、`pactIsOn:399`、`pactOpen:401`、`pactFodder:406`、`rollTier:411`、`rollPAff:417`、`rollPact:438`、`paffTags:445`、`pactTags:456`、`pactTagHTML:461`、`paffTxt:463`、`pactStats:471`、`pactSkLv:479`、`pactFollow:489`、`pactPal:494`、`pactImg:499`、`pactTile:500`
-- **banners**（505）
-  `BANNERS:506`、`ppool:516`、`GA:517`、`pityOf:518`、`gachaRoll:523`、`pactGive:535`、`gachaPull:542`、`revealNext:565`
-- **ui**（576）
-  `openGacha:577`、`closeGacha:585`、`renderGacha:590`、`pactAffHTML:626`、`pactCard:637`、`pactHTML:651`、`pactBrkHTML:683`、`pactRefresh:692`
+- **pacts**（6），28 個宣告
+- **banners**（505），8 個宣告
+- **ui**（576），8 個宣告
 
 ### js/tutor.js（160 行）
 
-- **tutorial**（3）
-  `TUT:5`、`tutI:102`、`tutorStart:103`、`tutorEnd:110`、`tutorShow:116`
+- **tutorial**（3），5 個宣告
 
 ### js/cloud.js（161 行）
 
-- **cloud save (Supabase)**（4）
-  `SB_URL:5`、`CLOUD:8`、`playerTag:19`、`cloudUser:21`、`cloudFetch:32`、`cloudInit:37`、`cloudPush:77`
-- **accounts**（104）
-  `AUTH_ERR:105`、`authMsg:110`、`authRegister:112`、`authLogin:133`、`authLogout:154`
+- **cloud save (Supabase)**（4），7 個宣告
+- **accounts**（104），5 個宣告
 
 ### js/social.js（178 行）
 
-- **profile & friends**（3）
-  `SOC:4`、`isOnline:5`、`profileSync:7`、`friendsLoad:18`、`FR_MSG:30`、`friendAdd:39`、`friendRespond:45`、`friendRemove:49`、`socialOnUser:54`
-- **party invites**（64）
-  `INVQ:66`、`invitesListen:67`、`invitesStop:84`、`dropInvite:88`、`queueInvite:94`、`nextInvite:105`、`inviteFriend:134`
-- **friends sheet**（145）
-  `friendsHTML:146`
+- **profile & friends**（3），9 個宣告
+- **party invites**（64），7 個宣告
+- **friends sheet**（145），1 個宣告
 
 ### js/mp.js（1055 行）
 
-  `PT:6`、`TURN_MS:7`、`ptMax:10`、`allReady:11`、`genCode:12`、`amLeader:14`、`mySnap:15`、`palFor:32`
-- **party / lobby**（34）
-  `ptSend:35`、`ptConnect:38`、`ptPill:52`、`partyCreate:61`、`partyJoin:93`、`partyLeave:119`、`ptLobby:136`、`ptGone:142`、`ptMsg:164`、`ptCodeHTML:238`、`partyHTML:240`
-- **battle state (leader authoritative)**（268）
-  `MBT:269`、`MBFX:271`、`pub:273`、`mpPush:281`、`mpArm:287`、`ptReady:297`、`mpStart:309`、`mpSpawn:383`、`mpUnits:398`、`mpRound:403`、`mpNext:409`、`mpOnAct:443`、`mpResolve:449`、`mpEnemy:512`、`mpRoomClear:534`
-- **battle (every client)**（574）
-  `mpEnter:575`、`mpBG:598`、`mpApply:604`、`mpFx:619`、`mpMy:680`、`mpRoomReward:701`、`mpClear:723`、`mpWipe:756`、`mpEnd:780`、`mpStop:797`、`mpLeave:808`
-- **battle rendering**（823）
-  `mpPos:825`、`renderMBHud:831`、`mpTurnT:940`、`mpTurnBar:941`、`renderMB:959`
+- **party / lobby**（34），11 個宣告
+- **battle state (leader authoritative)**（268），15 個宣告
+- **battle (every client)**（574），11 個宣告
+- **battle rendering**（823），5 個宣告
 
 ### js/main.js（369 行）
 
-- **boot**（3）
-  `load:4`、`save:12`、`rebuildWorld:30`、`migrate:40`、`start:313`
+- **boot**（3），5 個宣告
 <!-- index:end -->
