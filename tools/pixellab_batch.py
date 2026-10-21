@@ -88,8 +88,8 @@ def b64png(img):
     return base64.b64decode(s.split(',', 1)[-1])
 
 
-def generate(prompt, size, extra, endpoint):
-    body = {'description': prompt, 'image_size': {'width': size, 'height': size}, **extra}
+def generate(prompt, size, extra, endpoint, height=None):
+    body = {'description': prompt, 'image_size': {'width': size, 'height': height or size}, **extra}
     for attempt in range(8):
         code, r = call('POST', endpoint, body)
         if code == 422 and extra and any(k in json.dumps(r) for k in extra):

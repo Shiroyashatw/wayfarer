@@ -51,6 +51,7 @@
 | `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽（`img/` 大圖在這裡轉 base64 內嵌） |
 | `tools/art.py` | `art/monsters/` 的 PNG 像素圖 → 裁邊、拼成 `img/` 的調色盤大圖（無損、帶 hash）＋`js/art.js` 座標；使用者說「放了新圖」就跑（skill `pixel-art`） |
 | `tools/pixellab_batch.py` | PixelLab API 批次產圖：讀 `docs/怪物提示詞.md`／`docs/圖示提示詞.md` 的提示詞，輸出到 `art/new/`（不進 git）；金鑰用環境變數 `PIXELLAB_API_KEY`，不要寫進專案 |
+| `tools/icon_sheets.py` | 圖示圖表：從 `docs/圖示提示詞.md` 組出 `docs/圖示圖表.md`（8×8 一張 64 個、同類系同一張、共用風格），`slice` 把 PixelLab 產好的圖表切成 `art/icons/` 的單張 |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（函式行號），並檢查 CODEMAP 裡失效的名稱 |
 | `supabase/migrations/` | 資料庫結構 |
 
