@@ -14,7 +14,8 @@ function renderHud() {
   const a = $('ava').getContext('2d');
   a.clearRect(0, 0, 18, 18);
   a.drawImage(sprite(heroSpr('F'), heroPal()), 0, 0);
-  $('ptDot').hidden = treePts() <= 0 && !(typeof ascAlert === 'function' && ascAlert());
+  $('ptDot').hidden =
+    !(typeof pendPicks === 'function' && pendPicks() > 0) && !(typeof ascAlert === 'function' && ascAlert());
   /* 頭像上方的經驗值圓弧，快升級時發光 */
   const xr = Math.min(1, S.xp / xpNeed(S.lv));
   $('xpArc').style.strokeDasharray = `${xr * 100} 100`;
@@ -792,7 +793,8 @@ function shopSellHTML() {
   <button class="btn pri" data-act="shopSellGo" style="width:100%" ${ok && sel.length ? '' : 'disabled'}>賣出 ${sel.length} 件　+${gold} 金</button>`;
 }
 /* 賣裝備：0.3.23 起藏身處隨時都能進，所以隨時都能賣 */
-const canSell = () => true;
+/* 商店開著才能賣（0.1.0 肉鴿：商店節點） */
+const canSell = () => !!SHOP.render;
 /* 比身上穿的差：同部位穿戴中的稀有度與物品等級都不低於它（戒指跟比較差的那枚比） */
 function worseThanEq(it) {
   const eqs = it.slot === 'ring' ? [S.eq.ring1, S.eq.ring2] : [S.eq[it.slot]];

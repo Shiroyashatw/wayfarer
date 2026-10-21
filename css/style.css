@@ -814,3 +814,4 @@ button.chip:disabled{opacity:.45}
 .rn.boss img{width:32px;height:32px}
 .rn.shop{background:#2a3a2a}.rn.rest{background:#3a2e1a}.rn.chest{background:#3a321a}.rn.event{background:#26304a}
 @keyframes rnp{50%{box-shadow:0 0 0 6px #f2c14e30,0 0 22px #f2c14ea0}}
+.rm-pick{display:block;max-width:420px;width:100%;margin:0 auto var(--sp-3);position:sticky;top:0;z-index:2}

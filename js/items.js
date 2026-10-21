@@ -635,6 +635,8 @@ function sumStats() {
   jewelStats(A);
   if (typeof pactStats === 'function') pactStats(A);
   if (typeof ascStats === 'function') ascStats(A);
+  /* 0.1.0 肉鴿：這一局的永久加成（事件的祝福） */
+  if (typeof runStats === 'function') runStats(A);
   /* 0.3.21 光環：精魄（基礎 SPIRIT0 + 天賦、契靈、裝備）夠的才生效，照光環欄的順序 */
   for (const q of auraOn(SPIRIT0 + t.spirit)) for (const k in q.aura) A(k, q.aura[k]);
   return t;
@@ -1037,72 +1039,116 @@ function hideModal() {
   $('modal').hidden = true;
 }
 const busy = () => !$('modal').hidden || !!B || !!MB;
-function openShop(e, merchant) {
-  const he = hepoch(),
-    r = rng(h(fl(e.lat * 1e4), fl(e.lng * 1e4), he)),
-    lv = aLv() + (merchant ? 2 : 0);
-  const stock = Array.from({ length: merchant ? 6 : 10 }, () =>
-    makeItem(DROPS[fl(r() * DROPS.length)], lv, merchant ? 2 : r() < 0.3 ? 2 : 1, undefined, r)
-  );
-  const price = it => sellVal(it) * (merchant ? 3 : 4),
-    key = i => `${e.id},${he},${i}`;
+/* 0.1.0 肉鴿的商店：庫存依種子固定（同一個商店節點重開還是一樣）；買過的記在 S.run.bought。
+   商品：藥水、通貨、裝備、技能石、輔助寶石；出售頁可以勾選多件一次賣。opts.leave 是離開時要做的事（回章節地圖） */
+const SHOP_CUR = [
+  ['trans', 15],
+  ['aug', 15],
+  ['alch', 40],
+  ['regal', 45],
+  ['chaos', 60],
+  ['exalt', 150],
+  ['whet', 20],
+  ['scrap', 20]
+];
+function openShop(name, seed, lv, opts = {}) {
+  const r = rng(seed),
+    bought = (S.run && (S.run.bought = S.run.bought || {})) || {},
+    key = i => `${seed},${i}`,
+    pick = a => a[fl(r() * a.length)];
+  const stock = Array.from({ length: 5 }, () =>
+      makeItem(DROPS[fl(r() * DROPS.length)], lv, r() < 0.35 ? 2 : 1, undefined, r)
+    ),
+    have = new Set(S.gems.map(g => g.k)),
+    gks = GEMK().filter(k => !have.has(k) && gemReq(k) <= lv + 4),
+    gems = [],
+    sups = [];
+  while (gems.length < 3 && gks.length) gems.push(gks.splice(fl(r() * gks.length), 1)[0]);
+  {
+    const pool = SUPG.filter(sp => !sp.lin && sp.t <= 1 + fl(lv / 9));
+    while (sups.length < 2 && pool.length) sups.push(pool.splice(fl(r() * pool.length), 1)[0]);
+  }
+  const curs = [];
+  {
+    const pool = [...SHOP_CUR];
+    while (curs.length < 3) curs.push(pool.splice(fl(r() * pool.length), 1)[0]);
+  }
+  const price = it => sellVal(it) * 2;
   const goods = [
     {
       n: '生命藥水',
       ic: pixURL('ic_potion'),
-      p: 20,
+      p: 25,
       d: '恢復 40% 生命',
       have: () => S.potions,
       buy: () => S.potions++
     },
-    { n: '魔力藥水', ic: pixURL('ic_ether'), p: 30, d: '恢復 50% 魔力', have: () => S.ethers, buy: () => S.ethers++ },
-    ...(merchant
-      ? [
-          {
-            n: '混沌石',
-            ic: curIcon('chaos'),
-            p: 120,
-            d: CURI.chaos.d + '・流浪商人限定',
-            have: () => S.cur.chaos || 0,
-            buy: () => giveCur('chaos')
-          }
-        ]
-      : []),
-    ...stock.map((it, i) => ({ it, i, ic: slotIcon(it), p: price(it) }))
+    { n: '魔力藥水', ic: pixURL('ic_ether'), p: 25, d: '恢復 50% 魔力', have: () => S.ethers, buy: () => S.ethers++ },
+    ...curs.map(([id, p]) => ({
+      n: CURI[id].n,
+      ic: curIcon(id),
+      p,
+      d: CURI[id].d,
+      have: () => S.cur[id] || 0,
+      buy: () => giveCur(id)
+    })),
+    ...stock.map((it, i) => ({ it, i, ic: slotIcon(it), p: price(it) })),
+    ...gems.map((k, j) => ({
+      gem: k,
+      i: 10 + j,
+      n: SKILLS[k].name,
+      ic: skIcon(k, SKILLS[k].icon),
+      p: Math.round(gemPrice(k) * 0.6),
+      d: gemDesc(gemSkill(newGem(k)), stats())
+    })),
+    ...sups.map((sp, j) => ({
+      sup: sp,
+      i: 20 + j,
+      n: sp.n,
+      ic: artIconURL('sup_' + sp.k) || iconURL('gem'),
+      p: Math.round(supPrice(sp) * 0.6),
+      d: `輔助寶石・${sp.d}`
+    }))
   ];
   let sel = null;
+  const once = g => g.it || g.gem || g.sup;
   const detail = g => {
     if (!g) return '<p class="sub shint">點上面的商品看詳細資訊。</p>';
+    if (g.gem || g.sup) {
+      const sold = bought[key(g.i)];
+      return `<div class="card"><div class="ent"><img class="bigico" src="${g.ic}" alt=""><div class="t" style="flex:1;min-width:0"><b>${g.n}</b><div class="sub">${g.d}</div></div></div>
+      <button class="btn pri" data-act="mbtn" data-i="1" ${sold || S.gold < g.p ? 'disabled' : ''}>${sold ? '已售出' : S.gold < g.p ? `金幣不足（${g.p} 金）` : `購買 ${g.p} 金`}</button></div>`;
+    }
     if (!g.it)
       return `<div class="card"><div class="ent"><img class="bigico" src="${g.ic}" alt=""><div class="t" style="flex:1;min-width:0"><b>${g.n}</b><div class="sub">${g.d}・持有 ${g.have()}</div></div></div>
-      <div class="buyn">${[1, 10, 100]
+      <div class="buyn">${[1, 3]
         .map(
           (n, j) =>
-            `<button class="btn${j ? '' : ' pri'}" data-act="mbtn" data-i="${j ? 1 + goods.length + j : 1}" ${S.gold < g.p * n ? 'disabled' : ''}>×${n}<small class="bnote">${g.p * n} 金</small></button>`
+            `<button class="btn${j ? '' : ' pri'}" data-act="mbtn" data-i="${j ? 2 + goods.length : 1}" ${S.gold < g.p * n ? 'disabled' : ''}>×${n}<small class="bnote">${g.p * n} 金</small></button>`
         )
         .join('')}</div></div>`;
     const it = g.it,
-      sold = S.bought[key(g.i)],
+      sold = bought[key(g.i)],
       cur = it.slot === 'ring' ? S.eq.ring1 : S.eq[it.slot];
     return `${itemCard(it)}<div class="sub scmp">${cur ? `目前穿戴：${itemName(cur)}<br>${esc(itemSum(cur))}` : `${SLOTN[it.slot]}欄目前是空的`}</div>
       <button class="btn pri" data-act="mbtn" data-i="1" ${sold || S.gold < g.p ? 'disabled' : ''}>${sold ? '已售出' : S.gold < g.p ? `金幣不足（${g.p} 金）` : `購買 ${g.p} 金`}</button>`;
   };
-  /* 0.3.1.8：商店分「購買／出售」兩頁；出售頁可以勾選多件一次賣（在城鎮或據點才能賣） */
+  /* 商店分「購買／出售」兩頁；出售頁可以勾選多件一次賣 */
   const render = () => {
     const g = sel == null ? null : goods[sel],
       tabs = `<div class="seg shoptab"><button data-act="shopTab" data-k="buy" aria-pressed="${SHOP.mode === 'buy'}">購買</button><button data-act="shopTab" data-k="sell" aria-pressed="${SHOP.mode === 'sell'}">出售裝備 <b>${S.inv.length}</b></button></div>`;
     showModal(
-      esc(e.name),
+      esc(name),
       SHOP.mode === 'sell'
         ? tabs + shopSellHTML()
         : `${tabs}<div class="sgrid">${goods
             .map((q, i) => {
-              const sold = q.it && S.bought[key(q.i)];
-              return `<button class="stile ${i === sel ? 'on' : ''} ${sold ? 'sold' : ''}" data-act="mbtn" data-i="${2 + i}" style="${q.it ? `border-color:${RCOL[q.it.r]}88;` : ''}" aria-label="${esc(q.it ? itemTitle(q.it) : q.n)}">
-        <img src="${q.ic}" alt="">${q.it ? '' : `<i>${q.have()}</i>`}<small class="${S.gold < q.p && !sold ? 'poor' : ''}">${sold ? '售出' : q.p + ' 金'}</small></button>`;
+              const sold = once(q) && bought[key(q.i)];
+              return `<button class="stile ${i === sel ? 'on' : ''} ${sold ? 'sold' : ''}" data-act="mbtn" data-i="${2 + i}" style="${q.it ? `border-color:${RCOL[q.it.r]}88;` : q.gem || q.sup ? 'border-color:#9fd4ef88;' : ''}" aria-label="${esc(q.it ? itemTitle(q.it) : q.n)}">
+        <img src="${q.ic}" alt="">${once(q) ? '' : `<i>${q.have()}</i>`}<small class="${S.gold < q.p && !sold ? 'poor' : ''}">${sold ? '售出' : q.p + ' 金'}</small></button>`;
             })
             .join('')}</div>
-      <div class="sdet">${detail(g)}</div><p class="sub">持有 <span style="color:var(--gold)">${S.gold}</span> 金・商品每 15 分鐘更換</p>`,
+      <div class="sdet">${detail(g)}</div><p class="sub">持有 <span style="color:var(--gold)">${S.gold}</span> 金</p>`,
       [
         {
           label: '離開',
@@ -1111,6 +1157,7 @@ function openShop(e, merchant) {
             SHOP.render = null;
             SEL.sell = null;
             renderHud();
+            opts.leave && opts.leave();
           }
         }
       ]
@@ -1118,14 +1165,17 @@ function openShop(e, merchant) {
     modalFns.push(
       () => {
         if (!g || S.gold < g.p) return;
-        if (g.it) {
-          if (S.bought[key(g.i)]) return;
-          S.bought[key(g.i)] = 1;
-          giveItem({ ...g.it, id: uid(), aff: g.it.aff.map(a => ({ ...a })) });
-          addLog(`購買了 ${itemTitle(g.it)}`);
+        if (once(g)) {
+          if (bought[key(g.i)]) return;
+          bought[key(g.i)] = 1;
+          if (g.it) giveItem({ ...g.it, id: uid(), aff: g.it.aff.map(a => ({ ...a })) });
+          else if (g.gem) giveGem(g.gem);
+          else giveSup(g.sup.k);
+          addLog(`購買了 ${g.it ? itemTitle(g.it) : g.n}`);
         } else g.buy();
         S.gold -= g.p;
         sfx('coin');
+        save();
         render();
       },
       ...goods.map((q, i) => () => {
@@ -1133,14 +1183,14 @@ function openShop(e, merchant) {
         sfx('tap');
         render();
       }),
-      /* ×10、×100（只給藥水這類消耗品） */
-      ...[10, 100].map(n => () => {
-        if (!g || g.it || S.gold < g.p * n) return;
-        for (let k = 0; k < n; k++) g.buy();
-        S.gold -= g.p * n;
+      /* ×3（只給藥水、通貨這類消耗品） */
+      () => {
+        if (!g || once(g) || S.gold < g.p * 3) return;
+        for (let k = 0; k < 3; k++) g.buy();
+        S.gold -= g.p * 3;
         sfx('coin');
         render();
-      })
+      }
     );
   };
   SHOP.mode = 'buy';

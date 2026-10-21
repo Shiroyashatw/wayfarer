@@ -127,6 +127,10 @@ function startRun(opts = {}) {
     elites: 0,
     bosses: 0,
     floors: 0,
+    lvSeen: 1,
+    extraPicks: 0,
+    bless: [],
+    seenEv: [],
     t0: Date.now()
   };
   S.run.map = genMap(S.run.seed, 0);
@@ -376,7 +380,7 @@ function rewardPicks(lv, elite) {
   return pool;
 }
 /* 三選一的彈窗：選完才能繼續 */
-function pickModal(title, head, picks, done) {
+function pickModal(title, head, picks, done, auto) {
   let got = null;
   const render = () =>
     showModal(
@@ -391,7 +395,7 @@ function pickModal(title, head, picks, done) {
           pri: !!got,
           fn: () => {
             hideModal();
-            done();
+            done(!!got);
           }
         },
         ...picks.map(p => ({
@@ -402,6 +406,10 @@ function pickModal(title, head, picks, done) {
             got = p.give();
             sfx('coin');
             save();
+            if (auto) {
+              hideModal();
+              return done(true);
+            }
             render();
           }
         }))
@@ -425,10 +433,12 @@ function runWin(w) {
   }${w.bonus}`;
   const lv = es[0].lv,
     picks = n.t === 'boss' ? bossPicks(lv) : rewardPicks(lv, n.t === 'elite');
-  pickModal(n.t === 'boss' ? '首領倒下了！' : '勝利！', head, picks, () => {
-    endBattle();
-    nodeDone();
-  });
+  pickModal(n.t === 'boss' ? '首領倒下了！' : '勝利！', head, picks, () =>
+    passModal(() => {
+      endBattle();
+      nodeDone();
+    })
+  );
 }
 function runLose() {
   endRun(false);
@@ -457,14 +467,75 @@ function chapterClear() {
   ]);
 }
 
-/* ================= 非戰鬥節點（第 3 階段擴充） ================= */
+/* ================= 升級：天賦三選一 =================
+   每升一級（S.lv 超過 lvSeen）＋事件給的（extraPicks）各一次；從天賦樹的重要節點抽（名字不重複、沒拿過），每 10 級改成基石 */
+const pendPicks = () => (S.run ? Math.max(0, S.lv - (S.run.lvSeen || 1)) + (S.run.extraPicks || 0) : 0);
+/* 組隊、地圖才有用的屬性（嘲諷、替隊友回血、隊友加成、視線、吸引怪物）：帶這些的節點不放進三選一 */
+const PASS_NO = new Set(['vision', 'lure', 'taunt', 'healAll', 'allyDmg']);
+function passPool(key) {
+  const taken = new Set(S.tree.map(id => TREE.byId[id] && TREE.byId[id].n)),
+    seen = new Set();
+  return Object.values(TREE.byId).filter(
+    n =>
+      n.type === (key ? 'key' : 'notable') &&
+      !taken.has(n.n) &&
+      !Object.keys(n.st).some(k => PASS_NO.has(k)) &&
+      !seen.has(n.n) &&
+      seen.add(n.n)
+  );
+}
+const passTxt = n =>
+  Object.entries(n.st)
+    .map(([k, v]) => (STATN[k] ? STATN[k](v) : k))
+    .join('、');
+/* 天賦節點的圖示：有 PNG（TREE_IC）就用，沒有用 8×8 */
+const treeIcURL = n =>
+  (typeof TREE_IC !== 'undefined' && TREE_IC[n.n] && artIconURL('tree_' + TREE_IC[n.n])) || pixURL('ic_' + n.ic);
+function passModal(done) {
+  if (!pendPicks()) return done();
+  const r = R(),
+    lv = (r.lvSeen || 1) + 1,
+    key = S.lv > (r.lvSeen || 1) && lv % 10 === 0 && passPool(true).length >= 3,
+    pool = passPool(key),
+    picks = [];
+  while (picks.length < 3 && pool.length) picks.push(pool.splice(fl(Math.random() * pool.length), 1)[0]);
+  const use = () => {
+    if (S.lv > (r.lvSeen || 1)) r.lvSeen = (r.lvSeen || 1) + 1;
+    else r.extraPicks = Math.max(0, (r.extraPicks || 0) - 1);
+  };
+  pickModal(
+    key ? '基石三選一' : '天賦三選一',
+    `<p class="sub">${key ? '基石會大幅改變玩法，有好處也有代價。' : '選一個天賦，這一局都有效。'}${pendPicks() > 1 ? `（還有 ${pendPicks()} 次）` : ''}</p>`,
+    picks.map(n => ({
+      n: n.n + (n.type === 'key' ? '・基石' : ''),
+      d: passTxt(n),
+      ic: treeIcURL(n),
+      give: () => {
+        S.tree.push(n.id);
+        clampHP();
+        addLog(`天賦：${n.n}`);
+        return [n.n];
+      }
+    })),
+    () => {
+      use();
+      save();
+      renderHud();
+      passModal(done);
+    },
+    true
+  );
+}
+
+/* ================= 非戰鬥節點 ================= */
+/* 營火：回血，或修練一顆技能欄的技能石 */
 function restNode() {
   const st = stats(),
     heal = Math.round(st.maxhp * 0.35),
-    gs = S.gems.filter(g => g.lv < GEM_MAX);
+    gs = S.gems.filter(g => g.lv < GEM_MAX && S.sk.includes(g.id));
   showModal('營火', `<p>在營火旁休息一下。</p><p class="sub">生命 ${S.hp}/${st.maxhp}</p>`, [
     {
-      label: `休息：回復 ${heal} 生命`,
+      label: `休息：回復 ${heal} 生命、魔力全滿`,
       pri: 1,
       fn: () => {
         S.hp = Math.min(st.maxhp, S.hp + heal);
@@ -474,21 +545,44 @@ function restNode() {
       }
     },
     {
-      label: '修練：技能石 +1 級',
+      label: '修練：技能欄的技能石 +1 級',
       dis: !gs.length,
       fn: () => {
-        const g = gs.sort((a, b) => S.sk.includes(b.id) - S.sk.includes(a.id))[0];
-        g.lv++;
-        toast(`${SKILLS[g.k].name} 升到 Lv${g.lv}`);
         hideModal();
-        nodeDone();
+        pickModal(
+          '修練哪一顆？',
+          '',
+          gs.slice(0, 6).map(g => ({
+            n: `${SKILLS[g.k].name} Lv${g.lv}→${g.lv + 1}`,
+            d: '技能石',
+            ic: skIcon(g.k, SKILLS[g.k].icon),
+            give: () => (g.lv++, [`${SKILLS[g.k].name} Lv${g.lv}`])
+          })),
+          () => nodeDone(),
+          true
+        );
       }
     }
   ]);
 }
+/* 寶箱：裝備與通貨；第二章起 20% 是寶箱怪（打贏照一般戰鬥給獎勵） */
 function chestNode(n) {
-  const lv = runLv(n.f),
-    it = makeItem(DROPS[fl(Math.random() * DROPS.length)], lv, Math.random() < 0.5 ? 2 : 1),
+  const r = rng(nodeSeed(n) + 3),
+    lv = runLv(n.f);
+  if (R().ch >= 1 && r() < 0.2) {
+    showModal('寶箱', '<p>寶箱自己動了起來，露出一排尖牙！</p>', [
+      {
+        label: '應戰',
+        pri: 1,
+        fn: () => {
+          hideModal();
+          startBattle([makeEnemy(MIMIC, lv + 1, 1, ['leech'])], { bg: 'city' });
+        }
+      }
+    ]);
+    return;
+  }
+  const it = makeItem(DROPS[fl(r() * DROPS.length)], lv, r() < 0.5 ? 2 : 1, undefined, r),
     out = [itemName(it)];
   giveItem(it);
   for (let i = 0; i < 2; i++) {
@@ -514,68 +608,59 @@ function chestNode(n) {
     ]
   );
 }
-function shopNode() {
-  SEL.gshop = 'run';
-  showModal('商店', '<p>旅行商人攤開了貨品。</p>', [
-    {
-      label: '技能石與輔助寶石',
-      fn: () => {
-        hideModal();
-        A.gemShop();
-      }
-    },
-    {
-      label: '生命藥水（30 金）',
-      dis: S.gold < 30,
-      fn: () => {
-        S.gold -= 30;
-        S.potions++;
-        sfx('coin');
-        renderHud();
-        shopNode();
-      }
-    },
-    {
-      label: '離開',
-      pri: 1,
-      fn: () => {
-        SEL.gshop = null;
-        hideModal();
-        nodeDone();
-      }
-    }
-  ]);
+function shopNode(n) {
+  openShop('旅行商人', nodeSeed(n) + 11, runLv(n.f) + 1, { leave: () => nodeDone() });
 }
+/* 事件：照種子從這一章能出現、這一局還沒遇過的事件抽一個（events.js） */
 function eventNode(n) {
   const r = rng(nodeSeed(n) + 9),
-    st = stats();
-  if (r() < 0.5) {
-    const g = 15 + runLv(n.f) * 5;
-    S.gold += g;
-    showModal('土地公廟', `<p>路邊的小廟前有人留下香油錢。你拜了拜，土地公保佑你。</p><p>得到 ${g} 金幣。</p>`, [
-      {
-        label: '繼續',
-        pri: 1,
-        fn: () => {
-          hideModal();
-          nodeDone();
-        }
+    run = R(),
+    pool = EVENTS.filter(e => e.ch.includes(run.ch) && !(run.seenEv || []).includes(e.k)),
+    ev = pool.length ? pool[fl(r() * pool.length)] : EVENTS[0];
+  run.seenEv = [...(run.seenEv || []), ev.k];
+  const c = { lv: runLv(n.f), st: stats(), r },
+    opts = ev.opts(c),
+    after = res => {
+      if (res && res.fight) {
+        showModal(ev.n, `<p>${res.msg}</p>`, [
+          {
+            label: '應戰',
+            pri: 1,
+            fn: () => {
+              hideModal();
+              startBattle(res.fight.es, { bg: res.fight.bg });
+            }
+          }
+        ]);
+        return;
       }
-    ]);
-  } else {
-    const heal = Math.round(st.maxhp * 0.2);
-    S.hp = Math.min(st.maxhp, S.hp + heal);
-    showModal('山泉', `<p>清涼的山泉讓你恢復了精神。</p><p>回復 ${heal} 生命。</p>`, [
-      {
-        label: '繼續',
-        pri: 1,
-        fn: () => {
-          hideModal();
-          nodeDone();
+      save();
+      renderHud();
+      showModal(ev.n, res || '', [
+        {
+          label: '繼續',
+          pri: 1,
+          fn: () => {
+            hideModal();
+            passModal(() => nodeDone());
+          }
         }
+      ]);
+    };
+  sfx('door');
+  showModal(
+    ev.n,
+    `<p>${ev.t}</p>`,
+    opts.map((o, i) => ({
+      label: o.label,
+      pri: i === 0,
+      dis: !!o.dis,
+      fn: () => {
+        hideModal();
+        after(o.go());
       }
-    ]);
-  }
+    }))
+  );
 }
 
 /* ================= 畫面：主選單、章節地圖 ================= */
@@ -617,7 +702,7 @@ function runmapRender() {
       return `<button class="rn ${n.t} ${st}" style="left:${X(n.c)}%;top:${Y(n.f)}px" data-act="runGo" data-id="${n.id}" ${st === 'next' ? '' : 'disabled'} aria-label="${NODE[n.t].n}"><img src="${iconURL(NODE[n.t].ic)}" alt=""></button>`;
     })
     .join('');
-  el.innerHTML = `<div class="rm-hd"><b>第 ${r.ch + 1} 章・${CH[r.ch].n}</b><small class="sub">第 ${Math.max(0, curFloor()) + 1}/${RUN_FLOORS} 層</small></div>
+  el.innerHTML = `<div class="rm-hd"><b>第 ${r.ch + 1} 章・${CH[r.ch].n}</b><small class="sub">第 ${Math.max(0, curFloor()) + 1}/${RUN_FLOORS} 層</small></div>${pendPicks() ? `<button class="btn pri rm-pick" data-act="runPick">天賦三選一 ×${pendPicks()}</button>` : ''}
     <div class="rm-map" style="height:${H}px"><svg class="rm-ln" viewBox="0 0 100 ${H}" preserveAspectRatio="none">${lines}</svg>${dots}</div>`;
 }
 /* 戰鬥結束、換存檔後重畫目前的畫面（主選單或章節地圖） */
@@ -633,5 +718,6 @@ Object.assign(A, {
     if (S.run) return;
     startRun();
   },
-  runGo: d => enterNode(d.id)
+  runGo: d => enterNode(d.id),
+  runPick: () => passModal(() => viewRender())
 });
