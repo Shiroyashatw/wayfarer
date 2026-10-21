@@ -516,11 +516,13 @@ const STAT0 = [
   'addFire',
   'addCold',
   'addLight',
+  'addChaos',
   'spellPct',
   'elePct',
   'firePct',
   'coldPct',
   'lightPct',
+  'chaosPct',
   'armor',
   'armorPct',
   'armorMore',
@@ -528,6 +530,7 @@ const STAT0 = [
   'resFire',
   'resCold',
   'resLight',
+  'resChaos',
   'resAll',
   'critPct',
   'critMulti',
@@ -699,7 +702,8 @@ function stats() {
     elm = {
       fire: 1 + (t.elePct + t.firePct) / 100,
       cold: 1 + (t.elePct + t.coldPct) / 100,
-      light: 1 + (t.elePct + t.lightPct) / 100
+      light: 1 + (t.elePct + t.lightPct) / 100,
+      chaos: 1 + t.chaosPct / 100
     };
   const pm = (1 + t.physPct / 100) * (1 + t.physMore / 100) * dm,
     cv = Math.min(100, t.conv) / 100;
@@ -718,13 +722,15 @@ function stats() {
     res: {
       fire: Math.min(75, t.resFire + t.resAll - ew),
       cold: Math.min(75, t.resCold + t.resAll - ew),
-      light: Math.min(75, t.resLight + t.resAll - ew)
+      light: Math.min(75, t.resLight + t.resAll - ew),
+      chaos: Math.min(75, t.resChaos)
     },
     physLo,
     physHi,
     fire: t.addFire * elm.fire * dm + toFire,
     cold: t.addCold * elm.cold * dm,
     light: t.addLight * elm.light * dm,
+    chaos: t.addChaos * elm.chaos * dm,
     spellMul: (1 + t.spellPct / 100) * dm,
     elm,
     crit: t.noCrit ? 0 : Math.max(0, Math.min(75, (w ? w.crit : 5) + t.critPct)),
@@ -763,6 +769,7 @@ function stats() {
     legLust: t.legLust,
     /* 0.3：武器類別（昇華輔助與技能標籤用）、昇華輔助效果、昇華與新技能的機制 */
     wtag: wt,
+    otag: ot,
     ranged: wt === 'bow',
     sup: typeof ascSup === 'function' ? ascSup() : [],
     ...Object.fromEntries(MECH.map(k => [k, t[k]])),

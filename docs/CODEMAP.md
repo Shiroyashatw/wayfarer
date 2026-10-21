@@ -65,6 +65,7 @@
 | 子頁面返回鍵（0.3.1.8） | `js/ui.js`、`index.html` | `sheetParent`、`A.sheetBack`；DOM `#sback`（`renderSheet` 開頭決定顯示） |
 | 商店購買／出售（0.3.1.8） | `js/items.js`、`js/ui.js` | `openShop`（`SHOP.mode`／`SHOP.render`）、`shopSellHTML`、`A.shopTab`／`A.shopPick`／`A.shopQuick`／`A.shopSellGo` |
 | 技能條件、狀態連動、冷卻、蓄力、戰吼（0.3.19） | `js/battle.js`、`js/skills.js`、`js/ui.js`、`js/mp.js` | 規則說明在 `battle.js` 的「技能的通用條件與狀態連動」註解；`skKey`、`cdLeft`／`charging`、條件倍率 `condMul`（`COND_ST`、`stackOf`）、按鈕預覽 `condTxt`、`skReady`／`skSub`（單人 `renderBHud`、組隊 `renderMBHud`、`mpResolve`）；`actResolve` 裡的連續 `comboN`、蓄力 `chg`、冷卻 `cd`（`roundEnd` 遞減）、強化 `empN`、引爆 `det`、消耗 `consume`、易傷 `vul`、衰老 `slow`（`avSpd`）、死亡印記 `dmark`、擴散 `spreadSt`、擊殺爆炸 `killBoom`、屍爆 `sac`、號令 `cmd`；戰吼 `cryResolve`；中毒／流血疊層 `addPoison`／`bleedTick`；狀態圖示 `AIL_E`／`AIL_H`／`AIL_NUM`、自己的增益 `heroAilHTML`；資料 `SK_COND`（現有技能的條件）與 0.3.19 新技能（`skills.js` 結尾）；說明 `gemDesc` |
+| 混沌傷害、武器限制、技能篩選（0.3.36） | `js/battle.js`、`js/items.js`、`js/data.js`、`js/skills.js`、`js/ui.js` | 傷害封包多了 `chaos`、抗性陣列第 4 格是混沌（`mitigate`、`res[3]`）；屬性 `addChaos`／`chaosPct`／`resChaos`（`stats` 的 `chaos`、`elm.chaos`、`res.chaos`）；輔助效果 `pkSup`（`cvFire`… 轉換、`gFire`… 附加、`eleMore`／`physMore`／`noEle`）、`noAil`／`noCrit`／`avBack`／`mpLeech`／`foesCap`；武器 `wOk`（`w: 'melee'`、`oh: 'shield'`、`st.otag`）；技能池擴充在 `skills.js` 結尾的「0.3.36」區段；篩選 `SKW`／`skwOk`／`skfRows`、輔助商店 `SUPF`／`supfOk`（`A.skWep`、`A.supF`） |
 | 技能石資料與效果 | `js/skills.js`、`js/items.js`、`js/battle.js` | `SKILLS` 擴充欄位（`w`、`tg`、`hits`、`chain`、`proj`、`addEl`、`bleed`、`stun`、`mark`、`curse`、`exec`、`pet`、`buff`、`lifeCost`）；等級成長 `gemSkill`；說明 `gemDesc`（`ui.js`） |
 | 昇華（0.3） | `js/asc.js`、`js/items.js` | 資料 `ASC`（職業→分支→`t1`／`t2`／`u`）、節點表 `ASCN`／`ASCB`、輔助效果文字 `SUPN`；屬性 `ascStats`（`sumStats`）、`ascSup`（`stats` 的 `sup`，戰鬥用 `supOf`）；昇華盤 `openAsc`／`drawAsc`／`renderAscCard`（座標 `ascXY`、視角 `AV`、`ascFit`）、小點圖示 `SMG`、圖示 `ascIcon`、換分支 `A.ascSwitch`；試煉 `ascTownHTML`（城鎮面板）、`A.ascTrial`、`ascTrialDone`（`dungeonClear`）；狀態 `S.asc` |
 | 首領專屬圖（0.2.13.1） | `js/sprites.js`、`js/demon.js`、`js/battle.js`、`js/undead.js` | `SPR.b_*` 與 `BOSSPAL`（sprites.js 結尾）；七宗罪 `SINSPR`（`makeSinLord`）、`makeSinKing`、地城首領 `BOSSSPR`（`dunEnemy`）、亡靈王 `A.udKing` |
@@ -159,16 +160,16 @@
 
 - **utils**（6），15 個宣告
 
-### js/data.js（2671 行）
+### js/data.js（2699 行）
 
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
 
-### js/sprites.js（1348 行）
+### js/sprites.js（1356 行）
 
 - **pixel sprites (original art)**（3），21 個宣告
-- **icons: currency, item slots, passive nodes**（751），7 個宣告
-- **boss sprites**（1003），1 個宣告
+- **icons: currency, item slots, passive nodes**（759），7 個宣告
+- **boss sprites**（1011），1 個宣告
 
 ### js/gear.js（685 行）
 
@@ -177,29 +178,29 @@
 ### js/art.js（124 行）
 
 
-### js/skills.js（1540 行）
+### js/skills.js（1973 行）
 
 
 ### js/audio.js（221 行）
 
 - **audio**（3），14 個宣告
 
-### js/items.js（1137 行）
+### js/items.js（1144 行）
 
 - **player & items**（3），27 個宣告
 - **skill gems**（261），29 個宣告
 - **stats**（507），23 個宣告
-- **enemies**（889），16 個宣告
-- **modal**（1027），5 個宣告
+- **enemies**（896），16 個宣告
+- **modal**（1034），5 個宣告
 
-### js/battle.js（3318 行）
+### js/battle.js（3391 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
-- **battle: logic**（238），36 個宣告
-- **battle: rules（單人與組隊共用）**（608），65 個宣告
-- **battle: solo**（1721），20 個宣告
-- **dungeons (shared by solo and party)**（2218），24 個宣告
-- **battle: drawing**（2961），7 個宣告
+- **battle: logic**（239），36 個宣告
+- **battle: rules（單人與組隊共用）**（609），66 個宣告
+- **battle: solo**（1794），20 個宣告
+- **dungeons (shared by solo and party)**（2291），24 個宣告
+- **battle: drawing**（3034），7 個宣告
 
 ### js/map.js（1760 行）
 
@@ -218,11 +219,11 @@
 
 - **passive tree (full screen)**（3），18 個宣告
 
-### js/ui.js（1953 行）
+### js/ui.js（2018 行）
 
-- **HUD & sheets**（3），48 個宣告
-- **entity interaction**（755），11 個宣告
-- **actions**（962），2 個宣告
+- **HUD & sheets**（3），53 個宣告
+- **entity interaction**（810），11 個宣告
+- **actions**（1017），2 個宣告
 
 ### js/endgame.js（691 行）
 
@@ -277,11 +278,11 @@
 - **trials**（2080），2 個宣告
 - **actions**（2096），0 個宣告
 
-### js/gacha.js（781 行）
+### js/gacha.js（811 行）
 
 - **pacts**（6），28 個宣告
-- **banners**（519），8 個宣告
-- **ui**（590），8 個宣告
+- **banners**（549），8 個宣告
+- **ui**（620），8 個宣告
 
 ### js/tutor.js（164 行）
 

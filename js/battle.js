@@ -10,8 +10,9 @@ let BW = 360,
 function sizeBattle() {
   const r = $('bview').getBoundingClientRect();
   DPR = Math.min(2, window.devicePixelRatio || 1);
-  BW = r.width;
-  BH = r.height;
+  /* 0.3.36 畫面還沒排版好（寬高 0，例如分頁在背景）時用預設大小，免得 paintBG 的迴圈步長變 0 卡死 */
+  BW = r.width || 360;
+  BH = r.height || 480;
   for (const c of [bbg, bfx]) {
     c.width = Math.round(BW * DPR);
     c.height = Math.round(BH * DPR);
@@ -114,7 +115,7 @@ function paintBG(kind) {
       x.beginPath();
       x.moveTo(0, H);
       let y = base;
-      for (let i = 0; i <= W; i += W / 14) {
+      for (let i = 0; i <= W; i += Math.max(1, W / 14)) {
         y = base - amp * (0.4 + r() * 0.6);
         x.lineTo(i, y);
       }
@@ -183,7 +184,7 @@ function paintBG(kind) {
   x.fillStyle = g;
   x.beginPath();
   x.moveTo(0, HZ);
-  for (let i = 0; i <= W; i += W / 10) x.lineTo(i, HZ + (r() - 0.5) * 14 * DPR);
+  for (let i = 0; i <= W; i += Math.max(1, W / 10)) x.lineTo(i, HZ + (r() - 0.5) * 14 * DPR);
   x.lineTo(W, H);
   x.lineTo(0, H);
   x.fill();
@@ -680,8 +681,13 @@ const bsum = (me, k) => ((me && me.buffs) || []).reduce((a, b) => a + (b[k] || 0
 /* damage packets: {phys,fire,cold,light} */
 function mitigate(pk, arm, res, shock) {
   const pr = pk.phys > 0 ? arm / (arm + 10 * pk.phys) : 0;
+  /* 0.3.36 混沌傷害：res[3] 是混沌抗性（沒寫就是 0） */
   let d =
-    pk.phys * (1 - pr) + pk.fire * (1 - res[0] / 100) + pk.cold * (1 - res[1] / 100) + pk.light * (1 - res[2] / 100);
+    pk.phys * (1 - pr) +
+    pk.fire * (1 - res[0] / 100) +
+    pk.cold * (1 - res[1] / 100) +
+    pk.light * (1 - res[2] / 100) +
+    (pk.chaos || 0) * (1 - (res[3] || 0) / 100);
   if (shock) d *= 1.2;
   return Math.max(1, d);
 }
@@ -689,7 +695,11 @@ function mitigate(pk, arm, res, shock) {
 const skCost = (st, sk) => Math.round(sk.mp * (1 - Math.min(80, (st.mpCost || 0) + (supOf(st, sk).cost || 0)) / 100));
 const lifeCost = (st, sk) => (sk.lifeCost ? Math.round(st.maxhp * sk.lifeCost) : 0);
 /* 0.3.18：技能要求的武器類型不符就不能用（昇華「技能不再需要特定武器」例外） */
-const wOk = (st, sk) => !sk.w || !st || !st.wtag || !!st.anyWep || sk.w === st.wtag;
+/* 0.3.36：'melee' 是弓弩以外的武器；oh: 'shield' 要拿盾 */
+const wOk = (st, sk) =>
+  !st ||
+  !!st.anyWep ||
+  ((!sk.w || !st.wtag || (sk.w === 'melee' ? st.wtag !== 'bow' : sk.w === st.wtag)) && (!sk.oh || st.otag === sk.oh));
 const canPay = (o, st, sk) =>
   wOk(st, sk) &&
   (st.blood ? o.hp > skCost(st, sk) + lifeCost(st, sk) : o.mp >= skCost(st, sk) && o.hp > lifeCost(st, sk));
@@ -697,7 +707,7 @@ const canPay = (o, st, sk) =>
 /* 0.3.19：冷卻中寫「冷卻 N」；蓄力中寫「釋放 ×N」；有條件加成時寫預覽（例：+24%） */
 const skSub = (st, q, me, es, ti) =>
   !wOk(st, q)
-    ? `需要${WTAGN[q.w]}`
+    ? `需要${q.oh && st.otag !== q.oh ? '盾' : WTAGN[q.w]}`
     : cdLeft(me, q)
       ? '冷卻中'
       : [charging(me, q) ? '' : costTxt(st, q), (me && condTxt(q, me, st, es, ti)) || skShort(q)]
@@ -733,7 +743,7 @@ const skByKey = (k, list) => (k === 'attack' ? SKILLS.attack : (k && k[0] === 's
 const extraHit = (st, sk) => (sk.kind === 'attack' && st.dbl && Math.random() * 100 < st.dbl ? 1 : 0);
 function heroPacket(st, sk, mult) {
   if (sk.kind === 'spell') {
-    const pk = { phys: 0, fire: 0, cold: 0, light: 0 };
+    const pk = { phys: 0, fire: 0, cold: 0, light: 0, chaos: 0 };
     pk[sk.el] =
       (sk.sb || 9) * (st.spellMul || 1) * ((st.elm && st.elm[sk.el]) || 1) * mult * (st.skMul || 1) * rnd(0.85, 1.15);
     return pk;
@@ -743,8 +753,42 @@ function heroPacket(st, sk, mult) {
     phys: rnd(st.physLo, st.physHi) * mult,
     fire: st.fire * mult * rnd(0.8, 1.2),
     cold: st.cold * mult * rnd(0.8, 1.2),
-    light: st.light * mult * rnd(0.3, 1.7)
+    light: st.light * mult * rnd(0.3, 1.7),
+    chaos: (st.chaos || 0) * mult * rnd(0.8, 1.2)
   };
+}
+/* 0.3.36 輔助寶石對傷害的改變：轉換（物理 → 元素、元素 → 混沌）、附加（另外加這下傷害的 N%）、元素／物理總乘、殘暴 */
+function pkSup(pk, sup, st) {
+  const elm = (st && st.elm) || {},
+    E = ['fire', 'cold', 'light'];
+  pk.chaos = pk.chaos || 0;
+  for (const [k, el] of [
+    ['cvFire', 'fire'],
+    ['cvCold', 'cold'],
+    ['cvLight', 'light']
+  ])
+    if (sup[k]) {
+      const x = (pk.phys * Math.min(100, sup[k])) / 100;
+      pk.phys -= x;
+      pk[el] += x * (elm[el] || 1);
+    }
+  if (sup.cvChaos)
+    for (const el of E) {
+      const x = (pk[el] * Math.min(100, sup.cvChaos)) / 100;
+      pk[el] -= x;
+      pk.chaos += x * (elm.chaos || 1);
+    }
+  const tot = pk.phys + pk.fire + pk.cold + pk.light + pk.chaos;
+  for (const [k, el] of [
+    ['gFire', 'fire'],
+    ['gCold', 'cold'],
+    ['gLight', 'light'],
+    ['gChaos', 'chaos']
+  ])
+    if (sup[k]) pk[el] += ((tot * sup[k]) / 100) * (elm[el] || 1);
+  if (sup.eleMore) for (const el of E) pk[el] *= 1 + sup.eleMore / 100;
+  if (sup.physMore) pk.phys *= 1 + sup.physMore / 100;
+  if (sup.noEle) for (const el of [...E, 'chaos']) pk[el] = 0;
 }
 function heroDmg(st, pk, e, shock, o) {
   const pen = st.penRes || 0;
@@ -761,6 +805,8 @@ function heroDmg(st, pk, e, shock, o) {
 }
 /* 命中後的異常狀態，es 是那隻敵人，回傳要跳出的文字 */
 function heroAil(st, sk, pk, es) {
+  /* 0.3.36 元素集中：不能造成異常 */
+  if (st.noAil) return [];
   const out = [],
     m = st.ail || 1,
     dur = 3 + (st.ailDur || 0);
@@ -781,7 +827,11 @@ function heroAil(st, sk, pk, es) {
     es.frozen = 1;
     out.push(['魅惑', '#ff8ad8']);
   }
-  if (sk.kind === 'attack' && !sk.poison && st.poisonCh && Math.random() * 100 < st.poisonCh) {
+  /* 0.3.36 混沌傷害 20% 機率中毒 */
+  if (pk.chaos > 0 && !sk.poison && Math.random() < 0.2 * m) {
+    addPoison(es, dur, (st.poisonMul || 1) * (st.dotMul || 1));
+    out.push([es.poisonN > 1 ? `中毒×${es.poisonN}` : '中毒', '#9be36b']);
+  } else if (sk.kind === 'attack' && !sk.poison && st.poisonCh && Math.random() * 100 < st.poisonCh) {
     addPoison(es, dur, (st.poisonMul || 1) * (st.dotMul || 1));
     out.push([es.poisonN > 1 ? `中毒×${es.poisonN}` : '中毒', '#9be36b']);
   }
@@ -828,13 +878,15 @@ function takeDmg(o, st, d) {
   return m;
 }
 const hitCol = pk =>
-  pk.fire > pk.cold && pk.fire > pk.light && pk.fire > pk.phys * 0.5
-    ? '#ffb15a'
-    : pk.cold > pk.phys * 0.5 && pk.cold > pk.light
-      ? '#9fe7ff'
-      : pk.light > pk.phys * 0.5
-        ? '#fff27a'
-        : '#ffffff';
+  (pk.chaos || 0) > pk.phys * 0.5 && pk.chaos >= pk.fire && pk.chaos >= pk.cold && pk.chaos >= pk.light
+    ? '#c86aff'
+    : pk.fire > pk.cold && pk.fire > pk.light && pk.fire > pk.phys * 0.5
+      ? '#ffb15a'
+      : pk.cold > pk.phys * 0.5 && pk.cold > pk.light
+        ? '#9fe7ff'
+        : pk.light > pk.phys * 0.5
+          ? '#fff27a'
+          : '#ffffff';
 const aliveIdx = es => es.map((e, i) => (e.hp > 0 ? i : -1)).filter(i => i >= 0);
 /* ---- 0.3.19 技能的通用條件與狀態連動 ----
    技能欄位：cd 冷卻（秒，0.3.35 起）、foes 每多一隻敵人傷害 ±%（最多算 4 隻）、vs {狀態: %} 對有該狀態的目標加傷（中毒、流血每層算一次）、
@@ -893,7 +945,9 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     st = skSt(st0, sk),
     S2 = {
       ...st,
-      crit: st.crit ? Math.min(90, st.crit + (sup.crit || 0) + bsum(me, 'crit')) : 0,
+      crit: st.crit && !sup.noCrit ? Math.min(90, st.crit + (sup.crit || 0) + bsum(me, 'crit')) : 0,
+      noAil: !!sup.noAil,
+      ailDur: (st.ailDur || 0) + (sup.ailDur || 0),
       critMulti: st.critMulti + (sup.cm || 0),
       ail: (st.ail || 1) * (1 + (sup.ail || 0) / 100),
       leech: (st.leech || 0) + (sup.leech || 0),
@@ -945,6 +999,8 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       (me.cdMax = me.cdMax || {})[key] = c;
     }
   }
+  /* 0.3.36 快速攻擊／快速施法：行動條先補一些 */
+  if (sup.avBack && ext.av) ext.av[me.uid] = (ext.av[me.uid] || 0) + sup.avBack;
   /* 戰意激昂：接下來 N 次攻擊強化 */
   if (me.empN > 0 && sk.kind === 'attack' && !sk.pet) {
     more *= 1 + (me.empMore || 0) / 100;
@@ -1008,7 +1064,7 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     ev.push({ t: 'msg', s: `引爆${pt.name}！`, at: 0 });
     aliveIdx(es).forEach((i, n) => {
       const e = es[i],
-        pk = { phys: 0, fire: 0, cold: 0, light: 0 };
+        pk = { phys: 0, fire: 0, cold: 0, light: 0, chaos: 0 };
       pk[pt.el || 'phys'] = base * rnd(0.9, 1.1);
       const d = Math.round(mitigate(pk, e.arm, e.res, e.shock > 0));
       e.hp = Math.max(0, e.hp - d);
@@ -1040,6 +1096,7 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       S3 = sk.vsCrit && e[sk.vsCrit] > 0 ? { ...S2, crit: 100 } : S2,
       pk = heroPacket(S3, sk, mult * more * condMul(sk, e, me, st, n0, me.comboN || 0));
     if (sk.addEl) pk[sk.addEl[0]] += pk.phys * sk.addEl[1] * ((st.elm && st.elm[sk.addEl[0]]) || 1);
+    pkSup(pk, sup, st);
     /* 易傷：脆弱（物理）、元素弱化（火冰電） */
     if (e.vul > 0) {
       pk.phys *= 1 + (e.vulP || 0) / 100;
@@ -1072,6 +1129,7 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
     e.hp = Math.max(0, e.hp - d);
     ev.push({ t: 'hit', i, d, crit: r.crit, col: r.crit ? '#ffd166' : hitCol(pk), fx: kind || fx, from: who, at: t });
     if (S2.leech && d > 0) me.hp = Math.min(st.maxhp, me.hp + Math.max(1, Math.round((d * S2.leech) / 100)));
+    if (sup.mpLeech && d > 0) me.mp = Math.min(st.maxmp, me.mp + Math.max(1, Math.round((d * sup.mpLeech) / 100)));
     if (e.hp > 0) {
       heroAil(S2, sk, pk, e).forEach(([s, col]) => ev.push({ t: 'st', i, s, col, at: t + 60 }));
       if (sk.poison) {
@@ -1170,7 +1228,11 @@ function actResolve(me, st0, sk, es, ti, party, ext = {}) {
       proj = (sk.proj || 0) + (sup.proj || 0);
     for (let h = 0; h < hits; h++) {
       if (!live().length) break;
-      if (tg === 'all') live().forEach(i => one(i, sk.mult * (sup.aoe && sk.tg !== 'all' ? 0.65 : 1), at, fx));
+      if (tg === 'all')
+        live()
+          .sort((a, b) => (a === ti ? -1 : b === ti ? 1 : 0))
+          .slice(0, sup.foesCap || 99)
+          .forEach(i => one(i, sk.mult * (sup.aoe && sk.tg !== 'all' ? 0.65 : 1), at, fx));
       else if (tg === 'rand') {
         const L = live();
         one(L[fl(Math.random() * L.length)], sk.mult, at, fx);
@@ -1369,7 +1431,7 @@ function petsAct(me, st, es) {
     const i = L[fl(Math.random() * L.length)],
       e = es[i],
       base = (8 + (me.lv || S.lv) * 1.8) * (p.mult || 1) * (1 + ((st.petPct || 0) + (p.pct || 0)) / 100),
-      pk = { phys: 0, fire: 0, cold: 0, light: 0 };
+      pk = { phys: 0, fire: 0, cold: 0, light: 0, chaos: 0 };
     pk[p.el || 'phys'] = base * rnd(0.85, 1.15) * (p.el && p.el !== 'phys' ? st.spellMul || 1 : 1);
     const d = Math.round(mitigate(pk, e.arm, e.res, e.shock > 0));
     e.hp = Math.max(0, e.hp - d);
@@ -1563,7 +1625,7 @@ function enemyResolve(es, i, party, ext = {}) {
     if (e.trait === 'bully' && p.hp / st.maxhp < e.hp / e.maxhp) atk *= 1.5;
     if (e.mods && e.mods.includes('fury') && e.hp < e.maxhp / 2) atk *= 1.5;
     if (e.curse > 0 && e.curseW) atk *= 1 - e.curseW / 100;
-    const pk = { phys: 0, fire: 0, cold: 0, light: 0 };
+    const pk = { phys: 0, fire: 0, cold: 0, light: 0, chaos: 0 };
     pk[e.el] += atk;
     if (e.mods) {
       if (e.mods.includes('fire')) pk.fire += atk * 0.4;
@@ -1574,7 +1636,9 @@ function enemyResolve(es, i, party, ext = {}) {
       mitigate(
         pk,
         st.armor * (p.guard > 0 ? 2 : 1) * (1 + bsum(p, 'arm') / 100),
-        (Array.isArray(st.res) ? st.res : [st.res.fire, st.res.cold, st.res.light]).map(v => v - ew),
+        (Array.isArray(st.res) ? st.res : [st.res.fire, st.res.cold, st.res.light, st.res.chaos || 0]).map((v, k) =>
+          k < 3 ? v - ew : v
+        ),
         false
       ) *
         (1 - Math.min(75, (st.dmgRed || 0) + bsum(p, 'dmgRed')) / 100)
@@ -1602,7 +1666,16 @@ function enemyResolve(es, i, party, ext = {}) {
       d: d - toMp,
       mp: toMp,
       strong,
-      col: pk.fire > pk.phys ? '#ffb15a' : pk.cold > pk.phys ? '#9fe7ff' : pk.light > pk.phys ? '#fff27a' : '#ff8a8a',
+      col:
+        pk.chaos > pk.phys
+          ? '#c86aff'
+          : pk.fire > pk.phys
+            ? '#ffb15a'
+            : pk.cold > pk.phys
+              ? '#9fe7ff'
+              : pk.light > pk.phys
+                ? '#fff27a'
+                : '#ff8a8a',
       at
     });
     if (st.reflectPct) {

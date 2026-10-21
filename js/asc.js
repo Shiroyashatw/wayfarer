@@ -455,7 +455,7 @@ const ASC = [
         en: { stunCh: 6 },
         t1: [
           N('陷阱', 'trap', 0, [['T', { stun: 25 }]]),
-          N('毒霧', 'cloud', { poisonPct: 30 }, [['T', { poison: 50 }]]),
+          N('毒霧', 'cloud', { poisonPct: 30, chaosPct: 20 }, [['T', { poison: 50 }]]),
           N('爆炸箭', 'bomb', 0, [['T', { aoe: 1 }]]),
           N('連發弩', 'multi', 0, [['T', { proj: 1 }]])
         ],
@@ -466,7 +466,7 @@ const ASC = [
         ],
         u: [
           [0, N('爆破大師', 'boom', 0, [['T', { more: 50 }]], { dmgRed: -15 })],
-          [2, N('千機', 'hourglass', { extraTurn: 20 }, [['T', { proj: 2 }]], { lifeMore: -15 })]
+          [2, N('千機', 'hourglass', { extraTurn: 20, cdr: 10 }, [['T', { proj: 2 }]], { lifeMore: -15 })]
         ]
       }
     ]
@@ -609,16 +609,16 @@ const ASC = [
         tag: 'spell',
         col: '#c86aff',
         ic: 'rune',
-        d: '詛咒：弱化、腐蝕、瘟疫',
+        d: '詛咒與混沌：弱化、腐蝕、瘟疫',
         sm: [
           ['spellPct', 8],
           ['curseCh', 3],
-          ['mana', 15]
+          ['chaosPct', 8]
         ],
         en: { curseCh: 10 },
         t1: [
           N('弱化', 'eye', { curseCh: 20, curseP: 10 }),
-          N('腐蝕', 'cloud', { poisonCh: 20, dotPct: 30 }),
+          N('腐蝕', 'cloud', { poisonCh: 20, dotPct: 20, chaosPct: 25 }),
           N('削抗', 'scale', 0, [['T', { penRes: 20 }]]),
           N('怨念', 'ghost', { killMana: 10 })
         ],
@@ -629,7 +629,7 @@ const ASC = [
         ],
         u: [
           [0, N('咒怨之女', 'witch', { curseCh: 60, curseP: 40 }, 0, { lifeMore: -15 })],
-          [1, N('萬毒之母', 'flaskg', { dotPct: 120, poisonCh: 30 }, 0, { hpDrain: 2 })]
+          [1, N('萬毒之母', 'flaskg', { dotPct: 100, poisonCh: 30, chaosPct: 40 }, 0, { hpDrain: 2 })]
         ]
       },
       {
@@ -811,7 +811,7 @@ const ASC = [
         t1: [
           N('藥瓶炸彈', 'bomb', { potBomb: 120 }),
           N('藥水大師', 'potion', { potPct: 50 }),
-          N('毒藥', 'flaskg', { poisonCh: 25, poisonPct: 30 }),
+          N('毒藥', 'flaskg', { poisonCh: 25, poisonPct: 20, addChaos: 4 }),
           N('煉成', 'gear', { killMana: 10, killHeal: 5 })
         ],
         t2: [

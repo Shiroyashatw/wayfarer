@@ -797,7 +797,7 @@ Object.assign(A, {
 /* 魔霧進度滿 100% 時，霧的中心出現一隻四凶（依位置固定是哪一隻），打倒得到牠的凶獸之印；四種印各 1 個在魔霧中心召喚燭龍。
    圖先沿用相近的十二生肖圖，PixelLab 提示詞在 docs/怪物提示詞.md */
 const XIONG = [
-  { k: 'hundun', n: '混沌', spr: 'a_hundun', el: 'phys', d: '看不到牠的行動順序；每次行動換一種元素抗性' },
+  { k: 'hundun', n: '混沌', spr: 'a_hundun', el: 'chaos', d: '看不到牠的行動順序；每次行動換一種元素抗性' },
   { k: 'qiongqi', n: '窮奇', spr: 'a_qiongqi', el: 'cold', d: '專挑生命比例最低的人打；被打時反刺 15% 傷害' },
   { k: 'taowu', n: '檮杌', spr: 'a_taowu', el: 'phys', d: '每次行動護甲 +15%，越打越硬' },
   { k: 'taotie', n: '饕餮', spr: 'a_taotie', el: 'fire', d: '吃掉目標身上的增益回血；會偷吃你的生命藥水' }
@@ -912,7 +912,7 @@ function beastTurn(e, i, party, at) {
               mitigate(
                 { phys: 0, fire: e.atk * 0.7 * rnd(0.9, 1.1), cold: 0, light: 0 },
                 st.armor,
-                Array.isArray(st.res) ? st.res : [st.res.fire, st.res.cold, st.res.light],
+                Array.isArray(st.res) ? st.res : [st.res.fire, st.res.cold, st.res.light, st.res.chaos || 0],
                 false
               ) *
                 (1 - Math.min(75, st.dmgRed || 0) / 100)

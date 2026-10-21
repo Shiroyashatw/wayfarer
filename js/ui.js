@@ -366,6 +366,7 @@ function gemDesc(q, st) {
   }
   if (q.lifeCost) out.push(kw(`消耗 ${Math.round(q.lifeCost * 100)}% 生命`, 'bad'));
   if (q.w) out.push(st && !wOk(st, q) ? kw(`需要${WTAGN[q.w]}（目前不能用）`, 'bad') : `需要${WTAGN[q.w]}`);
+  if (q.oh) out.push(st && !wOk(st, q) ? kw('需要盾（目前不能用）', 'bad') : '需要盾');
   return out.join('・');
 }
 /* 技能頁的篩選：全部、全體、單體、物理、元素、輔助（增益、治癒、召喚） */
@@ -375,8 +376,55 @@ const SKF = [
   ['one', '單體'],
   ['phys', '物理'],
   ['ele', '元素'],
+  ['chaos', '混沌'],
   ['sup', '輔助']
 ];
+/* 0.3.36 武器篩選（技能頁與商店共用，SEL.skw） */
+const SKW = [
+  ['all', '全部武器'],
+  ['mine', '目前武器能用'],
+  ['sword', '劍'],
+  ['axe', '斧鎚'],
+  ['bow', '弓弩'],
+  ['dagger', '匕首爪'],
+  ['spear', '矛'],
+  ['staff', '法杖'],
+  ['shield', '盾'],
+  ['none', '不限武器']
+];
+function skwOk(k) {
+  const q = SKILLS[k],
+    f = SEL.skw || 'all';
+  if (f === 'all') return true;
+  if (f === 'mine') return wOk(stats(), q);
+  if (f === 'shield') return q.oh === 'shield';
+  if (f === 'none') return !q.w && !q.oh;
+  return q.w === f || (q.w === 'melee' && f !== 'bow');
+}
+const skfRows = () =>
+  `<div class="seg skf">${SKF.map(([k, n]) => `<button data-act="skFilter" data-k="${k}" aria-pressed="${(SEL.skf || 'all') === k}">${n}</button>`).join('')}</div><div class="ptagf">${SKW.map(([k, n]) => `<button data-act="skWep" data-k="${k}" aria-pressed="${(SEL.skw || 'all') === k}">${n}</button>`).join('')}</div>`;
+/* 0.3.36 輔助寶石商店的分類 */
+const SUPF = [
+  ['all', '全部'],
+  ['dmg', '傷害'],
+  ['attack', '攻擊'],
+  ['spell', '法術'],
+  ['ele', '元素／混沌'],
+  ['pet', '召喚'],
+  ['util', '增益與其他']
+];
+function supfOk(sp) {
+  const f = SEL.supf || 'all',
+    r = sp.req;
+  if (f === 'all') return true;
+  if (f === 'dmg') return ['dmg', 'one', 'aoe'].includes(r);
+  if (f === 'attack') return ['attack', 'melee'].includes(r);
+  if (f === 'spell') return r === 'spell';
+  if (f === 'ele')
+    return ['fire', 'cold', 'chaos'].includes(r) || Object.keys(sp.sup || {}).some(k => /^(g|cv)[A-Z]/.test(k));
+  if (f === 'pet') return ['pet', 'unit'].includes(r);
+  return ['cry', 'buff', 'cd', 'act'].includes(r);
+}
 function skfOk(g) {
   const q = SKILLS[g.k],
     f = (typeof SEL !== 'undefined' && SEL.skf) || 'all',
@@ -384,7 +432,12 @@ function skfOk(g) {
   if (f === 'aoe') return dmg && (q.tg === 'all' || q.tg === 'rand' || !!q.chain || !!q.proj);
   if (f === 'one') return dmg && !q.tg && !q.chain && !q.proj;
   if (f === 'phys') return dmg && (q.kind === 'attack' || (q.el || 'phys') === 'phys');
-  if (f === 'ele') return dmg && ((q.kind === 'spell' && q.el && q.el !== 'phys') || !!q.addEl);
+  if (f === 'ele')
+    return (
+      dmg &&
+      ((q.kind === 'spell' && q.el && !['phys', 'chaos'].includes(q.el)) || (!!q.addEl && q.addEl[0] !== 'chaos'))
+    );
+  if (f === 'chaos') return dmg && (q.el === 'chaos' || (!!q.addEl && q.addEl[0] === 'chaos'));
   if (f === 'sup') return !dmg;
   return true;
 }
@@ -426,11 +479,12 @@ function gemShopHTML() {
     mx = tierMax(),
     cur = Math.min(5, SEL.gtier || 1),
     ks = GEMK()
-      .filter(k => gemTier(k) === cur)
+      .filter(k => gemTier(k) === cur && skfOk({ k }) && skwOk(k))
       .sort((a, b) => gemReq(a) - gemReq(b) || a.localeCompare(b));
   return `${gshopKind()}<p class="sub" style="margin:0">金幣 <b class="c-gold">${S.gold}</b>・解鎖到 T${mx}・買到的是 Lv1，可以重複買</p>
     <div class="seg gst5">${[1, 2, 3, 4, 5].map(t => `<button data-act="gshopTier" data-v="${t}" aria-pressed="${t === cur}">T${t}${t > mx ? '🔒' : ''}</button>`).join('')}</div>
     ${cur > mx ? `<p class="sub" style="color:#ffb27a">T${cur} 還沒解鎖：到城鎮挑戰突破試煉。</p>` : ''}
+    ${skfRows()}
     <div class="card">${ks
       .map(k => {
         const q = SKILLS[k],
@@ -451,7 +505,8 @@ const gshopKind = () =>
 function supShopHTML() {
   const mx = tierMax();
   return `${gshopKind()}<p class="sub" style="margin:0">金幣 <b style="color:var(--gold)">${S.gold}</b>・目前解鎖到 T${mx}。輔助寶石插在技能石的插槽裡（一開始 2 格），可以隨時拆下來換到別顆；同一種可以買很多顆。族裔輔助只會從野外機制的菁英與首領掉落。</p>
-    <div class="card">${SUPG.filter(sp => !sp.lin)
+    <div class="ptagf">${SUPF.map(([k, n]) => `<button data-act="supF" data-k="${k}" aria-pressed="${(SEL.supf || 'all') === k}">${n}</button>`).join('')}</div>
+    <div class="card">${SUPG.filter(sp => !sp.lin && supfOk(sp))
       .map(sp => {
         const blk = supBuyBlock(sp);
         return `<div class="rowx"><div class="t">${supLine(sp)}<small class="sub">T${sp.t}${supN(sp.k) ? `・<span style="color:var(--gold)">已有 ${supN(sp.k)} 顆</span>` : ''}</small></div><button class="btn sm ${blk ? '' : 'buy'}" data-act="supBuy" data-k="${sp.k}" ${blk ? 'disabled' : ''}>${blk || `${supPrice(sp)} 金`}</button></div>`;
@@ -495,7 +550,7 @@ function renderSheet() {
         : '';
     })()}
     <h3>攻擊</h3><div class="kv"><div><span>物理傷害</span><b>${fmt1(st.physLo)}–${fmt1(st.physHi)}</b></div><div><span>元素附加</span><b>${fmt1(st.fire + st.cold + st.light)}</b></div><div><span>法術加成</span><b>${Math.round((st.spellMul - 1) * 100)}%</b></div><div><span>暴擊率</span><b>${st.crit}%</b></div><div><span>暴擊傷害</span><b>${st.critMulti}%</b></div><div><span>吸血</span><b>${st.leech}%</b></div></div>
-    <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>視線範圍</span><b>${st.vision}m</b></div><div><span>精魄</span><b>${st.spiritUsed}/${st.spirit}</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div></div>
+    <h3>防禦</h3><div class="kv"><div><span>護甲</span><b>${st.armor}</b></div><div><span>閃避</span><b>${fmt1(st.dodge)}%</b></div><div><span>視線範圍</span><b>${st.vision}m</b></div><div><span>精魄</span><b>${st.spiritUsed}/${st.spirit}</b></div><div><span style="color:#ffb15a">火焰抗性</span><b>${st.res.fire}%</b></div><div><span style="color:#9fe7ff">冰冷抗性</span><b>${st.res.cold}%</b></div><div><span style="color:#fff27a">閃電抗性</span><b>${st.res.light}%</b></div><div><span style="color:#c86aff">混沌抗性</span><b>${st.res.chaos}%</b></div></div>
     <h3>技能</h3><div class="card">${mySkills()
       .map((q, i) =>
         q
@@ -528,10 +583,10 @@ function renderSheet() {
     <p class="sub" style="margin:0">技能石在城鎮的「技能石商店」買，用${curDot('soul')}靈魂（${S.cur.soul || 0}）升級。</p>
     ${more('技能石、輔助寶石與光環', '<p>另外有固定的普通攻擊。技能石有 2～5 個插槽，插上輔助寶石改變技能怎麼運作；品質用寶石稜鏡提高（野外機制掉落）。</p><p>商店依 T 級解鎖更高階的技能石；靈魂從擊殺怪物得到。</p><p>光環要預留精魄才會生效，精魄來自天賦的魔力、法術節點與契靈。</p>')}
     ${curRowG()}
-    <h3>技能石（${S.gems.length}）</h3><div class="seg skf">${SKF.map(([k, n]) => `<button data-act="skFilter" data-k="${k}" aria-pressed="${(SEL.skf || 'all') === k}">${n}</button>`).join('')}</div>
+    <h3>技能石（${S.gems.length}）</h3>${skfRows()}
     <div class="ggrid">${
       list
-        .filter(g => skfOk(g))
+        .filter(g => skfOk(g) && skwOk(g.k))
         .map(
           g =>
             `<button class="gcell" data-act="gem" data-id="${g.id}">${gemCell(g)}<span>${SKILLS[g.k].name}</span>${skTagHTML(SKILLS[g.k], 2, 1)}</button>`
@@ -1099,6 +1154,16 @@ const A = {
   },
   skFilter: d => {
     SEL.skf = d.k;
+    sfx('tap');
+    renderSheet();
+  },
+  skWep: d => {
+    SEL.skw = d.k;
+    sfx('tap');
+    renderSheet();
+  },
+  supF: d => {
+    SEL.supf = d.k;
     sfx('tap');
     renderSheet();
   },

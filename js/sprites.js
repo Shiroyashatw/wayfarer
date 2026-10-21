@@ -746,7 +746,15 @@ const wepKind = (w = S.eq.weapon) => (w ? BASES.weapon[w.bi].k : 'sword');
 /* 武器類別（天賦專精、技能標籤、昇華用）：劍、斧鎚、矛、弓弩、匕首爪、法杖；副手是盾牌、法珠、符咒或提燈 */
 const wepType = (w = S.eq.weapon) => (w ? BASES.weapon[w.bi].t : 'sword');
 const twoHand = (w = S.eq.weapon) => !!(w && BASES.weapon[w.bi].th);
-const WTAGN = { sword: '劍', axe: '斧鎚', spear: '矛', bow: '弓弩', dagger: '匕首爪', staff: '法杖' };
+const WTAGN = {
+  sword: '劍',
+  axe: '斧鎚',
+  spear: '矛',
+  bow: '弓弩',
+  dagger: '匕首爪',
+  staff: '法杖',
+  melee: '近戰武器'
+};
 const offType = () => (S.eq.offhand && !twoHand() ? BASES.offhand[S.eq.offhand.bi].k : '');
 /* ================= icons: currency, item slots, passive nodes ================= */
 const PIX = {

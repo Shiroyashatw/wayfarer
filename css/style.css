@@ -3,7 +3,7 @@
   --ink:#f3ede0; --dim:#b3a9bd; --gold:#f2c14e; --hp:#d8343c; --mp:#2f8be0; --xp:#8e5bd6; --good:#7bd36b;
   /* 0.3.31 設計規範（docs/設計規範.md）：新寫的樣式只用這些變數 */
   --faint:#8a8094; --well:#0000004d; --warn:#ffb15a; --bad:#ff8a8a; --danger:#e5484d; --heat:#ff6a3a;
-  --el-phys:#e0e0e8; --el-fire:#ffb0a0; --el-cold:#a8d8ff; --el-light:#fff0a0;
+  --el-phys:#e0e0e8; --el-fire:#ffb0a0; --el-cold:#a8d8ff; --el-light:#fff0a0; --el-chaos:#d8a8ff;
   --fs-cap:11px; --fs-sm:12px; --fs-body:13px; --fs-btn:14px; --fs-title:16px; --fs-num:20px; --fs-hero:26px;
   --sp-1:4px; --sp-2:6px; --sp-3:8px; --sp-4:12px; --sp-5:16px;
   --r-sm:6px; --r-md:10px; --r-lg:12px;
@@ -547,6 +547,7 @@ h3{margin:4px 0 0;font-size:var(--fs-sm);letter-spacing:.14em;color:var(--gild);
 .skt.el.fire{background:#e5484d44;color:#ffb0a0}
 .skt.el.cold{background:#3a8ae044;color:#a8d8ff}
 .skt.el.light{background:#f2d25e44;color:#fff0a0}
+.skt.el.chaos{background:#8a3ac844;color:#e0b8ff}
 .skt.eff{background:#a0202a44;color:#ffa0a8}
 .skt.ty{background:#ffffff14;color:#f0e6c8;border:1px solid #ffffff22;padding:2px 4px}
 .skt.w{background:#8a6a3a44;color:#f0d0a0}
@@ -555,10 +556,10 @@ h3{margin:4px 0 0;font-size:var(--fs-sm);letter-spacing:.14em;color:var(--gild);
 .gcell .sktags,.gslot .sktags{margin-top:1px}
 /* 0.3.18 說明文字的關鍵字上色 */
 .kw{font-weight:500;font-style:normal}
-.kw.fire{color:#ffb08a}.kw.cold{color:#9fdcff}.kw.light{color:#fff08a}.kw.phys{color:#e8e2d4}
+.kw.chaos{color:#d8a8ff}.kw.fire{color:#ffb08a}.kw.cold{color:#9fdcff}.kw.light{color:#fff08a}.kw.phys{color:#e8e2d4}
 .kw.eff{color:#ff9aa4}.kw.tg{color:#c8d8ff}.kw.buf{color:#a8f0b8}.kw.num{color:var(--gold)}.kw.bad{color:#ff7a7a}
 .card .sktags{justify-content:flex-start;margin:4px 0}
-.skf{grid-template-columns:repeat(6,1fr);margin-bottom:8px}
+.skf{grid-template-columns:repeat(7,1fr);margin-bottom:6px}
 .skf button{font-size:var(--fs-sm);padding:6px 0}
 .gst5{grid-template-columns:repeat(5,1fr)}
 /* 0.3.1.8 右上角返回 */

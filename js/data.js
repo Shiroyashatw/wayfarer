@@ -82,7 +82,7 @@ const GCUR = [
   { id: 'vaal', n: '冥府之血', d: '腐化 Lv30 技能石：超限、品質超限、擴槽、沒變化或毀滅', c: '#ff3a5a' }
 ];
 const GCURI = Object.fromEntries(GCUR.map(c => [c.id, c]));
-const EL = { phys: '物理', fire: '火焰', cold: '冰冷', light: '閃電' };
+const EL = { phys: '物理', fire: '火焰', cold: '冰冷', light: '閃電', chaos: '混沌' };
 const MONS = [
   {
     name: '綠史萊姆',
@@ -1478,6 +1478,31 @@ const AFF = [
     tiers: T5([36, 45], [28, 35], [20, 27], [12, 19], [6, 11]),
     f: v => `閃電抗性 +${v}%`
   },
+  /* 0.3.36 混沌：抗性比元素抗性難疊（沒有全抗加成） */
+  {
+    id: 'resChaos',
+    t: 'S',
+    n: '抗混沌',
+    slots: [...ARMOR, ...JEW],
+    tiers: T5([26, 35], [20, 25], [14, 19], [8, 13], [4, 7]),
+    f: v => `混沌抗性 +${v}%`
+  },
+  {
+    id: 'addChaos',
+    t: 'P',
+    n: '腐蝕',
+    slots: ['weapon', 'gloves', 'ring'],
+    tiers: T5([9, 26], [6, 18], [4, 12], [2, 7], [1, 3]),
+    f: v => `附加 ${v} 混沌傷害`
+  },
+  {
+    id: 'chaosPct',
+    t: 'P',
+    n: '虛無',
+    slots: ['weapon', 'amulet'],
+    tiers: T5([30, 40], [22, 29], [15, 21], [9, 14], [4, 8]),
+    f: v => `混沌傷害 +${v}%`
+  },
   {
     id: 'critPct',
     t: 'S',
@@ -1599,6 +1624,7 @@ const STATN = {
   lure: v => `吸引的怪物 +${v}%`,
   resCold: v => `冰冷抗性 +${v}%`,
   resLight: v => `閃電抗性 +${v}%`,
+  resChaos: v => `混沌抗性 +${v}%`,
   addFire: v => `附加 ${v} 火焰傷害`
 };
 const sg = v => (v > 0 ? '+' + v : String(v));
@@ -1621,12 +1647,14 @@ Object.assign(STATN, {
   engPct: v => `技能石每插一顆輔助寶石，該技能傷害 +${v}%`,
   addCold: v => `附加 ${v} 冰冷傷害`,
   addLight: v => `附加 ${v} 閃電傷害`,
+  addChaos: v => `附加 ${v} 混沌傷害`,
   dmgMore: v => `傷害 ${sg(v)}%（總乘）`,
   lifeMore: v => `最大生命 ${sg(v)}%（總乘）`,
   armorMore: v => `護甲 ${sg(v)}%（總乘）`,
   firePct: v => `火焰傷害 +${v}%`,
   coldPct: v => `冰冷傷害 +${v}%`,
   lightPct: v => `閃電傷害 +${v}%`,
+  chaosPct: v => `混沌傷害 +${v}%`,
   poisonPct: v => `中毒傷害 +${v}%`,
   poisonCh: v => `攻擊有 ${v}% 機率使敵人中毒`,
   ail: v => `燃燒、凍結、感電機率 +${v}%`,
@@ -1772,8 +1800,8 @@ const TH = {
     s: ['護符', { resAll: 4 }, 'prism'],
     n: [
       ['元素護符', { resAll: 12 }, 'prism'],
-      ['聖騎士之心', { lifePct: 8, resAll: 8 }, 'prism'],
-      ['淨化', { resAll: 10, regen: 1 }, 'prism'],
+      ['聖騎士之心', { lifePct: 8, resAll: 8, resChaos: 5 }, 'prism'],
+      ['淨化', { resAll: 6, resChaos: 12 }, 'prism'],
       ['風暴屏障', { resLight: 20, resCold: 10 }, 'prism'],
       ['火焰庇護', { resFire: 20, resAll: 4 }, 'prism']
     ]
@@ -1817,11 +1845,11 @@ const TH = {
     ]
   },
   poison: {
-    s: ['毒素', { poisonPct: 10 }, 'leaf'],
+    s: ['毒素', { poisonPct: 8, chaosPct: 4 }, 'leaf'],
     n: [
-      ['劇毒', { poisonPct: 25, poisonCh: 8 }, 'leaf'],
-      ['毒刃', { poisonCh: 12, physPct: 8 }, 'leaf'],
-      ['瘴氣', { poisonPct: 30 }, 'leaf'],
+      ['劇毒', { poisonPct: 20, poisonCh: 8, chaosPct: 10 }, 'leaf'],
+      ['毒刃', { poisonCh: 12, addChaos: 2 }, 'leaf'],
+      ['瘴氣', { poisonPct: 20, chaosPct: 15 }, 'leaf'],
       ['致命毒素', { poisonPct: 15, critPct: 1 }, 'leaf']
     ]
   },
@@ -1939,16 +1967,16 @@ const TH = {
       ['協同作戰', { allyDmg: 6, critPct: 1 }, 'twin'],
       ['圍獵', { allyDmg: 5, dbl: 4 }, 'twin'],
       ['號令', { allyDmg: 8 }, 'taunt'],
-      ['戰場指揮', { allyDmg: 5, dmgRed: 2 }, 'twin']
+      ['戰場指揮', { allyDmg: 5, cdr: 4 }, 'twin']
     ]
   },
   gem: {
     s: ['刻印', { engPct: 1 }, 'gem'],
     n: [
       ['符文之心', { engPct: 5 }, 'gem'],
-      ['技藝精通', { engPct: 3, mpCost: 6 }, 'gem'],
+      ['技藝精通', { engPct: 3, mpCost: 6, cdr: 3 }, 'gem'],
       ['石之共鳴', { engPct: 4, healPct: 8 }, 'gem'],
-      ['刻印大師', { engPct: 4, critPct: 1 }, 'gem']
+      ['刻印大師', { engPct: 4, cdr: 3 }, 'gem']
     ]
   }
 };
@@ -2666,5 +2694,5 @@ const TREE = (() => {
       n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.35';
+const VER = '0.3.36';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

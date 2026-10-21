@@ -724,6 +724,7 @@ function skTags(q) {
   else if (q.cry) out.push(['全體', 'tg all']);
   else if (!q.pet) out.push([(q.buff && q.buff.party) || q.party ? '全隊' : '自身', 'tg']);
   if (q.w) out.push([WTAGN[q.w], 'w']);
+  if (q.oh) out.push(['盾', 'w']);
   if (q.hits > 1 && q.tg !== 'rand') out.push(['連擊', 'eff']);
   if (q.bleed) out.push(['流血', 'eff']);
   if (q.poison) out.push(['中毒', 'eff']);
@@ -1537,3 +1538,435 @@ SUPG.push({
   d: '行動條滿了 0.8 秒內沒下指令，冷卻好就自動施放（照技能欄順序）・傷害 -20%、冷卻 +2 秒'
 });
 SUPGI.sp_auto = SUPG[SUPG.length - 1];
+
+/* ================= 0.3.36 技能池擴充、武器限制補齊、混沌傷害 =================
+   w 是武器類型（sword／axe／bow／dagger／spear／staff），'melee' 是弓弩以外的武器；oh: 'shield' 要拿盾。 */
+/* 武器限制補齊：連射、毒箭、穿雲箭是弓；盾擊、盾衝要盾；其他通用攻擊限近戰 */
+for (const k of ['double', 'poison', 'pierce']) SKILLS[k].w = 'bow';
+for (const k of ['power', 'whirl', 'cleave', 'reckless', 'rend']) SKILLS[k].w = 'melee';
+SKILLS.bash.oh = 'shield';
+/* 偏黑暗的法術改成混沌傷害 */
+for (const k of ['decay', 'doom', 'vampire', 'toxin', 'weaken']) SKILLS[k].el = 'chaos';
+Object.assign(SKILLS, {
+  /* ---- 混沌法術 ---- */
+  chaosbolt: {
+    name: '混沌箭',
+    mp: 6,
+    kind: 'spell',
+    el: 'chaos',
+    mult: 1.3,
+    fx: 'pierce',
+    icon: 'eclipse',
+    r: 3,
+    vs: { poison: 10 }
+  },
+  blight: {
+    name: '枯萎',
+    mp: 8,
+    kind: 'spell',
+    el: 'chaos',
+    mult: 0.5,
+    tg: 'all',
+    poison: 3,
+    fx: 'pierce',
+    icon: 'cloud',
+    r: 3
+  },
+  essence: {
+    name: '靈魂吸取',
+    mp: 9,
+    kind: 'spell',
+    el: 'chaos',
+    mult: 1.1,
+    poison: 4,
+    leech: 8,
+    fx: 'pierce',
+    icon: 'ghost',
+    r: 4
+  },
+  contagion: {
+    name: '瘟疫',
+    mp: 10,
+    kind: 'spell',
+    el: 'chaos',
+    mult: 0.45,
+    tg: 'all',
+    poison: 4,
+    vs: { poison: 10 },
+    fx: 'pierce',
+    icon: 'splat',
+    r: 4
+  },
+  shadowbolt: {
+    name: '暗影飛彈',
+    mp: 9,
+    kind: 'spell',
+    el: 'chaos',
+    mult: 0.9,
+    proj: 2,
+    fx: 'pierce',
+    icon: 'moon',
+    r: 4
+  },
+  chaoschain: {
+    name: '混沌鎖鏈',
+    mp: 10,
+    kind: 'spell',
+    el: 'chaos',
+    mult: 0.9,
+    chain: 3,
+    fx: 'pierce',
+    icon: 'chain',
+    r: 4
+  },
+  despair: {
+    name: '絕望詛咒',
+    mp: 9,
+    kind: 'spell',
+    el: 'chaos',
+    mult: 0.3,
+    tg: 'all',
+    curse: 25,
+    fx: 'pierce',
+    icon: 'mask',
+    r: 4
+  },
+  voidrift: {
+    name: '虛空裂隙',
+    mp: 18,
+    kind: 'spell',
+    el: 'chaos',
+    mult: 1.5,
+    tg: 'all',
+    vs: { poison: 20 },
+    fx: 'pierce',
+    icon: 'eclipse',
+    r: 5
+  },
+  souldrain: {
+    name: '魂噬',
+    mp: 16,
+    kind: 'spell',
+    el: 'chaos',
+    mult: 3,
+    lowT: 50,
+    leech: 10,
+    fx: 'pierce',
+    icon: 'scythe',
+    r: 5
+  },
+  /* ---- 法杖 ---- */
+  staffstrike: { name: '杖擊', mp: 4, kind: 'attack', w: 'staff', mult: 1.5, stun: 0.15, icon: 'mace', r: 3 },
+  staffspin: {
+    name: '旋杖',
+    mp: 8,
+    kind: 'attack',
+    w: 'staff',
+    mult: 0.9,
+    tg: 'all',
+    fx: 'whirl',
+    icon: 'whirl',
+    r: 3
+  },
+  pressure: {
+    name: '點穴',
+    mp: 7,
+    kind: 'attack',
+    w: 'staff',
+    mult: 1.2,
+    stun: 0.4,
+    vsCrit: 'stun',
+    icon: 'needle',
+    r: 4
+  },
+  mantra: { name: '咒杖', mp: 8, kind: 'attack', w: 'staff', mult: 1.1, addEl: ['light', 0.5], icon: 'bagua', r: 4 },
+  sweepstaff: {
+    name: '棍掃千軍',
+    mp: 11,
+    kind: 'attack',
+    w: 'staff',
+    mult: 0.75,
+    hits: 2,
+    tg: 'all',
+    fx: 'whirl',
+    icon: 'wind',
+    r: 4
+  },
+  skypillar: {
+    name: '天柱崩',
+    mp: 17,
+    kind: 'attack',
+    w: 'staff',
+    mult: 2.4,
+    tg: 'all',
+    stun: 0.3,
+    icon: 'mountain',
+    r: 5
+  },
+  /* ---- 斧鎚 ---- */
+  hack: { name: '劈砍', mp: 5, kind: 'attack', w: 'axe', mult: 1.5, bleed: 25, icon: 'axe', r: 3 },
+  berserk: { name: '狂戰斬', mp: 8, kind: 'attack', w: 'axe', mult: 1.3, lowMe: 8, icon: 'fang2', r: 4 },
+  titanfall: {
+    name: '泰坦之擊',
+    mp: 17,
+    kind: 'attack',
+    w: 'axe',
+    mult: 2.4,
+    tg: 'all',
+    stun: 0.3,
+    icon: 'crack',
+    r: 5
+  },
+  /* ---- 匕首爪 ---- */
+  venomblade: {
+    name: '毒刃',
+    mp: 5,
+    kind: 'attack',
+    w: 'dagger',
+    mult: 1.1,
+    addEl: ['chaos', 0.5],
+    poison: 3,
+    icon: 'dagger',
+    r: 3
+  },
+  flurry: { name: '疾風刃', mp: 9, kind: 'attack', w: 'dagger', mult: 0.55, hits: 3, combo: 10, icon: 'claw', r: 4 },
+  eviscerate: {
+    name: '開膛',
+    mp: 15,
+    kind: 'attack',
+    w: 'dagger',
+    mult: 2.2,
+    vs: { bleed: 30, poison: 20 },
+    icon: 'bloodclaw',
+    r: 5
+  },
+  /* ---- 矛 ---- */
+  spearrush: { name: '突進', mp: 5, kind: 'attack', w: 'spear', mult: 1.5, crit: 8, icon: 'spear', r: 3 },
+  spearwall: { name: '槍林', mp: 10, kind: 'attack', w: 'spear', mult: 0.9, tg: 'all', icon: 'spear', r: 4 },
+  dragonspear: {
+    name: '龍槍',
+    mp: 16,
+    kind: 'attack',
+    w: 'spear',
+    mult: 2.3,
+    chain: 2,
+    addEl: ['fire', 0.3],
+    icon: 'dragon',
+    r: 5
+  },
+  /* ---- 劍 ---- */
+  blink: { name: '瞬斬', mp: 6, kind: 'attack', w: 'sword', mult: 0.75, hits: 2, crit: 10, icon: 'flash', r: 3 },
+  iai: { name: '居合', mp: 9, kind: 'attack', w: 'sword', mult: 1.6, charge: 2, crit: 15, icon: 'katana', r: 4 },
+  /* ---- 弓弩 ---- */
+  rotarrow: {
+    name: '腐蝕箭',
+    mp: 8,
+    kind: 'attack',
+    w: 'bow',
+    mult: 1.2,
+    addEl: ['chaos', 0.6],
+    poison: 3,
+    fx: 'arrow',
+    icon: 'arrow',
+    r: 4
+  },
+  /* ---- 盾 ---- */
+  shieldcharge: {
+    name: '盾衝',
+    mp: 6,
+    kind: 'attack',
+    oh: 'shield',
+    mult: 1.2,
+    stun: 0.3,
+    guard: 1,
+    icon: 'shield',
+    r: 3
+  },
+  shieldwall: {
+    name: '盾牆',
+    mp: 8,
+    kind: 'buff',
+    oh: 'shield',
+    buff: { id: 'shieldwall', n: '盾牆', turns: 3, dmgRed: 25, arm: 30, taunt: 50 },
+    icon: 'shieldstar',
+    r: 4
+  },
+  /* ---- 精魄光環 ---- */
+  envy: { name: '怨毒', kind: 'aura', mp: 0, spirit: 20, aura: { chaosPct: 22, addChaos: 3 }, icon: 'eclipse', r: 3 },
+  wardaura: { name: '虛空守護', kind: 'aura', mp: 0, spirit: 20, aura: { resChaos: 25 }, icon: 'moonshield', r: 3 },
+  discipline: { name: '紀律', kind: 'aura', mp: 0, spirit: 20, aura: { shieldPct: 10, mana: 20 }, icon: 'bagua', r: 3 },
+  zealotry: { name: '狂熱', kind: 'aura', mp: 0, spirit: 25, aura: { spellPct: 18, critPct: 3 }, icon: 'sun', r: 4 },
+  hasteaura: { name: '迅捷', kind: 'aura', mp: 0, spirit: 25, aura: { speed: 3, evade: 6 }, icon: 'feather', r: 4 },
+  pride: { name: '傲慢', kind: 'aura', mp: 0, spirit: 25, aura: { physPct: 25, flatPhys: 2 }, icon: 'lion', r: 4 },
+  malice: { name: '惡意', kind: 'aura', mp: 0, spirit: 25, aura: { dotPct: 25, poisonCh: 10 }, icon: 'fang', r: 4 },
+  meditate: { name: '冥想', kind: 'aura', mp: 0, spirit: 30, aura: { cdr: 8 }, icon: 'hourglass', r: 5 },
+  bloodlust: { name: '嗜血', kind: 'aura', mp: 0, spirit: 25, aura: { leech: 2, lowLife: 15 }, icon: 'bloodmoon', r: 5 }
+});
+/* 新技能的冷卻（秒） */
+for (const [k, v] of Object.entries({
+  blight: 4,
+  essence: 3,
+  contagion: 5,
+  shadowbolt: 3,
+  chaoschain: 3,
+  despair: 6,
+  voidrift: 12,
+  souldrain: 9,
+  staffspin: 3,
+  pressure: 4,
+  mantra: 0,
+  sweepstaff: 4,
+  skypillar: 12,
+  berserk: 3,
+  titanfall: 12,
+  flurry: 0,
+  eviscerate: 9,
+  spearwall: 4,
+  dragonspear: 9,
+  iai: 3,
+  rotarrow: 3,
+  shieldcharge: 4,
+  shieldwall: 12
+}))
+  SKILLS[k].cd = v;
+for (const k in SKILLS) if (SKILLS[k].cd == null && SKILLS[k].kind !== 'aura' && k !== 'attack') SKILLS[k].cd = 0;
+/* ---- 0.3.36 輔助寶石：附加、轉換、集中、殘暴、控制毀滅、快速、效率…（參考 PoE／PoE2） ---- */
+SUPREQ.melee = q => q.kind === 'attack' && q.w !== 'bow';
+SUPREQ.aoe = q => SUPREQ.dmg(q) && q.tg === 'all';
+SUPREQ.chaos = q =>
+  SUPREQ.dmg(q) && ((q.kind === 'spell' && q.el === 'chaos') || (q.addEl && q.addEl[0] === 'chaos') || !!q.poison);
+SUPREQN.melee = '近戰攻擊';
+SUPREQN.aoe = '打全部敵人的傷害技能';
+SUPREQN.chaos = '混沌或中毒技能';
+for (const sp of [
+  { k: 'sp_gfire', n: '附加火焰', t: 1, req: 'dmg', mp: 15, sup: { gFire: 25 }, d: '另外附加這下傷害 25% 的火焰傷害' },
+  { k: 'sp_gcold', n: '附加冰冷', t: 1, req: 'dmg', mp: 15, sup: { gCold: 25 }, d: '另外附加這下傷害 25% 的冰冷傷害' },
+  {
+    k: 'sp_glight',
+    n: '附加閃電',
+    t: 1,
+    req: 'dmg',
+    mp: 15,
+    sup: { gLight: 25 },
+    d: '另外附加這下傷害 25% 的閃電傷害'
+  },
+  {
+    k: 'sp_gchaos',
+    n: '附加混沌',
+    t: 2,
+    req: 'dmg',
+    mp: 20,
+    sup: { gChaos: 20 },
+    d: '另外附加這下傷害 20% 的混沌傷害'
+  },
+  { k: 'sp_eff', n: '效率', t: 1, req: 'act', mp: 0, sup: { cost: 30, more: -10 }, d: '魔力消耗 -30%，傷害 -10%' },
+  {
+    k: 'sp_cvfire',
+    n: '物理轉火焰',
+    t: 2,
+    req: 'attack',
+    mp: 15,
+    conv: 1,
+    sup: { cvFire: 60 },
+    d: '60% 物理傷害轉成火焰'
+  },
+  {
+    k: 'sp_cvcold',
+    n: '物理轉冰冷',
+    t: 2,
+    req: 'attack',
+    mp: 15,
+    conv: 1,
+    sup: { cvCold: 60 },
+    d: '60% 物理傷害轉成冰冷'
+  },
+  {
+    k: 'sp_cvlight',
+    n: '物理轉閃電',
+    t: 2,
+    req: 'attack',
+    mp: 15,
+    conv: 1,
+    sup: { cvLight: 60 },
+    d: '60% 物理傷害轉成閃電'
+  },
+  {
+    k: 'sp_fastatk',
+    n: '快速攻擊',
+    t: 2,
+    req: 'attack',
+    mp: 20,
+    sup: { avBack: 25, more: -10 },
+    d: '用完行動條先補 25%（更快再行動），傷害 -10%'
+  },
+  {
+    k: 'sp_fastcast',
+    n: '快速施法',
+    t: 2,
+    req: 'spell',
+    mp: 20,
+    sup: { avBack: 25, more: -10 },
+    d: '用完行動條先補 25%（更快再行動），傷害 -10%'
+  },
+  { k: 'sp_mpleech', n: '魔力吸取', t: 2, req: 'dmg', mp: 10, sup: { mpLeech: 4 }, d: '造成傷害的 4% 回復魔力' },
+  { k: 'sp_melee', n: '近戰物理', t: 3, req: 'melee', mp: 20, sup: { physMore: 30 }, d: '物理傷害 +30%（總乘）' },
+  {
+    k: 'sp_elefocus',
+    n: '元素集中',
+    t: 3,
+    req: 'dmg',
+    mp: 25,
+    sup: { eleMore: 35, noAil: 1 },
+    d: '元素傷害 +35%（總乘），不能造成異常狀態'
+  },
+  {
+    k: 'sp_brutal',
+    n: '殘暴',
+    t: 3,
+    req: 'attack',
+    mp: 20,
+    sup: { physMore: 45, noEle: 1 },
+    d: '物理傷害 +45%（總乘），不再造成元素與混沌傷害'
+  },
+  {
+    k: 'sp_ctrl',
+    n: '控制毀滅',
+    t: 3,
+    req: 'spell',
+    mp: 25,
+    sup: { more: 30, noCrit: 1 },
+    d: '傷害 +30%（總乘），不會暴擊'
+  },
+  {
+    k: 'sp_conc',
+    n: '範圍集中',
+    t: 3,
+    req: 'aoe',
+    mp: 25,
+    sup: { more: 30, foesCap: 3 },
+    d: '打全部敵人的技能傷害 +30%（總乘），最多打 3 隻'
+  },
+  { k: 'sp_ailx', n: '異常延長', t: 3, req: 'dmg', mp: 15, sup: { ailDur: 1 }, d: '燃燒、中毒、流血、感電多 3 秒' },
+  {
+    k: 'sp_cvchaos',
+    n: '元素轉混沌',
+    t: 4,
+    req: 'dmg',
+    mp: 20,
+    conv: 1,
+    sup: { cvChaos: 50 },
+    d: '50% 元素傷害轉成混沌'
+  },
+  {
+    k: 'sp_wither',
+    n: '枯萎',
+    t: 4,
+    req: 'chaos',
+    mp: 20,
+    sup: { gChaos: 10, poison: 30 },
+    d: '附加 10% 混沌傷害，30% 機率中毒'
+  }
+]) {
+  SUPG.push(sp);
+  SUPGI[sp.k] = sp;
+}

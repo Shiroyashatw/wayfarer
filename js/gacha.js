@@ -28,6 +28,7 @@ const PTW = [
   PTN = i => 'T' + (6 - i);
 /* 標籤：由詞綴決定（例如有火焰傷害的詞綴，契靈就有火焰標籤） */
 const PTAG = {
+  chaos: '混沌',
   fire: '火焰',
   cold: '冰冷',
   light: '閃電',
@@ -335,6 +336,33 @@ const PAFF = [
     ]
   },
   { id: 'sk', sk: 1, tg: ['skill'], v: [null, null, null, [1, 1], [2, 2], [3, 3]] },
+  /* 0.3.36 混沌 */
+  {
+    id: 'chaosPct',
+    k: 'chaosPct',
+    tg: ['chaos'],
+    v: [
+      [4, 6],
+      [6, 9],
+      [9, 13],
+      [13, 17],
+      [17, 22],
+      [22, 28]
+    ]
+  },
+  {
+    id: 'resChaos',
+    k: 'resChaos',
+    tg: ['chaos'],
+    v: [
+      [3, 5],
+      [5, 7],
+      [7, 10],
+      [10, 13],
+      [13, 16],
+      [16, 20]
+    ]
+  },
   /* 0.3.35 冷卻縮減 */
   {
     id: 'cdr',
@@ -364,9 +392,11 @@ const PACTS = [
   { id: 'd_pegasus', r: 2, n: '天馬', spr: 'a_z_horse' },
   { id: 'f_tigerlord', r: 2, n: '虎爺', spr: 'a_z_tiger' },
   { id: 'f_lion', r: 2, n: '風獅爺', spr: 'lion' },
+  { id: 'd_hundun', r: 2, n: '混沌', spr: 'a_hundun' },
   { id: 'd_fortune', r: 2, n: '夜市招財貓', spr: 'a_z_rat' },
   { id: 'd_toad', r: 2, n: '金蟾', spr: 'a_z_rabbit' },
   /* ---- SR ---- */
+  { id: 'd_qiongqi', r: 1, n: '窮奇', spr: 'a_qiongqi' },
   { id: 'f_bear', r: 1, n: '台灣黑熊', spr: 'bear' },
   { id: 'f_viper', r: 1, n: '百步蛇', spr: 'snake' },
   { id: 'f_leopard', r: 1, n: '雲豹', spr: 'tiger' },
