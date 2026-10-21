@@ -49,7 +49,7 @@
 | 亡靈精華與亡靈製作（屍化值） | `js/undead.js` | `ESS`（精華對應的詞綴）、`UCUR`、`ucReroll`、`ucConv`、`ucAdd`、`ucAff`、`ucBlock`、`undeadCraftHTML`（裝備詳情頁）；屍化值存在裝備的 `sh`、次數 `uc` |
 | 魔霧區、魔霧詞綴與專屬怪、進度與碎片 | `js/demon.js` | `demonSpawns`（由 `endgameSpawns` 呼叫，產生 `MZ` 魔霧區）、`mistAt`、`mistProg`、`MIST_TIERS`、`MMODS`／`mistApply`、`MISTMON`、`mistify(e, q, k, Z)`、`drawSeals`（紫色圓圈與光柱）／`drawSealMark`（遠距離符號）、`mistWin`；各區進度 `S.mistp`（每輪 `_ep` 換新） |
 | 魔霧四凶與燭龍（0.3.24） | `js/demon.js`、`js/battle.js`、`js/ui.js` | `XIONG`／`XIONGI`、`xiongOf`、`xseal`／`xsealAll`（`S.xseal`）、`makeXiong`、`makeZhulong`、`beastTurn`（`enemyResolve` 開頭）、`xiongWin`／`zhulongWin`（`winBattle` 的 `B.xiong`／`B.zhulong`）、`A.xiongGo`／`A.zhulongGo`（`openEnt` 的 `mseal`）；看不到行動順序 `hideAv`（`renderBHud`、`renderMBHud`）、黑夜打空 `blind`（`actResolve`）；魔霧進度滿 `mistWin` |
-| 七罪攻佔城鎮（0.3.25） | `js/demon.js`、`js/battle.js`、`js/ui.js`、`js/map.js` | `SIEGE_LV`／`SIEGE_DUR`／`SIEGE_CD`／`SIEGE_R`／`SIEGE_PICK`、`SIEGE_FX`、信徒 `SINF`（`followerBase`／`followerize`／`makeFollower`）、`siegeTown`／`siegeAt`、`siegeTick`、`siegeSpawns`（`demonSpawns`）、`drawSiege`（`map.js` 繪製）、`siegeApply`（`startBattle`，`B.siegeK`、`B.me.slow`／`charmed`）、`siegeWin`（`winBattle`）、`siegeDone`（`sinReward`）、`siegeTownHTML`（`openEnt` 的城鎮）、`A.siegeGo`（`dt: 'sin'`、`siege: 1`，`dunSpec`／`dunEnemy`）；信徒特色 `followerTurn`（`enemyResolve`）、`followerAfter`、`followerHit`（`actResolve`）、玩家中毒 `pdot`（`roundEnd`）、模仿者 `me.lastEl` |
+| 七罪據點（0.3.25 攻佔城鎮，0.3.37 改成地圖上的據點） | `js/demon.js`、`js/battle.js`、`js/ui.js`、`js/map.js` | `SIEGE_LV`（5）／`SG_CELL`／`SIEGE_R`、`SIEGE_FX`、信徒 `SINF`（`followerBase`／`followerize`／`makeFollower`）、這一輪的據點 `SZ`（`siegeZones`，跟魔霧一樣 `ep2` 每 2 小時換）、`siegeAt`、進度 `sgRec`／`sgProg`／`sgDone`（`S.sgp`）、`siegeSpawns`（`demonSpawns`，中心 `kind: 'szone'` 與信徒）、`drawSiege`（`map.js` 繪製）、`siegeApply`（`startBattle`，`B.siegeK`、`B.me.slow`／`charmed`）、`siegeWin`（`winBattle`）、`siegeDone`（`sinReward`，`S.sgDun`）、`siegeZoneHTML`（`openEnt` 的 `szone`）、`A.siegeGo`（`dt: 'sin'`、`siege: 1`，`dunSpec`／`dunEnemy`）；信徒特色 `followerTurn`（`enemyResolve`）、`followerAfter`、`followerHit`（`actResolve`）、玩家中毒 `pdot`（`roundEnd`）、模仿者 `me.lastEl` |
 | 七宗罪雕像、7 個王的機制、殘魂（0.3.24 雕像拿掉） | `js/demon.js`、`js/battle.js` | `SINS`、`makeSinLord`、`sinTurn`（`enemyResolve`，經 `soloExt`）、`sinHit`（`actResolve`，經 `soloExt`）、`sinReward`（`dunReward`）；`dunEnemy` 的七宗罪段落 |
 | 傳奇裝備 | `js/demon.js`、`js/items.js` | `LEGENDS`、`makeLegend`；屬性在 `sumStats`（`it.leg`），特效旗標 `legPride` 等在 `heroDmg`／`heroAil`／`useSkill`／`bItem` |
 | 惡魔珠寶與天賦盤珠寶槽 | `js/demon.js`、`js/data.js`、`js/tree.js` | `JAFF`、`makeJewel`、`jewelCap`、`jewelStats`、`socketCardHTML`、`A.jIn`／`A.jOut`；槽位在 `TREE` 結尾（`type: 'socket'`），鑲嵌狀態 `S.jsock` |
@@ -160,7 +160,7 @@
 
 - **utils**（6），15 個宣告
 
-### js/data.js（2699 行）
+### js/data.js（2718 行）
 
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
@@ -202,7 +202,7 @@
 - **dungeons (shared by solo and party)**（2291），24 個宣告
 - **battle: drawing**（3034），7 個宣告
 
-### js/map.js（1760 行）
+### js/map.js（1761 行）
 
 - **world coordinates: meters from 台中車站 (x 東, y 南)**（3），5 個宣告
 - **OpenStreetMap vector tiles**（63），26 個宣告
@@ -210,10 +210,10 @@
 - **extra sprites**（608），0 個宣告
 - **fog of war (chunked)**（675），11 個宣告
 - **spawns**（773），18 個宣告
-- **world rendering**（1069），18 個宣告
-- **input**（1484），5 個宣告
-- **movement**（1577），5 個宣告
-- **GPS**（1632），11 個宣告
+- **world rendering**（1070），18 個宣告
+- **input**（1485），5 個宣告
+- **movement**（1578），5 個宣告
+- **GPS**（1633），11 個宣告
 
 ### js/tree.js（496 行）
 
@@ -244,7 +244,7 @@
 - **undead crafting（0.3.23 起在藏身處）**（409），15 個宣告
 - **actions**（545），0 個宣告
 
-### js/demon.js（1420 行）
+### js/demon.js（1452 行）
 
 - **sprites & data**（3），19 個宣告
 - **map: mist seals, active mist, sin statues**（341），10 個宣告
@@ -252,7 +252,7 @@
 - **sheets**（706），4 個宣告
 - **actions**（763），0 個宣告
 - **0.3.24 魔霧：山海經四凶與燭龍**（796），10 個宣告
-- **0.3.25 七罪攻佔城鎮**（986），18 個宣告
+- **0.3.25 七罪（0.3.37 改成地圖上的七罪據點）**（986），21 個宣告
 
 ### js/hunt.js（870 行）
 
@@ -306,7 +306,7 @@
 - **battle (every client)**（642），11 個宣告
 - **battle rendering**（904），6 個宣告
 
-### js/main.js（393 行）
+### js/main.js（401 行）
 
 - **boot**（3），7 個宣告
 <!-- index:end -->

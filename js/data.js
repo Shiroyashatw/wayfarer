@@ -1853,6 +1853,25 @@ const TH = {
       ['致命毒素', { poisonPct: 15, critPct: 1 }, 'leaf']
     ]
   },
+  /* 0.3.37 混沌與冷卻縮減 */
+  chaos: {
+    s: ['混沌', { chaosPct: 8 }, 'skull'],
+    n: [
+      ['虛無之觸', { chaosPct: 20, addChaos: 2 }, 'skull'],
+      ['腐蝕之心', { chaosPct: 15, poisonCh: 6 }, 'skull'],
+      ['深淵凝視', { chaosPct: 12, penRes: 4 }, 'skull'],
+      ['虛空護體', { resChaos: 15, chaosPct: 8 }, 'prism']
+    ]
+  },
+  haste: {
+    s: ['迅思', { cdr: 1 }, 'wind'],
+    n: [
+      ['時之沙', { cdr: 4 }, 'wind'],
+      ['疾思', { cdr: 3, speed: 1 }, 'wind'],
+      ['戰術預判', { cdr: 3, critPct: 1 }, 'wind'],
+      ['心流', { cdr: 3, manaRegen: 2 }, 'wind']
+    ]
+  },
   ail: {
     s: ['異常', { ail: 10 }, 'skull'],
     n: [
@@ -2035,28 +2054,28 @@ const SPOKES = [
     a: 294,
     k: 'i',
     sm: ['mana', 'spell'],
-    cl: ['mana', 'spell', 'cold', 'mana'],
+    cl: ['mana', 'spell', 'cold', 'haste'],
     ks: ['心靈凌駕', { mom: 30, mana: 30 }, 'mana']
   },
   {
     a: 318,
     k: 'id',
     sm: ['light', 'crit'],
-    cl: ['light', 'crit', 'ail', 'light'],
+    cl: ['light', 'crit', 'ail', 'haste'],
     ks: ['玻璃大砲', { dmgMore: 40, lifeMore: -30 }, 'skull']
   },
   {
     a: 342,
     k: 'id',
     sm: ['cold', 'speed'],
-    cl: ['cold', 'evade', 'ail', 'cold'],
+    cl: ['cold', 'evade', 'ail', 'chaos'],
     ks: ['災厄使者', { ail: 100, dmgMore: -15 }, 'skull']
   },
   {
     a: 366,
     k: 'd',
     sm: ['crit', 'evade'],
-    cl: ['crit', 'evade', 'vision', 'speed'],
+    cl: ['crit', 'evade', 'haste', 'speed'],
     ks: ['雜技', { evade: 20, dodgeCap: 20, armorMore: -50 }, 'wind']
   },
   {
@@ -2069,22 +2088,22 @@ const SPOKES = [
   {
     a: 414,
     k: 'd',
-    sm: ['poison', 'speed'],
-    cl: ['poison', 'dbl', 'poison', 'leech'],
-    ks: ['瘟疫使者', { poisonCh: 30, poisonPct: 50, dmgMore: -15 }, 'leaf']
+    sm: ['poison', 'chaos'],
+    cl: ['poison', 'chaos', 'dbl', 'chaos'],
+    ks: ['瘟疫使者', { poisonCh: 30, poisonPct: 50, chaosPct: 20, dmgMore: -15 }, 'leaf']
   },
   {
     a: 438,
     k: 'ds',
     sm: ['phys', 'crit'],
-    cl: ['phys', 'dbl', 'cmul', 'gold'],
+    cl: ['phys', 'dbl', 'cmul', 'haste'],
     ks: ['堅毅技巧', { noCrit: 1, dmgMore: 30 }, 'sword']
   },
   {
     a: 462,
     k: 'ds',
     sm: ['leech', 'life'],
-    cl: ['leech', 'gold', 'life', 'leech'],
+    cl: ['leech', 'chaos', 'life', 'leech'],
     ks: ['不朽魔血', { vaal: 1, leech: 2 }, 'blood']
   }
 ];
@@ -2694,5 +2713,5 @@ const TREE = (() => {
       n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.36';
+const VER = '0.3.37';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

@@ -71,7 +71,7 @@ Object.assign(PAL, {
 /* 地圖依物件種類找圖：雕像用 sinstatue */
 SPR.sinst = SPR.sinstatue;
 PAL.sinst = PAL.sinstatue;
-Object.assign(KIND, { mseal: '魔霧', sinst: '七宗罪雕像' });
+Object.assign(KIND, { mseal: '魔霧', sinst: '七宗罪雕像', szone: '七罪據點' });
 /* 魔霧詞綴（效果在 mistApply） */
 const MMODS = [
   { id: 'mi_shroud', n: '霧罩', d: '護甲 +60%、全部抗性 +20%', mist: 1 },
@@ -396,8 +396,8 @@ function demonSpawns(out, cells, hp) {
       lc: '#d8b8ff'
     });
   }
-  /* 0.3.24：七宗罪雕像拿掉；0.3.25 七罪改成攻佔城鎮 */
-  siegeSpawns(out);
+  /* 0.3.24：七宗罪雕像拿掉；0.3.37 七罪改成地圖上的七罪據點 */
+  siegeSpawns(out, cells);
   if (!MZ.length) return;
   /* 魔霧區裡的怪物加魔霧詞綴，約 1/3 換成魔霧專屬怪 */
   for (const e of out.values()) {
@@ -716,7 +716,7 @@ const sinMods = e => {
 };
 function demonHTML() {
   const sins = S.sins || {};
-  return `<p class="sub">地圖上的魔霧區（紫色圓圈）打滿進度，霧的中心會出現山海經的四凶之一，打倒得到牠的凶獸之印；四種印各 1 個可以在魔霧中心召喚尾王燭龍。Lv15 起七罪之一會攻佔你附近的城鎮，解放城鎮、打倒那個罪的王得到殘魂；集齊 7 種殘魂可以組隊挑戰七宗罪之王。</p>${S.siege && siegeTown() ? `<p class="sub" style="color:#ff9aa4">目前：${SINI[S.siege.sin].boss}攻佔${siegeTown().n}（解放 ${S.siege.prog}%）</p>` : ''}
+  return `<p class="sub">地圖上的魔霧區（紫色圓圈）打滿進度，霧的中心會出現山海經的四凶之一，打倒得到牠的凶獸之印；四種印各 1 個可以在魔霧中心召喚尾王燭龍。Lv5 起地圖上會出現七罪據點，解放據點、打倒那個罪的王得到殘魂；集齊 7 種殘魂可以組隊挑戰七宗罪之王。</p>${S.siege && siegeTown() ? `<p class="sub" style="color:#ff9aa4">目前：${SINI[S.siege.sin].boss}攻佔${siegeTown().n}（解放 ${S.siege.prog}%）</p>` : ''}
   <div class="curs">${XIONG.map(x => `<span title="${x.d}"><span>${x.n}之印<b style="color:${xseal(x.k) ? 'var(--gold)' : 'var(--dim)'}">${xseal(x.k)}</b></span></span>`).join('')}</div>
   <div class="curs">${SINS.map(s => `<span title="${s.boss}"><span>${s.n}的殘魂<b style="color:${sins[s.k] ? 'var(--gold)' : 'var(--dim)'}">${sins[s.k] || 0}</b></span></span>`).join('')}</div>
   ${S.title ? `<p class="sub" style="color:var(--gold)">稱號：${S.title}</p>` : ''}
@@ -983,15 +983,14 @@ Object.assign(A, {
   }
 });
 
-/* ================= 0.3.25 七罪攻佔城鎮 ================= */
-/* 七罪之一帶著信徒攻佔一座城鎮（Lv15 起、玩家 3 公里內、同時一座、24 小時沒解放就撤離、解放或撤離後冷卻 3 小時）。
-   被攻佔的城鎮：範圍變成那個罪的顏色、城鎮的服務不能用（藏身處保底）、範圍內的戰鬥套用城鎮特效、怪物換成信徒；
-   打信徒累積解放度，滿 100% 挑戰那個罪的王（終局難度）。信徒的圖先用現有怪物圖＋罪的配色，提示詞在 docs/怪物提示詞.md */
-const SIEGE_LV = 15,
-  SIEGE_DUR = 24 * 3600e3,
-  SIEGE_CD = 3 * 3600e3,
-  SIEGE_R = 350,
-  SIEGE_PICK = 3000;
+/* ================= 0.3.25 七罪（0.3.37 改成地圖上的七罪據點） ================= */
+/* 七罪據點：跟魔霧一樣每 2 小時換一輪，隨機出現在地圖上（Lv5 起；每 SG_CELL 公尺方格約 30%，不在城鎮旁、不跟魔霧重疊）。
+   範圍畫成那個罪的顏色，範圍內冒出信徒、戰鬥套用那個罪的特效；打信徒累積解放度（S.sgp，每輪換新），
+   滿 100% 在據點中心挑戰那個罪的王（3 層、終局難度），打完這一輪這個據點就消失。信徒的圖先用現有怪物圖＋罪的配色 */
+const SIEGE_LV = 5,
+  SG_CELL = 3000,
+  SIEGE_R = 320;
+let SZ = [];
 /* 城鎮特效（範圍內的戰鬥） */
 const SIEGE_FX = {
   pride: '怪物生命高於一半時受到的傷害 -30%',
@@ -1054,28 +1053,36 @@ const SINF = {
     { n: '傀儡情人', t: 'puppet', spr: 'a_sin_lust_puppet', d: '還活著時，其他信徒受傷 -25%' }
   ]
 };
-const siegeTown = () => S.siege && TOWNS.find(t => t.id === S.siege.tid);
-const siegeAt = (lat, lng) => {
-  const t = siegeTown();
-  return t && dist(lat, lng, t.lat, t.lng) <= SIEGE_R ? S.siege : null;
+/* 據點的進度與被偷的金幣：S.sgp = {_ep, [據點 id]: {prog, stolen}} */
+const sgRec = id => {
+  if (!S.sgp || S.sgp._ep !== ep2()) S.sgp = { _ep: ep2() };
+  return (S.sgp[id] = S.sgp[id] || { prog: 0, stolen: 0 });
 };
-/* 每次刷新地圖時檢查：撤離、開始新的攻佔 */
-function siegeTick() {
-  if (S.siege && now() > S.siege.until) {
-    addLog(`${SINI[S.siege.sin].boss}從${siegeTown() ? siegeTown().n : '城鎮'}撤離了（偷走的金幣拿不回來）`);
-    S.siege = null;
-    S.siegeCd = now() + SIEGE_CD;
-  }
-  if (S.siege || S.lv < SIEGE_LV || now() < (S.siegeCd || 0)) return;
-  const near = TOWNS.filter(
-    t => dist(S.lat, S.lng, t.lat, t.lng) <= SIEGE_PICK && dist(S.lat, S.lng, t.lat, t.lng) > TOWN_R
-  );
-  if (!near.length) return;
-  const t = near[fl(Math.random() * near.length)],
-    s = SINS[fl(Math.random() * SINS.length)];
-  S.siege = { tid: t.id, sin: s.k, at: now(), until: now() + SIEGE_DUR, prog: 0, stolen: 0 };
-  addLog(`${s.boss}帶著信徒攻佔了${t.n}！`);
-  if (typeof toast === 'function') toast(`${s.n}攻佔了${t.n}！`);
+const sgProg = id => (S.sgp && S.sgp._ep === ep2() && S.sgp[id] ? S.sgp[id].prog : 0);
+const sgDone = id => !!(S.sgp && S.sgp._ep === ep2() && S.sgp[id] && S.sgp[id].done);
+/* 現在位置在哪個七罪據點裡（打完的不算） */
+const siegeAt = (lat, lng) => {
+  const [x, y] = toM(lat, lng);
+  return SZ.find(z => !sgDone(z.id) && Math.hypot(z.x - x, z.y - y) <= z.r) || null;
+};
+/* 這一輪的七罪據點（demonSpawns 算完魔霧之後呼叫） */
+function siegeZones(cells) {
+  SZ = [];
+  if (S.lv < SIEGE_LV) return;
+  const e2 = ep2();
+  cells(SG_CELL, 4000, (i, j) => {
+    const r = h(i, j, e2 * 29 + 7717);
+    if (r % 100 >= 30) return;
+    const id = `sz${i}_${j}_${e2}`;
+    let x = (i + 0.2 + ((r >>> 12) % 60) / 100) * SG_CELL,
+      y = (j + 0.2 + ((r >>> 18) % 60) / 100) * SG_CELL;
+    if (nearTown(x, y, 300)) return;
+    const p = snapRoad(x, y, 200);
+    if (!p) return;
+    [x, y] = p;
+    if (MZ.some(z => Math.hypot(z.x - x, z.y - y) < z.r + SIEGE_R)) return;
+    SZ.push({ id, x, y, r: SIEGE_R, sin: SINS[(r >>> 5) % SINS.length].k });
+  });
 }
 /* 信徒：用現有怪物的圖、罪的配色；followerBase 是地圖上的怪物資料（fol 記住是哪一種），followerize 套上特色 */
 function followerBase(sk, f) {
@@ -1108,80 +1115,91 @@ function followerize(e, sk, f) {
 }
 const makeFollower = (sk, f, lv, rar = 0, mods = []) =>
   followerize(makeEnemy(followerBase(sk, f), lv, rar, mods), sk, f);
-/* 地圖：被攻佔城鎮裡的信徒（每 4 分鐘一輪、每 120 公尺方格約 60%） */
-function siegeSpawns(out) {
-  siegeTick();
-  const t = siegeTown();
-  if (!t) return;
-  const [tx, ty] = toM(t.lat, t.lng),
-    me = mistEp(),
-    list = SINF[S.siege.sin];
-  for (let i = fl((tx - SIEGE_R) / MQ_CELL); i <= fl((tx + SIEGE_R) / MQ_CELL); i++)
-    for (let j = fl((ty - SIEGE_R) / MQ_CELL); j <= fl((ty + SIEGE_R) / MQ_CELL); j++) {
-      const r = h(i, j, me * 11 + 4243);
-      if (r % 100 >= 60) continue;
-      const id = `sg${i}_${j}_${me}`;
-      if (S.defeated[id] || out.has(id)) continue;
-      let x = (i + ((r >>> 8) % 100) / 100) * MQ_CELL,
-        y = (j + ((r >>> 16) % 100) / 100) * MQ_CELL;
-      if (Math.hypot(x - tx, y - ty) > SIEGE_R) continue;
-      const p = snapRoad(x, y, 70);
-      if (p) [x, y] = p;
-      const q = r >>> 4,
-        rar = q % 100 < 6 ? 2 : q % 100 < 30 ? 1 : 0,
-        lv = Math.max(1, aLv() + 3 + ((r >>> 3) % 2)),
-        f = list[(q >>> 6) % list.length],
-        [la, ln] = toLL(x, y);
-      out.set(id, {
-        id,
-        lat: la,
-        lng: ln,
-        kind: 'monster',
-        x,
-        y,
-        lv,
-        base: followerBase(S.siege.sin, f),
-        rar,
-        mods: rar ? rollMods(h(i, j, me + 5), rar === 2 ? 3 : 1) : [],
-        siege: S.siege.sin,
-        trait: f.t,
-        ph: (r % 628) / 100
-      });
-    }
+/* 地圖：七罪據點的中心（點了看進度、挑戰王）與範圍內的信徒（每 4 分鐘一輪、每 120 公尺方格約 60%） */
+function siegeSpawns(out, cells) {
+  siegeZones(cells);
+  const me = mistEp();
+  for (const z of SZ) {
+    if (sgDone(z.id)) continue;
+    const s = SINI[z.sin],
+      [la, ln] = toLL(z.x, z.y),
+      p = sgProg(z.id);
+    out.set(z.id, {
+      id: z.id,
+      kind: 'szone',
+      x: z.x,
+      y: z.y,
+      lat: la,
+      lng: ln,
+      name: `${s.n}據點`,
+      spr: 'sinst',
+      pal: { ...PAL.sinst, e: s.pal.b },
+      lv: aLv() + 6,
+      gl: hex2rgb(s.pal.b).join(','),
+      lbl: `${s.n}據點 ${p}%`,
+      lc: s.pal.b
+    });
+    const list = SINF[z.sin];
+    for (let i = fl((z.x - z.r) / MQ_CELL); i <= fl((z.x + z.r) / MQ_CELL); i++)
+      for (let j = fl((z.y - z.r) / MQ_CELL); j <= fl((z.y + z.r) / MQ_CELL); j++) {
+        const r = h(i, j, me * 11 + 4243);
+        if (r % 100 >= 60) continue;
+        const id = `sg${i}_${j}_${me}`;
+        if (S.defeated[id] || out.has(id)) continue;
+        let x = (i + ((r >>> 8) % 100) / 100) * MQ_CELL,
+          y = (j + ((r >>> 16) % 100) / 100) * MQ_CELL;
+        if (Math.hypot(x - z.x, y - z.y) > z.r || Math.hypot(x - z.x, y - z.y) < 40) continue;
+        const sp = snapRoad(x, y, 70);
+        if (sp) [x, y] = sp;
+        const q = r >>> 4,
+          rar = q % 100 < 6 ? 2 : q % 100 < 30 ? 1 : 0,
+          lv = Math.max(1, aLv() + 3 + ((r >>> 3) % 2)),
+          f = list[(q >>> 6) % list.length],
+          [la2, ln2] = toLL(x, y);
+        out.set(id, {
+          id,
+          lat: la2,
+          lng: ln2,
+          kind: 'monster',
+          x,
+          y,
+          lv,
+          base: followerBase(z.sin, f),
+          rar,
+          mods: rar ? rollMods(h(i, j, me + 5), rar === 2 ? 3 : 1) : [],
+          siege: z.sin,
+          trait: f.t,
+          ph: (r % 628) / 100
+        });
+      }
+  }
 }
-/* 地圖：被攻佔的城鎮畫成那個罪的顏色 */
+/* 地圖：七罪據點的範圍畫成那個罪的顏色 */
 function drawSiege(c, t) {
-  const tw = siegeTown();
-  if (!tw) return;
-  const [mx, my] = toM(tw.lat, tw.lng),
-    x = SX(mx),
-    y = SY(my),
-    r = Math.abs(SX(mx + SIEGE_R) - x),
-    col = SINI[S.siege.sin].pal.b,
-    pu = 0.5 + 0.5 * Math.sin(t / 420);
-  if (x < -r - 40 || x > VW + r + 40 || y < -r - 40 || y > VH + r + 40) return;
-  c.save();
-  c.globalAlpha = 0.16 + 0.08 * pu;
-  c.fillStyle = col;
-  c.beginPath();
-  c.arc(x, y, r, 0, 6.28);
-  c.fill();
-  c.globalAlpha = 0.8;
-  c.strokeStyle = col;
-  c.lineWidth = 3;
-  c.setLineDash([10, 6]);
-  c.stroke();
-  c.setLineDash([]);
-  c.globalAlpha = 1;
-  c.font = '600 13px "Noto Sans TC"';
-  c.textAlign = 'center';
-  c.fillStyle = '#000a';
-  c.fillText(`${SINI[S.siege.sin].n}・攻佔中　解放 ${S.siege.prog}%`, x + 1, y - r - 7);
-  c.fillStyle = '#fff';
-  c.fillText(`${SINI[S.siege.sin].n}・攻佔中　解放 ${S.siege.prog}%`, x, y - r - 8);
-  c.restore();
+  for (const z of SZ) {
+    if (sgDone(z.id)) continue;
+    const x = SX(z.x),
+      y = SY(z.y),
+      r = Math.abs(SX(z.x + z.r) - x),
+      col = SINI[z.sin].pal.b,
+      pu = 0.5 + 0.5 * Math.sin(t / 420);
+    if (x < -r - 40 || x > VW + r + 40 || y < -r - 40 || y > VH + r + 40) continue;
+    c.save();
+    c.globalAlpha = 0.16 + 0.08 * pu;
+    c.fillStyle = col;
+    c.beginPath();
+    c.arc(x, y, r, 0, 6.28);
+    c.fill();
+    c.globalAlpha = 0.8;
+    c.strokeStyle = col;
+    c.lineWidth = 3;
+    c.setLineDash([10, 6]);
+    c.stroke();
+    c.setLineDash([]);
+    c.restore();
+  }
 }
-/* 開打時：在被攻佔的城鎮裡就套用城鎮特效（startBattle 呼叫） */
+/* 開打時：在七罪據點範圍裡就套用那個罪的特效（startBattle 呼叫） */
 function siegeApply(B) {
   const sg = siegeAt(S.lat, S.lng);
   if (!sg) return '';
@@ -1200,61 +1218,72 @@ function siegeApply(B) {
   if (sg.sin === 'greed' && S.gold > 0) {
     const n = Math.min(S.gold, 10 + S.lv * 3);
     S.gold -= n;
-    sg.stolen = (sg.stolen || 0) + n;
+    sgRec(sg.id).stolen += n;
     return `貪婪：被偷走 ${n} 金幣`;
   }
-  return `${SINI[sg.sin].n}的城鎮：${SIEGE_FX[sg.sin]}`;
+  return `${SINI[sg.sin].n}據點：${SIEGE_FX[sg.sin]}`;
 }
-/* 打倒信徒：累積解放度（winBattle 呼叫） */
+/* 打倒信徒：累積所在據點的解放度（winBattle 呼叫） */
 function siegeWin(es) {
-  const sg = S.siege;
+  const sg = siegeAt(S.lat, S.lng);
   if (!sg) return '';
   let inc = 0;
   for (const o of es) if (o.siege === sg.sin) inc += [4, 7, 12, 12, 20][o.rar || 0];
   if (!inc) return '';
-  sg.prog = Math.min(100, sg.prog + inc);
+  const rec = sgRec(sg.id);
+  rec.prog = Math.min(100, rec.prog + inc);
   quest('kill');
-  return sg.prog >= 100
-    ? `<p style="color:#ffd166">${siegeTown().n}的解放度 100%！可以到城鎮挑戰${SINI[sg.sin].boss}</p>`
-    : `<p style="color:#ff9aa4">${siegeTown().n}的解放度 ${sg.prog}%</p>`;
+  const n = SINI[sg.sin].n;
+  return rec.prog >= 100
+    ? `<p style="color:#ffd166">${n}據點的解放度 100%！到據點中心挑戰${SINI[sg.sin].boss}</p>`
+    : `<p style="color:#ff9aa4">${n}據點的解放度 ${rec.prog}%</p>`;
 }
-/* 打倒七罪的王：解放城鎮、還回偷走的金幣（sinReward 呼叫） */
+/* 打倒七罪的王：這個據點這一輪消失、還回偷走的金幣（sinReward 呼叫） */
 function siegeDone() {
-  const sg = S.siege;
-  if (!sg) return [];
-  const t = siegeTown(),
+  const id = S.sgDun;
+  if (!id) return [];
+  const rec = sgRec(id),
+    z = SZ.find(q => q.id === id),
     out = [];
-  if (sg.stolen) {
-    S.gold += sg.stolen * 2;
-    out.push(`<span style="color:var(--gold)">貪婪吐回 ${sg.stolen * 2} 金幣</span>`);
+  if (rec.stolen) {
+    S.gold += rec.stolen * 2;
+    out.push(`<span style="color:var(--gold)">貪婪吐回 ${rec.stolen * 2} 金幣</span>`);
   }
-  addLog(`解放了${t ? t.n : '城鎮'}，打倒${SINI[sg.sin].boss}`);
-  S.siege = null;
-  S.siegeCd = now() + SIEGE_CD;
+  addLog(`解放了${z ? SINI[z.sin].n + '據點' : '七罪據點'}`);
+  rec.done = 1;
+  S.sgDun = null;
   refreshEntities(true);
   return out;
 }
-/* 城鎮面板：被攻佔時顯示攻佔資訊（ui.js 的 openEnt 呼叫） */
-function siegeTownHTML(e, inR) {
-  const sg = S.siege;
-  if (!sg || sg.tid !== e.t.id) return null;
-  const s = SINI[sg.sin];
+/* 據點中心的面板（ui.js 的 openEnt 呼叫） */
+function siegeZoneHTML(e, inR) {
+  const z = SZ.find(q => q.id === e.id);
+  if (!z) return { desc: '這個七罪據點已經消失了。', act: '' };
+  const s = SINI[z.sin],
+    p = sgProg(z.id);
   return {
-    desc: `<b style="color:#ff8a9a">${s.boss}</b>帶著信徒攻佔了這座城鎮！城鎮的服務都不能用（藏身處可以補給）。<br>城鎮特效：${SIEGE_FX[sg.sin]}。<br>打倒範圍內的信徒累積解放度（一般 4%、魔法 7%、稀有 12%、紅名 20%），滿 100% 挑戰${s.boss}（3 層、終局難度）。剩 ${Math.max(1, Math.ceil((sg.until - now()) / 3600e3))} 小時，沒解放就會撤離。${bar('解放度', sg.prog, 100, s.pal.b)}<p class="sub">信徒：${SINF[sg.sin].map(f => `<b>${f.n}</b>（${f.d}）`).join('、')}</p>`,
-    act: `<button class="btn pri" data-act="siegeGo" data-id="${e.id}" ${inR && sg.prog >= 100 ? '' : 'disabled'}>${sg.prog >= 100 ? `挑戰${s.boss}` : `解放度 ${sg.prog}%`}</button>`
+    desc:
+      `<b style="color:${s.pal.b}">${s.boss}</b>帶著信徒在這裡築起據點。範圍內的戰鬥：${SIEGE_FX[z.sin]}。` +
+      bar('解放度', p, 100, s.pal.b) +
+      more(
+        '據點規則與信徒',
+        `<p>打倒範圍內的信徒累積解放度（一般 4%、魔法 7%、稀有 12%、紅名 20%），滿 100% 在這裡挑戰${s.boss}（3 層、終局難度、還帶兩個信徒）。七罪據點每 2 小時換一輪，沒解放就會消失。</p><p>${SINF[z.sin].map(f => `<b>${f.n}</b>：${f.d}`).join('<br>')}</p>`
+      ),
+    act: `<button class="btn pri" data-act="siegeGo" data-id="${e.id}" ${inR && p >= 100 ? '' : 'disabled'}>${p >= 100 ? `挑戰${s.boss}` : `解放度 ${p}%`}</button>`
   };
 }
 Object.assign(A, {
   siegeGo: d => {
     const e = ENT.get(d.id),
-      sg = S.siege;
-    if (!inRange(e) || !sg || sg.tid !== e.t.id || sg.prog < 100) return;
+      z = SZ.find(q => q.id === d.id);
+    if (!inRange(e) || !z || sgProg(z.id) < 100 || sgDone(z.id)) return;
     closeSheet();
+    S.sgDun = z.id;
     enterDungeon({
-      id: 'siege_' + e.id,
+      id: 'siege_' + z.id,
       kind: 'dungeon',
       dt: 'sin',
-      sin: sg.sin,
+      sin: z.sin,
       siege: 1,
       mods: sinMods(e),
       umods: [],
@@ -1329,7 +1358,10 @@ function followerTurn(e, i, es, party, at) {
   if ((T === 'coin' || T === 'debt') && me && S.gold > 0) {
     const n = Math.min(S.gold, T === 'debt' ? 4 * e.ft + e.lv : 6 + e.lv * 2);
     S.gold -= n;
-    if (S.siege) S.siege.stolen = (S.siege.stolen || 0) + (T === 'debt' ? n : 0);
+    {
+      const sg = siegeAt(S.lat, S.lng);
+      if (sg && T === 'debt') sgRec(sg.id).stolen += n;
+    }
     e.stolen = (e.stolen || 0) + n;
     ev.push({ t: 'msg', s: `${e.name} 偷走 ${n} 金幣${T === 'debt' ? '（債務越滾越大）' : ''}`, at });
     at += 450;

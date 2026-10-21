@@ -1037,13 +1037,14 @@ const LANDMARK = new Set([
   'mseal',
   'ualtar',
   'sinst',
+  'szone',
   'obelisk',
   'shrine',
   'zodiac'
 ]);
 const LM_VIS = 500;
 /* 冥府侵蝕柱、七宗罪雕像、亡靈祭壇、墮落生肖：很顯眼，1.2 公里外就看得到 */
-const FAR = new Set(['obelisk', 'sinst', 'ualtar', 'zodiac']),
+const FAR = new Set(['obelisk', 'sinst', 'szone', 'ualtar', 'zodiac']),
   FAR_VIS = 1200;
 const visible = e =>
   e.kind === 'town'

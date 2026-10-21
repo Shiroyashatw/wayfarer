@@ -916,9 +916,9 @@ function openEnt(id) {
       : '';
   } else if (e.kind === 'zodiac') {
     ({ desc, act } = zodEntHTML(e, inR));
-  } else if (e.kind === 'town' && siegeTownHTML(e, inR)) {
-    /* 0.3.25 被七罪攻佔的城鎮：服務都不能用，只能解放 */
-    ({ desc, act } = siegeTownHTML(e, inR));
+  } else if (e.kind === 'szone') {
+    /* 0.3.37 七罪據點：看解放度、挑戰那個罪的王 */
+    ({ desc, act } = siegeZoneHTML(e, inR));
   } else if (e.kind === 'town') {
     const t = e.t,
       done = S.cleared[t.id] === hepoch(),

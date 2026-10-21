@@ -18,7 +18,9 @@ function save() {
     for (const k in S.defeated)
       if (
         (k[0] === 'm' && k[1] !== 's' && !k.endsWith('_' + ep)) ||
-        ((k.startsWith('ms') || 'csov'.includes(k[0])) && !k.endsWith('_' + hp)) ||
+        /* 0.3.37 七罪信徒跟魔霧怪一樣每 4 分鐘一輪 */
+        (k.startsWith('sg') && !k.endsWith('_' + mistEp())) ||
+        ((k.startsWith('ms') || ('csov'.includes(k[0]) && !k.startsWith('sg'))) && !k.endsWith('_' + hp)) ||
         (k[0] === 'q' && !k.endsWith('_' + mistEp())) ||
         (k[0] === 'z' && !(S.summons || []).some(z => z.id === k))
       )
@@ -329,6 +331,12 @@ function migrate(s) {
       return !seen.has(k) && seen.add(k);
     });
     s.v = 29;
+  }
+  if (s.v < 30) {
+    // 0.3.37：七罪改成地圖上的七罪據點，攻佔城鎮的舊資料不要了
+    delete s.siege;
+    delete s.siegeCd;
+    s.v = 30;
   }
   return s;
 }
