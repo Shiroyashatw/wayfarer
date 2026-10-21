@@ -13,7 +13,8 @@
 - 單張圖示的提示詞還是寫在 docs/圖示提示詞.md（要單獨重產某一張時用）；圖表的提示詞由這支程式從那份自動組出來，兩邊不會不同步。
 - 新增技能、輔助寶石、節點時：先在 docs/圖示提示詞.md 補一列，再跑 build。
 - 圖表編號是固定的：已經在 docs/圖示圖表.md 的圖表，內容與提示詞不會因為 build 改變（產到一半的不會對不上）；
-  新的提示詞才會排進新的圖表，編號接在後面。全部格子都有圖的圖表會從圖示圖表移除（原圖搬到 art/sheets/done/）。
+  新的提示詞才會排進新的圖表，編號接在後面。切過的圖表（原圖搬到 art/sheets/done/）會從圖示圖表移除，
+  裡面沒畫出來的格子回到待排，跟其他新提示詞一起排進新的圖表。
   要整個重排用 build --fresh（只排還沒有圖的）。
 - 分組：裝備、攻擊技能、元素法術、混沌與黑暗法術、增益／治療／召喚／戰場單位、光環、輔助寶石、族裔輔助、天賦樹、昇華；同組依序填滿一張再開下一張。
 """
@@ -134,7 +135,8 @@ def sheets(per, words, fresh=False):
     kept, inkept = [], set()
     if not fresh and DOC.exists():
         for name, (pr, _, files) in read_doc().items():
-            if all(done(f) for f in files):
+            # 全部有圖、或原圖已經切過（在 done/）的不留；沒畫出來的格子回到待排，排進新的圖表
+            if all(done(f) for f in files) or (SHEETS / 'done' / f'{name}.png').exists():
                 continue
             items = [(f, info.get(f, ('', '', ''))[0], '', group_of(f, *info[f][1:]) if f in info else 'ui') for f in files]
             kept.append((name, name.split('_')[1], items, pr))
@@ -196,7 +198,9 @@ def write_iconmap():
             continue
         f, n = f[5:], n
         m.setdefault(n.strip(), f)
-    body = ',\n'.join(f"  '{n}': '{f}'" for n, f in m.items())
+    # 跟 prettier 的輸出一樣（名字是合法識別字就不加引號），重跑 build 才不會每次都有差異
+    key = lambda n: n if re.fullmatch(r'[^\W\d]\w*', n) else f"'{n}'"
+    body = ',\n'.join(f"  {key(n)}: '{f}'" for n, f in m.items())
     (ROOT / 'js/iconmap.js').write_text(
         '/* 自動產生（tools/icon_sheets.py build）：天賦樹節點名 → art/icons/tree_代號.png；不要手改 */\n'
         f'const TREE_IC = {{\n{body}\n}};\n',
@@ -365,7 +369,8 @@ def archive():
             arch += f'\n## {sec}\n\n' + '\n\n'.join(lines) + '\n'
     # 做完的圖表：原圖搬走、名稱記在封存（編號不再用）
     cur = read_doc()
-    fin = [k for k, (_, _, files) in cur.items() if all(done(f) for f in files)]
+    # 做完的圖表：全部格子有圖，或原圖已經切過（還在 art/sheets/，process 跑完才會呼叫這裡）
+    fin = [k for k, (_, _, files) in cur.items() if all(done(f) for f in files) or (SHEETS / f'{k}.png').exists()]
     fin += [f.stem for f in SHEETS.glob('sheet_*.png') if f.stem not in cur and f.stem not in fin]
     if fin:
         (SHEETS / 'done').mkdir(parents=True, exist_ok=True)
@@ -373,7 +378,10 @@ def archive():
             src = SHEETS / f'{k}.png'
             if src.exists():
                 src.replace(SHEETS / 'done' / f'{k}.png')
-        arch += '\n## 已完成的圖表\n\n' + '、'.join(f'`{k}`' for k in fin) + '\n'
+        # 已完成的圖表只留一段：舊的名單加上這次的
+        old = re.findall(r'`(sheet_\w+)`', arch.split('## 已完成的圖表', 1)[1]) if '## 已完成的圖表' in arch else []
+        arch = arch.split('\n## 已完成的圖表', 1)[0].rstrip('\n') + '\n'
+        arch += '\n## 已完成的圖表\n\n' + '、'.join(f'`{k}`' for k in dict.fromkeys(old + fin)) + '\n'
     ARCH.write_text(arch, encoding='utf-8')
     print(f'封存 {n} 條提示詞、{len(fin)} 張做完的圖表 → {ARCH.relative_to(ROOT)}')
     build(64, 9)
