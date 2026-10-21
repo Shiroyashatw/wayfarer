@@ -594,28 +594,30 @@ function huntHTML() {
     list = (S.summons || []).filter(s => s.until > now() && !S.defeated[s.id]);
   const L = huntLv(),
     c = huntCfg(),
-    nx = L && L < 3 ? HUNT_LV[L] : null;
-  return `<div class="card"><div class="rowx"><div class="t"><b>狩獵模式：<span style="color:${h.on ? '#ff6a7a' : 'var(--dim)'}">${h.on ? `獵殺 ${c.n}` : '關閉'}</span></b><small>${h.on ? `走路每 ${HUNT_STEP} 公尺、每次打贏都會得到追蹤之血（×${c.blood}）。` : `關閉中：追蹤之血每分鐘 -${BLOOD_DECAY}。`}</small></div><button class="btn sm ${h.on ? '' : 'pri'}" data-act="huntOn">${h.on ? `停止<small style="display:block;font-size:10px">血流失一半</small>` : '開始狩獵'}</button></div>
-  ${bar('追蹤之血', h.blood, BLOOD_MAX, '#e5484d')}
-  ${h.on ? bar(nx ? `獵殺熱度（到 ${nx.n}）` : '獵殺熱度（已到 Ⅲ）', nx ? h.heat : 1, nx ? nx.heat : 1, '#ff6a3a') : ''}</div>
-  <div class="card huntlv"><b>獵殺等級：高風險、高報酬</b><small class="sub">開啟狩獵後，地圖上你的範圍圈變成紅色。時間（每分鐘 +${HEAT_MIN}）與打倒的怪物（每隻 +${HEAT_KILL}，菁英更多）會累積熱度，熱度越高獵殺等級越高：紅圈內的怪物變強、更常成群出現，但追蹤之血累積得更快。停止狩獵時熱度歸 0、追蹤之血<b>立刻流失一半</b>，之後每分鐘再 -${BLOOD_DECAY}。</small>
-  <div class="hlv">${HUNT_LV.map(
-    (q, i) =>
-      `<div class="${L === i + 1 ? 'on' : ''}"><b>${q.n}</b><small>熱度 ${q.heat}+</small><small>怪物等級 +${q.lv}・生命 +${q.hp}%・攻擊 +${q.atk}%</small><small>成群機率提高</small><small style="color:#ff8a8a">追蹤之血 ×${q.blood}</small></div>`
-  ).join('')}</div></div>
-  <button class="btn pri" data-act="huntRite" ${h.blood >= RITE_COST ? '' : 'disabled'}>${curDot('blood')}血祭（${RITE_COST} 滴）：引出附近的墮落獸</button>
-  <p class="sub">墮落獸會出現在 50～150 公尺內的路上（${BEAST_MS / 60e3} 分鐘內有效），打倒得到 1～3 個惡魔結晶。</p>
-  <h3>${curDot('dcrys')}惡魔結晶 ${cr}</h3>
-  <p class="sub">在你身邊 60～180 公尺召喚事件，${SUM_MS / 60e3} 分鐘內有效。走完一圈沒東西打的時候用。</p>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${HSUM.map(
-    s =>
-      `<button class="btn sm" data-act="huntSum" data-k="${s.k}" ${cr >= s.c && S.lv >= (s.lv || 0) ? '' : 'disabled'}>${s.n}（${s.c}）<br><small class="sub">${s.d}</small></button>`
-  ).join('')}</div>
-  <h3>墮落十二生肖（每隻 ${ZOD_COST} 個結晶）</h3>
-  <p class="sub">召喚後會出現在 100～250 公尺內，1 小時內要走過去打倒。Lv 你 +4 的首領，帶 4 條隨機詞綴，掉印記、通貨，有機會掉惡魔珠寶或傳奇裝備；集齊 12 種印記得到稱號。<br>在冥府侵蝕柱 ${ZOD_UW_R} 公尺內召喚，生肖會被冥府侵蝕：必帶冥府詞綴、獎勵加倍。${za ? `<br><span style="color:#ff8a9a">目前已經召喚了${ZODI[za.e.z].t}，先打倒它。</span>` : ''}</p>
+    nx = L && L < 3 ? HUNT_LV[L] : null,
+    lack = Math.ceil(RITE_COST - h.blood);
+  /* 0.3.31 照設計規範：畫面只放狀態與能做的事，規則收進「說明」 */
+  return `<div class="card"><div class="rowx"><div class="t"><b>狩獵：<span class="${h.on ? 'c-bad' : 'c-dim'}">${h.on ? `獵殺 ${c.n}` : '關閉中'}</span></b><small>${h.on ? `每走 ${HUNT_STEP} 公尺或打贏一場，得到追蹤之血 ×${c.blood}` : `關閉時追蹤之血每分鐘 -${BLOOD_DECAY}`}</small></div><button class="btn sm${h.on ? '' : ' pri'}" data-act="huntOn">${h.on ? '停止<small class="bnote c-warn">血流失一半</small>' : '開始狩獵'}</button></div>
+  ${bar('追蹤之血', h.blood, BLOOD_MAX, 'var(--danger)')}
+  ${h.on ? bar(nx ? `獵殺熱度（到 ${nx.n}）` : '獵殺熱度（已到 Ⅲ）', nx ? h.heat : 1, nx ? nx.heat : 1, 'var(--heat)') : ''}</div>
+  <div class="card"><div class="ct">獵殺等級<small>${h.on ? `熱度 ${fl(h.heat)}` : '開始狩獵後累積熱度'}</small></div>
+  <div class="tiers">${HUNT_LV.map((q, i) => `<div class="${L === i + 1 ? 'on' : ''}"><b>${q.n}</b><span>熱度 ${q.heat}+</span><span>怪物 Lv+${q.lv}</span><span class="c-bad">血 ×${q.blood}</span></div>`).join('')}</div>
+  <details class="more"><summary>獵殺等級怎麼運作</summary><div><p>開啟狩獵後，地圖上你的範圍圈變成紅色。時間（每分鐘 +${HEAT_MIN}）與打倒的怪物（每隻 +${HEAT_KILL}，菁英更多）會累積熱度，熱度越高等級越高：紅圈內的怪物變強、更常成群出現，但追蹤之血累積得更快。</p><p>${HUNT_LV.map(q => `${q.n}：生命 +${q.hp}%、攻擊 +${q.atk}%`).join('；')}，等級越高越常成群。</p><p>停止狩獵時熱度歸 0、追蹤之血<b class="c-warn">立刻流失一半</b>，之後每分鐘再 -${BLOOD_DECAY}。</p></div></details></div>
+  <div class="card"><button class="btn${h.on && !lack ? ' pri' : ''}" data-act="huntRite" ${lack > 0 ? 'disabled' : ''}>${curDot('blood')}血祭：引出墮落獸（${RITE_COST} 滴）${lack > 0 ? `<small class="bnote">還差 ${lack} 滴</small>` : ''}</button>
+  <p class="sub">墮落獸出現在 50～150 公尺內的路上（${BEAST_MS / 60e3} 分鐘內有效），打倒得到 1～3 個惡魔結晶。</p></div>
+  <h3 class="ct"><span>${curDot('dcrys')}惡魔結晶</span><small>擁有 ${cr}</small></h3>
+  <p class="sub">在身邊 60～180 公尺召喚事件（${SUM_MS / 60e3} 分鐘內有效），附近沒東西打時用。</p>
+  <div class="g2">${HSUM.map(s => {
+    const ok = cr >= s.c && S.lv >= (s.lv || 0);
+    return `<button class="btn sm" data-act="huntSum" data-k="${s.k}" ${ok ? '' : 'disabled'}>${s.n}（${s.c}）<small class="bnote">${S.lv < (s.lv || 0) ? `Lv${s.lv} 解鎖` : s.d}</small></button>`;
+  }).join('')}</div>
+  <h3 class="ct">墮落十二生肖<small>每隻 ${ZOD_COST} 個結晶</small></h3>
+  <p class="sub">召喚後 1 小時內走過去打倒，掉印記與通貨；集齊 12 種印記得到稱號。</p>
+  ${za ? `<p class="sub c-bad">已經召喚了${ZODI[za.e.z].t}，先打倒它才能再召喚。</p>` : ''}
+  <details class="more"><summary>生肖首領的強度與獎勵</summary><div><p>出現在 100～250 公尺內，等級是你 +4、帶 4 條隨機詞綴，有機會掉惡魔珠寶或傳奇裝備。</p><p>在冥府侵蝕柱 ${ZOD_UW_R} 公尺內召喚，生肖會被冥府侵蝕：必帶冥府詞綴、獎勵加倍。</p></div></details>
   <div class="zgrid">${ZODIAC.map(
     z =>
-      `<button class="zcell" data-act="huntZod" data-k="${z.k}" ${cr >= ZOD_COST && !za ? '' : 'disabled'} title="${z.d}"><canvas data-zod="${z.k}" width="18" height="18"></canvas><b>${z.t}</b><small>${z.n}・${h.marks[z.k] ? `之印 ×${h.marks[z.k]}` : z.d}</small></button>`
+      `<button class="zcell" data-act="huntZod" data-k="${z.k}" ${cr >= ZOD_COST && !za ? '' : 'disabled'} title="${z.d}"><canvas data-zod="${z.k}" width="18" height="18"></canvas><b>${z.t}</b><small>${h.marks[z.k] ? `之印 ×${h.marks[z.k]}` : z.n}</small></button>`
   ).join('')}</div>
   <button class="btn" data-act="sheet" data-s="seal">${curDot('zmark')}印記兌換（生肖傳奇、指定詞綴珠寶）</button>
   ${list.length ? `<h3>召喚中</h3><div class="card">${list.map(s => `<div class="rowx"><div class="t"><b>${esc(s.e.name)}</b><small>${fmtD(dist(S.lat, S.lng, ...toLL(s.e.x, s.e.y)))}・剩 ${Math.ceil((s.until - now()) / 60e3)} 分</small></div><button class="btn sm" data-act="openEnt" data-id="${s.id}">查看</button></div>`).join('')}</div>` : ''}`;
@@ -671,9 +673,9 @@ const markTotal = () => ZODIAC.reduce((a, z) => a + (H().marks[z.k] || 0), 0);
 function sealHTML() {
   const h = H(),
     pick = SEL.jaff;
-  return `<p class="sub">討伐十二生肖得到的印記可以在這裡兌換。印記共 ${markTotal()} 個。</p>
+  return `<p class="sub">討伐十二生肖得到印記，目前共 ${markTotal()} 個。</p>
   <h3>生肖傳奇（同一種印記 ×${ZLEG_COST}）</h3>
-  <p class="sub">詞綴固定，不能用通貨改造。每穿 1 件生肖傳奇，傷害 +${ZRES.dmgMore}%、最大生命 +${ZRES.lifeMore}%（總乘），穿越多件越強。</p>
+  <p class="sub">每穿 1 件，傷害 +${ZRES.dmgMore}%、最大生命 +${ZRES.lifeMore}%（總乘）；詞綴固定，不能改造。</p>
   ${ZLEG.map(([zk, n, slot, , st]) => {
     const z = ZODI[zk],
       have = h.marks[zk] || 0;

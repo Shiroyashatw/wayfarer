@@ -161,6 +161,8 @@ const KIND = {
   chest: '寶箱',
   event: '限時事件'
 };
+/* 0.3.31 摺疊說明（設計規範：規則、機制預設收起，點了才看） */
+const more = (title, html) => `<details class="more"><summary>${title}</summary><div>${html}</div></details>`;
 function bar(label, v, max, col) {
   return `<div style="display:grid;gap:3px"><div class="rowx" style="font-size:12px;color:var(--dim)"><span>${label}</span><span>${Math.ceil(v)} / ${max}</span></div><div class="mbar" style="height:8px"><i style="width:${Math.max(0, Math.min(100, (v / max) * 100))}%;background:${col}"></i></div></div>`;
 }
@@ -207,7 +209,7 @@ const bagTabs = () =>
   `<div class="seg bagtabs">${[['eq', '裝備', () => S.inv.length], ...MAT_TABS]
     .map(
       ([k, n, c]) =>
-        `<button data-act="matTab" data-k="${k}" aria-pressed="${SEL.bag === k}">${n}${k === 'eq' ? '' : ` <b>${c()}</b>`}</button>`
+        `<button data-act="matTab" data-k="${k}" aria-pressed="${SEL.bag === k}">${n}<b>${c()}</b></button>`
     )
     .join('')}</div>`;
 const curRowG = () =>
@@ -421,14 +423,14 @@ function gemShopHTML() {
     ks = GEMK()
       .filter(k => gemTier(k) === cur)
       .sort((a, b) => gemReq(a) - gemReq(b) || a.localeCompare(b));
-  return `${gshopKind()}<p class="sub" style="margin:0">金幣 <b style="color:var(--gold)">${S.gold}</b>・目前解鎖到 T${mx}。買下的技能石是 Lv1，同一種可以重複購買；用擊殺怪物得到的靈魂升級。</p>
+  return `${gshopKind()}<p class="sub" style="margin:0">金幣 <b class="c-gold">${S.gold}</b>・解鎖到 T${mx}・買到的是 Lv1，可以重複買</p>
     <div class="seg gst5">${[1, 2, 3, 4, 5].map(t => `<button data-act="gshopTier" data-v="${t}" aria-pressed="${t === cur}">T${t}${t > mx ? '🔒' : ''}</button>`).join('')}</div>
     ${cur > mx ? `<p class="sub" style="color:#ffb27a">T${cur} 還沒解鎖：到城鎮挑戰突破試煉。</p>` : ''}
     <div class="card">${ks
       .map(k => {
         const q = SKILLS[k],
           blk = gemBuyBlock(k);
-        return `<div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} <span class="sub">需要 Lv${gemReq(k)}${gemCount(k) ? `・<span style="color:var(--gold)">已有 ${gemCount(k)} 顆</span>` : ''}</span></b>${skTagHTML(q)}<small>${gemDesc(gemSkill(newGem(k)), st)}</small></div><button class="btn sm ${blk ? '' : 'pri'}" data-act="gemBuy" data-k="${k}" ${blk ? 'disabled' : ''}>${blk || `${gemPrice(k)} 金`}</button></div>`;
+        return `<div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} <span class="sub">需要 Lv${gemReq(k)}${gemCount(k) ? `・<span style="color:var(--gold)">已有 ${gemCount(k)} 顆</span>` : ''}</span></b>${skTagHTML(q)}<small>${gemDesc(gemSkill(newGem(k)), st)}</small></div><button class="btn sm ${blk ? '' : 'buy'}" data-act="gemBuy" data-k="${k}" ${blk ? 'disabled' : ''}>${blk || `${gemPrice(k)} 金`}</button></div>`;
       })
       .join('')}</div>`;
 }
@@ -447,7 +449,7 @@ function supShopHTML() {
     <div class="card">${SUPG.filter(sp => !sp.lin)
       .map(sp => {
         const blk = supBuyBlock(sp);
-        return `<div class="rowx"><div class="t">${supLine(sp)}<small class="sub">T${sp.t}${supN(sp.k) ? `・<span style="color:var(--gold)">已有 ${supN(sp.k)} 顆</span>` : ''}</small></div><button class="btn sm ${blk ? '' : 'pri'}" data-act="supBuy" data-k="${sp.k}" ${blk ? 'disabled' : ''}>${blk || `${supPrice(sp)} 金`}</button></div>`;
+        return `<div class="rowx"><div class="t">${supLine(sp)}<small class="sub">T${sp.t}${supN(sp.k) ? `・<span style="color:var(--gold)">已有 ${supN(sp.k)} 顆</span>` : ''}</small></div><button class="btn sm ${blk ? '' : 'buy'}" data-act="supBuy" data-k="${sp.k}" ${blk ? 'disabled' : ''}>${blk || `${supPrice(sp)} 金`}</button></div>`;
       })
       .join('')}</div>`;
 }
@@ -508,7 +510,7 @@ function renderSheet() {
           : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>第 ${i + 1} 格</span></div>`;
       })
       .join('')}</div>
-    <h3>光環欄<small class="sub">・精魄 ${st.spiritUsed}/${st.spirit}（天賦的魔力、法術節點與契靈能加精魄）</small></h3><div class="gslots">${Array.from(
+    <h3>光環欄<small class="sub">・精魄 ${st.spiritUsed}/${st.spirit}</small></h3><div class="gslots">${Array.from(
       { length: AURA_MAX },
       (_, i) => {
         const g = gemOf((S.aura || [])[i]),
@@ -518,8 +520,8 @@ function renderSheet() {
           : `<div class="gslot empty"><span class="gtile" style="background:#0003;border-style:dashed"></span><span>光環 ${i + 1}</span></div>`;
       }
     ).join('')}</div>
-    <p class="sub" style="margin:0">另外有固定的普通攻擊。技能石有 2～5 個插槽，插上輔助寶石改變技能怎麼運作；品質用寶石稜鏡提高（野外機制掉落）。</p>
-    <p class="sub" style="margin:0">技能石在城鎮的「技能石商店」購買（依 T 級解鎖），用擊殺怪物得到的${curDot('soul')}靈魂（${S.cur.soul || 0}）升級。</p>
+    <p class="sub" style="margin:0">技能石在城鎮的「技能石商店」買，用${curDot('soul')}靈魂（${S.cur.soul || 0}）升級。</p>
+    ${more('技能石、輔助寶石與光環', '<p>另外有固定的普通攻擊。技能石有 2～5 個插槽，插上輔助寶石改變技能怎麼運作；品質用寶石稜鏡提高（野外機制掉落）。</p><p>商店依 T 級解鎖更高階的技能石；靈魂從擊殺怪物得到。</p><p>光環要預留精魄才會生效，精魄來自天賦的魔力、法術節點與契靈。</p>')}
     ${curRowG()}
     <h3>技能石（${S.gems.length}）</h3><div class="seg skf">${SKF.map(([k, n]) => `<button data-act="skFilter" data-k="${k}" aria-pressed="${(SEL.skf || 'all') === k}">${n}</button>`).join('')}</div>
     <div class="ggrid">${
@@ -567,7 +569,7 @@ function renderSheet() {
       ...Array.from(
         { length: Math.max(0, n - (g.sp || []).length) },
         () =>
-          `<div class="rowx"><div class="t"><small class="sub">◇ 空的插槽</small></div><button class="btn sm pri" data-act="supPick">插入輔助寶石</button></div>`
+          `<div class="rowx"><div class="t"><small class="sub">◇ 空的插槽</small></div><button class="btn sm" data-act="supPick">插入輔助寶石</button></div>`
       )
     ].join('')}</div>
     <h3>品質 ${g.q || 0}%<small class="sub">・最多 ${Q_GEM}%（腐化可以超過）</small></h3><div class="card"><div class="rowx"><div class="t"><b>${qf.t(g.q || 0)}</b><small>每 1% 品質：${qf.t(1)}・寶石稜鏡一次 +${prismAdd(g)}%（越高加越少）</small></div></div></div>
@@ -586,7 +588,7 @@ function renderSheet() {
               ? '<button class="btn sm" data-act="auraOff">關閉光環</button>'
               : `<button class="btn sm pri" data-act="auraOn" ${auraBlock(g, st) ? 'disabled' : ''}>${auraBlock(g, st) || `開啟光環（預留 ${auraCost(q)} 精魄）`}</button>`
           }</div>`
-        : `<h3>技能欄</h3><div class="btns">${S.sk.map((id, i) => `<button class="btn sm ${id === g.id ? '' : 'pri'}" data-act="gemEquip" data-i="${i}" ${id === g.id ? 'disabled' : ''}>${id === g.id ? '裝在' : '裝到'}第 ${i + 1} 格${id && id !== g.id && gemOf(id) ? `<small>（換下${SKILLS[gemOf(id).k].name}）</small>` : ''}</button>`).join('')}${at >= 0 ? '<button class="btn sm" data-act="gemOff">卸下</button>' : ''}</div>`
+        : `<h3>技能欄</h3><div class="btns">${S.sk.map((id, i) => `<button class="btn sm" data-act="gemEquip" data-i="${i}" ${id === g.id ? 'disabled' : ''}>${id === g.id ? '裝在' : '裝到'}第 ${i + 1} 格${id && id !== g.id && gemOf(id) ? `<small>（換下${SKILLS[gemOf(id).k].name}）</small>` : ''}</button>`).join('')}${at >= 0 ? '<button class="btn sm" data-act="gemOff">卸下</button>' : ''}</div>`
     }
     <div class="btns"><button class="btn" data-act="gemBreak">分解（退回 ${gemSoulBack(g)} 靈魂）</button><button class="btn" data-act="sheet" data-s="skills">返回技能</button></div>`;
   } else if (sheetName === 'bag' && SEL.bag !== 'eq') {
@@ -609,7 +611,7 @@ function renderSheet() {
         .filter(o => fitsSlot(o.it, selSlot))
         .sort((a, b) => b.it.r - a.it.r || b.it.ilvl - a.it.ilvl);
     html = `${cur ? `${itemCard(cur, '穿戴中')}<div class="btns" style="margin-top:-4px"><button class="btn sm pri" data-act="eqdetail" data-s="${selSlot}">改造</button><button class="btn sm" data-act="unequip" data-s="${selSlot}">卸下</button></div>` : `<p class="sub">${SLOTN[selSlot]}目前是空的。</p>`}
-    <h3>可以裝備 ${cands.length}</h3>${cands.length ? `<div class="list">${cands.map(({ it, i }) => `<div class="srow"><button class="irow" data-act="pick" data-i="${i}" data-from="slot" style="border-left-color:${RCOL[it.r]}"><img src="${slotIcon(it)}" alt=""><span><b>${itemName(it)}</b><small>${it.slot === 'offhand' ? esc(baseOf(it).n) + '・' : ''}iLv${it.ilvl}・${esc(itemSum(it))}</small></span></button><button class="btn sm pri" data-act="equipTo" data-i="${i}" data-s="${selSlot}">裝備</button></div>`).join('')}</div>` : `<p class="sub">背包裡沒有可以裝在這個位置的裝備。</p>`}
+    <h3>可以裝備 ${cands.length}</h3>${cands.length ? `<div class="list">${cands.map(({ it, i }) => `<div class="srow"><button class="irow" data-act="pick" data-i="${i}" data-from="slot" style="border-left-color:${RCOL[it.r]}"><img src="${slotIcon(it)}" alt=""><span><b>${itemName(it)}</b><small>${it.slot === 'offhand' ? esc(baseOf(it).n) + '・' : ''}iLv${it.ilvl}・${esc(itemSum(it))}</small></span></button><button class="btn sm" data-act="equipTo" data-i="${i}" data-s="${selSlot}">裝備</button></div>`).join('')}</div>` : `<p class="sub">背包裡沒有可以裝在這個位置的裝備。</p>`}
     <div class="btns"><button class="btn" data-act="sheet" data-s="bag">返回背包</button></div>`;
   } else if (sheetName === 'item') {
     const it = selItem && (selItem.eq ? S.eq[selItem.eq] : S.inv[selItem.i]);
@@ -621,7 +623,7 @@ function renderSheet() {
     html = `<div class="ent"><img class="bigico" src="${slotIcon(it)}" alt=""><div class="sub">${selItem.eq ? '穿戴中' : '背包'}・可以用通貨改造</div></div>${itemCard(it, selItem.eq ? '穿戴中' : '')}${!selItem.eq && tgt ? itemCard(tgt, '目前穿戴') : ''}
     <h3>製作</h3><div class="crafts">${CUR.map(cu => `<button class="btn sm" data-act="craft" data-c="${cu.id}" ${craftable(it, cu.id) && S.cur[cu.id] > 0 ? '' : 'disabled'}>${curDot(cu.id)}${cu.n} <b>${S.cur[cu.id] || 0}</b><small>${cu.d}</small></button>`).join('')}</div>
     ${undeadCraftHTML(it)}
-    <div class="btns">${selItem.eq ? `<button class="btn" data-act="unequip" data-s="${selItem.eq}">卸下</button>` : it.slot === 'ring' ? `<button class="btn pri" data-act="equip" data-s="ring1">裝在戒指 1</button><button class="btn pri" data-act="equip" data-s="ring2">裝在戒指 2</button>` : `<button class="btn pri" data-act="equip" data-s="${it.slot}">裝備</button>`}
+    <div class="btns">${selItem.eq ? `<button class="btn" data-act="unequip" data-s="${selItem.eq}">卸下</button>` : it.slot === 'ring' ? `<button class="btn pri" data-act="equip" data-s="ring1">裝在戒指 1</button><button class="btn" data-act="equip" data-s="ring2">裝在戒指 2</button>` : `<button class="btn pri" data-act="equip" data-s="${it.slot}">裝備</button>`}
     ${selItem.eq ? '' : `<button class="btn" data-act="lock">${it.lock ? '解鎖' : '上鎖'}</button><button class="btn" data-act="sell" ${canSell() && !it.lock ? '' : 'disabled'}>${it.lock ? '已上鎖' : canSell() ? `賣出 ${sellVal(it)} 金` : '城鎮或據點才能賣'}</button>`}${selSlot ? `<button class="btn" data-act="eqslot" data-s="${selSlot}">返回${SLOTN[selSlot]}</button>` : `<button class="btn" data-act="sheet" data-s="bag">返回背包</button>`}</div>`;
   } else if (sheetName === 'base') {
     html = hideoutHTML();
@@ -640,7 +642,7 @@ function renderSheet() {
           `<div style="margin-top:8px"><b>${n}（剩 ${c}）</b><small class="sub">・${S[k] ? `低於 ${S[k]}% 時喝` : '關閉'}</small><div class="seg" style="margin-top:6px">${[0, 30, 50, 70].map(v => `<button data-act="autoPot" data-k="${k}" data-v="${v}" aria-pressed="${(S[k] || 0) === v}">${v ? v + '%' : '關'}</button>`).join('')}</div></div>`
       )
       .join('')}</div>
-    <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps ? '開' : '關'}</b><small>${S.gps ? GPS.err || '用手機定位實際走路移動，點地圖不會再走過去' : '目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm ${S.gps ? '' : 'pri'}" data-act="gps">${S.gps ? '關閉' : '開啟'}</button></div>
+    <h3>移動方式</h3><div class="card"><div class="rowx"><div class="t"><b>GPS 定位 ${S.gps ? '開' : '關'}</b><small>${S.gps ? GPS.err || '用手機定位實際走路移動，點地圖不會再走過去' : '目前是點地圖模擬走路。開啟後用真實位置，像寶可夢 GO 一樣'}</small></div><button class="btn sm${S.gps ? '' : ' buy'}" data-act="gps">${S.gps ? '關閉' : '開啟'}</button></div>
       <div style="margin-top:10px"><b>點地圖移動速度</b><small class="sub">・測試用，GPS 開啟時不影響</small><div class="seg" style="margin-top:6px;grid-template-columns:repeat(3,1fr)">${[1, 1.5, 2].map(v => `<button data-act="simSpd" data-v="${v}" aria-pressed="${(S.simSpd || 1) === v}">×${v}</button>`).join('')}</div></div></div>
     <h3>新手教學</h3><div class="card"><div class="rowx"><div class="t"><b>重看新手教學</b><small>一步步介紹畫面上的按鈕與玩法</small></div><button class="btn sm" data-act="tutor">開始</button></div></div>
     <h3>名字</h3><div class="card"><div class="srow"><input class="inp" id="nameInp" maxlength="12" value="${esc(S.name || '旅人')}"><button class="btn" data-act="setName">儲存</button></div><p class="sub" style="margin-top:6px">好友列表和組隊時顯示的名字，最多 12 個字。</p></div>
@@ -676,6 +678,20 @@ function renderSheet() {
   if (sheetName === 'hunt' || sheetName === 'seal') huntPaint();
   const dh = $('dollHero');
   if (dh) dh.getContext('2d').drawImage(sprite(heroSpr('F'), heroPal()), 0, 0);
+}
+/* 0.3.30 怪物大圖是用到才載入：面板先開、圖後到時，等圖載好再重畫一次開著的面板（輸入框正在打字時不重畫） */
+let entShown = null;
+function artRepaint() {
+  clearTimeout(artRepaint.t);
+  artRepaint.t = setTimeout(() => {
+    if (document.activeElement && document.activeElement.matches('input,textarea')) return;
+    const sb = $('sbody'),
+      top = sb.scrollTop;
+    if (sheetName === 'ent') entShown && ENT.has(entShown) && openEnt(entShown);
+    else if (sheetName) renderSheet();
+    sb.scrollTop = top;
+    if (!$('gacha').hidden) renderGacha();
+  }, 80);
 }
 function nearTownE() {
   return TOWNS.some(t => dist(S.lat, S.lng, t.lat, t.lng) < 230);
@@ -737,6 +753,7 @@ function openEnt(id) {
     inR = d <= lim || e.kind === 'base' || !!zn;
   /* 從別的頁面切過來時，把上一頁留下的狀態清乾淨（返回鍵、捲動位置、背包的賣出模式、展開的導覽） */
   sheetName = 'ent';
+  entShown = id;
   if (SEL.sell) SEL.sell = null;
   navClose();
   $('sback').hidden = true;
@@ -1001,6 +1018,11 @@ const A = {
     A.sellMany();
     SEL.sell = new Set();
     SHOP.render && SHOP.render();
+  },
+  explMore: () => {
+    explMore = !explMore;
+    plT = 0;
+    placeLabel();
   },
   ibInfo: d =>
     toast(

@@ -597,6 +597,7 @@ const ART_U = 0.36,
 function artSheet(s) {
   if (!ARTIMG[s]) {
     const im = new Image();
+    im.onload = () => typeof artRepaint === 'function' && artRepaint();
     im.src = ART_SHEET[s];
     ARTIMG[s] = im;
   }

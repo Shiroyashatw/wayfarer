@@ -858,7 +858,7 @@ function renderMBHud() {
       return o && o.hp > 0
         ? o.hideAv
           ? { n: '？？？', c: 'e', on, img: iconURL('eye') }
-          : { n: o.name, c: 'e', on, img: portrait(o.spr, o.pal) }
+          : { n: shortName(o), c: 'e', on, img: portrait(o.spr, o.pal) }
         : null;
     };
     const cur = row(MB.actor === 'E' ? 'e' + MB.ea : MB.actor, true);

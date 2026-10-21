@@ -1105,6 +1105,23 @@ function glow(c, x, y, r, col, a) {
   c.fillStyle = g;
   c.fillRect(x - r, y - r, r * 2, r * 2);
 }
+/* 0.3.31 地圖物件的標籤：先收集，畫完所有物件後依重要度（地城 > 事件、危險怪 > 一般怪，同級離玩家近的優先）畫，
+   跟已經畫好的標籤重疊就不畫，怪物擠在一起時才不會疊成一團 */
+let LBLQ = [];
+const qlabel = (txt, x, y, col, pri) => LBLQ.push({ txt, x, y, col, pri });
+function flushLabels(c, cx, cy) {
+  const done = [];
+  c.font = '11px DotGothic16, "Noto Sans TC", sans-serif';
+  LBLQ.sort((a, b) => b.pri - a.pri || Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
+  for (const q of LBLQ) {
+    const w = c.measureText(q.txt).width / 2 + 3,
+      r = [q.x - w, q.y - 8, q.x + w, q.y + 8];
+    if (done.some(d => r[0] < d[2] && r[2] > d[0] && r[1] < d[3] && r[3] > d[1])) continue;
+    done.push(r);
+    label(c, q.txt, q.x, q.y, 11, q.col);
+  }
+  LBLQ = [];
+}
 function label(c, txt, x, y, size, col, box) {
   c.font = `${size}px DotGothic16, "Noto Sans TC", sans-serif`;
   c.textAlign = 'center';
@@ -1316,19 +1333,18 @@ function renderWorld(t) {
         drawSpr(c, name, pal, x, y + bob, sc, flp);
         c.globalAlpha = 1;
         if (e.kind === 'monster' && cam.z > 0.32)
-          label(
-            c,
+          qlabel(
             (e.bounty ? '懸賞 ' : e.rar === 4 ? '危險 ' : '') + 'Lv' + e.lv,
             x,
             y - 17 * sc,
-            11,
-            e.bounty ? '#ff8a6a' : RCOL[e.rar || 0]
+            e.bounty ? '#ff8a6a' : RCOL[e.rar || 0],
+            e.bounty || e.rar === 4 ? 2 : 1 + (e.rar || 0) * 0.1
           );
-        if (e.kind === 'event' && cam.z > 0.3) label(c, e.name, x, y - 20 * s, 11, '#f2d9a6');
-        if (e.kind === 'dungeon' && cam.z > 0.3) label(c, `${e.name} Lv${e.lv}`, x, y - 20 * sc, 11, DTYPES[e.dt].col);
+        if (e.kind === 'event' && cam.z > 0.3) qlabel(e.name, x, y - 20 * s, '#f2d9a6', 2);
+        if (e.kind === 'dungeon' && cam.z > 0.3) qlabel(`${e.name} Lv${e.lv}`, x, y - 20 * sc, DTYPES[e.dt].col, 3);
         if (e.kind === 'shrine') glow(c, x, y - 10 * s, 16 * s, '255,90,60', 0.3);
         if (e.gl && !isDone(e)) glow(c, x, y - 8 * s, 28 * s, e.gl, 0.3 + 0.15 * Math.sin(t / 300));
-        if (e.lbl && cam.z > 0.3) label(c, e.lbl, x, y - 20 * s, 11, e.lc || '#f2d9a6');
+        if (e.lbl && cam.z > 0.3) qlabel(e.lbl, x, y - 20 * s, e.lc || '#f2d9a6', 2);
       }
     });
   }
@@ -1362,6 +1378,7 @@ function renderWorld(t) {
         )
     });
   list.sort((a, b) => a.y - b.y).forEach(o => o.draw());
+  flushLabels(c, hx, hy);
   drawUndeadMark(c, t);
   drawSealMark(c, t);
   // fog：走過的方格畫迷霧圖，沒走過的方格整塊蓋住
@@ -1710,7 +1727,8 @@ const mmss = ms => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${fl(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
-let plT = 0;
+let plT = 0,
+  explMore = false;
 function placeLabel() {
   if (performance.now() - plT < 500) return;
   plT = performance.now();
@@ -1721,7 +1739,9 @@ function placeLabel() {
     left = REFRESH - (now() % REFRESH),
     leftH = REFRESH_H - (now() % REFRESH_H);
   $('expl').innerHTML =
-    `<span style="color:${dp.night > 0.5 ? '#9fb8ff' : '#ffd877'}">${dp.label}</span> ${hh}:${mm}・視野 ${stats().vision}m<br><span class="rf${left < 60e3 ? ' soon' : ''}">怪物 ${mmss(left)}</span>・<span class="rf${leftH < 60e3 ? ' soon' : ''}">地城 ${mmss(leftH)}</span>・探索 ${explKm2().toFixed(2)} km²` +
+    `<span style="color:${dp.night > 0.5 ? '#9fb8ff' : '#ffd877'}">${dp.label}</span> ${hh}:${mm}・<span class="rf${left < 60e3 ? ' soon' : ''}">怪物 ${mmss(left)}</span>・<span class="rf${leftH < 60e3 ? ' soon' : ''}">地城 ${mmss(leftH)}</span>` +
+    /* 0.3.31 視野與探索面積點一下才展開 */
+    (explMore ? `<br>視野 ${stats().vision}m・探索 ${explKm2().toFixed(2)} km²` : '') +
     (fv => (fv ? `<br><span style="color:#ffd877">足跡 Lv${fv}：怪物 +${footDens(fv)}%</span>` : ''))(
       footLv(...toM(S.lat, S.lng))
     ) +

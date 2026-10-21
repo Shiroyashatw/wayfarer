@@ -358,7 +358,7 @@ function renderTreeCard() {
     return;
   }
   if (!n) {
-    el.innerHTML = `<div class="rowx"><span class="sub">點節點看效果。從中間的契靈圓盤旁邊任何一條路線開始往外點；藍色線是要點亮的路徑。點圓盤上的格子可以看契靈。路線盡頭的六角形是<b style="color:#e8873a">基石</b>，會改變戰鬥規則。</span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="treeSum">總覽</button></div>`;
+    el.innerHTML = `<div class="rowx"><span class="sub">從中間的契靈圓盤往外點，藍線是要點亮的路徑；六角形的<b style="color:#e8873a">基石</b>會改變戰鬥規則。</span><button class="btn sm" style="flex:none;white-space:nowrap" data-act="treeSum">總覽</button></div>`;
     drawTree();
     return;
   }

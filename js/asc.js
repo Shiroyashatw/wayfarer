@@ -1944,7 +1944,7 @@ function renderAscCard() {
     n = AV.sel && ASCN[AV.sel],
     pts = ascPts();
   if (!n) {
-    el.innerHTML = `<b>${c.n}</b><small class="sub">${c.d}</small><small class="sub">${c.br.map(b => `<span style="color:${b.col}">${b.n}</span>（${b.d}）`).join('<br>')}</small><small class="sub">點節點看效果。8 點只能點在選定的分支裡；每條分支是一張自己的圖案（劍、鎚、盾、弓、火焰…），路線很短、會分岔；「抉擇」大點旁邊掛著三個小點，三個只能點一個。要自己取捨走哪幾條。${pts ? '' : `Lv${ASC_LV[0]} 起到城鎮挑戰昇華試煉取得點數。`}</small>${a.br ? `<button class="btn sm" data-act="ascReset">重選昇華（${ascResetCost()} 金幣，要在城鎮）</button>` : ''}`;
+    el.innerHTML = `<b>${c.n}</b><small class="sub">${c.d}</small><small class="sub">${c.br.map(b => `<span style="color:${b.col}">${b.n}</span>（${b.d}）`).join('<br>')}</small><small class="sub">8 點只能點在選定的分支；「抉擇」旁的三個小點只能選一個。${pts ? '' : `Lv${ASC_LV[0]} 起到城鎮挑戰昇華試煉取得點數。`}</small>${a.br ? `<button class="btn sm" data-act="ascReset">重選昇華（${ascResetCost()} 金幣，要在城鎮）</button>` : ''}`;
     drawAsc();
     return;
   }

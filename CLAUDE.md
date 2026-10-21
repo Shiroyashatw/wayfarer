@@ -5,6 +5,7 @@
 - 版本號：目前是 0.3.x（0.3.0 是昇華系統；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。系統規則改了要同步更新。
+- 介面：照 `docs/設計規範.md`（字級、顏色變數、間距、元件、資訊量規則）；改介面用 skill `ui-design`，改完在手機尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
 - 怪物／首領的 PixelLab 提示詞：`docs/怪物提示詞.md`（新增怪物圖用 skill `pixel-art`，採用後把提示詞記進去）。裝備、技能、輔助寶石圖示的提示詞另外放在 `docs/圖示提示詞.md`。
 
 ## 專案結構
@@ -21,7 +22,7 @@
 | 檔案 | 內容 |
 | --- | --- |
 | `index.html` | 頁面骨架與 DOM、載入順序 |
-| `css/style.css` | 全部樣式（手機直式優先） |
+| `css/style.css` | 全部樣式（手機直式優先）；開頭 `:root` 是設計規範的變數（`--fs-*`、`--sp-*`、`--r-*`、顏色），結尾是共用元件（`.c-*`、`details.more`、`.tiers`、`.g2`） |
 | `js/core.js` | `$`、`fl`、`m` 與共用工具（座標、繪圖輔助） |
 | `js/data.js` | 地點／城鎮、怪物、詞綴、通貨、天賦樹 `TREE`、`VER` |
 | `js/sprites.js` | 16x16 像素圖（自動描邊陰影）、8x8 圖示 |

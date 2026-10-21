@@ -443,9 +443,9 @@ function steleHTML() {
     nt = SEL.tabs.size,
     best = portalPick(),
     fl_ = Math.max(1, Math.min(3, ni)),
-    stele = `<h3>單人石碑</h3><p class="sub">選 0～3 個碑文碎片注入詞綴（每個 +1 層，最多 3 層）。怪物等級是你 +2，失敗就沒了；通關掉出帶 2～4 條詞綴的石碑。</p>
+    stele = `<h3>單人石碑</h3><p class="sub">放 0～3 個碑文碎片（每個 +1 層）・怪物 Lv 你 +2・通關掉石碑</p>
   <div class="btns" style="flex-wrap:wrap">${ins.map(q => chip(SEL.insc.has(q.id), 'selI', q.id, DMODI[q.m].n)).join('') || '<span class="sub">沒有碑文碎片（打菁英怪取得）</span>'}</div>`,
-    circle = `<h3>4 人石碑魔法陣</h3><p class="sub">選 4～6 個石碑，詞綴全部疊加（同一種最多 3 次），合成 20 層地城。倒下不會復活，全隊倒下就失敗；首領掉崇高刻印石。</p>
+    circle = `<h3>4 人石碑魔法陣</h3><p class="sub">放 4～6 個石碑・詞綴疊加成 20 層・首領掉崇高刻印石</p>
   <div style="display:grid;gap:6px">${tabs.map(t => chip(SEL.tabs.has(t.id), 'selT', t.id, `石碑 Lv${t.lv}・${modList(t.mods)}`)).join('') || '<span class="sub">沒有石碑（通關單人石碑取得）</span>'}</div>`;
   /* 現場模式：只顯示對應的那一段，不用卷軸，開打後地上那座就用掉 */
   if (site) {
@@ -455,17 +455,19 @@ function steleHTML() {
     <button class="btn pri" data-act="${st ? 'steleRun' : 'circleOpen'}" ${st ? (ni <= 3 ? '' : 'disabled') : nt >= 4 && nt <= 6 ? '' : 'disabled'}>${st ? `當場開打（${fl_} 層・Lv${aLv() + 2}）` : `當場組隊開打（已選 ${nt}/4～6）`}</button>
     <button class="btn" data-act="siteCancel">取消</button>`;
   }
-  return `<p class="sub">路上的空白石碑與魔法陣可以「壓縮封印」收成卷軸帶回家，也可以「當場挑戰」。兩種都要自己放入碑文碎片或石碑。菁英怪會掉碑文碎片，冥府侵蝕柱的看門人會掉冥府碎片。所有材料在「背包」的分頁裡。</p>
+  return `<p class="sub">卷軸放入碑文碎片或石碑就能開啟；材料在「背包」的分頁裡。</p>
+  ${more('規則與材料來源', `<p>路上的空白石碑與魔法陣可以「壓縮封印」收成卷軸帶回家，也可以「當場挑戰」。菁英怪會掉碑文碎片，冥府侵蝕柱的看門人會掉冥府碎片。</p><p>單人石碑：每個碑文碎片注入一條詞綴、+1 層（最多 3 層），失敗碎片就沒了；通關掉出帶 2～4 條詞綴的石碑。</p><p>4 人魔法陣：詞綴全部疊加（同一種最多 3 次），合成 20 層地城；倒下不會復活，全隊倒下就失敗。</p><p>冥府傳送門：4 個不同部位（${FRAG_PARTS.join('、')}）的碎片組成，8 層、詞綴全部疊加。</p><p>七宗罪之王：8 層，前 7 層依序是七宗罪的王，最後是七宗罪之王，倒下不會復活。</p>`)}
   <div class="curs"><span><img class="cico lg" src="${entURL('stele')}" alt=""><span>空白石碑卷<b>${sc.stele || 0}</b></span></span><span><img class="cico lg" src="${entURL('circle')}" alt=""><span>空白魔法陣卷<b>${sc.circle || 0}</b></span></span><span><img class="cico lg" src="${entURL('obelisk')}" alt=""><span>冥府碎片<b>${frags.length}</b></span></span></div>
   ${stele}
   <button class="btn pri" data-act="steleRun" ${sc.stele > 0 && ni <= 3 ? '' : 'disabled'}>用卷軸開啟單人石碑（${fl_} 層・Lv${aLv() + 2}）</button>
   ${circle}
   <button class="btn pri" data-act="circleOpen" ${sc.circle > 0 && nt >= 4 && nt <= 6 ? '' : 'disabled'}>用卷軸組隊開啟魔法陣（已選 ${nt}/4～6）</button>
-  <h3>冥府傳送門</h3><p class="sub">集滿 4 個不同部位的冥府碎片（${FRAG_PARTS.join('、')}）就能組成傳送門，8 層、詞綴全部疊加，首領保證掉冥府之血。</p>
+  <h3>冥府傳送門</h3><p class="sub">集滿 4 個不同部位的冥府碎片・8 層・首領必掉冥府之血</p>
   <div style="display:grid;gap:6px">${frags.map(f => `<div class="card"><b>${FRAG_PARTS[f.part]} Lv${f.lv}</b><small class="sub" style="display:block">${modList(f.mods)}・<span style="color:#ff8a9a">${modList(f.um)}</span></small></div>`).join('') || '<span class="sub">沒有冥府碎片</span>'}</div>
-  <h3>七宗罪之王</h3><p class="sub">集齊 7 種殘魂（${SINS.map(q => `${q.n} ${(S.sins || {})[q.k] || 0}`).join('、')}）可以組隊挑戰：8 層，前 7 層依序是七宗罪的王，最後是七宗罪之王，倒下不會復活。保證掉傳奇裝備與 3 條詞綴的惡魔珠寶。</p>
+  <button class="btn pri" data-act="portalOpen" ${best ? '' : 'disabled'}>組隊開啟冥府傳送門${best ? '' : `（還缺 ${FRAG_PARTS.filter((_, i) => !frags.some(f => f.part === i)).length} 個部位）`}</button>
+  <h3>七宗罪之王</h3><p class="sub">集齊 7 種殘魂（已有 ${SINS.filter(q => (S.sins || {})[q.k] > 0).length}/7）・必掉傳奇裝備與惡魔珠寶</p>
   <button class="btn pri" data-act="sinKing" ${SINS.every(q => (S.sins || {})[q.k] > 0) ? '' : 'disabled'}>組隊挑戰七宗罪之王（4 人）</button>
-  <button class="btn pri" data-act="portalOpen" ${best ? '' : 'disabled'}>組隊開啟冥府傳送門${best ? '' : `（還缺 ${FRAG_PARTS.filter((_, i) => !frags.some(f => f.part === i)).join('、')}）`}</button>`;
+  `;
 }
 /* 背包的材料分頁：碑文碎片、石碑、冥府碎片、卷軸 */
 const MAT_TABS = [

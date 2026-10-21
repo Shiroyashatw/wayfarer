@@ -71,20 +71,20 @@
 | 印記兌換、生肖傳奇（0.2.13） | `js/hunt.js`、`js/items.js` | `ZLEG`（加進 `LEGENDS`／`LEGI`，`k` 是 `z_生肖`）、`zodStats`（`sumStats` 呼叫，生肖共鳴）、`sealHTML`（`seal` 面板）、`A.sealLeg`／`A.sealJewel`、`spendMarks`；`S.hunt.marks`（可消耗）、`S.hunt.slain`（稱號） |
 | 地圖事件連動（0.2.13） | `js/demon.js`、`js/undead.js`、`js/hunt.js` | 霧中亡靈：`mistify`（`e.ud`）、`mistWin`／`undeadWin`（×1.5）；冥府生肖：`A.huntZod`（`ZOD_UW_R`、`uwz`）、`huntWin`；夜晚：`undeadSpawns` 半徑、魔霧刷新機率 |
 | 獵殺等級（0.3.1.6） | `js/hunt.js`、`js/map.js`、`js/battle.js`、`js/ui.js` | `HUNT_LV`（三級的強化與倍率）、`huntLv`／`huntCfg`、`huntTick`（每分鐘熱度與關閉後消退，`map.js` 每幀呼叫）、`huntKills`（`winBattle`）、`huntBuff`（`A.fight`、`packOf`）、`packN` 的成群加成；紅圈在 `map.js` 畫玩家範圍圈的地方；狀態 `S.hunt.heat`／`tAt` |
-| 狩獵墮落十二生肖（0.2.12） | `js/hunt.js` | `huntWalk`（`setPos` 呼叫）、`huntSpawns`（`genEntities` 最後）、`ZODIAC`（圖 `SPR.z_*`、配色 `ZBASE`）、`drawZodiacs`、`HSUM`、`makeBeast`、`makeZodiac`、`huntWin`（`winBattle`）、`huntHTML`（`hunt` 面板）、`zodEntHTML`（`openEnt`）；狀態 `S.hunt`、`S.summons`（id 以 `z` 開頭） |
+| 狩獵墮落十二生肖（0.2.12） | `js/hunt.js` | `huntWalk`（`setPos` 呼叫）、`huntSpawns`（`genEntities` 最後）、`ZODIAC`（圖 `SPR.z_*`、配色 `ZBASE`）、`drawZodiacs`、`HSUM`、`makeBeast`、`makeZodiac`、`huntWin`（`winBattle`）、`huntHTML`（`hunt` 面板，0.3.31 照設計規範重排：獵殺等級 `.tiers`、規則收進 `details.more`）、`zodEntHTML`（`openEnt`）；狀態 `S.hunt`、`S.summons`（id 以 `z` 開頭） |
 | 魔霧刷新、亡靈區／魔霧／侵蝕柱的地圖繪製 | `js/demon.js`、`js/undead.js`、`js/endgame.js` | `mistEp`／`mistify`（`q` 開頭的魔霧怪）、`drawSeals`／`drawSealMark`、`drawUndead`／`drawUndeadMark`、`drawObelisks`；遠距離顯示 `FAR`（`map.js`） |
 | 七宗罪之王（4 人，0.2.11） | `js/demon.js`、`js/data.js` | `makeSinKing`、`A.sinKing`、`DTYPES.sinking`；付出殘魂在 `payDun` 的 `souls` |
 | 等級上限 | `js/items.js` | `LV_MAX`（`gainXP`） |
 | 石碑／魔法陣當場挑戰 | `js/endgame.js` | `A.siteGo` 設定 `SEL.site` 後打開石碑面板（`steleHTML` 的現場模式、`siteEnt`），開打走 `A.steleRun`／`A.circleOpen` |
 | 背包材料分頁（碑文碎片、石碑、冥府碎片、卷軸） | `js/endgame.js`、`js/ui.js` | `MAT_TABS`、`matsHTML`、`A.matTab`、`A.matDrop`；分頁列 `bagTabs`（`ui.js`），目前分頁 `SEL.bag` |
-| 戰鬥畫面（背景、特效、按鈕） | `js/battle.js` | `paintBG`、`renderBHud`、`renderBattle`、`drawFx`；怪物頭上名字 `placeBName`、左上角層數 `setFloor`、異常狀態圖示 `ailHTML`／`placeAil`（`AIL_E`、`AIL_H`）、頭目血條 `bossBar`、站位 `POS`（`y` 怪物、`hy` 玩家）、底部橫列行動順序 `renderOrder`（小頭像 `portrait`；多人在 `mp.js` 的 `renderMBHud`、倒數條 `mpTurnBar`、站位 `mpPos`） |
+| 戰鬥畫面（背景、特效、按鈕） | `js/battle.js` | `paintBG`、`renderBHud`、`renderBattle`、`drawFx`；怪物頭上名字 `placeBName`、左上角層數 `setFloor`、異常狀態圖示 `ailHTML`／`placeAil`（`AIL_E`、`AIL_H`）、頭目血條 `bossBar`、站位 `POS`（`y` 怪物、`hy` 玩家）、底部橫列行動順序 `renderOrder`（名字用 `shortName`，小頭像 `portrait`；多人在 `mp.js` 的 `renderMBHud`、倒數條 `mpTurnBar`、站位 `mpPos`） |
 | 冥府看門人（牛頭、馬面、黑白無常） | `js/endgame.js` | `WATCHERS`、`summonWatcher` |
 | 地圖道路資料、圖磚快取 | `js/map.js` | `OpenStreetMap vector tiles` 區段 |
 | 地標城鎮清單 | `js/map.js` | `TOWNS`（前 11 個 id 不能改） |
 | 地圖上的怪物、寶箱、地城、廟宇生成 | `js/map.js` | `spawns` 區段、`dungeonAt` |
 | 迷霧、探索面積 | `js/map.js`、`js/main.js` | `fog of war` 區段、`explKm2`；存檔只存揭開的點 `S.trail`（`trailStep`，0.3.30 每 `TRAIL_G` 公尺一格一點、不截斷，`trailKey`／`trailC`），讀檔時 `rebuildWorld` 重播 `reveal` |
 | 地圖物件什麼時候看得到 | `js/map.js` | `visible`（`MOBILE` 跟視野、`LANDMARK` 至少 `LM_VIS` 公尺） |
-| 地圖繪製、右上角資訊 | `js/map.js` | `renderWorld`、`placeLabel`；每幀 `tick`，0.3.30 被面板蓋住時不畫 `mapCovered`、屬性快取 `worldStats` |
+| 地圖繪製、右上角資訊 | `js/map.js` | `renderWorld`、`placeLabel`（0.3.31 點一下展開 `explMore`）；物件標籤 `qlabel`／`flushLabels`（0.3.31 依重要度畫、重疊略過）；每幀 `tick`，0.3.30 被面板蓋住時不畫 `mapCovered`、屬性快取 `worldStats` |
 | 點地圖、走路、GPS | `js/map.js` | `input`、`movement`、`GPS` 區段 |
 | 主畫面 HUD、底部導覽 | `js/ui.js` | `renderHud`、`NAVG`、`navOpen`；DOM 在 `index.html` 的 `#nav` |
 | 各個面板（角色、背包、藏身處、設定…） | `js/ui.js` | `renderSheet` 的 `sheetName` 分支（見下表） |
@@ -106,6 +106,7 @@
 | 組隊大廳、多人戰鬥 | `js/mp.js` | `partyCreate`、`partyJoin`、`partyHTML`、`mpResolve`、`mpEnemy`、`renderMBHud` |
 | 存讀檔、存檔轉換、啟動 | `js/main.js` | `load`、`save`、`migrate`、`start`；存檔失敗提示 `saveFail`（0.3.30） |
 | 樣式 | `css/style.css` | 依區塊註解（`/* ---------- shop ---------- */` 等）搜尋 |
+| 設計規範、共用元件（0.3.31） | `docs/設計規範.md`、`css/style.css`、`.claude/skills/ui-design/` | `:root` 變數（字級 `--fs-cap`～`--fs-hero`、間距 `--sp-1`～`--sp-5`、圓角 `--r-*`、`--bad`／`--warn`／`--danger`／`--heat` 等）；元件 `.c-gold`／`.c-good`／`.c-warn`／`.c-bad`／`.c-dim`、列表按鈕 `.btn.buy`、摺疊說明 `details.more`（JS 用 `ui.js` 的 `more(標題, html)`）、等級格 `.tiers`、兩欄 `.g2`、卡片標題 `.ct`、按鈕第二行 `.bnote`；檢查工具 `audit.js` |
 
 ## 面板（`renderSheet` 的 `sheetName`）
 
@@ -161,11 +162,11 @@
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
 
-### js/sprites.js（1347 行）
+### js/sprites.js（1348 行）
 
 - **pixel sprites (original art)**（3），21 個宣告
-- **icons: currency, item slots, passive nodes**（750），7 個宣告
-- **boss sprites**（1002），1 個宣告
+- **icons: currency, item slots, passive nodes**（751），7 個宣告
+- **boss sprites**（1003），1 個宣告
 
 ### js/gear.js（685 行）
 
@@ -189,16 +190,16 @@
 - **enemies**（878），16 個宣告
 - **modal**（1016），5 個宣告
 
-### js/battle.js（3155 行）
+### js/battle.js（3157 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
-- **battle: logic**（238），31 個宣告
-- **battle: rules（單人與組隊共用）**（577），57 個宣告
-- **battle: solo**（1639），14 個宣告
-- **dungeons (shared by solo and party)**（2075），24 個宣告
-- **battle: drawing**（2806），7 個宣告
+- **battle: logic**（238），32 個宣告
+- **battle: rules（單人與組隊共用）**（579），57 個宣告
+- **battle: solo**（1641），14 個宣告
+- **dungeons (shared by solo and party)**（2077），24 個宣告
+- **battle: drawing**（2808），7 個宣告
 
-### js/map.js（1737 行）
+### js/map.js（1757 行）
 
 - **world coordinates: meters from 台中車站 (x 東, y 南)**（3），5 個宣告
 - **OpenStreetMap vector tiles**（63），26 個宣告
@@ -206,22 +207,22 @@
 - **extra sprites**（608），0 個宣告
 - **fog of war (chunked)**（675），11 個宣告
 - **spawns**（773），18 個宣告
-- **world rendering**（1069），15 個宣告
-- **input**（1467），5 個宣告
-- **movement**（1559），5 個宣告
-- **GPS**（1612），11 個宣告
+- **world rendering**（1069），18 個宣告
+- **input**（1484），5 個宣告
+- **movement**（1576），5 個宣告
+- **GPS**（1629），11 個宣告
 
 ### js/tree.js（496 行）
 
 - **passive tree (full screen)**（3），18 個宣告
 
-### js/ui.js（1893 行）
+### js/ui.js（1915 行）
 
-- **HUD & sheets**（3），45 個宣告
-- **entity interaction**（730），9 個宣告
-- **actions**（921），2 個宣告
+- **HUD & sheets**（3），48 個宣告
+- **entity interaction**（746），9 個宣告
+- **actions**（938），2 個宣告
 
-### js/endgame.js（689 行）
+### js/endgame.js（691 行）
 
 - **map objects**（3），2 個宣告
 - **zones（0.3.23 起沒有遠端範圍）**（76），6 個宣告
@@ -230,7 +231,7 @@
 - **scrolls, inscriptions, tablets**（280），6 個宣告
 - **underworld**（330），5 個宣告
 - **sheets**（410），12 個宣告
-- **actions**（536），0 個宣告
+- **actions**（538），0 個宣告
 
 ### js/undead.js（619 行）
 
@@ -250,14 +251,14 @@
 - **0.3.24 魔霧：山海經四凶與燭龍**（796），10 個宣告
 - **0.3.25 七罪攻佔城鎮**（986），18 個宣告
 
-### js/hunt.js（868 行）
+### js/hunt.js（870 行）
 
 - **data**（3），9 個宣告
 - **state**（387），16 個宣告
 - **enemies**（514），5 個宣告
 - **sheet**（589），2 個宣告
-- **印記兌換**（630），6 個宣告
-- **actions**（702），1 個宣告
+- **印記兌換**（632），6 個宣告
+- **actions**（704），1 個宣告
 
 ### js/daily.js（199 行）
 

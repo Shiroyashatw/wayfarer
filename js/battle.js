@@ -395,6 +395,8 @@ function portrait(spr, pal) {
   return PORT.get(k);
 }
 /* 行動順序（戰鬥畫面底部橫列）：list 是 [{n, c, on, dead, img}]，c 是 'me'／'e'／''；{h} 是分隔（下一輪） */
+/* 0.3.31 行動順序列的名字用怪物本名（不含稀有詞綴前綴），完整名字在怪物頭上 */
+const shortName = e => e.bn || (e.base && e.base.name) || e.name;
 function renderOrder(list) {
   $('border').innerHTML = list
     .map(q =>
@@ -1762,7 +1764,7 @@ function renderBHud() {
       eo = i =>
         es[i].hideAv
           ? { n: '？？？', c: 'e', img: iconURL('eye') }
-          : { n: es[i].name, c: 'e', img: portrait(es[i].spr, es[i].pal) },
+          : { n: shortName(es[i]), c: 'e', img: portrait(es[i].spr, es[i].pal) },
       cur = B.act >= 0 ? { ...eo(B.act), on: 1 } : { ...me, on: !B.busy },
       nx = avPreview(B.av || {}, soloUnits(), 6).map(id => (id === 'me' ? me : eo(+id.slice(1))));
     renderOrder([cur, ...nx]);

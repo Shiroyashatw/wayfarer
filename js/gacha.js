@@ -510,7 +510,7 @@ const BANNERS = [
     sub: '常駐',
     feat: ['f_dragon', 'd_pegasus', 'f_tigerlord', 'f_lion'],
     bg: ['#2a1f4a', '#5a2f6a', '#ffcf5a'],
-    d: '每隻契靈帶 6 條隨機的戰鬥詞綴（T6～T1），一開始解鎖第 1 條；吃掉另一隻同名的契靈就突破，解鎖下一條。SSR 的詞綴保底 T3 以上，還有專屬詞綴。'
+    d: '每隻契靈有 6 條隨機詞綴，吃同名契靈突破、解鎖下一條。SSR 詞綴保底 T3 以上。'
   }
 ];
 const ppool = r => PACTS.filter(p => p.r === r);
@@ -641,10 +641,10 @@ function pactCard(o, mode) {
     nf = pactFodder(o.u).length,
     btn =
       mode === 'fod'
-        ? `<button class="btn sm pri" data-act="pactEat" data-id="${o.u}">當材料</button>`
+        ? `<button class="btn sm" data-act="pactEat" data-id="${o.u}">當材料</button>`
         : mode === 'main'
           ? ''
-          : `<button class="btn sm ${eq ? '' : 'pri'}" data-act="pactEq" data-id="${o.u}">${eq ? '卸下' : '裝備'}</button><button class="btn sm" data-act="pactBrk" data-id="${o.u}" ${o.brk < PBRK_MAX && nf ? '' : 'disabled'}>${o.brk >= PBRK_MAX ? '已全解鎖' : `突破（材料 ${nf}）`}</button><button class="btn sm" data-act="pactFollow" data-id="${o.u}">${fo ? '跟隨中' : '跟隨'}</button>`;
+          : `<button class="btn sm${eq ? '' : ' buy'}" data-act="pactEq" data-id="${o.u}">${eq ? '卸下' : '裝備'}</button><button class="btn sm" data-act="pactBrk" data-id="${o.u}" ${o.brk < PBRK_MAX && nf ? '' : 'disabled'}>${o.brk >= PBRK_MAX ? '已全解鎖' : `突破（材料 ${nf}）`}</button><button class="btn sm" data-act="pactFollow" data-id="${o.u}">${fo ? '跟隨中' : '跟隨'}</button>`;
   return `<div class="card pcard${eq ? ' on' : ''}"><div class="rowx"><div class="t" style="display:flex;gap:10px;align-items:center">${pactTile(o.k)}<div style="display:grid;gap:3px"><b><span style="color:${PCOL[p.r]}">${PRAR[p.r]}</span> ${p.n} <span class="sub">突破 ${o.brk}/${PBRK_MAX}${eq ? '・裝備中' : ''}</span></b>${pactTagHTML(pactTags(o.u, true))}</div></div>${btn ? `<div style="display:grid;gap:4px">${btn}</div>` : ''}</div>${pactAffHTML(o.u)}</div>`;
 }
 /* 「我的契靈」面板（sheet 'pact'）：欄位、標籤篩選、擁有的每一隻契靈 */
