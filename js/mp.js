@@ -725,7 +725,7 @@ function mpFx(f) {
     en = i => MBFX.en[i] || (MBFX.en[i] = {});
   if (MB)
     logEv(f, MB.es, uid => (uid === CLOUD.uid ? '你' : ((MB.ps.find(p => p.uid === uid) || {}).name || '隊員') + ' '));
-  if (f.t === 'msg') bmsg(f.s);
+  if (f.t === 'msg') bmsg(f.s, null, f.msk && mskIcon(f.msk));
   else if (f.t === 'turn') {
     if (f.uid === CLOUD.uid) {
       sfx('select');

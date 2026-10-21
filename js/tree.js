@@ -334,6 +334,9 @@ function drawDisc(x, fs) {
     }
   }
 }
+/* 節點詳細說明的圖示：有 PNG（照節點名，TREE_IC）就用，沒有或大圖還沒載好用原本的 8×8 */
+const treeIcURL = n =>
+  (typeof TREE_IC !== 'undefined' && TREE_IC[n.n] && artIconURL('tree_' + TREE_IC[n.n])) || pixURL('ic_' + n.ic);
 function renderTreeCard() {
   const el = $('tvCard'),
     n = selNode && TREE.byId[selNode];
@@ -381,7 +384,7 @@ function renderTreeCard() {
   else if (!path) btn = '<span class="sub">無法到達</span>';
   else
     btn = `<button class="btn pri" data-act="alloc" ${cost <= treePts() ? '' : 'disabled'}>${cost <= treePts() ? `點亮（${cost} 點）` : `需要 ${cost} 點，目前 ${treePts()} 點`}</button>`;
-  el.innerHTML = `<div class="ent"><img class="bigico" src="${pixURL('ic_' + n.ic)}" alt=""><div style="min-width:0;flex:1"><b style="color:${n.type === 'key' ? '#e8873a' : n.type === 'notable' || n.type === 'start' ? 'var(--gold)' : 'var(--ink)'}">${n.n}${n.type === 'key' ? '・基石' : n.type === 'notable' ? '・重要節點' : ''}</b><div class="sub">${stats || '—'}</div></div></div>${n.type === 'socket' ? socketCardHTML(n) : ''}${btn}`;
+  el.innerHTML = `<div class="ent"><img class="bigico" src="${treeIcURL(n)}" alt=""><div style="min-width:0;flex:1"><b style="color:${n.type === 'key' ? '#e8873a' : n.type === 'notable' || n.type === 'start' ? 'var(--gold)' : 'var(--ink)'}">${n.n}${n.type === 'key' ? '・基石' : n.type === 'notable' ? '・重要節點' : ''}</b><div class="sub">${stats || '—'}</div></div></div>${n.type === 'socket' ? socketCardHTML(n) : ''}${btn}`;
   drawTree();
 }
 (() => {

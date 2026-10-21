@@ -326,7 +326,7 @@ const ailHTML = (o, keys) =>
     .filter(([k]) => o && o[k] > 0)
     .map(
       ([k, ic, n]) =>
-        `<span class="ail ail-${ic}" title="${n}"><img src="${iconURL(ic)}" alt="${n}">${(() => {
+        `<span class="ail ail-${ic}" title="${n}"><img src="${ailIcon(k, ic)}" alt="${n}">${(() => {
           if (AIL_T.has(k)) return `<b>${tLeft(o[k])}</b>`;
           const v = AIL_NUM[k] ? o[AIL_NUM[k]] : o[k];
           return v > 1 && k !== 'shield' && k !== 'chgN' && k !== 'mark' ? `<b>${v}</b>` : '';
@@ -334,6 +334,11 @@ const ailHTML = (o, keys) =>
     )
     .join('');
 /* 0.3.19 自己身上的狀態＋增益（增益顯示剩下幾秒） */
+/* 增益／負面增益的圖示：怪物招式給的（id m_招式代號）用招式圖示 */
+const buffIcon = b =>
+  b.id && String(b.id).startsWith('m_') && MSK[b.id.slice(2)]
+    ? mskIcon(b.id.slice(2))
+    : iconURL(b.bad ? 'skull' : b.cry ? 'horn' : 'star');
 const heroAilHTML = o =>
   ailHTML(o, AIL_H) +
   /* 0.3.22 圖騰（剩下的生命 %）、砲台（剩下幾秒）、陷阱、地雷（數量） */
@@ -347,7 +352,7 @@ const heroAilHTML = o =>
     ? `<span class="ail ail-ice" title="陷阱"><img src="${unitIcon(o.traps[0], 'eye')}" alt="陷阱"><b>${o.traps.length}</b></span>`
     : '') +
   (o && o.pdot
-    ? `<span class="ail ail-leaf" title="中毒"><img src="${iconURL('leaf')}" alt="中毒"><b>${tLeft(o.pdot.turns)}</b></span>`
+    ? `<span class="ail ail-leaf" title="中毒"><img src="${ailIcon(o.pdot.k || 'poison', 'leaf')}" alt="中毒"><b>${tLeft(o.pdot.turns)}</b></span>`
     : '') +
   (o && o.mines && o.mines.length
     ? `<span class="ail ail-flame" title="地雷"><img src="${unitIcon(o.mines[0], 'flame')}" alt="地雷"><b>${o.mines.length}</b></span>`
@@ -355,7 +360,7 @@ const heroAilHTML = o =>
   ((o && o.buffs) || [])
     .map(
       b =>
-        `<span class="ail ${b.bad ? 'ail-skull' : 'ail-shield'}" title="${b.n || ''}"><img src="${iconURL(b.bad ? 'skull' : b.cry ? 'horn' : 'star')}" alt="${b.n || ''}"><b>${b.turns >= 99 ? '' : tLeft(b.turns)}</b></span>`
+        `<span class="ail ${b.bad ? 'ail-skull' : 'ail-shield'}" title="${b.n || ''}"><img src="${buffIcon(b)}" alt="${b.n || ''}"><b>${b.turns >= 99 ? '' : tLeft(b.turns)}</b></span>`
     )
     .join('');
 function placeAil(id, x, y, html) {
@@ -439,10 +444,17 @@ function renderOrder(list) {
     )
     .join('');
 }
-function bmsg(t, lg) {
+/* ic：訊息前面的圖示網址（0.3.48 怪物招式） */
+function bmsg(t, lg, ic) {
   blog(lg || t, 'msg');
   const el = $('bmsg');
   el.textContent = t;
+  if (ic) {
+    const im = new Image();
+    im.src = ic;
+    im.alt = '';
+    el.prepend(im);
+  }
   el.style.opacity = 1;
   clearTimeout(bmsg.t);
   bmsg.t = setTimeout(() => (el.style.opacity = 0), 1300);
@@ -510,7 +522,7 @@ function binfoAil(o, keys) {
           : k === 'shield' || k === 'mark' || k === 'frozen' || k === 'stun'
             ? ''
             : o[k] + ' 次';
-      return `<li><img src="${iconURL(ic)}" alt=""><b>${n}</b> ${v}<small>${AILD[k] || ''}</small></li>`;
+      return `<li><img src="${ailIcon(k, ic)}" alt=""><b>${n}</b> ${v}<small>${AILD[k] || ''}</small></li>`;
     })
     .join('');
 }
@@ -521,7 +533,7 @@ function binfoBuffs(o) {
         .filter(k => b[k])
         .map(k => BUFFK[k](b[k]))
         .join('、');
-      return `<li><img src="${iconURL(b.bad ? 'skull' : b.cry ? 'horn' : 'star')}" alt=""><b>${esc(b.n || b.id || '增益')}</b> ${b.turns >= 99 ? '常駐' : '剩 ' + tLeft(b.turns) + ' 秒'}<small>${fx}</small></li>`;
+      return `<li><img src="${buffIcon(b)}" alt=""><b>${esc(b.n || b.id || '增益')}</b> ${b.turns >= 99 ? '常駐' : '剩 ' + tLeft(b.turns) + ' 秒'}<small>${fx}</small></li>`;
     })
     .join('');
 }
@@ -569,7 +581,7 @@ function binfoRender() {
           ? `<li><img src="${unitIcon(me.mines[0], 'flame')}" alt=""><b>地雷</b> ×${me.mines.length}<small>按「引爆地雷」一次炸掉</small></li>`
           : '') +
         (me && me.pdot
-          ? `<li><img src="${iconURL('leaf')}" alt=""><b>中毒／流血</b> 剩 ${tLeft(me.pdot.turns)} 秒<small>每 3 秒扣血</small></li>`
+          ? `<li><img src="${ailIcon(me.pdot.k || 'poison', 'leaf')}" alt=""><b>中毒／流血</b> 剩 ${tLeft(me.pdot.turns)} 秒<small>每 3 秒扣血</small></li>`
           : '');
     body =
       `<h4>你</h4><ul class="bil">${mine || '<li class="none">沒有增益或異常</li>'}</ul>${au ? `<p class="bau">光環：${au}</p>` : ''}` +
@@ -581,7 +593,7 @@ function binfoRender() {
               .map(id => `<li><b>${EMODI[id].n}</b><small>${EMODI[id].d}</small></li>`)
               .join(''),
             tr = binfoTrait(e),
-            mk = (e.msk || []).map(k => MSK[k].n).join('、'),
+            mk = (e.msk || []).map(k => `<img class="cico" src="${mskIcon(k)}" alt="">${MSK[k].n}`).join('、'),
             ail = binfoAil(e, AIL_E) + binfoBuffs(e);
           return `<h4 style="color:${RCOL[e.rar || 0]}">${esc(e.name)} <small>Lv${e.lv}・生命 ${Math.ceil(e.hp).toLocaleString()} / ${e.maxhp.toLocaleString()}</small></h4><ul class="bil">${tr ? `<li><b>特色</b><small>${esc(tr)}</small></li>` : ''}${mk ? `<li><b>招式</b><small>${mk}</small></li>` : ''}${mods}${ail || (mods || tr ? '' : '<li class="none">沒有詞綴或異常</li>')}</ul>`;
         })
@@ -2096,7 +2108,7 @@ function playEv(ev) {
         pop('閃避', p.hx, p.hy - 90, '#d8d2c4');
         sfx('tap');
       } else if (f.t === 'lunge') anim(BFX.en[f.i], 'lunge', 420);
-      else if (f.t === 'msg') bmsg(f.s);
+      else if (f.t === 'msg') bmsg(f.s, null, f.msk && mskIcon(f.msk));
       else if (f.t === 'fx') BFX.fx.push({ type: f.type, t: performance.now(), dur: 700 });
       renderBHud();
     });

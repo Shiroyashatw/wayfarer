@@ -26,6 +26,29 @@ const MSK = {
   meteor: { n: '天降隕石', cd: 6, t: 'all', m: 1.5, el: 'fire', dot: 'burn' },
   doom: { n: '終焉', cd: 7, t: 'all', m: 2, el: 'chaos' }
 };
+/* 0.3.48 招式圖示（art/icons/msk_招式代號.png）：有就用，沒有或還沒載好用 8×8 圖示 */
+const MSK_IC = {
+  heavy: 'axe',
+  multi: 'sword',
+  sweep: 'axe',
+  rend: 'heart',
+  bash: 'star',
+  venom: 'leaf',
+  firebr: 'flame',
+  frostbr: 'ice',
+  thunder: 'bolt',
+  chaosb: 'eye',
+  drain: 'heart',
+  sunder: 'shield',
+  weaken: 'skull',
+  roar: 'horn',
+  harden: 'shield',
+  heal: 'heart',
+  summon: 'party',
+  meteor: 'flame',
+  doom: 'skull'
+};
+const mskIcon = k => artIconURL('msk_' + k) || iconURL(MSK_IC[k] || 'star');
 /* 元素招式（第一招）、種族招式、各階級加上的招式池 */
 const MSK_EL = {
   phys: ['rend', 'bash'],
@@ -135,7 +158,7 @@ function monPick(e, boss, es) {
 function monCast(k, e, i, es, party, at, ext) {
   const q = MSK[k],
     ev = [];
-  ev.push({ t: 'msg', s: `${e.name} 使出「${q.n}」！`, at });
+  ev.push({ t: 'msg', s: `${e.name} 使出「${q.n}」！`, msk: k, at });
   ev.push({ t: 'lunge', i, at });
   at += 260;
   if (q.self) {

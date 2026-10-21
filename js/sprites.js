@@ -649,6 +649,8 @@ const supIcon = sp => {
 const slotFramed = it =>
   !!it && !artIconURL(`gear_${it.slot}_${it.bi}`) && typeof gearArt === 'function' && !!gearArt(it);
 const unitIcon = (u, fb) => (u && u.sk && artIconURL('unit_' + u.sk.k)) || iconURL(fb);
+/* 0.3.48 戰鬥狀態（art/icons/ail_狀態代號.png，代號同 AIL_E／AIL_H）：有就用，沒有或還沒載好用 8×8 圖示 fb */
+const ailIcon = (k, fb) => artIconURL('ail_' + k) || iconURL(fb);
 /* 按鈕的圖示：可以是圖示名稱或已經算好的圖片網址 */
 const icoSrc = x => (String(x).startsWith('data:') ? x : iconURL(x));
 /* 回傳正方形畫布（圖貼底置中、留 1 格邊），c.art 標記給 drawSpr 換算大小；還沒載好時回傳空白（不快取） */
@@ -1037,7 +1039,8 @@ function pixURL(key, tint) {
   PIXC.set(k, u);
   return u;
 }
-const curIcon = id => pixURL('cur_' + id);
+/* 有 PNG 圖示（art/icons/cur_代號.png）就用，沒有或大圖還沒載好用 8×8 的 */
+const curIcon = id => artIconURL('cur_' + id) || pixURL('cur_' + id);
 function slotIcon(it, slot) {
   /* 0.3.40 有 PNG 圖示（art/icons/gear_欄位_序號.png）就用 */
   if (it) {

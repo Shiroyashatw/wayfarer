@@ -878,6 +878,7 @@ function artRepaint() {
     sb.scrollTop = top;
     if (!$('gacha').hidden) renderGacha();
     drawTree();
+    if (!$('treeView').hidden) renderTreeCard();
     ascArtReload();
   }, 80);
 }

@@ -37,6 +37,7 @@
 | PNG 怪物圖（0.3.1.3） | `art/monsters/`、`tools/art.py`、`js/art.js`、`js/sprites.js` | 原圖放 `art/monsters/檔名.png`（或子資料夾 `art/monsters/組名/`）→ `python3 tools/art.py` → 拼成 `img/組名.hash.png` 調色盤大圖（0.3.30，每張最多 255 色、12 張圖，沿用上次的分配）＋`ART_SHEET`／`ART`（圖名 `a_檔名`，怪物 `spr` 填這個）；用到才載大圖 `artSheet`（開場 5 秒後背景載其他張）、`artImg`、畫布 `artSprite`（`sprite` 遇到 `a_` 開頭時呼叫）、大小 `ART_U`（`drawSpr` 的 `sp.art`）、列表小圖 `paintIcon18`；提示詞與流程見 skill `.claude/skills/pixel-art` |
 | 天賦樹／昇華／輔助寶石／戰場單位 PNG 圖示（0.3.42） | `js/iconmap.js`（`TREE_IC`，build 自動產生）、`js/sprites.js`、`js/tree.js`、`js/asc.js`、`js/ui.js`、`js/battle.js` | 天賦樹 `drawTree` 用 `artIconImg('tree_'+TREE_IC[名字])`；昇華 `ascPng`／`ascIcon`（48px，大圖還沒載好記在 `ASCW`，`ascArtReload` 換掉）；輔助寶石 `supIcon`（`supLine`）；單位 `unitIcon`（`heroAilHTML`、狀態面板）；大圖載好時 `artRepaint` 也重畫天賦樹與昇華盤 |
 | 技能／裝備 PNG 圖示（0.3.39～0.3.40） | `art/sheets/`（圖表原圖）、`art/icons/`、`tools/icon_sheets.py`、`tools/art.py`、`js/sprites.js` | 圖表 `docs/圖示圖表.md` → 原圖放 `art/sheets/`、`icon_sheets.py process` 切到 `art/icons/sk_代號.png`／`gear_欄位_序號.png`（實心背景自動去背，icon_sheets.py 的 clear_bg）→ `art.py` 打包（大圖 `ic_*`）；顯示 `skIcon(代號, 原本圖示)`、裝備 `slotIcon`（都走 `artIconURL`）（沒有就用 8×8 `iconURL`）、按鈕 `icoSrc`；技能石要有 `k`（`gemSkill`）；用在 `gemCell`、`gemRow`、技能石商店、戰鬥按鈕（`renderBHud`／`renderMBHud`）；CSS `.cico.sk`、`.bcmd.six .cb img` |
+| 狀態與怪物招式 PNG 圖示（0.3.48） | `js/sprites.js`、`js/monskill.js`、`js/battle.js`、`js/mp.js` | `art/icons/ail_狀態代號.png`（代號同 `AIL_E`／`AIL_H`，`pdot.k` 燃燒／中毒／流血）、`msk_招式代號.png`（`MSK` 的鍵）；`ailIcon(代號, 原本圖示)`、`mskIcon`（退回 `MSK_IC`）、增益 `buffIcon`（`m_招式` 用招式圖示）；用在 `ailHTML`、`heroAilHTML`、狀態面板 `binfoAil`／`binfoBuffs`／招式列、放招訊息 `bmsg(訊息, 紀錄, 圖示)`（事件 `msg` 帶 `msk`）；CSS `.bmsg img` |
 | 裝備圖示、材質階級（0.3.1） | `js/gear.js` | `GEAR`（每個底材一張 12×12，索引對應 `BASES`，新底材要補圖）、`MATC`／`BLADEC`／`TRIMC`／`GEMC`、`tierOf`／`TIERN`、`gearPal`、`gearIcon`（`slotIcon` 呼叫） |
 | 點地圖移動速度（0.3.1.1，0.3.33 滑條） | `js/map.js`、`js/ui.js` | `SIM_SPEED`、`SIM_MAX`（10 倍）、`simSpeed()`（乘上 `S.simSpd`）；設定面板的滑條 `#simSpd`（`ui.js` 的 `input`／`change` 監聽，`.slider`） |
 | 戰鬥預選技能、藥水冷卻、下一層冷卻清空（0.3.44） | `js/battle.js`、`js/mp.js` | 單人 `B.queued`（`useSkill` 沒輪到時記下、`meReady` 放出、`beginAct` 清掉）、按鈕 `.cb.q`；藥水 `POT_CD`、`potKey`／`potStart`／`potLeft`／`potMask`（冷卻放 `me.cd`）、`bItem` 不再 `beginAct`；組隊 `MB.queued`（`mpMy`、`mpApply` 輪到時送出）、`mpDrink`（`mpOnAct` 收到藥水直接喝）；`nextRoom`／`mpRoomClear` 清 `cd` |
@@ -172,17 +173,17 @@
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
 
-### js/sprites.js（1415 行）
+### js/sprites.js（1418 行）
 
-- **pixel sprites (original art)**（3），33 個宣告
-- **icons: currency, item slots, passive nodes**（812），7 個宣告
-- **boss sprites**（1070），1 個宣告
+- **pixel sprites (original art)**（3），34 個宣告
+- **icons: currency, item slots, passive nodes**（814），7 個宣告
+- **boss sprites**（1073），1 個宣告
 
 ### js/gear.js（685 行）
 
 - **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1），17 個宣告
 
-### js/art.js（749 行）
+### js/art.js（1098 行）
 
 
 ### js/skills.js（2080 行）
@@ -200,16 +201,16 @@
 - **enemies**（916），16 個宣告
 - **modal**（1054），5 個宣告
 
-### js/battle.js（3443 行）
+### js/battle.js（3455 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
-- **battle: logic**（239），41 個宣告
-- **battle: rules（單人與組隊共用）**（619），66 個宣告
-- **battle: solo**（1822），20 個宣告
-- **dungeons (shared by solo and party)**（2339），24 個宣告
-- **battle: drawing**（3086），7 個宣告
+- **battle: logic**（239），42 個宣告
+- **battle: rules（單人與組隊共用）**（631），66 個宣告
+- **battle: solo**（1834），20 個宣告
+- **dungeons (shared by solo and party)**（2351），24 個宣告
+- **battle: drawing**（3098），7 個宣告
 
-### js/monskill.js（203 行）
+### js/monskill.js（226 行）
 
 
 ### js/map.js（1761 行）
@@ -225,15 +226,15 @@
 - **movement**（1578），5 個宣告
 - **GPS**（1633），11 個宣告
 
-### js/tree.js（499 行）
+### js/tree.js（502 行）
 
-- **passive tree (full screen)**（3），18 個宣告
+- **passive tree (full screen)**（3），19 個宣告
 
-### js/ui.js（2167 行）
+### js/ui.js（2168 行）
 
 - **HUD & sheets**（3），63 個宣告
-- **entity interaction**（936），11 個宣告
-- **actions**（1149），2 個宣告
+- **entity interaction**（937），11 個宣告
+- **actions**（1150），2 個宣告
 
 ### js/endgame.js（691 行）
 
