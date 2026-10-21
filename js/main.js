@@ -43,8 +43,7 @@ function migrate(s) {
 }
 /* 換了存檔（雲端載入、登入）後整個畫面重畫 */
 function refreshAll() {
-  renderHud();
-  homeRender();
+  viewRender();
   if (sheetName) renderSheet();
 }
 function start() {

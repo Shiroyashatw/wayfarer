@@ -809,12 +809,8 @@ const MECH = [
   'potBomb',
   'ailDur'
 ];
-/* 升級曲線（0.3.1.7／0.3.1.8 前期放緩）：原本的 40·lv^2.1＋20·lv 乘上前期折扣，Lv1 打 2 折，往後平滑回到 Lv25 的原值。
-   以同等級一般怪估算：Lv1→2 約 1 隻、Lv5 約 10 隻、Lv10 約 32 隻、Lv15 約 76 隻、Lv20 約 150 隻（到 Lv10 共約 100 隻、到 Lv20 共約 860 隻） */
-const xpNeed = lv => {
-  const base = 40 * Math.pow(lv, 2.1) + 20 * lv;
-  return Math.round(lv >= 25 ? base : base * (0.2 + 0.8 * Math.pow((lv - 1) / 24, 1.8)));
-};
+/* 0.1.0 肉鴿的升級曲線：一局十幾場戰鬥，大約每 1～2 場升一級（同等級一般怪一群約 lv·20 經驗） */
+const xpNeed = lv => Math.round(20 + 18 * lv);
 function fullHeal() {
   const st = stats();
   S.hp = st.maxhp;
@@ -877,9 +873,7 @@ function gainXP(n) {
     S.xp -= xpNeed(S.lv);
     S.lv++;
     up = true;
-    /* 0.3.11：每升一級送 2 個祈願石 */
-    giveCur('wish', 2);
-    addLog(`升級了！現在是 Lv${S.lv}，獲得 1 天賦點、2 個祈願石`);
+    addLog(`升級了！現在是 Lv${S.lv}`);
   }
   return up;
 }

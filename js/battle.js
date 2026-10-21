@@ -2483,6 +2483,12 @@ function winBattle() {
     gold += Math.round(o.gold * rnd(0.8, 1.2) * mult * st.goldMul * rate('gold'));
     drops.push(...dropLoot(o, B.boss && i === 0, o.minion));
   });
+  /* 一局裡的經驗與金幣照節點給（一般戰鬥、菁英、首領），不照怪物（災厄、首領的倍率很高），runGain 在 run.js */
+  if (S.run && typeof runGain === 'function') {
+    const c = runGain();
+    xp = Math.round(c.xp * rate('xp'));
+    gold = Math.round(c.gold * st.goldMul * rate('gold'));
+  }
   S.gold += gold;
   const up = gainXP(xp);
   S.stacks = st.keepStacks ? B.me.stacks || 0 : 0;

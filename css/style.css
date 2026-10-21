@@ -794,3 +794,23 @@ button.chip:disabled{opacity:.45}
 .srow2 .t small{color:var(--dim);font-size:var(--fs-cap);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .srow2.emp{background:none;border:1.5px dashed #ffffff22}
 .selrow{display:flex;justify-content:flex-end;margin-bottom:var(--sp-2)}
+
+/* ---------- 0.1.0 肉鴿：主選單、章節地圖 ---------- */
+#home,#runmap{position:fixed;inset:0;overflow-y:auto;padding:calc(56px + var(--sat)) calc(var(--sp-5) + var(--sar)) calc(110px + var(--sab)) calc(var(--sp-5) + var(--sal));background:radial-gradient(ellipse at 50% 30%,#2a2236,var(--bg) 70%)}
+.hm{max-width:420px;margin:0 auto;display:grid;gap:var(--sp-4);text-align:center}
+.hm-t{font-family:var(--f-pix);font-weight:400;font-size:40px;color:var(--gold);margin:40px 0 0;text-shadow:0 3px 0 #000}
+.hm-b{display:grid;gap:var(--sp-3)}
+.rm-hd{display:flex;justify-content:space-between;align-items:baseline;max-width:420px;margin:0 auto var(--sp-3);font-family:var(--f-pix);font-size:var(--fs-title)}
+.rm-map{position:relative;max-width:420px;margin:0 auto}
+.rm-ln{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.rm-ln line{stroke:#ffffff26;stroke-width:2;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
+.rm-ln line.on{stroke:var(--gild);stroke-dasharray:none}
+.rn{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:2px solid #000;background:var(--card2);display:grid;place-items:center;padding:0}
+.rn img{width:24px;height:24px;image-rendering:pixelated}
+.rn:disabled{cursor:default;opacity:.45}
+.rn.done{opacity:.35}
+.rn.next{border-color:var(--gold);box-shadow:0 0 0 3px #f2c14e40,0 0 14px #f2c14e80;animation:rnp 1.4s ease-in-out infinite;opacity:1}
+.rn.elite{background:#4a2630}.rn.boss{width:60px;height:60px;margin:-30px 0 0 -30px;background:#3a1a22;border-color:var(--danger)}
+.rn.boss img{width:32px;height:32px}
+.rn.shop{background:#2a3a2a}.rn.rest{background:#3a2e1a}.rn.chest{background:#3a321a}.rn.event{background:#26304a}
+@keyframes rnp{50%{box-shadow:0 0 0 6px #f2c14e30,0 0 22px #f2c14ea0}}
