@@ -1831,7 +1831,7 @@ for (const [k, v] of Object.entries({
   SKILLS[k].cd = v;
 for (const k in SKILLS) if (SKILLS[k].cd == null && SKILLS[k].kind !== 'aura' && k !== 'attack') SKILLS[k].cd = 0;
 /* ---- 0.3.36 輔助寶石：附加、轉換、集中、殘暴、控制毀滅、快速、效率…（參考 PoE／PoE2） ---- */
-SUPREQ.melee = q => q.kind === 'attack' && q.w !== 'bow';
+SUPREQ.melee = q => q.kind === 'attack' && q.w !== 'bow' && q.w !== 'xbow';
 SUPREQ.aoe = q => SUPREQ.dmg(q) && q.tg === 'all';
 SUPREQ.chaos = q =>
   SUPREQ.dmg(q) && ((q.kind === 'spell' && q.el === 'chaos') || (q.addEl && q.addEl[0] === 'chaos') || !!q.poison);
@@ -1997,3 +1997,83 @@ for (const sp of [
   SUPG.push(sp);
   SUPGI[sp.k] = sp;
 }
+/* 0.3.46 弩跟弓分開：弩有自己的一套技能（弓的技能只能用弓） */
+Object.assign(SKILLS, {
+  xbolt: {
+    name: '穿甲弩矢',
+    mp: 6,
+    kind: 'attack',
+    w: 'xbow',
+    mult: 1.8,
+    brk: 60,
+    fx: 'arrow',
+    icon: 'xbow',
+    r: 1,
+    cd: 0
+  },
+  xburst: {
+    name: '爆裂弩矢',
+    mp: 8,
+    kind: 'attack',
+    w: 'xbow',
+    mult: 1.1,
+    tg: 'all',
+    addEl: ['fire', 0.5],
+    fx: 'arrow',
+    icon: 'flame',
+    r: 2,
+    cd: 3
+  },
+  xrapid: {
+    name: '連弩',
+    mp: 7,
+    kind: 'attack',
+    w: 'xbow',
+    mult: 0.5,
+    hits: 4,
+    fx: 'arrow',
+    icon: 'xbow',
+    r: 2,
+    cd: 0
+  },
+  xspread: {
+    name: '散射',
+    mp: 8,
+    kind: 'attack',
+    w: 'xbow',
+    mult: 0.85,
+    proj: 3,
+    fx: 'arrow',
+    icon: 'arrow',
+    r: 3,
+    cd: 2
+  },
+  xfrost: {
+    name: '冰封弩矢',
+    mp: 9,
+    kind: 'attack',
+    w: 'xbow',
+    mult: 1.3,
+    addEl: ['cold', 0.6],
+    freeze: 0.4,
+    slow: 2,
+    fx: 'arrow',
+    icon: 'ice',
+    r: 3,
+    cd: 4
+  },
+  xsiege: {
+    name: '攻城弩擊',
+    mp: 14,
+    kind: 'attack',
+    w: 'xbow',
+    mult: 3,
+    charge: 2,
+    crit: 10,
+    killBoom: 30,
+    fx: 'arrow',
+    icon: 'xbow',
+    r: 4,
+    cd: 6
+  }
+});

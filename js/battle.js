@@ -709,7 +709,8 @@ const lifeCost = (st, sk) => (sk.lifeCost ? Math.round(st.maxhp * sk.lifeCost) :
 const wOk = (st, sk) =>
   !st ||
   !!st.anyWep ||
-  ((!sk.w || !st.wtag || (sk.w === 'melee' ? st.wtag !== 'bow' : sk.w === st.wtag)) && (!sk.oh || st.otag === sk.oh));
+  ((!sk.w || !st.wtag || (sk.w === 'melee' ? st.wtag !== 'bow' && st.wtag !== 'xbow' : sk.w === st.wtag)) &&
+    (!sk.oh || st.otag === sk.oh));
 const canPay = (o, st, sk) =>
   wOk(st, sk) &&
   (st.blood ? o.hp > skCost(st, sk) + lifeCost(st, sk) : o.mp >= skCost(st, sk) && o.hp > lifeCost(st, sk));

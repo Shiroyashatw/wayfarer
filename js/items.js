@@ -190,7 +190,7 @@ function itemCard(it, title, o = {}) {
     avg = x => (x && x.phys ? (qPhys(x)[0] + qPhys(x)[1]) / 2 : 0);
   if (it.phys)
     base.push(
-      esc(`${WTAGN[b.t] || ''}${b.th ? '・雙手' : '・單手'}`),
+      esc(`${wepCat(b)}${b.th ? '・雙手' : '・單手'}`),
       esc(`物理傷害 ${qPhys(it)[0]}–${qPhys(it)[1]}${it.q ? `（品質 +${it.q}%）` : ''}`) +
         (c ? dlt(avg(it), avg(c)) : ''),
       esc(`暴擊率 ${it.crit}%`) + (c ? dlt(it.crit, c.crit || 0) : '')
@@ -201,6 +201,7 @@ function itemCard(it, title, o = {}) {
     );
   if (hasQ(it) && !it.q) base.push('品質 0%');
   if (it.imp) base.push(esc(STATN[it.imp[0]](it.imp[1])));
+  if (b.k === 'quiver') base.push(`<span class="${wepType() === 'bow' ? 'c-dim' : 'c-bad'}">要裝備弓才有效果</span>`);
   if (it.lure) base.push(esc(STATN.lure(it.lure)));
   if (base.length) h += `<div class="ibase">${base.join('<br>')}</div>`;
   if (it.leg)
@@ -638,7 +639,7 @@ function sumStats() {
   const A = (k, v) => (t[k] = (t[k] || 0) + v);
   for (const s of SLOTS) {
     const it = S.eq[s];
-    if (!it || (s === 'offhand' && twoHand())) continue;
+    if (!it || (s === 'offhand' && !offOn())) continue;
     if (it.arm) t.armor += qArm(it);
     if (it.imp) A(it.imp[0], it.imp[1]);
     if (it.lure) t.lure += it.lure;
@@ -700,7 +701,8 @@ function stats() {
   } else if (wt === 'axe') {
     t.physPct += t.axePct;
     t.critMulti += t.axeCm;
-  } else if (wt === 'bow') {
+  } else if (wt === 'bow' || wt === 'xbow') {
+    /* 0.3.46 弓弩共用遠程天賦 */
     t.physPct += t.bowPct;
     t.critPct += t.bowCrit;
   } else if (wt === 'staff') {
@@ -788,7 +790,7 @@ function stats() {
     /* 0.3：武器類別（昇華輔助與技能標籤用）、昇華輔助效果、昇華與新技能的機制 */
     wtag: wt,
     otag: ot,
-    ranged: wt === 'bow',
+    ranged: wt === 'bow' || wt === 'xbow',
     sup: typeof ascSup === 'function' ? ascSup() : [],
     ...Object.fromEntries(MECH.map(k => [k, t[k]])),
     dotMul: 1 + t.dotPct / 100,

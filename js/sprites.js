@@ -788,12 +788,27 @@ const WTAGN = {
   sword: '劍',
   axe: '斧鎚',
   spear: '矛',
-  bow: '弓弩',
+  bow: '弓',
+  xbow: '弩',
   dagger: '匕首爪',
   staff: '法杖',
   melee: '近戰武器'
 };
-const offType = () => (S.eq.offhand && !twoHand() ? BASES.offhand[S.eq.offhand.bi].k : '');
+/* 0.3.46 箭袋：副手，只有拿弓時才能用（弓是雙手，但可以配箭袋） */
+const isQuiver = it => !!it && it.slot === 'offhand' && BASES.offhand[it.bi].k === 'quiver';
+/* 副手有沒有作用：雙手武器只能配箭袋（而且要是弓）；箭袋也只配弓 */
+const offOn = (eq = S.eq) =>
+  !!eq.offhand && (isQuiver(eq.offhand) ? wepType(eq.weapon) === 'bow' && !!eq.weapon : !twoHand(eq.weapon));
+const offType = () => (offOn() ? BASES.offhand[S.eq.offhand.bi].k : '');
+/* 武器的細分類（底材分類、說明用）：單手劍、雙手劍、單手斧、雙手斧、單手鎚、雙手鎚、弓、弩、法杖、短杖、矛、匕首、爪 */
+function wepCat(b) {
+  const th = !!b.th;
+  if (b.t === 'sword') return th ? '雙手劍' : '單手劍';
+  if (b.t === 'axe') return b.k === 'mace' || b.k === 'gmace' ? (th ? '雙手鎚' : '單手鎚') : th ? '雙手斧' : '單手斧';
+  if (b.t === 'staff') return th ? '法杖' : '短杖';
+  if (b.t === 'dagger') return b.k === 'claw' ? '爪' : '匕首';
+  return { bow: '弓', xbow: '弩', spear: '矛' }[b.t] || '武器';
+}
 /* ================= icons: currency, item slots, passive nodes ================= */
 const PIX = {
   cur_vaal: {
@@ -1039,7 +1054,7 @@ function slotIcon(it, slot) {
     const n = it ? baseOf(it).n : '短劍';
     key = n.includes('斧') ? 'sl_axe' : n.includes('弓') ? 'sl_bow' : n.includes('杖') ? 'sl_staff' : 'sl_sword';
   }
-  if (s === 'offhand') key = 'sl_' + (it ? baseOf(it).k : 'shield');
+  if (s === 'offhand') key = 'sl_' + (it ? (baseOf(it).k === 'quiver' ? 'bow' : baseOf(it).k) : 'shield');
   if (!PIX[key]) key = 'sl_shield'; /* 符咒、仙桃等沒有小圖示的副手 */
   return pixURL(key, it ? shade(RCOL[it.r] === '#e8e2d4' ? '#b8b2a4' : RCOL[it.r], 0) : '#5a5064');
 }

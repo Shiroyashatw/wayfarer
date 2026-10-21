@@ -473,7 +473,8 @@ const SKW = [
   ['mine', '目前武器能用'],
   ['sword', '劍'],
   ['axe', '斧鎚'],
-  ['bow', '弓弩'],
+  ['bow', '弓'],
+  ['xbow', '弩'],
   ['dagger', '匕首爪'],
   ['spear', '矛'],
   ['staff', '法杖'],
@@ -487,7 +488,7 @@ function skwOk(k) {
   if (f === 'mine') return wOk(stats(), q);
   if (f === 'shield') return q.oh === 'shield';
   if (f === 'none') return !q.w && !q.oh;
-  return q.w === f || (q.w === 'melee' && f !== 'bow');
+  return q.w === f || (q.w === 'melee' && f !== 'bow' && f !== 'xbow');
 }
 /* 0.3.44 篩選改成兩個下拉（類型、武器），技能頁與商店共用 */
 const skfSel = () =>
@@ -1733,7 +1734,16 @@ const A = {
   equip: d => {
     const nit = S.inv[selItem.i],
       /* 雙手武器和副手不能同時裝：裝上一邊時另一邊收回背包 */
-      clash = d.s === 'weapon' && twoHand(nit) ? 'offhand' : d.s === 'offhand' && twoHand() ? 'weapon' : null;
+      bowW = d.s === 'weapon' && wepType(nit) === 'bow',
+      clash =
+        d.s === 'weapon'
+          ? S.eq.offhand && (isQuiver(S.eq.offhand) ? !bowW : twoHand(nit))
+            ? 'offhand'
+            : null
+          : d.s === 'offhand' && !isQuiver(nit) && twoHand()
+            ? 'weapon'
+            : null;
+    if (d.s === 'offhand' && isQuiver(nit) && wepType() !== 'bow') return toast('箭袋要先裝備弓才能用');
     if (clash && S.eq[clash] && S.inv.length >= 30 && !S.eq[d.s]) return toast('背包已滿，先騰出空間');
     const it = S.inv.splice(selItem.i, 1)[0],
       cur = S.eq[d.s];
@@ -1742,7 +1752,9 @@ const A = {
     if (clash && S.eq[clash]) {
       S.inv.push(S.eq[clash]);
       S.eq[clash] = null;
-      toast(clash === 'offhand' ? '雙手武器：副手收回背包' : '裝上副手：雙手武器收回背包');
+      toast(
+        clash === 'offhand' ? (bowW ? '弓只能配箭袋：副手收回背包' : '副手收回背包') : '裝上副手：雙手武器收回背包'
+      );
     }
     sfx('select');
     toast(`裝備了 ${itemTitle(it)}`);

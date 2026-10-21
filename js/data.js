@@ -1308,7 +1308,7 @@ const BASES = {
     { n: '矛', k: 'spear', t: 'spear', th: 1, phys: [8, 16], crit: 6 },
     { n: '戟', k: 'halberd', t: 'spear', th: 1, phys: [10, 19], crit: 5 },
     { n: '長弓', k: 'lbow', t: 'bow', th: 1, phys: [7, 15], crit: 7 },
-    { n: '弩', k: 'xbow', t: 'bow', th: 1, phys: [10, 17], crit: 6, imp: ['penRes', 8] },
+    { n: '弩', k: 'xbow', t: 'xbow', th: 1, phys: [10, 17], crit: 6, imp: ['penRes', 8] },
     { n: '匕首', k: 'dagger', t: 'dagger', phys: [3, 7], crit: 9 },
     { n: '爪', k: 'claw', t: 'dagger', phys: [4, 8], crit: 7, imp: ['leech', 2] },
     { n: '權杖', k: 'scepter', t: 'staff', phys: [3, 6], crit: 5, imp: ['spellPct', 12] },
@@ -1322,12 +1322,48 @@ const BASES = {
     { n: '戰鎚', k: 'gmace', t: 'axe', th: 1, phys: [13, 21], crit: 3, imp: ['armorPct', 10] },
     { n: '複合弓', k: 'lbow', t: 'bow', th: 1, phys: [7, 14], crit: 8, imp: ['critPct', 2] },
     { n: '竹弓', k: 'bow', t: 'bow', th: 1, phys: [4, 11], crit: 6, imp: ['speed', 2] },
-    { n: '重弩', k: 'xbow', t: 'bow', th: 1, phys: [12, 20], crit: 5, imp: ['penRes', 10] },
+    { n: '重弩', k: 'xbow', t: 'xbow', th: 1, phys: [12, 20], crit: 5, imp: ['penRes', 10] },
     { n: '拳刃', k: 'claw', t: 'dagger', phys: [5, 9], crit: 8, imp: ['dbl', 4] },
     { n: '蛇牙匕首', k: 'dagger', t: 'dagger', phys: [3, 8], crit: 9, imp: ['poisonCh', 10] },
     { n: '三叉戟', k: 'spear', t: 'spear', th: 1, phys: [9, 17], crit: 6, imp: ['coldPct', 12] },
     { n: '關刀', k: 'halberd', t: 'spear', th: 1, phys: [11, 21], crit: 5, imp: ['physPct', 10] },
-    { n: '骨杖', k: 'staff', t: 'staff', th: 1, phys: [2, 6], crit: 5, imp: ['chaosPct', 20] }
+    { n: '骨杖', k: 'staff', t: 'staff', th: 1, phys: [2, 6], crit: 5, imp: ['chaosPct', 20] },
+    { n: '水晶法杖', k: 'staff', t: 'staff', th: 1, phys: [3, 6], crit: 6, imp: ['elePct', 18] },
+    { n: '雷霆杖', k: 'staff', t: 'staff', th: 1, phys: [2, 6], crit: 6, imp: ['lightPct', 22] },
+    { n: '短杖', k: 'scepter', t: 'staff', phys: [2, 5], crit: 6, imp: ['manaRegen', 3] },
+    { n: '短矛', k: 'spear', t: 'spear', phys: [5, 11], crit: 6, imp: ['speed', 2] },
+    { n: '長槍', k: 'spear', t: 'spear', th: 1, phys: [9, 18], crit: 7, imp: ['critPct', 2] },
+    { n: '刺客短刀', k: 'dagger', t: 'dagger', phys: [4, 8], crit: 10, imp: ['critMulti', 12] },
+    { n: '虎爪', k: 'claw', t: 'dagger', phys: [5, 9], crit: 7, imp: ['bleedCh', 8] },
+    { n: '闊劍', k: 'gsword', t: 'sword', th: 1, phys: [11, 19], crit: 5, imp: ['physPct', 10] },
+    { n: '斬馬刀', k: 'gsword', t: 'sword', th: 1, phys: [12, 22], crit: 6, imp: ['critMulti', 15] },
+    { n: '焰形劍', k: 'gsword', t: 'sword', th: 1, phys: [10, 20], crit: 6, imp: ['firePct', 15] },
+    { n: '手斧', k: 'axe', t: 'axe', phys: [5, 11], crit: 5, imp: ['speed', 2] },
+    { n: '鉞', k: 'axe', t: 'axe', phys: [6, 13], crit: 5, imp: ['physPct', 8] },
+    { n: '飛斧', k: 'axe', t: 'axe', phys: [4, 10], crit: 7, imp: ['critPct', 2] },
+    { n: '骨斧', k: 'axe', t: 'axe', phys: [5, 12], crit: 5, imp: ['leech', 1] },
+    { n: '劊子手斧', k: 'gaxe', t: 'axe', th: 1, phys: [13, 23], crit: 4, imp: ['exec', 10] },
+    { n: '開山斧', k: 'gaxe', t: 'axe', th: 1, phys: [14, 22], crit: 4, imp: ['physPct', 12] },
+    { n: '月牙斧', k: 'gaxe', t: 'axe', th: 1, phys: [12, 21], crit: 5, imp: ['bleedCh', 8] },
+    { n: '釘頭錘', k: 'mace', t: 'axe', phys: [6, 12], crit: 4, imp: ['stunCh', 5] },
+    { n: '晨星', k: 'mace', t: 'axe', phys: [5, 13], crit: 5, imp: ['bleedCh', 5] },
+    { n: '銅錘', k: 'mace', t: 'axe', phys: [6, 11], crit: 4, imp: ['armorPct', 8] },
+    { n: '大地之鎚', k: 'gmace', t: 'axe', th: 1, phys: [14, 24], crit: 3, imp: ['stunCh', 8] },
+    { n: '狼牙棒', k: 'gmace', t: 'axe', th: 1, phys: [12, 22], crit: 4, imp: ['bleedCh', 8] },
+    { n: '雷神鎚', k: 'gmace', t: 'axe', th: 1, phys: [13, 22], crit: 4, imp: ['lightPct', 15] },
+    { n: '精靈弓', k: 'lbow', t: 'bow', th: 1, phys: [6, 14], crit: 8, imp: ['critMulti', 10] },
+    { n: '骨弓', k: 'bow', t: 'bow', th: 1, phys: [5, 13], crit: 6, imp: ['poisonCh', 8] },
+    { n: '手弩', k: 'xbow', t: 'xbow', phys: [6, 11], crit: 6, imp: ['speed', 2] },
+    { n: '連弩', k: 'xbow', t: 'xbow', th: 1, phys: [7, 13], crit: 6, imp: ['dbl', 5] },
+    { n: '攻城弩', k: 'xbow', t: 'xbow', th: 1, phys: [14, 24], crit: 5, imp: ['penRes', 12] },
+    { n: '龍骨杖', k: 'staff', t: 'staff', th: 1, phys: [3, 7], crit: 6, imp: ['firePct', 20] },
+    { n: '魔杖', k: 'scepter', t: 'staff', phys: [2, 5], crit: 6, imp: ['spellPct', 14] },
+    { n: '骨魔杖', k: 'scepter', t: 'staff', phys: [2, 5], crit: 6, imp: ['chaosPct', 14] },
+    { n: '聖杖', k: 'scepter', t: 'staff', phys: [3, 6], crit: 5, imp: ['healPct', 12] },
+    { n: '儀式匕首', k: 'dagger', t: 'dagger', phys: [3, 7], crit: 9, imp: ['spellPct', 10] },
+    { n: '飛刀', k: 'dagger', t: 'dagger', phys: [3, 8], crit: 10, imp: ['speed', 2] },
+    { n: '鷹爪', k: 'claw', t: 'dagger', phys: [4, 9], crit: 8, imp: ['dbl', 4] },
+    { n: '鬼爪', k: 'claw', t: 'dagger', phys: [5, 9], crit: 7, imp: ['leech', 2] }
   ],
   /* 防具與飾品一樣只能往後加（存檔用索引）；外觀與圖示在 gear.js */
   helm: [
@@ -1433,7 +1469,18 @@ const BASES = {
     { n: '鳶盾', k: 'shield', arm: 2, imp: ['block', 4] },
     { n: '骨盾', k: 'shield', arm: 1.8, imp: ['resChaos', 10] },
     { n: '水晶球', k: 'focus', imp: ['spellPct', 18] },
-    { n: '八卦鏡', k: 'talisman', imp: ['cdr', 5] }
+    { n: '八卦鏡', k: 'talisman', imp: ['cdr', 5] },
+    { n: '魂燈', k: 'lantern', imp: ['vision', 40], lure: 40 },
+    { n: '星盤', k: 'focus', imp: ['elePct', 15] },
+    { n: '骷髏法器', k: 'focus', imp: ['chaosPct', 18] },
+    { n: '五雷符', k: 'talisman', imp: ['lightPct', 18] },
+    { n: '鎮煞符', k: 'talisman', imp: ['resAll', 8] },
+    { n: '皮箭袋', k: 'quiver', imp: ['bowPct', 12] },
+    { n: '火焰箭袋', k: 'quiver', imp: ['addFire', 4] },
+    { n: '寒冰箭袋', k: 'quiver', imp: ['addCold', 4] },
+    { n: '雷電箭袋', k: 'quiver', imp: ['addLight', 5] },
+    { n: '毒箭袋', k: 'quiver', imp: ['poisonCh', 10] },
+    { n: '銳利箭袋', k: 'quiver', imp: ['critPct', 3] }
   ]
 };
 const DROPS = ['weapon', 'offhand', 'helm', 'chest', 'gloves', 'boots', 'belt', 'ring', 'amulet'];
@@ -2778,5 +2825,5 @@ const TREE = (() => {
       n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.44';
+const VER = '0.3.46';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

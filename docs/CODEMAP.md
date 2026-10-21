@@ -41,6 +41,7 @@
 | 點地圖移動速度（0.3.1.1，0.3.33 滑條） | `js/map.js`、`js/ui.js` | `SIM_SPEED`、`SIM_MAX`（10 倍）、`simSpeed()`（乘上 `S.simSpd`）；設定面板的滑條 `#simSpd`（`ui.js` 的 `input`／`change` 監聽，`.slider`） |
 | 戰鬥預選技能、藥水冷卻、下一層冷卻清空（0.3.44） | `js/battle.js`、`js/mp.js` | 單人 `B.queued`（`useSkill` 沒輪到時記下、`meReady` 放出、`beginAct` 清掉）、按鈕 `.cb.q`；藥水 `POT_CD`、`potKey`／`potStart`／`potLeft`／`potMask`（冷卻放 `me.cd`）、`bItem` 不再 `beginAct`；組隊 `MB.queued`（`mpMy`、`mpApply` 輪到時送出）、`mpDrink`（`mpOnAct` 收到藥水直接喝）；`nextRoom`／`mpRoomClear` 清 `cd` |
 | 藥水百分比與預覽、商店多買、特殊倉庫、快速比較（0.3.44） | `js/ui.js`、`js/items.js`、`index.html` | HUD `hpt`／`mpt`；`potVal`（items.js，共用回復量）、`potRow`（`.potr`／`.pbar`）；商店 `openShop` 的 `.buyn`；倉庫 `stashRow`／`MAT_IC`；比較 `eqPower`／`eqCmp`／`cmpBadge`／`cmpTxt`；人形裝備欄 `.doll2` |
+| 武器細分類、弩、箭袋（0.3.46） | `js/sprites.js`、`js/items.js`、`js/ui.js`、`js/skills.js`、`js/battle.js` | `wepCat`（13 類）、弩是 `t: 'xbow'`（`WTAGN`、`wOk` 的 melee、`SUPREQ.melee`、`SKW`）、弩技能 `xbolt`～`xsiege`（skills.js 結尾）；箭袋 `isQuiver`／`offOn`（`sumStats`、`offType`）、`A.equip` 的 clash 規則 |
 | 背包、裝備詳情、契靈的格子版面（0.3.43） | `js/ui.js`、`js/items.js`、`js/gacha.js`、`css/style.css` | 共用元件 `.slot-g`（格子，`.r0`～`.r3`、`.fill` 給自帶外框的 `slotFramed` 圖示、`i.badge`）、`.chip`、`.sel`（`<select data-chg="動作">`，`change` 監聽呼叫 `A[動作]({k})`）、`moreK`（記住開關的摺疊）；背包 `renderSheet` 的 `bag` 分支、`curRow`／`curHelp`；裝備詳情 `item` 分支、`itemType`、`itemCard(it, title, {head, cmp})`、`dlt`；契靈 `pactHTML`／`pactCell`／`pactDetHTML`（sheet `pdet`，`SEL.pdet`，`A.pactDet`） |
 | 背包批量賣出、上鎖（0.3.1） | `js/ui.js` | `canSell`（城鎮或據點）、`bagListHTML`、`worseThanEq`、`sellSel`、`A.sellMode`／`A.sellPick`／`A.sellQuick`／`A.sellMany`／`A.lock`、單件 `A.sell`；勾選狀態 `SEL.sell`、上鎖 `it.lock` |
 | 裝備生成、詞綴、通貨製作 | `js/items.js` | `makeItem`、`rollAffix`、`craftable`、`craft` |
@@ -166,16 +167,16 @@
 
 - **utils**（6），15 個宣告
 
-### js/data.js（2783 行）
+### js/data.js（2830 行）
 
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
 
-### js/sprites.js（1400 行）
+### js/sprites.js（1415 行）
 
-- **pixel sprites (original art)**（3），30 個宣告
-- **icons: currency, item slots, passive nodes**（797），7 個宣告
-- **boss sprites**（1055），1 個宣告
+- **pixel sprites (original art)**（3），33 個宣告
+- **icons: currency, item slots, passive nodes**（812），7 個宣告
+- **boss sprites**（1070），1 個宣告
 
 ### js/gear.js（685 行）
 
@@ -184,29 +185,29 @@
 ### js/art.js（749 行）
 
 
-### js/skills.js（2000 行）
+### js/skills.js（2080 行）
 
 
 ### js/audio.js（221 行）
 
 - **audio**（3），14 個宣告
 
-### js/items.js（1175 行）
+### js/items.js（1177 行）
 
 - **player & items**（3），30 個宣告
-- **skill gems**（278），29 個宣告
-- **stats**（525），23 個宣告
-- **enemies**（914），16 個宣告
-- **modal**（1052），5 個宣告
+- **skill gems**（279），29 個宣告
+- **stats**（526），23 個宣告
+- **enemies**（916），16 個宣告
+- **modal**（1054），5 個宣告
 
-### js/battle.js（3442 行）
+### js/battle.js（3443 行）
 
 - **battle: painted backgrounds**（3），5 個宣告
 - **battle: logic**（239），41 個宣告
 - **battle: rules（單人與組隊共用）**（619），66 個宣告
-- **battle: solo**（1821），20 個宣告
-- **dungeons (shared by solo and party)**（2338），24 個宣告
-- **battle: drawing**（3085），7 個宣告
+- **battle: solo**（1822），20 個宣告
+- **dungeons (shared by solo and party)**（2339），24 個宣告
+- **battle: drawing**（3086），7 個宣告
 
 ### js/monskill.js（203 行）
 
@@ -228,11 +229,11 @@
 
 - **passive tree (full screen)**（3），18 個宣告
 
-### js/ui.js（2155 行）
+### js/ui.js（2167 行）
 
 - **HUD & sheets**（3），63 個宣告
-- **entity interaction**（935），11 個宣告
-- **actions**（1148），2 個宣告
+- **entity interaction**（936），11 個宣告
+- **actions**（1149），2 個宣告
 
 ### js/endgame.js（691 行）
 
