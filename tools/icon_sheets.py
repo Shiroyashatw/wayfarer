@@ -24,7 +24,8 @@ HEAD = re.compile(r'^(game skill icon of|game icon of|single item icon of)\s+(an
 STYLE = (
     'pixel art game icon sheet: a {cols} by {rows} grid of {n} separate icons, each icon 32x32 pixels centered in its own '
     'equal cell, all icons in one consistent style: bold simple readable silhouette, 1px dark outline, flat colors with one '
-    'soft highlight, light from top-left, no background, no text, no numbers, no grid lines, no frames. '
+    'soft highlight, light from top-left, fully transparent background behind every icon (no background squares, no colored '
+    'tiles, no glow boxes, nothing outside the icon shape), no text, no numbers, no grid lines, no frames. '
     'Icons from left to right, top to bottom: '
 )
 # 各組的配色提示（加在最後，讓整張的色調統一）
@@ -203,6 +204,32 @@ def read_doc():
     return out
 
 
+def clear_bg(cell, tol=60):
+    """有時候某一格會畫成實心背景：四個角都不透明、顏色接近時，從邊緣把接近那個顏色的像素清成透明（回傳有沒有清）"""
+    px = cell.load()
+    bb = cell.getchannel('A').point(lambda v: 255 if v >= 128 else 0).getbbox()
+    if not bb:
+        return False
+    x0, y0, x1, y1 = bb[0], bb[1], bb[2] - 1, bb[3] - 1
+    cs = [px[x0, y0], px[x1, y0], px[x0, y1], px[x1, y1]]
+    if any(c[3] < 128 for c in cs):
+        return False
+    bg = tuple(sum(c[i] for c in cs) // 4 for i in range(3))
+    near = lambda c: c[3] >= 128 and sum(abs(c[i] - bg[i]) for i in range(3)) <= tol
+    if not all(near(c) for c in cs):
+        return False
+    todo = [(x, y) for x in range(x0, x1 + 1) for y in (y0, y1)] + [(x, y) for y in range(y0, y1 + 1) for x in (x0, x1)]
+    seen = set()
+    while todo:
+        x, y = todo.pop()
+        if (x, y) in seen or not (x0 <= x <= x1 and y0 <= y <= y1) or not near(px[x, y]):
+            continue
+        seen.add((x, y))
+        px[x, y] = (0, 0, 0, 0)
+        todo += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    return True
+
+
 def slice_(png, name=None):
     from PIL import Image
     png = pathlib.Path(png)
@@ -215,13 +242,18 @@ def slice_(png, name=None):
     cw, ch = im.width / COLS, im.height / (h // CELL)
     out = ROOT / 'art/icons'
     out.mkdir(parents=True, exist_ok=True)
+    fixed = []
     for k, f in enumerate(files):
         x, y = (k % COLS) * cw, (k // COLS) * ch
         cell = im.crop((round(x), round(y), round(x + cw), round(y + ch)))
         if cell.size != (CELL, CELL):
             cell = cell.resize((CELL, CELL), Image.NEAREST)
+        if clear_bg(cell):
+            fixed.append(f)
         cell.save(out / f'{f}.png')
     print(f'{name}：切成 {len(files)} 張 → art/icons/（原圖 {im.width}×{im.height}）')
+    if fixed:
+        print('  這幾格有實心背景，已經自動去背（請再看一下）：' + '、'.join(fixed))
 
 
 def main():

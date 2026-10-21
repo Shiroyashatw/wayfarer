@@ -316,6 +316,7 @@ function gemSkill(g) {
     sps = (g.sp || []).map(x => SUPGI[x.k]).filter(Boolean);
   const sk = {
     ...b,
+    k: g.k,
     vs: b.vs ? { ...b.vs } : undefined,
     gid: g.id,
     lv: g.lv + plus,

@@ -14,16 +14,17 @@ from PIL import Image
 sys.stdout.reconfigure(encoding='utf-8')
 root = pathlib.Path(__file__).resolve().parent.parent
 src, out_dir = root / 'art/monsters', root / 'img'
+icons = root / 'art/icons'  # 0.3.39 圖示（tools/icon_sheets.py 切好的 32×32，不裁邊）
 MAX_W, PAD = 512, 1
 
 
 def load(p):
     im = Image.open(p).convert('RGBA')
     im.putalpha(im.getchannel('A').point(lambda v: 255 if v >= 128 else 0))
-    return im.crop(im.getbbox())
+    return im if p.parent == icons else im.crop(im.getbbox())
 
 
-files = sorted(src.rglob('*.png'), key=lambda p: p.stem)
+files = sorted([*src.rglob('*.png'), *icons.glob('*.png')], key=lambda p: p.stem)
 names = [p.stem for p in files]
 dup = [n for n, c in Counter(names).items() if c > 1]
 if dup:
@@ -32,6 +33,8 @@ pre = Counter(n.split('_')[0] for n in names if '_' in n)
 
 
 def group(p):
+    if p.parent == icons:
+        return 'ic_' + p.stem.split('_')[0]
     if p.parent != src:
         return p.parent.relative_to(src).parts[0]
     k = p.stem.split('_')[0] if '_' in p.stem else ''

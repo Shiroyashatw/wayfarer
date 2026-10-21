@@ -35,6 +35,7 @@
 | 刷新週期 | `js/core.js` | `REFRESH`／`epoch`（怪物、事件 15 分鐘）、`REFRESH_H`／`hepoch`（地城、寶箱、商店、廟宇 1 小時） |
 | 角色外觀（跟著裝備） | `js/gear.js` | `heroLook`（外觀代碼，多人傳 `look`）、`heroSpr(view, look)`（組出 `heroF:…`／`heroS:…` 像素圖）、`heroPal`（材質階級配色）、`GLOOK`、正面武器 `WFRONT`、副手 `OFRONT`；側面武器 `battle.js` 的 `drawWeapon`（`mc` 刃色） |
 | PNG 怪物圖（0.3.1.3） | `art/monsters/`、`tools/art.py`、`js/art.js`、`js/sprites.js` | 原圖放 `art/monsters/檔名.png`（或子資料夾 `art/monsters/組名/`）→ `python3 tools/art.py` → 拼成 `img/組名.hash.png` 調色盤大圖（0.3.30，每張最多 255 色、12 張圖，沿用上次的分配）＋`ART_SHEET`／`ART`（圖名 `a_檔名`，怪物 `spr` 填這個）；用到才載大圖 `artSheet`（開場 5 秒後背景載其他張）、`artImg`、畫布 `artSprite`（`sprite` 遇到 `a_` 開頭時呼叫）、大小 `ART_U`（`drawSpr` 的 `sp.art`）、列表小圖 `paintIcon18`；提示詞與流程見 skill `.claude/skills/pixel-art` |
+| 技能 PNG 圖示（0.3.39） | `art/icons/`、`tools/icon_sheets.py`、`tools/art.py`、`js/sprites.js` | 圖表 `docs/圖示圖表.md` → `icon_sheets.py slice` 切到 `art/icons/sk_代號.png`（實心背景自動去背 `clear_bg`）→ `art.py` 打包（大圖 `ic_*`）；顯示 `skIcon(代號, 原本圖示)`（沒有就用 8×8 `iconURL`）、按鈕 `icoSrc`；技能石要有 `k`（`gemSkill`）；用在 `gemCell`、`gemRow`、技能石商店、戰鬥按鈕（`renderBHud`／`renderMBHud`）；CSS `.cico.sk`、`.bcmd.six .cb img` |
 | 裝備圖示、材質階級（0.3.1） | `js/gear.js` | `GEAR`（每個底材一張 12×12，索引對應 `BASES`，新底材要補圖）、`MATC`／`BLADEC`／`TRIMC`／`GEMC`、`tierOf`／`TIERN`、`gearPal`、`gearIcon`（`slotIcon` 呼叫） |
 | 點地圖移動速度（0.3.1.1，0.3.33 滑條） | `js/map.js`、`js/ui.js` | `SIM_SPEED`、`SIM_MAX`（10 倍）、`simSpeed()`（乘上 `S.simSpd`）；設定面板的滑條 `#simSpd`（`ui.js` 的 `input`／`change` 監聽，`.slider`） |
 | 背包批量賣出、上鎖（0.3.1） | `js/ui.js` | `canSell`（城鎮或據點）、`bagListHTML`、`worseThanEq`、`sellSel`、`A.sellMode`／`A.sellPick`／`A.sellQuick`／`A.sellMany`／`A.lock`、單件 `A.sell`；勾選狀態 `SEL.sell`、上鎖 `it.lock` |
@@ -166,17 +167,17 @@
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
 
-### js/sprites.js（1356 行）
+### js/sprites.js（1374 行）
 
-- **pixel sprites (original art)**（3），21 個宣告
-- **icons: currency, item slots, passive nodes**（759），7 個宣告
-- **boss sprites**（1011），1 個宣告
+- **pixel sprites (original art)**（3），24 個宣告
+- **icons: currency, item slots, passive nodes**（777），7 個宣告
+- **boss sprites**（1029），1 個宣告
 
 ### js/gear.js（685 行）
 
 - **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1），17 個宣告
 
-### js/art.js（124 行）
+### js/art.js（194 行）
 
 
 ### js/skills.js（1973 行）
@@ -186,13 +187,13 @@
 
 - **audio**（3），14 個宣告
 
-### js/items.js（1144 行）
+### js/items.js（1145 行）
 
 - **player & items**（3），27 個宣告
 - **skill gems**（261），29 個宣告
-- **stats**（507），23 個宣告
-- **enemies**（896），16 個宣告
-- **modal**（1034），5 個宣告
+- **stats**（508），23 個宣告
+- **enemies**（897），16 個宣告
+- **modal**（1035），5 個宣告
 
 ### js/battle.js（3414 行）
 

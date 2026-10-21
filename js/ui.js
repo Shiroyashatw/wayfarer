@@ -446,11 +446,11 @@ const gemKc = k => (SKILLS[k].kind === 'spell' ? 'ks' : SKILLS[k].kind === 'atta
 const gemCell = (g, noEq) => {
   const n = g.sock || 2,
     m = (g.sp || []).length;
-  return `<span class="gtile ${gemKc(g.k)}${g.cor ? ' gcor' : ''}"><img src="${iconURL(SKILLS[g.k].icon)}" alt=""><i class="glv">${g.lv}</i><span class="gen">${Array.from({ length: n }, (_, i) => `<i class="${i < m ? 'f' : ''}"></i>`).join('')}</span>${g.q ? `<i class="gq">${g.q}%</i>` : ''}${!noEq && S.sk.includes(g.id) ? '<i class="geq">裝</i>' : ''}</span>`;
+  return `<span class="gtile ${gemKc(g.k)}${g.cor ? ' gcor' : ''}"><img src="${skIcon(g.k, SKILLS[g.k].icon)}" alt=""><i class="glv">${g.lv}</i><span class="gen">${Array.from({ length: n }, (_, i) => `<i class="${i < m ? 'f' : ''}"></i>`).join('')}</span>${g.q ? `<i class="gq">${g.q}%</i>` : ''}${!noEq && S.sk.includes(g.id) ? '<i class="geq">裝</i>' : ''}</span>`;
 };
 const gemRow = (g, tag) => {
   const q = gemSkill(g);
-  return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q, stats())}・插槽 ${(g.sp || []).length}/${g.sock || 2}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
+  return `<button class="card" style="text-align:left;border:0;width:100%;color:inherit;font:inherit" data-act="gem" data-id="${g.id}"><div class="rowx"><div class="t"><b><img class="cico sk" src="${skIcon(g.k, q.icon)}" alt=""> ${q.name} Lv${g.lv}${g.cor ? ' <span style="color:#e5484d">腐化</span>' : ''}</b><small>${tag ? tag + '・' : ''}${gemDesc(q, stats())}・插槽 ${(g.sp || []).length}/${g.sock || 2}</small></div><small class="sub">${q.mp ? q.mp + ' 魔力' : ''}</small></div></button>`;
 };
 /* 0.3.20 輔助寶石 */
 /* 光環能不能開：光環欄最多 AURA_MAX 個、精魄要夠 */
@@ -489,7 +489,7 @@ function gemShopHTML() {
       .map(k => {
         const q = SKILLS[k],
           blk = gemBuyBlock(k);
-        return `<div class="rowx"><div class="t"><b><img class="cico" src="${iconURL(q.icon)}" alt=""> ${q.name} <span class="sub">需要 Lv${gemReq(k)}${gemCount(k) ? `・<span style="color:var(--gold)">已有 ${gemCount(k)} 顆</span>` : ''}</span></b>${skTagHTML(q)}<small>${gemDesc(gemSkill(newGem(k)), st)}</small></div><button class="btn sm ${blk ? '' : 'buy'}" data-act="gemBuy" data-k="${k}" ${blk ? 'disabled' : ''}>${blk || `${gemPrice(k)} 金`}</button></div>`;
+        return `<div class="rowx"><div class="t"><b><img class="cico sk" src="${skIcon(k, q.icon)}" alt=""> ${q.name} <span class="sub">需要 Lv${gemReq(k)}${gemCount(k) ? `・<span style="color:var(--gold)">已有 ${gemCount(k)} 顆</span>` : ''}</span></b>${skTagHTML(q)}<small>${gemDesc(gemSkill(newGem(k)), st)}</small></div><button class="btn sm ${blk ? '' : 'buy'}" data-act="gemBuy" data-k="${k}" ${blk ? 'disabled' : ''}>${blk || `${gemPrice(k)} 金`}</button></div>`;
       })
       .join('')}</div>`;
 }

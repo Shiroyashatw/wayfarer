@@ -1982,14 +1982,14 @@ function renderBHud() {
     sk = sks.map((q, i) => q && 's' + i).filter(Boolean),
     dis = pBusy() ? 'disabled' : '';
   const cb = (label, icon, sub, act, data, disabled, extra = '') =>
-    `<button class="cb ${extra}" data-act="${act}" ${data} ${disabled || dis}><img src="${iconURL(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
+    `<button class="cb ${extra}" data-act="${act}" ${data} ${disabled || dis}><img src="${icoSrc(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
   const noPot = st.noPotion;
   const slot = k => {
     const q = k && sks[+k.slice(1)];
     return q
       ? cb(
           q.name + cdMask(q),
-          q.icon,
+          skIcon(q.k, q.icon),
           skSub(st, q, B.me, es, B.ti),
           'skill',
           `data-k="${k}"`,
@@ -2025,7 +2025,7 @@ function renderBHud() {
   let html =
     six[0] +
     six[1] +
-    cb('攻擊', 'axe', '', 'skill', 'data-k="attack"', '', 'atk') +
+    cb('攻擊', skIcon('attack', 'axe'), '', 'skill', 'data-k="attack"', '', 'atk') +
     six[2] +
     six[3] +
     `<div class="brow2">${pot}${eth}</div>` +

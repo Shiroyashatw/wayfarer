@@ -972,12 +972,12 @@ function renderMBHud() {
     dis = my ? '' : 'disabled',
     noPot = me && me.st.noPotion;
   const cb = (label, icon, sub, data, disabled, extra = '') =>
-    `<button class="cb ${extra}" data-act="mpAct" ${data} ${disabled || dis}><img src="${iconURL(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
+    `<button class="cb ${extra}" data-act="mpAct" ${data} ${disabled || dis}><img src="${icoSrc(icon)}" alt="">${label}${sub ? `<small>${sub}</small>` : ''}</button>`;
   const slot = k => {
     const q = sks[+k.slice(1)];
     return cb(
       q.name + cdMask(q),
-      q.icon,
+      skIcon(q.k, q.icon),
       skSub(me ? me.st : stats(), q, me, MB.es, MB.tg || 0),
       `data-k="${k}"`,
       me && skReady(me, me, skSt(me.st, q), q) ? '' : 'disabled'
@@ -1004,7 +1004,7 @@ function renderMBHud() {
     `<div class="mpturn" id="mpTurn"></div>` +
     six[0] +
     six[1] +
-    cb('攻擊', 'axe', '', 'data-k="attack"', '', 'atk') +
+    cb('攻擊', skIcon('attack', 'axe'), '', 'data-k="attack"', '', 'atk') +
     six[2] +
     six[3] +
     `<div class="brow2">${pot}${eth}</div>` +

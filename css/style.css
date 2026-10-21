@@ -180,6 +180,7 @@ h3{margin:4px 0 0;font-size:var(--fs-sm);letter-spacing:.14em;color:var(--gild);
 
 .cico{width:16px;height:16px;image-rendering:pixelated;vertical-align:-3px;margin-right:4px}
 .cico.lg{width:28px;height:28px;margin:0}
+.cico.sk{width:28px;height:28px;vertical-align:-9px}
 .curs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .curs>span{display:grid;justify-items:center;gap:2px;background:#0004;border-radius:var(--r-md);padding:8px 4px;font-size:var(--fs-cap);text-align:center}
 .curs>span b{display:block;font-family:var(--f-pix);font-size:15px;font-weight:400;color:var(--ink)}
@@ -620,7 +621,7 @@ h3{margin:4px 0 0;font-size:var(--fs-sm);letter-spacing:.14em;color:var(--gild);
 .bcmd.six{grid-template-columns:repeat(3,1fr);gap:6px}
 .bcmd.six>.cb{min-height:58px;font-size:var(--fs-btn);padding:4px}
 .bcmd.six .cb small{font-size:var(--fs-cap);line-height:1.2;text-align:center}
-.bcmd.six .cb img{width:20px;height:20px}
+.bcmd.six .cb img{width:28px;height:28px;image-rendering:pixelated}
 .bcmd.six .brow2{grid-template-columns:1fr;gap:4px}
 .bcmd.six .brow2 .cb{min-height:34px!important;display:flex;gap:4px;padding:2px!important}
 .bcmd.six .brow2 .cb img{width:14px!important;height:14px!important}

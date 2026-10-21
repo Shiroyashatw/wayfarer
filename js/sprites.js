@@ -613,6 +613,24 @@ setTimeout(() => {
   if (typeof ART_SHEET !== 'undefined')
     Object.keys(ART_SHEET).forEach((s, i) => setTimeout(() => artSheet(s), i * 200));
 }, 5000);
+/* 0.3.39 技能的 PNG 圖示（art/icons/sk_代號.png，tools/art.py 一起打包）：有就用；沒有或大圖還沒載好就用原本的 8×8 圖示
+   （大圖載好時 artRepaint 會重畫開著的面板） */
+const SKURL = new Map();
+function skIcon(k, fb) {
+  const n = 'sk_' + k;
+  if (typeof ART !== 'undefined' && ART[n]) {
+    if (SKURL.has(n)) return SKURL.get(n);
+    const c = artSprite('a_' + n);
+    if (!c.pending) {
+      const u = c.toDataURL();
+      SKURL.set(n, u);
+      return u;
+    }
+  }
+  return iconURL(fb);
+}
+/* 按鈕的圖示：可以是圖示名稱或已經算好的圖片網址 */
+const icoSrc = x => (String(x).startsWith('data:') ? x : iconURL(x));
 /* 回傳正方形畫布（圖貼底置中、留 1 格邊），c.art 標記給 drawSpr 換算大小；還沒載好時回傳空白（不快取） */
 function artSprite(name, white) {
   const key = name + (white ? '|w' : '');
