@@ -3,7 +3,7 @@
 /* ================= player & items ================= */
 function newGame() {
   const g = {
-    v: 30,
+    v: 31,
     cls: 'destiny',
     lv: 1,
     tier: 1,
@@ -391,7 +391,11 @@ function gemSkill(g) {
   return sk;
 }
 /* 目前技能欄的 6 個技能（0.3.22 起 6 格，空格是 null），戰鬥用 's0'～'s5' 指定 */
-const mySkills = () => S.sk.map(id => (gemOf(id) ? gemSkill(gemOf(id)) : null));
+const mySkills = () =>
+  S.sk.map(id => {
+    const g = gemOf(id);
+    return g && SKILLS[g.k] ? gemSkill(g) : null;
+  });
 /* 輔助寶石：S.sups 是還沒插的 [{u, k}]；族裔輔助同名一個角色只能用一顆（插在任何技能石上都算） */
 const supUsed = k => S.gems.some(g => (g.sp || []).some(x => x.k === k));
 function supBlock(g, x) {

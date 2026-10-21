@@ -77,6 +77,7 @@
 | 技能石資料與效果 | `js/skills.js`、`js/items.js`、`js/battle.js` | `SKILLS` 擴充欄位（`w`、`tg`、`hits`、`chain`、`proj`、`addEl`、`bleed`、`stun`、`mark`、`curse`、`exec`、`pet`、`buff`、`lifeCost`）；等級成長 `gemSkill`；說明 `gemDesc`（`ui.js`） |
 | 昇華（0.3） | `js/asc.js`、`js/items.js` | 資料 `ASC`（職業→分支→`t1`／`t2`／`u`）、節點表 `ASCN`／`ASCB`、輔助效果文字 `SUPN`；屬性 `ascStats`（`sumStats`）、`ascSup`（`stats` 的 `sup`，戰鬥用 `supOf`）；昇華盤 `openAsc`／`drawAsc`／`renderAscCard`（座標 `ascXY`、視角 `AV`、`ascFit`）、小點圖示 `SMG`、圖示 `ascIcon`、換分支 `A.ascSwitch`；試煉 `ascTownHTML`（城鎮面板）、`A.ascTrial`、`ascTrialDone`（`dungeonClear`）；狀態 `S.asc` |
 | 首領專屬圖（0.2.13.1） | `js/sprites.js`、`js/demon.js`、`js/battle.js`、`js/undead.js` | `SPR.b_*` 與 `BOSSPAL`（sprites.js 結尾）；七宗罪 `SINSPR`（`makeSinLord`）、`makeSinKing`、地城首領 `BOSSSPR`（`dunEnemy`）、亡靈王 `A.udKing` |
+| 野怪、亡靈、魔霧、墮落獸換成 PNG（0.3.50） | `js/data.js`、`js/hunt.js`、`js/undead.js`、`js/demon.js`、`js/gacha.js`、`js/battle.js` | `MONS` 的 `spr` 全部 `a_m_…`，`px` 是原本的 16×16 圖名（`pactPal`、馴獸師野狼 `petStart`、七罪信徒配色用 `px \|\| spr` 查）；墮落獸圖 `HUNT_SPR`（野怪名 → `hunt_*`，`makeBeast` 只抽有圖的）；`UNDEAD`／`MISTMON` 的 `a_wraith`、`a_mist_*` 等 |
 | 地城首領抽籤、PNG 怪物圖（0.3.26） | `js/battle.js`、`tools/art.py`、`js/art.js` | `GHOSTS`／`ghostOf`（9 種台灣鬼怪，依地城種子抽）、`dunEnemy` 的固定首領（石獅、鍾馗、門神兩隻、閻羅王）；PNG 圖放 `art/monsters/`，`python3 tools/art.py` 產生 `img/` 大圖與 `js/art.js`，`spr` 填 `a_檔名` |
 | 戰鬥的狀態與紀錄面板（0.3.27） | `js/battle.js`、`js/ui.js`、`index.html` | `BLOG`／`blog`／`logEv`（紀錄，`playEv` 與 `mpFx` 寫入）、`binfoRender`（狀態頁：`BUFFK` 增益說明、`AILD` 異常說明、`binfoTrait` 特色）、動作 `A.binfo`／`A.binfoTab`；按鈕排版在 `renderBHud`／`renderMBHud` |
 | 印記兌換、生肖傳奇（0.2.13） | `js/hunt.js`、`js/items.js` | `ZLEG`（加進 `LEGENDS`／`LEGI`，`k` 是 `z_生肖`）、`zodStats`（`sumStats` 呼叫，生肖共鳴）、`sealHTML`（`seal` 面板）、`A.sealLeg`／`A.sealJewel`、`spendMarks`；`S.hunt.marks`（可消耗）、`S.hunt.slain`（稱號） |
@@ -168,7 +169,7 @@
 
 - **utils**（6），15 個宣告
 
-### js/data.js（2830 行）
+### js/data.js（2890 行）
 
 - **state**（3），2 個宣告
 - **game data**（22），41 個宣告
@@ -183,7 +184,7 @@
 
 - **0.3.1 裝備外觀：每種底材的 12×12 圖示、材質階級配色、角色外觀疊圖**（1），17 個宣告
 
-### js/art.js（1098 行）
+### js/art.js（1217 行）
 
 
 ### js/skills.js（2080 行）
@@ -193,13 +194,13 @@
 
 - **audio**（3），14 個宣告
 
-### js/items.js（1177 行）
+### js/items.js（1181 行）
 
 - **player & items**（3），30 個宣告
 - **skill gems**（279），29 個宣告
-- **stats**（526），23 個宣告
-- **enemies**（916），16 個宣告
-- **modal**（1054），5 個宣告
+- **stats**（530），23 個宣告
+- **enemies**（920），16 個宣告
+- **modal**（1058），5 個宣告
 
 ### js/battle.js（3455 行）
 
@@ -265,14 +266,14 @@
 - **0.3.24 魔霧：山海經四凶與燭龍**（796），10 個宣告
 - **0.3.25 七罪（0.3.37 改成地圖上的七罪據點）**（986），21 個宣告
 
-### js/hunt.js（870 行）
+### js/hunt.js（889 行）
 
 - **data**（3），9 個宣告
 - **state**（387），16 個宣告
-- **enemies**（514），5 個宣告
-- **sheet**（589），2 個宣告
-- **印記兌換**（632），6 個宣告
-- **actions**（704），1 個宣告
+- **enemies**（514），6 個宣告
+- **sheet**（608），2 個宣告
+- **印記兌換**（651），6 個宣告
+- **actions**（723），1 個宣告
 
 ### js/daily.js（199 行）
 
@@ -317,7 +318,7 @@
 - **battle (every client)**（661），11 個宣告
 - **battle rendering**（943），6 個宣告
 
-### js/main.js（401 行）
+### js/main.js（415 行）
 
 - **boot**（3），7 個宣告
 <!-- index:end -->

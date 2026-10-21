@@ -1823,7 +1823,7 @@ function battleOpen(p) {
   if (st.shieldPct) p.shield = Math.round((st.maxhp * st.shieldPct) / 100);
   /* 馴獸師：戰鬥開始就帶著野狼 */
   if (st.petStart) {
-    const w = MONS.find(m => m.spr === 'wolf');
+    const w = MONS.find(m => (m.px || m.spr) === 'wolf');
     p.pets = (p.pets || []).concat(
       Array.from({ length: st.petStart }, () => ({ name: '野狼', spr: 'wolf', pal: w && w.pal, mult: 0.9, turns: 99 }))
     );

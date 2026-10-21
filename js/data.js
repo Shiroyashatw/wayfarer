@@ -83,6 +83,7 @@ const GCUR = [
 ];
 const GCURI = Object.fromEntries(GCUR.map(c => [c.id, c]));
 const EL = { phys: '物理', fire: '火焰', cold: '冰冷', light: '閃電', chaos: '混沌' };
+/* 0.3.50 路邊野怪改用 PNG（spr: 'a_m_…'）；px 是原本的 16×16 圖名，契靈、召喚物、七罪信徒還用它查配色 */
 const MONS = [
   {
     name: '綠史萊姆',
@@ -101,7 +102,8 @@ const MONS = [
   {
     name: '霓虹史萊姆',
     bg: 'city',
-    spr: 'slime',
+    spr: 'a_m_slime_neon',
+    px: 'slime',
     pal: { g: '#d65ac4', w: '#ffffff', e: '#2a1030' },
     hp: 30,
     atk: 7,
@@ -143,7 +145,8 @@ const MONS = [
   {
     name: '眼鏡蛇',
     bg: 'forest',
-    spr: 'snake',
+    spr: 'a_m_cobra',
+    px: 'snake',
     pal: { s: '#c9a03a', b: '#8a6a2a', e: '#e5484d', w: '#f4e3a8' },
     hp: 34,
     atk: 10,
@@ -157,7 +160,8 @@ const MONS = [
   {
     name: '狂暴山豬',
     bg: 'forest',
-    spr: 'boar',
+    spr: 'a_m_boar',
+    px: 'boar',
     pal: { b: '#6b4a35', e: '#ffdd55', n: '#c99a85', w: '#f4ead2' },
     hp: 55,
     atk: 12,
@@ -187,7 +191,8 @@ const MONS = [
   {
     name: '雪原狼',
     bg: 'mountain',
-    spr: 'wolf',
+    spr: 'a_m_snowwolf',
+    px: 'wolf',
     pal: { g: '#c3cddb', e: '#e5484d', n: '#2a2a35', w: '#ffffff' },
     hp: 60,
     atk: 15,
@@ -202,7 +207,8 @@ const MONS = [
   {
     name: '岩石魔像',
     bg: 'mountain',
-    spr: 'golem',
+    spr: 'a_m_golem',
+    px: 'golem',
     pal: { r: '#8a8070', y: '#7fe0ff' },
     hp: 80,
     atk: 14,
@@ -232,7 +238,8 @@ const MONS = [
   {
     name: '流浪犬魔',
     bg: 'city',
-    spr: 'wolf',
+    spr: 'a_m_straydog',
+    px: 'wolf',
     pal: { g: '#9a7a52', e: '#ff4040', n: '#3a2a1a', w: '#e8d8b8' },
     hp: 40,
     atk: 10,
@@ -247,7 +254,8 @@ const MONS = [
   {
     name: '冰晶史萊姆',
     bg: 'mountain',
-    spr: 'slime',
+    spr: 'a_m_slime_ice',
+    px: 'slime',
     pal: { g: '#8fd8f0', w: '#ffffff', e: '#0d2a3a' },
     hp: 32,
     atk: 8,
@@ -277,7 +285,8 @@ const MONS = [
   {
     name: '百步蛇',
     bg: 'forest',
-    spr: 'snake',
+    spr: 'a_m_hundredpace',
+    px: 'snake',
     pal: { s: '#8a7a5a', b: '#3f3226', e: '#ffdd55', w: '#d8c8a0' },
     hp: 42,
     atk: 13,
@@ -292,7 +301,8 @@ const MONS = [
   {
     name: '石虎',
     bg: 'forest',
-    spr: 'wolf',
+    spr: 'a_m_leopardcat',
+    px: 'wolf',
     pal: { g: '#c98a4a', e: '#7bd36b', n: '#2a1a10', w: '#f4e3c8' },
     hp: 48,
     atk: 14,
@@ -322,7 +332,8 @@ const MONS = [
   {
     name: '熔岩魔像',
     bg: 'mountain',
-    spr: 'golem',
+    spr: 'a_m_lavagolem',
+    px: 'golem',
     pal: { r: '#7a3020', y: '#ffb040' },
     hp: 85,
     atk: 16,
@@ -337,7 +348,8 @@ const MONS = [
   {
     name: '台灣黑熊',
     bg: 'forest',
-    spr: 'bear',
+    spr: 'a_m_blackbear',
+    px: 'bear',
     pal: { b: '#2a2630', e: '#ffdd55', n: '#8a7060', w: '#f4ead2' },
     hp: 95,
     atk: 18,
@@ -368,7 +380,8 @@ const MONS = [
   {
     name: '毒蘑菇',
     bg: 'forest',
-    spr: 'mush',
+    spr: 'a_m_mushroom',
+    px: 'mush',
     pal: { r: '#c0392b', w: '#f4ead2', s: '#e8dcc0', e: '#2a1a10', m: '#7a2a1a' },
     hp: 26,
     atk: 8,
@@ -398,7 +411,8 @@ const MONS = [
   {
     name: '斑腿樹蛙',
     bg: 'forest',
-    spr: 'frog',
+    spr: 'a_m_treefrog',
+    px: 'frog',
     pal: { g: '#6fae4a', w: '#ffffff', m: '#3f6e2a' },
     hp: 28,
     atk: 8,
@@ -428,7 +442,8 @@ const MONS = [
   {
     name: '夜市鼠王',
     bg: 'city',
-    spr: 'boar',
+    spr: 'a_m_ratking',
+    px: 'boar',
     pal: { b: '#6a6a72', e: '#ff4040', n: '#d8a0a0', w: '#f4ead2' },
     hp: 36,
     atk: 10,
@@ -443,7 +458,8 @@ const MONS = [
   {
     name: '海鷗',
     bg: 'meadow',
-    spr: 'bird',
+    spr: 'a_m_seagull',
+    px: 'bird',
     pal: { b: '#e8eef4', e: '#1a1a1a', y: '#f2a03a', w: '#ffffff' },
     hp: 24,
     atk: 10,
@@ -458,7 +474,8 @@ const MONS = [
   {
     name: '火蟻巢',
     bg: 'meadow',
-    spr: 'slime',
+    spr: 'a_m_fireant',
+    px: 'slime',
     pal: { g: '#b8402a', w: '#ffb15a', e: '#2a0a05' },
     hp: 30,
     atk: 11,
@@ -473,7 +490,8 @@ const MONS = [
   {
     name: '檳榔精',
     bg: 'forest',
-    spr: 'scare',
+    spr: 'a_m_betel',
+    px: 'scare',
     pal: { y: '#7fae4a', t: '#c9a878', e: '#2a1a10', m: '#c0392b', w: '#6a4a2a', r: '#3f6e2a' },
     hp: 40,
     atk: 11,
@@ -488,7 +506,8 @@ const MONS = [
   {
     name: '電音蝠',
     bg: 'city',
-    spr: 'bat',
+    spr: 'a_m_ravebat',
+    px: 'bat',
     pal: { p: '#3fd6e8', e: '#ff3ad6', w: '#ffffff' },
     hp: 28,
     atk: 12,
@@ -503,7 +522,8 @@ const MONS = [
   {
     name: '白鷺精',
     bg: 'meadow',
-    spr: 'bird',
+    spr: 'a_m_egret',
+    px: 'bird',
     pal: { b: '#f4f4f4', e: '#1a1a1a', y: '#f2c14e', w: '#ffffff' },
     hp: 40,
     atk: 13,
@@ -518,7 +538,8 @@ const MONS = [
   {
     name: '寄居蟹',
     bg: 'meadow',
-    spr: 'crab',
+    spr: 'a_m_hermit',
+    px: 'crab',
     pal: { r: '#c9a03a', e: '#1a1a1a', w: '#f4e3c8' },
     hp: 44,
     atk: 12,
@@ -533,7 +554,8 @@ const MONS = [
   {
     name: '夜叉鬼',
     bg: 'forest',
-    spr: 'spirit',
+    spr: 'a_m_yaksha',
+    px: 'spirit',
     pal: { v: '#8a3a5a', e: '#ffdd55', m: '#2a0a1a' },
     hp: 52,
     atk: 14,
@@ -548,7 +570,8 @@ const MONS = [
   {
     name: '雷鳴蛙',
     bg: 'forest',
-    spr: 'frog',
+    spr: 'a_m_thunderfrog',
+    px: 'frog',
     pal: { g: '#c9c23a', w: '#ffffff', m: '#7a6a1a' },
     hp: 44,
     atk: 14,
@@ -563,7 +586,8 @@ const MONS = [
   {
     name: '山羌',
     bg: 'forest',
-    spr: 'wolf',
+    spr: 'a_m_muntjac',
+    px: 'wolf',
     pal: { g: '#a07a4a', e: '#1a1a1a', n: '#2a1a10', w: '#e8d8b8' },
     hp: 46,
     atk: 13,
@@ -578,7 +602,8 @@ const MONS = [
   {
     name: '毒菇王',
     bg: 'forest',
-    spr: 'mush',
+    spr: 'a_m_mushking',
+    px: 'mush',
     pal: { r: '#7a3aa0', w: '#e8d4ff', s: '#d8c8b8', e: '#2a1a10', m: '#4a1a6a' },
     hp: 50,
     atk: 14,
@@ -593,7 +618,8 @@ const MONS = [
   {
     name: '黑面琵鷺',
     bg: 'meadow',
-    spr: 'bird',
+    spr: 'a_m_spoonbill',
+    px: 'bird',
     pal: { b: '#f0f0f0', e: '#1a1a1a', y: '#2a2a2a', w: '#ffffff' },
     hp: 46,
     atk: 15,
@@ -608,7 +634,8 @@ const MONS = [
   {
     name: '鬼火',
     bg: 'city',
-    spr: 'spirit',
+    spr: 'a_m_ghostfire',
+    px: 'spirit',
     pal: { v: '#6ab8ff', e: '#ffffff', m: '#1a3a8a' },
     hp: 44,
     atk: 16,
@@ -623,7 +650,8 @@ const MONS = [
   {
     name: '赤尾青竹絲',
     bg: 'forest',
-    spr: 'snake',
+    spr: 'a_m_greenviper',
+    px: 'snake',
     pal: { s: '#4aae4a', b: '#2a6e2a', e: '#ffdd55', w: '#c0392b' },
     hp: 46,
     atk: 17,
@@ -638,7 +666,8 @@ const MONS = [
   {
     name: '高山白鼻心',
     bg: 'mountain',
-    spr: 'boar',
+    spr: 'a_m_civet',
+    px: 'boar',
     pal: { b: '#7a6a5a', e: '#ffdd55', n: '#f4f4f4', w: '#f4ead2' },
     hp: 56,
     atk: 15,
@@ -653,7 +682,8 @@ const MONS = [
   {
     name: '城隍差役',
     bg: 'city',
-    spr: 'scare',
+    spr: 'a_m_cityrunner',
+    px: 'scare',
     pal: { y: '#3a3a4a', t: '#d8c8a8', e: '#1a1a1a', m: '#c0392b', w: '#5a4030', r: '#2a2a3a' },
     hp: 58,
     atk: 15,
@@ -668,7 +698,8 @@ const MONS = [
   {
     name: '雲豹',
     bg: 'forest',
-    spr: 'wolf',
+    spr: 'a_m_cloudleopard',
+    px: 'wolf',
     pal: { g: '#c9b48a', e: '#7fd6c2', n: '#2a2a35', w: '#f4ead2' },
     hp: 60,
     atk: 17,
@@ -683,7 +714,8 @@ const MONS = [
   {
     name: '冰霧狼',
     bg: 'mountain',
-    spr: 'wolf',
+    spr: 'a_m_frostwolf',
+    px: 'wolf',
     pal: { g: '#8fd8f0', e: '#1a3a5a', n: '#2a4a6a', w: '#ffffff' },
     hp: 66,
     atk: 18,
@@ -698,7 +730,8 @@ const MONS = [
   {
     name: '熊鷹',
     bg: 'mountain',
-    spr: 'bird',
+    spr: 'a_m_hawkeagle',
+    px: 'bird',
     pal: { b: '#6a4a2a', e: '#ffdd55', y: '#f2c14e', w: '#e8d8b8' },
     hp: 70,
     atk: 22,
@@ -713,7 +746,8 @@ const MONS = [
   {
     name: '玉山晶石魔像',
     bg: 'mountain',
-    spr: 'golem',
+    spr: 'a_m_jadegolem',
+    px: 'golem',
     pal: { r: '#8fb8d8', y: '#ffffff' },
     hp: 95,
     atk: 19,
@@ -728,7 +762,8 @@ const MONS = [
   {
     name: '椰子蟹',
     bg: 'meadow',
-    spr: 'crab',
+    spr: 'a_m_coconutcrab',
+    px: 'crab',
     pal: { r: '#5a3a8a', e: '#ffdd55', w: '#c8a8e8' },
     hp: 90,
     atk: 20,
@@ -743,7 +778,8 @@ const MONS = [
   {
     name: '雷神魔像',
     bg: 'mountain',
-    spr: 'golem',
+    spr: 'a_m_thundergolem',
+    px: 'golem',
     pal: { r: '#5a5a2a', y: '#fff27a' },
     hp: 92,
     atk: 20,
@@ -758,7 +794,8 @@ const MONS = [
   {
     name: '山魈',
     bg: 'forest',
-    spr: 'bear',
+    spr: 'a_m_shanxiao',
+    px: 'bear',
     pal: { b: '#5a4a3a', e: '#ff4040', n: '#c99a85', w: '#c9a878' },
     hp: 100,
     atk: 22,
@@ -773,7 +810,8 @@ const MONS = [
   {
     name: '赤目魔神仔',
     bg: 'forest',
-    spr: 'spirit',
+    spr: 'a_m_mosina_red',
+    px: 'spirit',
     pal: { v: '#2a4a3a', e: '#ff3a3a', m: '#c0392b' },
     hp: 80,
     atk: 23,
@@ -788,7 +826,8 @@ const MONS = [
   {
     name: '地府判官',
     bg: 'city',
-    spr: 'scare',
+    spr: 'a_m_judge',
+    px: 'scare',
     pal: { y: '#2a1a1a', t: '#e8d8b8', e: '#ff3a3a', m: '#c0392b', w: '#2a2a2a', r: '#4a0e0e' },
     hp: 96,
     atk: 24,
@@ -803,7 +842,8 @@ const MONS = [
   {
     name: '熔岩巨蛙',
     bg: 'mountain',
-    spr: 'frog',
+    spr: 'a_m_lavatoad',
+    px: 'frog',
     pal: { g: '#a03a1a', w: '#ffb040', m: '#ff7a3a' },
     hp: 96,
     atk: 24,
@@ -818,7 +858,8 @@ const MONS = [
   {
     name: '黑潮海龍',
     bg: 'meadow',
-    spr: 'snake',
+    spr: 'a_m_seadragon',
+    px: 'snake',
     pal: { s: '#2a4a8a', b: '#1a2a5a', e: '#7fe0ff', w: '#c8e8ff' },
     hp: 110,
     atk: 26,
@@ -834,7 +875,8 @@ const MONS = [
   {
     name: '台灣獼猴',
     bg: 'forest',
-    spr: 'monkey',
+    spr: 'a_m_macaque',
+    px: 'monkey',
     pal: { b: '#8a6a4a', f: '#e8a8a0', e: '#1a1010' },
     hp: 26,
     atk: 7,
@@ -848,7 +890,8 @@ const MONS = [
   {
     name: '巷口黑貓',
     bg: 'city',
-    spr: 'cat',
+    spr: 'a_m_blackcat',
+    px: 'cat',
     pal: { c: '#2a2630', e: '#ffe24a' },
     hp: 24,
     atk: 8,
@@ -862,7 +905,8 @@ const MONS = [
   {
     name: '寬尾鳳蝶',
     bg: 'forest',
-    spr: 'butterfly',
+    spr: 'a_m_swallowtail',
+    px: 'butterfly',
     pal: { w: '#3a3a4a', d: '#111018', y: '#e84a4a', b: '#3a3040' },
     hp: 20,
     atk: 6,
@@ -876,7 +920,8 @@ const MONS = [
   {
     name: '穿山甲',
     bg: 'forest',
-    spr: 'pangolin',
+    spr: 'a_m_pangolin',
+    px: 'pangolin',
     pal: { s: '#9a7a5a', d: '#6a4a32', e: '#111111', n: '#e8b0a0' },
     hp: 34,
     atk: 6,
@@ -891,7 +936,8 @@ const MONS = [
   {
     name: '梅花鹿',
     bg: 'meadow',
-    spr: 'deer',
+    spr: 'a_m_sika',
+    px: 'deer',
     pal: { b: '#b8783a', w: '#ffffff', a: '#e8d8b0', e: '#111111' },
     hp: 34,
     atk: 8,
@@ -906,7 +952,8 @@ const MONS = [
   {
     name: '獨角仙',
     bg: 'forest',
-    spr: 'beetle',
+    spr: 'a_m_beetle',
+    px: 'beetle',
     pal: { b: '#5a3220', h: '#3a2014', s: '#c8a080', e: '#ffd866' },
     hp: 36,
     atk: 9,
@@ -921,7 +968,8 @@ const MONS = [
   {
     name: '水鹿',
     bg: 'mountain',
-    spr: 'deer',
+    spr: 'a_m_sambar',
+    px: 'deer',
     pal: { b: '#7a5a3a', w: '#e8dcc8', a: '#d8c8a0', e: '#111111' },
     hp: 40,
     atk: 9,
@@ -936,7 +984,8 @@ const MONS = [
   {
     name: '飛魚',
     bg: 'meadow',
-    spr: 'fish',
+    spr: 'a_m_flyfish',
+    px: 'fish',
     pal: { b: '#3a6ad6', w: '#e8f4ff', f: '#7ab8ff', e: '#111111' },
     hp: 30,
     atk: 11,
@@ -951,7 +1000,8 @@ const MONS = [
   {
     name: '綠蠵龜',
     bg: 'meadow',
-    spr: 'turtle',
+    spr: 'a_m_seaturtle',
+    px: 'turtle',
     pal: { s: '#3a6a4a', d: '#2a4a2a', g: '#8ab890', e: '#111111' },
     hp: 60,
     atk: 9,
@@ -966,7 +1016,8 @@ const MONS = [
   {
     name: '水母',
     bg: 'meadow',
-    spr: 'jelly',
+    spr: 'a_m_jelly',
+    px: 'jelly',
     pal: { j: '#b8a8ff', w: '#ffffff', t: '#8a7ad6', e: '#3a2a6a' },
     hp: 34,
     atk: 12,
@@ -981,7 +1032,8 @@ const MONS = [
   {
     name: '燈籠妖',
     bg: 'city',
-    spr: 'lantern',
+    spr: 'a_m_lantern',
+    px: 'lantern',
     pal: { l: '#d83a2a', y: '#ffd866', e: '#1a0a0a', m: '#3a0a0a' },
     hp: 50,
     atk: 13,
@@ -996,7 +1048,8 @@ const MONS = [
   {
     name: '風獅爺',
     bg: 'city',
-    spr: 'lion',
+    spr: 'a_m_windlion',
+    px: 'lion',
     pal: { s: '#b8a890', m: '#7a6a58', r: '#c02a2a', e: '#111111' },
     hp: 80,
     atk: 14,
@@ -1011,7 +1064,8 @@ const MONS = [
   {
     name: '夜市招財貓',
     bg: 'city',
-    spr: 'cat',
+    spr: 'a_m_lucky_cat',
+    px: 'cat',
     pal: { c: '#f4ead2', e: '#2a1a10' },
     hp: 60,
     atk: 14,
@@ -1026,7 +1080,8 @@ const MONS = [
   {
     name: '虎爺',
     bg: 'city',
-    spr: 'tiger',
+    spr: 'a_m_huye',
+    px: 'tiger',
     pal: { o: '#e88a2a', d: '#2a1a10', w: '#fff4e0', e: '#111111' },
     hp: 85,
     atk: 19,
@@ -1041,7 +1096,8 @@ const MONS = [
   {
     name: '電鰻',
     bg: 'city',
-    spr: 'fish',
+    spr: 'a_m_eel',
+    px: 'fish',
     pal: { b: '#d8c83a', w: '#fff8c8', f: '#8a7a1a', e: '#111111' },
     hp: 70,
     atk: 20,
@@ -1056,7 +1112,8 @@ const MONS = [
   {
     name: '獼猴王',
     bg: 'mountain',
-    spr: 'monkey',
+    spr: 'a_m_monkeyking',
+    px: 'monkey',
     pal: { b: '#c8a040', f: '#f0c0a0', e: '#3a1a00' },
     hp: 110,
     atk: 22,
@@ -1071,7 +1128,8 @@ const MONS = [
   {
     name: '雪山水鹿王',
     bg: 'mountain',
-    spr: 'deer',
+    spr: 'a_m_sambarking',
+    px: 'deer',
     pal: { b: '#6a8aa8', w: '#e8f8ff', a: '#a8e8ff', e: '#111111' },
     hp: 130,
     atk: 24,
@@ -1086,7 +1144,8 @@ const MONS = [
   {
     name: '石敢當',
     bg: 'mountain',
-    spr: 'lion',
+    spr: 'a_m_shigandang',
+    px: 'lion',
     pal: { s: '#6a6a7a', m: '#3a3a48', r: '#ff6a3a', e: '#ffe24a' },
     hp: 150,
     atk: 26,
@@ -1102,7 +1161,8 @@ const MONS = [
 const MIMIC = {
   name: '寶箱怪',
   bg: 'city',
-  spr: 'mimic',
+  spr: 'a_m_mimic',
+  px: 'mimic',
   pal: { b: '#9a5a2a', y: '#f2c14e', e: '#ff3a3a', w: '#ffffff' },
   hp: 50,
   atk: 12,
@@ -2825,5 +2885,5 @@ const TREE = (() => {
       n.st = { ...n.st, spirit: n.type === 'key' ? 15 : 6 };
   return { N, E, byId };
 })();
-const VER = '0.3.48';
+const VER = '0.3.50';
 const START = { lat: 24.1372, lng: 120.6869, name: '台中車站' };

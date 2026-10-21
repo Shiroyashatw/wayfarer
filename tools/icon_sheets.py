@@ -349,7 +349,7 @@ def archive():
             continue
         out.append(line)
     SRC.write_text('\n'.join(out) + '\n', encoding='utf-8')
-    # 怪物：「待生成」裡圖檔已經在 art/monsters/ 的（**名稱**　`檔名.png` 加一段 ``` 提示詞）
+    # 怪物：「待生成」裡圖檔已經在 art/monsters/ 的（**名稱**　`檔名.png`（後面可以接說明）加一段 ``` 提示詞）
     t = MON.read_text(encoding='utf-8')
     i = t.find('## 待生成')
     if i >= 0:
@@ -358,7 +358,7 @@ def archive():
                 moved.setdefault(('怪物', None), []).append(m.group(0).strip('\n'))
                 return ''
             return m.group(0)
-        rest = re.sub(r'\n\*\*([^*\n]+)\*\*\u3000`([\w-]+\.png)`\n```\n.*?\n```\n', take, t[i:], flags=re.S)
+        rest = re.sub(r'\n\*\*([^*\n]+)\*\*\u3000`([\w-]+\.png)`[^\n]*\n```\n.*?\n```\n', take, t[i:], flags=re.S)
         MON.write_text(t[:i] + rest, encoding='utf-8')
     n = 0
     for (sec, head), lines in moved.items():

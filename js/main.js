@@ -338,6 +338,20 @@ function migrate(s) {
     delete s.siegeCd;
     s.v = 30;
   }
+  if (s.v < 31) {
+    // 0.3.49：技能表找不到的技能石（很舊的存檔、拿掉的技能）會讓戰鬥卡住：拿掉，輔助寶石退回背包
+    const bad = (s.gems || []).filter(g => !SKILLS[g.k]);
+    if (bad.length) {
+      const ids = new Set(bad.map(g => g.id));
+      s.sups = s.sups || [];
+      for (const g of bad) for (const x of g.sp || []) s.sups.push(x);
+      s.gems = s.gems.filter(g => !ids.has(g.id));
+      s.sk = (s.sk || []).map(id => (ids.has(id) ? null : id));
+      s.aura = (s.aura || []).filter(id => !ids.has(id));
+      if (s.log) s.log.unshift(`拿掉 ${bad.length} 顆已經不存在的技能石（上面的輔助寶石退回背包）`);
+    }
+    s.v = 31;
+  }
   return s;
 }
 function start() {

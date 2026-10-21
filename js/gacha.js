@@ -537,7 +537,7 @@ const pactFollow = () => {
 /* 契靈的小圖：16×16 怪物圖用自己的配色（pal），沒有就用同名、再來是同種怪物的配色；PNG 的生肖圖直接用 */
 const pactPal = id => {
   const p = PACTI[id],
-    m = MONS.find(q => q.name === p.n) || MONS.find(q => q.spr === p.spr);
+    m = MONS.find(q => q.name === p.n) || MONS.find(q => (q.px || q.spr) === p.spr);
   return p.pal || (m ? m.pal : undefined);
 };
 const pactImg = id => portrait(PACTI[id].spr, pactPal(id));

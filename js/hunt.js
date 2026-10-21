@@ -512,10 +512,29 @@ function huntSpawns(out) {
 const zodActive = () => (S.summons || []).find(s => s.e.kind === 'zodiac' && s.until > now() && !S.defeated[s.id]);
 
 /* ================= enemies ================= */
+/* 0.3.50 墮落獸的 PNG（art/monsters/hunt_*.png）：野怪名 → 圖名；抽到沒有墮落版圖的就改抽有圖的 */
+const HUNT_SPR = {
+  水鹿: 'hunt_sambar',
+  台灣黑熊: 'hunt_bear',
+  狂暴山豬: 'hunt_boar',
+  石虎: 'hunt_leopardcat',
+  雲豹: 'hunt_cloudleopard',
+  百步蛇: 'hunt_viper',
+  台灣獼猴: 'hunt_macaque',
+  穿山甲: 'hunt_pangolin',
+  熊鷹: 'hunt_hawkeagle',
+  梅花鹿: 'hunt_sika',
+  山羌: 'hunt_muntjac',
+  高山白鼻心: 'hunt_civet'
+};
 function makeBeast() {
-  const lv = aLv() + 1,
-    b0 = pickMon(fl(Math.random() * 1e6), lv),
-    base = { ...b0, pal: corruptPal(b0.pal), res: [...b0.res] };
+  const lv = aLv() + 1;
+  let b0 = pickMon(fl(Math.random() * 1e6), lv);
+  if (!HUNT_SPR[b0.name]) {
+    const ms = MONS.filter(m => HUNT_SPR[m.name]);
+    b0 = ms[fl(Math.random() * ms.length)];
+  }
+  const base = { ...b0, spr: 'a_' + HUNT_SPR[b0.name], pal: corruptPal(b0.pal), res: [...b0.res] };
   return { kind: 'monster', base, lv, rar: 2, mods: rollMods(fl(Math.random() * 1e6), 3), hunt: 'beast' };
 }
 /* 十二生肖的詞綴：召喚時從一般、冥府、魔霧詞綴隨機抽 4 條 */

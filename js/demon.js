@@ -101,7 +101,7 @@ const MISTMON = [
   {
     name: '霧中人影',
     bg: 'cave',
-    spr: 'spirit',
+    spr: 'a_mist_shade',
     pal: { v: '#6a5a8a', e: '#e8d8ff', m: '#2a1a3a' },
     hp: 45,
     atk: 14,
@@ -115,7 +115,7 @@ const MISTMON = [
   {
     name: '霧鴉',
     bg: 'cave',
-    spr: 'bird',
+    spr: 'a_mist_crow',
     pal: { b: '#3a2a4a', w: '#8a7aa8', y: '#b06bff', e: '#f0dcff' },
     hp: 32,
     atk: 16,
@@ -129,7 +129,7 @@ const MISTMON = [
   {
     name: '迷途魂',
     bg: 'cave',
-    spr: 'scare',
+    spr: 'a_mist_lost',
     pal: { s: '#5a4a6a', y: '#b06bff', e: '#ffffff', r: '#3a2a4a', b: '#2a1a3a' },
     hp: 50,
     atk: 13,
@@ -1091,7 +1091,7 @@ function followerBase(sk, f) {
     name: f.n,
     bg: 'city',
     spr: f.spr,
-    pal: { ...(MONS.find(m => m.spr === f.spr) || {}).pal, b: s.pal.b, e: s.pal.e },
+    pal: { ...(MONS.find(m => (m.px || m.spr) === f.spr) || {}).pal, b: s.pal.b, e: s.pal.e },
     hp: f.t === 'regen' || f.t === 'idol' || f.t === 'snail' || f.t === 'goldg' ? 75 : 48,
     atk: f.t === 'chest' ? 16 : 11,
     arm: f.t === 'idol' || f.t === 'snail' || f.t === 'goldg' ? 60 : 22,
