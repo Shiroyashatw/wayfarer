@@ -43,3 +43,136 @@ const GHOSTS = [
   { n: '紅衣小女孩', spr: 'a_hongy', el: 'phys' },
   { n: '吊死鬼', spr: 'a_diaosi', el: 'phys' }
 ];
+
+/* 第三章的冥府小怪與山海經異獸（0.1.0 肉鴿：PixelLab 第三批先備好的圖）；w 是出現權重，山海經的比較少見、比較強 */
+const HELLMON = [
+  {
+    name: '小鬼',
+    bg: 'cave',
+    spr: 'a_hell_imp',
+    hp: 34,
+    atk: 14,
+    arm: 6,
+    el: 'fire',
+    res: [40, 0, 0],
+    xp: 20,
+    gold: 14,
+    w: 30,
+    min: 0
+  },
+  {
+    name: '餓鬼',
+    bg: 'cave',
+    spr: 'a_hungry_ghost',
+    hp: 56,
+    atk: 12,
+    arm: 4,
+    el: 'chaos',
+    res: [0, 20, 0, 40],
+    xp: 24,
+    gold: 14,
+    w: 20,
+    min: 0
+  },
+  {
+    name: '鬼差',
+    bg: 'cave',
+    spr: 'a_ghost_bailiff',
+    hp: 64,
+    atk: 16,
+    arm: 20,
+    el: 'cold',
+    res: [10, 40, 10],
+    xp: 28,
+    gold: 18,
+    w: 15,
+    min: 0
+  },
+  {
+    name: '孟婆',
+    bg: 'cave',
+    spr: 'a_mengpo',
+    hp: 70,
+    atk: 15,
+    arm: 16,
+    el: 'cold',
+    res: [20, 40, 20, 30],
+    xp: 32,
+    gold: 22,
+    w: 5,
+    min: 0
+  },
+  {
+    name: '夔',
+    bg: 'cave',
+    spr: 'a_mist_kui',
+    hp: 80,
+    atk: 18,
+    arm: 30,
+    el: 'light',
+    res: [20, 20, 50],
+    xp: 40,
+    gold: 26,
+    w: 5,
+    min: 0
+  },
+  {
+    name: '畢方',
+    bg: 'cave',
+    spr: 'a_mist_bifang',
+    hp: 60,
+    atk: 20,
+    arm: 10,
+    el: 'fire',
+    res: [60, 0, 10],
+    xp: 40,
+    gold: 26,
+    w: 5,
+    min: 0
+  },
+  {
+    name: '蠱雕',
+    bg: 'cave',
+    spr: 'a_mist_gudiao',
+    hp: 58,
+    atk: 21,
+    arm: 12,
+    el: 'phys',
+    res: [10, 10, 10],
+    xp: 40,
+    gold: 26,
+    w: 5,
+    min: 0
+  },
+  {
+    name: '猙',
+    bg: 'cave',
+    spr: 'a_mist_zheng',
+    hp: 75,
+    atk: 22,
+    arm: 18,
+    el: 'phys',
+    res: [20, 20, 20],
+    xp: 40,
+    gold: 26,
+    w: 5,
+    min: 0
+  }
+];
+/* 第一章的菁英：墮落獸（HUNT_SPR 對應的野怪）之外，再加只有墮落版圖的帝雉 */
+const BEAST_X = [
+  {
+    name: '墮落・帝雉',
+    bg: 'mountain',
+    spr: 'a_hunt_pheasant',
+    hp: 40,
+    atk: 15,
+    arm: 10,
+    el: 'phys',
+    res: [0, 10, 10],
+    xp: 24,
+    gold: 16
+  }
+];
+/* 第二章的首領之一：海盜王（台灣海峽的海盜，十二生肖、四凶之外的選擇） */
+const PIRATE_KING = { n: '海盜王', spr: 'a_pirate_king', el: 'phys' };

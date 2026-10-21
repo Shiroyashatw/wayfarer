@@ -33,7 +33,15 @@ function newChar() {
     bonusPts: 0
   };
   SLOTS.forEach(s => (g.eq[s] = null));
-  g.eq.weapon = makeItem('weapon', 1, 0, 0);
+  /* 開局穿好一套基本裝備（跟原本新遊戲送的一樣：武器、副手、腰帶、魔法戒指、胸甲、魔法靴子） */
+  Object.assign(g.eq, {
+    weapon: makeItem('weapon', 1, 0, 0),
+    offhand: makeItem('offhand', 1, 0, 0),
+    belt: makeItem('belt', 1, 0, 0),
+    ring1: makeItem('ring', 2, 1, 0),
+    chest: makeItem('chest', 2, 0, 0),
+    boots: makeItem('boots', 2, 1, 1)
+  });
   return g;
 }
 function newGame() {

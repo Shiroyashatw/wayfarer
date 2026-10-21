@@ -6,6 +6,7 @@
    一局結束（死或通關）結算魂晶（局外貨幣）與祈願石，S.run 清掉回主選單。
    角色欄位（等級、裝備、技能石…）放在 S 最上層，開新局時用 newChar() 蓋掉（祈願石保留）。 */
 const RUN_FLOORS = 10,
+  RUN_REST = 0.25,
   RUN_COLS = 5;
 /* 三章：主題、戰鬥背景、怪物等級起點（每層 +1，首領 +2） */
 const CH = [
@@ -25,14 +26,15 @@ const NODE = {
 };
 const R = () => S.run;
 const nodeOf = id => R().map.nodes[id];
-/* 怪物等級：章的起點＋層數（首領再 +2） */
-const runLv = (f = curFloor()) => CH[R().ch].lv + f + (f >= RUN_FLOORS - 1 ? 1 : 0);
+/* 怪物等級：章的起點＋每層 0.8；首領是首領前一層 +1。角色大約跟上（runGain） */
+const runLv = (f = curFloor()) =>
+  f >= RUN_FLOORS - 1 ? runLv(RUN_FLOORS - 2) + 1 : CH[R().ch].lv + fl(Math.max(0, f) * 0.8);
 const curFloor = () => (R().at ? nodeOf(R().at).f : -1);
-/* 每場戰鬥的經驗與金幣（照節點，不照怪物）：一般戰鬥約 1.3 級、菁英 2 級、首領 2.5 級；
-   一章約 5 場戰鬥＋菁英＋首領 ≈ 10 級，跟上怪物每章 +11 級。多打戰鬥等級高、走事件商店等級低，選路線有取捨 */
+/* 每場戰鬥的經驗與金幣（照節點，不照怪物）：一般戰鬥約 1.1 級、菁英 2 級、首領 2.5 級；非戰鬥節點也給 0.5 級（nodeDone）。
+   一章約 5 場戰鬥＋菁英＋首領＋3 個其他節點 ≈ 11 級，跟上怪物每章 +11 級；多打戰鬥還是比較快升級 */
 function runGain() {
   const t = nodeOf(R().at) ? nodeOf(R().at).t : 'fight',
-    k = t === 'boss' ? 2.5 : t === 'elite' ? 2 : 1.3,
+    k = t === 'boss' ? 2.5 : t === 'elite' ? 2 : 1.1,
     g = t === 'boss' ? 4 : t === 'elite' ? 2 : 1;
   return { xp: Math.round(xpNeed(S.lv) * k), gold: Math.round((15 + runLv() * 3) * g * rnd(0.85, 1.15)) };
 }
@@ -83,7 +85,7 @@ function genMap(seed, ch) {
   const boss = { id: id(RUN_FLOORS - 1, 2), f: RUN_FLOORS - 1, c: 2, t: 'boss' };
   nodes[boss.id] = boss;
   for (const n of Object.values(nodes)) if (n.f === RUN_FLOORS - 2) link(n.id, boss.id);
-  /* 種類：第 0 層都是戰鬥、第 4 層寶箱、第 8 層（首領前）休息；其他照權重，菁英從第 2 層、休息從第 5 層才有 */
+  /* 種類：第 0 層都是戰鬥、第 4 層寶箱、第 8 層（首領前）休息；其他照權重，菁英從第 3 層、休息從第 5 層才有 */
   for (const n of Object.values(nodes)) {
     if (n.t) continue;
     if (n.f === 0) n.t = 'fight';
@@ -93,7 +95,7 @@ function genMap(seed, ch) {
       const w = [
         ['fight', 50],
         ['event', 18],
-        ['elite', n.f >= 2 ? 14 : 0],
+        ['elite', n.f >= 3 ? 14 : 0],
         ['shop', 10],
         ['rest', n.f >= 5 ? 6 : 0]
       ];
@@ -190,6 +192,8 @@ function nodeDone() {
   if (!r.cleared.includes(r.at)) {
     r.cleared.push(r.at);
     r.floors++;
+    /* 旅途經驗：非戰鬥節點給 0.5 級（不然走事件、商店的路線等級跟不上） */
+    if (!['fight', 'elite', 'boss'].includes(n.t) && gainXP(Math.round(xpNeed(S.lv) * 0.5))) sfx('level');
   }
   if (n.t === 'boss') return chapterClear();
   save();
@@ -201,8 +205,9 @@ const nodeSeed = n => h(R().seed, R().ch * 100 + n.f * 10 + n.c, 7);
 function chMob(rr, lv) {
   const ch = R().ch;
   if (ch === 2) {
-    const pool = [...UNDEAD, ...MISTMON];
-    return pool[rr % pool.length];
+    const pool = [...UNDEAD.map(u => ({ ...u, w: u.w || 20 })), ...MISTMON.map(m => ({ ...m, w: 15 })), ...HELLMON];
+    let x = rr % pool.reduce((a, q) => a + q.w, 0);
+    return pool.find(q => (x -= q.w) < 0) || pool[0];
   }
   const bgs = CH[ch].bg,
     pool = MONS.filter(q => bgs.includes(q.bg) && (!q.min || q.min <= lv + 1));
@@ -213,14 +218,14 @@ const chBg = rr => {
   const b = CH[R().ch].bg;
   return b[rr % b.length];
 };
-/* 一般戰鬥：帶頭的一隻（25% 是魔法怪）＋0～2 隻小怪；第 0 層只有 1～2 隻 */
+/* 一般戰鬥：帶頭的一隻（25% 是魔法怪）＋小怪：第 0 層沒有、第 1～3 層 0～1 隻、第 4 層起 1～2 隻 */
 function fightGroup(n) {
   const r = rng(nodeSeed(n)),
     lv = runLv(n.f),
     lead = chMob(fl(r() * 1e6), lv),
     rar = r() < 0.25 && n.f > 0 ? 1 : 0,
     e = makeEnemy(lead, lv, rar, rar ? rollMods(fl(r() * 1e9), 1) : []),
-    k = n.f === 0 ? fl(r() * 2) : 1 + fl(r() * 2);
+    k = n.f === 0 ? 0 : n.f < 4 ? fl(r() * 2) : 1 + fl(r() * 2);
   const es = [e];
   for (let i = 0; i < k; i++) {
     const m = makeEnemy(chMob(fl(r() * 1e6), lv), Math.max(1, lv - (r() < 0.5 ? 1 : 0)), 0, []);
@@ -233,21 +238,21 @@ function fightGroup(n) {
   }
   return { es, bg: R().ch === 2 ? 'cave' : chBg(fl(r() * 99)) };
 }
-/* 菁英：第一章墮落獸、第二章七罪信徒、第三章冥府守衛；稀有（2）帶 2 條詞綴＋1 隻小怪 */
+/* 菁英：第一章墮落獸、第二章七罪信徒、第三章冥府守衛；稀有（2），詞綴數＝章數（1～3），第二章起多帶 1 隻小怪 */
 function eliteGroup(n) {
   const r = rng(nodeSeed(n) + 5),
-    lv = runLv(n.f) + 1,
+    lv = runLv(n.f),
     ch = R().ch,
-    mods = rollMods(fl(r() * 1e9), 2);
+    mods = rollMods(fl(r() * 1e9), ch + 1);
   let e,
     es,
     bg = 'cave';
   if (ch === 0) {
-    const ms = MONS.filter(m => HUNT_SPR[m.name]),
+    const ms = [...MONS.filter(m => HUNT_SPR[m.name]).map(beastBase), ...BEAST_X],
       b = ms[fl(r() * ms.length)];
-    e = makeEnemy(beastBase(b), lv, 2, mods);
+    e = makeEnemy(b, lv, 2, mods);
     bg = b.bg;
-    es = [e, ...fightGroup(n).es.slice(1, 2)];
+    es = [e];
   } else if (ch === 1) {
     const sk = SINS[fl(r() * SINS.length)].k,
       fs = SINF[sk];
@@ -269,10 +274,13 @@ function eliteGroup(n) {
         xp: 40,
         gold: 40
       };
-    e = makeEnemy(b, lv, 2, [...w.mods.slice(0, 1), mods[0]]);
+    e = makeEnemy(b, lv, 2, [...w.mods.slice(0, 1), ...mods.slice(0, 2)]);
     e.name = `冥府看門人・${w.n}`;
     es = [e, ...fightGroup(n).es.slice(1, 2)];
   }
+  /* 稀有怪的倍率是照走路版（可以避開）設計的；肉鴿的菁英是路線上的關卡，再調弱一點 */
+  e.maxhp = e.hp = Math.round(e.maxhp * 0.75);
+  e.atk = Math.round(e.atk * 0.85);
   return { es, bg };
 }
 /* 首領：第一章台灣鬼怪、第二章十二生肖或四凶、第三章七宗罪之王／亡靈王／燭龍／閻羅王 */
@@ -300,17 +308,22 @@ function bossGroup() {
       hell ? rollMods(fl(r() * 1e9), 2) : []
     );
     e.maxhp = e.hp = Math.round(e.maxhp * mult);
-    e.atk = Math.round(e.atk * 1.2);
     e.xp *= 4;
     e.rar = 3;
     e.big = 1;
     return e;
   };
   let e;
-  if (ch === 0) e = ghost(GHOSTS[fl(r() * GHOSTS.length)], 2.6);
-  else if (ch === 1)
-    e = r() < 0.6 ? makeZodiac(ZODIAC[fl(r() * ZODIAC.length)].k, lv) : makeXiong(XIONG[fl(r() * XIONG.length)], lv);
-  else {
+  if (ch === 0) e = ghost(GHOSTS[fl(r() * GHOSTS.length)], 2.2);
+  else if (ch === 1) {
+    const k = r();
+    e =
+      k < 0.5
+        ? makeZodiac(ZODIAC[fl(r() * ZODIAC.length)].k, lv)
+        : k < 0.8
+          ? makeXiong(XIONG[fl(r() * XIONG.length)], lv)
+          : ghost(PIRATE_KING, 3, true);
+  } else {
     const k = fl(r() * 4);
     if (k === 0) e = makeSinKing(lv);
     else if (k === 1) e = udBoss('亡靈王', 'a_lichking', BOSSPAL.b_lichking, lv, 5);
@@ -320,6 +333,13 @@ function bossGroup() {
       e.yama = 1;
     }
   }
+  /* 首領保留各自的機制與詞綴，但生命、攻擊統一換算成這一章的目標值（十二生肖、四凶、七宗罪之王、亡靈王原本是終局難度） */
+  const B0 = { hp: 70, atk: 12 },
+    hm = [2.2, 2.8, 3.4][ch],
+    am = [1, 1.05, 1.1][ch];
+  e.maxhp = e.hp = Math.round(B0.hp * (1 + 0.38 * (lv - 1)) * hm);
+  e.atk = Math.round(B0.atk * 0.8 * (1 + 0.2 * (lv - 1)) * am);
+  e.speed = Math.min(e.speed || 10, 14);
   e.minion = 0;
   return { es: [e], bg: 'cave' };
 }
@@ -424,6 +444,12 @@ function runWin(w) {
   r.kills += es.length;
   if (n.t === 'elite') r.elites++;
   if (n.t === 'boss') r.bosses++;
+  /* 打贏喘口氣：回復 25% 生命、魔力全滿（沒有走路回血，不然血只會一路往下掉；魔力像每場重置的能量） */
+  {
+    const st = stats();
+    S.hp = Math.min(st.maxhp, S.hp + Math.round(st.maxhp * RUN_REST));
+    S.mp = st.maxmp;
+  }
   const head = `<p>獲得 <span style="color:var(--good)">${w.xp} 經驗</span>、<span style="color:var(--gold)">${w.gold} 金幣</span>${w.up ? `・<b class="c-gold">升級到 Lv${S.lv}！</b>` : ''}</p>${
     w.drops.length
       ? `<div class="loot">${lootList(w.drops)

@@ -10,9 +10,12 @@ function bless(n, st) {
     .map(([k, v]) => (STATN[k] ? STATN[k](v) : k))
     .join('、')}（這一局都有效）</p>`;
 }
+/* 這一局的加成：每升一級自帶的成長（像自動點了小天賦：傷害 +5%、生命 +2%）＋事件的祝福 */
+const RUN_LV = { physPct: 5, spellPct: 5, elePct: 5, lifePct: 2 };
 function runStats(A) {
-  if (!S.run || !S.run.bless) return;
-  for (const b of S.run.bless) for (const k in b.st) A(k, b.st[k]);
+  if (!S.run) return;
+  for (const k in RUN_LV) A(k, RUN_LV[k] * (S.lv - 1));
+  for (const b of S.run.bless || []) for (const k in b.st) A(k, b.st[k]);
 }
 const heal = pct => {
   const st = stats(),
@@ -21,9 +24,11 @@ const heal = pct => {
   return n;
 };
 const pay = g => (S.gold -= g);
-/* 事件裡出現的怪物（一隻稀有＋詞綴） */
+/* 事件裡出現的怪物：跟菁英同一套（稀有、詞綴數＝章數、生命 ×0.75、攻擊 ×0.85） */
 function evFoe(b, lv, mods = 2) {
-  const e = makeEnemy(b, lv, 2, rollMods(fl(Math.random() * 1e9), mods));
+  const e = makeEnemy(b, lv, 2, rollMods(fl(Math.random() * 1e9), Math.min(mods, S.run.ch + 1)));
+  e.maxhp = e.hp = Math.round(e.maxhp * 0.75);
+  e.atk = Math.round(e.atk * 0.85);
   return e;
 }
 /* ================= 事件表 ================= */
@@ -79,7 +84,7 @@ const EVENTS = [
             };
             return {
               msg: `得到 ${g} 金幣……身後傳來嗩吶聲，一位新娘幽幽地說：「夫君。」`,
-              fight: { es: [evFoe(b, c.lv + 1)], bg: 'cave' }
+              fight: { es: [evFoe(b, c.lv)], bg: 'cave' }
             };
           }
           return `<p>沒什麼事發生，得到 <b class="c-gold">${g} 金幣</b>。</p>`;
@@ -312,7 +317,7 @@ const EVENTS = [
               xp: 40,
               gold: 40
             },
-            e = evFoe(b, c.lv + 1, 1);
+            e = evFoe(b, c.lv, 2);
           e.name = `渡口守衛・${w.n}`;
           return { msg: '擺渡人冷笑一聲，岸邊站起一個守衛。', fight: { es: [e], bg: 'cave' } };
         }

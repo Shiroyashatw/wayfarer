@@ -347,7 +347,8 @@ const HUNT_SPR = {
   熊鷹: 'hunt_hawkeagle',
   梅花鹿: 'hunt_sika',
   山羌: 'hunt_muntjac',
-  高山白鼻心: 'hunt_civet'
+  高山白鼻心: 'hunt_civet',
+  台灣藍鵲: 'hunt_magpie'
 };
 /* 墮落獸：有墮落版圖的野怪（HUNT_SPR）換成墮落圖與暗紅配色，當第一章的菁英 */
 function beastBase(b0) {
