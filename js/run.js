@@ -465,7 +465,28 @@ function rivalSnap(rv, rid) {
   for (let k = ri - 1; k >= 0; k--) if (s[ROUNDS[k].id]) return s[ROUNDS[k].id];
   return undefined;
 }
-/* 對手的生命：照他自己那局的快照（0.1.8 曾經加上「你打贏他」的傷害，0.1.10 改成對手那局打完就直接結算） */
+/* 0.1.22 加時：對手那局已經打完（第 1 名、沿用最後的快照）後又過了幾回合；0 = 還在他自己那局裡 */
+function rivalOT(rv, rid) {
+  const s = rv.snaps || {};
+  if (s[rid]) return 0;
+  const ri = ROUNDS.findIndex(r => r.id === rid);
+  for (let k = ri - 1; k >= 0; k--) if (s[ROUNDS[k].id]) return ri - k;
+  return 0;
+}
+/* 加時的快照每多一回合變強一點（他不會再買東西，用這個代替成長），打到有人倒下為止 */
+let OT_DMG = 0.1,
+  OT_HP = 0.05;
+function otGrow(F, ot) {
+  if (!ot) return F;
+  const d = 1 + OT_DMG * ot;
+  return {
+    ...F,
+    hp: Math.round(F.hp * (1 + OT_HP * ot)),
+    weapons: F.weapons.map(w => ({ ...w, dmg: w.dmg.map(v => Math.max(1, Math.round(v * d))) }))
+  };
+}
+/* 對手的生命：照他自己那局的快照，減掉加時被你打掉的（rv.dmg）。
+   0.1.10～0.1.21 是對手那局打完就直接照生命結算，局會在中途突然結束；0.1.22 改成加時打到分出勝負 */
 const rivalHp = (rv, rid) => {
   const sn = rivalSnap(rv, rid);
   return sn ? Math.max(0, sn.hp - (rv.dmg || 0)) : 0;
@@ -480,14 +501,16 @@ function opponentOf(run) {
     if (!al.length) return null;
     const [rv, i] = al.find(([, i]) => i >= run.rp % run.rivals.length) || al[0];
     run.rp = i + 1;
-    const sn = rivalSnap(rv, r.id);
+    const sn = rivalSnap(rv, r.id),
+      ot = rivalOT(rv, r.id);
     return {
       kind: 'pvp',
       n: rv.name,
       spr: 'a_' + rv.av,
-      F: compileBag(unpackBag(sn.bag)),
+      F: otGrow(compileBag(unpackBag(sn.bag)), ot),
       bag: unpackBag(sn.bag),
-      rv: i
+      rv: i,
+      ot
     };
   }
   const m = mobOf(run, r);
@@ -577,6 +600,8 @@ function finishFight(run, fb) {
     run.ws++;
     run.lsk = 0;
     out.gold = r.type === 'pve' ? 2 : 1;
+    /* 加時打贏：他扣跟你輸了會扣的一樣多 */
+    if (opp.ot) run.rivals[opp.rv].dmg = (run.rivals[opp.rv].dmg || 0) + r.loss;
   } else {
     run.lsk++;
     run.ws = 0;
@@ -617,23 +642,11 @@ function finishFight(run, fb) {
     run.hp = 0;
     endRun(run, 1 + aliveRivals(run).length);
   } else {
-    /* 下一場對戰時對手都淘汰了：第 1 名 */
-    /* 0.1.10 還活著的對手那局都打完了（只剩第 1 名、沿用最後的快照）：直接照剩下的生命結算。
-       不然你一直打他凍結的快照（他不會再變強），越後面越穩贏，名次會偏向玩家 */
+    /* 下一場對戰時對手都淘汰了：第 1 名（0.1.22 起對手那局打完不再提早結算，改加時打到分出勝負） */
     const np = nextPvpId(run);
     if (np && !run.rivals.some(rv => rivalAlive(rv, np))) endRun(run, 1);
-    else if (rivalsDone(run))
-      endRun(run, 1 + run.rivals.filter(rv => rivalAlive(rv, r.id) && rivalHp(rv, r.id) > run.hp).length);
   }
   return out;
-}
-/* 還活著的對手下一回合都沒有自己的快照了（他們那局已經打完） */
-function rivalsDone(run) {
-  const r = curRound(run),
-    nx = ROUNDS[run.ri + 1];
-  if (!nx) return false;
-  const al = run.rivals.filter(rv => rivalAlive(rv, r.id));
-  return al.length > 0 && al.every(rv => !(rv.snaps || {})[nx.id]);
 }
 /* 下一個有對戰的回合（看對手還在不在） */
 function nextPvpId(run) {
