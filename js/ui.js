@@ -16,7 +16,7 @@ const snd = n => typeof sfx === 'function' && sfx(n);
 const ICU = new Map();
 function borrowIcon(id) {
   const ic = ITEMI[id].ic;
-  if (ic.startsWith('p:')) return pixURL(ic.slice(2), ic.startsWith('p:ic_') ? undefined : STARC[ITEMI[id].star]);
+  if (ic.startsWith('p:')) return pixURL(ic.slice(2));
   if (ic.startsWith('a:')) {
     const c = artSprite('a_' + ic.slice(2));
     return c.pending ? null : c.toDataURL();
@@ -55,9 +55,21 @@ const stars = n => '★'.repeat(n);
 const tierTxt = t => ['', '', ' Ⅱ', ' Ⅲ'][t];
 const tierBadge = t => (t > 1 ? `<b class="tier">${t === 2 ? 'Ⅱ' : 'Ⅲ'}</b>` : '');
 const avName = av => (AVATARS.find(a => a[0] === av) || AVATARS[0])[1];
+/* ================= 主題 ================= */
+/* 0.1.2 淺色（預設）／深色／跟隨系統：設在 <html data-theme> */
+const darkMQ = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  const t = (S && S.theme) || 'light',
+    d = t === 'dark' || (t === 'auto' && darkMQ.matches);
+  document.documentElement.dataset.theme = d ? 'dark' : 'light';
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.content = d ? '#1d1b21' : '#f2eee7';
+}
+darkMQ.addEventListener('change', () => S && S.theme === 'auto' && applyTheme());
 /* ================= 畫面切換 ================= */
 function render() {
   if (!S) return;
+  applyTheme();
   const run = S.run,
     app = $('app');
   let html = '';
@@ -144,8 +156,8 @@ function nextRival(run) {
 function tutHTML() {
   if (S.tut >= 3) return '';
   const t = [
-    '點商店的道具看說明，按「買」放進暫存區',
-    '把暫存區的道具拖進背包格子（點一下可以旋轉、賣出）',
+    '點商店的道具看說明，或直接把它拖進背包（也可以先買到暫存區）',
+    '把暫存區的道具拖進背包格子（點一下可以旋轉、賣出；拖到別的道具上可以交換位置）',
     '擺好就按右下角的按鈕，戰鬥全自動！'
   ][S.tut];
   return `<div class="tut">💡 ${t}</div>`;
@@ -189,17 +201,31 @@ function bagHTML(bag, cs, opt = {}) {
   }
   return h + '</div>';
 }
+/* 0.1.1 回合列：這一階段每一輪的事件（過去的變暗、這一輪亮起來），右邊是下一階段的開頭 */
+function roundBarHTML(run) {
+  const r = curRound(run),
+    st = ROUNDS.filter(q => q.st === r.st),
+    nx = ROUNDS.find(q => q.st === r.st + 1);
+  return `<div class="rbar" aria-label="回合">${st
+    .map(q => {
+      const k = ROUNDS.indexOf(q),
+        lg = run.log.find(l => l.id === q.id);
+      return `<span class="rb t-${q.type}${k === run.ri ? ' on' : k < run.ri ? ' past' : ''}${lg ? (lg.win ? ' w' : ' l') : ''}"><b>${q.id}</b><small>${RSHORT[q.type]}</small></span>`;
+    })
+    .join('')}${nx ? `<span class="rb nx"><b>${nx.id}</b><small>下一階段</small></span>` : ''}</div>`;
+}
 function prepHTML(run) {
   const r = curRound(run),
     bag = run.bag,
     cs = cellSize(bag.w),
     mods = bagMods(bag),
     lvNext = run.lv < BAG_MAX ? BAGLV[run.lv + 1] : null,
-    noFight = r.type === 'start' || r.type === 'shop',
+    noFight = r.type === 'start',
     nr = r.type === 'pvp' ? nextRival(run) : -1,
     oppTxt = r.type === 'pvp' ? (nr >= 0 ? `對戰 ${esc(run.rivals[nr].name)}` : '對戰') : RTYPE[r.type];
   return `<div class="prep">
-    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><div class="me">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}</small></span></div><div class="rinfo"><b class="gold">${run.gold} 金</b><small>${r.id}・${oppTxt}${run.sale ? '・半價' : ''}</small></div></div>
+    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><div class="me">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}</small></span></div><div class="rinfo"><b class="gold">${run.gold} 金</b><small>${r.id}・${oppTxt}</small></div></div>
+    ${roundBarHTML(run)}
     ${rivalHTML(run)}
     ${tutHTML()}
     <div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
@@ -213,11 +239,11 @@ function prepHTML(run) {
     <div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
-          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}"><img src="${itemIcon(s.id)}" alt=""><span>${ITEMI[s.id].n}</span><b class="${run.gold < shopPrice(run, s.id) ? 'c-bad' : ''}">${shopPrice(run, s.id)} 金</b></button>`
+          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt=""><span>${ITEMI[s.id].n}</span><b class="${run.gold < shopPrice(run, s.id) ? 'c-bad' : ''}">${shopPrice(run, s.id)} 金</b></button>`
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
-    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL ? 'disabled' : ''}>刷新<small class="bnote">${REROLL} 金</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? lvNext.cost + ' 金' : ''}</small></button><button class="btn pri" data-act="fight">${r.type === 'start' ? '完成構築' : r.type === 'shop' ? '離開商店' : '開戰'}<small class="bnote">${noFight ? '' : `輸了 -${r.loss}`}</small></button></div>
+    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL ? 'disabled' : ''}>刷新<small class="bnote">${REROLL} 金</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? lvNext.cost + ' 金' : ''}</small></button><button class="btn pri" data-act="fight">${r.type === 'start' ? '完成構築' : '開戰'}<small class="bnote">${noFight ? '' : `輸了 -${r.loss}`}</small></button></div>
     ${detailHTML(run)}
   </div>`;
 }
@@ -454,12 +480,12 @@ function codexHTML() {
 function helpHTML() {
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
   <div class="card"><b>一局</b><p>4 位玩家一場，每人 ${START_HP} 點生命。每回合在商店買道具、擺進背包，然後自動戰鬥。輸了扣生命，歸零就淘汰；最後活下來的是第 1 名。</p></div>
-  <div class="card"><b>回合</b><p>1-1 初始商店（${START_GOLD} 金、5 件 1★）→ 1-2、1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 商店關（半價、高星）、2-5 菁英首領（打完職業核心三選一）→ 第 3 階段起以對戰為主，中間穿插商店關。越後面輸一場扣越多。</p></div>
+  <div class="card"><b>回合</b><p>1-1 初始商店（${START_GOLD} 金、5 件 1★）→ 1-2、1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完職業核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
   <div class="card"><b>金幣</b><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></div>
-  <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×6），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；拖到格子裡擺放，拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
+  <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×6），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
   <div class="card"><b>合成</b><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></div>
   <div class="card"><b>相鄰效果</b><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></div>
-  <div class="card"><b>職業核心</b><p>首領和商店關的 5★ 道具，一個背包只能放 1 個，決定這局的流派（劍聖、獵手、元素使、死靈師…）。</p></div>
+  <div class="card"><b>職業核心</b><p>首領（2-5）掉落的 5★ 道具，一個背包只能放 1 個，決定這局的流派（劍聖、獵手、元素使、死靈師…）。</p></div>
   <div class="card"><b>戰鬥</b><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></div>
   <div class="card"><b>對手</b><p>對戰的對手是其他玩家在同一回合留下的背包快照，不用等人上線。沒有真人時由機器人補位。</p></div></div>`;
 }
@@ -468,6 +494,16 @@ function settingsHTML() {
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>設定</b></div>
   <h3>名字</h3><div class="card row"><input class="inp" id="nameInp" maxlength="10" value="${esc(S.name)}"><button class="btn" data-act="setName">儲存</button></div>
   <h3>頭像</h3><div class="avs">${AVATARS.map(([k, n]) => `<button class="av${S.av === k ? ' on' : ''}" data-act="setAv" data-k="${k}" aria-label="${n}">${sprCv('a_' + k)}<small>${n}</small></button>`).join('')}</div>
+  <h3>外觀</h3><div class="seg3">${[
+    ['light', '淺色'],
+    ['dark', '深色'],
+    ['auto', '跟隨系統']
+  ]
+    .map(
+      ([k, n]) =>
+        `<button class="btn" data-act="theme" data-k="${k}" aria-pressed="${(S.theme || 'light') === k}">${n}</button>`
+    )
+    .join('')}</div>
   <h3>聲音</h3><div class="g2"><button class="btn" data-act="tog" data-k="music" aria-pressed="${S.music}">音樂 ${S.music ? '開' : '關'}</button><button class="btn" data-act="tog" data-k="sfx" aria-pressed="${S.sfx}">音效 ${S.sfx ? '開' : '關'}</button></div>
   <h3>帳號</h3><div class="card"><p class="sub">${typeof CLOUD !== 'undefined' ? esc(CLOUD.status) : ''}${anon ? '・目前是遊客，存檔綁在這台裝置' : '・' + esc(CLOUD.email || '')}</p>${
     anon
@@ -661,6 +697,11 @@ const A = {
     save();
     render();
   },
+  theme: d => {
+    S.theme = d.k;
+    save();
+    render();
+  },
   tog: d => {
     S[d.k] = !S[d.k];
     save();
@@ -710,6 +751,7 @@ function showDlg(title, body, buttons) {
   };
 }
 document.addEventListener('click', ev => {
+  if (V.noClick) return;
   const el = ev.target.closest('[data-act]');
   if (!el || el.disabled) return;
   const f = A[el.dataset.act];
@@ -744,11 +786,17 @@ const inside = (el, px, py) => {
 };
 document.addEventListener('pointerdown', ev => {
   if (!S || !S.run || S.run.phase !== 'prep' || V.scr !== 'run') return;
-  const c = ev.target.closest('.prep .bag:not(.mini) .c, .bench .bs[data-bu]');
+  const c = ev.target.closest('.prep .bag:not(.mini) .c, .bench .bs[data-bu], .shop .sc[data-sk]');
   if (!c) return;
   const run = S.run;
-  let o, from, grab;
-  if (c.dataset.bu) {
+  let o, from, grab, sk;
+  if (c.dataset.sk != null) {
+    /* 0.1.1 商店的道具也能直接拖 */
+    from = 'shop';
+    sk = +c.dataset.sk;
+    o = { u: 'shop' + sk, id: run.shop[sk].id, t: 1, r: 0, x: 0, y: 0 };
+    grab = shapeOf(o.id, 0)[0];
+  } else if (c.dataset.bu) {
     from = 'bench';
     o = run.bench[+c.dataset.bi];
     grab = shapeOf(o.id, o.r)[0];
@@ -757,7 +805,7 @@ document.addEventListener('pointerdown', ev => {
     o = run.bag.items.find(q => q.u === c.dataset.u);
     grab = [+c.dataset.cx - o.x, +c.dataset.cy - o.y];
   }
-  V.drag = { o, from, grab, sx: ev.clientX, sy: ev.clientY, on: false, el: null };
+  V.drag = { o, from, grab, sk, sx: ev.clientX, sy: ev.clientY, on: false, el: null };
 });
 document.addEventListener(
   'pointermove',
@@ -792,10 +840,13 @@ document.addEventListener(
     const c = cellAt(ev.clientX, ev.clientY);
     d.tgt = c ? [c[0] - d.grab[0], c[1] - d.grab[1]] : null;
     d.ok = !!d.tgt && canPlace(S.run.bag, d.o, d.tgt[0], d.tgt[1], d.o.r);
-    d.el.classList.toggle('bad', !!d.tgt && !d.ok);
+    /* 放不下但剛好擋到一件、而且換得過去：可以交換 */
+    d.swap = !d.ok && d.tgt ? swapPlan(S.run, d.o, d.tgt[0], d.tgt[1], d.from) : null;
+    d.el.classList.toggle('bad', !!d.tgt && !d.ok && !d.swap);
     d.el.classList.toggle('good', !!d.ok);
+    d.el.classList.toggle('swap', !!d.swap);
     const sh = $('shop');
-    if (sh) sh.classList.toggle('sellhot', inside(sh, ev.clientX, ev.clientY));
+    if (sh) sh.classList.toggle('sellhot', d.from !== 'shop' && inside(sh, ev.clientX, ev.clientY));
   },
   { passive: false }
 );
@@ -805,6 +856,9 @@ function dropEnd(ev) {
   V.drag = null;
   if (d.el) d.el.remove();
   const run = S.run;
+  /* 商店的卡片點一下交給 click（看說明） */
+  if (d.from === 'shop' && !d.on) return;
+  if (d.from === 'shop') return dropShop(run, d, ev);
   if (!d.on) {
     /* 點一下：選取看說明 */
     V.sel = V.sel === d.o.u ? null : d.o.u;
@@ -815,6 +869,20 @@ function dropEnd(ev) {
     if (d.from === 'bench') return placeFromBench(run, run.bench.indexOf(d.o), d.tgt[0], d.tgt[1], d.o.r);
     d.o.x = d.tgt[0];
     d.o.y = d.tgt[1];
+    snd('select');
+  } else if (d.swap) {
+    /* 交換位置：背包裡互換，或暫存區的換進來、背包那件收進暫存區 */
+    const { B } = d.swap;
+    if (d.from === 'bag') {
+      Object.assign(B, { x: d.swap.x, y: d.swap.y, r: d.swap.r });
+      Object.assign(d.o, { x: d.tgt[0], y: d.tgt[1] });
+    } else {
+      const i = run.bench.indexOf(d.o);
+      run.bag.items = run.bag.items.filter(q => q !== B);
+      run.bench[i] = B;
+      Object.assign(d.o, { x: d.tgt[0], y: d.tgt[1] });
+      run.bag.items.push(d.o);
+    }
     snd('select');
   } else if (inside($('shop'), ev.clientX, ev.clientY)) {
     const v = sellItem(run, d.o.u);
@@ -830,6 +898,31 @@ function dropEnd(ev) {
         ? '一個背包只能放 1 個職業核心'
         : '這裡放不下'
     );
+  }
+  V.sel = null;
+  save();
+  render();
+}
+/* 從商店拖出來：放進背包（買下）、放到暫存區（買下），其他地方不算 */
+function dropShop(run, d, ev) {
+  V.noClick = true;
+  setTimeout(() => (V.noClick = false), 50);
+  let res = null;
+  if (d.ok || (d.swap && d.swap.toBench)) res = buyToBag(run, d.sk, d.tgt[0], d.tgt[1], d.o.r, d.swap && d.swap.B);
+  else if (inside($('bench'), ev.clientX, ev.clientY)) res = buyItem(run, d.sk);
+  else if (d.tgt) {
+    snd('nope');
+    toast('這裡放不下');
+  }
+  if (typeof res === 'string') {
+    snd('nope');
+    toast(res);
+  } else if (res) {
+    snd('coin');
+    run.bench.forEach(o => o && (S.seen[o.id] = 1));
+    run.bag.items.forEach(o => (S.seen[o.id] = 1));
+    if (res.merged.length) toast(`合成！${res.merged.map(o => ITEMI[o.id].n + tierTxt(o.t)).join('、')}`);
+    if (S.tut < 2) S.tut = 2;
   }
   V.sel = null;
   save();

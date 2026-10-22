@@ -27,7 +27,8 @@ const BAGLV = [
   { w: 6, h: 6, cost: 26, odds: [10, 25, 30, 25, 10] }
 ];
 const BAG_MAX = BAGLV.length - 1;
-/* 回合表（前短後長）：start 初始商店、pve 野怪、elite 菁英、boss 首領、pvp 打對手快照、shop 商店關；loss 是輸了扣的生命 */
+/* 回合表（前短後長）：start 初始商店、pve 野怪、elite 菁英、boss 首領、pvp 打對手快照；loss 是輸了扣的生命。
+   每回合開始本來就能逛商店，0.1.1 起拿掉商店關，原本的位置改成菁英關（打完道具三選一） */
 const ROUNDS = (() => {
   const out = [],
     add = (st, i, type, loss = 0) => out.push({ id: `${st}-${i}`, st, type, loss });
@@ -35,26 +36,28 @@ const ROUNDS = (() => {
   add(1, 2, 'pve', 1);
   add(1, 3, 'pve', 1);
   add(1, 4, 'elite', 2);
-  /* 第 2 階段 PvP 與 PvE 穿插：檢驗構築 → 喘口氣補經濟 → 第二輪 PvP → 打王前的商店 → 菁英首領（核心三選一） */
+  /* 第 2 階段 PvP 與 PvE 穿插：檢驗構築 → 喘口氣補經濟 → 第二輪 PvP → 菁英 → 首領（核心三選一） */
   add(2, 1, 'pvp', 2);
   add(2, 2, 'pve', 1);
   add(2, 3, 'pvp', 2);
-  add(2, 4, 'shop');
+  add(2, 4, 'elite', 2);
   add(2, 5, 'boss', 2);
   [1, 2, 3].forEach(i => add(3, i, 'pvp', 3));
-  add(3, 4, 'shop');
+  add(3, 4, 'elite', 3);
   [5, 6].forEach(i => add(3, i, 'pvp', 4));
   [1, 2, 3].forEach(i => add(4, i, 'pvp', 4));
-  add(4, 4, 'shop');
+  add(4, 4, 'elite', 4);
   [5, 6, 7].forEach(i => add(4, i, 'pvp', 5));
   for (let st = 5; st <= 8; st++) {
     [1, 2, 3].forEach(i => add(st, i, 'pvp', 6));
-    add(st, 4, 'shop');
+    add(st, 4, 'elite', 5);
     [5, 6, 7].forEach(i => add(st, i, 'pvp', 6));
   }
   return out;
 })();
-const RTYPE = { start: '初始商店', pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰', shop: '商店關' };
+const RTYPE = { start: '初始商店', pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
+/* 回合列的短名與顏色分類 */
+const RSHORT = { start: '開局', pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
 /* 名次加減分 */
 const PLACE_PTS = [0, 40, 15, -10, -25];
 /* 頭像（PNG 像素圖） */
@@ -108,4 +111,6 @@ const NAME_A = [
     '浪人'
   ];
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
-const VER = '0.4.0';
+/* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
+const GVER = 's2';
+const VER = '0.1.2';

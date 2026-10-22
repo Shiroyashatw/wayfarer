@@ -13,6 +13,7 @@ const newGame = () => ({
   music: true,
   sfx: true,
   speed: 1,
+  theme: 'light',
   run: null,
   tut: 0,
   savedAt: 0
@@ -35,7 +36,7 @@ function save() {
   }
   if (typeof CLOUD !== 'undefined') CLOUD.dirty = true;
 }
-/* 0.4.0 轉型：舊版（漫步勇者）的存檔不轉移，只留名字與聲音設定 */
+/* 0.1.0 轉型：舊版（漫步勇者）的存檔不轉移，只留名字與聲音設定 */
 function migrate(s) {
   if (!s || !s.v || s.v < 100) {
     const n = newGame();

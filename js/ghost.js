@@ -14,7 +14,7 @@ async function ghostRivals(rating) {
   if (ghostOK())
     try {
       const job = (async () => {
-        const { data: runs, error } = await CLOUD.sb.rpc('pick_rivals', { p_ver: VER, p_rating: rating, p_n: 3 });
+        const { data: runs, error } = await CLOUD.sb.rpc('pick_rivals', { p_ver: GVER, p_rating: rating, p_n: 3 });
         if (error) throw error;
         if (!runs || !runs.length) return [];
         const { data: sn, error: e2 } = await CLOUD.sb
@@ -45,7 +45,7 @@ async function ghostBegin(run) {
   try {
     const { data, error } = await CLOUD.sb
       .from('runs')
-      .insert({ user_id: CLOUD.uid, ver: VER, name: S.name, avatar: S.av, rating: S.rating })
+      .insert({ user_id: CLOUD.uid, ver: GVER, name: S.name, avatar: S.av, rating: S.rating })
       .select('id')
       .single();
     if (error) throw error;
@@ -97,7 +97,7 @@ async function seedGhosts(n = 100, lo = 800, hi = 1300) {
         .from('runs')
         .insert({
           user_id: CLOUD.uid,
-          ver: VER,
+          ver: GVER,
           name: b.name,
           avatar: b.av,
           rating: b.rating,

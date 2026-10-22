@@ -64,14 +64,23 @@ const TAGN = {
   dark: '暗',
   holy: '聖'
 };
-/* 道具：
+/* 道具（ic：借用的圖示，0.1.1 起裝備類用舊版的 PNG 裝備圖 gear_欄位_序號；有 it_代號.png 時優先用）：
    cd 攻擊冷卻（秒）、dmg 傷害區間、crit 暴擊率、on 命中效果（burn 燃燒層、poison 中毒層、freeze／stun [機率%, 秒]、ls 吸血%）
    hp／arm／dodge／regen／block（盾：每 cd 秒獲得格擋）／thorns（格擋時反彈）／pot（藥水：[生命低於%, 回復, 次數]）
    adj／row／all：給相鄰／同一排／整個背包裡有這個標籤的道具加成（spd 攻速%、dmg 傷害、dmgPct 傷害%、crit、burn、poison、ls、block、freezeCh、stunCh）
    fx：整個角色（hp、arm、dodge、regen、ls、critMul、take、potMul、potUse） */
 const ITEMS = [
   /* ---------- 武器 ---------- */
-  { id: 'woodsword', n: '木劍', star: 1, sh: 'v2', tags: ['weapon', 'sword'], cd: 1.3, dmg: [2, 4], ic: 'sk_slash2' },
+  {
+    id: 'woodsword',
+    n: '木劍',
+    star: 1,
+    sh: 'v2',
+    tags: ['weapon', 'sword'],
+    cd: 1.3,
+    dmg: [2, 4],
+    ic: 'gear_weapon_16'
+  },
   {
     id: 'knife',
     n: '短刀',
@@ -81,9 +90,9 @@ const ITEMS = [
     cd: 0.9,
     dmg: [1, 3],
     crit: 10,
-    ic: 'sk_backstab'
+    ic: 'gear_weapon_13'
   },
-  { id: 'huntbow', n: '獵弓', star: 1, sh: 'v3', tags: ['weapon', 'bow'], cd: 1.6, dmg: [3, 5], ic: 'sk_multishot' },
+  { id: 'huntbow', n: '獵弓', star: 1, sh: 'v3', tags: ['weapon', 'bow'], cd: 1.6, dmg: [3, 5], ic: 'gear_weapon_3' },
   {
     id: 'club',
     n: '木棒',
@@ -93,9 +102,18 @@ const ITEMS = [
     cd: 1.8,
     dmg: [3, 6],
     on: { stun: [10, 0.5] },
-    ic: 'sk_bash'
+    ic: 'gear_weapon_8'
   },
-  { id: 'ironsword', n: '鐵劍', star: 2, sh: 'v2', tags: ['weapon', 'sword'], cd: 1.2, dmg: [4, 6], ic: 'sk_crosscut' },
+  {
+    id: 'ironsword',
+    n: '鐵劍',
+    star: 2,
+    sh: 'v2',
+    tags: ['weapon', 'sword'],
+    cd: 1.2,
+    dmg: [4, 6],
+    ic: 'gear_weapon_1'
+  },
   {
     id: 'firestaff',
     n: '火焰法杖',
@@ -105,7 +123,7 @@ const ITEMS = [
     cd: 1.7,
     dmg: [3, 5],
     on: { burn: 2 },
-    ic: 'sk_fire'
+    ic: 'gear_weapon_4'
   },
   {
     id: 'icestaff',
@@ -116,7 +134,7 @@ const ITEMS = [
     cd: 1.8,
     dmg: [3, 5],
     on: { freeze: [35, 1] },
-    ic: 'sk_ice'
+    ic: 'gear_weapon_15'
   },
   {
     id: 'venomknife',
@@ -127,9 +145,19 @@ const ITEMS = [
     cd: 1,
     dmg: [1, 2],
     on: { poison: 1 },
-    ic: 'sk_venomblade'
+    ic: 'gear_weapon_28'
   },
-  { id: 'waraxe', n: '戰斧', star: 2, sh: 'l3', tags: ['weapon', 'axe'], cd: 2, dmg: [6, 9], crit: 5, ic: 'sk_hack' },
+  {
+    id: 'waraxe',
+    n: '戰斧',
+    star: 2,
+    sh: 'l3',
+    tags: ['weapon', 'axe'],
+    cd: 2,
+    dmg: [6, 9],
+    crit: 5,
+    ic: 'gear_weapon_2'
+  },
   {
     id: 'thunderhammer',
     n: '雷霆錘',
@@ -139,7 +167,7 @@ const ITEMS = [
     cd: 2.2,
     dmg: [7, 11],
     on: { stun: [25, 0.6] },
-    ic: 'sk_thorhammer'
+    ic: 'gear_weapon_23'
   },
   {
     id: 'spear',
@@ -150,9 +178,18 @@ const ITEMS = [
     cd: 1.5,
     dmg: [5, 8],
     crit: 10,
-    ic: 'sk_thrust'
+    ic: 'gear_weapon_9'
   },
-  { id: 'repeater', n: '連弩', star: 3, sh: 'h2', tags: ['weapon', 'xbow'], cd: 0.8, dmg: [2, 4], ic: 'sk_barrage' },
+  {
+    id: 'repeater',
+    n: '連弩',
+    star: 3,
+    sh: 'h2',
+    tags: ['weapon', 'xbow'],
+    cd: 0.8,
+    dmg: [2, 4],
+    ic: 'gear_weapon_12'
+  },
   {
     id: 'scythe',
     n: '吸血鐮刀',
@@ -162,7 +199,7 @@ const ITEMS = [
     cd: 1.6,
     dmg: [4, 7],
     on: { ls: 30 },
-    ic: 'sk_vampire'
+    ic: 'gear_weapon_30'
   },
   {
     id: 'dragonslayer',
@@ -173,7 +210,7 @@ const ITEMS = [
     cd: 2,
     dmg: [12, 18],
     crit: 10,
-    ic: 'sk_titanfall'
+    ic: 'gear_weapon_5'
   },
   {
     id: 'phoenixbow',
@@ -184,7 +221,7 @@ const ITEMS = [
     cd: 1.4,
     dmg: [6, 9],
     on: { burn: 3 },
-    ic: 'sk_phoenix'
+    ic: 'gear_weapon_24'
   },
   {
     id: 'skythunder',
@@ -198,13 +235,13 @@ const ITEMS = [
     ic: 'sk_thunderstorm'
   },
   /* ---------- 防具與盾 ---------- */
-  { id: 'leathercap', n: '皮帽', star: 1, sh: 's1', tags: ['armor'], hp: 12, arm: 1, ic: 'p:sl_helm' },
-  { id: 'leatherarmor', n: '皮甲', star: 1, sh: 'sq', tags: ['armor'], hp: 30, ic: 'p:sl_chest' },
-  { id: 'woodshield', n: '木盾', star: 1, sh: 'sq', tags: ['shield'], cd: 3, block: 6, ic: 'sk_shieldwall' },
-  { id: 'ironhelm', n: '鐵盔', star: 2, sh: 's1', tags: ['armor'], hp: 10, arm: 3, ic: 'p:sl_helm' },
-  { id: 'ironshield', n: '鐵盾', star: 2, sh: 'sq', tags: ['shield'], cd: 3, block: 10, ic: 'sk_phalanx' },
-  { id: 'boots', n: '輕靴', star: 2, sh: 's1', tags: ['armor'], dodge: 8, ic: 'p:sl_boots' },
-  { id: 'chainmail', n: '鎖子甲', star: 3, sh: 'sq', tags: ['armor'], hp: 50, arm: 3, ic: 'p:sl_chest' },
+  { id: 'leathercap', n: '皮帽', star: 1, sh: 's1', tags: ['armor'], hp: 12, arm: 1, ic: 'gear_helm_0' },
+  { id: 'leatherarmor', n: '皮甲', star: 1, sh: 'sq', tags: ['armor'], hp: 30, ic: 'gear_chest_0' },
+  { id: 'woodshield', n: '木盾', star: 1, sh: 'sq', tags: ['shield'], cd: 3, block: 6, ic: 'gear_offhand_2' },
+  { id: 'ironhelm', n: '鐵盔', star: 2, sh: 's1', tags: ['armor'], hp: 10, arm: 3, ic: 'gear_helm_1' },
+  { id: 'ironshield', n: '鐵盾', star: 2, sh: 'sq', tags: ['shield'], cd: 3, block: 10, ic: 'gear_offhand_3' },
+  { id: 'boots', n: '輕靴', star: 2, sh: 's1', tags: ['armor'], dodge: 8, ic: 'gear_boots_0' },
+  { id: 'chainmail', n: '鎖子甲', star: 3, sh: 'sq', tags: ['armor'], hp: 50, arm: 3, ic: 'gear_chest_1' },
   {
     id: 'thornshield',
     n: '荊棘盾',
@@ -214,7 +251,7 @@ const ITEMS = [
     cd: 3,
     block: 12,
     thorns: 3,
-    ic: 'sk_riposte'
+    ic: 'gear_offhand_10'
   },
   {
     id: 'paladinshield',
@@ -225,7 +262,7 @@ const ITEMS = [
     cd: 2.5,
     block: 18,
     heal: 3,
-    ic: 'sk_holyshield'
+    ic: 'gear_offhand_9'
   },
   /* ---------- 飾品（相鄰加成；天賦都變成這些） ---------- */
   {
@@ -235,7 +272,7 @@ const ITEMS = [
     sh: 's1',
     tags: ['trinket'],
     adj: [{ tag: 'weapon', dmg: 2 }],
-    ic: 'sup_sp_dmg'
+    ic: 'cur_whet'
   },
   {
     id: 'clover',
@@ -298,7 +335,7 @@ const ITEMS = [
     sh: 's1',
     tags: ['trinket'],
     adj: [{ tag: 'weapon', crit: 15 }],
-    ic: 'sk_precise'
+    ic: 'cur_prism'
   },
   {
     id: 'shieldrack',
@@ -458,7 +495,8 @@ const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
 const TIER_MAX = 3,
   TIERM = [0, 1, 1.8, 3.2],
   TIERB = [0, 1, 1.5, 2];
-const STARC = ['', '#c8c0b0', '#6fd16b', '#5aa8ff', '#c58cff', '#ffb43a'];
+/* 星級顏色：CSS 變數（跟著淺色／深色主題變） */
+const STARC = ['', 'var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
 /* 價格：星級；賣出：退一半（升階的照材料數） */
 const priceOf = id => ITEMI[id].star;
 const sellOf = (id, t = 1) => Math.max(1, Math.ceil((ITEMI[id].star * 3 ** (t - 1)) / 2));

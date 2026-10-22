@@ -1,10 +1,10 @@
 # 塞令老師 — 給 Claude 的專案說明
 
-4 人一場的背包自動對戰（0.4.0 從「漫步勇者」走路地圖 RPG 轉型）。設計在 `docs/企劃書.md`，舊版企劃在 `docs/舊企劃書_漫步勇者.md`。
+4 人一場的背包自動對戰（0.1.0 從「漫步勇者」走路地圖 RPG 轉型）。設計在 `docs/企劃書.md`，舊版企劃在 `docs/舊企劃書_漫步勇者.md`。
 
 ## 溝通規則
 - **一律用繁體中文回覆**（包含進度說明與 commit 訊息）。
-- 版本號：目前是 0.4.x（0.4.0 是轉型；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
+- 版本號：目前是 0.1.x（0.1.0 是轉型；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。規則或數值改了要同步更新。
 - 介面：照 `docs/設計規範.md`（字級、顏色變數、間距、元件、資訊量規則）；改介面用 skill `ui-design`，改完在手機尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
@@ -44,21 +44,21 @@
 | `tools/pixellab_batch.py` | PixelLab API 批次產圖：讀 `docs/怪物提示詞.md`／`docs/圖示提示詞.md` 的提示詞，輸出到 `art/new/`（不進 git）；金鑰用環境變數 `PIXELLAB_API_KEY`，不要寫進專案 |
 | `tools/icon_sheets.py` | 圖示圖表：從 `docs/圖示提示詞.md` 組出 `docs/圖示圖表.md`（8×8 一張 64 個），圖表原圖放 `art/sheets/`，`process` 全部切成 `art/icons/` 的單張、跑 `art.py` 打包，最後 `archive`（有圖的提示詞搬到 `docs/提示詞封存.md`；切過的圖表整張移除、原圖搬到 `art/sheets/done/`）；圖表編號固定 |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（檔案照 `index.html` 的順序），並檢查 CODEMAP 裡失效的名稱 |
-| `supabase/migrations/` | 資料庫結構（0.4.0 的快照對戰是 `20261022000000_serling_ghosts.sql`） |
+| `supabase/migrations/` | 資料庫結構（0.1.0 的快照對戰是 `20261022000000_serling_ghosts.sql`） |
 
 ## 本機執行
 ```bash
 python3 -m http.server 8000   # 開 http://localhost:8000
 python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 ```
-存檔在 localStorage（鍵 `serling_v1`）；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換（存檔版本是 `S.v`，0.4.0 起是 100）。進行中的一局記著版本（`S.run.ver`），版本不同會直接結束那局。
+存檔在 localStorage（鍵 `serling_v1`）；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換（存檔版本是 `S.v`，0.1.0 起是 100）。進行中的一局記著版本（`S.run.ver`），版本不同會直接結束那局。
 測試用另一份存檔：網址加 `?p=2`。
 瀏覽器測一整局：`newRun(makeBots(3, 1000))` 後用 `botAct` 代替玩家、`startFight`／`finishFight` 跑每回合（見 `docs/CODEMAP.md`）。
 
 ## Supabase
 - 專案 ref：`eugkdfhkoaxvqhztvptc`，URL `https://eugkdfhkoaxvqhztvptc.supabase.co`
 - 資料表 `public.saves`（user_id、data jsonb、game_version、updated_at），RLS 只允許本人讀寫。
-- 快照對戰：`public.runs`、`public.snaps`（大家可讀、只能寫自己的）、RPC `pick_rivals`；SQL 在 `supabase/migrations/20261022000000_serling_ghosts.sql`。資料表不存在時遊戲自動改用機器人對手（`GHOST.off`）。開服種子：在瀏覽器主控台執行 `seedGhosts(100)`，產生 100 局機器人對局（4 個一場真的互打）上傳成 `runs.seed = true`；配對時真人優先，真人夠多後可用 `delete from public.runs where seed;` 刪掉。
+- 快照對戰：`public.runs`（`ver` 存的是快照版本 `GVER`，不是遊戲版本；回合表或道具改到舊快照不能用時才換 `GVER`，換了要重產種子）、`public.snaps`（大家可讀、只能寫自己的）、RPC `pick_rivals`；SQL 在 `supabase/migrations/20261022000000_serling_ghosts.sql`。資料表不存在時遊戲自動改用機器人對手（`GHOST.off`）。開服種子：在瀏覽器主控台執行 `seedGhosts(100)`，產生 100 局機器人對局（4 個一場真的互打）上傳成 `runs.seed = true`；配對時真人優先，真人夠多後可用 `delete from public.runs where seed;` 刪掉。
 - 前端只放 anon key。**絕對不要使用或要求 service_role key。**
 - 合併規則：本機與雲端各有 `savedAt`，啟動時取較新的那份。
 
