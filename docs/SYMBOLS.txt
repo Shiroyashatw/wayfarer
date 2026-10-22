@@ -31,10 +31,10 @@ rankName js/data.js:74 [一局]
 rankProg js/data.js:76 [一局]
 placed js/data.js:80 [一局]
 AVATARS js/data.js:82 [一局]
-NAME_A js/data.js:95 [一局]
-randName js/data.js:131 [一局]
-GVER js/data.js:133 [一局]
-VER js/data.js:134 [一局]
+NAME_A js/data.js:101 [一局]
+randName js/data.js:137 [一局]
+GVER js/data.js:139 [一局]
+VER js/data.js:140 [一局]
 SPR js/sprites.js:4 [pixel sprites (original art)]
 ICONS js/sprites.js:560 [pixel sprites (original art)]
 ICOPAL js/sprites.js:582 [pixel sprites (original art)]
@@ -77,7 +77,7 @@ ICIMG js/sprites.js:1061 [icons: currency, item slots, passive nodes]
 nodeIcon js/sprites.js:1062 [icons: currency, item slots, passive nodes]
 BOSSPAL js/sprites.js:1346 [boss sprites]
 ART_SHEET js/art.js:3
-ART js/art.js:126
+ART js/art.js:128
 SH js/items.js:4
 TAGN js/items.js:83
 ITEMS js/items.js:112
@@ -300,4 +300,4 @@ newGame js/main.js:4
 load js/main.js:22
 save js/main.js:30
 migrate js/main.js:41
-start js/main.js:58
+start js/main.js:60

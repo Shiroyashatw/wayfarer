@@ -79,7 +79,7 @@
 
 - **utils**（6），15 個宣告
 
-### js/data.js（135 行）
+### js/data.js（141 行）
 
 - **一局**（5），18 個宣告
 
@@ -89,7 +89,7 @@
 - **icons: currency, item slots, passive nodes**（812），7 個宣告
 - **boss sprites**（1070），1 個宣告
 
-### js/art.js（1217 行）
+### js/art.js（1235 行）
 
 
 ### js/items.js（2099 行）
@@ -124,7 +124,7 @@
 - **cloud save (Supabase)**（4），7 個宣告
 - **accounts**（104），5 個宣告
 
-### js/news.js（99 行）
+### js/news.js（105 行）
 
 
 ### js/ui.js（1504 行）
@@ -141,6 +141,6 @@
 - **動作**（937），6 個宣告
 - **拖曳擺放**（1291），7 個宣告
 
-### js/main.js（72 行）
+### js/main.js（74 行）
 
 <!-- index:end -->

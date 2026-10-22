@@ -53,6 +53,8 @@ function migrate(s) {
   /* 0.1.4 預設改成深色：沒自己選過主題的存檔也跟著換 */
   if (!o.themeSet) o.theme = 'dark';
   delete o.music;
+  /* 0.1.17 頭像換成新的一批：舊的（鍾馗、門神…）不在清單裡就換成第一個 */
+  if (!AVATARS.some(x => x[0] === o.av)) o.av = AVATARS[0][0];
   return o;
 }
 function start() {

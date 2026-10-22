@@ -78,18 +78,24 @@ const rankProg = rating => {
   return i === RANKS.length * 3 - 1 ? 1 : Math.max(0, Math.min(1, (rating - RANK_BASE - i * RANK_STEP) / RANK_STEP));
 };
 const placed = () => (S.games || 0) >= PLACE_N;
-/* 頭像（PNG 像素圖） */
+/* 頭像（PNG 像素圖，0.1.17 換成玩家形象：docs/頭像圖表.md 的 sheet_avatar_1，男 4、女 12） */
 const AVATARS = [
-  ['zhongkui', '鍾馗'],
-  ['menshen_qin', '秦叔寶'],
-  ['menshen_yu', '尉遲恭'],
-  ['wuchang_white', '白無常'],
-  ['wuchang_black', '黑無常'],
-  ['guixinniang', '鬼新娘'],
-  ['ghost_priest', '道長'],
-  ['bone_knight', '骨騎士'],
-  ['death_witch', '死亡女巫'],
-  ['lintoujie', '林投姐']
+  ['av_swordsman', '銀髮劍士'],
+  ['av_prince', '金髮王子'],
+  ['av_taoist', '俊美道士'],
+  ['av_butler', '冷面執事'],
+  ['av_maid', '女僕'],
+  ['av_miko', '巫女'],
+  ['av_blonde', '金髮美人'],
+  ['av_elf', '精靈弓手'],
+  ['av_catgirl', '貓耳少女'],
+  ['av_pirate', '海盜船長'],
+  ['av_knight', '女騎士'],
+  ['av_fox', '狐妖'],
+  ['av_qipao', '旗袍佳人'],
+  ['av_kunoichi', '女忍者'],
+  ['av_vampire', '吸血伯爵夫人'],
+  ['av_idol', '偶像歌手']
 ];
 /* 隨機名字（機器人對手、新玩家的預設名字）：形容詞＋角色 */
 const NAME_A = [
@@ -131,4 +137,4 @@ const NAME_A = [
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
 const GVER = 's12';
-const VER = '0.1.16';
+const VER = '0.1.17';

@@ -222,7 +222,7 @@ canvas.spr.flip{transform:scaleX(-1)}
 .cx p{margin:2px 0 0;font-size:var(--fs-sm);color:var(--dim)}
 .cx.unseen img{filter:grayscale(1) opacity(.45)}
 .cx.s1{--sb:var(--s1)}.cx.s2{--sb:var(--s2)}.cx.s3{--sb:var(--s3)}.cx.s4{--sb:var(--s4)}.cx.s5{--sb:var(--s5)}
-.avs{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--sp-1)}
+.avs{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-1)}
 .av{display:grid;justify-items:center;gap:2px;padding:var(--sp-1);border-radius:var(--r-md);border:1.5px solid transparent;background:var(--card);box-shadow:var(--shadow)}
 .av small{font-size:var(--fs-cap);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .av.on{border-color:var(--accent)}
