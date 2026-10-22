@@ -1,6 +1,6 @@
 ---
 name: pixel-art
-description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像素圖時使用。先產出給 PixelLab 用的英文提示詞與設定讓使用者去生圖，使用者丟回 PNG 後，照這裡的步驟放進 art/、跑 tools/art.py、接到怪物資料並截圖確認。使用者說「我放了新圖」「新圖放好了」「圖換好了」「art 有更新」等（自己把 PNG 放進 art/）時也用這個：找出新增／變更的圖、跑 tools/art.py、接到資料。
+description: 新增或替換塞令老師的怪物、首領、老師頭像、道具圖示等像素圖時使用。先產出給 PixelLab 用的英文提示詞與設定讓使用者去生圖，使用者丟回 PNG 後，照這裡的步驟放進 art/、跑 tools/art.py、接到怪物資料並截圖確認。使用者說「我放了新圖」「新圖放好了」「圖換好了」「art 有更新」等（自己把 PNG 放進 art/）時也用這個：找出新增／變更的圖、跑 tools/art.py、接到資料。
 ---
 
 # 像素圖（PixelLab）提示詞與接入流程
@@ -9,7 +9,7 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 
 ## 1. 產出提示詞
 
-**圖示（裝備、技能、輔助寶石、節點）改用圖表一次產 64 個**：在 `docs/圖示提示詞.md` 補單張的列 → `python3 tools/icon_sheets.py build` → 把 `docs/圖示圖表.md` 裡那張圖表的提示詞給使用者（或有金鑰時 `run`）→ 使用者把圖表 PNG 放進 `art/sheets/`（檔名就是圖表名，例如 `sheet_gear_1.png`）→ `python3 tools/icon_sheets.py process` 全部切到 `art/icons/` 並打包。每張要填滿 64 格，不夠的會自動拿「介面圖示」（狀態、通貨、怪物招式、材料）補空格。先產 `sheet_skill_1` 當風格基準，其他張拿它當 Style／Init Image。
+**道具圖示改用圖表一次產 64 個**（檔名 `it_道具代號`，遊戲會優先用它，沒有才借舊圖示）：在 `docs/圖示提示詞.md` 補單張的列 → `python3 tools/icon_sheets.py build` → 把 `docs/圖示圖表.md` 裡那張圖表的提示詞給使用者（或有金鑰時 `run`）→ 使用者把圖表 PNG 放進 `art/sheets/`（檔名就是圖表名，例如 `sheet_item_1.png`）→ `python3 tools/icon_sheets.py process` 全部切到 `art/icons/` 並打包。每張要填滿 64 格，不夠的會自動拿「介面圖示」（狀態、通貨、怪物招式、材料）補空格。先產 `sheet_skill_1` 當風格基準，其他張拿它當 Style／Init Image。
 
 **先讀 `docs/怪物提示詞.md`**：共用設定、固定句型、世界觀方向，以及已採用的提示詞。新提示詞要沿用同系列的句型與用字（例如七宗罪的王對照路西法那份），畫風才會一致。裝備、技能圖示看 `docs/圖示提示詞.md`。量大時可以請使用者在自己電腦跑 `tools/pixellab_batch.py`（PixelLab API，金鑰放環境變數 `PIXELLAB_API_KEY`，產圖到 `art/new/` 再挑）。
 
@@ -53,7 +53,7 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
 > 使用者說「我放了新圖」這類話（自己把 PNG 放進 `art/`）時，先做這段，再接下面第 1 步：
 > - 用 `git status --short art/` 找出新增（`??`）和變更（`M`）的 PNG，列給使用者確認。`art/new/` 是批次產圖的暫存區（不進 git），除非使用者指定，否則不用處理。`art/sheets/` 有新的或變更的圖表時跑 `python3 tools/icon_sheets.py process`。process 最後會自動 archive：有圖的提示詞搬到 `docs/提示詞封存.md`；切過的圖表整張從 `docs/圖示圖表.md` 移除、原圖搬到 `art/sheets/done/`，裡面沒畫出來的格子會重新排進新的圖表；圖表編號固定（使用者手上正在產的圖表不會對不上）。
 > - 只是換圖（檔名不變）：檢查（第 1 步）→ 跑 `tools/art.py`（第 3 步）→ 截圖確認（第 6 步）就好，資料不用改。
-> - 新檔名：從檔名猜要接到哪隻怪物（Grep `docs/CODEMAP.md`／`js/data.js` 的怪物名稱）；猜不到或可能接錯的，先問使用者，不要亂接。
+> - 新檔名：從檔名猜要接到哪隻怪物（野怪與首領在 `js/run.js` 的 `MOBS`、老師頭像在 `js/data.js` 的 `AVATARS`）；猜不到或可能接錯的，先問使用者，不要亂接。
 > - 跑完 `tools/art.py` 後，回報每張圖的尺寸、接到哪裡，以及哪些新圖還沒接到資料。
 
 1. 檢查：`python3 -c "from PIL import Image; im=Image.open('檔案').convert('RGBA'); print(im.size, im.getbbox(), len(set(im.getdata())))"`
@@ -61,7 +61,7 @@ description: 新增或替換漫步勇者的怪物、首領、裝備圖示等像�
    - 必須面向左；面向右的話在資料裡用左右翻轉（`drawSpr` 的 flip），或請使用者重生。
 2. 放到 `art/monsters/英文小寫檔名.png`（例如 `jiangshi.png`）。
 3. 跑 `python3 tools/art.py`：裁掉透明邊、拼成 `img/` 的調色盤大圖（無損）、座標寫進 `js/art.js`，圖名是 `a_檔名`。只有新圖所在的那張大圖會換檔名；`img/` 的大圖和 `js/art.js` 都要一起 commit。
-4. 把怪物資料的 `spr` 改成 `'a_檔名'`（`MONS` 在 `js/data.js`、亡靈 `UNDEAD` 在 `js/undead.js`、魔霧 `MISTMON` 在 `js/demon.js`、首領 `BOSSSPR`／`SINSPR` 等）；`pal` 對 PNG 圖沒有作用，可保留。
+4. 野怪、菁英、首領：把 `js/run.js` 的 `MOBS` 裡那隻的 `spr` 改成 `'a_檔名'`；老師頭像：加進 `js/data.js` 的 `AVATARS`（`['檔名', '某某老師']`）。
 5. 大小：PNG 圖每個像素畫成 `s × ART_U`（`js/sprites.js`，目前 0.36）。一般怪 64 畫布、人物約 58 高時，跟原本 16×16 的怪差不多大、稍大一點；首領也用 64（試過 128，造型反而沒特色，不用）。首領單獨一隻時戰鬥中站在右半邊、垂直置中（`epos`）。
    - 檢查四邊有沒有不透明像素貼邊（被切掉）：有的話請使用者用「留白」提示詞重生。
 6. 用 Playwright 開戰鬥截圖確認（`startBattle(makeEnemy(...))`），也看受擊白閃、倒下動畫、行動順序的小頭像。

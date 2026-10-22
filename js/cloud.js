@@ -1,4 +1,4 @@
-/* 漫步勇者 · Supabase 雲端存檔與帳號（遊客＝匿名登入，綁定信箱後拿到玩家編號） */
+/* 塞令老師 · Supabase 雲端存檔與帳號（遊客＝匿名登入，綁定信箱後拿到玩家編號） */
 'use strict';
 /* SB_KEY 是公開的 anon key，可以放前端；絕對不要放 service_role key */
 /* ================= cloud save (Supabase) ================= */
@@ -87,7 +87,7 @@ async function cloudPush() {
       ? '同步失敗：' + error.message
       : `已同步 ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
     if (error) CLOUD.dirty = true;
-    else profileSync();
+    else if (typeof profileSync === 'function') profileSync();
   } catch (e) {
     CLOUD.status = '同步失敗，稍後重試';
     CLOUD.dirty = true;
@@ -95,7 +95,7 @@ async function cloudPush() {
   CLOUD.busy = false;
 }
 setInterval(() => {
-  if (CLOUD.dirty && !B) cloudPush();
+  if (CLOUD.dirty && !(typeof B !== 'undefined' && B)) cloudPush();
 }, 15000);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && CLOUD.dirty) cloudPush();
@@ -143,7 +143,7 @@ async function authLogin(email, password) {
     try {
       localStorage.setItem(KEY, JSON.stringify(S));
     } catch (e) {}
-    rebuildWorld();
+    if (typeof render === 'function') render();
     return 'loaded';
   }
   CLOUD.dirty = true;

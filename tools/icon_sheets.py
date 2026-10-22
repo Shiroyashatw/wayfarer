@@ -52,6 +52,7 @@ GROUPS = [
     ('tree', '天賦樹節點', 'talent tree emblems, rich colors'),
     ('asc', '昇華節點', 'ascendancy emblems, rich colors with gold trim'),
     ('ui', '介面圖示', 'status effects, currencies, monster skills and materials as clear readable symbols'),
+    ('item', '道具', 'backpack items for an auto-battler, chunky readable silhouettes, natural material colors'),
 ]
 GN = {k: n for k, n, _ in GROUPS}
 GH = {k: h for k, _, h in GROUPS}
@@ -62,13 +63,14 @@ SUPER = [
     ('sup', ['sup', 'sup_lin']),
     ('tree', ['tree']),
     ('asc', ['asc']),
+    ('item', ['item']),
 ]
 
 
-def rows_of():
-    """讀 docs/圖示提示詞.md 與封存的表格：回傳 [(檔名, 中文名, 類型, 提示詞)]"""
+def rows_of(src_only=False):
+    """讀 docs/圖示提示詞.md（與封存）的表格：回傳 [(檔名, 中文名, 類型, 提示詞)]"""
     out = []
-    text = SRC.read_text(encoding='utf-8') + ('\n' + ARCH.read_text(encoding='utf-8') if ARCH.exists() else '')
+    text = SRC.read_text(encoding='utf-8') + ('\n' + ARCH.read_text(encoding='utf-8') if ARCH.exists() and not src_only else '')
     for line in text.splitlines():
         m = re.match(r'^\| `([\w-]+)` \|(.*)\| `([^`]+)` \|$', line)
         if not m:
@@ -79,6 +81,8 @@ def rows_of():
 
 
 def group_of(f, kind, p):
+    if f.startswith('it_'):
+        return 'item'
     if f.startswith('gear_'):
         return 'gear'
     if f.startswith('sup_'):
@@ -149,7 +153,8 @@ def sheets(per, words, fresh=False):
         return f'sheet_{sg}_{nxt[sg]}'
 
     bucket = {k: [] for k, _, _ in GROUPS}
-    for f, n, kind, p in rows:
+    # 新排的只看 docs/圖示提示詞.md（封存裡沒產的舊提示詞不排）
+    for f, n, kind, p in rows_of(src_only=True):
         g = group_of(f, kind, p)
         if g and not done(f) and f not in inkept:
             bucket[g].append((f, n, short(p, words)))
@@ -258,7 +263,6 @@ def build(per, words, fresh=False):
         ]
         L += [f'| {k // COLS + 1}-{k % COLS + 1} | `{f}` | {n} |' for k, (f, n, _, _) in enumerate(items)]
     DOC.write_text('\n'.join(L) + '\n', encoding='utf-8')
-    write_iconmap()
     print(f'已輸出 {DOC.relative_to(ROOT)}：{len(sh)} 張圖表、{sum(len(i) for _, _, i, _ in sh)} 個圖示（每張 {per} 格）')
 
 
