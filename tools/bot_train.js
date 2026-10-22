@@ -60,7 +60,7 @@ function duel(A, B, n, seed0, old) {
     pb = [];
   for (let i = 0; i < n; i++) {
     const side = i % 2 ? [1, 0, 1, 0] : [0, 1, 0, 1],
-      L = G.simLobby(seed0 + i * 7919, RATING, old ? { old: side } : { P: side.map(s => (s ? B : A)) });
+      L = G.simLobby(seed0 + i * 7919, RATING, old ? { old: side, short: 1 } : { P: side.map(s => (s ? B : A)), short: 1 });
     L.forEach((b, k) => (side[k] ? pb : pa).push(b.place));
   }
   return [avg(pa), avg(pb)];

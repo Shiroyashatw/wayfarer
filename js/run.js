@@ -473,7 +473,7 @@ function rivalOT(rv, rid) {
   for (let k = ri - 1; k >= 0; k--) if (s[ROUNDS[k].id]) return ri - k;
   return 0;
 }
-/* 加時的快照每多一回合變強一點（他不會再買東西，用這個代替成長），打到有人倒下為止 */
+/* 加時的快照每多一回合變強一點（真人那局打完就沒有之後的快照，用這個代替成長；0.1.23 起機器人種子會繼續買，不用這個），打到有人倒下為止 */
 let OT_DMG = 0.1,
   OT_HP = 0.05;
 function otGrow(F, ot) {
@@ -503,6 +503,7 @@ function opponentOf(run) {
     run.rp = i + 1;
     const sn = rivalSnap(rv, r.id),
       ot = rivalOT(rv, r.id);
+    /* ex：他那局已經打完、這是加時（種子快照有 ot 標記，繼續買東西；真人的沒有，用 otGrow 加素質） */
     return {
       kind: 'pvp',
       n: rv.name,
@@ -510,7 +511,8 @@ function opponentOf(run) {
       F: otGrow(compileBag(unpackBag(sn.bag)), ot),
       bag: unpackBag(sn.bag),
       rv: i,
-      ot
+      ot,
+      ex: ot > 0 || !!sn.bag.ot
     };
   }
   const m = mobOf(run, r);
@@ -601,7 +603,7 @@ function finishFight(run, fb) {
     run.lsk = 0;
     out.gold = r.type === 'pve' ? 2 : 1;
     /* 加時打贏：他扣跟你輸了會扣的一樣多 */
-    if (opp.ot) run.rivals[opp.rv].dmg = (run.rivals[opp.rv].dmg || 0) + r.loss;
+    if (opp.ex) run.rivals[opp.rv].dmg = (run.rivals[opp.rv].dmg || 0) + r.loss;
   } else {
     run.lsk++;
     run.ws = 0;
@@ -753,7 +755,11 @@ function simLobby(seed, rating, opt = {}) {
   let order = 0;
   for (let k = 0; k < ROUNDS.length; k++) {
     const alive = bots.filter(b => !b.out);
-    if (alive.length <= 1) break;
+    /* 0.1.23 加時：只剩第 1 名時，他照回合表繼續逛商店、打野怪菁英首領，每回合存快照（ot: 1），一直到最後一回合，
+       玩家打到後面遇到的是真的在換裝備的背包。對戰回合沒人可打，勝負各半；加時不扣他自己的血（改由玩家打贏時扣）。
+       opt.short：只要名次（訓練、平衡統計）就不跑加時 */
+    if (!alive.length || (alive.length === 1 && (opt.short || bots.length === 1))) break;
+    const solo = alive.length === 1;
     for (const b of alive) {
       nextRound(b.run);
       if (b.run.ri > 0) b.run.gold = Math.max(0, b.run.gold + b.gb);
@@ -761,10 +767,22 @@ function simLobby(seed, rating, opt = {}) {
       else botAct(b.run, b.theme, b.q, b.P);
     }
     const r = ROUNDS[k];
-    for (const b of alive) b.info.snaps[r.id] = { hp: b.run.hp, bag: packBag(b.run.bag) };
+    for (const b of alive)
+      b.info.snaps[r.id] = { hp: b.run.hp, bag: solo ? { ...packBag(b.run.bag), ot: 1 } : packBag(b.run.bag) };
     alive.forEach((b, i) => {
       const run = b.run;
       let F;
+      if (solo && r.type === 'pvp') {
+        if (rng(h(seed, k, 77))() < 0.5) {
+          run.ws++;
+          run.lsk = 0;
+          run.gold += 1;
+        } else {
+          run.lsk++;
+          run.ws = 0;
+        }
+        return;
+      }
       if (r.type === 'pvp') {
         /* 輪流打其他還活著的機器人（打的是對方這回合的快照，只影響自己） */
         const o = alive[(i + 1 + (k % (alive.length - 1))) % alive.length];
@@ -779,7 +797,7 @@ function simLobby(seed, rating, opt = {}) {
       } else {
         run.lsk++;
         run.ws = 0;
-        run.hp -= r.loss;
+        if (!solo) run.hp -= r.loss;
       }
       if (r.type === 'elite' || r.type === 'boss') {
         const [a, c] = eliteStars(r.st),

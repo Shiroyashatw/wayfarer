@@ -276,7 +276,7 @@
     try {
       for (let i = 0; i < batch && performance.now() - t0 < 30000; i++) {
         if (what === 'class') {
-          for (const b of simLobby((Math.random() * 2 ** 31) | 0, 1300)) {
+          for (const b of simLobby((Math.random() * 2 ** 31) | 0, 1300, { short: 1 })) {
             const c = b.snaps[Object.keys(b.snaps)[0]].bag.cls;
             (SIM.cls[c] = SIM.cls[c] || []).push(b.place);
           }
