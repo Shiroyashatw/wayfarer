@@ -7,6 +7,7 @@
        'pve'    野怪／菁英／首領勝率、每個階段的背包格數
        'fair'   用跟對手同強度的機器人代打：對戰勝率（約 50%）、平均名次（約 2.5）、一局幾回合
      report()            把累積的模擬結果整理成表
+     itemPower()         單件道具強度：每件放進標準背包，看帶著它能打贏 ×N 倍強的對手（N 越大越強），同星級同類別比較，標出偏強偏弱的
    每個問題前面標 ❌（一定要修）或 ⚠️（看情況）。 */
 (() => {
   const W = window;
@@ -143,6 +144,103 @@
     }
     const probs = out.filter(s => /^(❌|⚠️)/.test(s));
     return `${probs.length ? probs.join('\n') : '✅ 沒有發現問題'}\n\n${out.filter(s => !/^(❌|⚠️)/.test(s)).join('\n')}`;
+  };
+
+  /* ================= 單件道具強度（0.1.18） ================= */
+  /* 每件道具放進一個「標準背包」，看帶著它能打贏多強的對手（對手 = 沒有它的同一個背包放大 ×m 倍，二分搜尋勝率 50% 的 m）；
+     同星級、同類別（武器、輔助、防具／盾、藥水、寵物）的放在一起比，偏離中位數太多的標出來。
+     標準背包：同星級的兩把搭檔武器（輔助道具指定的標籤優先，例如箭袋配兩把弓、獸王圖騰配兩隻寵物；沒指定的配沒特效的劍／鎚）
+     ＋ 一件同星級防具（盾的輔助配盾），4×4。 */
+  const CAT = i =>
+    i.tags.includes('pet') ? '寵物' : i.dmg ? '武器' : i.tags.includes('potion') ? '藥水' : i.tags.includes('armor') || i.tags.includes('shield') ? '防具' : '輔助';
+  function partners(i) {
+    const IT = items(),
+      tgs = [i.for, ...mods(i).map(m => m.tag)].filter(t => t && t !== 'weapon' && t !== '*');
+    const near = (pool, s) => {
+      for (const d of [0, -1, 1, -2, 2, -3, 3, -4, 4]) {
+        const l = pool.filter(x => x.star === s + d && x.id !== i.id);
+        if (l.length) return l;
+      }
+      return pool.filter(x => x.id !== i.id);
+    };
+    const petSide = tgs.includes('pet') || i.tags.includes('pet');
+    let pool = IT.filter(
+      x => x.dmg && (petSide ? x.tags.includes('pet') : !x.tags.includes('pet')) && (tgs.length && !petSide ? tgs.some(t => x.tags.includes(t)) : true)
+    );
+    if (!pool.length) pool = IT.filter(x => x.dmg && !x.tags.includes('pet'));
+    /* 沒指定標籤的武器搭檔用「沒有特殊效果」的劍／鎚，比較公平 */
+    if (!tgs.length && !petSide) {
+      const plain = pool.filter(x => (x.tags.includes('sword') || x.tags.includes('mace')) && !x.on && !x.pre);
+      if (plain.length) pool = plain;
+    }
+    let ws = near(pool, i.star);
+    if (!ws.length) ws = near(IT.filter(x => x.dmg && !x.tags.includes('pet')), i.star);
+    const def = near(IT.filter(x => x.tags.includes(tgs.includes('shield') ? 'shield' : 'armor')), i.star);
+    return [ws[0], ws[1] || ws[0], def[0]].filter(Boolean);
+  }
+  function testBag(ids) {
+    const bag = { w: 4, h: 4, items: [] };
+    ids.forEach((id, k) => {
+      const o = { u: 'b' + k, id, t: 1, x: 0, y: 0, r: 0 },
+        sp = findSpot(bag, o, true);
+      if (sp) bag.items.push({ ...o, ...sp });
+    });
+    return bag;
+  }
+  /* 對手放大 m 倍（生命、傷害、格擋各 ×√m，整體戰力約 ×m） */
+  function scaled(F, m) {
+    const k = Math.sqrt(m),
+      G = JSON.parse(JSON.stringify(F));
+    G.hp = Math.round(G.hp * k);
+    G.weapons.forEach(w => (w.dmg = w.dmg.map(v => Math.max(1, Math.round(v * k)))));
+    G.shields.forEach(x => (x.block = Math.round(x.block * k)));
+    return G;
+  }
+  /* 帶著這件道具，能打贏（勝率 50%）多強的對手：二分搜尋 m（1 = 跟沒有它的自己一樣強） */
+  function powerOf(FA, FB, n) {
+    let lo = 0.5,
+      hi = 10;
+    for (let it = 0; it < 10; it++) {
+      const m = (lo + hi) / 2,
+        G = scaled(FB, m);
+      let w = 0;
+      for (let s = 0; s < n; s++) if (simulate(FA, G, 7000 + s).win) w++;
+      if (w / n >= 0.5) lo = m;
+      else hi = m;
+    }
+    return (lo + hi) / 2;
+  }
+  W.itemPowerOf = (id, n = 16) => {
+    const i = ITEMI[id],
+      base = partners(i).map(x => x.id);
+    return powerOf(compileBag(testBag([...base, id])), compileBag(testBag(base)), n);
+  };
+  W.itemPower = function (n = 16) {
+    const rows = [];
+    for (const i of items()) {
+      if (i.gold) continue; /* 經濟道具（金幣）不比戰力 */
+      const base = partners(i).map(x => x.id),
+        A = testBag([...base, i.id]),
+        B = testBag(base);
+      if (!A.items.some(o => o.id === i.id)) continue;
+      rows.push({ i, cat: CAT(i), p: powerOf(compileBag(A), compileBag(B), n), cells: shapeOf(i.id).length, base });
+    }
+    const out = ['## 單件道具強度：帶著它能打贏 ×N 倍強的對手（同星級、同類別比較；括號是佔幾格）'],
+      flags = [];
+    const groups = {};
+    rows.forEach(r => ((groups[r.cat + r.i.star] = groups[r.cat + r.i.star] || []).push(r)));
+    for (const [g, l] of Object.entries(groups).sort()) {
+      l.sort((a, b) => b.p - a.p);
+      const med = l[fl(l.length / 2)].p;
+      out.push(`${g.slice(0, -1)} ${g.slice(-1)}★（中位數 ×${med.toFixed(2)}）：` + l.map(r => `${r.i.n} ×${r.p.toFixed(2)}${r.cells > 1 ? `（${r.cells}）` : ''}`).join('、'));
+      if (l.length >= 3)
+        l.forEach(r => {
+          const q = r.p / med;
+          if (q >= 1.3) flags.push(`⚠️ 偏強：${r.i.n}（${g.slice(0, -1)} ${r.i.star}★）×${r.p.toFixed(2)}，同組中位數 ×${med.toFixed(2)}`);
+          if (q <= 0.77) flags.push(`⚠️ 偏弱：${r.i.n}（${g.slice(0, -1)} ${r.i.star}★）×${r.p.toFixed(2)}，同組中位數 ×${med.toFixed(2)}`);
+        });
+    }
+    return [flags.join('\n') || '✅ 沒有明顯偏強偏弱的道具', '', ...out].join('\n');
   };
 
   /* ================= 機器人模擬（分批、累積） ================= */

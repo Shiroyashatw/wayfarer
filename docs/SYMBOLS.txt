@@ -24,17 +24,19 @@ BAG_MAX js/data.js:32 [一局]
 ROUNDS js/data.js:35 [一局]
 RTYPE js/data.js:62 [一局]
 RSHORT js/data.js:64 [一局]
-PLACE_PTS js/data.js:66 [一局]
-RANKS js/data.js:69 [一局]
-rankOf js/data.js:73 [一局]
-rankName js/data.js:74 [一局]
-rankProg js/data.js:76 [一局]
-placed js/data.js:80 [一局]
-AVATARS js/data.js:82 [一局]
-NAME_A js/data.js:101 [一局]
-randName js/data.js:137 [一局]
-GVER js/data.js:139 [一局]
-VER js/data.js:140 [一局]
+HP_ST js/data.js:67 [一局]
+hpMul js/data.js:68 [一局]
+PLACE_PTS js/data.js:70 [一局]
+RANKS js/data.js:73 [一局]
+rankOf js/data.js:77 [一局]
+rankName js/data.js:78 [一局]
+rankProg js/data.js:80 [一局]
+placed js/data.js:84 [一局]
+AVATARS js/data.js:86 [一局]
+NAME_A js/data.js:105 [一局]
+randName js/data.js:141 [一局]
+GVER js/data.js:143 [一局]
+VER js/data.js:144 [一局]
 SPR js/sprites.js:4 [pixel sprites (original art)]
 ICONS js/sprites.js:560 [pixel sprites (original art)]
 ICOPAL js/sprites.js:582 [pixel sprites (original art)]
@@ -117,7 +119,7 @@ preKey js/items.js:2031
 preVal js/items.js:2032
 preTxt js/items.js:2039
 itemDesc js/items.js:2043
-scaleMod js/items.js:2094
+scaleMod js/items.js:2095
 cellsOf js/bag.js:4
 bagGrid js/bag.js:6
 canPlace js/bag.js:12
@@ -128,13 +130,13 @@ findSpot js/bag.js:37
 synergy js/bag.js:70
 mergeAll js/bag.js:77 [合成]
 compileBag js/bag.js:109 [戰鬥數值]
-bagMods js/bag.js:232 [戰鬥數值]
-packBag js/bag.js:266 [戰鬥數值]
-unpackBag js/bag.js:272 [戰鬥數值]
+bagMods js/bag.js:239 [戰鬥數值]
+packBag js/bag.js:273 [戰鬥數值]
+unpackBag js/bag.js:279 [戰鬥數值]
 SIM_DT js/sim.js:4
 WEAK_PCT js/sim.js:6
-simSide js/sim.js:12
-simulate js/sim.js:35
+simSide js/sim.js:14
+simulate js/sim.js:37
 mkW js/run.js:4 [野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）]
 mkF js/run.js:23 [野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）]
 ARCH js/run.js:38 [野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）]
@@ -173,19 +175,21 @@ opponentOf js/run.js:476 [對手]
 ELITE_POOL js/run.js:498 [對手]
 mobOf js/run.js:499 [對手]
 eliteStars js/run.js:513 [對手]
-startFight js/run.js:516 [戰鬥]
-fightSum js/run.js:526 [戰鬥]
-finishFight js/run.js:549 [戰鬥]
-rivalsDone js/run.js:607 [戰鬥]
-nextPvpId js/run.js:615 [戰鬥]
-finalPlace js/run.js:620 [戰鬥]
-endRun js/run.js:624 [戰鬥]
-takePick js/run.js:639 [戰鬥]
-claimHold js/run.js:655 [戰鬥]
-THEMES js/run.js:671 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-botAct js/run.js:673 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-simLobby js/run.js:718 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-makeBots js/run.js:793 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+stageHp js/run.js:517 [戰鬥]
+MOB_HP js/run.js:527 [戰鬥]
+startFight js/run.js:530 [戰鬥]
+fightSum js/run.js:541 [戰鬥]
+finishFight js/run.js:564 [戰鬥]
+rivalsDone js/run.js:622 [戰鬥]
+nextPvpId js/run.js:630 [戰鬥]
+finalPlace js/run.js:635 [戰鬥]
+endRun js/run.js:639 [戰鬥]
+takePick js/run.js:654 [戰鬥]
+claimHold js/run.js:670 [戰鬥]
+THEMES js/run.js:686 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+botAct js/run.js:688 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+simLobby js/run.js:733 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+makeBots js/run.js:808 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
 GHOST js/ghost.js:4
 ghostOK js/ghost.js:5
 ghostFail js/ghost.js:6

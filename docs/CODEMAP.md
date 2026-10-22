@@ -22,6 +22,7 @@
 | 快照對戰（Supabase） | `js/ghost.js`、`supabase/migrations/20261022000000_serling_ghosts.sql` | `ghostRivals`（配對＋機器人補位）、`ghostBegin`、`ghostSnap`、`ghostEnd`、`GHOST.off`、開服種子 `seedGhosts`；資料表 `runs`（`seed` 欄位）／`snaps`、RPC `pick_rivals`（真人優先） |
 | 首頁、圖鑑、說明、設定 | `js/ui.js` | `render`、`homeHTML`、`codexHTML`、`helpHTML`、`settingsHTML`、`go` |
 | 準備畫面（回合列、背包、暫存區、商店、道具說明） | `js/ui.js` | `prepHTML`、`roundBarHTML`、`bagHTML`、`rivalHTML`、`detailHTML`、`tutHTML`、`cellSize` |
+| 戰鬥生命照階段放大（0.1.19） | `js/data.js`、`js/run.js` | `HP_ST`、`hpMul`（data）；`stageHp`、`MOB_HP`、`MOB_DMG`（run，`startFight`、`simLobby`、`resumeFight` 都套用） |
 | 更新紀錄（首頁左下，0.1.16） | `js/news.js`、`js/ui.js` | `NEWS`（給玩家看的每版功能變化，上新版時在最上面加一筆）；`showNews`、`A.news`、`S.newsSeen`（亮點） |
 | 即時戰鬥紀錄（0.1.13） | `js/ui.js` | `bLog`、`bNames`（`bTick` 每個事件呼叫）、`#blog` |
 | 角色加成照升階（0.1.13） | `js/items.js`、`js/bag.js` | `fxT`、`FX_FLAT`；`compileBag` |
@@ -79,9 +80,9 @@
 
 - **utils**（6），15 個宣告
 
-### js/data.js（141 行）
+### js/data.js（145 行）
 
-- **一局**（5），18 個宣告
+- **一局**（5），20 個宣告
 
 ### js/sprites.js（1415 行）
 
@@ -92,24 +93,24 @@
 ### js/art.js（1235 行）
 
 
-### js/items.js（2099 行）
+### js/items.js（2100 行）
 
 
-### js/bag.js（290 行）
+### js/bag.js（297 行）
 
 - **合成**（75），1 個宣告
 - **戰鬥數值**（107），4 個宣告
 
-### js/sim.js（236 行）
+### js/sim.js（241 行）
 
 
-### js/run.js（798 行）
+### js/run.js（813 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），23 個宣告
 - **對手**（458），8 個宣告
-- **戰鬥**（514），9 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（670），4 個宣告
+- **戰鬥**（514），11 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（685），4 個宣告
 
 ### js/ghost.js（122 行）
 
@@ -124,7 +125,7 @@
 - **cloud save (Supabase)**（4），7 個宣告
 - **accounts**（104），5 個宣告
 
-### js/news.js（105 行）
+### js/news.js（117 行）
 
 
 ### js/ui.js（1504 行）

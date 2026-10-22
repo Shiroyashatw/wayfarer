@@ -7,7 +7,9 @@ const WEAK_PCT = 25,
   WEAK_T = 3,
   BLIND_MISS = 30,
   BLIND_T = 2.5,
-  SUNDER_MAX = 30;
+  SUNDER_MAX = 30,
+  /* 0.1.19 中毒不會退，戰鬥拉長以後會一直疊、太強：最多 12 層 */
+  POISON_MAX = 12;
 /* 一方的戰鬥狀態 */
 function simSide(F) {
   return {
@@ -103,7 +105,7 @@ function simulate(FA, FB, seed) {
       }
     }
     if (w.burn) d.burn += w.burn;
-    if (w.poison) d.poison += w.poison;
+    if (w.poison) d.poison = Math.min(POISON_MAX, d.poison + w.poison);
     if (w.bleed) d.bleed += w.bleed;
     if (w.sunder) d.sunder = Math.min(SUNDER_MAX, d.sunder + w.sunder);
     if (w.weak && r() * 100 < w.weak) {
@@ -146,7 +148,7 @@ function simulate(FA, FB, seed) {
       const d = S[1 - i];
       if (p.k === 'weak' || p.k === 'blind' || p.k === 'frozen') d[p.k] = Math.max(d[p.k], p.v);
       else if (p.k === 'sunder') d.sunder = Math.min(SUNDER_MAX, d.sunder + p.v);
-      else d[p.k] += p.v;
+      else d[p.k] = p.k === 'poison' ? Math.min(POISON_MAX, d[p.k] + p.v) : d[p.k] + p.v;
       log(0, i, 'throw', p.v, { u: p.u, x: p.k });
     }
   let t = 0,
@@ -162,7 +164,10 @@ function simulate(FA, FB, seed) {
         continue;
       }
       /* 0.1.10 越戰越快（ramp）：每 5 秒攻速 +N%，最多 5 次 */
-      const rate = (a.frozen > 0 ? 0.5 : 1) * (1 + (Math.min(5, fl(t / 5)) * (a.F.ramp || 0)) / 100);
+      const rate =
+        (a.frozen > 0 ? 0.5 : 1) *
+        (1 + (Math.min(5, fl(t / 5)) * (a.F.ramp || 0)) / 100) *
+        (a.F.rushT && t <= a.F.rushT ? 1 + a.F.rushP / 100 : 1);
       if (a.frozen > 0) a.frozen -= SIM_DT;
       for (const w of a.w) {
         if (w.seal > 0) {

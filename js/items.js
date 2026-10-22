@@ -1375,7 +1375,7 @@ const ITEMS = [
     star: 3,
     sh: 's1',
     tags: ['potion'],
-    all: [{ tag: 'weapon', spd: 15 }],
+    rush: [25, 3],
     ic: 'sk_sacrifice'
   },
   { id: 'elixir', n: '萬靈藥', star: 5, sh: 's1', tags: ['potion'], pot: [50, 70, 2], regen: 2, ic: 'sk_vitality' },
@@ -1496,8 +1496,8 @@ const CLASSES = [
     ic: 'sk_multishot',
     th: 'bow',
     m: [
-      { tag: 'bow', dmgPct: 20, spd: 15 },
-      { tag: 'xbow', dmgPct: 20, spd: 15 }
+      { tag: 'bow', dmgPct: 25, spd: 20 },
+      { tag: 'xbow', dmgPct: 25, spd: 20 }
     ]
   },
   {
@@ -1506,7 +1506,7 @@ const CLASSES = [
     n: '劍士',
     ic: 'sk_swordwave',
     th: 'sword',
-    m: [{ tag: 'sword', dmgPct: 25, crit: 10, bleed: 1 }]
+    m: [{ tag: 'sword', dmgPct: 35, crit: 15, bleed: 2 }]
   },
   {
     id: 'berserker',
@@ -1515,8 +1515,8 @@ const CLASSES = [
     ic: 'sk_rage',
     th: 'mace',
     m: [
-      { tag: 'axe', dmgPct: 30, spd: 15, sunder: 1 },
-      { tag: 'mace', dmgPct: 30, spd: 15, sunder: 1 }
+      { tag: 'axe', dmgPct: 25, spd: 10, sunder: 1 },
+      { tag: 'mace', dmgPct: 25, spd: 10, sunder: 1 }
     ]
   },
   {
@@ -1544,7 +1544,7 @@ const CLASSES = [
     ic: 'sk_fireburst',
     th: 'fire',
     m: [
-      { tag: 'fire', burn: 3, dmgPct: 15 },
+      { tag: 'fire', burn: 2, dmgPct: 15 },
       { tag: 'staff', dmgPct: 15 }
     ]
   },
@@ -1565,7 +1565,7 @@ const CLASSES = [
     n: '雷法師',
     ic: 'sk_chainlight',
     th: 'light',
-    m: [{ tag: 'light', stunCh: 12, dmgPct: 25 }]
+    m: [{ tag: 'light', stunCh: 15, dmgPct: 35 }]
   },
   {
     id: 'venom',
@@ -1574,11 +1574,11 @@ const CLASSES = [
     ic: 'sk_poison',
     th: 'poison',
     m: [
-      { tag: 'poison', poison: 2 },
+      { tag: 'poison', poison: 1, dmgPct: 10 },
       { tag: 'dagger', poison: 1 }
     ]
   },
-  { id: 'tamer', st: 'treefrog', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 40, spd: 20 }] },
+  { id: 'tamer', st: 'treefrog', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 50, spd: 25 }] },
   {
     id: 'knight',
     st: 'woodshield',
@@ -2053,7 +2053,7 @@ function itemDesc(id, t = 1) {
   }
   if (it.on) {
     if (o.burn) out.push(`命中時讓敵人燃燒 ${o.burn} 層（每秒扣層數，每秒少 1 層）`);
-    if (o.poison) out.push(`命中時讓敵人中毒 ${o.poison} 層（每秒扣層數，不會退）`);
+    if (o.poison) out.push(`命中時讓敵人中毒 ${o.poison} 層（每秒扣層數，不會退，最多 12 層）`);
     if (o.freeze) out.push(`命中時 ${o.freeze[0]}% 機率凍結敵人 ${o.freeze[1]} 秒（攻速減半）`);
     if (o.stun) out.push(`命中時 ${o.stun[0]}% 機率暈眩敵人 ${o.stun[1]} 秒（不能動）`);
     if (o.ls) out.push(`吸血 ${o.ls}%`);
@@ -2086,6 +2086,7 @@ function itemDesc(id, t = 1) {
     if (f.take) out.push(`受到的傷害 +${f.take}%`);
     if (f.potMul) out.push(`藥水回復 +${f.potMul}%${f.potUse ? `、多喝 ${f.potUse} 次` : ''}`);
   }
+  if (it.rush) out.push(`開戰後 ${it.rush[1]} 秒內所有武器攻速 +${Math.round(it.rush[0] * TIERB[t])}%`);
   if (it.gold) out.push(`放在背包裡每回合 +${it.gold} 金（每升一階 +1）`);
   if (it.pre) out.push(preTxt(id, t));
   return out.join('；');

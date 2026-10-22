@@ -62,6 +62,10 @@ const ROUNDS = (() => {
 const RTYPE = { pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
 /* 回合列的短名與顏色分類 */
 const RSHORT = { pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
+/* 0.1.19 戰鬥中的生命倍率（照階段）：合成 ×3／×9 之後傷害長很快，對戰只打 3～4 秒；
+   兩邊（玩家、對手快照、怪物）的生命都乘上這個，打久一點，持續傷害、回復、慢速武器、疲勞才有作用 */
+const HP_ST = [1, 1.5, 2.6, 3.6, 4.4, 5.1, 5.8, 6.5, 7.2];
+const hpMul = st => HP_ST[Math.min(HP_ST.length - 1, st)] || 1;
 /* 名次加減分（分數不給玩家看，只顯示牌階） */
 const PLACE_PTS = [0, 40, 15, -10, -25];
 /* 0.1.6 牌階：8 階 × 一二三（三最高），每一級 50 分；1000 分是銅牌一。
@@ -136,5 +140,5 @@ const NAME_A = [
   ];
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
-const GVER = 's12';
-const VER = '0.1.17';
+const GVER = 's13';
+const VER = '0.1.19';

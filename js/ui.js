@@ -451,7 +451,7 @@ function statsHTML(run) {
         .join('・');
   const C = CLSI[run.bag.cls];
   return `<div class="stt">${C ? `<div class="sw"><img src="${artIconURL(C.ic) || iconURL('star')}" alt=""><span><b>職業：${C.n}</b><small>${clsDesc(C.id)}</small></span></div>` : ''}
-    <div class="kv3">${kv('生命', F.hp)}${kv('護甲', `${F.arm}<small>減傷 ${red}%</small>`)}${kv('閃避', F.dodge + '%')}${kv('每秒回復', F.regen)}${kv('吸血', F.ls + '%')}${kv('暴擊傷害', F.critMul + '%')}</div>
+    <div class="kv3">${kv('生命', `${Math.round(F.hp * hpMul(curRound(run) ? curRound(run).st : 1))}<small>這階段 ×${hpMul(curRound(run) ? curRound(run).st : 1)}</small>`)}${kv('護甲', `${F.arm}<small>減傷 ${red}%</small>`)}${kv('閃避', F.dodge + '%')}${kv('每秒回復', F.regen)}${kv('吸血', F.ls + '%')}${kv('暴擊傷害', F.critMul + '%')}</div>
     <h4>攻擊　<small>每秒約 ${tot.toFixed(1)} 傷害</small></h4>
     ${
       F.weapons
@@ -548,7 +548,7 @@ const leadIn = res => {
 function resumeFight() {
   const run = S.run,
     f = run.fight,
-    me = compileBag(run.bag),
+    me = stageHp(compileBag(run.bag), curRound(run).st),
     res = simulate(me, f.opp.F, f.seed);
   B = {
     fb: { r: curRound(run), opp: f.opp, me, res },
@@ -899,7 +899,7 @@ function codexHTML() {
 }
 function helpHTML() {
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
-  <div class="card"><b>一局</b><p>4 位玩家一場，每人 ${START_HP} 點生命。每回合在商店買道具、擺進背包，然後自動戰鬥。輸了扣生命，歸零就淘汰；最後活下來的是第 1 名。</p></div>
+  <div class="card"><b>一局</b><p>4 位玩家一場，每人 ${START_HP} 點生命。每回合在商店買道具、擺進背包，然後自動戰鬥。輸了扣生命，歸零就淘汰；最後活下來的是第 1 名。戰鬥中角色的生命會跟著階段變多（第 1 階段 ×1.5、第 2 階段 ×2.6、第 3 階段 ×3.6…），後期一場大約打 8～10 秒，持續傷害、回復、慢速重武器才有發揮空間。</p></div>
   <div class="card"><b>職業</b><p>每局開打前三選一（可以刷新一次），整局都有效：例如弓箭手讓弓、弩傷害 +20%、攻速 +15%。照職業去買武器和輔助道具（箭袋、劍帶、法術卷軸、火藥地雷、獸牙項鍊…），輔助道具要擺在武器旁邊或同一排才有用，背包空間要取捨。點左上角頭像可以看職業與數值。</p></div>
   <div class="card"><b>回合</b><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完專屬核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星），4-4 是首領（副核心三選一）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
   <div class="card"><b>金幣</b><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></div>

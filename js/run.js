@@ -152,7 +152,7 @@ const MOBS = {
   ),
   /* 2-5 首領：地府（兩個模板合在一起，各有機制要破） */
   '2-5': pool(
-    [150, 4.6],
+    [165, 5.4],
     [
       ['牛頭', 'oxhead', ['brute', 'tank']],
       ['馬面', 'horseface', ['swift', 'storm']],
@@ -164,7 +164,7 @@ const MOBS = {
   ),
   /* 第 2 階段菁英（2-4）：七宗罪的爪牙 */
   sins: pool(
-    [100, 4.4],
+    [110, 5],
     [
       ['傲慢聖騎', 'sin_pride_paladin', 'tank'],
       ['傲慢之鏡', 'sin_pride_mirror', 'blinder'],
@@ -184,7 +184,7 @@ const MOBS = {
   ),
   /* 第 3 階段菁英（3-4）：墮落十二生肖 */
   zodiac: pool(
-    [90, 4],
+    [100, 4.7],
     [
       ['墮落・子鼠', 'z_rat', 'swift'],
       ['墮落・丑牛', 'z_ox', 'brute'],
@@ -202,7 +202,7 @@ const MOBS = {
   ),
   /* 4-4 首領：七宗罪之王 */
   kings: pool(
-    [125, 4],
+    [118, 3.8],
     [
       ['傲慢之王・路西法', 'lucifer', ['tank', 'blinder']],
       ['貪婪之王・瑪門', 'mammon', ['swift', 'bleed']],
@@ -215,7 +215,7 @@ const MOBS = {
   ),
   /* 第 5 階段以後的菁英：四凶與冥府 */
   fiends: pool(
-    [90, 4],
+    [105, 5],
     [
       ['四凶・混沌', 'hundun', ['hexer', 'tank']],
       ['四凶・窮奇', 'qiongqi', ['bleed', 'swift']],
@@ -512,13 +512,28 @@ function mobOf(run, r) {
 /* 菁英戰利品的星級：越後面越高（不含職業核心） */
 const eliteStars = st => (st <= 2 ? [2, 3] : st <= 4 ? [3, 4] : [4, 5]);
 /* ================= 戰鬥 ================= */
+/* 0.1.19 戰鬥用的生命照階段放大（data.js 的 HP_ST）；回傳複本，不改原本的 */
+/* 怪物：生命只放大 25%（不然菁英、首領要打 15 秒以上），傷害放大 50%（玩家生命變多，怪也要打得痛一點） */
+function stageHp(F, st, mob) {
+  const m = hpMul(st);
+  if (!mob) return { ...F, hp: Math.round(F.hp * m) };
+  const d = 1 + (m - 1) * MOB_DMG;
+  return {
+    ...F,
+    hp: Math.round(F.hp * (1 + (m - 1) * MOB_HP)),
+    weapons: F.weapons.map(w => ({ ...w, dmg: w.dmg.map(v => Math.max(1, Math.round(v * d))) }))
+  };
+}
+let MOB_HP = 0.25,
+  MOB_DMG = 0.5;
 /* 開戰：存快照（給別人當對手）、算好整場（固定亂數） */
 function startFight(run) {
   const r = curRound(run);
   if (typeof ghostSnap === 'function') ghostSnap(run, r.id);
   const opp = opponentOf(run);
   if (!opp) return null;
-  const me = compileBag(run.bag),
+  opp.F = stageHp(opp.F, r.st, opp.kind !== 'pvp');
+  const me = stageHp(compileBag(run.bag), r.st),
     res = simulate(me, opp.F, h(run.seed, run.ri, 991));
   return { r, opp, me, res };
 }
@@ -760,7 +775,7 @@ function simLobby(seed, rating) {
         const o = alive[(i + 1 + (k % (alive.length - 1))) % alive.length];
         F = compileBag(o.run.bag);
       } else F = mobOf(run, r).F;
-      const res = simulate(compileBag(run.bag), F, h(seed, k, i));
+      const res = simulate(stageHp(compileBag(run.bag), r.st), stageHp(F, r.st, r.type !== 'pvp'), h(seed, k, i));
       /* 0.1.10 跟玩家一樣的經濟：打贏拿金幣、連勝連敗（之前沒算，機器人的背包比玩家窮、快照偏弱） */
       if (res.win) {
         run.ws++;

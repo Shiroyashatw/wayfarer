@@ -132,6 +132,9 @@ function compileBag(bag, extra = {}) {
       double: 0,
       thornsF: 0,
       critHeal: 0,
+      /* 0.1.18 開戰爆發（rush）：開頭幾秒攻速提升（血祭）；取最高的加成、秒數相加 */
+      rushP: 0,
+      rushT: 0,
       ...extra
     };
   const cnt = tag => its.filter(o => ITEMI[o.id].tags.includes(tag)).length;
@@ -185,6 +188,10 @@ function compileBag(bag, extra = {}) {
     if (I.arm) F.arm += Math.round(I.arm * k);
     if (I.dodge) F.dodge += Math.round(I.dodge * TIERB[o.t]);
     if (I.regen || m.regen) F.regen += Math.round((I.regen || 0) * k) + (m.regen || 0);
+    if (I.rush) {
+      F.rushP = Math.max(F.rushP, Math.round(I.rush[0] * TIERB[o.t]));
+      F.rushT += I.rush[1];
+    }
     if (I.pre) {
       /* 鍊金術士：丟出去的藥劑（藥水標籤）效果加強 */
       const k = preKey(I.pre),
