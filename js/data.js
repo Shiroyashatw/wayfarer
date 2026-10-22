@@ -126,5 +126,5 @@ const NAME_A = [
   ];
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
-const GVER = 's4';
-const VER = '0.1.6';
+const GVER = 's5';
+const VER = '0.1.7';

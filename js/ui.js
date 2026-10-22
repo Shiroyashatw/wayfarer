@@ -191,7 +191,8 @@ function render() {
         prepHTML(run) +
         (run.phase === 'result' ? resultHTML(run) : '') +
         (run.phase === 'pick' ? pickHTML(run) : '') +
-        (run.phase === 'prep' ? revealHTML(run) : '');
+        (run.phase === 'prep' ? revealHTML(run) : '') +
+        (run.phase === 'cls' ? clsHTML(run) : '');
   } else if (V.scr === 'codex') html = codexHTML();
   else if (V.scr === 'help') html = helpHTML();
   else if (V.scr === 'settings') html = settingsHTML();
@@ -352,7 +353,7 @@ function prepHTML(run) {
     nr = r.type === 'pvp' ? nextRival(run) : -1,
     oppTxt = r.type === 'pvp' ? (nr >= 0 ? `對戰 ${esc(run.rivals[nr].name)}` : '對戰') : RTYPE[r.type];
   return `<div class="prep">
-    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>數值 ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金</b><small>${r.id}・${oppTxt}</small></div>${themeBtn()}</div>
+    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金</b><small>${r.id}・${oppTxt}</small></div>${themeBtn()}</div>
     ${roundBarHTML(run)}
     ${rivalHTML(run)}
     ${tutHTML()}
@@ -445,7 +446,8 @@ function statsHTML(run) {
       ]
         .filter(Boolean)
         .join('・');
-  return `<div class="stt">
+  const C = CLSI[run.bag.cls];
+  return `<div class="stt">${C ? `<div class="sw"><img src="${artIconURL(C.ic) || iconURL('star')}" alt=""><span><b>職業：${C.n}</b><small>${clsDesc(C.id)}</small></span></div>` : ''}
     <div class="kv3">${kv('生命', F.hp)}${kv('護甲', `${F.arm}<small>減傷 ${red}%</small>`)}${kv('閃避', F.dodge + '%')}${kv('每秒回復', F.regen)}${kv('吸血', F.ls + '%')}${kv('暴擊傷害', F.critMul + '%')}</div>
     <h4>攻擊　<small>每秒約 ${tot.toFixed(1)} 傷害</small></h4>
     ${
@@ -473,6 +475,17 @@ function pickHTML(run) {
         `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}</b><small>${itemDesc(id)}</small></span></button>`
     )
     .join('')}</div></div></div>`;
+}
+/* 0.1.7 開局職業三選一（可以刷新一次） */
+function clsHTML(run) {
+  return `<div class="ovl"><div class="dlg2"><b>選擇職業</b><p class="c-dim">整局都有效，照職業去買道具</p><div class="picks">${run.clsOpts
+    .map(
+      id =>
+        `<button class="pk cls" data-act="cls" data-k="${id}"><img src="${artIconURL(CLSI[id].ic) || iconURL('star')}" alt=""><span><b>${CLSI[id].n}</b><small>${clsDesc(id)}</small></span></button>`
+    )
+    .join(
+      ''
+    )}</div><button class="btn" data-act="clsRe" ${run.clsRe > 0 ? '' : 'disabled'}>${run.clsRe > 0 ? `刷新<small class="bnote">剩 ${run.clsRe} 次</small>` : '已經刷新過了'}</button></div></div>`;
 }
 /* 0.1.6 寄放中的戰利品（三選一時暫存區滿了） */
 function holdHTML(run) {
@@ -708,6 +721,7 @@ function codexHTML() {
 function helpHTML() {
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
   <div class="card"><b>一局</b><p>4 位玩家一場，每人 ${START_HP} 點生命。每回合在商店買道具、擺進背包，然後自動戰鬥。輸了扣生命，歸零就淘汰；最後活下來的是第 1 名。</p></div>
+  <div class="card"><b>職業</b><p>每局開打前三選一（可以刷新一次），整局都有效：例如弓箭手讓弓、弩傷害 +20%、攻速 +15%。照職業去買武器和輔助道具（箭袋、劍鞘、法術書、火藥桶、肉骨頭…），輔助道具要擺在武器旁邊或同一排才有用，背包空間要取捨。點左上角頭像可以看職業與數值。</p></div>
   <div class="card"><b>回合</b><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完職業核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
   <div class="card"><b>金幣</b><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></div>
   <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×6），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
@@ -837,6 +851,28 @@ const A = {
     if (run.after === 'end') run.phase = 'end';
     else if (run.after === 'pick') run.phase = 'pick';
     else nextRound(run);
+    save();
+    render();
+  },
+  cls: d => {
+    const run = S.run;
+    if (run.phase !== 'cls') return;
+    run.bag.cls = d.k;
+    run.phase = 'prep';
+    snd('level');
+    toast(`職業：${CLSI[d.k].n}`);
+    save();
+    render();
+  },
+  clsRe: () => {
+    const run = S.run;
+    if (run.phase !== 'cls' || run.clsRe <= 0) return;
+    run.clsRe--;
+    const old = run.clsOpts;
+    let n = rollClasses(run);
+    for (let g = 0; g < 8 && n.some(id => old.includes(id)); g++) n = rollClasses(run);
+    run.clsOpts = n;
+    snd('tap');
     save();
     render();
   },

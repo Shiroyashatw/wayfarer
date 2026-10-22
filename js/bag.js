@@ -133,6 +133,12 @@ function compileBag(bag, extra = {}) {
       else add(s, { [x.k]: s.m[1] });
     }
   }
+  /* 0.1.7 開局職業：對有那個標籤的道具加成、角色加成 */
+  const C = CLSI[bag.cls];
+  if (C) {
+    for (const b of C.m || []) for (const q of its) if (ITEMI[q.id].tags.includes(b.tag)) add(q, b);
+    for (const k in C.F || {}) F[k] += C.F[k];
+  }
   for (const o of its) {
     const I = ITEMI[o.id],
       k = TIERM[o.t],
@@ -198,17 +204,28 @@ function bagMods(bag) {
           }
       }
   }
+  const C = CLSI[bag.cls];
+  if (C)
+    for (const b of C.m || [])
+      for (const q of its)
+        if (ITEMI[q.id].tags.includes(b.tag)) {
+          const m = {};
+          for (const k in b) if (k !== 'tag') m[k] = b[k];
+          out.get(q.u).push({ from: 'cls', w: 'cls', m });
+        }
   return out;
 }
 /* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴] */
 const packBag = bag => ({
   w: bag.w,
   h: bag.h,
+  cls: bag.cls || null,
   it: bag.items.map(o => [o.id, o.t, o.x, o.y, o.r, o.a || 0, ...(o.m ? [o.m] : [])])
 });
 const unpackBag = p => ({
   w: p.w,
   h: p.h,
+  cls: p.cls || null,
   items: (p.it || [])
     .filter(a => ITEMI[a[0]])
     .map((a, i) => ({ u: 'g' + i, id: a[0], t: a[1], x: a[2], y: a[3], r: a[4], a: a[5] || null, m: a[6] || null }))

@@ -359,6 +359,177 @@ const ITEMS = [
     fx: { take: 10 },
     ic: 'sk_berserk'
   },
+  /* ---------- 0.1.7 輔助道具（配合開局職業的流派；佔格子，要取捨） ---------- */
+  {
+    id: 'quiver',
+    n: '箭袋',
+    star: 2,
+    sh: 'v2',
+    tags: ['trinket'],
+    for: 'bow',
+    adj: [
+      { tag: 'bow', spd: 20 },
+      { tag: 'xbow', spd: 20 }
+    ],
+    ic: 'sk_rainarrow'
+  },
+  {
+    id: 'hawkeye',
+    n: '鷹眼鏡',
+    star: 4,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'bow',
+    all: [
+      { tag: 'bow', crit: 12 },
+      { tag: 'xbow', crit: 12 }
+    ],
+    ic: 'sk_deadeye'
+  },
+  {
+    id: 'sheath',
+    n: '劍鞘',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'sword',
+    adj: [{ tag: 'sword', crit: 12, dmg: 1 }],
+    ic: 'sk_iai'
+  },
+  {
+    id: 'anvil',
+    n: '鐵砧',
+    star: 4,
+    sh: 'sq',
+    tags: ['trinket'],
+    for: 'mace',
+    adj: [{ tag: 'weapon', dmgPct: 30, spd: -10 }],
+    ic: 'sk_power'
+  },
+  {
+    id: 'cloak',
+    n: '暗影斗篷',
+    star: 3,
+    sh: 'h2',
+    tags: ['trinket'],
+    for: 'dagger',
+    fx: { dodge: 8 },
+    adj: [{ tag: 'dagger', crit: 10 }],
+    ic: 'sk_smokebomb'
+  },
+  {
+    id: 'spellbook',
+    n: '法術書',
+    star: 3,
+    sh: 'h2',
+    tags: ['trinket'],
+    for: 'staff',
+    row: [{ tag: 'staff', dmgPct: 25 }],
+    ic: 'sk_mantra'
+  },
+  {
+    id: 'powder',
+    n: '火藥桶',
+    star: 3,
+    sh: 'sq',
+    tags: ['trinket'],
+    for: 'fire',
+    adj: [{ tag: 'fire', burn: 2, dmgPct: 10 }],
+    ic: 'sk_detonate'
+  },
+  {
+    id: 'frostrune',
+    n: '冰霜符文',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'cold',
+    row: [{ tag: 'cold', freezeCh: 10 }],
+    ic: 'sk_iceshard'
+  },
+  {
+    id: 'thunderstone',
+    n: '雷石',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'light',
+    adj: [{ tag: 'light', stunCh: 8, dmg: 2 }],
+    ic: 'sk_spark'
+  },
+  {
+    id: 'toxinvial',
+    n: '劇毒瓶',
+    star: 3,
+    sh: 'v2',
+    tags: ['trinket'],
+    for: 'poison',
+    row: [
+      { tag: 'poison', poison: 1 },
+      { tag: 'dagger', poison: 1 }
+    ],
+    ic: 'sk_toxin'
+  },
+  {
+    id: 'bone',
+    n: '肉骨頭',
+    star: 1,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'pet',
+    adj: [{ tag: 'pet', dmg: 2, spd: 10 }],
+    ic: 'sk_bonecrush'
+  },
+  {
+    id: 'beasttotem',
+    n: '獸王圖騰',
+    star: 4,
+    sh: 'v2',
+    tags: ['trinket'],
+    for: 'pet',
+    all: [{ tag: 'pet', dmgPct: 20 }],
+    ic: 'sk_crytotem'
+  },
+  {
+    id: 'crest',
+    n: '盾徽',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'shield',
+    adj: [{ tag: 'shield', block: 4, blockPct: 15 }],
+    ic: 'sk_holyshield'
+  },
+  {
+    id: 'warbanner',
+    n: '戰旗',
+    star: 3,
+    sh: 'v3',
+    tags: ['trinket'],
+    for: 'spear',
+    row: [{ tag: 'weapon', spd: 10 }],
+    ic: 'sk_banner'
+  },
+  {
+    id: 'hourglass',
+    n: '沙漏',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket'],
+    adj: [{ tag: 'weapon', spd: 15 }],
+    ic: 'sk_haste'
+  },
+  {
+    id: 'cauldron',
+    n: '鍊金壺',
+    star: 3,
+    sh: 'sq',
+    tags: ['trinket'],
+    for: 'potion',
+    fx: { potMul: 40, potUse: 1 },
+    ic: 'sup_sp_eff'
+  },
+  { id: 'purse', n: '錢袋', star: 2, sh: 's1', tags: ['trinket'], gold: 1, ic: 'cur_regal' },
   /* ---------- 藥水 ---------- */
   { id: 'potion', n: '生命藥水', star: 1, sh: 's1', tags: ['potion'], pot: [50, 20, 1], ic: 'p:ic_potion' },
   { id: 'herb', n: '再生花', star: 2, sh: 's1', tags: ['potion'], regen: 1, ic: 'sk_regenaura' },
@@ -495,6 +666,92 @@ const ITEMS = [
   }
 ];
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
+/* 0.1.7 開局職業：1-1 開打前三選一（可以刷新一次），整局都有效。
+   m：對有那個標籤的道具加成（跟飾品一樣算進道具身上）；F：角色身上；gold：每回合多拿的金幣；th：機器人選了這個職業偏好買的標籤 */
+const CLASSES = [
+  {
+    id: 'archer',
+    n: '弓箭手',
+    ic: 'sk_multishot',
+    th: 'bow',
+    m: [
+      { tag: 'bow', dmgPct: 20, spd: 15 },
+      { tag: 'xbow', dmgPct: 20, spd: 15 }
+    ]
+  },
+  { id: 'swordsman', n: '劍士', ic: 'sk_swordwave', th: 'sword', m: [{ tag: 'sword', dmgPct: 20, crit: 10 }] },
+  {
+    id: 'berserker',
+    n: '狂戰士',
+    ic: 'sk_rage',
+    th: 'mace',
+    m: [
+      { tag: 'axe', dmgPct: 25, spd: 10 },
+      { tag: 'mace', dmgPct: 25, spd: 10 }
+    ]
+  },
+  {
+    id: 'spearman',
+    n: '槍兵',
+    ic: 'sk_spearrush',
+    th: 'spear',
+    m: [{ tag: 'spear', dmgPct: 30, spd: 10 }],
+    F: { arm: 5 }
+  },
+  { id: 'assassin', n: '刺客', ic: 'sk_backstab', th: 'dagger', m: [{ tag: 'dagger', crit: 15 }], F: { critMul: 40 } },
+  {
+    id: 'pyro',
+    n: '火法師',
+    ic: 'sk_fireburst',
+    th: 'fire',
+    m: [
+      { tag: 'fire', burn: 3, dmgPct: 15 },
+      { tag: 'staff', dmgPct: 15 }
+    ]
+  },
+  {
+    id: 'cryo',
+    n: '冰法師',
+    ic: 'sk_frostnova',
+    th: 'cold',
+    m: [
+      { tag: 'cold', freezeCh: 15, dmgPct: 15 },
+      { tag: 'staff', spd: 20 }
+    ]
+  },
+  { id: 'storm', n: '雷法師', ic: 'sk_chainlight', th: 'light', m: [{ tag: 'light', stunCh: 12, dmgPct: 25 }] },
+  {
+    id: 'venom',
+    n: '毒師',
+    ic: 'sk_poison',
+    th: 'poison',
+    m: [
+      { tag: 'poison', poison: 2 },
+      { tag: 'dagger', poison: 1 }
+    ]
+  },
+  { id: 'tamer', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 30, spd: 15 }] },
+  { id: 'knight', n: '騎士', ic: 'sk_shieldwall', th: 'shield', m: [{ tag: 'shield', blockPct: 40 }], F: { hp: 20 } },
+  { id: 'alchemist', n: '鍊金術士', ic: 'cur_alch', th: 'potion', F: { potMul: 30, regen: 1 } },
+  { id: 'merchant', n: '商人', ic: 'cur_exalt', gold: 1 }
+];
+const CLSI = Object.fromEntries(CLASSES.map(c => [c.id, c]));
+/* 職業的說明：標籤加成、角色加成、金幣 */
+function clsDesc(id) {
+  const c = CLSI[id];
+  if (!c) return '';
+  /* 加成一樣的標籤合在一起：「弓、弩：傷害 +20%」 */
+  const g = new Map();
+  for (const b of c.m || []) {
+    const t = modTxt(b);
+    g.set(t, [...(g.get(t) || []), tagTxt(b.tag)]);
+  }
+  const out = [...g].map(([t, tags]) => `${tags.join('、')}：${t}`);
+  if (c.F) out.push(modTxt(Object.fromEntries(Object.entries(c.F).filter(([k]) => MODN[k]))));
+  if (c.F && c.F.potMul) out.push(`藥水回復 +${c.F.potMul}%${c.F.potUse ? `、多喝 ${c.F.potUse} 次` : ''}`);
+  if (c.gold) out.push(`每回合 +${c.gold} 金（沒有戰鬥加成）`);
+  return out.filter(Boolean).join('；');
+}
 /* 升階：3 件相同、相同階的合成高一階（最多 3 階）；數值倍率與加成倍率 */
 const TIER_MAX = 3,
   TIERM = [0, 1, 1.8, 3.2],
@@ -632,6 +889,9 @@ function itemDesc(id, t = 1) {
   ])
     for (const b of it[w] || []) out.push(`${n}${tagTxt(b.tag)}：${modTxt(scaleMod(b, t))}`);
   if (it.fx && it.fx.take) out.push(`受到的傷害 +${it.fx.take}%`);
+  if (it.fx && it.fx.dodge) out.push(`閃避 +${it.fx.dodge}%`);
+  if (it.fx && it.fx.potMul) out.push(`藥水回復 +${it.fx.potMul}%${it.fx.potUse ? `、多喝 ${it.fx.potUse} 次` : ''}`);
+  if (it.gold) out.push(`放在背包裡每回合 +${it.gold} 金（每升一階 +1）`);
   if (it.pre) out.push(preTxt(id, t));
   return out.join('；');
 }

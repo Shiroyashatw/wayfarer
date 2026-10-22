@@ -107,6 +107,20 @@ function newRunState(seed) {
     un: 0
   };
 }
+/* 0.1.7 每回合多拿的金幣：商人職業、背包裡的錢袋（每升一階 +1） */
+const bonusGold = run =>
+  ((CLSI[run.bag.cls] || {}).gold || 0) +
+  run.bag.items.reduce((n, o) => n + (ITEMI[o.id].gold ? ITEMI[o.id].gold + o.t - 1 : 0), 0);
+/* 開局職業三選一：隨機 3 個不重複 */
+function rollClasses(run) {
+  const ids = CLASSES.map(c => c.id),
+    out = [];
+  while (out.length < 3) {
+    const id = ids.splice(fl(r01(run) * ids.length), 1)[0];
+    out.push(id);
+  }
+  return out;
+}
 /* 開新的一局；rivals 是 3 位對手（ghost.js 配好，或機器人） */
 function newRun(rivals) {
   const run = newRunState((Math.random() * 2 ** 31) | 0);
@@ -121,6 +135,10 @@ function newRun(rivals) {
     rating0: S.rating
   });
   nextRound(run);
+  /* 1-1 開打前先選職業 */
+  run.phase = 'cls';
+  run.clsOpts = rollClasses(run);
+  run.clsRe = 1;
   return run;
 }
 const curRound = run => ROUNDS[run.ri];
@@ -266,7 +284,8 @@ function nextRound(run) {
     run.gold = START_GOLD;
     rollShop(run);
   } else {
-    run.gold += BASE_INCOME + Math.min(INTEREST_MAX, fl(run.gold / 10)) + streakBonus(Math.max(run.ws, run.lsk));
+    run.gold +=
+      BASE_INCOME + Math.min(INTEREST_MAX, fl(run.gold / 10)) + streakBonus(Math.max(run.ws, run.lsk)) + bonusGold(run);
     if (!run.lock) rollShop(run);
     run.sale = false;
   }
@@ -453,7 +472,12 @@ function botAct(run, theme, q = 0.7) {
     run.shop.forEach((s, k) => {
       if (!s) return;
       const I = ITEMI[s.id],
-        want = I.tags.includes(theme) || I.tags.includes('weapon') || I.tags.includes('armor') || r01(run) < 0.35;
+        want =
+          I.tags.includes(theme) ||
+          I.for === theme ||
+          I.tags.includes('weapon') ||
+          I.tags.includes('armor') ||
+          r01(run) < 0.35;
       if (want && run.gold >= shopPrice(run, s.id) && benchFree(run) >= 0) buyItem(run, k);
     });
     if (run.gold >= 3 && run.gold < 8 && pass === 0 && r01(run) < q) rerollShop(run);
@@ -489,9 +513,13 @@ function simLobby(seed, rating) {
     bots = [0, 1, 2, 3].map(i => {
       const s = h(seed, i, 31),
         rt = Math.max(600, (rating || 1000) + fl((rr() - 0.5) * 150));
+      const run = newRunState(s),
+        opts = rollClasses(run),
+        cls = opts[fl(rr() * 3)];
+      run.bag.cls = cls;
       return {
-        run: newRunState(s),
-        theme: THEMES[fl(rr() * THEMES.length)],
+        run,
+        theme: CLSI[cls].th || THEMES[fl(rr() * THEMES.length)],
         q: Math.max(0.3, Math.min(0.95, 0.6 + (rt - 1000) / 800)),
         /* 0.1.6 牌階越高的機器人每回合多拿一點金幣（越往上越強）；鐵牌、銅牌少拿 */
         gb: Math.max(-2, Math.min(5, fl((rt - 1000) / 200))),

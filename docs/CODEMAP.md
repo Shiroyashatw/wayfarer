@@ -22,6 +22,8 @@
 | 快照對戰（Supabase） | `js/ghost.js`、`supabase/migrations/20261022000000_serling_ghosts.sql` | `ghostRivals`（配對＋機器人補位）、`ghostBegin`、`ghostSnap`、`ghostEnd`、`GHOST.off`、開服種子 `seedGhosts`；資料表 `runs`（`seed` 欄位）／`snaps`、RPC `pick_rivals`（真人優先） |
 | 首頁、圖鑑、說明、設定 | `js/ui.js` | `render`、`homeHTML`、`codexHTML`、`helpHTML`、`settingsHTML`、`go` |
 | 準備畫面（回合列、背包、暫存區、商店、道具說明） | `js/ui.js` | `prepHTML`、`roundBarHTML`、`bagHTML`、`rivalHTML`、`detailHTML`、`tutHTML`、`cellSize` |
+| 開局職業（三選一、刷新一次） | `js/items.js`、`js/run.js`、`js/bag.js`、`js/ui.js` | `CLASSES`、`CLSI`、`clsDesc`（items）；`rollClasses`、`newRun` 的 `phase: 'cls'`、`bonusGold`（run）；`compileBag`／`bagMods` 的 `bag.cls`（bag）；`clsHTML`、`A.cls`、`A.clsRe`（ui） |
+| 輔助道具（0.1.7，配合職業） | `js/items.js` | `ITEMS` 的「0.1.7 輔助道具」段；`for` 給機器人選購、`gold` 是錢袋 |
 | 牌階（鐵牌～菁英、一二三、定級賽） | `js/data.js`、`js/ui.js` | `RANKS`、`rankOf`、`rankName`、`rankProg`、`placed`（data）；`rankIcon`（程式畫像素圖示）、`rankHTML`、`rankMove`（ui）；定級加倍在 `endRun` |
 | 戰鬥冷卻條、封鎖顯示 | `js/ui.js` | `cdTimeline`、`bCd`（`bTick` 每格呼叫） |
 | 開戰前特殊效果（封鎖、降階） | `js/items.js`、`js/bag.js`、`js/sim.js` | 道具的 `pre`、`preVal`、`preTxt`（items）；`compileBag` 的 `F.pre`（bag）；`simulate` 開頭（sim） |
@@ -75,10 +77,10 @@
 ### js/art.js（1217 行）
 
 
-### js/items.js（644 行）
+### js/items.js（904 行）
 
 
-### js/bag.js（216 行）
+### js/bag.js（233 行）
 
 - **合成**（56），1 個宣告
 - **戰鬥數值**（83），4 個宣告
@@ -86,13 +88,13 @@
 ### js/sim.js（172 行）
 
 
-### js/run.js（547 行）
+### js/run.js（575 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），3 個宣告
-- **一局**（87），19 個宣告
-- **對手**（276），7 個宣告
-- **戰鬥**（327），7 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（446），4 個宣告
+- **一局**（87），21 個宣告
+- **對手**（295），7 個宣告
+- **戰鬥**（346），7 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（465），4 個宣告
 
 ### js/ghost.js（122 行）
 
@@ -107,19 +109,19 @@
 - **cloud save (Supabase)**（4），7 個宣告
 - **accounts**（104），5 個宣告
 
-### js/ui.js（1227 行）
+### js/ui.js（1263 行）
 
 - **小工具**（6），13 個宣告
 - **牌階**（60），5 個宣告
 - **主題**（163），3 個宣告
 - **畫面切換**（179），2 個宣告
-- **首頁**（207），2 個宣告
-- **準備畫面**（243），13 個宣告
-- **結算、三選一、一局結束**（463），5 個宣告
-- **戰鬥播放**（499），11 個宣告
-- **圖鑑、說明、設定**（689），3 個宣告
-- **動作**（744），4 個宣告
-- **拖曳擺放**（1016），7 個宣告
+- **首頁**（208），2 個宣告
+- **準備畫面**（244），13 個宣告
+- **結算、三選一、一局結束**（465），6 個宣告
+- **戰鬥播放**（512），11 個宣告
+- **圖鑑、說明、設定**（702），3 個宣告
+- **動作**（758），4 個宣告
+- **拖曳擺放**（1052），7 個宣告
 
 ### js/main.js（71 行）
 
