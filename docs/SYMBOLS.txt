@@ -104,15 +104,17 @@ canFuse js/bag.js:83
 tfOf js/bag.js:88
 fuseInto js/bag.js:101
 fuseAll js/bag.js:110
-sellO js/bag.js:121
-fuName js/bag.js:123
-tagsWith js/bag.js:125
-mergeAll js/bag.js:132 [合成]
-compileBag js/bag.js:172 [戰鬥數值]
-bagMods js/bag.js:390 [戰鬥數值]
-packBag js/bag.js:427 [戰鬥數值]
-unpackBag js/bag.js:446 [戰鬥數值]
-syncShrink js/bag.js:470 [戰鬥數值]
+defsOf js/bag.js:121
+coreProp js/bag.js:123
+sellO js/bag.js:125
+fuName js/bag.js:127
+tagsWith js/bag.js:129
+mergeAll js/bag.js:136 [合成]
+compileBag js/bag.js:176 [戰鬥數值]
+bagMods js/bag.js:398 [戰鬥數值]
+packBag js/bag.js:435 [戰鬥數值]
+unpackBag js/bag.js:454 [戰鬥數值]
+syncShrink js/bag.js:478 [戰鬥數值]
 SIM_DT js/sim.js:4
 WEAK_PCT js/sim.js:6
 simSide js/sim.js:14
@@ -172,24 +174,26 @@ payBribe js/run.js:586 [戰鬥]
 startFight js/run.js:591 [戰鬥]
 fightSum js/run.js:606 [戰鬥]
 finishFight js/run.js:638 [戰鬥]
-rivalFights js/run.js:705 [戰鬥]
-finalPlace js/run.js:737 [戰鬥]
-HIST_FULL js/run.js:741 [戰鬥]
-endRun js/run.js:742 [戰鬥]
-clsWeaponTags js/run.js:767 [戰鬥]
-eliteOpts js/run.js:775 [戰鬥]
-mainCore js/run.js:802 [戰鬥]
-takePick js/run.js:803 [戰鬥]
-claimHold js/run.js:836 [戰鬥]
-THEMES js/run.js:852 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-mkBot js/run.js:857 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-botAfter js/run.js:884 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-simLobby js/run.js:910 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-LIVE_ME js/run.js:978 [即時機器人（0.1.30）]
-liveBots js/run.js:979 [即時機器人（0.1.30）]
-liveStep js/run.js:988 [即時機器人（0.1.30）]
-liveAfter js/run.js:1028 [即時機器人（0.1.30）]
-makeBots js/run.js:1033 [即時機器人（0.1.30）]
+rivalFights js/run.js:695 [戰鬥]
+finalPlace js/run.js:727 [戰鬥]
+HIST_FULL js/run.js:731 [戰鬥]
+endRun js/run.js:732 [戰鬥]
+clsWeaponTags js/run.js:757 [戰鬥]
+eliteOpts js/run.js:765 [戰鬥]
+mainCore js/run.js:792 [戰鬥]
+giveGift js/run.js:794 [戰鬥]
+bossCores js/run.js:806 [戰鬥]
+takePick js/run.js:819 [戰鬥]
+claimHold js/run.js:844 [戰鬥]
+THEMES js/run.js:860 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+mkBot js/run.js:865 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+botAfter js/run.js:892 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+simLobby js/run.js:922 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+LIVE_ME js/run.js:990 [即時機器人（0.1.30）]
+liveBots js/run.js:991 [即時機器人（0.1.30）]
+liveStep js/run.js:1000 [即時機器人（0.1.30）]
+liveAfter js/run.js:1040 [即時機器人（0.1.30）]
+makeBots js/run.js:1045 [即時機器人（0.1.30）]
 BOT_P js/bot.js:7
 BOT_EPET js/bot.js:24 [戰力分數]
 BOT_ERES0 js/bot.js:26 [戰力分數]

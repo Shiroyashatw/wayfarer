@@ -117,6 +117,10 @@ function fuseAll(run) {
   }
   return out;
 }
+/* 0.1.34 一件道具的定義＋融入它的第二個核心（sc，4-4 首領選的第二個專屬核心；舊存檔可能是副核心） */
+const defsOf = o => (o.sc && ITEMI[o.sc] ? [ITEMI[o.id], ITEMI[o.sc]] : [ITEMI[o.id]]);
+/* 背包裡某個核心效果的最大值（例如 freeRoll、bribe、defX），融入的也算 */
+const coreProp = (its, k) => Math.max(0, ...its.flatMap(o => defsOf(o).map(d => d[k] || 0)));
 /* 賣價：融合過的連輔助一起算 */
 const sellO = o => sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0);
 /* 融合過的名字 */
@@ -251,7 +255,7 @@ function compileBag(bag, extra = {}) {
   const adjQ = (s, q) => NB.get(s.u).has(q.u),
     rowQ = (s, q) => [...RW.get(s.u)].some(y => RW.get(q.u).has(y));
   /* 0.1.33 鐵甲戰士：防具、盾的效果 ×defX */
-  const defX = Math.max(1, ...its.map(o => ITEMI[o.id].defX || 0)),
+  const defX = Math.max(1, coreProp(its, 'defX')),
     isDef = I => I.tags.includes('armor') || I.tags.includes('shield');
   /* 0.1.28 質變：先決定誰被質變（標籤會變，後面的加成都看質變後的標籤） */
   const tfm = tfOf(its, adjQ),
@@ -280,6 +284,7 @@ function compileBag(bag, extra = {}) {
     /* 0.1.33 賄賂：開戰前付過錢（bag.pay）才有效 */
     if (S0.bribe && bag.pay) F.pre.push({ u: s.u, k: 'lockBest', v: MAX_T });
     /* 0.1.29 融入專屬核心的副核心（sc）：效果跟副核心本身一樣，不佔格子 */
+    /* 融入的第二個核心：全背包加成、角色加成、每件某標籤的加成、開戰效果、賄賂都算 */
     const X = s.sc && ITEMI[s.sc];
     if (X) {
       give(X.all, () => true);
@@ -287,6 +292,9 @@ function compileBag(bag, extra = {}) {
         const f = fxT(X, 1);
         for (const k in f) F[k] += f[k];
       }
+      for (const b of X.fxPer || []) for (const k in b) if (k !== 'tag') F[k] += b[k] * cnt(b.tag);
+      if (X.pre) F.pre.push({ u: s.u, k: preKey(X.pre), v: preVal(s.sc, 1) });
+      if (X.bribe && bag.pay && !S0.bribe) F.pre.push({ u: s.u, k: 'lockBest', v: MAX_T });
     }
     if (s.a) {
       const a = AFFX.find(x => x.k === s.a);
@@ -468,8 +476,7 @@ const unpackBag = p => ({
 });
 /* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */
 function syncShrink(run) {
-  const tag = (run.bag.items.find(o => ITEMI[o.id].shrink) || {}).id;
-  const t = tag && ITEMI[tag].shrink;
+  const t = (run.bag.items.flatMap(defsOf).find(d => d.shrink) || {}).shrink;
   for (const o of [...run.bag.items, ...run.bench]) {
     if (!o) continue;
     const want = t && ITEMI[o.id].tags.includes(t) && !ITEMI[o.id].core ? 1 : 0;

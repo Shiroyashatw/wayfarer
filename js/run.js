@@ -415,7 +415,7 @@ function sellItem(run, u) {
   return v;
 }
 /* 0.1.33 投機商人：每回合免費刷新次數（run.fr 是這回合用掉的） */
-const freeRolls = run => Math.max(0, ...run.bag.items.map(o => ITEMI[o.id].freeRoll || 0)) - (run.fr || 0);
+const freeRolls = run => coreProp(run.bag.items, 'freeRoll') - (run.fr || 0);
 function rerollShop(run) {
   if (freeRolls(run) > 0) {
     run.fr = (run.fr || 0) + 1;
@@ -584,7 +584,7 @@ let MOB_HP = 1,
 /* 開戰：存快照（給別人當對手）、算好整場（固定亂數） */
 /* 0.1.33 賄賂：背包有這個核心、金幣超過 N 就付 N，這場（快照也一樣）整場封鎖敵人星級最高的武器 */
 function payBribe(run) {
-  const b = Math.max(0, ...run.bag.items.map(o => ITEMI[o.id].bribe || 0));
+  const b = coreProp(run.bag.items, 'bribe');
   run.bag.pay = b && run.gold > b ? 1 : 0;
   if (run.bag.pay) run.gold -= b;
 }
@@ -669,22 +669,12 @@ function finishFight(run, fb) {
     if (eg) (run.gold += eg), (out.gold += eg);
   }
   if (r.type === 'boss') {
-    /* 0.1.10 2-5 抽自己職業的專屬核心、4-4 抽副核心 */
-    const kind = r.st <= 2 ? 1 : 2,
-      cs = ITEMS.filter(i => i.core === kind && (!run.bag.cls || i.cls === run.bag.cls)).map(i => i.id),
-      o = [];
-    while (o.length < 3) {
-      const c = pick(run, cs);
-      if (!o.includes(c)) o.push(c);
-    }
+    /* 0.1.10 2-5 抽自己職業的專屬核心；0.1.34 4-4 不再是副核心，改成第二個專屬核心（融入第一個，不佔格子） */
+    const mc = mainCore(run),
+      o = bossCores(run);
     run.pend = {
       kind: 'pick',
-      t:
-        kind === 1
-          ? '首領掉落了專屬核心：選一個'
-          : mainCore(run)
-            ? '首領掉落了副核心：選一個融入專屬核心'
-            : '首領掉落了副核心：選一個',
+      t: r.st > 2 && mc ? '首領掉落了第二個專屬核心：選一個融入你的核心' : '首領掉落了專屬核心：選一個',
       opts: o
     };
   }
@@ -775,7 +765,7 @@ function clsWeaponTags(cls) {
 function eliteOpts(run, a, b, win = true) {
   /* 0.1.33 劍修大師：打贏菁英時三件都是那個標籤的武器 */
   const mc = mainCore(run),
-    all = win && mc && ITEMI[mc.id].eliteAll;
+    all = win && mc && (defsOf(mc).find(d => d.eliteAll) || {}).eliteAll;
   if (all) {
     let wp = ITEMS.filter(i => !i.core && i.dmg && i.tags.includes(all) && i.star >= a && i.star <= b);
     if (wp.length < 3) wp = ITEMS.filter(i => !i.core && i.dmg && i.tags.includes(all) && i.star <= b);
@@ -798,13 +788,41 @@ function eliteOpts(run, a, b, win = true) {
 }
 /* 三選一的獎勵放進暫存區 */
 /* 0.1.6 暫存區滿了：剛好湊滿 3 件就先放多出來的一格合成；不然玩家的話先寄放在 run.hold（下回合空出位置再領），不會卡住 */
-/* 0.1.29 專屬核心（背包或暫存區）；副核心直接融入它 */
+/* 0.1.29 專屬核心（背包或暫存區）；第二個核心（0.1.34 起是專屬核心，以前是副核心）直接融入它 */
 const mainCore = run => [...run.bag.items, ...run.bench].find(o => o && ITEMI[o.id].core === 1);
+/* 0.1.33 保鏢：拿到時送 N 隻隨機 X★ 寵物（暫存區滿了就換成賣價） */
+function giveGift(run, id) {
+  const G = ITEMI[id].gift;
+  if (!G) return;
+  const pool = ITEMS.filter(i => !i.core && i.star === G[0] && i.tags.includes(G[1]));
+  for (let k = 0; k < G[2] && pool.length; k++) {
+    const o = newItem(run, pick(run, pool).id),
+      f2 = benchFree(run);
+    if (f2 >= 0) run.bench[f2] = o;
+    else run.gold += sellOf(o.id, o.t);
+  }
+}
+/* 首領的核心三選一：自己職業的專屬核心，排除已經有的（第一個和融入的） */
+function bossCores(run) {
+  const mc = mainCore(run),
+    own = mc ? [mc.id, mc.sc] : [],
+    cs = ITEMS.filter(i => i.core === 1 && (!run.bag.cls || i.cls === run.bag.cls) && !own.includes(i.id)).map(
+      i => i.id
+    ),
+    o = [];
+  while (o.length < Math.min(3, cs.length)) {
+    const c = pick(run, cs);
+    if (!o.includes(c)) o.push(c);
+  }
+  return o;
+}
 function takePick(run, id, hold) {
-  const mc = ITEMI[id].core === 2 && mainCore(run);
-  if (mc) {
+  const mc = ITEMI[id].core && mainCore(run);
+  if (mc && mc.id !== id) {
     mc.sc = id;
     run.pend = null;
+    giveGift(run, id);
+    syncShrink(run);
     return '';
   }
   const fi = benchFree(run);
@@ -817,17 +835,7 @@ function takePick(run, id, hold) {
   if (fi < 0) run.bench.push(newItem(run, id));
   else run.bench[fi] = newItem(run, id);
   run.pend = null;
-  /* 0.1.33 保鏢：送 N 隻隨機 X★ 寵物（暫存區滿了就換成賣價） */
-  const G = ITEMI[id].gift;
-  if (G) {
-    const pool = ITEMS.filter(i => !i.core && i.star === G[0] && i.tags.includes(G[1]));
-    for (let k = 0; k < G[2] && pool.length; k++) {
-      const o = newItem(run, pick(run, pool).id),
-        f2 = benchFree(run);
-      if (f2 >= 0) run.bench[f2] = o;
-      else run.gold += sellOf(o.id, o.t);
-    }
-  }
+  giveGift(run, id);
   mergeAll(run, runR(run));
   for (const o of run.bench.splice(BENCH_N)) if (o) run.bench[benchFree(run)] = o;
   return '';
@@ -903,8 +911,12 @@ function botAfter(run, r, win, q, P) {
           : opts[0];
     takePick(run, best, true);
   } else {
-    const pool = ITEMS.filter(it => it.core === (r.st <= 2 ? 1 : 2) && it.cls === run.bag.cls);
-    takePick(run, pick(run, pool).id, true);
+    /* 0.1.34 首領核心：跟玩家一樣三選一（4-4 是第二個專屬核心），照評估挑 */
+    const opts = bossCores(run);
+    if (!opts.length) return;
+    const best =
+      r01(run) < q ? opts.map(id => [id, botValue(run, id, 1, P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0] : opts[0];
+    takePick(run, best, true);
   }
 }
 function simLobby(seed, rating, opt = {}) {
