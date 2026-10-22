@@ -280,6 +280,8 @@ function rollClasses(run) {
 /* 開新的一局；rivals 是 3 位對手（ghost.js 配好，或機器人） */
 function newRun(rivals) {
   const run = newRunState((Math.random() * 2 ** 31) | 0);
+  /* 0.1.26 對手的生命在這局裡算（rv.hp），快照只提供每回合的背包 */
+  for (const rv of rivals) rv.hp = START_HP;
   Object.assign(run, {
     rivals,
     rp: 0,
@@ -467,16 +469,17 @@ function nextRound(run) {
   run.phase = 'prep';
 }
 /* ================= 對手 ================= */
-/* 對手在這一回合還在不在：有這回合的快照、而且生命 > 0 */
-/* 第 1 名的對局在他贏的那回合就結束了，之後的回合沿用他最後的快照（不然會被當成淘汰） */
+/* 0.1.26 本局算血：對手的生命、扣血、淘汰都照這局的勝負（rv.hp）；快照只提供他每回合的背包。
+   之前（0.1.10～0.1.25）生命照他自己那局的快照，會出現他剛打贏你、下回合就淘汰，或你一直贏他卻不扣血 */
+/* 這回合的快照；他那局在這回合之前就結束了（淘汰或第 1 名）就沿用最後一筆 */
 function rivalSnap(rv, rid) {
   const s = rv.snaps || {};
-  if (s[rid] || (rv.place !== 1 && rv.duel == null)) return s[rid];
+  if (s[rid]) return s[rid];
   const ri = ROUNDS.findIndex(r => r.id === rid);
   for (let k = ri - 1; k >= 0; k--) if (s[ROUNDS[k].id]) return s[ROUNDS[k].id];
   return undefined;
 }
-/* 0.1.22 加時：對手那局已經打完（第 1 名、沿用最後的快照）後又過了幾回合；0 = 還在他自己那局裡 */
+/* 加時：他那局已經結束後又過了幾回合；0 = 還有這回合的快照 */
 function rivalOT(rv, rid) {
   const s = rv.snaps || {};
   if (s[rid]) return 0;
@@ -484,7 +487,7 @@ function rivalOT(rv, rid) {
   for (let k = ri - 1; k >= 0; k--) if (s[ROUNDS[k].id]) return ri - k;
   return 0;
 }
-/* 加時的快照每多一回合變強一點（真人那局打完就沒有之後的快照，用這個代替成長；0.1.23 起機器人種子會繼續買，不用這個），打到有人倒下為止 */
+/* 加時的快照每多一回合變強一點（他那局結束就沒有之後的快照，用這個代替成長；機器人種子的第 1 名會繼續買，不用這個） */
 let OT_DMG = 0.1,
   OT_HP = 0.05;
 function otGrow(F, ot) {
@@ -496,45 +499,27 @@ function otGrow(F, ot) {
     weapons: F.weapons.map(w => ({ ...w, dmg: w.dmg.map(v => Math.max(1, Math.round(v * d))) }))
   };
 }
-/* 對手的生命：照他自己那局的快照，減掉加時被你打掉的（rv.dmg）。
-   0.1.10～0.1.21 是對手那局打完就直接照生命結算，局會在中途突然結束；0.1.22 改成加時打到分出勝負 */
-const rivalHp = (rv, rid) => {
-  if (rv.duel != null) return Math.max(0, rv.duel - (rv.dmg || 0));
-  const sn = rivalSnap(rv, rid);
-  return sn ? Math.max(0, sn.hp - (rv.dmg || 0)) : 0;
-};
-/* 0.1.24 對決：只剩一個對手時，他的生命凍結在那一刻（rv.duel），之後只照你打贏扣；
-   之前他自己那局還有別人活著就不算加時，你一直贏他卻一直不扣血（照他那局的快照鎖血） */
-function duelCheck(run, rid) {
-  const al = run.rivals.filter(rv => rivalAlive(rv, rid));
-  if (al.length !== 1 || al[0].duel != null) return;
-  al[0].duel = rivalHp(al[0], rid);
-  al[0].dmg = 0;
-}
-const rivalAlive = (rv, rid) => rivalHp(rv, rid) > 0;
+const rivalHp = rv => Math.max(0, rv.hp ?? START_HP);
+const rivalAlive = (rv, rid) => rivalHp(rv) > 0 && !!rivalSnap(rv, rid);
 const aliveRivals = run => run.rivals.filter(rv => rivalAlive(rv, curRound(run).id));
+/* 他這回合的背包與戰鬥數值（加時的照 otGrow 變強） */
+function rivalBag(rv, rid) {
+  const sn = rivalSnap(rv, rid),
+    bag = unpackBag(sn.bag);
+  return { bag, F: otGrow(compileBag(bag), rivalOT(rv, rid)) };
+}
+/* 對戰輸了多扣的：贏的那邊背包裡的寵物（最多 2） */
+const petLoss = bag => Math.min(2, bag.items.filter(o => ITEMI[o.id].tags.includes('pet')).length);
 /* 這回合的對手：PvP 輪流打還活著的；其他是野怪 */
 function opponentOf(run) {
   const r = curRound(run);
   if (r.type === 'pvp') {
     const al = run.rivals.map((rv, i) => [rv, i]).filter(([rv]) => rivalAlive(rv, r.id));
     if (!al.length) return null;
-    if (al.length === 1) duelCheck(run, r.id);
     const [rv, i] = al.find(([, i]) => i >= run.rp % run.rivals.length) || al[0];
     run.rp = i + 1;
-    const sn = rivalSnap(rv, r.id),
-      ot = rivalOT(rv, r.id);
-    /* ex：他那局已經打完、這是加時（種子快照有 ot 標記，繼續買東西；真人的沒有，用 otGrow 加素質），或只剩他一個（對決） */
-    return {
-      kind: 'pvp',
-      n: rv.name,
-      spr: 'a_' + rv.av,
-      F: otGrow(compileBag(unpackBag(sn.bag)), ot),
-      bag: unpackBag(sn.bag),
-      rv: i,
-      ot,
-      ex: ot > 0 || !!sn.bag.ot || rv.duel != null
-    };
+    const { bag, F } = rivalBag(rv, r.id);
+    return { kind: 'pvp', n: rv.name, spr: 'a_' + rv.av, F, bag, rv: i, ot: rivalOT(rv, r.id) };
   }
   const m = mobOf(run, r);
   return { kind: r.type, n: m.n, spr: m.spr, F: m.F };
@@ -623,14 +608,12 @@ function finishFight(run, fb) {
     run.ws++;
     run.lsk = 0;
     out.gold = winGold(r);
-    /* 加時打贏：他扣跟你輸了會扣的一樣多 */
-    if (opp.ex) run.rivals[opp.rv].dmg = (run.rivals[opp.rv].dmg || 0) + r.loss;
+    /* 打贏對手：他扣跟你輸了會扣的一樣多（加上你背包的寵物） */
+    if (opp.kind === 'pvp') run.rivals[opp.rv].hp = rivalHp(run.rivals[opp.rv]) - r.loss - petLoss(run.bag);
   } else {
     run.lsk++;
     run.ws = 0;
-    out.loss =
-      r.loss +
-      (opp.kind === 'pvp' ? Math.min(2, opp.bag.items.filter(o => ITEMI[o.id].tags.includes('pet')).length) : 0);
+    out.loss = r.loss + (opp.kind === 'pvp' ? petLoss(opp.bag) : 0);
     run.hp -= out.loss;
   }
   run.gold += out.gold;
@@ -661,16 +644,30 @@ function finishFight(run, fb) {
     }
     run.pend = { kind: 'pick', t: kind === 1 ? '首領掉落了專屬核心：選一個' : '首領掉落了副核心：選一個', opts: o };
   }
+  rivalFights(run, fb);
   if (run.hp <= 0) {
     run.hp = 0;
     endRun(run, 1 + aliveRivals(run).length);
-  } else {
-    /* 下一場對戰時對手都淘汰了：第 1 名（0.1.22 起對手那局打完不再提早結算，改加時打到分出勝負） */
-    const np = nextPvpId(run);
-    if (np && !run.rivals.some(rv => rivalAlive(rv, np))) endRun(run, 1);
-    else if (np) duelCheck(run, np);
-  }
+  } else if (!aliveRivals(run).length) endRun(run, 1);
   return out;
+}
+/* 0.1.26 沒打你的對手這回合也要打：對戰回合剩下的兩個用快照背包互打（只剩一個就輪空），
+   野怪／菁英／首領回合每個對手都打同一隻怪；輸的照這局的規則扣血 */
+function rivalFights(run, fb) {
+  const { r, opp } = fb,
+    al = run.rivals.filter((rv, i) => rivalAlive(rv, r.id) && !(opp.kind === 'pvp' && i === opp.rv));
+  if (opp.kind === 'pvp') {
+    if (al.length < 2) return;
+    const [a, b] = al.slice(0, 2).map(rv => rivalBag(rv, r.id)),
+      res = simulate(stageHp(a.F, r.st), stageHp(b.F, r.st), h(run.seed, run.ri, 992));
+    const lr = al[res.win ? 1 : 0];
+    lr.hp = rivalHp(lr) - r.loss - petLoss((res.win ? a : b).bag);
+    return;
+  }
+  al.forEach((rv, j) => {
+    const res = simulate(stageHp(rivalBag(rv, r.id).F, r.st), opp.F, h(run.seed, run.ri, 993 + j));
+    if (!res.win) rv.hp = rivalHp(rv) - r.loss;
+  });
 }
 /* 下一個有對戰的回合（看對手還在不在） */
 function nextPvpId(run) {
@@ -680,7 +677,7 @@ function nextPvpId(run) {
 /* 打到最後一回合：比剩下的生命 */
 function finalPlace(run) {
   const last = ROUNDS[ROUNDS.length - 1].id;
-  return 1 + run.rivals.filter(rv => rivalHp(rv, last) > run.hp).length;
+  return 1 + run.rivals.filter(rv => rivalAlive(rv, last) && rivalHp(rv) > run.hp).length;
 }
 const HIST_FULL = 10;
 function endRun(run, place) {

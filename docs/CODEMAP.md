@@ -35,7 +35,7 @@
 | 戰鬥特效（0.1.12） | `js/ui.js`、`css/style.css` | `bHit`、`bAnim`、`bBurst`、`bSlash`；`.sp` 的動畫 |
 | 升階倍率（0.1.10） | `js/items.js`、`js/bag.js` | `TIERM`、`TIERB`、`TIERCD`、`TIERCH`、`cdT`、`onT`（items）；`compileBag`（bag） |
 | 核心新機制（先手、處決、背水、越戰越快、護盾、連擊、反彈、暴擊回血） | `js/sim.js`、`js/bag.js` | `simSide`、`simulate` 裡的 `F.opener` 等；`compileBag` 的預設值 |
-| 加時：對手那局打完後快照變強、打到分出勝負（0.1.22）；機器人種子第 1 名繼續買到 8-7（0.1.23）；只剩一個對手時對決、生命凍結只照你打贏扣（0.1.24） | `js/run.js` | `duelCheck`、`rivalOT`、`otGrow`、`OT_DMG`、`opponentOf`、`finishFight`、`simLobby`（solo、`short`） |
+| 加時：對手那局打完後快照變強、打到分出勝負（0.1.22）；機器人種子第 1 名繼續買到 8-7（0.1.23）；本局算血：對手生命 `rv.hp` 照這局勝負、沒打你的對手用快照互打（0.1.26） | `js/run.js` | `rivalFights`、`rivalBag`、`petLoss`、`rivalHp`、`rivalOT`、`otGrow`、`OT_DMG`、`opponentOf`、`finishFight`、`simLobby`（solo、`short`） |
 | 異常狀態（流血、破甲、虛弱、致盲）與戰鬥中顯示（0.1.9） | `js/sim.js`、`js/bag.js`、`js/ui.js` | `simSide`、`simulate`（`WEAK_PCT` 等常數）；`compileBag` 的武器欄位；`bSts`、`STI`、`STN`（ui） |
 | 開戰藥劑、開戰效果通用化（0.1.9） | `js/items.js`、`js/bag.js`、`js/sim.js` | `PRE_T`、`PREN`、`preKey`、`preVal`、`preTxt`；`F.throwPct` |
 | 職業核心池（0.1.9） | `js/items.js`、`js/run.js`、`js/ui.js` | `CORE_P`、`CORE_MAIN`（專屬）、`CORE_SUB`（副核心）、`genCores`（items）；首領三選一在 `finishFight`（2-5 專屬、4-4 副核心）（run）；圖鑑的核心列表在 `codexHTML`（ui） |
@@ -108,13 +108,13 @@
 ### js/sim.js（241 行）
 
 
-### js/run.js（848 行）
+### js/run.js（845 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），26 個宣告
-- **對手**（469），12 個宣告
-- **戰鬥**（560），11 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（743），3 個宣告
+- **對手**（471），13 個宣告
+- **戰鬥**（545），12 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（740），3 個宣告
 
 ### js/bot.js（284 行）
 
@@ -134,10 +134,10 @@
 - **cloud save (Supabase)**（4），7 個宣告
 - **accounts**（104），5 個宣告
 
-### js/news.js（155 行）
+### js/news.js（161 行）
 
 
-### js/ui.js（1556 行）
+### js/ui.js（1547 行）
 
 - **小工具**（6），13 個宣告
 - **牌階**（60），5 個宣告
@@ -145,11 +145,11 @@
 - **畫面切換**（179），2 個宣告
 - **首頁**（208），2 個宣告
 - **準備畫面**（244），14 個宣告
-- **結算、三選一、一局結束**（478），6 個宣告
-- **戰鬥播放**（525），20 個宣告
-- **圖鑑、說明、設定**（882），3 個宣告
-- **動作**（947），7 個宣告
-- **拖曳擺放**（1335），8 個宣告
+- **結算、三選一、一局結束**（469），6 個宣告
+- **戰鬥播放**（516），20 個宣告
+- **圖鑑、說明、設定**（873），3 個宣告
+- **動作**（938），7 個宣告
+- **拖曳擺放**（1326），8 個宣告
 
 ### js/main.js（74 行）
 

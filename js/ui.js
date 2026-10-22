@@ -249,20 +249,11 @@ function rivalHTML(run) {
   const nx = curRound(run) && curRound(run).type === 'pvp' ? nextRival(run) : -1;
   return `<div class="rivals">${run.rivals
     .map((rv, i) => {
-      /* 只看到這回合為止的快照（不能偷看對手之後的生命）；最後一筆快照在這回合之前就是淘汰了 */
-      const ids = Object.keys(rv.snaps || {}).map(id => ROUNDS.findIndex(r => r.id === id)),
-        last = Math.max(-1, ...ids),
-        now = Math.max(-1, ...ids.filter(k => k <= run.ri)),
-        sn = now >= 0 ? rv.snaps[ROUNDS[now].id] : null,
-        out = last < run.ri && rv.place !== 1 && rv.duel == null,
-        hp = out
-          ? 0
-          : rv.duel != null
-            ? Math.max(0, rv.duel - (rv.dmg || 0))
-            : Math.max(0, (sn ? sn.hp : START_HP) - (rv.dmg || 0));
+      /* 0.1.26 生命在這局裡算（rv.hp） */
+      const hp = rivalAlive(rv, (curRound(run) || ROUNDS[ROUNDS.length - 1]).id) ? rivalHp(rv) : 0;
       if (hp <= 0)
         return `<div class="rv out">${sprCv('a_' + rv.av)}<span><b>${esc(rv.name)}</b><i class="hpb"><i style="width:0"></i></i><small>淘汰</small></span></div>`;
-      return `<div class="rv${out ? ' out' : ''}${i === nx ? ' nx' : ''}">${sprCv('a_' + rv.av)}<span><b>${esc(rv.name)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>${out ? '淘汰' : '♥ ' + hp}</small></span></div>`;
+      return `<div class="rv${i === nx ? ' nx' : ''}">${sprCv('a_' + rv.av)}<span><b>${esc(rv.name)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>♥ ${hp}</small></span></div>`;
     })
     .join('')}</div>`;
 }
