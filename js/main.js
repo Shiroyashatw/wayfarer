@@ -14,6 +14,7 @@ const newGame = () => ({
   speed: 1,
   theme: 'dark',
   themeSet: false,
+  newsSeen: '',
   run: null,
   tut: 0,
   savedAt: 0

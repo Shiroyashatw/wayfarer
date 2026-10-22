@@ -4,7 +4,7 @@
 
 ## 溝通規則
 - **一律用繁體中文回覆**（包含進度說明與 commit 訊息）。
-- 版本號：目前是 0.1.x（0.1.0 是轉型；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`。
+- 版本號：目前是 0.1.x（0.1.0 是轉型；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`；有遊戲功能變化的話，也在 `js/news.js` 的 `NEWS` 最上面加一筆給玩家看的更新紀錄（只寫遊戲功能，不寫開發細節）。
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。規則或數值改了要同步更新。
 - 介面：照 `docs/設計規範.md`（字級、顏色變數、間距、元件、資訊量規則）；改介面用 skill `ui-design`，改完在手機尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
@@ -38,6 +38,7 @@
 | `js/ghost.js` | 快照對戰：Supabase `runs`／`snaps` 存取、配對 `ghostRivals`（不夠就機器人補位） |
 | `js/audio.js` | Web Audio 合成音樂與音效 |
 | `js/cloud.js` | Supabase 匿名登入、信箱註冊／登入、存檔上傳（每 15 秒／切到背景時） |
+| `js/news.js` | 給玩家看的更新紀錄 `NEWS`（首頁左下「更新紀錄」） |
 | `js/ui.js` | 所有畫面（首頁、準備、戰鬥播放、結算、三選一、圖鑑、說明、設定）、拖曳擺放、`data-act` 動作表 `A` |
 | `js/main.js` | `newGame`／`load`／`save`／`migrate`／`start`，最後執行 `start()` |
 | `tools/build_artifact.py` | 打包成單一 HTML，給 Claude Artifact 預覽（`img/` 大圖在這裡轉 base64 內嵌） |

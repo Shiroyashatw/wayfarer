@@ -225,7 +225,7 @@ function homeHTML() {
             .join('')}</div>`
         : ''
     }
-    <p class="sub ver">塞令老師 v${VER}・${esc(typeof CLOUD !== 'undefined' ? CLOUD.status : '')}</p>
+    <div class="hfoot"><button class="btn news" data-act="news">更新紀錄${S.newsSeen !== NEWS[0].v ? '<i class="dot" aria-label="有新的更新"></i>' : ''}</button><p class="sub">塞令老師 v${VER}・${esc(typeof CLOUD !== 'undefined' ? CLOUD.status : '')}</p></div>
   </div>`;
 }
 async function startRun() {
@@ -987,6 +987,12 @@ const A = {
   },
   stats: () => showDlg('角色數值', statsHTML(S.run), []),
   log: d => showLog(d.k),
+  news: () => {
+    S.newsSeen = NEWS[0].v;
+    save();
+    render();
+    showNews();
+  },
   seen5: d => {
     const o = [...S.run.bag.items, ...S.run.bench].find(q => q && q.u === d.k);
     if (o) {
@@ -1250,6 +1256,18 @@ function showLog(id) {
     if (r && !lg) return showLog(r.dataset.lg);
     if (ev.target.closest('[data-lgx]')) return showLog();
     if (ev.target.closest('[data-lgc]') || ev.target === m) m.hidden = true;
+  };
+}
+/* 0.1.15 更新紀錄（首頁左下）：照版本列出遊戲功能的變化（資料在 news.js），最新的展開、舊的收起來 */
+function showNews() {
+  const m = $('modal');
+  m.innerHTML = `<div class="dlg2 newsd"><b>更新紀錄</b><div class="nwl">${NEWS.map(
+    (n, i) =>
+      `<details${i < 1 ? ' open' : ''}><summary>v${n.v}${n.v === VER ? '<small>目前版本</small>' : ''}</summary><ul>${n.d.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`
+  ).join('')}</div><div class="btns col"><button class="btn" data-nwc="1">關閉</button></div></div>`;
+  m.hidden = false;
+  m.onclick = ev => {
+    if (ev.target.closest('[data-nwc]') || ev.target === m) m.hidden = true;
   };
 }
 function showDlg(title, body, buttons) {

@@ -213,6 +213,7 @@ authMsg js/cloud.js:110 [accounts]
 authRegister js/cloud.js:112 [accounts]
 authLogin js/cloud.js:133 [accounts]
 authLogout js/cloud.js:154 [accounts]
+NEWS js/news.js:4
 S js/ui.js:3
 V js/ui.js:5
 toast js/ui.js:7 [小工具]
@@ -284,18 +285,19 @@ helpHTML js/ui.js:900 [圖鑑、說明、設定]
 settingsHTML js/ui.js:913 [圖鑑、說明、設定]
 audioOn js/ui.js:938 [動作]
 A js/ui.js:941 [動作]
-authDo js/ui.js:1205 [動作]
-showLog js/ui.js:1221 [動作]
-showDlg js/ui.js:1255 [動作]
-placeFromBench js/ui.js:1274 [拖曳擺放]
-cellAt js/ui.js:1286 [拖曳擺放]
-inside js/ui.js:1295 [拖曳擺放]
-drawGhost js/ui.js:1373 [拖曳擺放]
-autoFit js/ui.js:1385 [拖曳擺放]
-dropEnd js/ui.js:1393 [拖曳擺放]
-dropShop js/ui.js:1447 [拖曳擺放]
+authDo js/ui.js:1211 [動作]
+showLog js/ui.js:1227 [動作]
+showNews js/ui.js:1262 [動作]
+showDlg js/ui.js:1273 [動作]
+placeFromBench js/ui.js:1292 [拖曳擺放]
+cellAt js/ui.js:1304 [拖曳擺放]
+inside js/ui.js:1313 [拖曳擺放]
+drawGhost js/ui.js:1391 [拖曳擺放]
+autoFit js/ui.js:1403 [拖曳擺放]
+dropEnd js/ui.js:1411 [拖曳擺放]
+dropShop js/ui.js:1465 [拖曳擺放]
 newGame js/main.js:4
-load js/main.js:21
-save js/main.js:29
-migrate js/main.js:40
-start js/main.js:57
+load js/main.js:22
+save js/main.js:30
+migrate js/main.js:41
+start js/main.js:58

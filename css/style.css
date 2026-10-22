@@ -374,3 +374,17 @@ canvas.spr.flip{transform:scaleX(-1)}
 .blog p.me{color:var(--good)}
 .blog p.op{color:var(--bad)}
 .blog p{flex:none}
+
+/* 0.1.15 首頁左下的更新紀錄 */
+.hfoot{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);margin-top:var(--sp-4)}
+.hfoot .sub{margin:0;text-align:right}
+.btn.news{position:relative;padding:var(--sp-2) var(--sp-4);font-size:var(--fs-sm);flex:none}
+.btn.news .dot{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
+.newsd{text-align:left}
+.newsd>b{text-align:center}
+.nwl{display:grid;gap:var(--sp-2);max-height:60vh;overflow:auto}
+.nwl details{background:var(--card2);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3)}
+.nwl summary{font-weight:700;font-size:var(--fs-btn);cursor:pointer}
+.nwl summary small{margin-left:var(--sp-2);font-weight:400;color:var(--accent);font-size:var(--fs-cap)}
+.nwl ul{margin:var(--sp-2) 0 0;padding-left:1.2em;display:grid;gap:var(--sp-1)}
+.nwl li{font-size:var(--fs-sm);color:var(--ink);line-height:1.45}
