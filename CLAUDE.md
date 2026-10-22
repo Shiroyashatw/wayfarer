@@ -10,6 +10,7 @@
 - 介面：照 `docs/設計規範.md`（字級、顏色變數、間距、元件、資訊量規則）；改介面用 skill `ui-design`，改完在手機尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
 - 圖：道具圖示的 PixelLab 提示詞在 `docs/圖示提示詞.md`（只留還沒產的；做完的在 `docs/提示詞封存.md`），怪物在 `docs/怪物提示詞.md`，玩家選的頭像（4×4 大圖、每格 64×64）在 `docs/頭像圖表.md`；新增圖用 skill `pixel-art`。
 - 圖示：新增道具或借用圖示（`ic`）後用 skill `icon-check`：`python3 tools/icon_check.py` 產生 `docs/圖示對照.md`（名字 ↔ 圖示原本畫的東西），對不上就換圖示或改名字。
+- 機器人：新增道具、體系、機制或改經濟、戰鬥規則後用 skill `bot-ai`：確認 `js/bot.js` 的 `botPower` 有算到新東西，`node tools/bot_train.js --iters 30 --lobbies 40 --write` 重新訓練，再重傳種子。
 - 平衡：改道具、職業、核心、怪物、經濟或升階倍率後用 skill `balance`：跑 `.claude/skills/balance/balance.js` 的 `coverage()`（各體系各星級、輔助、異常來源、職業、核心、圖示、說明文字）與 `sims()`（職業名次、PvE 勝率、公平性、局長、背包成長），沒有 ❌ 才交差。
 
 ## 專案結構
@@ -35,6 +36,7 @@
 | `js/bag.js` | 背包格子、擺放、相鄰、合成 `mergeAll`、把背包算成戰鬥數值 `compileBag`、快照格式 |
 | `js/sim.js` | 自動戰鬥模擬 `simulate`（純計算、固定亂數、輸出事件時間軸） |
 | `js/run.js` | 一局流程：回合、商店、經濟、野怪與首領 `MOBS`、開戰與結算、名次、機器人對手 `makeBot` |
+| `js/bot.js` | 機器人的腦：戰力分數 `botPower`、每回合的決定 `botAct`（買、擺、賣、合成、升背包、刷新、三選一）、訓練出來的參數 `BOT_P`、舊買法 `botActOld`（skill `bot-ai`） |
 | `js/ghost.js` | 快照對戰：Supabase `runs`／`snaps` 存取、配對 `ghostRivals`（不夠就機器人補位） |
 | `js/audio.js` | Web Audio 合成音樂與音效 |
 | `js/cloud.js` | Supabase 匿名登入、信箱註冊／登入、存檔上傳（每 15 秒／切到背景時） |
@@ -45,6 +47,9 @@
 | `tools/art.py` | `art/monsters/` 的 PNG 像素圖（裁邊）與 `art/icons/` 的 32×32 圖示（不裁邊）→ 拼成 `img/` 的調色盤大圖＋`js/art.js` 座標；使用者說「放了新圖」就跑（skill `pixel-art`） |
 | `tools/pixellab_batch.py` | PixelLab API 批次產圖：讀 `docs/怪物提示詞.md`／`docs/圖示提示詞.md` 的提示詞，輸出到 `art/new/`（不進 git）；金鑰用環境變數 `PIXELLAB_API_KEY`，不要寫進專案 |
 | `tools/icon_sheets.py` | 圖示圖表：從 `docs/圖示提示詞.md` 組出 `docs/圖示圖表.md`（8×8 一張 64 個），圖表原圖放 `art/sheets/`，`process` 全部切成 `art/icons/` 的單張、跑 `art.py` 打包，最後 `archive`（有圖的提示詞搬到 `docs/提示詞封存.md`；切過的圖表整張移除、原圖搬到 `art/sheets/done/`）；圖表編號固定 |
+| `tools/game_node.js` | 在 Node 載入遊戲純邏輯（core～bot），給訓練與大量模擬用 |
+| `tools/bot_train.js` | 機器人訓練：自我對打調 `BOT_P`，`--vs-old` 跟舊買法比，`--write` 寫回 `js/bot.js`（skill `bot-ai`） |
+| `tools/pve_check.js` | Node 版 PvE 勝率與對戰秒數：`node tools/pve_check.js 局數 q [MOB_HP] [MOB_DMG]` |
 | `tools/icon_check.py` | 圖示對照：每件道具的圖示原本畫的是什麼（讀 `docs/提示詞封存.md` 等提示詞），輸出 `docs/圖示對照.md` 與候選圖示；加關鍵字只列相關的（skill `icon-check`） |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（檔案照 `index.html` 的順序），並檢查 CODEMAP 裡失效的名稱 |
 | `supabase/migrations/` | 資料庫結構（0.1.0 的快照對戰是 `20261022000000_serling_ghosts.sql`） |
@@ -56,7 +61,7 @@ python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 ```
 存檔在 localStorage（鍵 `serling_v1`）；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換（存檔版本是 `S.v`，0.1.0 起是 100）。進行中的一局記著版本（`S.run.ver`），版本不同會直接結束那局。
 測試用另一份存檔：網址加 `?p=2`。
-瀏覽器測一整局：`newRun(makeBots(3, 1000))` 後用 `botAct` 代替玩家、`startFight`／`finishFight` 跑每回合（見 `docs/CODEMAP.md`）。
+瀏覽器測一整局：`newRun(makeBots(3, 1000))` 後用 `botAct`（`js/bot.js`）代替玩家、`startFight`／`finishFight` 跑每回合（見 `docs/CODEMAP.md`）。
 
 ## Supabase
 - 專案 ref：`eugkdfhkoaxvqhztvptc`，URL `https://eugkdfhkoaxvqhztvptc.supabase.co`

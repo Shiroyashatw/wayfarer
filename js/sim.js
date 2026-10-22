@@ -7,7 +7,7 @@ const WEAK_PCT = 25,
   WEAK_T = 3,
   BLIND_MISS = 30,
   BLIND_T = 2.5,
-  SUNDER_MAX = 30,
+  SUNDER_MAX = 15,
   /* 0.1.19 中毒不會退，戰鬥拉長以後會一直疊、太強：最多 12 層 */
   POISON_MAX = 12;
 /* 一方的戰鬥狀態 */
@@ -71,7 +71,7 @@ function simulate(FA, FB, seed) {
     /* 0.1.10 處決（敵人生命低於 30%）、背水（自己生命低於 50%） */
     if (a.F.execute && d.hp < d.max * 0.3) v *= 1 + a.F.execute / 100;
     if (a.F.rage && a.hp < a.max * 0.5) v *= 1 + a.F.rage / 100;
-    v *= 50 / (50 + Math.max(-20, d.F.arm - d.sunder));
+    v *= 50 / (50 + Math.max(-10, d.F.arm - d.sunder));
     v *= 1 + d.F.take / 100;
     let ab = 0;
     if (d.block > 0) {

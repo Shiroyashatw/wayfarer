@@ -1515,8 +1515,8 @@ const CLASSES = [
     ic: 'sk_rage',
     th: 'mace',
     m: [
-      { tag: 'axe', dmgPct: 25, spd: 10, sunder: 1 },
-      { tag: 'mace', dmgPct: 25, spd: 10, sunder: 1 }
+      { tag: 'axe', dmgPct: 15, spd: 10, sunder: 1 },
+      { tag: 'mace', dmgPct: 15, spd: 10, sunder: 1 }
     ]
   },
   {
@@ -1525,7 +1525,7 @@ const CLASSES = [
     n: '槍兵',
     ic: 'sk_spearrush',
     th: 'spear',
-    m: [{ tag: 'spear', dmgPct: 30, spd: 10 }],
+    m: [{ tag: 'spear', dmgPct: 40, spd: 15, crit: 10 }],
     F: { arm: 5 }
   },
   {
@@ -1544,7 +1544,7 @@ const CLASSES = [
     ic: 'sk_fireburst',
     th: 'fire',
     m: [
-      { tag: 'fire', burn: 2, dmgPct: 15 },
+      { tag: 'fire', burn: 2, dmgPct: 10 },
       { tag: 'staff', dmgPct: 15 }
     ]
   },
@@ -1555,7 +1555,7 @@ const CLASSES = [
     ic: 'sk_frostnova',
     th: 'cold',
     m: [
-      { tag: 'cold', freezeCh: 20, dmgPct: 15 },
+      { tag: 'cold', freezeCh: 20, dmgPct: 30 },
       { tag: 'staff', spd: 20 }
     ]
   },
@@ -1574,7 +1574,7 @@ const CLASSES = [
     ic: 'sk_poison',
     th: 'poison',
     m: [
-      { tag: 'poison', poison: 1, dmgPct: 10 },
+      { tag: 'poison', poison: 1, dmgPct: 25 },
       { tag: 'dagger', poison: 1 }
     ]
   },
@@ -1594,7 +1594,7 @@ const CLASSES = [
     n: '鍊金術士',
     ic: 'cur_vaal',
     th: 'potion',
-    F: { potMul: 20, throwPct: 25 }
+    F: { potMul: 30, throwPct: 50, regen: 1 }
   },
   { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_regal', gold: 1 }
 ];
@@ -1912,7 +1912,15 @@ const STARC = ['', 'var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5
 const priceOf = id => ITEMI[id].star;
 const sellOf = (id, t = 1) => Math.max(1, Math.ceil((ITEMI[id].star * 3 ** (t - 1)) / 2));
 /* 形狀旋轉 r 次（90°），回傳從 0 開始的格子 */
+/* 0.1.20 形狀算過就記住（機器人評估時一回合要算上千次）；回傳的陣列大家共用，不要改它 */
+const SHC = new Map();
 function shapeOf(id, rot = 0) {
+  const key = id + '|' + (rot & 3);
+  let v = SHC.get(key);
+  if (!v) SHC.set(key, (v = shapeRaw(id, rot)));
+  return v;
+}
+function shapeRaw(id, rot) {
   let c = SH[ITEMI[id].sh].map(p => [...p]);
   for (let i = 0; i < (rot & 3); i++) c = c.map(([x, y]) => [-y, x]);
   const mx = Math.min(...c.map(p => p[0])),

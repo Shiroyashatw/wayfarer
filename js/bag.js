@@ -144,6 +144,30 @@ function compileBag(bag, extra = {}) {
     const t = mods.get(o.u);
     for (const k in m) if (k !== 'tag' && k !== 'per') t[k] = (t[k] || 0) + m[k] * mul;
   };
+  /* 0.1.20 相鄰與同一排先用格子表算好（原本每一對都重算一次格子，機器人評估時太慢） */
+  const NB = new Map(),
+    RW = new Map();
+  if (its.some(o => ITEMI[o.id].adj || ITEMI[o.id].row)) {
+    const g = bagGrid(bag);
+    for (const o of its) {
+      const cs = cellsOf(o),
+        nb = new Set();
+      for (const [x, y] of cs)
+        for (const [dx, dy] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1]
+        ]) {
+          const u = g[y + dy] && g[y + dy][x + dx];
+          if (u != null && u !== o.u) nb.add(u);
+        }
+      NB.set(o.u, nb);
+      RW.set(o.u, new Set(cs.map(p => p[1])));
+    }
+  }
+  const adjQ = (s, q) => NB.get(s.u).has(q.u),
+    rowQ = (s, q) => [...RW.get(s.u)].some(y => RW.get(q.u).has(y));
   for (const s of its) {
     const S0 = ITEMI[s.id];
     const give = (list, test) => {
@@ -154,8 +178,8 @@ function compileBag(bag, extra = {}) {
           if (q !== s && test(q) && (b.tag === '*' || ITEMI[q.id].tags.includes(b.tag))) add(q, b, mul);
       }
     };
-    give(S0.adj, q => adjacent(s, q));
-    give(S0.row, q => sameRow(s, q));
+    if (S0.adj) give(S0.adj, q => adjQ(s, q));
+    if (S0.row) give(S0.row, q => rowQ(s, q));
     give(S0.all, () => true);
     if (S0.fx) {
       const f = fxT(S0, s.t);

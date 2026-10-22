@@ -101,25 +101,27 @@ onT js/items.js:1892
 STARC js/items.js:1910
 priceOf js/items.js:1912
 sellOf js/items.js:1913
-shapeOf js/items.js:1915
-AFFX js/items.js:1923
-affOf js/items.js:1930
-MOD5 js/items.js:1937
-mod5Pool js/items.js:1959
-roll5 js/items.js:1965
-mod5Q js/items.js:1971
-mod5Txt js/items.js:1975
-pct js/items.js:1977
-sg js/items.js:1979
-MODN js/items.js:1980
-modTxt js/items.js:2011
-tagTxt js/items.js:2016
-PRE_T js/items.js:2019
-preKey js/items.js:2031
-preVal js/items.js:2032
-preTxt js/items.js:2039
-itemDesc js/items.js:2043
-scaleMod js/items.js:2095
+SHC js/items.js:1916
+shapeOf js/items.js:1917
+shapeRaw js/items.js:1923
+AFFX js/items.js:1931
+affOf js/items.js:1938
+MOD5 js/items.js:1945
+mod5Pool js/items.js:1967
+roll5 js/items.js:1973
+mod5Q js/items.js:1979
+mod5Txt js/items.js:1983
+pct js/items.js:1985
+sg js/items.js:1987
+MODN js/items.js:1988
+modTxt js/items.js:2019
+tagTxt js/items.js:2024
+PRE_T js/items.js:2027
+preKey js/items.js:2039
+preVal js/items.js:2040
+preTxt js/items.js:2047
+itemDesc js/items.js:2051
+scaleMod js/items.js:2103
 cellsOf js/bag.js:4
 bagGrid js/bag.js:6
 canPlace js/bag.js:12
@@ -130,9 +132,9 @@ findSpot js/bag.js:37
 synergy js/bag.js:70
 mergeAll js/bag.js:77 [合成]
 compileBag js/bag.js:109 [戰鬥數值]
-bagMods js/bag.js:239 [戰鬥數值]
-packBag js/bag.js:273 [戰鬥數值]
-unpackBag js/bag.js:279 [戰鬥數值]
+bagMods js/bag.js:263 [戰鬥數值]
+packBag js/bag.js:297 [戰鬥數值]
+unpackBag js/bag.js:303 [戰鬥數值]
 SIM_DT js/sim.js:4
 WEAK_PCT js/sim.js:6
 simSide js/sim.js:14
@@ -187,9 +189,19 @@ endRun js/run.js:639 [戰鬥]
 takePick js/run.js:654 [戰鬥]
 claimHold js/run.js:670 [戰鬥]
 THEMES js/run.js:686 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-botAct js/run.js:688 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-simLobby js/run.js:733 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-makeBots js/run.js:808 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+simLobby js/run.js:690 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+makeBots js/run.js:769 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+BOT_P js/bot.js:7
+botPower js/bot.js:23 [戰力分數]
+botPowerOf js/bot.js:63 [戰力分數]
+botTry js/bot.js:65 [戰力分數]
+botWeakest js/bot.js:72 [戰力分數]
+botBump js/bot.js:81 [戰力分數]
+botValue js/bot.js:86 [戰力分數]
+botValue0 js/bot.js:93 [戰力分數]
+botPlace js/bot.js:125 [戰力分數]
+botAct js/bot.js:143 [每回合]
+botActOld js/bot.js:242 [每回合]
 GHOST js/ghost.js:4
 ghostOK js/ghost.js:5
 ghostFail js/ghost.js:6

@@ -126,7 +126,7 @@ const MOBS = {
   ),
   /* 1-4（第 1 階段菁英，第 2 階段的菁英放大 1.3 倍用另一組）：各地的精怪王 */
   '1-4': pool(
-    [80, 3.7],
+    [110, 5],
     [
       ['雷蝠王', 'm_thunderbat', 'storm'],
       ['殭屍', 'jiangshi', 'tank'],
@@ -152,7 +152,7 @@ const MOBS = {
   ),
   /* 2-5 首領：地府（兩個模板合在一起，各有機制要破） */
   '2-5': pool(
-    [165, 5.4],
+    [190, 6.4],
     [
       ['牛頭', 'oxhead', ['brute', 'tank']],
       ['馬面', 'horseface', ['swift', 'storm']],
@@ -164,7 +164,7 @@ const MOBS = {
   ),
   /* 第 2 階段菁英（2-4）：七宗罪的爪牙 */
   sins: pool(
-    [110, 5],
+    [132, 6],
     [
       ['傲慢聖騎', 'sin_pride_paladin', 'tank'],
       ['傲慢之鏡', 'sin_pride_mirror', 'blinder'],
@@ -202,7 +202,7 @@ const MOBS = {
   ),
   /* 4-4 首領：七宗罪之王 */
   kings: pool(
-    [118, 3.8],
+    [105, 3.4],
     [
       ['傲慢之王・路西法', 'lucifer', ['tank', 'blinder']],
       ['貪婪之王・瑪門', 'mammon', ['swift', 'bleed']],
@@ -215,7 +215,7 @@ const MOBS = {
   ),
   /* 第 5 階段以後的菁英：四凶與冥府 */
   fiends: pool(
-    [105, 5],
+    [90, 4.3],
     [
       ['四凶・混沌', 'hundun', ['hexer', 'tank']],
       ['四凶・窮奇', 'qiongqi', ['bleed', 'swift']],
@@ -513,7 +513,7 @@ function mobOf(run, r) {
 const eliteStars = st => (st <= 2 ? [2, 3] : st <= 4 ? [3, 4] : [4, 5]);
 /* ================= 戰鬥 ================= */
 /* 0.1.19 戰鬥用的生命照階段放大（data.js 的 HP_ST）；回傳複本，不改原本的 */
-/* 怪物：生命只放大 25%（不然菁英、首領要打 15 秒以上），傷害放大 50%（玩家生命變多，怪也要打得痛一點） */
+/* 怪物：生命跟著階段放大（MOB_HP）、傷害放大更多（MOB_DMG；玩家生命變多，怪也要打得痛）。0.1.20 機器人變聰明後重調 */
 function stageHp(F, st, mob) {
   const m = hpMul(st);
   if (!mob) return { ...F, hp: Math.round(F.hp * m) };
@@ -524,8 +524,8 @@ function stageHp(F, st, mob) {
     weapons: F.weapons.map(w => ({ ...w, dmg: w.dmg.map(v => Math.max(1, Math.round(v * d))) }))
   };
 }
-let MOB_HP = 0.25,
-  MOB_DMG = 0.5;
+let MOB_HP = 1,
+  MOB_DMG = 1.5;
 /* 開戰：存快照（給別人當對手）、算好整場（固定亂數） */
 function startFight(run) {
   const r = curRound(run);
@@ -684,53 +684,10 @@ function claimHold(run) {
 }
 /* ================= 機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局） ================= */
 const THEMES = ['sword', 'bow', 'dagger', 'fire', 'pet', 'shield', 'mace', 'cold', 'poison'];
-/* 機器人這回合的買法：有主題就偏好主題標籤；能升背包就升；全部擺進背包 */
-function botAct(run, theme, q = 0.7) {
-  const r = curRound(run);
-  if (run.lv < BAG_MAX && run.gold >= BAGLV[run.lv + 1].cost + 2 && (run.ri > 3 || run.gold > 12)) levelUp(run);
-  for (let pass = 0; pass < 2; pass++) {
-    run.shop.forEach((s, k) => {
-      if (!s) return;
-      const I = ITEMI[s.id],
-        want =
-          I.tags.includes(theme) ||
-          I.for === theme ||
-          I.tags.includes('weapon') ||
-          I.tags.includes('armor') ||
-          r01(run) < 0.35;
-      if (want && run.gold >= shopPrice(run, s.id, s.t) && benchFree(run) >= 0) buyItem(run, k);
-    });
-    if (run.gold >= 3 && run.gold < 8 && pass === 0 && r01(run) < q) rerollShop(run);
-  }
-  if (run.pend) takePick(run, run.pend.opts[0]);
-  /* 職業核心放不下：賣掉背包裡最便宜的道具騰空間 */
-  const core = run.bench.find(
-    o => o && ITEMI[o.id].core && !run.bag.items.some(q => ITEMI[q.id].core === ITEMI[o.id].core)
-  );
-  if (core)
-    for (let g = 0; g < 4 && !findSpot(run.bag, core); g++) {
-      const low = [...run.bag.items].sort((a, b) => ITEMI[a.id].star * a.t - ITEMI[b.id].star * b.t)[0];
-      if (!low || ITEMI[low.id].star >= 4) break;
-      sellItem(run, low.u);
-    }
-  /* 暫存區的擺進背包（大的先），放不下的賣掉 */
-  run.bench
-    .filter(Boolean)
-    .sort((a, b) => shapeOf(b.id).length - shapeOf(a.id).length)
-    .forEach(o => {
-      const sp = findSpot(run.bag, o, r01(run) < q);
-      if (!sp) return;
-      Object.assign(o, sp);
-      run.bench[run.bench.indexOf(o)] = null;
-      run.bag.items.push(o);
-    });
-  run.bench.forEach(o => o && ITEMI[o.id].star < 3 && sellItem(run, o.u));
-  mergeAll(run, runR(run));
-}
 /* 機器人一場（0.1.0）：4 個機器人用跟玩家一樣的規則跑一整局，每回合真的用背包互打（同一套戰鬥模擬），
    生命與淘汰照實際勝負；強的背包活得久。回傳每個機器人的快照（開戰前的生命與背包）、名次。
-   rating 越高的機器人買法越聰明（q：擺放看加成、會刷新商店）。 */
-function simLobby(seed, rating) {
+   rating 越高的機器人買法越聰明（q：照戰力評估做決定的機率，見 bot.js）。 */
+function simLobby(seed, rating, opt = {}) {
   const rr = rng(h(seed, 5)),
     bots = [0, 1, 2, 3].map(i => {
       const s = h(seed, i, 31),
@@ -744,6 +701,9 @@ function simLobby(seed, rating) {
         run,
         theme: CLSI[cls].th || THEMES[fl(rr() * THEMES.length)],
         q: Math.max(0.3, Math.min(0.95, 0.6 + (rt - 1000) / 800)),
+        /* 0.1.20 機器人的腦（bot.js）：opt.P[i] 給訓練用（第 i 個機器人用哪組參數），opt.old[i] 用舊的買法比較 */
+        P: (opt.P && opt.P[i]) || BOT_P,
+        old: !!(opt.old && opt.old[i]),
         /* 0.1.6 牌階越高的機器人每回合多拿一點金幣（越往上越強）；鐵牌、銅牌少拿 */
         gb: Math.max(-2, Math.min(5, fl((rt - 1000) / 200))),
         info: {
@@ -763,7 +723,8 @@ function simLobby(seed, rating) {
     for (const b of alive) {
       nextRound(b.run);
       if (b.run.ri > 0) b.run.gold = Math.max(0, b.run.gold + b.gb);
-      botAct(b.run, b.theme, b.q);
+      if (b.old) botActOld(b.run, b.theme, b.q);
+      else botAct(b.run, b.theme, b.q, b.P);
     }
     const r = ROUNDS[k];
     for (const b of alive) b.info.snaps[r.id] = { hp: b.run.hp, bag: packBag(b.run.bag) };
