@@ -97,6 +97,7 @@ function compileBag(bag, extra = {}) {
       weapons: [],
       shields: [],
       pots: [],
+      pre: [],
       ...extra
     };
   const cnt = tag => its.filter(o => ITEMI[o.id].tags.includes(tag)).length;
@@ -140,6 +141,7 @@ function compileBag(bag, extra = {}) {
     if (I.arm) F.arm += Math.round(I.arm * k);
     if (I.dodge) F.dodge += Math.round(I.dodge * TIERB[o.t]);
     if (I.regen || m.regen) F.regen += Math.round((I.regen || 0) * k) + (m.regen || 0);
+    if (I.pre) F.pre.push({ u: o.u, k: I.pre.seal ? 'seal' : 'down', v: preVal(o.id, o.t) });
     if (I.pot) F.pots.push({ u: o.u, at: I.pot[0], v: Math.round(I.pot[1] * k), n: I.pot[2] });
     if (I.block)
       F.shields.push({
@@ -155,6 +157,7 @@ function compileBag(bag, extra = {}) {
       F.weapons.push({
         u: o.u,
         id: o.id,
+        t: o.t,
         pet: I.tags.includes('pet'),
         el: ['fire', 'cold', 'light', 'poison', 'dark'].find(t => I.tags.includes(t)) || 'phys',
         cd: Math.max(0.4, I.cd / (1 + (m.spd || 0) / 100)),

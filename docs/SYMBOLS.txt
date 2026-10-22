@@ -25,11 +25,16 @@ ROUNDS js/data.js:32 [一局]
 RTYPE js/data.js:58 [一局]
 RSHORT js/data.js:60 [一局]
 PLACE_PTS js/data.js:62 [一局]
-AVATARS js/data.js:64 [一局]
-NAME_A js/data.js:77 [一局]
-randName js/data.js:113 [一局]
-GVER js/data.js:115 [一局]
-VER js/data.js:116 [一局]
+RANKS js/data.js:65 [一局]
+rankOf js/data.js:69 [一局]
+rankName js/data.js:70 [一局]
+rankProg js/data.js:72 [一局]
+placed js/data.js:76 [一局]
+AVATARS js/data.js:78 [一局]
+NAME_A js/data.js:91 [一局]
+randName js/data.js:127 [一局]
+GVER js/data.js:129 [一局]
+VER js/data.js:130 [一局]
 SPR js/sprites.js:4 [pixel sprites (original art)]
 ICONS js/sprites.js:560 [pixel sprites (original art)]
 ICOPAL js/sprites.js:582 [pixel sprites (original art)]
@@ -76,25 +81,27 @@ ART js/art.js:126
 SH js/items.js:4
 TAGN js/items.js:44
 ITEMS js/items.js:72
-ITEMI js/items.js:493
-TIER_MAX js/items.js:495
-STARC js/items.js:499
-priceOf js/items.js:501
-sellOf js/items.js:502
-shapeOf js/items.js:504
-AFFX js/items.js:512
-affOf js/items.js:519
-MOD5 js/items.js:526
-mod5Pool js/items.js:544
-roll5 js/items.js:550
-mod5Q js/items.js:556
-mod5Txt js/items.js:560
-pct js/items.js:562
-MODN js/items.js:563
-modTxt js/items.js:581
-tagTxt js/items.js:586
-itemDesc js/items.js:587
-scaleMod js/items.js:624
+ITEMI js/items.js:497
+TIER_MAX js/items.js:499
+STARC js/items.js:503
+priceOf js/items.js:505
+sellOf js/items.js:506
+shapeOf js/items.js:508
+AFFX js/items.js:516
+affOf js/items.js:523
+MOD5 js/items.js:530
+mod5Pool js/items.js:548
+roll5 js/items.js:554
+mod5Q js/items.js:560
+mod5Txt js/items.js:564
+pct js/items.js:566
+MODN js/items.js:567
+modTxt js/items.js:585
+tagTxt js/items.js:590
+preVal js/items.js:592
+preTxt js/items.js:596
+itemDesc js/items.js:601
+scaleMod js/items.js:639
 cellsOf js/bag.js:4
 bagGrid js/bag.js:6
 canPlace js/bag.js:12
@@ -105,9 +112,9 @@ findSpot js/bag.js:35
 synergy js/bag.js:51
 mergeAll js/bag.js:58 [合成]
 compileBag js/bag.js:85 [戰鬥數值]
-bagMods js/bag.js:176 [戰鬥數值]
-packBag js/bag.js:201 [戰鬥數值]
-unpackBag js/bag.js:206 [戰鬥數值]
+bagMods js/bag.js:179 [戰鬥數值]
+packBag js/bag.js:204 [戰鬥數值]
+unpackBag js/bag.js:209 [戰鬥數值]
 SIM_DT js/sim.js:4
 simSide js/sim.js:6
 simulate js/sim.js:23
@@ -145,11 +152,12 @@ finishFight js/run.js:339 [戰鬥]
 nextPvpId js/run.js:391 [戰鬥]
 finalPlace js/run.js:396 [戰鬥]
 endRun js/run.js:400 [戰鬥]
-takePick js/run.js:413 [戰鬥]
-THEMES js/run.js:422 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-botAct js/run.js:424 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-simLobby js/run.js:462 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-makeBots js/run.js:516 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+takePick js/run.js:415 [戰鬥]
+claimHold js/run.js:431 [戰鬥]
+THEMES js/run.js:447 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+botAct js/run.js:449 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+simLobby js/run.js:487 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+makeBots js/run.js:544 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
 GHOST js/ghost.js:4
 ghostOK js/ghost.js:5
 ghostFail js/ghost.js:6
@@ -192,52 +200,61 @@ stars js/ui.js:56 [小工具]
 tierTxt js/ui.js:57 [小工具]
 tierBadge js/ui.js:58 [小工具]
 avName js/ui.js:59 [小工具]
-darkMQ js/ui.js:62 [主題]
-applyTheme js/ui.js:63 [主題]
-themeBtn js/ui.js:72 [主題]
-render js/ui.js:77 [畫面切換]
-go js/ui.js:99 [畫面切換]
-homeHTML js/ui.js:105 [首頁]
-startRun js/ui.js:127 [首頁]
-GAP js/ui.js:141 [準備畫面]
-cellSize js/ui.js:142 [準備畫面]
-rivalHTML js/ui.js:144 [準備畫面]
-nextRival js/ui.js:160 [準備畫面]
-tutHTML js/ui.js:166 [準備畫面]
-bagHTML js/ui.js:175 [準備畫面]
-shapeMini js/ui.js:222 [準備畫面]
-roundBarHTML js/ui.js:231 [準備畫面]
-prepHTML js/ui.js:243 [準備畫面]
-detailHTML js/ui.js:276 [準備畫面]
-mod5HTML js/ui.js:315 [準備畫面]
-revealHTML js/ui.js:321 [準備畫面]
-statsHTML js/ui.js:328 [準備畫面]
-resultHTML js/ui.js:360 [結算、三選一、一局結束]
-pickHTML js/ui.js:364 [結算、三選一、一局結束]
-endHTML js/ui.js:373 [結算、三選一、一局結束]
-beginFight js/ui.js:382 [戰鬥播放]
-resumeFight js/ui.js:408 [戰鬥播放]
-renderBattle js/ui.js:424 [戰鬥播放]
-bShow js/ui.js:444 [戰鬥播放]
-ELC js/ui.js:453 [戰鬥播放]
-bPop js/ui.js:454 [戰鬥播放]
-bFlash js/ui.js:466 [戰鬥播放]
-bTick js/ui.js:474 [戰鬥播放]
-bEnd js/ui.js:514 [戰鬥播放]
-codexHTML js/ui.js:531 [圖鑑、說明、設定]
-helpHTML js/ui.js:549 [圖鑑、說明、設定]
-settingsHTML js/ui.js:561 [圖鑑、說明、設定]
-audioOn js/ui.js:586 [動作]
-A js/ui.js:589 [動作]
-authDo js/ui.js:804 [動作]
-showDlg js/ui.js:819 [動作]
-placeFromBench js/ui.js:838 [拖曳擺放]
-cellAt js/ui.js:850 [拖曳擺放]
-inside js/ui.js:859 [拖曳擺放]
-drawGhost js/ui.js:935 [拖曳擺放]
-autoFit js/ui.js:947 [拖曳擺放]
-dropEnd js/ui.js:955 [拖曳擺放]
-dropShop js/ui.js:1009 [拖曳擺放]
+RANKC js/ui.js:63 [牌階]
+RANK_SHIELD js/ui.js:73 [牌階]
+RKC js/ui.js:91 [牌階]
+rankIcon js/ui.js:92 [牌階]
+rankHTML js/ui.js:157 [牌階]
+darkMQ js/ui.js:165 [主題]
+applyTheme js/ui.js:166 [主題]
+themeBtn js/ui.js:175 [主題]
+render js/ui.js:180 [畫面切換]
+go js/ui.js:202 [畫面切換]
+homeHTML js/ui.js:208 [首頁]
+startRun js/ui.js:230 [首頁]
+GAP js/ui.js:244 [準備畫面]
+cellSize js/ui.js:245 [準備畫面]
+rivalHTML js/ui.js:247 [準備畫面]
+nextRival js/ui.js:263 [準備畫面]
+tutHTML js/ui.js:269 [準備畫面]
+bagHTML js/ui.js:278 [準備畫面]
+shapeMini js/ui.js:325 [準備畫面]
+roundBarHTML js/ui.js:334 [準備畫面]
+prepHTML js/ui.js:346 [準備畫面]
+detailHTML js/ui.js:380 [準備畫面]
+mod5HTML js/ui.js:419 [準備畫面]
+revealHTML js/ui.js:425 [準備畫面]
+statsHTML js/ui.js:432 [準備畫面]
+resultHTML js/ui.js:464 [結算、三選一、一局結束]
+pickHTML js/ui.js:468 [結算、三選一、一局結束]
+holdHTML js/ui.js:478 [結算、三選一、一局結束]
+rankMove js/ui.js:484 [結算、三選一、一局結束]
+endHTML js/ui.js:492 [結算、三選一、一局結束]
+beginFight js/ui.js:501 [戰鬥播放]
+resumeFight js/ui.js:527 [戰鬥播放]
+renderBattle js/ui.js:543 [戰鬥播放]
+bShow js/ui.js:563 [戰鬥播放]
+cdTimeline js/ui.js:574 [戰鬥播放]
+bCd js/ui.js:584 [戰鬥播放]
+ELC js/ui.js:604 [戰鬥播放]
+bPop js/ui.js:605 [戰鬥播放]
+bFlash js/ui.js:617 [戰鬥播放]
+bTick js/ui.js:625 [戰鬥播放]
+bEnd js/ui.js:673 [戰鬥播放]
+codexHTML js/ui.js:690 [圖鑑、說明、設定]
+helpHTML js/ui.js:708 [圖鑑、說明、設定]
+settingsHTML js/ui.js:720 [圖鑑、說明、設定]
+audioOn js/ui.js:745 [動作]
+A js/ui.js:748 [動作]
+authDo js/ui.js:983 [動作]
+showDlg js/ui.js:998 [動作]
+placeFromBench js/ui.js:1017 [拖曳擺放]
+cellAt js/ui.js:1029 [拖曳擺放]
+inside js/ui.js:1038 [拖曳擺放]
+drawGhost js/ui.js:1114 [拖曳擺放]
+autoFit js/ui.js:1126 [拖曳擺放]
+dropEnd js/ui.js:1134 [拖曳擺放]
+dropShop js/ui.js:1188 [拖曳擺放]
 newGame js/main.js:4
 load js/main.js:21
 save js/main.js:29

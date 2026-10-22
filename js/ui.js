@@ -57,6 +57,109 @@ const stars = n => '★'.repeat(n);
 const tierTxt = t => ['', '', ' Ⅱ', ' Ⅲ'][t];
 const tierBadge = t => (t > 1 ? `<b class="tier">${t === 2 ? 'Ⅱ' : 'Ⅲ'}</b>` : '');
 const avName = av => (AVATARS.find(a => a[0] === av) || AVATARS[0])[1];
+/* ================= 牌階 ================= */
+/* 0.1.6 牌階的像素圖示（16×16，程式畫）：盾牌底；金牌起上面兩根尖角、鑽石起中間寶石、大師起兩邊翅膀、菁英加皇冠；
+   一二三是下面 1～3 個小點。-1 是定級中（灰色問號盾） */
+const RANKC = [
+  ['#4b4f57', '#7d838c', '#b4bac2'],
+  ['#6b3a1f', '#b0683a', '#e3a06c'],
+  ['#5d6b7c', '#a9b6c5', '#eef3f8'],
+  ['#8a5a00', '#e0a422', '#ffe08a'],
+  ['#1f6f68', '#3fb8a9', '#a6f2e6'],
+  ['#233f99', '#4f84ef', '#b8d2ff'],
+  ['#552288', '#9a52e0', '#dcb2ff'],
+  ['#8c1f1a', '#e2493c', '#ffc07a']
+];
+const RANK_SHIELD = [
+  '................',
+  '................',
+  '...oooooooooo...',
+  '..ommmmmmmmmmo..',
+  '..omllmmmmmmmo..',
+  '..omlmmmmmmmmo..',
+  '..ommmmmmmmmmo..',
+  '..ommmmmmmmmmo..',
+  '..ommmmmmmmmmo..',
+  '...ommmmmmmmo...',
+  '...ommmmmmmmo...',
+  '....ommmmmmo....',
+  '.....ommmmo.....',
+  '......oooo......',
+  '................',
+  '................'
+];
+const RKC = new Map();
+function rankIcon(i) {
+  if (RKC.has(i)) return RKC.get(i);
+  const t = i < 0 ? -1 : fl(i / 3),
+    d = i < 0 ? 0 : (i % 3) + 1,
+    [o, m, l] = t < 0 ? ['#4a4650', '#8a8590', '#c9c4cf'] : RANKC[t],
+    g = RANK_SHIELD.map(r => r.split(''));
+  const set = (x, y, c) => (g[y][x] = c);
+  if (t >= 3) [3, 12].forEach(x => (set(x, 1, 'o'), set(x, 2, 'o')));
+  if (t >= 5) {
+    [
+      [7, 5],
+      [8, 5],
+      [6, 6],
+      [9, 6],
+      [6, 7],
+      [9, 7],
+      [7, 8],
+      [8, 8]
+    ].forEach(([x, y]) => set(x, y, 'o'));
+    [
+      [7, 6],
+      [8, 6],
+      [7, 7],
+      [8, 7]
+    ].forEach(([x, y]) => set(x, y, 'l'));
+  }
+  if (t >= 6) {
+    for (let y = 4; y <= 8; y++) set(1, y, 'w'), set(14, y, 'w');
+    for (let y = 3; y <= 7; y++) set(0, y, 'o'), set(15, y, 'o');
+    [3, 9].forEach(y => (set(1, y, 'o'), set(14, y, 'o')));
+  }
+  if (t === 7) {
+    [4, 7, 8, 11].forEach(x => set(x, 0, 'y'));
+    for (let x = 4; x <= 11; x++) set(x, 1, 'y');
+  }
+  if (t < 0) {
+    [
+      [6, 5],
+      [7, 4],
+      [8, 4],
+      [9, 5],
+      [9, 6],
+      [8, 7],
+      [7, 8],
+      [7, 10]
+    ].forEach(([x, y]) => set(x, y, 'l'));
+  }
+  const px = { 1: [[7]], 2: [[5], [9]], 3: [[4], [7], [10]] }[d] || [];
+  px.forEach(([x]) => (set(x, 10, 'l'), set(x + 1, 10, 'l')));
+  const c = document.createElement('canvas');
+  c.width = c.height = 16;
+  const x = c.getContext('2d'),
+    pal = { o, m, l, w: m, y: '#ffd24a' };
+  g.forEach((r, y) =>
+    r.forEach((ch, xx) => {
+      if (!pal[ch]) return;
+      x.fillStyle = pal[ch];
+      x.fillRect(xx, y, 1, 1);
+    })
+  );
+  const u = c.toDataURL();
+  RKC.set(i, u);
+  return u;
+}
+/* 牌階一列：圖示＋名字＋這一級的進度條（定級中顯示場數） */
+function rankHTML(big) {
+  if (!placed())
+    return `<div class="rank${big ? ' big' : ''}"><img src="${rankIcon(-1)}" alt=""><span><b>定級中</b><small>再打 ${PLACE_N - (S.games || 0)} 場決定牌階</small></span></div>`;
+  const i = rankOf(S.rating);
+  return `<div class="rank${big ? ' big' : ''}"><img src="${rankIcon(i)}" alt=""><span><b class="rk${fl(i / 3)}">${rankName(i)}</b><i class="rkbar"><i style="width:${Math.round(rankProg(S.rating) * 100)}%"></i></i></span></div>`;
+}
 /* ================= 主題 ================= */
 /* 0.1.2 淺色／深色（0.1.4 起預設）／跟隨系統：設在 <html data-theme> */
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
@@ -107,7 +210,7 @@ function homeHTML() {
   return `<div class="home">
     <div class="htop">${themeBtn()}</div>
     <div class="logo"><b>塞令老師</b><small>背包自動對戰</small></div>
-    <div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b><small>${avName(S.av)}</small><div class="kv3"><span>分數<b>${S.rating}</b></span><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span></div></div></div>
+    <div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b>${rankHTML()}<div class="kv3"><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span><span>第 1 名<b>${(S.hist || []).filter(x => x.place === 1).length}</b></span></div></div></div>
     <button class="btn pri big" data-act="play">${run ? `繼續對局（${curRound(run) ? curRound(run).id : ''}）` : '開始對戰'}</button>
     <div class="g3"><button class="btn" data-act="go" data-k="help">怎麼玩</button><button class="btn" data-act="go" data-k="codex">道具圖鑑</button><button class="btn" data-act="go" data-k="settings">設定</button></div>
     ${
@@ -116,7 +219,7 @@ function homeHTML() {
             .slice(0, 6)
             .map(
               x =>
-                `<div><b class="pl p${x.place}">第 ${x.place} 名</b><span>${x.r}</span><span class="${x.d >= 0 ? 'c-good' : 'c-bad'}">${x.d >= 0 ? '+' : ''}${x.d}</span></div>`
+                `<div><b class="pl p${x.place}">第 ${x.place} 名</b><span>${x.r}</span><span class="${x.d >= 0 ? 'c-good' : 'c-bad'}">${x.d >= 0 ? '▲' : '▼'}</span></div>`
             )
             .join('')}</div>`
         : ''
@@ -127,7 +230,7 @@ function homeHTML() {
 async function startRun() {
   audioOn();
   $('app').innerHTML =
-    `<div class="home"><div class="logo"><b>配對中…</b><small>尋找分數相近的對手</small></div></div>`;
+    `<div class="home"><div class="logo"><b>配對中…</b><small>尋找牌階相近的對手</small></div></div>`;
   const rivals = await ghostRivals(S.rating);
   S.run = newRun(rivals);
   S.run.ver = VER;
@@ -253,11 +356,12 @@ function prepHTML(run) {
     ${roundBarHTML(run)}
     ${rivalHTML(run)}
     ${tutHTML()}
+    ${holdHTML(run)}
     <div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
-          ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}" data-bu="${o.u}" data-bi="${i}"><img src="${itemIcon(o.id)}" alt="${ITEMI[o.id].n}">${tierBadge(o.t)}</div>`
+          ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}" data-bu="${o.u}" data-bi="${i}"><img src="${itemIcon(o.id)}" alt="">${shapeMini(o.id, o.r || 0)}<span>${ITEMI[o.id].n}</span>${tierBadge(o.t)}</div>`
           : `<div class="bs emp" data-bi="${i}"></div>`
       )
       .join('')}</div></div>
@@ -370,10 +474,25 @@ function pickHTML(run) {
     )
     .join('')}</div></div></div>`;
 }
+/* 0.1.6 寄放中的戰利品（三選一時暫存區滿了） */
+function holdHTML(run) {
+  const o = run.hold;
+  if (!o) return '';
+  return `<div class="hold s${ITEMI[o.id].star}"><img src="${itemIcon(o.id)}" alt=""><span><b>戰利品：${ITEMI[o.id].n}</b><small>暫存區滿了，空出一格再領</small></span><button class="btn" data-act="claim">領取</button><button class="btn" data-act="sellHold">賣 ${sellOf(o.id, o.t)} 金</button></div>`;
+}
+/* 這一局打完牌階有沒有變：升級／降級／定級完成，或只是進度條往哪邊走 */
+function rankMove(run) {
+  if (!placed()) return `<p class="c-dim">定級賽 ${S.games}／${PLACE_N}</p>`;
+  if (run.rk0 == null || run.rk0 < 0) return `<p class="c-gold">定級完成！</p>`;
+  const i = rankOf(S.rating);
+  if (i > run.rk0) return `<p class="c-good">升級！${rankName(run.rk0)} → ${rankName(i)}</p>`;
+  if (i < run.rk0) return `<p class="c-bad">降級：${rankName(run.rk0)} → ${rankName(i)}</p>`;
+  return `<p class="${run.delta >= 0 ? 'c-good' : 'c-bad'}">${run.delta >= 0 ? '▲ 進度往前' : '▼ 進度往後'}</p>`;
+}
 function endHTML(run) {
   const cs = Math.min(40, cellSize(run.bag.w));
   return `<div class="home"><div class="logo"><b class="pl p${run.place}">第 ${run.place} 名</b><small>${run.place === 1 ? '你是第一名！' : run.place === 2 ? '差一點點' : '下次再來'}</small></div>
-    <div class="card kv3"><span>分數<b>${S.rating}</b></span><span>變化<b class="${run.delta >= 0 ? 'c-good' : 'c-bad'}">${run.delta >= 0 ? '+' : ''}${run.delta}</b></span><span>打到<b>${curRound(run) ? curRound(run).id : '最後'}</b></span></div>
+    <div class="card endrk">${rankHTML(1)}${rankMove(run)}<small class="c-dim">打到 ${curRound(run) ? curRound(run).id : '最後'}</small></div>
     <h3>最後的背包</h3><div class="bagwrap">${bagHTML(run.bag, cs, { mini: 1, id: 'endbag' })}</div>
     <button class="btn pri big" data-act="again">再來一局</button><button class="btn" data-act="home">回首頁</button></div>`;
 }
@@ -450,6 +569,38 @@ function bShow() {
   }
   $('btime').textContent = B.t.toFixed(1) + ' 秒' + (B.t >= FATIGUE_T ? '・疲勞' : '');
 }
+/* 0.1.6 冷卻條：照時間軸，每件武器／盾在兩次出手之間格子由下往上填滿；被封鎖的變暗。
+   B.cdt[邊][u] = 出手時間；B.seal[邊][u] = 封鎖到幾秒 */
+function cdTimeline(ev) {
+  const t = [{}, {}],
+    seal = [{}, {}];
+  for (const e of ev) {
+    if (e.u && (e.k === 'hit' || e.k === 'crit' || e.k === 'miss' || e.k === 'block'))
+      (t[e.s][e.u] = t[e.s][e.u] || []).push(e.t);
+    if (e.k === 'seal') seal[1 - e.s][e.tu] = e.v;
+  }
+  return { t, seal };
+}
+function bCd() {
+  if (!B.cdt) B.cdt = cdTimeline(B.fb.res.ev);
+  for (let s = 0; s < 2; s++) {
+    const root = $('bb' + s);
+    if (!root) continue;
+    for (const [u, ts] of Object.entries(B.cdt.t[s])) {
+      const el = root.querySelector(`.it[data-u="${u}"]`);
+      if (!el) continue;
+      let k = 0;
+      while (k < ts.length && ts[k] <= B.t) k++;
+      const a = k ? ts[k - 1] : 0,
+        b = ts[k];
+      el.style.setProperty('--cd', b == null ? 0 : Math.min(1, (B.t - a) / Math.max(0.05, b - a)).toFixed(3));
+    }
+    for (const [u, v] of Object.entries(B.cdt.seal[s])) {
+      const el = root.querySelector(`.it[data-u="${u}"]`);
+      if (el) el.classList.toggle('sealed', B.t < v);
+    }
+  }
+}
 const ELC = { fire: '#ff9a5a', cold: '#8fd8ff', light: '#fff27a', poison: '#9be36b', dark: '#c58cff', phys: '#ffffff' };
 function bPop(side, txt, col, big) {
   const fx = $('fx');
@@ -506,8 +657,16 @@ function bTick() {
     else if (e.k === 'stun') bPop(tg, '暈眩', '#ffe27a');
     else if (e.k === 'freeze') bPop(tg, '凍結', '#8fd8ff');
     else if (e.k === 'thorns') bPop(tg, '反彈 ' + e.v, '#ffb15a');
+    else if (e.k === 'seal') {
+      bPop(tg, `封鎖 ${e.v} 秒`, '#c58cff', 1);
+      bFlash(e.s, e.u);
+    } else if (e.k === 'down') {
+      bPop(tg, '降階！', '#ff8a8a', 1);
+      bFlash(e.s, e.u);
+    }
   }
   bShow();
+  bCd();
   if (B.i >= ev.length && B.t >= B.fb.res.t + 0.6) bEnd();
 }
 /* 播完（或跳過）：結算 */
@@ -669,6 +828,7 @@ const A = {
     const run = S.run,
       r = curRound(run);
     V.sel = null;
+    if (run.hold) return snd('nope'), toast('先領取或賣掉寄放的戰利品');
     if (!run.bag.items.some(o => ITEMI[o.id].dmg)) return toast('背包裡還沒有武器或寵物，打不贏的！');
     beginFight();
   },
@@ -680,10 +840,29 @@ const A = {
     save();
     render();
   },
+  claim: () => {
+    const e = claimHold(S.run);
+    if (e) return snd('nope'), toast(e);
+    snd('select');
+    save();
+    render();
+  },
+  sellHold: () => {
+    const run = S.run;
+    if (!run.hold) return;
+    const v = sellOf(run.hold.id, run.hold.t);
+    run.gold += v;
+    run.hold = null;
+    snd('coin');
+    toast(`賣了 ${v} 金`);
+    save();
+    render();
+  },
   pick: d => {
     const run = S.run,
-      e = takePick(run, d.k);
+      e = takePick(run, d.k, true);
     if (e) return toast(e);
+    if (run.hold) toast('暫存區滿了：戰利品先寄放，空出一格再領');
     S.seen[d.k] = 1;
     snd('level');
     nextRound(run);

@@ -78,6 +78,22 @@ function simulate(FA, FB, seed) {
       log(t, ai, 'stun', w.stun[1], {});
     }
   };
+  /* 0.1.6 開戰前：降階、封鎖（打對方隨機一把武器） */
+  for (const k of ['down', 'seal'])
+    for (let i = 0; i < 2; i++)
+      for (const p of S[i].F.pre || []) {
+        if (p.k !== k) continue;
+        const d = S[1 - i],
+          c = d.w.filter(w => (k === 'down' ? w.t > 1 : !w.seal));
+        if (!c.length) continue;
+        const w = c[fl(r() * c.length)];
+        if (k === 'down') {
+          const m = TIERM[w.t - 1] / TIERM[w.t];
+          w.dmg = w.dmg.map(v => Math.max(1, Math.round(v * m)));
+          w.t--;
+        } else w.seal = p.v;
+        log(0, i, k, p.v, { u: p.u, tu: w.u });
+      }
   let t = 0,
     sec = 0;
   while (t < MAX_T) {
@@ -91,6 +107,10 @@ function simulate(FA, FB, seed) {
       const rate = a.frozen > 0 ? 0.5 : 1;
       if (a.frozen > 0) a.frozen -= SIM_DT;
       for (const w of a.w) {
+        if (w.seal > 0) {
+          w.seal -= SIM_DT;
+          continue;
+        }
         w.tt += SIM_DT * rate;
         if (w.tt >= w.cd) {
           w.tt -= w.cd;

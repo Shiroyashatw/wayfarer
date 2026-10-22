@@ -199,6 +199,7 @@ const ITEMS = [
     cd: 1.6,
     dmg: [4, 7],
     on: { ls: 30 },
+    pre: { seal: 3 },
     ic: 'gear_weapon_30'
   },
   {
@@ -232,6 +233,7 @@ const ITEMS = [
     cd: 1.8,
     dmg: [14, 20],
     on: { stun: [30, 0.8] },
+    pre: { down: 1 },
     ic: 'sk_thunderstorm'
   },
   /* ---------- 防具與盾 ---------- */
@@ -262,6 +264,7 @@ const ITEMS = [
     cd: 2.5,
     block: 18,
     heal: 3,
+    pre: { seal: 5 },
     ic: 'gear_offhand_9'
   },
   /* ---------- 飾品（相鄰加成；天賦都變成這些） ---------- */
@@ -486,6 +489,7 @@ const ITEMS = [
     tags: ['core'],
     all: [{ tag: 'dagger', crit: 25 }],
     fx: { critMul: 60 },
+    pre: { down: 1 },
     d: '匕首暴擊率 +25%；暴擊傷害 ×2.2',
     ic: 'asc_cls_assassin'
   }
@@ -584,11 +588,21 @@ const modTxt = m =>
     .map(([k, v]) => MODN[k](v))
     .join('、');
 const tagTxt = t => (t === 'weapon' ? '武器' : t === '*' ? '道具' : TAGN[t] || t);
+/* 0.1.6 開戰前的特殊效果（越強越稀有）：seal 封鎖敵人隨機一把武器 N 秒（每升一階 +1 秒）、down 敵人隨機一把武器降 1 階（最低 Ⅰ 階） */
+const preVal = (id, t = 1) => {
+  const p = ITEMI[id].pre;
+  return p ? (p.seal ? p.seal + (t - 1) : 1) : 0;
+};
+function preTxt(id, t = 1) {
+  const p = ITEMI[id].pre;
+  if (!p) return '';
+  return p.seal ? `開戰時封鎖敵人隨機一把武器 ${preVal(id, t)} 秒` : '開戰時把敵人隨機一把武器降 1 階（最低 Ⅰ 階）';
+}
 function itemDesc(id, t = 1) {
   const it = ITEMI[id],
     k = TIERM[t],
     out = [];
-  if (it.d) return it.d;
+  if (it.d) return [it.d, preTxt(id, t)].filter(Boolean).join('；');
   if (it.dmg) {
     const a = Math.round(it.dmg[0] * k),
       b = Math.round(it.dmg[1] * k);
@@ -618,6 +632,7 @@ function itemDesc(id, t = 1) {
   ])
     for (const b of it[w] || []) out.push(`${n}${tagTxt(b.tag)}：${modTxt(scaleMod(b, t))}`);
   if (it.fx && it.fx.take) out.push(`受到的傷害 +${it.fx.take}%`);
+  if (it.pre) out.push(preTxt(id, t));
   return out.join('；');
 }
 /* 加成照階數放大（per、tag 不動） */

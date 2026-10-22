@@ -261,3 +261,41 @@ canvas.spr.flip{transform:scaleX(-1)}
 .reveal .mod5{font-size:var(--fs-title);animation:revealPop .5s .25s ease-out both}
 @keyframes revealPop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}
 #modal .dlg2{max-height:88vh;overflow:auto}
+/* 0.1.6 暫存區：名字＋形狀小圖（跟商店一樣） */
+.bs{aspect-ratio:auto;min-height:58px;align-content:center;gap:1px;padding:2px 1px}
+.bs img{width:30px}
+.bs>span{max-width:100%;font-size:var(--fs-cap);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.bs .shp{position:absolute;top:2px;right:2px;pointer-events:none}
+.bs.emp{min-height:58px}
+/* 0.1.6 牌階 */
+.rank{display:flex;align-items:center;gap:var(--sp-3);margin-top:var(--sp-2)}
+.rank img{width:40px;height:40px;image-rendering:pixelated;flex:none}
+.rank.big img{width:64px;height:64px}
+.rank span{display:grid;gap:3px;flex:1;min-width:0}
+.rank b{font-size:var(--fs-title)}
+.rank.big b{font-size:var(--fs-hero)}
+.rank small{color:var(--dim);font-size:var(--fs-sm)}
+.rkbar{display:block;height:6px;border-radius:3px;background:var(--hp-track);overflow:hidden}
+.rkbar>i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.rk0{color:#9aa0a8}.rk1{color:#d08a58}.rk2{color:#b9c6d4}.rk3{color:var(--gold)}.rk4{color:#3fb8a9}.rk5{color:#5f90f2}.rk6{color:#a866e8}.rk7{color:#ec5a48}
+:root:not([data-theme="dark"]) .rk2{color:#6f7f92}
+.endrk{display:grid;gap:var(--sp-2);justify-items:center;text-align:center}
+.endrk .rank{margin:0}
+.endrk p{margin:0;font-weight:700}
+/* 0.1.6 寄放的戰利品 */
+.hold{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);border:2px solid var(--sb,var(--line));background:var(--sc,var(--card))}
+.hold img{width:32px;height:32px;image-rendering:pixelated;flex:none}
+.hold span{display:grid;flex:1;min-width:0}
+.hold b{font-size:var(--fs-body)}
+.hold small{font-size:var(--fs-sm);color:var(--dim)}
+.hold .btn{padding:var(--sp-2) var(--sp-3);flex:none}
+.it.s1,.bs.s1,.sc.s1,.pk.s1,.hold.s1{--sc:var(--s1b);--sb:var(--s1)}
+.hold.s2{--sc:var(--s2b);--sb:var(--s2)}.hold.s3{--sc:var(--s3b);--sb:var(--s3)}.hold.s4{--sc:var(--s4b);--sb:var(--s4)}.hold.s5{--sc:var(--s5b);--sb:var(--s5)}
+/* 0.1.6 戰鬥中的冷卻條（每格由下往上填）、被封鎖 */
+.bag.mini .it .c{overflow:hidden}
+.bag.mini .it .c::after{content:'';position:absolute;left:0;right:0;bottom:0;height:calc(var(--cd,0) * 100%);background:var(--accent);opacity:.38;box-shadow:0 -2px 0 var(--accent);pointer-events:none}
+.bag.mini .it.sealed .c{filter:grayscale(1) brightness(.6)}
+.bag.mini .it.sealed::after{content:'封';position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:var(--fs-sm);color:#fff;text-shadow:0 1px 2px #000;z-index:2}
+.prof .rank{margin-top:var(--sp-1)}
+.prof .rank img{width:34px;height:34px}
+.prof .kv3{margin-top:var(--sp-1)}

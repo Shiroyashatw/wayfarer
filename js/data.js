@@ -58,8 +58,22 @@ const ROUNDS = (() => {
 const RTYPE = { pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
 /* 回合列的短名與顏色分類 */
 const RSHORT = { pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
-/* 名次加減分 */
+/* 名次加減分（分數不給玩家看，只顯示牌階） */
 const PLACE_PTS = [0, 40, 15, -10, -25];
+/* 0.1.6 牌階：8 階 × 一二三（三最高），每一級 50 分；1000 分是銅牌一。
+   前 PLACE_N 場是定級賽（加減分 ×2、還不顯示牌階） */
+const RANKS = ['鐵牌', '銅牌', '銀牌', '金牌', '白金', '鑽石', '大師', '菁英'],
+  RANK_BASE = 850,
+  RANK_STEP = 50,
+  PLACE_N = 5;
+const rankOf = rating => Math.max(0, Math.min(RANKS.length * 3 - 1, fl((rating - RANK_BASE) / RANK_STEP)));
+const rankName = i => RANKS[fl(i / 3)] + '一二三'[i % 3];
+/* 這一級裡走到哪（0～1），最高一級沒有上限就一直是 1 */
+const rankProg = rating => {
+  const i = rankOf(rating);
+  return i === RANKS.length * 3 - 1 ? 1 : Math.max(0, Math.min(1, (rating - RANK_BASE - i * RANK_STEP) / RANK_STEP));
+};
+const placed = () => (S.games || 0) >= PLACE_N;
 /* 頭像（PNG 像素圖） */
 const AVATARS = [
   ['zhongkui', '鍾馗'],
@@ -112,5 +126,5 @@ const NAME_A = [
   ];
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
-const GVER = 's3';
-const VER = '0.1.5';
+const GVER = 's4';
+const VER = '0.1.6';

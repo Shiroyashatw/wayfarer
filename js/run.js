@@ -401,8 +401,9 @@ function endRun(run, place) {
   if (run.place) return;
   run.place = place;
   run.phase = 'end';
-  const d = PLACE_PTS[place] || 0;
+  const d = (PLACE_PTS[place] || 0) * ((S.games || 0) < PLACE_N ? 2 : 1);
   run.delta = d;
+  run.rk0 = (S.games || 0) >= PLACE_N ? rankOf(S.rating) : -1;
   S.rating = Math.max(0, S.rating + d);
   S.games = (S.games || 0) + 1;
   S.best = Math.min(S.best || 9, place);
@@ -410,11 +411,35 @@ function endRun(run, place) {
   if (typeof ghostEnd === 'function') ghostEnd(run);
 }
 /* 三選一的獎勵放進暫存區 */
-function takePick(run, id) {
+/* 0.1.6 暫存區滿了：剛好湊滿 3 件就先放多出來的一格合成；不然玩家的話先寄放在 run.hold（下回合空出位置再領），不會卡住 */
+function takePick(run, id, hold) {
   const fi = benchFree(run);
-  if (fi < 0) return '暫存區滿了，先騰出一格';
-  run.bench[fi] = newItem(run, id);
+  if (fi < 0 && !wouldMerge(run, id)) {
+    if (!hold) return '暫存區滿了，先騰出一格';
+    run.hold = newItem(run, id);
+    run.pend = null;
+    return '';
+  }
+  if (fi < 0) run.bench.push(newItem(run, id));
+  else run.bench[fi] = newItem(run, id);
   run.pend = null;
+  mergeAll(run, runR(run));
+  for (const o of run.bench.splice(BENCH_N)) if (o) run.bench[benchFree(run)] = o;
+  return '';
+}
+/* 領取寄放的戰利品：暫存區有空位就放進去，不然找背包的空位 */
+function claimHold(run) {
+  const o = run.hold;
+  if (!o) return '';
+  const fi = benchFree(run);
+  if (fi >= 0) run.bench[fi] = o;
+  else {
+    const sp = findSpot(run.bag, o);
+    if (!sp) return '還是放不下：先賣掉或擺好一件道具';
+    Object.assign(o, sp);
+    run.bag.items.push(o);
+  }
+  run.hold = null;
   mergeAll(run, runR(run));
   return '';
 }
@@ -463,11 +488,13 @@ function simLobby(seed, rating) {
   const rr = rng(h(seed, 5)),
     bots = [0, 1, 2, 3].map(i => {
       const s = h(seed, i, 31),
-        rt = Math.max(600, rating + fl((rr() - 0.5) * 300));
+        rt = Math.max(600, (rating || 1000) + fl((rr() - 0.5) * 150));
       return {
         run: newRunState(s),
         theme: THEMES[fl(rr() * THEMES.length)],
         q: Math.max(0.3, Math.min(0.95, 0.6 + (rt - 1000) / 800)),
+        /* 0.1.6 牌階越高的機器人每回合多拿一點金幣（越往上越強）；鐵牌、銅牌少拿 */
+        gb: Math.max(-2, Math.min(5, fl((rt - 1000) / 200))),
         info: {
           name: randName(rng(h(s, 9))),
           av: AVATARS[(s >>> 3) % AVATARS.length][0],
@@ -484,6 +511,7 @@ function simLobby(seed, rating) {
     if (alive.length <= 1) break;
     for (const b of alive) {
       nextRound(b.run);
+      if (b.run.ri > 0) b.run.gold = Math.max(0, b.run.gold + b.gb);
       botAct(b.run, b.theme, b.q);
     }
     const r = ROUNDS[k];

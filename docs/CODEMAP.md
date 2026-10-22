@@ -22,6 +22,11 @@
 | 快照對戰（Supabase） | `js/ghost.js`、`supabase/migrations/20261022000000_serling_ghosts.sql` | `ghostRivals`（配對＋機器人補位）、`ghostBegin`、`ghostSnap`、`ghostEnd`、`GHOST.off`、開服種子 `seedGhosts`；資料表 `runs`（`seed` 欄位）／`snaps`、RPC `pick_rivals`（真人優先） |
 | 首頁、圖鑑、說明、設定 | `js/ui.js` | `render`、`homeHTML`、`codexHTML`、`helpHTML`、`settingsHTML`、`go` |
 | 準備畫面（回合列、背包、暫存區、商店、道具說明） | `js/ui.js` | `prepHTML`、`roundBarHTML`、`bagHTML`、`rivalHTML`、`detailHTML`、`tutHTML`、`cellSize` |
+| 牌階（鐵牌～菁英、一二三、定級賽） | `js/data.js`、`js/ui.js` | `RANKS`、`rankOf`、`rankName`、`rankProg`、`placed`（data）；`rankIcon`（程式畫像素圖示）、`rankHTML`、`rankMove`（ui）；定級加倍在 `endRun` |
+| 戰鬥冷卻條、封鎖顯示 | `js/ui.js` | `cdTimeline`、`bCd`（`bTick` 每格呼叫） |
+| 開戰前特殊效果（封鎖、降階） | `js/items.js`、`js/bag.js`、`js/sim.js` | 道具的 `pre`、`preVal`、`preTxt`（items）；`compileBag` 的 `F.pre`（bag）；`simulate` 開頭（sim） |
+| 戰利品寄放（暫存區滿了） | `js/run.js`、`js/ui.js` | `takePick`（hold）、`claimHold`（run）；`holdHTML`、`A.claim`、`A.sellHold`（ui） |
+| 機器人強度跟著牌階 | `js/run.js`、`js/ghost.js` | `simLobby` 的 `q`、`gb`；`seedGhosts`（700～2100） |
 | 角色數值面板（點左上角頭像） | `js/ui.js` | `statsHTML`、`A.stats`（用 `compileBag` 算） |
 | 5★ 隨機詞綴、開獎畫面 | `js/items.js`、`js/run.js`、`js/ui.js` | `MOD5`、`roll5`、`mod5Q`、`mod5Txt`（items）；`newItem` 擲詞綴（run）；`compileBag`、`mergeAll` 留最好的（bag）；`mod5HTML`、`revealHTML`、`A.seen5`（ui） |
 | 拖曳自動轉向、滿了也能買來合成 | `js/ui.js`、`js/run.js` | `autoFit`、`drawGhost`（ui）；`wouldMerge`、`buyItem`（run） |
@@ -57,9 +62,9 @@
 
 - **utils**（6），15 個宣告
 
-### js/data.js（117 行）
+### js/data.js（131 行）
 
-- **一局**（5），13 個宣告
+- **一局**（5），18 個宣告
 
 ### js/sprites.js（1415 行）
 
@@ -70,24 +75,24 @@
 ### js/art.js（1217 行）
 
 
-### js/items.js（629 行）
+### js/items.js（644 行）
 
 
-### js/bag.js（213 行）
+### js/bag.js（216 行）
 
 - **合成**（56），1 個宣告
 - **戰鬥數值**（83），4 個宣告
 
-### js/sim.js（152 行）
+### js/sim.js（172 行）
 
 
-### js/run.js（519 行）
+### js/run.js（547 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），3 個宣告
 - **一局**（87），19 個宣告
 - **對手**（276），7 個宣告
-- **戰鬥**（327），6 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（421），4 個宣告
+- **戰鬥**（327），7 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（446），4 個宣告
 
 ### js/ghost.js（122 行）
 
@@ -102,18 +107,19 @@
 - **cloud save (Supabase)**（4），7 個宣告
 - **accounts**（104），5 個宣告
 
-### js/ui.js（1048 行）
+### js/ui.js（1227 行）
 
 - **小工具**（6），13 個宣告
-- **主題**（60），3 個宣告
-- **畫面切換**（76），2 個宣告
-- **首頁**（104），2 個宣告
-- **準備畫面**（140），13 個宣告
-- **結算、三選一、一局結束**（359），3 個宣告
-- **戰鬥播放**（380），9 個宣告
-- **圖鑑、說明、設定**（530），3 個宣告
-- **動作**（585），4 個宣告
-- **拖曳擺放**（837），7 個宣告
+- **牌階**（60），5 個宣告
+- **主題**（163），3 個宣告
+- **畫面切換**（179），2 個宣告
+- **首頁**（207），2 個宣告
+- **準備畫面**（243），13 個宣告
+- **結算、三選一、一局結束**（463），5 個宣告
+- **戰鬥播放**（499），11 個宣告
+- **圖鑑、說明、設定**（689），3 個宣告
+- **動作**（744），4 個宣告
+- **拖曳擺放**（1016），7 個宣告
 
 ### js/main.js（71 行）
 

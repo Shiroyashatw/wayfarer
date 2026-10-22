@@ -82,9 +82,9 @@ function ghostEnd(run) {
     .then(({ error }) => error && ghostFail(error));
 }
 /* ================= 開服種子資料（開發用） ================= */
-/* 在瀏覽器主控台執行 seedGhosts(100)：用目前的帳號產生 n 局機器人對局（4 個一場、真的互打），上傳成種子快照（runs.seed = true）。
+/* 在瀏覽器主控台執行 seedGhosts(160)：分數 700～2100 平均分布（每個牌階都有對手，越高越強），用目前的帳號產生 n 局機器人對局（4 個一場、真的互打），上傳成種子快照（runs.seed = true）。
    真人對局夠多以後可以在 SQL Editor 刪掉：delete from public.runs where seed; */
-async function seedGhosts(n = 100, lo = 800, hi = 1300) {
+async function seedGhosts(n = 160, lo = 700, hi = 2100) {
   if (!CLOUD.sb || !CLOUD.uid) throw new Error('雲端還沒連線');
   let ok = 0;
   for (let k = 0; ok < n; k++) {
