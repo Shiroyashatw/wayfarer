@@ -28,6 +28,7 @@
 | 即時戰鬥紀錄（0.1.13） | `js/ui.js` | `bLog`、`bNames`（`bTick` 每個事件呼叫）、`#blog` |
 | 角色加成照升階（0.1.13） | `js/items.js`、`js/bag.js` | `fxT`、`FX_FLAT`；`compileBag` |
 | 怪物模板與怪物池（0.1.12） | `js/run.js` | `ARCH`、`archMix`、`mob`、`pool`、`MOBS`（`1-1`～`2-5`、`sins`、`zodiac`、`kings`、`fiends`）、`ELITE_POOL`、`mobOf` |
+| 過去的對局（0.1.21） | `js/run.js`、`js/ui.js` | `fightSum` 的 `run.dmg`（整局累計）、`endRun` 存進 `S.hist`（`HIST_FULL` 局留詳細）；`showMatch`、`showLog(id, hi)`、`A.match` |
 | 戰鬥紀錄（0.1.12） | `js/run.js`、`js/ui.js` | `fightSum`（run）；`showLog`、`A.log`、回合列與結算的入口（ui） |
 | 戰鬥特效（0.1.12） | `js/ui.js`、`css/style.css` | `bHit`、`bAnim`、`bBurst`、`bSlash`；`.sp` 的動畫 |
 | 升階倍率（0.1.10） | `js/items.js`、`js/bag.js` | `TIERM`、`TIERB`、`TIERCD`、`TIERCH`、`cdT`、`onT`（items）；`compileBag`（bag） |
@@ -105,13 +106,13 @@
 ### js/sim.js（241 行）
 
 
-### js/run.js（774 行）
+### js/run.js（795 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），23 個宣告
 - **對手**（458），8 個宣告
-- **戰鬥**（514），11 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（685），3 個宣告
+- **戰鬥**（514），12 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（706），3 個宣告
 
 ### js/bot.js（284 行）
 
@@ -131,10 +132,10 @@
 - **cloud save (Supabase)**（4），7 個宣告
 - **accounts**（104），5 個宣告
 
-### js/news.js（125 行）
+### js/news.js（131 行）
 
 
-### js/ui.js（1504 行）
+### js/ui.js（1538 行）
 
 - **小工具**（6），13 個宣告
 - **牌階**（60），5 個宣告
@@ -145,8 +146,8 @@
 - **結算、三選一、一局結束**（468），6 個宣告
 - **戰鬥播放**（515），20 個宣告
 - **圖鑑、說明、設定**（872），3 個宣告
-- **動作**（937），6 個宣告
-- **拖曳擺放**（1291），7 個宣告
+- **動作**（937），7 個宣告
+- **拖曳擺放**（1325），7 個宣告
 
 ### js/main.js（74 行）
 

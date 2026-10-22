@@ -82,7 +82,7 @@ canvas.spr.flip{transform:scaleX(-1)}
 .prof>div{flex:1}
 .prof small{color:var(--dim);display:block}
 .hist{display:grid;gap:var(--sp-1)}
-.hist div{display:flex;justify-content:space-between;background:var(--card);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);font-size:var(--fs-body);box-shadow:var(--shadow)}
+.hist div.hr,.hist>div{display:flex;justify-content:space-between;background:var(--card);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);font-size:var(--fs-body);box-shadow:var(--shadow)}
 .pl{font-family:var(--f-pix);font-weight:400}
 .pl.p1{color:var(--gold)}.pl.p2{color:var(--s3)}.pl.p3{color:#b5652d}.pl.p4{color:var(--dim)}
 .logo .pl{font-size:48px;text-shadow:none}
@@ -388,3 +388,13 @@ canvas.spr.flip{transform:scaleX(-1)}
 .nwl summary small{margin-left:var(--sp-2);font-weight:400;color:var(--accent);font-size:var(--fs-cap)}
 .nwl ul{margin:var(--sp-2) 0 0;padding-left:1.2em;display:grid;gap:var(--sp-1)}
 .nwl li{font-size:var(--fs-sm);color:var(--ink);line-height:1.45}
+
+/* 0.1.21 過去的對局 */
+.hist .hr{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);width:100%;background:var(--card);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);font-size:var(--fs-body);box-shadow:var(--shadow);border:0;color:var(--ink);font-family:inherit;text-align:left}
+.hist button.hr{cursor:pointer}
+.matchd{text-align:left;max-height:88vh;overflow:auto}
+.matchd>b{text-align:center}
+.matchd>p{margin:0;text-align:center}
+.matchd h4{margin:var(--sp-2) 0 0;font-size:var(--fs-btn)}
+.matchd .bagwrap{justify-self:center}
+.matchd .lgl{max-height:none}

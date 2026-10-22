@@ -550,6 +550,15 @@ function fightSum(run, fb) {
       if (e.u && (e.k === 'hit' || e.k === 'crit')) by[e.u] = (by[e.u] || 0) + e.v;
     } else taken += e.v;
   }
+  /* 0.1.21 整局累計：每件道具（照種類）造成的傷害，一局結束存進對局紀錄 */
+  run.dmg = run.dmg || {};
+  for (const [u, v] of Object.entries(by)) {
+    const o = run.bag.items.find(q => q.u === u);
+    if (!o) continue;
+    const d = (run.dmg[o.id] = run.dmg[o.id] || [o.id, o.t, 0]);
+    d[1] = Math.max(d[1], o.t);
+    d[2] += v;
+  }
   const top = Object.entries(by)
     .map(([u, v]) => {
       const o = run.bag.items.find(q => q.u === u);
@@ -636,6 +645,7 @@ function finalPlace(run) {
   const last = ROUNDS[ROUNDS.length - 1].id;
   return 1 + run.rivals.filter(rv => rivalHp(rv, last) > run.hp).length;
 }
+const HIST_FULL = 10;
 function endRun(run, place) {
   if (run.place) return;
   run.place = place;
@@ -646,7 +656,18 @@ function endRun(run, place) {
   S.rating = Math.max(0, S.rating + d);
   S.games = (S.games || 0) + 1;
   S.best = Math.min(S.best || 9, place);
-  S.hist = [{ at: Date.now(), place, d, r: curRound(run) ? curRound(run).id : 'end' }, ...(S.hist || [])].slice(0, 30);
+  /* 0.1.21 對局紀錄多存：職業、最後的背包、整局每件道具的傷害、每一場的摘要（不存對手背包，省空間）；只有最近 HIST_FULL 局留詳細 */
+  const full = {
+    cls: run.bag.cls || null,
+    bag: packBag(run.bag),
+    dmg: Object.values(run.dmg || {})
+      .sort((a, b) => b[2] - a[2])
+      .slice(0, 12),
+    log: (run.log || []).map(({ ob, ...l }) => l)
+  };
+  S.hist = [{ at: Date.now(), place, d, r: curRound(run) ? curRound(run).id : 'end', ...full }, ...(S.hist || [])]
+    .slice(0, 30)
+    .map((x, i) => (i < HIST_FULL ? x : { at: x.at, place: x.place, d: x.d, r: x.r }));
   if (typeof ghostEnd === 'function') ghostEnd(run);
 }
 /* 三選一的獎勵放進暫存區 */

@@ -220,7 +220,7 @@ function homeHTML() {
             .slice(0, 6)
             .map(
               x =>
-                `<div><b class="pl p${x.place}">第 ${x.place} 名</b><span>${x.r}</span><span class="${x.d >= 0 ? 'c-good' : 'c-bad'}">${x.d >= 0 ? '▲' : '▼'}</span></div>`
+                `<${x.log ? `button data-act="match" data-k="${S.hist.indexOf(x)}"` : 'div'} class="hr"><b class="pl p${x.place}">第 ${x.place} 名</b><span>${x.cls && CLSI[x.cls] ? CLSI[x.cls].n + '・' : ''}${x.r}</span><span class="${x.d >= 0 ? 'c-good' : 'c-bad'}">${x.d >= 0 ? '▲' : '▼'}${x.log ? ' ›' : ''}</span></${x.log ? 'button' : 'div'}>`
             )
             .join('')}</div>`
         : ''
@@ -987,6 +987,7 @@ const A = {
   },
   stats: () => showDlg('角色數值', statsHTML(S.run), []),
   log: d => showLog(d.k),
+  match: d => showMatch(+d.k),
   news: () => {
     S.newsSeen = NEWS[0].v;
     save();
@@ -1224,11 +1225,12 @@ async function authDo(f) {
 }
 /* 簡單的對話框：buttons [[文字, 動作]] */
 /* 0.1.12 戰鬥紀錄：列表（新的在上面），點一筆看詳細：秒數、傷害、傷害最高的道具、對手的背包 */
-function showLog(id) {
-  const run = S.run,
+function showLog(id, hi) {
+  const H = hi != null ? S.hist[hi] : null,
+    logs = H ? H.log || [] : S.run && S.run.log,
     m = $('modal');
-  if (!run) return;
-  const lg = id && run.log.find(l => l.id === id),
+  if (!logs) return;
+  const lg = id && logs.find(l => l.id === id),
     row = l =>
       `<button class="lgr ${l.win ? 'w' : 'l'}" data-lg="${l.id}">${sprCv(l.spr || 'a_' + S.av)}<span><b>${l.id}・${esc(l.opp)}</b><small>${RTYPE[l.type]}${l.t ? `・${l.t} 秒` : ''}</small></span><em>${l.win ? '勝' : `敗 -${l.loss}`}</em></button>`;
   let body;
@@ -1245,16 +1247,48 @@ function showLog(id) {
         : ''
     }${lg.ob ? `<h4>對手的背包</h4><div class="bagwrap">${bagHTML(unpackBag(lg.ob), 24, { mini: 1, id: 'lgbag' })}</div>` : ''}</div>`;
   } else
-    body = run.log.length
-      ? `<div class="lgl">${[...run.log].reverse().map(row).join('')}</div>`
+    body = logs.length
+      ? `<div class="lgl">${[...logs].reverse().map(row).join('')}</div>`
       : '<p class="c-dim">還沒有打過</p>';
-  m.innerHTML = `<div class="dlg2"><b>${lg ? '這場的紀錄' : '戰鬥紀錄'}</b>${body}<div class="btns col">${lg ? '<button class="btn" data-lgx="1">所有紀錄</button>' : ''}<button class="btn" data-lgc="1">關閉</button></div></div>`;
+  m.innerHTML = `<div class="dlg2"><b>${lg ? '這場的紀錄' : '戰鬥紀錄'}</b>${body}<div class="btns col">${lg ? `<button class="btn" data-lgx="1">${H ? '回到這一局' : '所有紀錄'}</button>` : ''}<button class="btn" data-lgc="1">關閉</button></div></div>`;
   m.hidden = false;
   paintSprites(m);
   m.onclick = ev => {
     const r = ev.target.closest('[data-lg]');
-    if (r && !lg) return showLog(r.dataset.lg);
-    if (ev.target.closest('[data-lgx]')) return showLog();
+    if (r && !lg) return showLog(r.dataset.lg, hi);
+    if (ev.target.closest('[data-lgx]')) return H ? showMatch(hi) : showLog();
+    if (ev.target.closest('[data-lgc]') || ev.target === m) m.hidden = true;
+  };
+}
+/* 0.1.21 過去的對局（首頁「最近的對局」點進來）：名次、職業、最後的背包、整局每件道具的傷害、每一場（點了看詳細） */
+function showMatch(hi) {
+  const H = S.hist[hi],
+    m = $('modal');
+  if (!H || !H.log) return;
+  const mx = Math.max(1, ...(H.dmg || []).map(x => x[2])),
+    tot = (H.dmg || []).reduce((a, x) => a + x[2], 0),
+    row = l =>
+      `<button class="lgr ${l.win ? 'w' : 'l'}" data-lg="${l.id}">${sprCv(l.spr || 'a_' + S.av)}<span><b>${l.id}・${esc(l.opp)}</b><small>${RTYPE[l.type]}${l.t ? `・${l.t} 秒` : ''}${l.dealt != null ? `・造成 ${l.dealt}` : ''}</small></span><em>${l.win ? '勝' : `敗 -${l.loss}`}</em></button>`;
+  const C = CLSI[H.cls];
+  m.innerHTML = `<div class="dlg2 matchd"><b>第 ${H.place} 名・打到 ${H.r}</b><p class="c-dim">${C ? C.n + '・' : ''}${new Date(H.at).toLocaleDateString()}</p>
+    <h4>最後的背包</h4><div class="bagwrap">${bagHTML(unpackBag(H.bag), 26, { mini: 1, id: 'hbag' })}</div>
+    ${
+      (H.dmg || []).length
+        ? `<h4>整局傷害（共 ${tot}）</h4>${H.dmg
+            .map(
+              ([iid, t, v]) =>
+                `<div class="lgb"><img src="${itemIcon(iid)}" alt=""><span><b>${ITEMI[iid] ? ITEMI[iid].n : iid}${tierTxt(t)}</b><i><i style="width:${Math.round((v / mx) * 100)}%"></i></i></span><em>${v}</em></div>`
+            )
+            .join('')}`
+        : ''
+    }
+    <h4>每一場（點了看詳細）</h4><div class="lgl">${[...H.log].reverse().map(row).join('')}</div>
+    <div class="btns col"><button class="btn" data-lgc="1">關閉</button></div></div>`;
+  m.hidden = false;
+  paintSprites(m);
+  m.onclick = ev => {
+    const r = ev.target.closest('[data-lg]');
+    if (r) return showLog(r.dataset.lg, hi);
     if (ev.target.closest('[data-lgc]') || ev.target === m) m.hidden = true;
   };
 }
