@@ -33,19 +33,37 @@ function adjacent(a, b) {
 const rowsOf = o => new Set(cellsOf(o).map(p => p[1]));
 const sameRow = (a, b) => [...rowsOf(a)].some(y => rowsOf(b).has(y));
 /* 找一個放得下的位置（先試每個旋轉；score 越高越好：跟有加成關係的道具相鄰） */
+/* 0.1.11 變快：格子表只建一次（canPlace 每次都重建，背包大了機器人一場要 0.6 秒，開局會卡），只對有加成關係的道具算分 */
 function findSpot(bag, o, prefer = true) {
+  const I = ITEMI[o.id];
+  if (I.core && bag.items.some(q => q.u !== o.u && ITEMI[q.id].core === I.core)) return null;
+  const g = bagGrid(bag),
+    rel = prefer
+      ? bag.items.map(q => [q, q.u !== o.u ? synergy(o, q) + synergy(q, o) : 0]).filter(([, n]) => n > 0)
+      : [];
   let best = null;
-  for (let r = 0; r < 4; r++)
+  for (let r = 0; r < 4; r++) {
+    const sh = shapeOf(o.id, r);
     for (let y = 0; y < bag.h; y++)
       for (let x = 0; x < bag.w; x++) {
-        if (!canPlace(bag, o, x, y, r)) continue;
+        let ok = true;
+        for (const [dx, dy] of sh) {
+          const cx = x + dx,
+            cy = y + dy;
+          if (cx >= bag.w || cy >= bag.h || (g[cy][cx] != null && g[cy][cx] !== o.u)) {
+            ok = false;
+            break;
+          }
+        }
+        if (!ok) continue;
         let sc = 0;
-        if (prefer) {
+        if (rel.length) {
           const t = { ...o, x, y, r };
-          for (const q of bag.items) if (q.u !== o.u && adjacent(t, q)) sc += synergy(t, q) + synergy(q, t);
+          for (const [q, n] of rel) if (adjacent(t, q)) sc += n;
         }
         if (!best || sc > best.sc) best = { x, y, r, sc };
       }
+  }
   return best;
 }
 /* a 給 b 的加成有幾條（相鄰／同排看位置，這裡只看標籤） */

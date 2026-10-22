@@ -527,7 +527,7 @@ function beginFight() {
   save();
   B = {
     fb,
-    t: 0,
+    t: leadIn(fb.res),
     i: 0,
     hp: [fb.me.hp, fb.opp.F.hp],
     max: fb.res.max,
@@ -539,6 +539,11 @@ function beginFight() {
   snd('encounter');
   renderBattle();
 }
+/* 0.1.10 開戰時武器從 25% 充能開始，第一下要等快 1 秒，看起來像卡住：播放直接從第一個動作前 0.3 秒開始（結果不變） */
+const leadIn = res => {
+  const f = res.ev.find(e => e.t > 0);
+  return f ? Math.max(0, f.t - 0.3) : 0;
+};
 /* 重新整理後回到戰鬥：用存下的對手與種子重算（結果一樣） */
 function resumeFight() {
   const run = S.run,
@@ -547,7 +552,7 @@ function resumeFight() {
     res = simulate(me, f.opp.F, f.seed);
   B = {
     fb: { r: curRound(run), opp: f.opp, me, res },
-    t: 0,
+    t: leadIn(res),
     i: 0,
     hp: [me.hp, f.opp.F.hp],
     max: res.max,

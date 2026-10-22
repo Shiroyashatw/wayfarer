@@ -625,5 +625,7 @@ function simLobby(seed, rating) {
 }
 /* 補位用的 n 位機器人對手（從一場機器人對局裡取） */
 function makeBots(n, rating) {
+  /* 0.1.11 真人快照夠了就不用跑機器人（一場機器人對局要算好一陣子） */
+  if (n <= 0) return [];
   return simLobby((Math.random() * 2 ** 31) | 0, rating).slice(0, n);
 }
