@@ -391,7 +391,8 @@ function swapPlan(run, o, tx, ty, from) {
   }
   if (hit.size !== 1) return null;
   const B = bag.items.find(q => q.u === [...hit][0]),
-    rest = bag.items.filter(q => q !== B && q !== o),
+    /* 0.1.29 用 u 比對：拖曳中旋轉時傳進來的 o 是複本（之前用物件比對，自己沒被排除，背包內交換都失敗） */
+    rest = bag.items.filter(q => q !== B && q.u !== o.u),
     tmp = { w: bag.w, h: bag.h, items: [...rest, { ...o, x: tx, y: ty }] };
   if (!canPlace({ w: bag.w, h: bag.h, items: rest }, o, tx, ty, o.r)) return null;
   if (from !== 'bag') return B ? { B, toBench: true } : null;
