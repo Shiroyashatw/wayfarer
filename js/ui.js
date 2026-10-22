@@ -364,7 +364,7 @@ function prepHTML(run) {
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
-          ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}" data-bu="${o.u}" data-bi="${i}"><img src="${itemIcon(o.id)}" alt="">${shapeMini(o.id, o.r || 0)}<span>${ITEMI[o.id].n}</span>${tierBadge(o.t)}</div>`
+          ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}" data-bu="${o.u}" data-bi="${i}"><img src="${itemIcon(o.id)}" alt="${ITEMI[o.id].n}">${shapeMini(o.id, o.r || 0)}${tierBadge(o.t)}</div>`
           : `<div class="bs emp" data-bi="${i}"></div>`
       )
       .join('')}</div></div>
@@ -375,7 +375,7 @@ function prepHTML(run) {
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
-    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL ? 'disabled' : ''}>刷新<small class="bnote">${REROLL} 金</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? lvNext.cost + ' 金' : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div>
+    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL ? 'disabled' : ''}>刷新<small class="bnote">${REROLL} 金</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvNext.cost + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div>
     ${detailHTML(run)}
   </div>`;
 }
@@ -564,9 +564,9 @@ function renderBattle() {
     ob = fb.opp.bag;
   $('app').innerHTML = `<div class="bt">
     <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b></div>
-    <div class="arena"><div class="fr">${sprCv('a_' + S.av, 'big')}<b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><em id="hpt0"></em></i></div>
+    <div class="arena"><div class="fr">${sprCv('a_' + S.av, 'big')}<b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div></div>
     <div class="vs">VS</div>
-    <div class="fr">${sprCv(fb.opp.spr, 'big flip')}<b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><em id="hpt1"></em></i></div>
+    <div class="fr">${sprCv(fb.opp.spr, 'big flip')}<b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div></div>
     <div class="fx" id="fx"></div></div>
     <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
     <div class="bctl"><button class="btn" data-act="spd">×${S.speed || 1}</button><button class="btn" data-act="skip">跳過</button></div>
@@ -617,7 +617,55 @@ function bCd() {
     }
   }
 }
-const ELC = { fire: '#ff9a5a', cold: '#8fd8ff', light: '#fff27a', poison: '#9be36b', dark: '#c58cff', phys: '#ffffff' };
+/* 0.1.9 戰鬥中角色身上的異常（照時間軸最後一筆事件的狀態）：圖示＋層數 */
+const STN = {
+    burn: '燃燒',
+    poison: '中毒',
+    bleed: '流血',
+    sunder: '破甲',
+    frozen: '凍結',
+    stun: '暈眩',
+    weak: '虛弱',
+    blind: '致盲'
+  },
+  STI = [
+    ['burn', 'ail_burn', 1],
+    ['poison', 'ail_poison', 1],
+    ['bleed', 'ail_bleed', 1],
+    ['sunder', 'ail_vul', 1],
+    ['frozen', 'ail_frozen', 0],
+    ['stun', 'ail_stun', 0],
+    ['weak', 'ail_curse', 0],
+    ['blind', 'ail_mark', 0]
+  ];
+function bSts() {
+  if (!B.st) return;
+  for (let s = 0; s < 2; s++) {
+    const el = $('sts' + s),
+      key = B.st[s].join(',');
+    if (!el || el.dataset.k === key) continue;
+    el.dataset.k = key;
+    el.innerHTML = STI.map(([k, ic, n], i) =>
+      B.st[s][i] > 0
+        ? `<span title="${STN[k]}"><img src="${artIconURL(ic) || iconURL('star')}" alt="${STN[k]}">${n ? `<b>${B.st[s][i]}</b>` : ''}</span>`
+        : ''
+    ).join('');
+  }
+}
+const ELC = {
+  fire: '#ff9a5a',
+  cold: '#8fd8ff',
+  light: '#fff27a',
+  poison: '#9be36b',
+  dark: '#c58cff',
+  phys: '#ffffff',
+  bleed: '#ff5a5a',
+  burn: '#ff9a5a',
+  sunder: '#ffb15a',
+  frozen: '#8fd8ff',
+  weak: '#c58cff',
+  blind: '#fff27a'
+};
 function bPop(side, txt, col, big) {
   const fx = $('fx');
   if (!fx) return;
@@ -650,6 +698,7 @@ function bTick() {
     const e = ev[B.i++],
       tg = e.self ? e.s : 1 - e.s;
     B.hp = e.hp;
+    if (e.st) B.st = e.st;
     if ((e.k === 'hit' || e.k === 'crit') && e.ab) B.block[tg] = Math.max(0, B.block[tg] - e.ab);
     if (e.k === 'block') B.block[e.s] += e.v;
     if (k++ > 6) continue;
@@ -673,7 +722,12 @@ function bTick() {
     else if (e.k === 'stun') bPop(tg, '暈眩', '#ffe27a');
     else if (e.k === 'freeze') bPop(tg, '凍結', '#8fd8ff');
     else if (e.k === 'thorns') bPop(tg, '反彈 ' + e.v, '#ffb15a');
-    else if (e.k === 'seal') {
+    else if (e.k === 'weak') bPop(tg, '虛弱', '#c58cff');
+    else if (e.k === 'blind') bPop(tg, '致盲', '#fff27a');
+    else if (e.k === 'throw') {
+      bPop(tg, `${STN[e.x] || ''} ${e.v}`, ELC[e.x] || '#ffd27a', 1);
+      bFlash(e.s, e.u);
+    } else if (e.k === 'seal') {
       bPop(tg, `封鎖 ${e.v} 秒`, '#c58cff', 1);
       bFlash(e.s, e.u);
     } else if (e.k === 'down') {
@@ -682,6 +736,7 @@ function bTick() {
     }
   }
   bShow();
+  bSts();
   bCd();
   if (B.i >= ev.length && B.t >= B.fb.res.t + 0.6) bEnd();
 }
@@ -716,7 +771,9 @@ function codexHTML() {
   ]
     .map(
       st =>
-        `<h3 style="color:${STARC[st]}">${stars(st)}</h3><div class="codex">${ITEMS.filter(i => i.star === st)
+        `<h3 style="color:${STARC[st]}">${stars(st)}</h3><div class="codex">${ITEMS.filter(
+          i => i.star === st && !i.core
+        )
           .map(
             i =>
               `<div class="cx s${st}${S.seen[i.id] ? '' : ' unseen'}"><img src="${itemIcon(i.id)}" alt=""><div><b>${i.n}</b><small>${i.tags
@@ -726,7 +783,14 @@ function codexHTML() {
           )
           .join('')}</div>`
     )
-    .join('')}</div>`;
+    .join('')}<h3>職業核心（首領 2-5 從你的職業池三選一）</h3>${CLASSES.map(
+    C =>
+      `<details class="more"><summary>${C.n}（${ITEMS.filter(i => i.cls === C.id).length}）</summary><div class="cores">${ITEMS.filter(
+        i => i.cls === C.id
+      )
+        .map(i => `<p><b>${i.n.split('・')[1]}</b>　${itemDesc(i.id)}</p>`)
+        .join('')}</div></details>`
+  ).join('')}</div>`;
 }
 function helpHTML() {
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
@@ -734,7 +798,7 @@ function helpHTML() {
   <div class="card"><b>職業</b><p>每局開打前三選一（可以刷新一次），整局都有效：例如弓箭手讓弓、弩傷害 +20%、攻速 +15%。照職業去買武器和輔助道具（箭袋、劍鞘、法術書、火藥桶、肉骨頭…），輔助道具要擺在武器旁邊或同一排才有用，背包空間要取捨。點左上角頭像可以看職業與數值。</p></div>
   <div class="card"><b>回合</b><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完職業核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
   <div class="card"><b>金幣</b><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></div>
-  <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×6），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
+  <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×7，每一級從固定的回合起才開放，例如 3×4 要 1-3、4×4 要 2-1），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
   <div class="card"><b>合成</b><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></div>
   <div class="card"><b>相鄰效果</b><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></div>
   <div class="card"><b>職業核心</b><p>首領（2-5）掉落的 5★ 道具，一個背包只能放 1 個，決定這局的流派（劍聖、獵手、元素使、死靈師…）。</p></div>

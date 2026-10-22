@@ -278,9 +278,15 @@ function rerollShop(run) {
   return '';
 }
 /* 背包升級：變大、商店機率變好；放不下的不會發生（只會變大） */
+/* 0.1.9 下一級背包開放了沒（BAGLV 的 from） */
+const lvOpen = run => {
+  const nx = BAGLV[run.lv + 1];
+  return !!nx && (!nx.from || run.ri >= ROUNDS.findIndex(r => r.id === nx.from));
+};
 function levelUp(run) {
   if (run.lv >= BAG_MAX) return '背包已經最大了';
   const c = BAGLV[run.lv + 1].cost;
+  if (!lvOpen(run)) return `${BAGLV[run.lv + 1].from} 才能升級背包`;
   if (run.gold < c) return '金幣不夠';
   run.gold -= c;
   run.lv++;
@@ -415,7 +421,8 @@ function finishFight(run, fb) {
     };
   }
   if (r.type === 'boss') {
-    const cs = ITEMS.filter(i => i.core).map(i => i.id),
+    /* 0.1.9 從自己職業的核心池抽（沒有職業的舊局才從全部抽） */
+    const cs = ITEMS.filter(i => i.core && (!run.bag.cls || i.cls === run.bag.cls)).map(i => i.id),
       o = [];
     while (o.length < 3) {
       const c = pick(run, cs);
@@ -584,7 +591,9 @@ function simLobby(seed, rating) {
       if (!res.win) run.hp -= r.loss;
       if (r.type === 'elite' || r.type === 'boss') {
         const [a, c] = eliteStars(r.st),
-          pool = ITEMS.filter(it => (r.type === 'boss' ? it.core : !it.core && it.star >= a && it.star <= c));
+          pool = ITEMS.filter(it =>
+            r.type === 'boss' ? it.core && it.cls === run.bag.cls : !it.core && it.star >= a && it.star <= c
+          );
         /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了） */
         takePick(run, pick(run, pool).id);
       }

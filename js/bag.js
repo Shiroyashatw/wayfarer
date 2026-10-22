@@ -103,6 +103,7 @@ function compileBag(bag, extra = {}) {
       shields: [],
       pots: [],
       pre: [],
+      throwPct: 0,
       ...extra
     };
   const cnt = tag => its.filter(o => ITEMI[o.id].tags.includes(tag)).length;
@@ -153,7 +154,12 @@ function compileBag(bag, extra = {}) {
     if (I.arm) F.arm += Math.round(I.arm * k);
     if (I.dodge) F.dodge += Math.round(I.dodge * TIERB[o.t]);
     if (I.regen || m.regen) F.regen += Math.round((I.regen || 0) * k) + (m.regen || 0);
-    if (I.pre) F.pre.push({ u: o.u, k: I.pre.seal ? 'seal' : 'down', v: preVal(o.id, o.t) });
+    if (I.pre) {
+      /* 鍊金術士：丟出去的藥劑（藥水標籤）效果加強 */
+      const k = preKey(I.pre),
+        boost = I.tags.includes('potion') && F.throwPct ? 1 + F.throwPct / 100 : 1;
+      F.pre.push({ u: o.u, k, v: k === 'down' ? 1 : Math.round(preVal(o.id, o.t) * boost) });
+    }
     if (I.pot) F.pots.push({ u: o.u, at: I.pot[0], v: Math.round(I.pot[1] * k), n: I.pot[2] });
     if (I.block)
       F.shields.push({
@@ -179,7 +185,11 @@ function compileBag(bag, extra = {}) {
         poison: (on.poison || 0) + (m.poison || 0),
         freeze: [(on.freeze ? on.freeze[0] : 0) + (m.freezeCh || 0), on.freeze ? on.freeze[1] : 0.8],
         stun: [(on.stun ? on.stun[0] : 0) + (m.stunCh || 0), on.stun ? on.stun[1] : 0.5],
-        ls: (on.ls || 0) + (m.ls || 0)
+        ls: (on.ls || 0) + (m.ls || 0),
+        bleed: (on.bleed || 0) + (m.bleed || 0),
+        sunder: (on.sunder || 0) + (m.sunder || 0),
+        weak: (on.weak || 0) + (m.weakCh || 0),
+        blind: (on.blind || 0) + (m.blindCh || 0)
       });
     }
   }

@@ -302,3 +302,16 @@ canvas.spr.flip{transform:scaleX(-1)}
 /* 0.1.8 頂部資訊固定在最上方（背包大了往下拉看商店，金幣、生命還看得到） */
 .prep>.top{position:sticky;top:0;z-index:30;margin:calc(-1 * var(--sp-3) - var(--sat)) calc(-1 * var(--sp-5)) 0;padding:calc(var(--sp-2) + var(--sat)) var(--sp-5) var(--sp-2);background:var(--bg-top,var(--bg));box-shadow:0 1px 0 var(--line),0 6px 12px -8px #0006}
 .hpt{white-space:nowrap}.top .me span{overflow:hidden}
+/* 0.1.9 暫存區只留圖示與形狀（名字點開說明看），格子小一點、方的 */
+.bs,.bs.emp{aspect-ratio:1;min-height:0;padding:0}
+.bs img{width:66%}
+.bs .shp{top:auto;bottom:2px;right:2px}
+.bench{gap:3px}
+/* 0.1.9 戰鬥中的異常圖示 */
+.sts{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;min-height:20px;margin-top:3px}
+.sts span{position:relative;display:inline-grid;place-items:center;width:20px;height:20px}
+.sts img{width:20px;height:20px;image-rendering:pixelated}
+.sts b{position:absolute;right:-3px;bottom:-3px;font-family:var(--f-pix);font-weight:400;font-size:10px;line-height:1;color:#fff;text-shadow:0 0 2px #000,0 0 2px #000}
+.cores p{margin:0 0 var(--sp-2);font-size:var(--fs-sm);color:var(--dim)}.cores b{color:var(--ink)}
+/* 0.1.9 頂部固定列改用陰影把底色往兩邊延伸（負邊距會讓版面變寬） */
+.prep>.top{margin:calc(-1 * var(--sp-3) - var(--sat)) 0 0;padding:calc(var(--sp-2) + var(--sat)) 0 var(--sp-2);box-shadow:calc(-1 * var(--sp-5)) 0 0 var(--bg-top,var(--bg)),var(--sp-5) 0 0 var(--bg-top,var(--bg)),0 1px 0 var(--line),0 6px 12px -8px #0006}

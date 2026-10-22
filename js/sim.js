@@ -2,6 +2,12 @@
    同樣的背包＋同樣的種子，結果一定一樣（固定亂數），畫面只負責照時間軸播放。 */
 'use strict';
 const SIM_DT = 0.05;
+/* 0.1.9 異常狀態的數值 */
+const WEAK_PCT = 25,
+  WEAK_T = 3,
+  BLIND_MISS = 30,
+  BLIND_T = 2.5,
+  SUNDER_MAX = 30;
 /* 一方的戰鬥狀態 */
 function simSide(F) {
   return {
@@ -13,6 +19,11 @@ function simSide(F) {
     poison: 0,
     frozen: 0,
     stun: 0,
+    /* 0.1.9 新異常：流血（層數，每秒扣層數然後減半）、破甲（扣護甲，會疊）、虛弱（秒，傷害 -25%）、致盲（秒，30% 打不中） */
+    bleed: 0,
+    sunder: 0,
+    weak: 0,
+    blind: 0,
     w: F.weapons.map((w, i) => ({ ...w, i, tt: w.cd * 0.25 })),
     s: F.shields.map((s, i) => ({ ...s, i, tt: s.cd * 0.5 })),
     pots: F.pots.map(p => ({ ...p })),
@@ -31,6 +42,16 @@ function simulate(FA, FB, seed) {
       k,
       v,
       hp: [Math.max(0, Math.round(S[0].hp)), Math.max(0, Math.round(S[1].hp))],
+      st: S.map(x => [
+        x.burn,
+        x.poison,
+        x.bleed,
+        x.sunder,
+        +(x.frozen > 0),
+        +(x.stun > 0),
+        +(x.weak > 0),
+        +(x.blind > 0)
+      ]),
       ...extra
     });
   const hurt = (t, d, def, src, k, extra) => {
@@ -39,11 +60,12 @@ function simulate(FA, FB, seed) {
   };
   const attack = (t, a, ai, w) => {
     const d = S[1 - ai];
-    if (r() * 100 < d.F.dodge) return log(t, ai, 'miss', 0, { u: w.u });
+    if (r() * 100 < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) return log(t, ai, 'miss', 0, { u: w.u });
     let v = w.dmg[0] + r() * (w.dmg[1] - w.dmg[0]);
     const crit = r() * 100 < w.crit;
     if (crit) v *= a.F.critMul / 100;
-    v *= 50 / (50 + d.F.arm);
+    if (a.weak > 0) v *= 1 - WEAK_PCT / 100;
+    v *= 50 / (50 + Math.max(-20, d.F.arm - d.sunder));
     v *= 1 + d.F.take / 100;
     let ab = 0;
     if (d.block > 0) {
@@ -69,6 +91,16 @@ function simulate(FA, FB, seed) {
     }
     if (w.burn) d.burn += w.burn;
     if (w.poison) d.poison += w.poison;
+    if (w.bleed) d.bleed += w.bleed;
+    if (w.sunder) d.sunder = Math.min(SUNDER_MAX, d.sunder + w.sunder);
+    if (w.weak && r() * 100 < w.weak) {
+      d.weak = Math.max(d.weak, WEAK_T);
+      log(t, ai, 'weak', WEAK_T, {});
+    }
+    if (w.blind && r() * 100 < w.blind) {
+      d.blind = Math.max(d.blind, BLIND_T);
+      log(t, ai, 'blind', BLIND_T, {});
+    }
     if (w.freeze[0] && r() * 100 < w.freeze[0]) {
       d.frozen = Math.max(d.frozen, w.freeze[1]);
       log(t, ai, 'freeze', w.freeze[1], {});
@@ -94,12 +126,24 @@ function simulate(FA, FB, seed) {
         } else w.seal = p.v;
         log(0, i, k, p.v, { u: p.u, tu: w.u });
       }
+  /* 0.1.9 開戰丟出去的藥劑：對方直接吃到異常 */
+  for (let i = 0; i < 2; i++)
+    for (const p of S[i].F.pre || []) {
+      if (p.k === 'seal' || p.k === 'down') continue;
+      const d = S[1 - i];
+      if (p.k === 'weak' || p.k === 'blind' || p.k === 'frozen') d[p.k] = Math.max(d[p.k], p.v);
+      else if (p.k === 'sunder') d.sunder = Math.min(SUNDER_MAX, d.sunder + p.v);
+      else d[p.k] += p.v;
+      log(0, i, 'throw', p.v, { u: p.u, x: p.k });
+    }
   let t = 0,
     sec = 0;
   while (t < MAX_T) {
     t += SIM_DT;
     for (let i = 0; i < 2; i++) {
       const a = S[i];
+      if (a.weak > 0) a.weak -= SIM_DT;
+      if (a.blind > 0) a.blind -= SIM_DT;
       if (a.stun > 0) {
         a.stun -= SIM_DT;
         continue;
@@ -149,6 +193,10 @@ function simulate(FA, FB, seed) {
           a.burn--;
         }
         if (a.poison > 0) hurt(t, a.poison, a, 1 - i, 'dot', { el: 'poison' });
+        if (a.bleed > 0) {
+          hurt(t, a.bleed, a, 1 - i, 'dot', { el: 'bleed' });
+          a.bleed = fl(a.bleed / 2);
+        }
         if (a.F.regen && a.hp > 0 && a.hp < a.max) {
           const h = Math.min(a.max - a.hp, a.F.regen);
           a.hp += h;

@@ -33,6 +33,45 @@ const SH = {
     [2, 0],
     [1, 1]
   ],
+  /* 0.1.9 更多形狀：長條、Z 字、L 字、十字、2×3（雙手武器） */
+  v4: [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [0, 3]
+  ],
+  h3: [
+    [0, 0],
+    [1, 0],
+    [2, 0]
+  ],
+  z4: [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [2, 1]
+  ],
+  l4: [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [1, 2]
+  ],
+  x5: [
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [2, 1],
+    [1, 2]
+  ],
+  r6: [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [0, 2],
+    [1, 2]
+  ],
   big: [
     [0, 0],
     [0, 1],
@@ -62,6 +101,7 @@ const TAGN = {
   light: '雷',
   poison: '毒',
   dark: '暗',
+  twohand: '雙手',
   holy: '聖'
 };
 /* 道具（ic：借用的圖示，0.1.1 起裝備類用舊版的 PNG 裝備圖 gear_欄位_序號；有 it_代號.png 時優先用）：
@@ -101,7 +141,7 @@ const ITEMS = [
     tags: ['weapon', 'mace'],
     cd: 1.8,
     dmg: [3, 6],
-    on: { stun: [10, 0.5] },
+    on: { sunder: 1, stun: [10, 0.5] },
     ic: 'gear_weapon_8'
   },
   {
@@ -112,6 +152,7 @@ const ITEMS = [
     tags: ['weapon', 'sword'],
     cd: 1.2,
     dmg: [4, 6],
+    on: { bleed: 1 },
     ic: 'gear_weapon_1'
   },
   {
@@ -156,6 +197,7 @@ const ITEMS = [
     cd: 2,
     dmg: [6, 9],
     crit: 5,
+    on: { bleed: 1, sunder: 1 },
     ic: 'gear_weapon_2'
   },
   {
@@ -166,7 +208,7 @@ const ITEMS = [
     tags: ['weapon', 'mace', 'light'],
     cd: 2.2,
     dmg: [7, 11],
-    on: { stun: [25, 0.6] },
+    on: { sunder: 1, stun: [25, 0.6] },
     ic: 'gear_weapon_23'
   },
   {
@@ -178,6 +220,7 @@ const ITEMS = [
     cd: 1.5,
     dmg: [5, 8],
     crit: 10,
+    on: { bleed: 1 },
     ic: 'gear_weapon_9'
   },
   {
@@ -198,7 +241,7 @@ const ITEMS = [
     tags: ['weapon', 'dark'],
     cd: 1.6,
     dmg: [4, 7],
-    on: { ls: 30 },
+    on: { weak: 20, ls: 30 },
     pre: { seal: 3 },
     ic: 'gear_weapon_30'
   },
@@ -207,10 +250,11 @@ const ITEMS = [
     n: '屠龍大劍',
     star: 4,
     sh: 'big',
-    tags: ['weapon', 'sword'],
+    tags: ['weapon', 'sword', 'twohand'],
     cd: 2,
     dmg: [12, 18],
     crit: 10,
+    on: { bleed: 2 },
     ic: 'gear_weapon_5'
   },
   {
@@ -235,6 +279,118 @@ const ITEMS = [
     on: { stun: [30, 0.8] },
     pre: { down: 1 },
     ic: 'sk_thunderstorm'
+  },
+  /* ---------- 0.1.9 雙手武器與更多形狀（佔格子多、數值高，要取捨） ---------- */
+  {
+    id: 'greatsword',
+    n: '雙手劍',
+    star: 3,
+    sh: 'r6',
+    tags: ['weapon', 'sword', 'twohand'],
+    cd: 2,
+    dmg: [12, 18],
+    on: { bleed: 2 },
+    ic: 'gear_weapon_0'
+  },
+  {
+    id: 'greataxe',
+    n: '雙手斧',
+    star: 3,
+    sh: 'l4',
+    tags: ['weapon', 'axe', 'twohand'],
+    cd: 2.1,
+    dmg: [11, 16],
+    on: { bleed: 1, sunder: 2 },
+    ic: 'gear_weapon_21'
+  },
+  {
+    id: 'pickaxe',
+    n: '破城鎬',
+    star: 3,
+    sh: 'v3',
+    tags: ['weapon', 'mace', 'twohand'],
+    cd: 2.2,
+    dmg: [8, 12],
+    on: { sunder: 3 },
+    ic: 'gear_weapon_22'
+  },
+  {
+    id: 'longbow',
+    n: '長弓',
+    star: 2,
+    sh: 'v4',
+    tags: ['weapon', 'bow', 'twohand'],
+    cd: 1.7,
+    dmg: [4, 7],
+    crit: 10,
+    ic: 'gear_weapon_11'
+  },
+  {
+    id: 'halberd',
+    n: '戰戟',
+    star: 3,
+    sh: 'v4',
+    tags: ['weapon', 'spear', 'axe', 'twohand'],
+    cd: 1.8,
+    dmg: [7, 11],
+    on: { bleed: 1 },
+    ic: 'gear_weapon_29'
+  },
+  {
+    id: 'flail',
+    n: '流星錘',
+    star: 2,
+    sh: 'z4',
+    tags: ['weapon', 'mace'],
+    cd: 1.6,
+    dmg: [4, 7],
+    on: { sunder: 1 },
+    ic: 'sk_bash'
+  },
+  {
+    id: 'twinblades',
+    n: '雙刀',
+    star: 2,
+    sh: 'h2',
+    tags: ['weapon', 'dagger'],
+    cd: 0.8,
+    dmg: [1, 3],
+    on: { bleed: 1 },
+    ic: 'gear_weapon_17'
+  },
+  {
+    id: 'katana',
+    n: '太刀',
+    star: 4,
+    sh: 'l4',
+    tags: ['weapon', 'sword'],
+    cd: 1.3,
+    dmg: [9, 14],
+    crit: 15,
+    on: { bleed: 2 },
+    ic: 'sk_crosscut'
+  },
+  {
+    id: 'shadowstaff',
+    n: '暗影法杖',
+    star: 3,
+    sh: 'v3',
+    tags: ['weapon', 'staff', 'dark'],
+    cd: 1.6,
+    dmg: [4, 7],
+    on: { weak: 25 },
+    ic: 'sk_shadowbolt'
+  },
+  {
+    id: 'holymace',
+    n: '聖光錘',
+    star: 3,
+    sh: 'v2',
+    tags: ['weapon', 'mace', 'holy'],
+    cd: 1.7,
+    dmg: [5, 8],
+    on: { blind: 20 },
+    ic: 'sk_smite'
   },
   /* ---------- 0.1.8 職業的 1★ 起手武器（選完職業送一把） ---------- */
   {
@@ -301,6 +457,7 @@ const ITEMS = [
     cd: 1.4,
     dmg: [14, 20],
     crit: 20,
+    on: { blind: 15 },
     ic: 'gear_weapon_20'
   },
   {
@@ -368,7 +525,7 @@ const ITEMS = [
     tags: ['weapon', 'mace'],
     cd: 2.4,
     dmg: [24, 34],
-    on: { stun: [25, 1] },
+    on: { sunder: 3, stun: [25, 1] },
     ic: 'gear_weapon_7'
   },
   {
@@ -379,7 +536,7 @@ const ITEMS = [
     tags: ['weapon', 'axe', 'dark'],
     cd: 1.9,
     dmg: [18, 26],
-    on: { ls: 15 },
+    on: { bleed: 2, ls: 15 },
     ic: 'gear_weapon_6'
   },
   {
@@ -439,6 +596,9 @@ const ITEMS = [
     heal: 5,
     ic: 'gear_offhand_8'
   },
+  { id: 'towershield', n: '塔盾', star: 3, sh: 'v3', tags: ['shield'], cd: 2.6, block: 16, ic: 'sk_phalanx' },
+  { id: 'spikedmail', n: '尖刺鎧甲', star: 3, sh: 'x5', tags: ['armor'], hp: 60, arm: 4, ic: 'gear_chest_4' },
+  { id: 'cape', n: '披風', star: 2, sh: 'h3', tags: ['armor'], hp: 20, dodge: 6, ic: 'gear_chest_11' },
   /* ---------- 飾品（相鄰加成；天賦都變成這些） ---------- */
   {
     id: 'whetstone',
@@ -711,14 +871,116 @@ const ITEMS = [
     all: [{ tag: 'weapon', dmgPct: 15, spd: 10 }],
     ic: 'gear_helm_4'
   },
+  /* ---------- 0.1.9 異常狀態的輔助道具 ---------- */
+  {
+    id: 'whetwheel',
+    n: '磨刀輪',
+    star: 3,
+    sh: 'z4',
+    tags: ['trinket'],
+    for: 'sword',
+    adj: [{ tag: 'weapon', bleed: 1 }],
+    ic: 'sk_rend'
+  },
+  {
+    id: 'sunderstone',
+    n: '碎甲石',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'mace',
+    adj: [{ tag: 'weapon', sunder: 1 }],
+    ic: 'mat_frag'
+  },
+  {
+    id: 'hexdoll',
+    n: '詛咒娃娃',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'dark'],
+    adj: [{ tag: 'weapon', weakCh: 15 }],
+    ic: 'a:m_paperdoll'
+  },
+  {
+    id: 'holymirror',
+    n: '聖光鏡',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'holy'],
+    adj: [{ tag: 'weapon', blindCh: 12 }],
+    ic: 'gear_offhand_11'
+  },
+  {
+    id: 'weaponrack',
+    n: '武器架',
+    star: 4,
+    sh: 'h3',
+    tags: ['trinket'],
+    row: [{ tag: 'weapon', dmgPct: 15 }],
+    ic: 'sk_spearwall'
+  },
+  {
+    id: 'grimoire',
+    n: '禁忌魔典',
+    star: 4,
+    sh: 'x5',
+    tags: ['trinket'],
+    for: 'staff',
+    all: [{ tag: 'staff', dmgPct: 25 }],
+    ic: 'gear_offhand_4'
+  },
   /* ---------- 藥水 ---------- */
   { id: 'potion', n: '生命藥水', star: 1, sh: 's1', tags: ['potion'], pot: [50, 20, 1], ic: 'p:ic_potion' },
   { id: 'herb', n: '再生花', star: 2, sh: 's1', tags: ['potion'], regen: 1, ic: 'sk_regenaura' },
   { id: 'bigpotion', n: '大生命藥水', star: 3, sh: 'v2', tags: ['potion'], pot: [40, 45, 1], ic: 'sk_heal' },
+  /* ---------- 0.1.9 藥劑（開戰時丟向敵人；鍊金術士加強） ---------- */
+  { id: 'weakbrew', n: '虛弱藥劑', star: 2, sh: 's1', tags: ['potion'], pre: { weak: 3 }, ic: 'sk_weaken' },
+  { id: 'firebottle', n: '火焰瓶', star: 2, sh: 's1', tags: ['potion', 'fire'], pre: { burn: 3 }, ic: 'sk_combust' },
+  { id: 'blindpowder', n: '致盲粉', star: 2, sh: 's1', tags: ['potion'], pre: { blind: 3 }, ic: 'sk_smokebomb' },
+  { id: 'bleedoil', n: '放血毒油', star: 2, sh: 's1', tags: ['potion'], pre: { bleed: 4 }, ic: 'sk_bloodburst' },
+  { id: 'ironskin', n: '鐵膚藥水', star: 2, sh: 's1', tags: ['potion'], fx: { arm: 4 }, ic: 'sk_determination' },
+  {
+    id: 'poisonbrew',
+    n: '劇毒藥劑',
+    star: 3,
+    sh: 's1',
+    tags: ['potion', 'poison'],
+    pre: { poison: 2 },
+    ic: 'sk_venomburst'
+  },
+  {
+    id: 'frostbrew',
+    n: '冰凍藥劑',
+    star: 3,
+    sh: 'v2',
+    tags: ['potion', 'cold'],
+    pre: { frozen: 3 },
+    ic: 'sk_coldsnap'
+  },
+  { id: 'acidflask', n: '酸液瓶', star: 3, sh: 's1', tags: ['potion'], pre: { sunder: 4 }, ic: 'sk_decay' },
+  {
+    id: 'ragepotion',
+    n: '狂暴藥水',
+    star: 3,
+    sh: 's1',
+    tags: ['potion'],
+    all: [{ tag: 'weapon', spd: 15 }],
+    ic: 'sk_frenzy'
+  },
   { id: 'elixir', n: '萬靈藥', star: 5, sh: 's1', tags: ['potion'], pot: [50, 70, 2], regen: 2, ic: 'sk_vitality' },
   /* ---------- 寵物（原本的契靈） ---------- */
   { id: 'slime', n: '小史萊姆', star: 2, sh: 's1', tags: ['pet'], cd: 1.5, dmg: [1, 3], ic: 'a:m_slime_green' },
-  { id: 'skeleton', n: '骷髏兵', star: 3, sh: 's1', tags: ['pet', 'dark'], cd: 1.8, dmg: [3, 5], ic: 'sk_skeleton' },
+  {
+    id: 'skeleton',
+    n: '骷髏兵',
+    star: 3,
+    sh: 's1',
+    tags: ['pet', 'dark'],
+    cd: 1.8,
+    dmg: [3, 5],
+    on: { weak: 10 },
+    ic: 'sk_skeleton'
+  },
   {
     id: 'wolf',
     n: '戰狼',
@@ -740,6 +1002,40 @@ const ITEMS = [
     dmg: [6, 9],
     on: { burn: 2 },
     ic: 'a:z_dragon'
+  },
+  /* ---------- 0.1.9 寵物（帶異常） ---------- */
+  {
+    id: 'viper',
+    n: '青竹絲',
+    star: 2,
+    sh: 's1',
+    tags: ['pet', 'poison'],
+    cd: 1.3,
+    dmg: [1, 2],
+    on: { poison: 1 },
+    ic: 'a:m_greenviper'
+  },
+  {
+    id: 'hawk',
+    n: '獵鷹',
+    star: 3,
+    sh: 's1',
+    tags: ['pet'],
+    cd: 1,
+    dmg: [2, 4],
+    on: { blind: 15 },
+    ic: 'a:m_hawkeagle'
+  },
+  {
+    id: 'bear',
+    n: '黑熊',
+    star: 4,
+    sh: 'sq',
+    tags: ['pet'],
+    cd: 2,
+    dmg: [8, 12],
+    on: { sunder: 2 },
+    ic: 'a:m_blackbear'
   },
   /* ---------- 0.1.8 寵物：1★ 起手、5★ ---------- */
   { id: 'treefrog', n: '樹蛙', star: 1, sh: 's1', tags: ['pet'], cd: 1.4, dmg: [1, 2], ic: 'a:m_treefrog' },
@@ -764,111 +1060,6 @@ const ITEMS = [
     dmg: [6, 9],
     on: { burn: 2 },
     ic: 'a:m_leopardcat'
-  },
-  /* ---------- 職業核心（原本的昇華；一個背包最多 1 個） ---------- */
-  {
-    id: 'c_blade',
-    n: '斬鐵劍聖之證',
-    star: 5,
-    core: 1,
-    sh: 'l3',
-    tags: ['core'],
-    all: [
-      { tag: 'sword', dmgPct: 30 },
-      { tag: 'sword', spd: 5, per: 'sword' }
-    ],
-    d: '劍的傷害 +30%；背包裡每把劍讓所有劍攻速 +5%',
-    ic: 'asc_cls_warlord'
-  },
-  {
-    id: 'c_banner',
-    n: '戰旗統帥之旗',
-    star: 5,
-    core: 1,
-    sh: 'v2',
-    tags: ['core'],
-    adj: [{ tag: 'weapon', spd: 25 }],
-    all: [{ tag: 'pet', dmgPct: 30 }],
-    d: '相鄰的武器攻速 +25%；寵物傷害 +30%',
-    ic: 'sk_banner'
-  },
-  {
-    id: 'c_hunter',
-    n: '叢林獵手之弦',
-    star: 5,
-    core: 1,
-    sh: 'v2',
-    tags: ['core'],
-    all: [
-      { tag: 'bow', crit: 15, spd: 20 },
-      { tag: 'xbow', crit: 15, spd: 20 }
-    ],
-    d: '弓與弩：暴擊率 +15%、攻速 +20%',
-    ic: 'asc_cls_amazon'
-  },
-  {
-    id: 'c_alchemy',
-    n: '煉金術士的坩堝',
-    star: 5,
-    core: 1,
-    sh: 'sq',
-    tags: ['core'],
-    fx: { potMul: 100, potUse: 1 },
-    all: [{ tag: 'potion', regen: 1 }],
-    d: '藥水回復量 ×2、每瓶多用 1 次；再生類 +1',
-    ic: 'cur_chaos'
-  },
-  {
-    id: 'c_elemental',
-    n: '元素使之核',
-    star: 5,
-    core: 1,
-    sh: 'sq',
-    tags: ['core'],
-    all: [
-      { tag: 'fire', dmgPct: 35, burn: 1 },
-      { tag: 'cold', dmgPct: 35, freezeCh: 10 },
-      { tag: 'light', dmgPct: 35, stunCh: 10 }
-    ],
-    d: '火、冰、雷的武器傷害 +35%，異常效果更強',
-    ic: 'asc_cls_elemental'
-  },
-  {
-    id: 'c_necro',
-    n: '死靈師的骨冠',
-    star: 5,
-    core: 1,
-    sh: 'h2',
-    tags: ['core'],
-    all: [{ tag: 'pet', dmgPct: 50, spd: 20 }],
-    fx: { ls: 5 },
-    d: '寵物傷害 +50%、攻速 +20%；你的攻擊吸血 5%',
-    ic: 'asc_cls_necro'
-  },
-  {
-    id: 'c_guardian',
-    n: '守護者之誓',
-    star: 5,
-    core: 1,
-    sh: 'sq',
-    tags: ['core'],
-    all: [{ tag: 'shield', blockPct: 50 }],
-    fx: { hp: 40 },
-    d: '盾的格擋 +50%；生命 +40',
-    ic: 'asc_cls_guardian'
-  },
-  {
-    id: 'c_assassin',
-    n: '刺客之影',
-    star: 5,
-    core: 1,
-    sh: 'v2',
-    tags: ['core'],
-    all: [{ tag: 'dagger', crit: 25 }],
-    fx: { critMul: 60 },
-    pre: { down: 1 },
-    d: '匕首暴擊率 +25%；暴擊傷害 ×2.2',
-    ic: 'asc_cls_assassin'
   }
 ];
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
@@ -893,7 +1084,7 @@ const CLASSES = [
     n: '劍士',
     ic: 'sk_swordwave',
     th: 'sword',
-    m: [{ tag: 'sword', dmgPct: 20, crit: 10 }]
+    m: [{ tag: 'sword', dmgPct: 25, crit: 10, bleed: 1 }]
   },
   {
     id: 'berserker',
@@ -902,8 +1093,8 @@ const CLASSES = [
     ic: 'sk_rage',
     th: 'mace',
     m: [
-      { tag: 'axe', dmgPct: 30, spd: 15 },
-      { tag: 'mace', dmgPct: 30, spd: 15 }
+      { tag: 'axe', dmgPct: 30, spd: 15, sunder: 1 },
+      { tag: 'mace', dmgPct: 30, spd: 15, sunder: 1 }
     ]
   },
   {
@@ -921,8 +1112,8 @@ const CLASSES = [
     n: '刺客',
     ic: 'sk_backstab',
     th: 'dagger',
-    m: [{ tag: 'dagger', crit: 15 }],
-    F: { critMul: 40 }
+    m: [{ tag: 'dagger', crit: 20 }],
+    F: { critMul: 60 }
   },
   {
     id: 'pyro',
@@ -942,7 +1133,7 @@ const CLASSES = [
     ic: 'sk_frostnova',
     th: 'cold',
     m: [
-      { tag: 'cold', freezeCh: 15, dmgPct: 15 },
+      { tag: 'cold', freezeCh: 20, dmgPct: 15 },
       { tag: 'staff', spd: 20 }
     ]
   },
@@ -965,7 +1156,7 @@ const CLASSES = [
       { tag: 'dagger', poison: 1 }
     ]
   },
-  { id: 'tamer', st: 'treefrog', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 30, spd: 15 }] },
+  { id: 'tamer', st: 'treefrog', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 40, spd: 20 }] },
   {
     id: 'knight',
     st: 'woodshield',
@@ -975,10 +1166,116 @@ const CLASSES = [
     m: [{ tag: 'shield', blockPct: 40 }],
     F: { hp: 20 }
   },
-  { id: 'alchemist', st: 'potion', n: '鍊金術士', ic: 'cur_vaal', th: 'potion', F: { potMul: 25, regen: 1 } },
+  {
+    id: 'alchemist',
+    st: 'potion',
+    n: '鍊金術士',
+    ic: 'cur_vaal',
+    th: 'potion',
+    F: { potMul: 20, throwPct: 25 }
+  },
   { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_exalt', gold: 1 }
 ];
 const CLSI = Object.fromEntries(CLASSES.map(c => [c.id, c]));
+/* 0.1.9 職業核心池：首領（2-5）從你的職業的池子三選一，每個職業 20 多個。
+   照模板產生：P 是那個職業主打的標籤，模板對 P 加成；CORE_X 是各職業專屬的幾個 */
+const CORE_P = {
+  archer: ['bow', 'xbow'],
+  swordsman: ['sword'],
+  berserker: ['axe', 'mace'],
+  spearman: ['spear'],
+  assassin: ['dagger'],
+  pyro: ['fire'],
+  cryo: ['cold'],
+  storm: ['light'],
+  venom: ['poison'],
+  tamer: ['pet'],
+  knight: ['weapon'],
+  alchemist: ['weapon'],
+  merchant: ['weapon']
+};
+const onP = (P, m) => P.map(tag => ({ tag, ...m }));
+const CORE_T = [
+  ['狂怒', P => ({ all: onP(P, { dmgPct: 35 }) })],
+  ['疾風', P => ({ all: onP(P, { spd: 30 }) })],
+  ['致命', P => ({ all: onP(P, { crit: 25 }) })],
+  ['處決', P => ({ all: onP(P, { crit: 10 }), fx: { critMul: 60 } })],
+  ['血刃', P => ({ all: onP(P, { bleed: 2 }) })],
+  ['碎甲', P => ({ all: onP(P, { sunder: 2 }) })],
+  ['詛咒', P => ({ all: onP(P, { weakCh: 25 }) })],
+  ['閃光', P => ({ all: onP(P, { blindCh: 25 }) })],
+  ['烈焰', P => ({ all: onP(P, { burn: 2 }) })],
+  ['劇毒', P => ({ all: onP(P, { poison: 2 }) })],
+  ['寒霜', P => ({ all: onP(P, { freezeCh: 20 }) })],
+  ['雷鳴', P => ({ all: onP(P, { stunCh: 15 }) })],
+  ['嗜血', P => ({ all: onP(P, { ls: 15 }) })],
+  ['軍團', P => ({ all: onP(P, { dmgPct: 8, per: P[0] }) })],
+  ['堅韌', P => ({ all: onP(P, { dmgPct: 10 }), fx: { hp: 60 } })],
+  ['鐵壁', P => ({ all: onP(P, { dmgPct: 10 }), fx: { arm: 8 } })],
+  ['幻影', P => ({ all: onP(P, { spd: 10 }), fx: { dodge: 12 } })],
+  ['生命之泉', P => ({ all: onP(P, { dmgPct: 5 }), fx: { regen: 4 } })],
+  ['封印', P => ({ all: onP(P, { dmgPct: 10 }), pre: { seal: 4 } })],
+  ['衰敗', P => ({ all: onP(P, { dmgPct: 10 }), pre: { down: 1 } })],
+  ['全能', P => ({ all: onP(P, { dmgPct: 20, spd: 15 }) })],
+  ['重擊', P => ({ all: onP(P, { dmg: 5 }) })]
+];
+const CORE_X = {
+  archer: [
+    [
+      '鷹眼',
+      {
+        all: [
+          { tag: 'bow', crit: 15, spd: 15 },
+          { tag: 'xbow', crit: 15, spd: 15 }
+        ]
+      }
+    ]
+  ],
+  swordsman: [['劍聖', { all: [{ tag: 'sword', dmgPct: 25, bleed: 1 }] }]],
+  berserker: [['狂暴', { all: [{ tag: 'weapon', spd: 20 }], fx: { take: 10, hp: 30 } }]],
+  spearman: [['方陣', { all: [{ tag: 'spear', dmgPct: 20 }], fx: { arm: 6 } }]],
+  assassin: [['影殺', { all: [{ tag: 'dagger', crit: 20 }], fx: { critMul: 40, dodge: 8 } }]],
+  pyro: [['焚城', { all: [{ tag: 'fire', burn: 3 }], pre: { burn: 5 } }]],
+  cryo: [['絕對零度', { all: [{ tag: 'cold', freezeCh: 15 }], pre: { frozen: 2 } }]],
+  storm: [['天譴', { all: [{ tag: 'light', stunCh: 10, dmgPct: 20 }] }]],
+  venom: [['瘟疫', { all: [{ tag: 'poison', poison: 2 }], pre: { poison: 4 } }]],
+  tamer: [['獸群', { all: [{ tag: 'pet', dmgPct: 10, per: 'pet' }] }]],
+  knight: [
+    ['聖盾', { all: [{ tag: 'shield', blockPct: 60 }] }],
+    ['堡壘', { all: [{ tag: 'shield', block: 10 }], fx: { hp: 40 } }]
+  ],
+  alchemist: [
+    ['煉成', { fx: { throwPct: 80, potMul: 30 } }],
+    ['萬能藥', { fx: { potMul: 60, potUse: 1 } }]
+  ],
+  merchant: [
+    ['財神', { gold: 3 }],
+    ['大富翁', { gold: 2, all: [{ tag: 'weapon', dmgPct: 10 }] }]
+  ]
+};
+function genCores() {
+  const out = [];
+  for (const C of CLASSES) {
+    const P = CORE_P[C.id] || ['weapon'],
+      list = [...CORE_T.map(([n, f]) => [n, f(P)]), ...(CORE_X[C.id] || [])];
+    list.forEach(([n, d], k) =>
+      out.push({
+        id: `c_${C.id}_${k}`,
+        n: `${C.n}・${n}`,
+        star: 5,
+        core: 1,
+        cls: C.id,
+        sh: ['s1', 'v2', 'h2'][k % 3],
+        tags: ['core'],
+        ic: C.ic,
+        ...d
+      })
+    );
+  }
+  return out;
+}
+ITEMS.push(...genCores());
+for (const it of ITEMS) ITEMI[it.id] = it;
 /* 職業的說明：標籤加成、角色加成、金幣 */
 function clsDesc(id) {
   const c = CLSI[id];
@@ -1036,6 +1333,10 @@ const MOD5 = [
   { k: 'poison', lo: 1, hi: 3, on: 'w' },
   { k: 'stunCh', lo: 3, hi: 8, on: 'w' },
   { k: 'freezeCh', lo: 3, hi: 8, on: 'w' },
+  { k: 'bleed', lo: 1, hi: 3, on: 'w' },
+  { k: 'sunder', lo: 1, hi: 3, on: 'w' },
+  { k: 'weakCh', lo: 5, hi: 15, on: 'w' },
+  { k: 'blindCh', lo: 5, hi: 15, on: 'w' },
   { k: 'block', lo: 2, hi: 6, on: 's' },
   { k: 'blockPct', lo: 10, hi: 25, on: 's' },
   { k: 'spd', lo: 8, hi: 20, on: 's' },
@@ -1082,7 +1383,12 @@ const MODN = {
   hp: v => `生命 ${sg(v)}${v}`,
   arm: v => `護甲 ${sg(v)}${v}`,
   dodge: v => `閃避 ${sg(v)}${pct(v)}`,
-  critMul: v => `暴擊傷害 ${sg(v)}${pct(v)}`
+  critMul: v => `暴擊傷害 ${sg(v)}${pct(v)}`,
+  bleed: v => `命中流血 ${sg(v)}${v}`,
+  sunder: v => `命中破甲 ${sg(v)}${v}`,
+  weakCh: v => `${pct(v)} 虛弱`,
+  blindCh: v => `${pct(v)} 致盲`,
+  throwPct: v => `丟出的藥劑效果 ${sg(v)}${pct(v)}`
 };
 const modTxt = m =>
   Object.entries(m)
@@ -1091,14 +1397,30 @@ const modTxt = m =>
     .join('、');
 const tagTxt = t => (t === 'weapon' ? '武器' : t === '*' ? '道具' : TAGN[t] || t);
 /* 0.1.6 開戰前的特殊效果（越強越稀有）：seal 封鎖敵人隨機一把武器 N 秒（每升一階 +1 秒）、down 敵人隨機一把武器降 1 階（最低 Ⅰ 階） */
+/* 0.1.9 擴充成各種開戰效果（藥劑丟出去）：秒數類每升一階 +1 秒，層數類照升階倍率 */
+const PRE_T = ['seal', 'weak', 'blind', 'frozen'],
+  PREN = {
+    seal: v => `開戰時封鎖敵人隨機一把武器 ${v} 秒`,
+    down: () => '開戰時把敵人隨機一把武器降 1 階（最低 Ⅰ 階）',
+    weak: v => `開戰時讓敵人虛弱 ${v} 秒（傷害 -25%）`,
+    blind: v => `開戰時讓敵人致盲 ${v} 秒（30% 打不中）`,
+    frozen: v => `開戰時凍結敵人 ${v} 秒（攻速減半）`,
+    burn: v => `開戰時讓敵人燃燒 ${v} 層`,
+    poison: v => `開戰時讓敵人中毒 ${v} 層`,
+    bleed: v => `開戰時讓敵人流血 ${v} 層`,
+    sunder: v => `開戰時讓敵人破甲 ${v}`
+  };
+const preKey = p => Object.keys(p)[0];
 const preVal = (id, t = 1) => {
   const p = ITEMI[id].pre;
-  return p ? (p.seal ? p.seal + (t - 1) : 1) : 0;
+  if (!p) return 0;
+  const k = preKey(p),
+    v = p[k];
+  return k === 'down' ? 1 : PRE_T.includes(k) ? v + (t - 1) : Math.round(v * TIERM[t]);
 };
 function preTxt(id, t = 1) {
   const p = ITEMI[id].pre;
-  if (!p) return '';
-  return p.seal ? `開戰時封鎖敵人隨機一把武器 ${preVal(id, t)} 秒` : '開戰時把敵人隨機一把武器降 1 階（最低 Ⅰ 階）';
+  return p ? PREN[preKey(p)](preVal(id, t)) : '';
 }
 function itemDesc(id, t = 1) {
   const it = ITEMI[id],
@@ -1117,6 +1439,10 @@ function itemDesc(id, t = 1) {
     if (o.freeze) out.push(`${o.freeze[0]}% 凍結 ${o.freeze[1]} 秒`);
     if (o.stun) out.push(`${o.stun[0]}% 暈眩 ${o.stun[1]} 秒`);
     if (o.ls) out.push(`吸血 ${o.ls}%`);
+    if (o.bleed) out.push(`命中流血 ${o.bleed} 層`);
+    if (o.sunder) out.push(`命中破甲 ${o.sunder}`);
+    if (o.weak) out.push(`${o.weak}% 虛弱 3 秒`);
+    if (o.blind) out.push(`${o.blind}% 致盲 2.5 秒`);
   }
   if (it.block)
     out.push(
@@ -1132,10 +1458,15 @@ function itemDesc(id, t = 1) {
     ['row', '同一排的'],
     ['all', '所有']
   ])
-    for (const b of it[w] || []) out.push(`${n}${tagTxt(b.tag)}：${modTxt(scaleMod(b, t))}`);
-  if (it.fx && it.fx.take) out.push(`受到的傷害 +${it.fx.take}%`);
-  if (it.fx && it.fx.dodge) out.push(`閃避 +${it.fx.dodge}%`);
-  if (it.fx && it.fx.potMul) out.push(`藥水回復 +${it.fx.potMul}%${it.fx.potUse ? `、多喝 ${it.fx.potUse} 次` : ''}`);
+    for (const b of it[w] || [])
+      out.push(`${n}${tagTxt(b.tag)}：${modTxt(scaleMod(b, t))}${b.per ? `（背包裡每有 1 件${tagTxt(b.per)}）` : ''}`);
+  if (it.fx) {
+    const f = it.fx,
+      rest = Object.fromEntries(Object.entries(f).filter(([k]) => MODN[k]));
+    if (Object.keys(rest).length) out.push(modTxt(rest));
+    if (f.take) out.push(`受到的傷害 +${f.take}%`);
+    if (f.potMul) out.push(`藥水回復 +${f.potMul}%${f.potUse ? `、多喝 ${f.potUse} 次` : ''}`);
+  }
   if (it.gold) out.push(`放在背包裡每回合 +${it.gold} 金（每升一階 +1）`);
   if (it.pre) out.push(preTxt(id, t));
   return out.join('；');
