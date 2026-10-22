@@ -161,6 +161,9 @@ function simulate(FA, FB, seed) {
       if (a.blind > 0) a.blind -= SIM_DT;
       if (a.stun > 0) {
         a.stun -= SIM_DT;
+        /* 0.1.27 暈眩時凍結、封鎖照樣倒數（之前會跟著暫停，暈眩＋凍結變得比說明強） */
+        if (a.frozen > 0) a.frozen -= SIM_DT;
+        for (const w of a.w) if (w.seal > 0) w.seal -= SIM_DT;
         continue;
       }
       /* 0.1.10 越戰越快（ramp）：每 5 秒攻速 +N%，最多 5 次 */

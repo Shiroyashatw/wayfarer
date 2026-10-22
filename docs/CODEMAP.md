@@ -35,19 +35,19 @@
 | 戰鬥特效（0.1.12） | `js/ui.js`、`css/style.css` | `bHit`、`bAnim`、`bBurst`、`bSlash`；`.sp` 的動畫 |
 | 升階倍率（0.1.10） | `js/items.js`、`js/bag.js` | `TIERM`、`TIERB`、`TIERCD`、`TIERCH`、`cdT`、`onT`（items）；`compileBag`（bag） |
 | 核心新機制（先手、處決、背水、越戰越快、護盾、連擊、反彈、暴擊回血） | `js/sim.js`、`js/bag.js` | `simSide`、`simulate` 裡的 `F.opener` 等；`compileBag` 的預設值 |
-| 加時：對手那局打完後快照變強、打到分出勝負（0.1.22）；機器人種子第 1 名繼續買到 8-7（0.1.23）；本局算血：對手生命 `rv.hp` 照這局勝負、沒打你的對手用快照互打（0.1.26） | `js/run.js` | `rivalFights`、`rivalBag`、`petLoss`、`rivalHp`、`rivalOT`、`otGrow`、`OT_DMG`、`opponentOf`、`finishFight`、`simLobby`（solo、`short`） |
+| 加時：對手那局打完後快照變強、打到分出勝負（0.1.22）；機器人種子第 1 名繼續買到 8-7（0.1.23）；本局算血：對手生命 `rv.hp` 照這局勝負、沒打你的對手用快照互打（0.1.26）；剩 3 人時輪空的對手打你這回合的背包（0.1.27）；缺開頭快照用最早一筆 `rivalSnap`（0.1.27） | `js/run.js` | `rivalFights`、`rivalBag`、`petLoss`、`rivalHp`、`rivalOT`、`otGrow`、`OT_DMG`、`opponentOf`、`finishFight`、`simLobby`（solo、`short`） |
 | 異常狀態（流血、破甲、虛弱、致盲）與戰鬥中顯示（0.1.9） | `js/sim.js`、`js/bag.js`、`js/ui.js` | `simSide`、`simulate`（`WEAK_PCT` 等常數）；`compileBag` 的武器欄位；`bSts`、`STI`、`STN`（ui） |
 | 開戰藥劑、開戰效果通用化（0.1.9） | `js/items.js`、`js/bag.js`、`js/sim.js` | `PRE_T`、`PREN`、`preKey`、`preVal`、`preTxt`；`F.throwPct` |
 | 職業核心池（0.1.9） | `js/items.js`、`js/run.js`、`js/ui.js` | `CORE_P`、`CORE_MAIN`（專屬）、`CORE_SUB`（副核心）、`genCores`（items）；首領三選一在 `finishFight`（2-5 專屬、4-4 副核心）（run）；圖鑑的核心列表在 `codexHTML`（ui） |
-| 背包升級開放回合（0.1.9） | `js/data.js`、`js/run.js` | `BAGLV` 的 `from`、`lvOpen`、`levelUp` |
-| 對手扣血、最後回合結算（0.1.8） | `js/run.js`、`js/ui.js` | `rivalHp`、`rivalAlive`、`finishFight` 的 `rv.dmg`、`finalPlace`（run）；`rivalHTML`、`resultHTML`（ui） |
+| 背包升級費用（0.1.12） | `js/data.js`、`js/run.js` | `BAGLV` 的 `cost`、`lvOpen`、`levelUp` |
+| 對手扣血、最後回合結算（0.1.8） | `js/run.js`、`js/ui.js` | `rivalHp`、`rivalAlive`、`finishFight`（`out.hit`／`out.ko`、同回合倒下的名次 0.1.27）、`finalPlace`（run）；`rivalHTML`、`nextRival`、`resultHTML`（ui） |
 | 起手道具、Ⅲ 階詞綴、商店 Ⅱ 階（0.1.8） | `js/run.js`、`js/bag.js`、`js/data.js` | `giveStarter`、`rollShop` 的 `t`、`shopPrice`（run）；`mergeAll` 的 `m2`（bag）；`BAGLV` 的 `t2`（data） |
 | 開局職業（三選一、刷新一次） | `js/items.js`、`js/run.js`、`js/bag.js`、`js/ui.js` | `CLASSES`、`CLSI`、`clsDesc`（items）；`rollClasses`、`newRun` 的 `phase: 'cls'`、`bonusGold`（run）；`compileBag`／`bagMods` 的 `bag.cls`（bag）；`clsHTML`、`A.cls`、`A.clsRe`（ui） |
 | 輔助道具（0.1.7，配合職業） | `js/items.js` | `ITEMS` 的「0.1.7 輔助道具」段；`for` 給機器人選購、`gold` 是錢袋 |
 | 牌階（鐵牌～菁英、一二三、定級賽） | `js/data.js`、`js/ui.js` | `RANKS`、`rankOf`、`rankName`、`rankProg`、`placed`（data）；`rankIcon`（程式畫像素圖示）、`rankHTML`、`rankMove`（ui）；定級加倍在 `endRun` |
 | 戰鬥冷卻條、封鎖顯示 | `js/ui.js` | `cdTimeline`、`bCd`（`bTick` 每格呼叫） |
 | 開戰前特殊效果（封鎖、降階） | `js/items.js`、`js/bag.js`、`js/sim.js` | 道具的 `pre`、`preVal`、`preTxt`（items）；`compileBag` 的 `F.pre`（bag）；`simulate` 開頭（sim） |
-| 戰利品寄放（暫存區滿了） | `js/run.js`、`js/ui.js` | `takePick`（hold）、`claimHold`（run）；`holdHTML`、`A.claim`、`A.sellHold`（ui） |
+| 戰利品寄放（暫存區滿了） | `js/run.js`、`js/ui.js` | `takePick`（hold）、`claimHold`（run）；`botHold`（bot，0.1.27 機器人賣最沒用的一件騰位置）；`holdHTML`、`A.claim`、`A.sellHold`（ui） |
 | 機器人強度跟著牌階 | `js/run.js`、`js/ghost.js` | `simLobby` 的 `q`、`gb`；`seedGhosts`（700～2100） |
 | 角色數值面板（點左上角頭像） | `js/ui.js` | `statsHTML`、`A.stats`（用 `compileBag` 算） |
 | 5★ 隨機詞綴、開獎畫面 | `js/items.js`、`js/run.js`、`js/ui.js` | `MOD5`、`roll5`、`mod5Q`、`mod5Txt`（items）；`newItem` 擲詞綴（run）；`compileBag`、`mergeAll` 留最好的（bag）；`mod5HTML`、`revealHTML`、`A.seen5`（ui） |
@@ -59,10 +59,10 @@
 | 結算、三選一、一局結束 | `js/ui.js` | `resultHTML`、`pickHTML`、`endHTML` |
 | 按鈕動作 | `js/ui.js` | `A`（`data-act`）、`showDlg` |
 | 道具圖示 | `js/ui.js`、`art/icons/` | `itemIcon`（先找 `it_代號.png`，沒有用 `borrowIcon` 借舊圖示） |
-| 像素圖、PNG 大圖載入 | `js/sprites.js`、`js/art.js` | `sprite`、`artSprite`、`artIconURL`、`pixURL`、`iconURL`；大圖載好呼叫 `artRepaint` |
+| 像素圖、PNG 大圖載入 | `js/sprites.js`、`js/art.js` | `artSprite`、`artIconURL`、`pixURL`（只剩藥水 `ic_potion`）、`iconURL`（備用星星）；大圖載好呼叫 `artRepaint`（0.1.27 刪掉舊版 16×16 像素圖與裝備、技能圖示） |
 | 存檔、啟動 | `js/main.js` | `newGame`、`load`、`save`、`migrate`（0.1.0 前的存檔不轉移）、`start` |
 | 帳號、雲端存檔 | `js/cloud.js` | `cloudInit`、`cloudPush`、`authRegister`、`authLogin`、`authLogout` |
-| 音效（0.1.5 拿掉背景音樂） | `js/audio.js` | `audioInit`、`sfx`、`buzz` |
+| 音效（0.1.5 拿掉背景音樂） | `js/audio.js` | `audioInit`、`sfx`、`SFX` |
 
 ## 重要的全域變數
 
@@ -80,19 +80,17 @@
 
 <!-- index:start -->
 
-### js/core.js（71 行）
+### js/core.js（42 行）
 
-- **utils**（6），15 個宣告
+- **utils**（5），5 個宣告
 
 ### js/data.js（145 行）
 
 - **一局**（5），20 個宣告
 
-### js/sprites.js（1415 行）
+### js/sprites.js（134 行）
 
-- **pixel sprites (original art)**（3），33 個宣告
-- **icons: currency, item slots, passive nodes**（812），7 個宣告
-- **boss sprites**（1070），1 個宣告
+- **程式像素圖（道具 ic: 'p:鍵'）**（92），3 個宣告
 
 ### js/art.js（1235 行）
 
@@ -105,51 +103,51 @@
 - **合成**（75），1 個宣告
 - **戰鬥數值**（107），4 個宣告
 
-### js/sim.js（241 行）
+### js/sim.js（244 行）
 
 
-### js/run.js（845 行）
+### js/run.js（848 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），26 個宣告
-- **對手**（471），13 個宣告
-- **戰鬥**（545），12 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（740），3 個宣告
+- **對手**（462），13 個宣告
+- **戰鬥**（538），11 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（744），3 個宣告
 
-### js/bot.js（284 行）
+### js/bot.js（296 行）
 
-- **戰力分數**（22），8 個宣告
-- **每回合**（141），2 個宣告
+- **戰力分數**（22），9 個宣告
+- **每回合**（158），2 個宣告
 
-### js/ghost.js（122 行）
+### js/ghost.js（120 行）
 
-- **開服種子資料（開發用）**（84），1 個宣告
+- **開服種子資料（開發用）**（82），1 個宣告
 
-### js/audio.js（134 行）
+### js/audio.js（101 行）
 
-- **audio**（3），7 個宣告
+- **audio**（3），6 個宣告
 
-### js/cloud.js（161 行）
+### js/cloud.js（154 行）
 
-- **cloud save (Supabase)**（4），7 個宣告
-- **accounts**（104），5 個宣告
+- **cloud save (Supabase)**（4），6 個宣告
+- **accounts**（101），5 個宣告
 
-### js/news.js（161 行）
+### js/news.js（170 行）
 
 
-### js/ui.js（1547 行）
+### js/ui.js（1550 行）
 
-- **小工具**（6），13 個宣告
-- **牌階**（60），5 個宣告
-- **主題**（163），3 個宣告
-- **畫面切換**（179），2 個宣告
-- **首頁**（208），2 個宣告
-- **準備畫面**（244），14 個宣告
-- **結算、三選一、一局結束**（469），6 個宣告
-- **戰鬥播放**（516），20 個宣告
-- **圖鑑、說明、設定**（873），3 個宣告
-- **動作**（938），7 個宣告
-- **拖曳擺放**（1326），8 個宣告
+- **小工具**（6），12 個宣告
+- **牌階**（59），5 個宣告
+- **主題**（162），3 個宣告
+- **畫面切換**（178），2 個宣告
+- **首頁**（207），2 個宣告
+- **準備畫面**（243），14 個宣告
+- **結算、三選一、一局結束**（472），6 個宣告
+- **戰鬥播放**（519），20 個宣告
+- **圖鑑、說明、設定**（877），3 個宣告
+- **動作**（942），7 個宣告
+- **拖曳擺放**（1329），8 個宣告
 
 ### js/main.js（74 行）
 

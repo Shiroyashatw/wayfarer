@@ -6,18 +6,18 @@
 /* 訓練出來的參數（tools/bot_train.js 會覆寫這一段） */
 let BOT_P = {
   gainMin: 0.01, // 一件道具至少要讓戰力提升這個比例才買
-  perGold: 0.009, // 每 1 金至少要換到多少戰力（比例）
+  perGold: 0.003, // 每 1 金至少要換到多少戰力（比例）
   reserve: 14, // 想留著吃利息的錢（後期才存）
   reserveFrom: 7, // 第幾回合開始存利息
-  rollGold: 8, // 錢多於這個、又沒東西好買就刷新
+  rollGold: 2, // 錢多於這個、又沒東西好買就刷新
   maxRolls: 4, // 一回合最多刷新幾次
   lvFill: 0.777, // 背包塞到幾成滿就考慮升級
   lvKeep: 2, // 升級後至少留幾金
-  sellMargin: 0.039, // 賣掉舊的換新的，戰力至少要多這個比例
-  mergeBonus: 0.154, // 湊合成的額外偏好（還沒湊滿也先收）
+  sellMargin: 0.001, // 賣掉舊的換新的，戰力至少要多這個比例
+  mergeBonus: 0.021, // 湊合成的額外偏好（還沒湊滿也先收）
   dotW: 1.36, // 燃燒、中毒、流血每層的價值（約幾秒）
-  ctrlW: 0.665, // 暈眩、凍結、虛弱、致盲的價值倍率
-  ehpW: 1.141 // 防禦的指數（>1 偏坦、<1 偏攻）
+  ctrlW: 0.847, // 暈眩、凍結、虛弱、致盲的價值倍率
+  ehpW: 1.282
 };
 /* ================= 戰力分數 ================= */
 function botPower(F, P = BOT_P) {
@@ -42,7 +42,7 @@ function botPower(F, P = BOT_P) {
   dps *= 1 + (F.double || 0) / 100;
   dps *= 1 + ((F.execute || 0) * 0.25 + (F.rage || 0) * 0.3 + (F.ramp || 0) * 1.5 + (F.opener || 0) * 0.05) / 100;
   if (F.rushT) dps *= 1 + (F.rushP / 100) * Math.min(1, F.rushT / 9);
-  let ehp = (F.hp * (1 + Math.max(-20, F.arm || 0) / 50)) / (1 - Math.min(40, F.dodge || 0) / 100);
+  let ehp = (F.hp * (1 + Math.max(-10, F.arm || 0) / 50)) / (1 - Math.min(40, F.dodge || 0) / 100);
   for (const s of F.shields)
     ehp += (s.block / Math.max(0.6, s.cd)) * 9 + (s.heal / Math.max(0.6, s.cd)) * 9 + s.thorns * 3;
   ehp += (F.regen || 0) * 9 + (F.startBlock || 0) + (F.thornsF || 0) * 6 + (F.critHeal || 0) * 4;
@@ -55,8 +55,8 @@ function botPower(F, P = BOT_P) {
     else if (p.k === 'blind') pre += 0.03 * p.v;
     else if (p.k === 'seal') pre += 0.03 * p.v;
     else if (p.k === 'down') pre += 0.12;
-    else if (p.k === 'sunder') pre += 0.01 * p.v;
-    else dps += (p.v * P.dotW) / 9;
+    else if (p.k === 'sunder') pre += 0.01 * Math.min(SUNDER_MAX, p.v);
+    else dps += ((p.k === 'poison' ? Math.min(POISON_MAX, p.v) : p.v) * P.dotW) / 9;
   }
   return Math.max(0.01, dps) * Math.pow(Math.max(1, ehp), P.ehpW) * pre;
 }
@@ -138,6 +138,23 @@ function botPlace(run, o, P, cx = {}) {
   }
   return false;
 }
+/* 0.1.27 寄放的戰利品（暫存區滿了）：賣掉暫存區最沒用的一件騰位置；它比暫存區每件都沒用就直接賣掉它。
+   之前暫存區滿就把戰利品丟了（機器人對局約 1/4 的菁英、首領戰利品不見） */
+function botHold(run, P, cx = {}) {
+  const o = run.hold;
+  if (!o) return;
+  run.hold = null;
+  if (benchFree(run) < 0) {
+    const val = q => botValue(run, q.id, q.t, P, cx).gain,
+      [w, wv] = run.bench.map(q => [q, val(q)]).sort((a, b) => a[1] - b[1])[0];
+    if (val(o) <= wv) {
+      run.gold += sellOf(o.id, o.t);
+      return;
+    }
+    sellItem(run, w.u);
+  }
+  run.bench[benchFree(run)] = o;
+}
 /* ================= 每回合 ================= */
 /* q：照評估做的機率（牌階高 q 高）；其他時候用簡單的舊規則（照主題、隨便買），低牌階才會笨一點 */
 function botAct(run, theme, q = 0.7, P = BOT_P) {
@@ -150,13 +167,8 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
           ? opts.map(id => [id, botValue(run, id, 1, P, {}).gain]).sort((a, b) => b[1] - a[1])[0][0]
           : opts[fl(r01(run) * opts.length)];
     takePick(run, pick, true);
-    if (run.hold) {
-      const h = run.hold;
-      run.hold = null;
-      const fi = benchFree(run);
-      if (fi >= 0) run.bench[fi] = h;
-    }
   }
+  botHold(run, P);
   /* 升背包：背包快滿、錢夠而且升完還留一點 */
   const lv = BAGLV[run.lv + 1],
     cells = run.bag.items.reduce((n, o) => n + shapeOf(o.id).length, 0),

@@ -16,7 +16,6 @@ const CLOUD = {
   busy: false,
   dirty: false
 };
-const playerTag = () => (CLOUD.no ? '#' + String(CLOUD.no).padStart(6, '0') : '(遊客)');
 /* 記下目前登入的帳號；正式帳號順便領取（或查回）玩家編號 */
 async function cloudUser(user) {
   CLOUD.uid = user.id;
@@ -27,7 +26,6 @@ async function cloudUser(user) {
     const { data, error } = await CLOUD.sb.rpc('claim_player_no');
     if (!error && data) CLOUD.no = data;
   }
-  if (typeof socialOnUser === 'function') socialOnUser();
 }
 async function cloudFetch() {
   const { data, error } = await CLOUD.sb.from('saves').select('data').eq('user_id', CLOUD.uid).maybeSingle();
@@ -87,7 +85,6 @@ async function cloudPush() {
       ? '同步失敗：' + error.message
       : `已同步 ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
     if (error) CLOUD.dirty = true;
-    else if (typeof profileSync === 'function') profileSync();
   } catch (e) {
     CLOUD.status = '同步失敗，稍後重試';
     CLOUD.dirty = true;
@@ -120,10 +117,8 @@ async function authRegister(email, password) {
   if (data.user && data.user.identities && !data.user.identities.length)
     throw new Error(AUTH_ERR['User already registered']);
   if (!data.session) {
-    CLOUD.pending = email;
     return 'confirm';
   }
-  CLOUD.pending = null;
   await cloudUser(data.session.user);
   CLOUD.dirty = true;
   await cloudPush();
@@ -134,12 +129,10 @@ async function authLogin(email, password) {
   if (!CLOUD.sb) throw new Error('雲端尚未連線');
   const { data, error } = await CLOUD.sb.auth.signInWithPassword({ email, password });
   if (error) throw new Error(authMsg(error));
-  CLOUD.pending = null;
   await cloudUser(data.user);
   const remote = await cloudFetch();
   if (remote) {
     S = migrate(remote);
-    delete S.intro;
     try {
       localStorage.setItem(KEY, JSON.stringify(S));
     } catch (e) {}

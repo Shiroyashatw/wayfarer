@@ -27,9 +27,7 @@ async function ghostRivals(rating) {
         if (e2) throw e2;
         return runs.map(r => ({
           name: r.name || randName(),
-          place: r.place,
           av: AVATARS.some(a => a[0] === r.avatar) ? r.avatar : AVATARS[0][0],
-          rating: r.rating,
           snaps: Object.fromEntries(sn.filter(s => s.run_id === r.id).map(s => [s.round, { hp: s.hp, bag: s.bag }]))
         }));
       })();

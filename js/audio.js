@@ -58,15 +58,10 @@ function noise(d, v = 0.2, delay = 0, freq = 1200, ft = 'bandpass', bus) {
   s.stop(t + d + 0.05);
 }
 const SFX = {
-  step: () => noise(0.035, 0.03, 0, 900, 'lowpass'),
   tap: () => tone(880, 0.04, 'square', 0.05),
   select: () => {
     tone(660, 0.05, 'square', 0.07);
     tone(990, 0.07, 'square', 0.07, 0.05);
-  },
-  slash: () => {
-    noise(0.14, 0.25, 0, 2500, 'highpass');
-    tone(300, 0.08, 'sawtooth', 0.06, 0, 120);
   },
   hit: () => {
     noise(0.1, 0.3, 0, 900);
@@ -76,24 +71,6 @@ const SFX = {
     noise(0.18, 0.4, 0, 1400);
     tone(520, 0.12, 'square', 0.1, 0, 180);
     tone(1040, 0.08, 'square', 0.06, 0.04);
-  },
-  fire: () => {
-    noise(0.5, 0.3, 0, 500, 'lowpass');
-    tone(200, 0.4, 'sawtooth', 0.06, 0, 60);
-  },
-  ice: () => [1568, 1319, 1175, 1568, 2093].forEach((f, i) => tone(f, 0.12, 'triangle', 0.08, i * 0.05)),
-  bolt: () => {
-    noise(0.25, 0.25, 0, 3000, 'highpass');
-    tone(110, 0.3, 'sawtooth', 0.08);
-  },
-  heal: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.09, i * 0.07)),
-  hurt: () => {
-    tone(150, 0.2, 'sawtooth', 0.14, 0, 60);
-    noise(0.12, 0.2, 0, 600);
-  },
-  arrow: () => {
-    noise(0.08, 0.15, 0, 4000, 'highpass');
-    tone(1200, 0.08, 'triangle', 0.05, 0, 500);
   },
   encounter: () => {
     tone(220, 0.35, 'sawtooth', 0.08, 0, 880);
@@ -116,18 +93,8 @@ const SFX = {
     tone(988, 0.06, 'square', 0.07);
     tone(1319, 0.14, 'square', 0.07, 0.06);
   },
-  bless: () => [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.3, 'sine', 0.08, i * 0.09)),
-  door: () => {
-    tone(110, 0.4, 'sawtooth', 0.08, 0, 55);
-    noise(0.4, 0.12, 0, 300, 'lowpass');
-  },
   nope: () => tone(180, 0.12, 'square', 0.06)
 };
 function sfx(n) {
   if (AU.ctx && S.sfx) SFX[n]();
-}
-function buzz(ms) {
-  try {
-    if (S.sfx && navigator.vibrate) navigator.vibrate(ms);
-  } catch (e) {}
 }

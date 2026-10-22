@@ -288,9 +288,7 @@ function newRun(rivals) {
     log: [],
     phase: 'prep',
     pend: null,
-    place: null,
-    startAt: Date.now(),
-    rating0: S.rating
+    place: null
   });
   nextRound(run);
   /* 1-1 開打前先選職業 */
@@ -300,10 +298,9 @@ function newRun(rivals) {
   return run;
 }
 const curRound = run => ROUNDS[run.ri];
-/* 商店的一格：照背包等級的機率抽星級（商店關多升一級、半價） */
-function rollItem(run, special) {
-  const lv = Math.min(BAG_MAX, run.lv + (special ? 1 : 0)),
-    od = BAGLV[lv].odds;
+/* 商店的一格：照背包等級的機率抽星級 */
+function rollItem(run) {
+  const od = BAGLV[run.lv].odds;
   let x = r01(run) * 100,
     st = 1;
   for (let i = 0; i < 5; i++) {
@@ -313,13 +310,11 @@ function rollItem(run, special) {
     }
     x -= od[i];
   }
-  if (special) st = Math.max(st, 2);
-  /* 職業核心只在商店關的 5★ 出現 */
-  const pool = ITEMS.filter(it => it.star === st && (special && st === 5 ? true : !it.core));
+  /* 商店不出職業核心（核心只從首領三選一拿） */
+  const pool = ITEMS.filter(it => it.star === st && !it.core);
   return pick(run, pool.length ? pool : ITEMS.filter(it => it.star === 1)).id;
 }
-function rollShop(run, special = false) {
-  run.sale = special;
+function rollShop(run) {
   /* 1-1 開打前的商店全是 1★，前 2 格保證是武器或寵物（不然第一場就打不了） */
   run.shop = Array.from({ length: SHOP_N }, (_, k) => ({
     id:
@@ -328,15 +323,12 @@ function rollShop(run, special = false) {
             run,
             ITEMS.filter(i => i.star === 1 && !i.core && (k >= 2 || i.dmg))
           ).id
-        : rollItem(run, special),
+        : rollItem(run),
     t: run.ri > 0 && r01(run) * 100 < (BAGLV[run.lv].t2 || 0) ? 2 : 1
   }));
 }
 /* t：商店也可能直接賣 Ⅱ 階（後期才有），價錢 ×3 */
-const shopPrice = (run, id, t = 1) => {
-  const p = priceOf(id) * 3 ** ((t || 1) - 1);
-  return run.sale ? Math.ceil(p / 2) : p;
-};
+const shopPrice = (run, id, t = 1) => priceOf(id) * 3 ** ((t || 1) - 1);
 const newItem = (run, id, t = 1) => ({
   u: 'i' + run.un++,
   id,
@@ -423,7 +415,7 @@ function sellItem(run, u) {
 function rerollShop(run) {
   if (run.gold < REROLL) return '金幣不夠';
   run.gold -= REROLL;
-  rollShop(run, run.sale);
+  rollShop(run);
   return '';
 }
 /* 背包升級：變大、商店機率變好；放不下的不會發生（只會變大） */
@@ -463,7 +455,6 @@ function nextRound(run) {
   } else {
     run.gold += incomeOf(run);
     if (!run.lock) rollShop(run);
-    run.sale = false;
   }
   run.lock = false;
   run.phase = 'prep';
@@ -471,12 +462,14 @@ function nextRound(run) {
 /* ================= 對手 ================= */
 /* 0.1.26 本局算血：對手的生命、扣血、淘汰都照這局的勝負（rv.hp）；快照只提供他每回合的背包。
    之前（0.1.10～0.1.25）生命照他自己那局的快照，會出現他剛打贏你、下回合就淘汰，或你一直贏他卻不扣血 */
-/* 這回合的快照；他那局在這回合之前就結束了（淘汰或第 1 名）就沿用最後一筆 */
+/* 這回合的快照；他那局在這回合之前就結束了（淘汰或第 1 名）就沿用最後一筆；
+   0.1.27 開頭幾回合沒上傳到（例如 1-1 那筆沒存成）就先用他最早的一筆，不要當成淘汰 */
 function rivalSnap(rv, rid) {
   const s = rv.snaps || {};
   if (s[rid]) return s[rid];
   const ri = ROUNDS.findIndex(r => r.id === rid);
   for (let k = ri - 1; k >= 0; k--) if (s[ROUNDS[k].id]) return s[ROUNDS[k].id];
+  for (let k = ri + 1; k < ROUNDS.length; k++) if (s[ROUNDS[k].id]) return s[ROUNDS[k].id];
   return undefined;
 }
 /* 加時：他那局已經結束後又過了幾回合；0 = 還有這回合的快照 */
@@ -519,7 +512,7 @@ function opponentOf(run) {
     const [rv, i] = al.find(([, i]) => i >= run.rp % run.rivals.length) || al[0];
     run.rp = i + 1;
     const { bag, F } = rivalBag(rv, r.id);
-    return { kind: 'pvp', n: rv.name, spr: 'a_' + rv.av, F, bag, rv: i, ot: rivalOT(rv, r.id) };
+    return { kind: 'pvp', n: rv.name, spr: 'a_' + rv.av, F, bag, rv: i };
   }
   const m = mobOf(run, r);
   return { kind: r.type, n: m.n, spr: m.spr, F: m.F };
@@ -603,13 +596,19 @@ function fightSum(run, fb) {
 /* 打完：扣血、連勝連敗、獎勵；回傳這場的結算 */
 function finishFight(run, fb) {
   const { r, opp, res } = fb,
-    out = { win: res.win, loss: 0, gold: 0 };
+    out = { win: res.win, loss: 0, gold: 0 },
+    pre = run.rivals.filter(rv => rivalAlive(rv, r.id));
   if (res.win) {
     run.ws++;
     run.lsk = 0;
     out.gold = winGold(r);
-    /* 打贏對手：他扣跟你輸了會扣的一樣多（加上你背包的寵物） */
-    if (opp.kind === 'pvp') run.rivals[opp.rv].hp = rivalHp(run.rivals[opp.rv]) - r.loss - petLoss(run.bag);
+    /* 打贏對手：他扣跟你輸了會扣的一樣多（加上你背包的寵物）；結果視窗顯示他扣多少、是否淘汰 */
+    if (opp.kind === 'pvp') {
+      const rv = run.rivals[opp.rv];
+      out.hit = r.loss + petLoss(run.bag);
+      rv.hp = rivalHp(rv) - out.hit;
+      out.ko = rivalHp(rv) <= 0;
+    }
   } else {
     run.lsk++;
     run.ws = 0;
@@ -646,17 +645,27 @@ function finishFight(run, fb) {
   }
   rivalFights(run, fb);
   if (run.hp <= 0) {
+    /* 0.1.27 同回合倒下的對手：扣完剩得比你多（負得少）的排你前面；大家一起倒下時你最多第 2 */
+    const al = aliveRivals(run).length,
+      ahead = pre.filter(rv => rivalHp(rv) <= 0 && rv.hp > run.hp).length;
     run.hp = 0;
-    endRun(run, 1 + aliveRivals(run).length);
+    endRun(run, Math.max(2, 1 + al + ahead));
   } else if (!aliveRivals(run).length) endRun(run, 1);
   return out;
 }
-/* 0.1.26 沒打你的對手這回合也要打：對戰回合剩下的兩個用快照背包互打（只剩一個就輪空），
-   野怪／菁英／首領回合每個對手都打同一隻怪；輸的照這局的規則扣血 */
+/* 0.1.26 沒打你的對手這回合也要打：對戰回合剩下的兩個用快照背包互打，
+   野怪／菁英／首領回合每個對手都打同一隻怪；輸的照這局的規則扣血。
+   0.1.27 只剩一個（存活 3 人）時不輪空：他打你這回合的背包，只有他會扣血（不然只有你每回合都要冒險） */
 function rivalFights(run, fb) {
   const { r, opp } = fb,
     al = run.rivals.filter((rv, i) => rivalAlive(rv, r.id) && !(opp.kind === 'pvp' && i === opp.rv));
   if (opp.kind === 'pvp') {
+    if (al.length === 1) {
+      const a = rivalBag(al[0], r.id),
+        res = simulate(stageHp(a.F, r.st), fb.me, h(run.seed, run.ri, 994));
+      if (!res.win) al[0].hp = rivalHp(al[0]) - r.loss - petLoss(run.bag);
+      return;
+    }
     if (al.length < 2) return;
     const [a, b] = al.slice(0, 2).map(rv => rivalBag(rv, r.id)),
       res = simulate(stageHp(a.F, r.st), stageHp(b.F, r.st), h(run.seed, run.ri, 992));
@@ -668,11 +677,6 @@ function rivalFights(run, fb) {
     const res = simulate(stageHp(rivalBag(rv, r.id).F, r.st), opp.F, h(run.seed, run.ri, 993 + j));
     if (!res.win) rv.hp = rivalHp(rv) - r.loss;
   });
-}
-/* 下一個有對戰的回合（看對手還在不在） */
-function nextPvpId(run) {
-  for (let i = run.ri + 1; i < ROUNDS.length; i++) if (ROUNDS[i].type === 'pvp') return ROUNDS[i].id;
-  return null;
 }
 /* 打到最後一回合：比剩下的生命 */
 function finalPlace(run) {
@@ -765,7 +769,6 @@ function simLobby(seed, rating, opt = {}) {
           name: randName(rng(h(s, 9))),
           av: AVATARS[(s >>> 3) % AVATARS.length][0],
           rating: rt,
-          bot: 1,
           snaps: {}
         },
         out: null
@@ -825,8 +828,8 @@ function simLobby(seed, rating, opt = {}) {
               ? it.core === (r.st <= 2 ? 1 : 2) && it.cls === run.bag.cls
               : !it.core && it.star >= a && it.star <= c
           );
-        /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了） */
-        takePick(run, pick(run, pool).id);
+        /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了）；暫存區滿了先寄放，下回合 botAct 處理 */
+        takePick(run, pick(run, pool).id, true);
       }
     });
     for (const b of alive) if (b.run.hp <= 0) b.out = ++order;

@@ -34,7 +34,7 @@ function itemIcon(id) {
 const sprCv = (name, cls = '') => `<canvas class="spr ${cls}" data-spr="${name}" width="18" height="18"></canvas>`;
 function paintSprites(root = document) {
   root.querySelectorAll('canvas[data-spr]').forEach(cv => {
-    const sp = sprite(cv.dataset.spr);
+    const sp = artSprite(cv.dataset.spr);
     if (cv.width !== sp.width) cv.width = cv.height = sp.width;
     const x = cv.getContext('2d');
     x.imageSmoothingEnabled = false;
@@ -56,7 +56,6 @@ function artRepaint() {
 const stars = n => '★'.repeat(n);
 const tierTxt = t => ['', '', ' Ⅱ', ' Ⅲ'][t];
 const tierBadge = t => (t > 1 ? `<b class="tier">${t === 2 ? 'Ⅱ' : 'Ⅲ'}</b>` : '');
-const avName = av => (AVATARS.find(a => a[0] === av) || AVATARS[0])[1];
 /* ================= 牌階 ================= */
 /* 0.1.6 牌階的像素圖示（16×16，程式畫）：盾牌底；金牌起上面兩根尖角、鑽石起中間寶石、大師起兩邊翅膀、菁英加皇冠；
    一二三是下面 1～3 個小點。-1 是定級中（灰色問號盾） */
@@ -257,8 +256,10 @@ function rivalHTML(run) {
     })
     .join('')}</div>`;
 }
-/* 下一場 PvP 會打誰（跟 opponentOf 一樣的規則，只看不改） */
+/* 下一場 PvP 會打誰（跟 opponentOf 一樣的規則，只看不改）；
+   0.1.27 結算／三選一時 run.rp 已經換下一位，改回傳剛剛打的那位 */
 function nextRival(run) {
+  if (run.phase !== 'prep' && run.last) return run.last.rv ?? -1;
   const r = curRound(run),
     al = run.rivals.map((rv, i) => [rv, i]).filter(([rv]) => rivalAlive(rv, r.id));
   if (!al.length) return -1;
@@ -343,6 +344,8 @@ function roundBarHTML(run) {
 }
 /* 0.1.25 金幣旁的下回合預估收入（輸～贏） */
 function incTxt(run) {
+  /* 0.1.27 結算／三選一時連勝連敗已經算進去了，再估會重複算：只在準備時顯示 */
+  if (run.phase !== 'prep') return '';
   const e = incomeEst(run);
   if (!e) return '';
   return `<small class="inc" title="下回合收入（輸～贏）">+${e[0] === e[1] ? e[0] : e[0] + '～' + e[1]}</small>`;
@@ -860,6 +863,7 @@ function bEnd() {
     gold: out.gold,
     hit: out.hit,
     ko: out.ko,
+    rv: B.fb.opp.kind === 'pvp' ? B.fb.opp.rv : -1,
     opp: (out.win ? '打贏了 ' : '輸給了 ') + B.fb.opp.n
   };
   run.after = run.phase === 'end' ? 'end' : run.pend ? 'pick' : 'next';
@@ -1031,8 +1035,7 @@ const A = {
     render();
   },
   fight: () => {
-    const run = S.run,
-      r = curRound(run);
+    const run = S.run;
     V.sel = null;
     if (run.hold) return snd('nope'), toast('先領取或賣掉寄放的戰利品');
     if (!run.bag.items.some(o => ITEMI[o.id].dmg)) return toast('背包裡還沒有武器或寵物，打不贏的！');

@@ -30,12 +30,12 @@
 | `css/style.css` | 全部樣式（手機直式優先）；開頭 `:root` 是設計規範的變數（`--fs-*`、`--sp-*`、`--r-*`、顏色、星級 `--s1`～`--s5`） |
 | `js/core.js` | `$`、`fl`、固定亂數 `h`／`rng`、`esc`、`shade` 等共用工具 |
 | `js/data.js` | 遊戲表格：回合表 `ROUNDS`、經濟、背包等級 `BAGLV`、名次加減分、頭像 `AVATARS`、`VER`、存檔鍵 `KEY` |
-| `js/sprites.js` | 像素圖（`SPR`、自動描邊）、8×8 圖示 `iconURL`、`pixURL`、PNG 大圖 `artSprite`／`artIconURL`（舊版留下的部分函式沒用到） |
+| `js/sprites.js` | PNG 大圖 `artSprite`／`artIconURL`、8×8 備用星星 `iconURL`、程式像素圖 `pixURL`（只剩藥水） |
 | `js/art.js` | 自動產生（`tools/art.py`）：`ART_SHEET` 大圖網址（`img/組名.hash.png`）、`ART` 每張圖的位置，圖名 `a_檔名`；不要手改 |
 | `js/items.js` | 道具 `ITEMS`（形狀、星級、標籤、效果、相鄰加成）、職業核心、升階、詞綴、說明文字 |
 | `js/bag.js` | 背包格子、擺放、相鄰、合成 `mergeAll`、把背包算成戰鬥數值 `compileBag`、快照格式 |
 | `js/sim.js` | 自動戰鬥模擬 `simulate`（純計算、固定亂數、輸出事件時間軸） |
-| `js/run.js` | 一局流程：回合、商店、經濟、野怪與首領 `MOBS`、開戰與結算、名次、機器人對手 `makeBot` |
+| `js/run.js` | 一局流程：回合、商店、經濟、野怪與首領 `MOBS`、開戰與結算、名次、機器人對局 `simLobby`／`makeBots` |
 | `js/bot.js` | 機器人的腦：戰力分數 `botPower`、每回合的決定 `botAct`（買、擺、賣、合成、升背包、刷新、三選一）、訓練出來的參數 `BOT_P`、舊買法 `botActOld`（skill `bot-ai`） |
 | `js/ghost.js` | 快照對戰：Supabase `runs`／`snaps` 存取、配對 `ghostRivals`（不夠就機器人補位） |
 | `js/audio.js` | Web Audio 合成音樂與音效 |
