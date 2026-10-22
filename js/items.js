@@ -1177,8 +1177,8 @@ const CLASSES = [
   { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_exalt', gold: 1 }
 ];
 const CLSI = Object.fromEntries(CLASSES.map(c => [c.id, c]));
-/* 0.1.9 職業核心池：首領（2-5）從你的職業的池子三選一，每個職業 20 多個。
-   照模板產生：P 是那個職業主打的標籤，模板對 P 加成；CORE_X 是各職業專屬的幾個 */
+/* 0.1.10 職業核心兩次：2-5 首領掉「專屬核心」（每個職業 12 個、各有特色），4-4 首領掉「副核心」（照模板對主打標籤加成，12 個）。
+   背包裡專屬核心、副核心各最多 1 個。P 是那個職業主打的標籤 */
 const CORE_P = {
   archer: ['bow', 'xbow'],
   swordsman: ['sword'],
@@ -1195,70 +1195,211 @@ const CORE_P = {
   merchant: ['weapon']
 };
 const onP = (P, m) => P.map(tag => ({ tag, ...m }));
-const CORE_T = [
-  ['狂怒', P => ({ all: onP(P, { dmgPct: 35 }) })],
-  ['疾風', P => ({ all: onP(P, { spd: 30 }) })],
-  ['致命', P => ({ all: onP(P, { crit: 25 }) })],
-  ['處決', P => ({ all: onP(P, { crit: 10 }), fx: { critMul: 60 } })],
-  ['血刃', P => ({ all: onP(P, { bleed: 2 }) })],
-  ['碎甲', P => ({ all: onP(P, { sunder: 2 }) })],
-  ['詛咒', P => ({ all: onP(P, { weakCh: 25 }) })],
-  ['閃光', P => ({ all: onP(P, { blindCh: 25 }) })],
-  ['烈焰', P => ({ all: onP(P, { burn: 2 }) })],
-  ['劇毒', P => ({ all: onP(P, { poison: 2 }) })],
-  ['寒霜', P => ({ all: onP(P, { freezeCh: 20 }) })],
-  ['雷鳴', P => ({ all: onP(P, { stunCh: 15 }) })],
-  ['嗜血', P => ({ all: onP(P, { ls: 15 }) })],
-  ['軍團', P => ({ all: onP(P, { dmgPct: 8, per: P[0] }) })],
-  ['堅韌', P => ({ all: onP(P, { dmgPct: 10 }), fx: { hp: 60 } })],
-  ['鐵壁', P => ({ all: onP(P, { dmgPct: 10 }), fx: { arm: 8 } })],
-  ['幻影', P => ({ all: onP(P, { spd: 10 }), fx: { dodge: 12 } })],
-  ['生命之泉', P => ({ all: onP(P, { dmgPct: 5 }), fx: { regen: 4 } })],
-  ['封印', P => ({ all: onP(P, { dmgPct: 10 }), pre: { seal: 4 } })],
-  ['衰敗', P => ({ all: onP(P, { dmgPct: 10 }), pre: { down: 1 } })],
-  ['全能', P => ({ all: onP(P, { dmgPct: 20, spd: 15 }) })],
-  ['重擊', P => ({ all: onP(P, { dmg: 5 }) })]
-];
-const CORE_X = {
-  archer: [
-    [
-      '鷹眼',
-      {
-        all: [
-          { tag: 'bow', crit: 15, spd: 15 },
-          { tag: 'xbow', crit: 15, spd: 15 }
-        ]
-      }
-    ]
+/* 專屬核心：[名字, 效果]；效果用 all（對標籤加成）、fx（角色身上，含 0.1.10 的新機制）、pre（開戰效果）、gold */
+const CORE_MAIN = {
+  archer: P => [
+    ['連珠箭', { all: onP(P, { spd: 25 }), fx: { double: 15 } }],
+    ['穿雲箭', { all: onP(P, { dmgPct: 30, crit: 10 }) }],
+    ['先手射擊', { all: onP(P, { dmgPct: 15 }), fx: { opener: 90 } }],
+    ['狙擊', { all: onP(P, { crit: 15 }), fx: { execute: 60 } }],
+    ['火箭', { all: onP(P, { burn: 2, dmgPct: 10 }) }],
+    ['毒箭', { all: onP(P, { poison: 2, dmgPct: 10 }) }],
+    ['鷹眼', { all: onP(P, { crit: 20 }), fx: { critMul: 40 } }],
+    ['箭雨', { all: onP(P, { dmgPct: 8, per: 'bow' }) }],
+    ['游擊', { all: onP(P, { spd: 15 }), fx: { dodge: 15 } }],
+    ['閃光箭', { all: onP(P, { blindCh: 20, dmgPct: 10 }) }],
+    ['連射', { all: onP(P, { spd: 10 }), fx: { ramp: 8 } }],
+    ['獵人陷阱', { all: onP(P, { bleed: 1 }), pre: { bleed: 6 } }]
   ],
-  swordsman: [['劍聖', { all: [{ tag: 'sword', dmgPct: 25, bleed: 1 }] }]],
-  berserker: [['狂暴', { all: [{ tag: 'weapon', spd: 20 }], fx: { take: 10, hp: 30 } }]],
-  spearman: [['方陣', { all: [{ tag: 'spear', dmgPct: 20 }], fx: { arm: 6 } }]],
-  assassin: [['影殺', { all: [{ tag: 'dagger', crit: 20 }], fx: { critMul: 40, dodge: 8 } }]],
-  pyro: [['焚城', { all: [{ tag: 'fire', burn: 3 }], pre: { burn: 5 } }]],
-  cryo: [['絕對零度', { all: [{ tag: 'cold', freezeCh: 15 }], pre: { frozen: 2 } }]],
-  storm: [['天譴', { all: [{ tag: 'light', stunCh: 10, dmgPct: 20 }] }]],
-  venom: [['瘟疫', { all: [{ tag: 'poison', poison: 2 }], pre: { poison: 4 } }]],
-  tamer: [['獸群', { all: [{ tag: 'pet', dmgPct: 10, per: 'pet' }] }]],
-  knight: [
+  swordsman: P => [
+    ['劍意', { all: onP(P, { dmgPct: 35 }) }],
+    ['拔刀術', { all: onP(P, { crit: 15 }), fx: { opener: 100 } }],
+    ['血劍', { all: onP(P, { bleed: 2, ls: 10 }) }],
+    ['斬殺', { all: onP(P, { dmgPct: 10 }), fx: { execute: 70 } }],
+    ['招架', { all: onP(P, { dmgPct: 15 }), fx: { startBlock: 30 } }],
+    ['連斬', { all: onP(P, { dmgPct: 10 }), fx: { double: 20 } }],
+    ['劍心', { all: onP(P, { crit: 20 }), fx: { critMul: 50 } }],
+    ['背水', { all: onP(P, { spd: 10 }), fx: { rage: 50 } }],
+    ['雙手大師', { all: [{ tag: 'twohand', dmgPct: 40, spd: 10 }] }],
+    ['劍陣', { all: onP(P, { dmgPct: 10, per: 'sword' }) }],
+    ['破甲斬', { all: onP(P, { sunder: 2, dmgPct: 10 }) }],
+    ['劍舞', { all: onP(P, { dmgPct: 10 }), fx: { ramp: 10 } }]
+  ],
+  berserker: P => [
+    ['狂怒', { all: onP(P, { dmgPct: 15 }), fx: { rage: 60 } }],
+    ['血腥風暴', { all: onP(P, { bleed: 2, spd: 15 }) }],
+    ['碎骨', { all: onP(P, { sunder: 3, dmgPct: 10 }) }],
+    ['越戰越勇', { all: onP(P, { dmgPct: 10 }), fx: { ramp: 12 } }],
+    ['嗜血', { all: onP(P, { ls: 20 }) }],
+    ['震地', { all: onP(P, { stunCh: 15, dmgPct: 15 }) }],
+    ['不屈', { fx: { hp: 80, regen: 2 } }],
+    ['處刑', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60 } }],
+    ['野蠻衝鋒', { all: onP(P, { dmgPct: 20 }), fx: { opener: 80 } }],
+    ['血怒', { all: onP(P, { crit: 10 }), fx: { rage: 30, critHeal: 6 } }],
+    ['巨力', { all: [{ tag: 'twohand', dmgPct: 40 }] }],
+    ['尖刺皮膚', { fx: { thornsF: 4, arm: 5 } }]
+  ],
+  spearman: P => [
+    ['突刺', { all: onP(P, { dmgPct: 35 }) }],
+    ['方陣', { fx: { arm: 10, startBlock: 20 } }],
+    ['貫穿', { all: onP(P, { sunder: 2, crit: 10 }) }],
+    ['槍林', { all: onP(P, { spd: 25 }) }],
+    ['衝鋒', { all: onP(P, { dmgPct: 15 }), fx: { opener: 100 } }],
+    ['放血', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
+    ['反擊', { all: onP(P, { dmgPct: 10 }), fx: { thornsF: 5 } }],
+    ['致命一擊', { all: onP(P, { crit: 20 }), fx: { critMul: 40 } }],
+    ['連刺', { all: onP(P, { dmgPct: 10 }), fx: { double: 18 } }],
+    ['長柄大師', { all: [{ tag: 'twohand', dmgPct: 35, spd: 10 }] }],
+    ['戰意', { fx: { ramp: 8, hp: 30 } }],
+    ['處決', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60 } }]
+  ],
+  assassin: P => [
+    ['影襲', { all: onP(P, { crit: 15 }), fx: { opener: 100 } }],
+    ['毒刃', { all: onP(P, { poison: 2, dmgPct: 10 }) }],
+    ['致命', { all: onP(P, { crit: 25 }), fx: { critMul: 50 } }],
+    ['暗殺', { all: onP(P, { dmgPct: 10 }), fx: { execute: 80 } }],
+    ['殘影', { all: onP(P, { spd: 10 }), fx: { dodge: 18 } }],
+    ['連擊', { all: onP(P, { dmgPct: 10 }), fx: { double: 25 } }],
+    ['割喉', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
+    ['煙霧彈', { fx: { dodge: 8 }, pre: { blind: 4 } }],
+    ['嗜血刃', { all: onP(P, { crit: 10 }), fx: { critHeal: 5 } }],
+    ['刀陣', { all: onP(P, { dmgPct: 10, per: 'dagger' }) }],
+    ['虛弱毒', { all: onP(P, { weakCh: 25 }) }],
+    ['疾影', { all: onP(P, { spd: 30 }) }]
+  ],
+  pyro: P => [
+    ['烈焰', { all: onP(P, { burn: 3 }) }],
+    ['焚身', { all: onP(P, { dmgPct: 10 }), pre: { burn: 6 } }],
+    ['炎爆', { all: onP(P, { dmgPct: 35 }) }],
+    ['灰燼', { all: onP(P, { burn: 1 }), fx: { execute: 50 } }],
+    ['火牆', { fx: { startBlock: 25, thornsF: 3 } }],
+    ['燎原', { all: onP(P, { burn: 1, per: 'fire' }) }],
+    ['鳳凰', { fx: { regen: 4, hp: 40 } }],
+    ['狂焰', { all: onP(P, { spd: 10 }), fx: { ramp: 10 } }],
+    ['火雨', { all: onP(P, { dmgPct: 10 }), fx: { double: 15 } }],
+    ['熔甲', { all: onP(P, { sunder: 2, burn: 1 }) }],
+    ['炙熱', { all: onP(P, { crit: 15 }), fx: { critMul: 40 } }],
+    ['火焰護體', { fx: { thornsF: 6, hp: 20 } }]
+  ],
+  cryo: P => [
+    ['寒霜', { all: onP(P, { freezeCh: 20 }) }],
+    ['冰封', { all: onP(P, { dmgPct: 10 }), pre: { frozen: 4 } }],
+    ['冰錐', { all: onP(P, { dmgPct: 35 }) }],
+    ['碎冰', { all: onP(P, { freezeCh: 10 }), fx: { execute: 60 } }],
+    ['冰甲', { fx: { arm: 10, startBlock: 25 } }],
+    ['暴風雪', { all: onP(P, { spd: 25 }) }],
+    ['冰晶共鳴', { all: onP(P, { dmgPct: 10, per: 'cold' }) }],
+    ['凍傷', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
+    ['寒冰之心', { fx: { regen: 3, hp: 40 } }],
+    ['冰刃', { all: onP(P, { crit: 20 }), fx: { critMul: 30 } }],
+    ['霜凍連擊', { all: onP(P, { dmgPct: 10 }), fx: { double: 18 } }],
+    ['永凍', { all: onP(P, { weakCh: 20, freezeCh: 10 }) }]
+  ],
+  storm: P => [
+    ['雷鳴', { all: onP(P, { stunCh: 15, dmgPct: 10 }) }],
+    ['落雷', { all: onP(P, { dmgPct: 35 }) }],
+    ['雷暴', { all: onP(P, { dmgPct: 10 }), fx: { double: 20 } }],
+    ['閃電鏈', { all: onP(P, { dmgPct: 10, per: 'light' }) }],
+    ['電光', { all: onP(P, { blindCh: 15 }), pre: { blind: 4 } }],
+    ['雷神', { all: onP(P, { crit: 20 }), fx: { critMul: 40 } }],
+    ['超載', { all: onP(P, { dmgPct: 10 }), fx: { ramp: 12 } }],
+    ['靜電場', { fx: { thornsF: 5, startBlock: 15 } }],
+    ['雷擊', { all: onP(P, { stunCh: 5 }), fx: { opener: 100 } }],
+    ['天譴', { all: onP(P, { dmgPct: 10 }), fx: { execute: 70 } }],
+    ['疾雷', { all: onP(P, { spd: 25 }) }],
+    ['電磁破甲', { all: onP(P, { sunder: 2, dmgPct: 10 }) }]
+  ],
+  venom: P => [
+    ['劇毒', { all: onP(P, { poison: 3 }) }],
+    ['瘟疫', { all: onP(P, { dmgPct: 10 }), pre: { poison: 5 } }],
+    ['毒霧', { all: onP(P, { weakCh: 10 }), pre: { weak: 4 } }],
+    ['腐蝕', { all: onP(P, { sunder: 2, poison: 1 }) }],
+    ['毒液噴濺', { all: onP(P, { poison: 1, per: 'poison' }) }],
+    ['蛇吻', { all: onP(P, { dmgPct: 10 }), fx: { double: 18 } }],
+    ['致命毒素', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60 } }],
+    ['毒囊', { fx: { hp: 50, regen: 2 } }],
+    ['毒刺皮膚', { fx: { thornsF: 5, hp: 20 } }],
+    ['麻痺毒', { all: onP(P, { stunCh: 10, poison: 1 }) }],
+    ['血毒', { all: onP(P, { bleed: 2, poison: 1 }) }],
+    ['疾毒', { all: onP(P, { spd: 25 }) }]
+  ],
+  tamer: P => [
+    ['獸群', { all: onP(P, { dmgPct: 10, per: 'pet' }) }],
+    ['野性', { all: onP(P, { dmgPct: 35 }) }],
+    ['狂奔', { all: onP(P, { spd: 30 }) }],
+    ['撕咬', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
+    ['守護獸', { fx: { startBlock: 25, hp: 40 } }],
+    ['獸王之怒', { all: onP(P, { dmgPct: 10 }), fx: { rage: 50 } }],
+    ['獵殺', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60 } }],
+    ['群獵', { all: onP(P, { dmgPct: 10 }), fx: { double: 15 } }],
+    ['野獸本能', { all: onP(P, { crit: 15 }), fx: { opener: 80 } }],
+    ['血脈', { all: onP(P, { ls: 15, dmgPct: 10 }) }],
+    ['獸牙', { all: onP(P, { sunder: 2, dmgPct: 10 }) }],
+    ['共生', { fx: { regen: 4, hp: 20 } }]
+  ],
+  knight: P => [
     ['聖盾', { all: [{ tag: 'shield', blockPct: 60 }] }],
-    ['堡壘', { all: [{ tag: 'shield', block: 10 }], fx: { hp: 40 } }]
+    ['堡壘', { all: [{ tag: 'shield', block: 10 }], fx: { hp: 40 } }],
+    ['盾擊', { fx: { thornsF: 6, arm: 4 } }],
+    ['起手盾', { fx: { startBlock: 40 } }],
+    ['鐵壁', { fx: { arm: 14 } }],
+    ['聖光', { all: onP(P, { blindCh: 15 }), fx: { regen: 2 } }],
+    ['不動如山', { fx: { hp: 100 } }],
+    ['審判', { all: onP(P, { dmgPct: 10 }), fx: { execute: 50 } }],
+    ['守護誓約', { all: [{ tag: 'shield', spd: 30 }] }],
+    ['復仇', { fx: { rage: 40, thornsF: 3 } }],
+    ['騎士精神', { all: onP(P, { dmgPct: 20, spd: 10 }) }],
+    ['盾牆', { all: [{ tag: 'shield', blockPct: 15, per: 'shield' }] }]
   ],
-  alchemist: [
+  alchemist: P => [
     ['煉成', { fx: { throwPct: 80, potMul: 30 } }],
-    ['萬能藥', { fx: { potMul: 60, potUse: 1 } }]
+    ['萬能藥', { fx: { potMul: 60, potUse: 1 } }],
+    ['劇毒煉金', { fx: { throwPct: 30 }, pre: { poison: 4 } }],
+    ['爆裂藥劑', { fx: { throwPct: 20 }, pre: { burn: 6 } }],
+    ['腐蝕藥劑', { fx: { throwPct: 20 }, pre: { sunder: 8 } }],
+    ['迷霧藥劑', { fx: { throwPct: 20 }, pre: { blind: 5 } }],
+    ['衰弱藥劑', { fx: { throwPct: 20 }, pre: { weak: 5 } }],
+    ['冰凍藥劑', { fx: { throwPct: 20 }, pre: { frozen: 4 } }],
+    ['再生藥劑', { fx: { regen: 5 } }],
+    ['鋼鐵藥劑', { fx: { arm: 10, startBlock: 20 } }],
+    ['狂暴藥劑', { all: onP(P, { spd: 25 }) }],
+    ['賢者之石', { gold: 2, fx: { throwPct: 40 } }]
   ],
-  merchant: [
+  merchant: P => [
     ['財神', { gold: 3 }],
-    ['大富翁', { gold: 2, all: [{ tag: 'weapon', dmgPct: 10 }] }]
+    ['大富翁', { gold: 2, all: onP(P, { dmgPct: 10 }) }],
+    ['投資', { gold: 1, fx: { hp: 40 } }],
+    ['傭兵', { all: onP(P, { dmgPct: 25 }) }],
+    ['黃金甲', { gold: 1, fx: { arm: 10 } }],
+    ['精品', { all: onP(P, { crit: 15 }), fx: { critMul: 30 } }],
+    ['賄賂', { all: onP(P, { dmgPct: 10 }), pre: { seal: 5 } }],
+    ['搶先', { all: onP(P, { spd: 10 }), fx: { opener: 100 } }],
+    ['回扣', { gold: 1, fx: { regen: 3 } }],
+    ['奸商', { gold: 1, pre: { down: 1 } }],
+    ['保鏢', { fx: { startBlock: 30, thornsF: 3 } }],
+    ['豪賭', { fx: { rage: 50, execute: 40 } }]
   ]
 };
+/* 副核心：通用模板，對職業主打的標籤加成 */
+const CORE_SUB = [
+  ['狂怒', P => ({ all: onP(P, { dmgPct: 30 }) })],
+  ['疾風', P => ({ all: onP(P, { spd: 25 }) })],
+  ['致命', P => ({ all: onP(P, { crit: 20 }) })],
+  ['處決', P => ({ all: onP(P, { crit: 8 }), fx: { critMul: 50 } })],
+  ['血刃', P => ({ all: onP(P, { bleed: 2 }) })],
+  ['碎甲', P => ({ all: onP(P, { sunder: 2 }) })],
+  ['詛咒', P => ({ all: onP(P, { weakCh: 20 }) })],
+  ['閃光', P => ({ all: onP(P, { blindCh: 20 }) })],
+  ['嗜血', P => ({ all: onP(P, { ls: 12 }) })],
+  ['堅韌', () => ({ fx: { hp: 60 } })],
+  ['鐵壁', () => ({ fx: { arm: 8 } })],
+  ['幻影', () => ({ fx: { dodge: 12 } })]
+];
 function genCores() {
   const out = [];
   for (const C of CLASSES) {
-    const P = CORE_P[C.id] || ['weapon'],
-      list = [...CORE_T.map(([n, f]) => [n, f(P)]), ...(CORE_X[C.id] || [])];
-    list.forEach(([n, d], k) =>
+    const P = CORE_P[C.id] || ['weapon'];
+    CORE_MAIN[C.id](P).forEach(([n, d], k) =>
       out.push({
         id: `c_${C.id}_${k}`,
         n: `${C.n}・${n}`,
@@ -1269,6 +1410,19 @@ function genCores() {
         tags: ['core'],
         ic: C.ic,
         ...d
+      })
+    );
+    CORE_SUB.forEach(([n, f], k) =>
+      out.push({
+        id: `s_${C.id}_${k}`,
+        n: `副核・${n}`,
+        star: 5,
+        core: 2,
+        cls: C.id,
+        sh: 's1',
+        tags: ['core'],
+        ic: 'cur_soul',
+        ...f(P)
       })
     );
   }
@@ -1294,8 +1448,30 @@ function clsDesc(id) {
 }
 /* 升階：3 件相同、相同階的合成高一階（最多 3 階）；數值倍率與加成倍率 */
 const TIER_MAX = 3,
-  TIERM = [0, 1, 1.8, 3.2],
-  TIERB = [0, 1, 1.5, 2];
+  TIERM = [0, 1, 1.6, 3.5],
+  TIERB = [0, 1, 1.4, 2.2];
+/* 0.1.10 升階連冷卻、暴擊、命中效果一起變強：Ⅱ 小幅、Ⅲ 大幅（基礎數值 ×1.6／×3.5、冷卻 -8%／-20%、
+   機率 +5／+12、層數 ×1.4／×2.2、藥水 Ⅲ 多喝 1 次） */
+const TIERCD = [0, 1, 0.92, 0.8],
+  TIERCH = [0, 0, 5, 12];
+const cdT = (it, t = 1) => Math.round(it.cd * TIERCD[t] * 100) / 100;
+function onT(it, t = 1) {
+  const o = it.on || {},
+    st = v => (v ? Math.round(v * TIERB[t]) : 0),
+    ch = v => (v ? v + TIERCH[t] : 0);
+  return {
+    crit: (it.crit || 0) + (it.dmg ? TIERCH[t] : 0),
+    burn: st(o.burn),
+    poison: st(o.poison),
+    bleed: st(o.bleed),
+    sunder: st(o.sunder),
+    ls: ch(o.ls),
+    weak: ch(o.weak),
+    blind: ch(o.blind),
+    freeze: o.freeze ? [ch(o.freeze[0]), o.freeze[1]] : null,
+    stun: o.stun ? [ch(o.stun[0]), o.stun[1]] : null
+  };
+}
 /* 星級顏色：CSS 變數（跟著淺色／深色主題變） */
 const STARC = ['', 'var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
 /* 價格：星級；賣出：退一半（升階的照材料數） */
@@ -1388,7 +1564,15 @@ const MODN = {
   sunder: v => `命中破甲 ${sg(v)}${v}`,
   weakCh: v => `${pct(v)} 虛弱`,
   blindCh: v => `${pct(v)} 致盲`,
-  throwPct: v => `丟出的藥劑效果 ${sg(v)}${pct(v)}`
+  throwPct: v => `丟出的藥劑效果 ${sg(v)}${pct(v)}`,
+  opener: v => `開戰時武器先充能 ${pct(v)}`,
+  execute: v => `對生命低於 30% 的敵人傷害 +${pct(v)}`,
+  rage: v => `自己生命低於 50% 時傷害 +${pct(v)}`,
+  ramp: v => `每 5 秒攻速 +${pct(v)}（最多 5 次）`,
+  startBlock: v => `開戰時有 ${v} 護盾`,
+  double: v => `${pct(v)} 機率連擊`,
+  thornsF: v => `被打中時反彈 ${v}`,
+  critHeal: v => `暴擊時回復 ${v}`
 };
 const modTxt = m =>
   Object.entries(m)
@@ -1427,13 +1611,13 @@ function itemDesc(id, t = 1) {
     k = TIERM[t],
     out = [];
   if (it.d) return [it.d, preTxt(id, t)].filter(Boolean).join('；');
+  const o = onT(it, t);
   if (it.dmg) {
     const a = Math.round(it.dmg[0] * k),
       b = Math.round(it.dmg[1] * k);
-    out.push(`每 ${it.cd} 秒造成 ${a}～${b} 傷害${it.crit ? `（暴擊 ${it.crit}%）` : ''}`);
+    out.push(`每 ${cdT(it, t)} 秒造成 ${a}～${b} 傷害${o.crit ? `（暴擊 ${o.crit}%）` : ''}`);
   }
   if (it.on) {
-    const o = it.on;
     if (o.burn) out.push(`命中燃燒 ${o.burn} 層`);
     if (o.poison) out.push(`命中中毒 ${o.poison} 層`);
     if (o.freeze) out.push(`${o.freeze[0]}% 凍結 ${o.freeze[1]} 秒`);
@@ -1446,13 +1630,14 @@ function itemDesc(id, t = 1) {
   }
   if (it.block)
     out.push(
-      `每 ${it.cd} 秒格擋 ${Math.round(it.block * k)}${it.thorns ? `，格擋時反彈 ${it.thorns}` : ''}${it.heal ? `、回復 ${Math.round(it.heal * k)}` : ''}`
+      `每 ${cdT(it, t)} 秒格擋 ${Math.round(it.block * k)}${it.thorns ? `，格擋時反彈 ${it.thorns}` : ''}${it.heal ? `、回復 ${Math.round(it.heal * k)}` : ''}`
     );
   if (it.hp) out.push(`生命 +${Math.round(it.hp * k)}`);
   if (it.arm) out.push(`護甲 +${Math.round(it.arm * k)}`);
   if (it.dodge) out.push(`閃避 ${Math.round(it.dodge * TIERB[t])}%`);
   if (it.regen) out.push(`每秒回復 ${Math.round(it.regen * k)}`);
-  if (it.pot) out.push(`生命低於 ${it.pot[0]}% 時回復 ${Math.round(it.pot[1] * k)}（${it.pot[2]} 次）`);
+  if (it.pot)
+    out.push(`生命低於 ${it.pot[0]}% 時回復 ${Math.round(it.pot[1] * k)}（${it.pot[2] + (t === 3 ? 1 : 0)} 次）`);
   for (const [w, n] of [
     ['adj', '相鄰的'],
     ['row', '同一排的'],

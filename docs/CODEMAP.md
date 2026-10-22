@@ -22,9 +22,12 @@
 | 快照對戰（Supabase） | `js/ghost.js`、`supabase/migrations/20261022000000_serling_ghosts.sql` | `ghostRivals`（配對＋機器人補位）、`ghostBegin`、`ghostSnap`、`ghostEnd`、`GHOST.off`、開服種子 `seedGhosts`；資料表 `runs`（`seed` 欄位）／`snaps`、RPC `pick_rivals`（真人優先） |
 | 首頁、圖鑑、說明、設定 | `js/ui.js` | `render`、`homeHTML`、`codexHTML`、`helpHTML`、`settingsHTML`、`go` |
 | 準備畫面（回合列、背包、暫存區、商店、道具說明） | `js/ui.js` | `prepHTML`、`roundBarHTML`、`bagHTML`、`rivalHTML`、`detailHTML`、`tutHTML`、`cellSize` |
+| 升階倍率（0.1.10） | `js/items.js`、`js/bag.js` | `TIERM`、`TIERB`、`TIERCD`、`TIERCH`、`cdT`、`onT`（items）；`compileBag`（bag） |
+| 核心新機制（先手、處決、背水、越戰越快、護盾、連擊、反彈、暴擊回血） | `js/sim.js`、`js/bag.js` | `simSide`、`simulate` 裡的 `F.opener` 等；`compileBag` 的預設值 |
+| 對手那局打完就結算（0.1.10） | `js/run.js` | `rivalsDone`、`finishFight` |
 | 異常狀態（流血、破甲、虛弱、致盲）與戰鬥中顯示（0.1.9） | `js/sim.js`、`js/bag.js`、`js/ui.js` | `simSide`、`simulate`（`WEAK_PCT` 等常數）；`compileBag` 的武器欄位；`bSts`、`STI`、`STN`（ui） |
 | 開戰藥劑、開戰效果通用化（0.1.9） | `js/items.js`、`js/bag.js`、`js/sim.js` | `PRE_T`、`PREN`、`preKey`、`preVal`、`preTxt`；`F.throwPct` |
-| 職業核心池（0.1.9） | `js/items.js`、`js/run.js`、`js/ui.js` | `CORE_P`、`CORE_T`、`CORE_X`、`genCores`（items）；首領三選一在 `finishFight`（run）；圖鑑的核心列表在 `codexHTML`（ui） |
+| 職業核心池（0.1.9） | `js/items.js`、`js/run.js`、`js/ui.js` | `CORE_P`、`CORE_MAIN`（專屬）、`CORE_SUB`（副核心）、`genCores`（items）；首領三選一在 `finishFight`（2-5 專屬、4-4 副核心）（run）；圖鑑的核心列表在 `codexHTML`（ui） |
 | 背包升級開放回合（0.1.9） | `js/data.js`、`js/run.js` | `BAGLV` 的 `from`、`lvOpen`、`levelUp` |
 | 對手扣血、最後回合結算（0.1.8） | `js/run.js`、`js/ui.js` | `rivalHp`、`rivalAlive`、`finishFight` 的 `rv.dmg`、`finalPlace`（run）；`rivalHTML`、`resultHTML`（ui） |
 | 起手道具、Ⅲ 階詞綴、商店 Ⅱ 階（0.1.8） | `js/run.js`、`js/bag.js`、`js/data.js` | `giveStarter`、`rollShop` 的 `t`、`shopPrice`（run）；`mergeAll` 的 `m2`（bag）；`BAGLV` 的 `t2`（data） |
@@ -70,7 +73,7 @@
 
 - **utils**（6），15 個宣告
 
-### js/data.js（133 行）
+### js/data.js（134 行）
 
 - **一局**（5），18 個宣告
 
@@ -83,24 +86,24 @@
 ### js/art.js（1217 行）
 
 
-### js/items.js（1480 行）
+### js/items.js（1665 行）
 
 
-### js/bag.js（259 行）
+### js/bag.js（269 行）
 
-- **合成**（56），1 個宣告
-- **戰鬥數值**（88），4 個宣告
+- **合成**（57），1 個宣告
+- **戰鬥數值**（89），4 個宣告
 
-### js/sim.js（220 行）
+### js/sim.js（236 行）
 
 
-### js/run.js（612 行）
+### js/run.js（630 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），3 個宣告
 - **一局**（87），23 個宣告
 - **對手**（315），8 個宣告
-- **戰鬥**（371），7 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（499），4 個宣告
+- **戰鬥**（371），8 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（504），4 個宣告
 
 ### js/ghost.js（122 行）
 
@@ -115,7 +118,7 @@
 - **cloud save (Supabase)**（4），7 個宣告
 - **accounts**（104），5 個宣告
 
-### js/ui.js（1342 行）
+### js/ui.js（1344 行）
 
 - **小工具**（6），13 個宣告
 - **牌階**（60），5 個宣告

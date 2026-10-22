@@ -315,3 +315,7 @@ canvas.spr.flip{transform:scaleX(-1)}
 .cores p{margin:0 0 var(--sp-2);font-size:var(--fs-sm);color:var(--dim)}.cores b{color:var(--ink)}
 /* 0.1.9 頂部固定列改用陰影把底色往兩邊延伸（負邊距會讓版面變寬） */
 .prep>.top{margin:calc(-1 * var(--sp-3) - var(--sat)) 0 0;padding:calc(var(--sp-2) + var(--sat)) 0 var(--sp-2);box-shadow:calc(-1 * var(--sp-5)) 0 0 var(--bg-top,var(--bg)),var(--sp-5) 0 0 var(--bg-top,var(--bg)),0 1px 0 var(--line),0 6px 12px -8px #0006}
+/* 0.1.10 電腦版拖曳時不要反白選到文字與圖片 */
+#app,#modal,.ghost{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#app input,#app textarea{-webkit-user-select:text;user-select:text}
+#app img{-webkit-user-drag:none;user-drag:none}

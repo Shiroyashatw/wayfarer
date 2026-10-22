@@ -22,19 +22,19 @@ streakBonus js/data.js:17 [一局]
 BAGLV js/data.js:19 [一局]
 BAG_MAX js/data.js:31 [一局]
 ROUNDS js/data.js:34 [一局]
-RTYPE js/data.js:60 [一局]
-RSHORT js/data.js:62 [一局]
-PLACE_PTS js/data.js:64 [一局]
-RANKS js/data.js:67 [一局]
-rankOf js/data.js:71 [一局]
-rankName js/data.js:72 [一局]
-rankProg js/data.js:74 [一局]
-placed js/data.js:78 [一局]
-AVATARS js/data.js:80 [一局]
-NAME_A js/data.js:93 [一局]
-randName js/data.js:129 [一局]
-GVER js/data.js:131 [一局]
-VER js/data.js:132 [一局]
+RTYPE js/data.js:61 [一局]
+RSHORT js/data.js:63 [一局]
+PLACE_PTS js/data.js:65 [一局]
+RANKS js/data.js:68 [一局]
+rankOf js/data.js:72 [一局]
+rankName js/data.js:73 [一局]
+rankProg js/data.js:75 [一局]
+placed js/data.js:79 [一局]
+AVATARS js/data.js:81 [一局]
+NAME_A js/data.js:94 [一局]
+randName js/data.js:130 [一局]
+GVER js/data.js:132 [一局]
+VER js/data.js:133 [一局]
 SPR js/sprites.js:4 [pixel sprites (original art)]
 ICONS js/sprites.js:560 [pixel sprites (original art)]
 ICOPAL js/sprites.js:582 [pixel sprites (original art)]
@@ -86,50 +86,53 @@ CLASSES js/items.js:1069
 CLSI js/items.js:1179
 CORE_P js/items.js:1182
 onP js/items.js:1197
-CORE_T js/items.js:1198
-CORE_X js/items.js:1222
-genCores js/items.js:1256
-clsDesc js/items.js:1280
-TIER_MAX js/items.js:1296
-STARC js/items.js:1300
-priceOf js/items.js:1302
-sellOf js/items.js:1303
-shapeOf js/items.js:1305
-AFFX js/items.js:1313
-affOf js/items.js:1320
-MOD5 js/items.js:1327
-mod5Pool js/items.js:1349
-roll5 js/items.js:1355
-mod5Q js/items.js:1361
-mod5Txt js/items.js:1365
-pct js/items.js:1367
-sg js/items.js:1369
-MODN js/items.js:1370
-modTxt js/items.js:1393
-tagTxt js/items.js:1398
-PRE_T js/items.js:1401
-preKey js/items.js:1413
-preVal js/items.js:1414
-preTxt js/items.js:1421
-itemDesc js/items.js:1425
-scaleMod js/items.js:1475
+CORE_MAIN js/items.js:1199
+CORE_SUB js/items.js:1384
+genCores js/items.js:1398
+clsDesc js/items.js:1434
+TIER_MAX js/items.js:1450
+TIERCD js/items.js:1455
+cdT js/items.js:1457
+onT js/items.js:1458
+STARC js/items.js:1476
+priceOf js/items.js:1478
+sellOf js/items.js:1479
+shapeOf js/items.js:1481
+AFFX js/items.js:1489
+affOf js/items.js:1496
+MOD5 js/items.js:1503
+mod5Pool js/items.js:1525
+roll5 js/items.js:1531
+mod5Q js/items.js:1537
+mod5Txt js/items.js:1541
+pct js/items.js:1543
+sg js/items.js:1545
+MODN js/items.js:1546
+modTxt js/items.js:1577
+tagTxt js/items.js:1582
+PRE_T js/items.js:1585
+preKey js/items.js:1597
+preVal js/items.js:1598
+preTxt js/items.js:1605
+itemDesc js/items.js:1609
+scaleMod js/items.js:1660
 cellsOf js/bag.js:4
 bagGrid js/bag.js:6
 canPlace js/bag.js:12
-adjacent js/bag.js:26
-rowsOf js/bag.js:32
-sameRow js/bag.js:33
-findSpot js/bag.js:35
-synergy js/bag.js:51
-mergeAll js/bag.js:58 [合成]
-compileBag js/bag.js:90 [戰鬥數值]
-bagMods js/bag.js:201 [戰鬥數值]
-packBag js/bag.js:235 [戰鬥數值]
-unpackBag js/bag.js:241 [戰鬥數值]
+adjacent js/bag.js:27
+rowsOf js/bag.js:33
+sameRow js/bag.js:34
+findSpot js/bag.js:36
+synergy js/bag.js:52
+mergeAll js/bag.js:59 [合成]
+compileBag js/bag.js:91 [戰鬥數值]
+bagMods js/bag.js:211 [戰鬥數值]
+packBag js/bag.js:245 [戰鬥數值]
+unpackBag js/bag.js:251 [戰鬥數值]
 SIM_DT js/sim.js:4
 WEAK_PCT js/sim.js:6
 simSide js/sim.js:12
-simulate js/sim.js:34
+simulate js/sim.js:35
 mkW js/run.js:4 [野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）]
 mkF js/run.js:18 [野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）]
 MOBS js/run.js:30 [野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）]
@@ -166,15 +169,16 @@ mobOf js/run.js:356 [對手]
 eliteStars js/run.js:370 [對手]
 startFight js/run.js:373 [戰鬥]
 finishFight js/run.js:383 [戰鬥]
-nextPvpId js/run.js:444 [戰鬥]
-finalPlace js/run.js:449 [戰鬥]
-endRun js/run.js:453 [戰鬥]
-takePick js/run.js:468 [戰鬥]
-claimHold js/run.js:484 [戰鬥]
-THEMES js/run.js:500 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-botAct js/run.js:502 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-simLobby js/run.js:545 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-makeBots js/run.js:609 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+rivalsDone js/run.js:441 [戰鬥]
+nextPvpId js/run.js:449 [戰鬥]
+finalPlace js/run.js:454 [戰鬥]
+endRun js/run.js:458 [戰鬥]
+takePick js/run.js:473 [戰鬥]
+claimHold js/run.js:489 [戰鬥]
+THEMES js/run.js:505 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+botAct js/run.js:507 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+simLobby js/run.js:552 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+makeBots js/run.js:627 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
 GHOST js/ghost.js:4
 ghostOK js/ghost.js:5
 ghostFail js/ghost.js:6
@@ -271,10 +275,10 @@ showDlg js/ui.js:1113 [動作]
 placeFromBench js/ui.js:1132 [拖曳擺放]
 cellAt js/ui.js:1144 [拖曳擺放]
 inside js/ui.js:1153 [拖曳擺放]
-drawGhost js/ui.js:1229 [拖曳擺放]
-autoFit js/ui.js:1241 [拖曳擺放]
-dropEnd js/ui.js:1249 [拖曳擺放]
-dropShop js/ui.js:1303 [拖曳擺放]
+drawGhost js/ui.js:1231 [拖曳擺放]
+autoFit js/ui.js:1243 [拖曳擺放]
+dropEnd js/ui.js:1251 [拖曳擺放]
+dropShop js/ui.js:1305 [拖曳擺放]
 newGame js/main.js:4
 load js/main.js:21
 save js/main.js:29

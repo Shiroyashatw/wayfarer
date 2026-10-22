@@ -783,12 +783,12 @@ function codexHTML() {
           )
           .join('')}</div>`
     )
-    .join('')}<h3>職業核心（首領 2-5 從你的職業池三選一）</h3>${CLASSES.map(
+    .join('')}<h3>職業核心（2-5 首領掉專屬核心、4-4 首領掉副核心，都從你的職業池三選一）</h3>${CLASSES.map(
     C =>
       `<details class="more"><summary>${C.n}（${ITEMS.filter(i => i.cls === C.id).length}）</summary><div class="cores">${ITEMS.filter(
         i => i.cls === C.id
       )
-        .map(i => `<p><b>${i.n.split('・')[1]}</b>　${itemDesc(i.id)}</p>`)
+        .map(i => `<p><b>${i.core === 2 ? i.n : i.n.split('・')[1]}</b>　${itemDesc(i.id)}</p>`)
         .join('')}</div></details>`
   ).join('')}</div>`;
 }
@@ -796,12 +796,12 @@ function helpHTML() {
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
   <div class="card"><b>一局</b><p>4 位玩家一場，每人 ${START_HP} 點生命。每回合在商店買道具、擺進背包，然後自動戰鬥。輸了扣生命，歸零就淘汰；最後活下來的是第 1 名。</p></div>
   <div class="card"><b>職業</b><p>每局開打前三選一（可以刷新一次），整局都有效：例如弓箭手讓弓、弩傷害 +20%、攻速 +15%。照職業去買武器和輔助道具（箭袋、劍鞘、法術書、火藥桶、肉骨頭…），輔助道具要擺在武器旁邊或同一排才有用，背包空間要取捨。點左上角頭像可以看職業與數值。</p></div>
-  <div class="card"><b>回合</b><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完職業核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
+  <div class="card"><b>回合</b><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完專屬核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星），4-4 是首領（副核心三選一）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
   <div class="card"><b>金幣</b><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></div>
   <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×7，每一級從固定的回合起才開放，例如 3×4 要 1-3、4×4 要 2-1），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
   <div class="card"><b>合成</b><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></div>
   <div class="card"><b>相鄰效果</b><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></div>
-  <div class="card"><b>職業核心</b><p>首領（2-5）掉落的 5★ 道具，一個背包只能放 1 個，決定這局的流派（劍聖、獵手、元素使、死靈師…）。</p></div>
+  <div class="card"><b>職業核心</b><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 掉副核心（主打武器的加成）。背包裡兩種各能放 1 個。圖鑑最下面可以看全部。</p></div>
   <div class="card"><b>戰鬥</b><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></div>
   <div class="card"><b>對手</b><p>對戰的對手是其他玩家在同一回合留下的背包快照，不用等人上線。沒有真人時由機器人補位。</p></div></div>`;
 }
@@ -1020,7 +1020,7 @@ const A = {
     if (!sp)
       return toast(
         ITEMI[o.id].core && run.bag.items.some(q => ITEMI[q.id].core)
-          ? '一個背包只能放 1 個職業核心'
+          ? '專屬核心、副核心各只能放 1 個'
           : '背包放不下了，升級背包或騰出空間'
       );
     placeFromBench(run, i, sp.x, sp.y, sp.r);
@@ -1159,6 +1159,8 @@ document.addEventListener('pointerdown', ev => {
   if (!S || !S.run || S.run.phase !== 'prep' || V.scr !== 'run') return;
   const c = ev.target.closest('.prep .bag:not(.mini) .c, .bench .bs[data-bu], .shop .sc[data-sk]');
   if (!c) return;
+  /* 滑鼠拖曳：不要開始選取文字或拖出圖片（點一下的 click 照常觸發） */
+  if (ev.pointerType === 'mouse') ev.preventDefault();
   const run = S.run;
   let o, from, grab, sk;
   if (c.dataset.sk != null) {

@@ -19,7 +19,8 @@ function canPlace(bag, o, x, y, r) {
     if (u != null && u !== o.u) return false;
   }
   /* 職業核心一個背包最多一個 */
-  if (ITEMI[o.id].core && bag.items.some(q => q.u !== o.u && ITEMI[q.id].core)) return false;
+  /* 專屬核心（core 1）、副核心（core 2）各最多 1 個 */
+  if (ITEMI[o.id].core && bag.items.some(q => q.u !== o.u && ITEMI[q.id].core === ITEMI[o.id].core)) return false;
   return true;
 }
 /* 兩件是不是相鄰（上下左右） */
@@ -104,6 +105,15 @@ function compileBag(bag, extra = {}) {
       pots: [],
       pre: [],
       throwPct: 0,
+      /* 0.1.10 核心的新機制 */
+      opener: 0,
+      execute: 0,
+      rage: 0,
+      ramp: 0,
+      startBlock: 0,
+      double: 0,
+      thornsF: 0,
+      critHeal: 0,
       ...extra
     };
   const cnt = tag => its.filter(o => ITEMI[o.id].tags.includes(tag)).length;
@@ -160,17 +170,17 @@ function compileBag(bag, extra = {}) {
         boost = I.tags.includes('potion') && F.throwPct ? 1 + F.throwPct / 100 : 1;
       F.pre.push({ u: o.u, k, v: k === 'down' ? 1 : Math.round(preVal(o.id, o.t) * boost) });
     }
-    if (I.pot) F.pots.push({ u: o.u, at: I.pot[0], v: Math.round(I.pot[1] * k), n: I.pot[2] });
+    if (I.pot) F.pots.push({ u: o.u, at: I.pot[0], v: Math.round(I.pot[1] * k), n: I.pot[2] + (o.t === 3 ? 1 : 0) });
     if (I.block)
       F.shields.push({
         u: o.u,
-        cd: Math.max(0.6, I.cd / (1 + (m.spd || 0) / 100)),
+        cd: Math.max(0.6, cdT(I, o.t) / (1 + (m.spd || 0) / 100)),
         block: Math.round((I.block * k + (m.block || 0)) * (1 + (m.blockPct || 0) / 100)),
         thorns: Math.round((I.thorns || 0) * k),
         heal: Math.round((I.heal || 0) * k)
       });
     else if (I.dmg) {
-      const on = I.on || {},
+      const on = onT(I, o.t),
         mul = 1 + (m.dmgPct || 0) / 100;
       F.weapons.push({
         u: o.u,
@@ -178,9 +188,9 @@ function compileBag(bag, extra = {}) {
         t: o.t,
         pet: I.tags.includes('pet'),
         el: ['fire', 'cold', 'light', 'poison', 'dark'].find(t => I.tags.includes(t)) || 'phys',
-        cd: Math.max(0.4, I.cd / (1 + (m.spd || 0) / 100)),
+        cd: Math.max(0.4, cdT(I, o.t) / (1 + (m.spd || 0) / 100)),
         dmg: [Math.round((I.dmg[0] * k + (m.dmg || 0)) * mul), Math.round((I.dmg[1] * k + (m.dmg || 0)) * mul)],
-        crit: (I.crit || 0) + (m.crit || 0),
+        crit: on.crit + (m.crit || 0),
         burn: (on.burn || 0) + (m.burn || 0),
         poison: (on.poison || 0) + (m.poison || 0),
         freeze: [(on.freeze ? on.freeze[0] : 0) + (m.freezeCh || 0), on.freeze ? on.freeze[1] : 0.8],

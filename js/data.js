@@ -3,7 +3,7 @@
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 const KEY = 'serling_v1' + (SLOT ? '_p' + SLOT : '');
 /* ================= 一局 ================= */
-const START_HP = 20, // 生命
+const START_HP = 40, // 生命（0.1.10 從 20 加到 40，build 有時間成形）
   START_GOLD = 10, // 1-1 開打前的金幣（商店 5 件 1★）
   BASE_INCOME = 5, // 每回合基礎收入
   INTEREST_MAX = 5, // 利息上限（每 10 金 +1）
@@ -48,7 +48,8 @@ const ROUNDS = (() => {
   add(3, 4, 'elite', 3);
   [5, 6].forEach(i => add(3, i, 'pvp', 4));
   [1, 2, 3].forEach(i => add(4, i, 'pvp', 4));
-  add(4, 4, 'elite', 4);
+  /* 0.1.10 4-4 改成首領：打完副核心三選一（2-5 是專屬核心） */
+  add(4, 4, 'boss', 4);
   [5, 6, 7].forEach(i => add(4, i, 'pvp', 5));
   for (let st = 5; st <= 8; st++) {
     [1, 2, 3].forEach(i => add(st, i, 'pvp', 6));
@@ -128,5 +129,5 @@ const NAME_A = [
   ];
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
-const GVER = 's7';
-const VER = '0.1.9';
+const GVER = 's8';
+const VER = '0.1.10';

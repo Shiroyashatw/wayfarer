@@ -322,7 +322,7 @@ function rivalSnap(rv, rid) {
   for (let k = ri - 1; k >= 0; k--) if (s[ROUNDS[k].id]) return s[ROUNDS[k].id];
   return undefined;
 }
-/* 0.1.8 對手的生命：快照的生命再扣掉「你打贏他」造成的傷害（不然第 1 名的快照永遠不會死，打到最後一回合都分不出勝負） */
+/* 對手的生命：照他自己那局的快照（0.1.8 曾經加上「你打贏他」的傷害，0.1.10 改成對手那局打完就直接結算） */
 const rivalHp = (rv, rid) => {
   const sn = rivalSnap(rv, rid);
   return sn ? Math.max(0, sn.hp - (rv.dmg || 0)) : 0;
@@ -358,7 +358,7 @@ function mobOf(run, r) {
     const m = pick(run, MOBS[r.id]);
     return { n: m.n, spr: m.spr, F: m.F() };
   }
-  const m = pick(run, r.type === 'elite' ? ELITE_POOL(r.st) : MOBS['1-3']),
+  const m = pick(run, r.type === 'boss' ? MOBS['2-5'] : r.type === 'elite' ? ELITE_POOL(r.st) : MOBS['1-3']),
     k = r.st <= 2 ? 1.3 : 0.9 + 0.55 * (r.st - 1),
     F = m.F();
   F.hp = Math.round(F.hp * k);
@@ -387,14 +387,6 @@ function finishFight(run, fb) {
     run.ws++;
     run.lsk = 0;
     out.gold = r.type === 'pve' ? 2 : 1;
-    /* 打贏對手：他那局已經打完（第 1 名，沿用最後的快照）就換他扣血，不然生命永遠不變、一直打到最後一回合。
-       他那局還在進行的話，他的生命照他自己的快照走（本來就會扣，再扣一次對手會死太快） */
-    const rv = opp.kind === 'pvp' && run.rivals[opp.rv];
-    if (rv && !(rv.snaps || {})[r.id]) {
-      rv.dmg = (rv.dmg || 0) + r.loss;
-      out.hit = r.loss;
-      out.ko = !rivalAlive(rv, r.id);
-    }
   } else {
     run.lsk++;
     run.ws = 0;
@@ -421,24 +413,37 @@ function finishFight(run, fb) {
     };
   }
   if (r.type === 'boss') {
-    /* 0.1.9 從自己職業的核心池抽（沒有職業的舊局才從全部抽） */
-    const cs = ITEMS.filter(i => i.core && (!run.bag.cls || i.cls === run.bag.cls)).map(i => i.id),
+    /* 0.1.10 2-5 抽自己職業的專屬核心、4-4 抽副核心 */
+    const kind = r.st <= 2 ? 1 : 2,
+      cs = ITEMS.filter(i => i.core === kind && (!run.bag.cls || i.cls === run.bag.cls)).map(i => i.id),
       o = [];
     while (o.length < 3) {
       const c = pick(run, cs);
       if (!o.includes(c)) o.push(c);
     }
-    run.pend = { kind: 'pick', t: '首領掉落了職業核心：選一個', opts: o };
+    run.pend = { kind: 'pick', t: kind === 1 ? '首領掉落了專屬核心：選一個' : '首領掉落了副核心：選一個', opts: o };
   }
   if (run.hp <= 0) {
     run.hp = 0;
     endRun(run, 1 + aliveRivals(run).length);
   } else {
     /* 下一場對戰時對手都淘汰了：第 1 名 */
+    /* 0.1.10 還活著的對手那局都打完了（只剩第 1 名、沿用最後的快照）：直接照剩下的生命結算。
+       不然你一直打他凍結的快照（他不會再變強），越後面越穩贏，名次會偏向玩家 */
     const np = nextPvpId(run);
     if (np && !run.rivals.some(rv => rivalAlive(rv, np))) endRun(run, 1);
+    else if (rivalsDone(run))
+      endRun(run, 1 + run.rivals.filter(rv => rivalAlive(rv, r.id) && rivalHp(rv, r.id) > run.hp).length);
   }
   return out;
+}
+/* 還活著的對手下一回合都沒有自己的快照了（他們那局已經打完） */
+function rivalsDone(run) {
+  const r = curRound(run),
+    nx = ROUNDS[run.ri + 1];
+  if (!nx) return false;
+  const al = run.rivals.filter(rv => rivalAlive(rv, r.id));
+  return al.length > 0 && al.every(rv => !(rv.snaps || {})[nx.id]);
 }
 /* 下一個有對戰的回合（看對手還在不在） */
 function nextPvpId(run) {
@@ -518,8 +523,10 @@ function botAct(run, theme, q = 0.7) {
   }
   if (run.pend) takePick(run, run.pend.opts[0]);
   /* 職業核心放不下：賣掉背包裡最便宜的道具騰空間 */
-  const core = run.bench.find(o => o && ITEMI[o.id].core);
-  if (core && !run.bag.items.some(o => ITEMI[o.id].core))
+  const core = run.bench.find(
+    o => o && ITEMI[o.id].core && !run.bag.items.some(q => ITEMI[q.id].core === ITEMI[o.id].core)
+  );
+  if (core)
     for (let g = 0; g < 4 && !findSpot(run.bag, core); g++) {
       const low = [...run.bag.items].sort((a, b) => ITEMI[a.id].star * a.t - ITEMI[b.id].star * b.t)[0];
       if (!low || ITEMI[low.id].star >= 4) break;
@@ -588,11 +595,22 @@ function simLobby(seed, rating) {
         F = compileBag(o.run.bag);
       } else F = mobOf(run, r).F;
       const res = simulate(compileBag(run.bag), F, h(seed, k, i));
-      if (!res.win) run.hp -= r.loss;
+      /* 0.1.10 跟玩家一樣的經濟：打贏拿金幣、連勝連敗（之前沒算，機器人的背包比玩家窮、快照偏弱） */
+      if (res.win) {
+        run.ws++;
+        run.lsk = 0;
+        run.gold += r.type === 'pve' ? 2 : 1;
+      } else {
+        run.lsk++;
+        run.ws = 0;
+        run.hp -= r.loss;
+      }
       if (r.type === 'elite' || r.type === 'boss') {
         const [a, c] = eliteStars(r.st),
           pool = ITEMS.filter(it =>
-            r.type === 'boss' ? it.core && it.cls === run.bag.cls : !it.core && it.star >= a && it.star <= c
+            r.type === 'boss'
+              ? it.core === (r.st <= 2 ? 1 : 2) && it.cls === run.bag.cls
+              : !it.core && it.star >= a && it.star <= c
           );
         /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了） */
         takePick(run, pick(run, pool).id);

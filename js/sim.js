@@ -14,7 +14,7 @@ function simSide(F) {
     F,
     hp: F.hp,
     max: F.hp,
-    block: 0,
+    block: F.startBlock || 0,
     burn: 0,
     poison: 0,
     frozen: 0,
@@ -24,7 +24,8 @@ function simSide(F) {
     sunder: 0,
     weak: 0,
     blind: 0,
-    w: F.weapons.map((w, i) => ({ ...w, i, tt: w.cd * 0.25 })),
+    /* 0.1.10 先手（opener）：開戰時武器已經充能幾 % */
+    w: F.weapons.map((w, i) => ({ ...w, i, tt: w.cd * Math.max(0.25, Math.min(0.99, (F.opener || 0) / 100)) })),
     s: F.shields.map((s, i) => ({ ...s, i, tt: s.cd * 0.5 })),
     pots: F.pots.map(p => ({ ...p })),
     dmgDone: 0
@@ -65,6 +66,9 @@ function simulate(FA, FB, seed) {
     const crit = r() * 100 < w.crit;
     if (crit) v *= a.F.critMul / 100;
     if (a.weak > 0) v *= 1 - WEAK_PCT / 100;
+    /* 0.1.10 處決（敵人生命低於 30%）、背水（自己生命低於 50%） */
+    if (a.F.execute && d.hp < d.max * 0.3) v *= 1 + a.F.execute / 100;
+    if (a.F.rage && a.hp < a.max * 0.5) v *= 1 + a.F.rage / 100;
     v *= 50 / (50 + Math.max(-20, d.F.arm - d.sunder));
     v *= 1 + d.F.take / 100;
     let ab = 0;
@@ -76,6 +80,15 @@ function simulate(FA, FB, seed) {
     v = Math.max(ab > 0 ? 0 : 1, v);
     hurt(t, v, d, ai, crit ? 'crit' : 'hit', { u: w.u, ab: Math.round(ab), el: w.el });
     a.dmgDone += v;
+    /* 0.1.10 暴擊回血、被打中反彈 */
+    if (crit && a.F.critHeal && a.hp > 0) {
+      const h = Math.min(a.max - a.hp, a.F.critHeal);
+      if (h > 0) {
+        a.hp += h;
+        log(t, ai, 'heal', Math.round(h), { self: 1 });
+      }
+    }
+    if (d.F.thornsF && v > 0) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {});
     /* 格擋時反彈 */
     if (ab > 0) {
       const th = d.s.reduce((n, s) => n + s.thorns, 0);
@@ -148,7 +161,8 @@ function simulate(FA, FB, seed) {
         a.stun -= SIM_DT;
         continue;
       }
-      const rate = a.frozen > 0 ? 0.5 : 1;
+      /* 0.1.10 越戰越快（ramp）：每 5 秒攻速 +N%，最多 5 次 */
+      const rate = (a.frozen > 0 ? 0.5 : 1) * (1 + (Math.min(5, fl(t / 5)) * (a.F.ramp || 0)) / 100);
       if (a.frozen > 0) a.frozen -= SIM_DT;
       for (const w of a.w) {
         if (w.seal > 0) {
@@ -159,6 +173,8 @@ function simulate(FA, FB, seed) {
         if (w.tt >= w.cd) {
           w.tt -= w.cd;
           attack(t, a, i, w);
+          /* 0.1.10 連擊：有機率馬上再打一次 */
+          if (a.F.double && S[1 - i].hp > 0 && r() * 100 < a.F.double) attack(t, a, i, w);
         }
       }
       for (const s of a.s) {
