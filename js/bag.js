@@ -76,6 +76,11 @@ function mergeAll(run, r) {
     /* 5★ 合成：留三件裡開得最好的那條詞綴 */
     const ms = use.map(([, q]) => q.m).filter(Boolean);
     if (ms.length) o.m = ms.sort((x, y) => mod5Q(y) - mod5Q(x))[0];
+    /* 0.1.8 升到 Ⅲ 階也開一條隨機詞綴（5★ 已經有一條的話就是第二條） */
+    if (o.t === TIER_MAX) {
+      if (!o.m) (o.m = roll5(o.id, r)), (o.mv = 0);
+      else if (!o.m2) (o.m2 = roll5(o.id, r)), (o.mv2 = 0);
+    }
     done.push(o);
   }
   return done;
@@ -127,11 +132,12 @@ function compileBag(bag, extra = {}) {
       else add(s, { [a.k]: a.v });
     }
     /* 0.1.5 5★ 的隨機詞綴 */
-    if (s.m && MOD5[s.m[0]]) {
-      const x = MOD5[s.m[0]];
-      if (x.F) F[x.k] += s.m[1];
-      else add(s, { [x.k]: s.m[1] });
-    }
+    for (const mm of [s.m, s.m2])
+      if (mm && MOD5[mm[0]]) {
+        const x = MOD5[mm[0]];
+        if (x.F) F[x.k] += mm[1];
+        else add(s, { [x.k]: mm[1] });
+      }
   }
   /* 0.1.7 開局職業：對有那個標籤的道具加成、角色加成 */
   const C = CLSI[bag.cls];
@@ -220,7 +226,7 @@ const packBag = bag => ({
   w: bag.w,
   h: bag.h,
   cls: bag.cls || null,
-  it: bag.items.map(o => [o.id, o.t, o.x, o.y, o.r, o.a || 0, ...(o.m ? [o.m] : [])])
+  it: bag.items.map(o => [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0, ...(o.m2 ? [o.m2] : [])])
 });
 const unpackBag = p => ({
   w: p.w,
@@ -228,5 +234,15 @@ const unpackBag = p => ({
   cls: p.cls || null,
   items: (p.it || [])
     .filter(a => ITEMI[a[0]])
-    .map((a, i) => ({ u: 'g' + i, id: a[0], t: a[1], x: a[2], y: a[3], r: a[4], a: a[5] || null, m: a[6] || null }))
+    .map((a, i) => ({
+      u: 'g' + i,
+      id: a[0],
+      t: a[1],
+      x: a[2],
+      y: a[3],
+      r: a[4],
+      a: a[5] || null,
+      m: a[6] || null,
+      m2: a[7] || null
+    }))
 });

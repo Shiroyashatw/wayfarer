@@ -15,16 +15,18 @@ const START_HP = 20, // 生命
   MAX_T = 60; // 戰鬥最長秒數
 /* 連勝／連敗獎勵：2 連 +1、4 連 +2、6 連以上 +3 */
 const streakBonus = n => (n >= 6 ? 3 : n >= 4 ? 2 : n >= 2 ? 1 : 0);
-/* 背包等級：大小、升級花費、商店機率（1★～5★，%） */
+/* 背包等級：大小、升級花費、商店機率（1★～5★，%）、t2：商店直接出 Ⅱ 階的機率（%） */
 const BAGLV = [
   null,
   { w: 3, h: 3, cost: 0, odds: [100, 0, 0, 0, 0] },
   { w: 3, h: 4, cost: 4, odds: [75, 25, 0, 0, 0] },
   { w: 4, h: 4, cost: 6, odds: [55, 35, 10, 0, 0] },
   { w: 4, h: 5, cost: 10, odds: [40, 35, 20, 5, 0] },
-  { w: 5, h: 5, cost: 14, odds: [25, 35, 28, 10, 2] },
-  { w: 5, h: 6, cost: 20, odds: [15, 30, 30, 20, 5] },
-  { w: 6, h: 6, cost: 26, odds: [10, 25, 30, 25, 10] }
+  { w: 5, h: 5, cost: 14, odds: [25, 35, 28, 10, 2], t2: 5 },
+  { w: 5, h: 6, cost: 20, odds: [15, 30, 30, 20, 5], t2: 10 },
+  { w: 6, h: 6, cost: 26, odds: [10, 25, 30, 25, 10], t2: 18 },
+  /* 0.1.8 後期還能成長：再大一級、商店更常出高星與直接 Ⅱ 階 */
+  { w: 6, h: 7, cost: 34, odds: [5, 15, 30, 30, 20], t2: 28 }
 ];
 const BAG_MAX = BAGLV.length - 1;
 /* 回合表（前短後長）：pve 野怪、elite 菁英、boss 首領、pvp 打對手快照；loss 是輸了扣的生命。
@@ -126,5 +128,5 @@ const NAME_A = [
   ];
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
-const GVER = 's5';
-const VER = '0.1.7';
+const GVER = 's6';
+const VER = '0.1.8';

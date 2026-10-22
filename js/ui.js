@@ -255,7 +255,9 @@ function rivalHTML(run) {
         now = Math.max(-1, ...ids.filter(k => k <= run.ri)),
         sn = now >= 0 ? rv.snaps[ROUNDS[now].id] : null,
         out = last < run.ri && rv.place !== 1,
-        hp = out ? 0 : sn ? sn.hp : START_HP;
+        hp = out ? 0 : Math.max(0, (sn ? sn.hp : START_HP) - (rv.dmg || 0));
+      if (hp <= 0)
+        return `<div class="rv out">${sprCv('a_' + rv.av)}<span><b>${esc(rv.name)}</b><i class="hpb"><i style="width:0"></i></i><small>淘汰</small></span></div>`;
       return `<div class="rv${out ? ' out' : ''}${i === nx ? ' nx' : ''}">${sprCv('a_' + rv.av)}<span><b>${esc(rv.name)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>${out ? '淘汰' : '♥ ' + hp}</small></span></div>`;
     })
     .join('')}</div>`;
@@ -369,7 +371,7 @@ function prepHTML(run) {
     <div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
-          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${shapeMini(s.id)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < shopPrice(run, s.id) ? 'c-bad' : ''}">${shopPrice(run, s.id)} 金</b></button>`
+          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${shapeMini(s.id)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < shopPrice(run, s.id, s.t) ? 'c-bad' : ''}">${shopPrice(run, s.id, s.t)} 金</b></button>`
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
@@ -387,7 +389,7 @@ function detailHTML(run) {
     k = +V.sel.slice(4);
     const s = run.shop[k];
     if (!s) return '';
-    o = { id: s.id, t: 1 };
+    o = { id: s.id, t: s.t || 1 };
     where = 'shop';
   } else {
     o = run.bag.items.find(q => q.u === V.sel);
@@ -409,10 +411,10 @@ function detailHTML(run) {
         .map(t => TAGN[t])
         .join('・') || '道具';
   return `<div class="det" id="det"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${Object.keys(tot).length ? `<p class="c-good">目前加成：${modTxt(tot)}</p>` : ''}
+    <p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${Object.keys(tot).length ? `<p class="c-good">目前加成：${modTxt(tot)}</p>` : ''}
     <div class="btns">${
       where === 'shop'
-        ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < shopPrice(run, o.id) ? 'disabled' : ''}>買 ${shopPrice(run, o.id)} 金</button>`
+        ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < shopPrice(run, o.id, o.t) ? 'disabled' : ''}>買 ${shopPrice(run, o.id, o.t)} 金</button>`
         : `${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellOf(o.id, o.t)} 金</button>`
     }</div></div>`;
 }
@@ -424,10 +426,11 @@ function mod5HTML(m) {
 }
 /* 剛拿到的 5★ 道具：開獎畫面（看過就標 mv） */
 function revealHTML(run) {
-  const o = [...run.bag.items, ...run.bench].find(q => q && q.m && !q.mv);
+  const o = [...run.bag.items, ...run.bench].find(q => q && ((q.m && !q.mv) || (q.m2 && !q.mv2)));
   if (!o) return '';
-  const q = mod5Q(o.m);
-  return `<div class="ovl"><div class="dlg2 reveal"><b>開出詞綴！</b><img src="${itemIcon(o.id)}" alt=""><b style="color:${STARC[5]}">${ITEMI[o.id].n}${tierTxt(o.t)}</b>${mod5HTML(o.m)}<p class="c-dim">${q >= 0.8 ? '極品！接近上限' : q >= 0.4 ? '還不錯' : '普普通通'}</p><button class="btn pri" data-act="seen5" data-k="${o.u}">收下</button></div></div>`;
+  const m = o.m2 && !o.mv2 && o.mv ? o.m2 : o.m,
+    q = mod5Q(m);
+  return `<div class="ovl"><div class="dlg2 reveal"><b>開出詞綴！</b><img src="${itemIcon(o.id)}" alt=""><b style="color:${STARC[ITEMI[o.id].star]}">${ITEMI[o.id].n}${tierTxt(o.t)}</b>${mod5HTML(m)}<p class="c-dim">${q >= 0.8 ? '極品！接近上限' : q >= 0.4 ? '還不錯' : '普普通通'}</p><button class="btn pri" data-act="seen5" data-k="${o.u}">收下</button></div></div>`;
 }
 /* 0.1.5 角色數值：整個背包算出來的戰鬥數值（跟戰鬥用的是同一份 compileBag） */
 function statsHTML(run) {
@@ -465,7 +468,7 @@ function statsHTML(run) {
 /* ================= 結算、三選一、一局結束 ================= */
 function resultHTML(run) {
   const l = run.last;
-  return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金</p>` : ''}<button class="btn pri" data-act="afterRes">繼續</button></div></div>`;
+  return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.hit ? `<p class="c-good">${l.ko ? '對手淘汰！' : `對手生命 -${l.hit}`}</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金</p>` : ''}<button class="btn pri" data-act="afterRes">繼續</button></div></div>`;
 }
 function pickHTML(run) {
   const p = run.pend;
@@ -690,7 +693,14 @@ function bEnd() {
   const run = S.run,
     out = finishFight(run, B.fb);
   snd(out.win ? 'win' : 'lose');
-  run.last = { win: out.win, loss: out.loss, gold: out.gold, opp: (out.win ? '打贏了 ' : '輸給了 ') + B.fb.opp.n };
+  run.last = {
+    win: out.win,
+    loss: out.loss,
+    gold: out.gold,
+    hit: out.hit,
+    ko: out.ko,
+    opp: (out.win ? '打贏了 ' : '輸給了 ') + B.fb.opp.n
+  };
   run.after = run.phase === 'end' ? 'end' : run.pend ? 'pick' : 'next';
   run.fight = null;
   run.phase = 'result';
@@ -808,7 +818,10 @@ const A = {
   stats: () => showDlg('角色數值', statsHTML(S.run), []),
   seen5: d => {
     const o = [...S.run.bag.items, ...S.run.bench].find(q => q && q.u === d.k);
-    if (o) o.mv = 1;
+    if (o) {
+      if (o.m && !o.mv) o.mv = 1;
+      else o.mv2 = 1;
+    }
     save();
     render();
   },
@@ -859,8 +872,10 @@ const A = {
     if (run.phase !== 'cls') return;
     run.bag.cls = d.k;
     run.phase = 'prep';
+    /* 0.1.8 送一件對應職業的 1★ 起手道具（放進暫存區） */
+    const g = giveStarter(run);
     snd('level');
-    toast(`職業：${CLSI[d.k].n}`);
+    toast(`職業：${CLSI[d.k].n}${g ? `，送你一件${ITEMI[g].n}` : ''}`);
     save();
     render();
   },
@@ -1086,7 +1101,7 @@ document.addEventListener('pointerdown', ev => {
     /* 0.1.1 商店的道具也能直接拖 */
     from = 'shop';
     sk = +c.dataset.sk;
-    o = { u: 'shop' + sk, id: run.shop[sk].id, t: 1, r: 0, x: 0, y: 0 };
+    o = { u: 'shop' + sk, id: run.shop[sk].id, t: run.shop[sk].t || 1, r: 0, x: 0, y: 0 };
     grab = shapeOf(o.id, 0)[0];
   } else if (c.dataset.bu) {
     from = 'bench';
@@ -1229,7 +1244,7 @@ function dropShop(run, d, ev) {
     res = buyToBag(run, d.sk, d.tgt[0], d.tgt[1], d.ok ? d.r : d.o.r, d.swap && d.swap.B);
   else if (
     inside($('bench'), ev.clientX, ev.clientY) ||
-    (d.tgt && run.shop[d.sk] && wouldMerge(run, run.shop[d.sk].id))
+    (d.tgt && run.shop[d.sk] && wouldMerge(run, run.shop[d.sk].id, run.shop[d.sk].t || 1))
   )
     res = buyItem(run, d.sk);
   else if (d.tgt) {

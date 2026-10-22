@@ -236,6 +236,164 @@ const ITEMS = [
     pre: { down: 1 },
     ic: 'sk_thunderstorm'
   },
+  /* ---------- 0.1.8 職業的 1★ 起手武器（選完職業送一把） ---------- */
+  {
+    id: 'woodspear',
+    n: '竹槍',
+    star: 1,
+    sh: 'v3',
+    tags: ['weapon', 'spear'],
+    cd: 1.6,
+    dmg: [2, 4],
+    ic: 'gear_weapon_19'
+  },
+  {
+    id: 'emberwand',
+    n: '火苗短杖',
+    star: 1,
+    sh: 'v2',
+    tags: ['weapon', 'staff', 'fire'],
+    cd: 1.6,
+    dmg: [1, 3],
+    on: { burn: 1 },
+    ic: 'gear_weapon_31'
+  },
+  {
+    id: 'frostwand',
+    n: '霜木杖',
+    star: 1,
+    sh: 'v2',
+    tags: ['weapon', 'staff', 'cold'],
+    cd: 1.7,
+    dmg: [2, 3],
+    on: { freeze: [15, 0.8] },
+    ic: 'sk_ice'
+  },
+  {
+    id: 'sparkrod',
+    n: '電擊棒',
+    star: 1,
+    sh: 'v2',
+    tags: ['weapon', 'mace', 'light'],
+    cd: 1.5,
+    dmg: [2, 3],
+    on: { stun: [10, 0.4] },
+    ic: 'unit_tesla'
+  },
+  {
+    id: 'needle',
+    n: '毒針',
+    star: 1,
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'poison'],
+    cd: 1.2,
+    dmg: [1, 1],
+    on: { poison: 1 },
+    ic: 'gear_weapon_18'
+  },
+  /* ---------- 0.1.8 各系的 5★ ---------- */
+  {
+    id: 'excalibur',
+    n: '王者之劍',
+    star: 5,
+    sh: 'v3',
+    tags: ['weapon', 'sword', 'holy'],
+    cd: 1.4,
+    dmg: [14, 20],
+    crit: 20,
+    ic: 'gear_weapon_20'
+  },
+  {
+    id: 'sunbow',
+    n: '落日神弓',
+    star: 5,
+    sh: 'v3',
+    tags: ['weapon', 'bow', 'fire'],
+    cd: 1.1,
+    dmg: [10, 15],
+    crit: 15,
+    on: { burn: 2 },
+    ic: 'gear_weapon_25'
+  },
+  {
+    id: 'stormxbow',
+    n: '暴風連弩',
+    star: 5,
+    sh: 'h2',
+    tags: ['weapon', 'xbow'],
+    cd: 0.7,
+    dmg: [5, 8],
+    crit: 10,
+    ic: 'gear_weapon_26'
+  },
+  {
+    id: 'shadowclaw',
+    n: '影爪',
+    star: 5,
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'dark'],
+    cd: 0.7,
+    dmg: [5, 8],
+    crit: 25,
+    on: { poison: 1, ls: 10 },
+    ic: 'gear_weapon_14'
+  },
+  {
+    id: 'archstaff',
+    n: '大賢者法杖',
+    star: 5,
+    sh: 'v3',
+    tags: ['weapon', 'staff', 'fire', 'cold'],
+    cd: 1.8,
+    dmg: [10, 15],
+    on: { burn: 3, freeze: [25, 1] },
+    ic: 'sk_staffstrike'
+  },
+  {
+    id: 'plaguestaff',
+    n: '瘟疫法杖',
+    star: 5,
+    sh: 'v3',
+    tags: ['weapon', 'staff', 'poison'],
+    cd: 1.2,
+    dmg: [4, 6],
+    on: { poison: 4 },
+    ic: 'sk_contagion'
+  },
+  {
+    id: 'worldhammer',
+    n: '碎界戰鎚',
+    star: 5,
+    sh: 'sq',
+    tags: ['weapon', 'mace'],
+    cd: 2.4,
+    dmg: [24, 34],
+    on: { stun: [25, 1] },
+    ic: 'gear_weapon_7'
+  },
+  {
+    id: 'demonaxe',
+    n: '魔斧',
+    star: 5,
+    sh: 'l3',
+    tags: ['weapon', 'axe', 'dark'],
+    cd: 1.9,
+    dmg: [18, 26],
+    on: { ls: 15 },
+    ic: 'gear_weapon_6'
+  },
+  {
+    id: 'dragonlance',
+    n: '龍騎槍',
+    star: 5,
+    sh: 'v3',
+    tags: ['weapon', 'spear', 'fire'],
+    cd: 1.5,
+    dmg: [14, 20],
+    crit: 15,
+    on: { burn: 1 },
+    ic: 'sk_dragonspear'
+  },
   /* ---------- 防具與盾 ---------- */
   { id: 'leathercap', n: '皮帽', star: 1, sh: 's1', tags: ['armor'], hp: 12, arm: 1, ic: 'gear_helm_0' },
   { id: 'leatherarmor', n: '皮甲', star: 1, sh: 'sq', tags: ['armor'], hp: 30, ic: 'gear_chest_0' },
@@ -253,7 +411,7 @@ const ITEMS = [
     cd: 3,
     block: 12,
     thorns: 3,
-    ic: 'gear_offhand_10'
+    ic: 'gear_offhand_12'
   },
   {
     id: 'paladinshield',
@@ -266,6 +424,20 @@ const ITEMS = [
     heal: 3,
     pre: { seal: 5 },
     ic: 'gear_offhand_9'
+  },
+  /* ---------- 0.1.8 防具、盾的 5★ ---------- */
+  { id: 'dragonmail', n: '龍鱗甲', star: 5, sh: 'sq', tags: ['armor', 'fire'], hp: 110, arm: 8, ic: 'gear_chest_10' },
+  {
+    id: 'aegis',
+    n: '神盾',
+    star: 5,
+    sh: 'sq',
+    tags: ['shield', 'holy'],
+    cd: 2.2,
+    block: 30,
+    thorns: 6,
+    heal: 5,
+    ic: 'gear_offhand_8'
   },
   /* ---------- 飾品（相鄰加成；天賦都變成這些） ---------- */
   {
@@ -284,7 +456,7 @@ const ITEMS = [
     sh: 's1',
     tags: ['trinket'],
     all: [{ tag: 'weapon', crit: 4 }],
-    ic: 'sup_sp_crit'
+    ic: 'gear_amulet_1'
   },
   {
     id: 'fireorb',
@@ -315,7 +487,7 @@ const ITEMS = [
   },
   {
     id: 'wardrum',
-    n: '戰鼓',
+    n: '戰號角',
     star: 2,
     sh: 'h2',
     tags: ['trinket'],
@@ -388,44 +560,44 @@ const ITEMS = [
   },
   {
     id: 'sheath',
-    n: '劍鞘',
+    n: '劍帶',
     star: 2,
     sh: 's1',
     tags: ['trinket'],
     for: 'sword',
     adj: [{ tag: 'sword', crit: 12, dmg: 1 }],
-    ic: 'sk_iai'
+    ic: 'gear_belt_4'
   },
   {
     id: 'anvil',
-    n: '鐵砧',
+    n: '重擊護符',
     star: 4,
     sh: 'sq',
     tags: ['trinket'],
     for: 'mace',
     adj: [{ tag: 'weapon', dmgPct: 30, spd: -10 }],
-    ic: 'sk_power'
+    ic: 'sk_groundslam'
   },
   {
     id: 'cloak',
-    n: '暗影斗篷',
+    n: '暗影兜帽',
     star: 3,
     sh: 'h2',
     tags: ['trinket'],
     for: 'dagger',
     fx: { dodge: 8 },
     adj: [{ tag: 'dagger', crit: 10 }],
-    ic: 'sk_smokebomb'
+    ic: 'gear_helm_2'
   },
   {
     id: 'spellbook',
-    n: '法術書',
+    n: '法術卷軸',
     star: 3,
     sh: 'h2',
     tags: ['trinket'],
     for: 'staff',
     row: [{ tag: 'staff', dmgPct: 25 }],
-    ic: 'sk_mantra'
+    ic: 'sk_exorcise'
   },
   {
     id: 'powder',
@@ -445,7 +617,7 @@ const ITEMS = [
     tags: ['trinket'],
     for: 'cold',
     row: [{ tag: 'cold', freezeCh: 10 }],
-    ic: 'sk_iceshard'
+    ic: 'mat_tablet'
   },
   {
     id: 'thunderstone',
@@ -472,13 +644,13 @@ const ITEMS = [
   },
   {
     id: 'bone',
-    n: '肉骨頭',
+    n: '獸牙項鍊',
     star: 1,
     sh: 's1',
     tags: ['trinket'],
     for: 'pet',
     adj: [{ tag: 'pet', dmg: 2, spd: 10 }],
-    ic: 'sk_bonecrush'
+    ic: 'gear_amulet_6'
   },
   {
     id: 'beasttotem',
@@ -517,23 +689,33 @@ const ITEMS = [
     sh: 's1',
     tags: ['trinket'],
     adj: [{ tag: 'weapon', spd: 15 }],
-    ic: 'sk_haste'
+    ic: 'sk_meditate'
   },
   {
     id: 'cauldron',
-    n: '鍊金壺',
+    n: '鍊金燒瓶',
     star: 3,
     sh: 'sq',
     tags: ['trinket'],
     for: 'potion',
     fx: { potMul: 40, potUse: 1 },
-    ic: 'sup_sp_eff'
+    ic: 'cur_alch'
   },
-  { id: 'purse', n: '錢袋', star: 2, sh: 's1', tags: ['trinket'], gold: 1, ic: 'cur_regal' },
+  { id: 'purse', n: '錢袋', star: 2, sh: 's1', tags: ['trinket'], gold: 1, ic: 'mat_gold' },
+  {
+    id: 'kingcrown',
+    n: '王者之冠',
+    star: 5,
+    sh: 's1',
+    tags: ['trinket'],
+    all: [{ tag: 'weapon', dmgPct: 15, spd: 10 }],
+    ic: 'gear_helm_4'
+  },
   /* ---------- 藥水 ---------- */
   { id: 'potion', n: '生命藥水', star: 1, sh: 's1', tags: ['potion'], pot: [50, 20, 1], ic: 'p:ic_potion' },
   { id: 'herb', n: '再生花', star: 2, sh: 's1', tags: ['potion'], regen: 1, ic: 'sk_regenaura' },
   { id: 'bigpotion', n: '大生命藥水', star: 3, sh: 'v2', tags: ['potion'], pot: [40, 45, 1], ic: 'sk_heal' },
+  { id: 'elixir', n: '萬靈藥', star: 5, sh: 's1', tags: ['potion'], pot: [50, 70, 2], regen: 2, ic: 'sk_vitality' },
   /* ---------- 寵物（原本的契靈） ---------- */
   { id: 'slime', n: '小史萊姆', star: 2, sh: 's1', tags: ['pet'], cd: 1.5, dmg: [1, 3], ic: 'a:m_slime_green' },
   { id: 'skeleton', n: '骷髏兵', star: 3, sh: 's1', tags: ['pet', 'dark'], cd: 1.8, dmg: [3, 5], ic: 'sk_skeleton' },
@@ -558,6 +740,30 @@ const ITEMS = [
     dmg: [6, 9],
     on: { burn: 2 },
     ic: 'a:z_dragon'
+  },
+  /* ---------- 0.1.8 寵物：1★ 起手、5★ ---------- */
+  { id: 'treefrog', n: '樹蛙', star: 1, sh: 's1', tags: ['pet'], cd: 1.4, dmg: [1, 2], ic: 'a:m_treefrog' },
+  {
+    id: 'qilin',
+    n: '麒麟',
+    star: 5,
+    sh: 'sq',
+    tags: ['pet', 'light', 'holy'],
+    cd: 1.3,
+    dmg: [10, 15],
+    on: { stun: [15, 0.6] },
+    ic: 'a:m_windlion'
+  },
+  {
+    id: 'firecat',
+    n: '火焰石虎',
+    star: 5,
+    sh: 'h2',
+    tags: ['pet', 'fire'],
+    cd: 0.9,
+    dmg: [6, 9],
+    on: { burn: 2 },
+    ic: 'a:m_leopardcat'
   },
   /* ---------- 職業核心（原本的昇華；一個背包最多 1 個） ---------- */
   {
@@ -610,7 +816,7 @@ const ITEMS = [
     fx: { potMul: 100, potUse: 1 },
     all: [{ tag: 'potion', regen: 1 }],
     d: '藥水回復量 ×2、每瓶多用 1 次；再生類 +1',
-    ic: 'sup_ln_greed'
+    ic: 'cur_chaos'
   },
   {
     id: 'c_elemental',
@@ -667,10 +873,12 @@ const ITEMS = [
 ];
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
 /* 0.1.7 開局職業：1-1 開打前三選一（可以刷新一次），整局都有效。
-   m：對有那個標籤的道具加成（跟飾品一樣算進道具身上）；F：角色身上；gold：每回合多拿的金幣；th：機器人選了這個職業偏好買的標籤 */
+   m：對有那個標籤的道具加成（跟飾品一樣算進道具身上）；F：角色身上；gold：每回合多拿的金幣；th：機器人選了這個職業偏好買的標籤；
+   st：0.1.8 選完送的 1★ 起手道具 */
 const CLASSES = [
   {
     id: 'archer',
+    st: 'huntbow',
     n: '弓箭手',
     ic: 'sk_multishot',
     th: 'bow',
@@ -679,28 +887,46 @@ const CLASSES = [
       { tag: 'xbow', dmgPct: 20, spd: 15 }
     ]
   },
-  { id: 'swordsman', n: '劍士', ic: 'sk_swordwave', th: 'sword', m: [{ tag: 'sword', dmgPct: 20, crit: 10 }] },
+  {
+    id: 'swordsman',
+    st: 'woodsword',
+    n: '劍士',
+    ic: 'sk_swordwave',
+    th: 'sword',
+    m: [{ tag: 'sword', dmgPct: 20, crit: 10 }]
+  },
   {
     id: 'berserker',
+    st: 'club',
     n: '狂戰士',
     ic: 'sk_rage',
     th: 'mace',
     m: [
-      { tag: 'axe', dmgPct: 25, spd: 10 },
-      { tag: 'mace', dmgPct: 25, spd: 10 }
+      { tag: 'axe', dmgPct: 30, spd: 15 },
+      { tag: 'mace', dmgPct: 30, spd: 15 }
     ]
   },
   {
     id: 'spearman',
+    st: 'woodspear',
     n: '槍兵',
     ic: 'sk_spearrush',
     th: 'spear',
     m: [{ tag: 'spear', dmgPct: 30, spd: 10 }],
     F: { arm: 5 }
   },
-  { id: 'assassin', n: '刺客', ic: 'sk_backstab', th: 'dagger', m: [{ tag: 'dagger', crit: 15 }], F: { critMul: 40 } },
+  {
+    id: 'assassin',
+    st: 'knife',
+    n: '刺客',
+    ic: 'sk_backstab',
+    th: 'dagger',
+    m: [{ tag: 'dagger', crit: 15 }],
+    F: { critMul: 40 }
+  },
   {
     id: 'pyro',
+    st: 'emberwand',
     n: '火法師',
     ic: 'sk_fireburst',
     th: 'fire',
@@ -711,6 +937,7 @@ const CLASSES = [
   },
   {
     id: 'cryo',
+    st: 'frostwand',
     n: '冰法師',
     ic: 'sk_frostnova',
     th: 'cold',
@@ -719,9 +946,17 @@ const CLASSES = [
       { tag: 'staff', spd: 20 }
     ]
   },
-  { id: 'storm', n: '雷法師', ic: 'sk_chainlight', th: 'light', m: [{ tag: 'light', stunCh: 12, dmgPct: 25 }] },
+  {
+    id: 'storm',
+    st: 'sparkrod',
+    n: '雷法師',
+    ic: 'sk_chainlight',
+    th: 'light',
+    m: [{ tag: 'light', stunCh: 12, dmgPct: 25 }]
+  },
   {
     id: 'venom',
+    st: 'needle',
     n: '毒師',
     ic: 'sk_poison',
     th: 'poison',
@@ -730,10 +965,18 @@ const CLASSES = [
       { tag: 'dagger', poison: 1 }
     ]
   },
-  { id: 'tamer', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 30, spd: 15 }] },
-  { id: 'knight', n: '騎士', ic: 'sk_shieldwall', th: 'shield', m: [{ tag: 'shield', blockPct: 40 }], F: { hp: 20 } },
-  { id: 'alchemist', n: '鍊金術士', ic: 'cur_alch', th: 'potion', F: { potMul: 30, regen: 1 } },
-  { id: 'merchant', n: '商人', ic: 'cur_exalt', gold: 1 }
+  { id: 'tamer', st: 'treefrog', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 30, spd: 15 }] },
+  {
+    id: 'knight',
+    st: 'woodshield',
+    n: '騎士',
+    ic: 'sk_shieldwall',
+    th: 'shield',
+    m: [{ tag: 'shield', blockPct: 40 }],
+    F: { hp: 20 }
+  },
+  { id: 'alchemist', st: 'potion', n: '鍊金術士', ic: 'cur_vaal', th: 'potion', F: { potMul: 25, regen: 1 } },
+  { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_exalt', gold: 1 }
 ];
 const CLSI = Object.fromEntries(CLASSES.map(c => [c.id, c]));
 /* 職業的說明：標籤加成、角色加成、金幣 */
@@ -821,23 +1064,25 @@ const mod5Q = m => {
 const mod5Txt = m => MODN[MOD5[m[0]].k](m[1]);
 /* 說明文字 */
 const pct = v => Math.round(v) + '%';
+/* 正數加 +，負數本來就有 -（不要變成「+-10%」） */
+const sg = v => (v < 0 ? '' : '+');
 const MODN = {
-  dmg: v => `傷害 +${v}`,
-  dmgPct: v => `傷害 +${pct(v)}`,
-  spd: v => `攻速 +${pct(v)}`,
-  crit: v => `暴擊率 +${pct(v)}`,
-  burn: v => `命中燃燒 +${v}`,
-  poison: v => `命中中毒 +${v}`,
+  dmg: v => `傷害 ${sg(v)}${v}`,
+  dmgPct: v => `傷害 ${sg(v)}${pct(v)}`,
+  spd: v => `攻速 ${sg(v)}${pct(v)}`,
+  crit: v => `暴擊率 ${sg(v)}${pct(v)}`,
+  burn: v => `命中燃燒 ${sg(v)}${v}`,
+  poison: v => `命中中毒 ${sg(v)}${v}`,
   ls: v => `吸血 ${pct(v)}`,
-  block: v => `格擋 +${v}`,
-  blockPct: v => `格擋 +${pct(v)}`,
+  block: v => `格擋 ${sg(v)}${v}`,
+  blockPct: v => `格擋 ${sg(v)}${pct(v)}`,
   freezeCh: v => `${pct(v)} 凍結`,
   stunCh: v => `${pct(v)} 暈眩`,
-  regen: v => `每秒回復 +${v}`,
-  hp: v => `生命 +${v}`,
-  arm: v => `護甲 +${v}`,
-  dodge: v => `閃避 +${pct(v)}`,
-  critMul: v => `暴擊傷害 +${pct(v)}`
+  regen: v => `每秒回復 ${sg(v)}${v}`,
+  hp: v => `生命 ${sg(v)}${v}`,
+  arm: v => `護甲 ${sg(v)}${v}`,
+  dodge: v => `閃避 ${sg(v)}${pct(v)}`,
+  critMul: v => `暴擊傷害 ${sg(v)}${pct(v)}`
 };
 const modTxt = m =>
   Object.entries(m)

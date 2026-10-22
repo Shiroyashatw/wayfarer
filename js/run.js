@@ -111,6 +111,15 @@ function newRunState(seed) {
 const bonusGold = run =>
   ((CLSI[run.bag.cls] || {}).gold || 0) +
   run.bag.items.reduce((n, o) => n + (ITEMI[o.id].gold ? ITEMI[o.id].gold + o.t - 1 : 0), 0);
+/* 0.1.8 選完職業送的起手道具：放進暫存區，回傳道具代號 */
+function giveStarter(run) {
+  const id = (CLSI[run.bag.cls] || {}).st,
+    fi = benchFree(run);
+  if (!id || !ITEMI[id] || fi < 0) return null;
+  run.bench[fi] = newItem(run, id);
+  mergeAll(run, runR(run));
+  return id;
+}
 /* 開局職業三選一：隨機 3 個不重複 */
 function rollClasses(run) {
   const ids = CLASSES.map(c => c.id),
@@ -170,10 +179,15 @@ function rollShop(run, special = false) {
             run,
             ITEMS.filter(i => i.star === 1 && !i.core && (k >= 2 || i.dmg))
           ).id
-        : rollItem(run, special)
+        : rollItem(run, special),
+    t: run.ri > 0 && r01(run) * 100 < (BAGLV[run.lv].t2 || 0) ? 2 : 1
   }));
 }
-const shopPrice = (run, id) => (run.sale ? Math.ceil(priceOf(id) / 2) : priceOf(id));
+/* t：商店也可能直接賣 Ⅱ 階（後期才有），價錢 ×3 */
+const shopPrice = (run, id, t = 1) => {
+  const p = priceOf(id) * 3 ** ((t || 1) - 1);
+  return run.sale ? Math.ceil(p / 2) : p;
+};
 const newItem = (run, id, t = 1) => ({
   u: 'i' + run.un++,
   id,
@@ -189,27 +203,27 @@ const benchFree = run => run.bench.indexOf(null);
 function buyItem(run, k) {
   const s = run.shop[k];
   if (!s) return '這格已經買了';
-  const p = shopPrice(run, s.id);
+  const p = shopPrice(run, s.id, s.t);
   if (run.gold < p) return '金幣不夠';
   const fi = benchFree(run);
-  if (fi < 0 && !wouldMerge(run, s.id)) return '暫存區滿了，先把道具放進背包或賣掉';
+  if (fi < 0 && !wouldMerge(run, s.id, s.t || 1)) return '暫存區滿了，先把道具放進背包或賣掉';
   run.gold -= p;
   /* 0.1.5 暫存區滿了但買了就湊滿 3 件：先放在多出來的一格，合成後收回 */
-  if (fi < 0) run.bench.push(newItem(run, s.id));
-  else run.bench[fi] = newItem(run, s.id);
+  if (fi < 0) run.bench.push(newItem(run, s.id, s.t || 1));
+  else run.bench[fi] = newItem(run, s.id, s.t || 1);
   run.shop[k] = null;
   const merged = mergeAll(run, runR(run));
   for (const o of run.bench.splice(BENCH_N)) if (o) run.bench[benchFree(run)] = o;
   return { merged };
 }
 /* 買這件會不會馬上湊滿 3 件 1 階（暫存區滿了也能買） */
-const wouldMerge = (run, id) =>
-  [...run.bag.items, ...run.bench].filter(o => o && o.id === id && o.t === 1).length >= 2 && TIER_MAX > 1;
+const wouldMerge = (run, id, t = 1) =>
+  [...run.bag.items, ...run.bench].filter(o => o && o.id === id && o.t === t).length >= 2 && t < TIER_MAX;
 /* 0.1.1 從商店直接拖進背包：買下並放在 (x, y)（放得下才會叫到這裡）；swap 是被擠出來要收進暫存區的道具 */
 function buyToBag(run, k, x, y, r, swap) {
   const s = run.shop[k];
   if (!s) return '這格已經買了';
-  const p = shopPrice(run, s.id);
+  const p = shopPrice(run, s.id, s.t);
   if (run.gold < p) return '金幣不夠';
   if (swap && benchFree(run) < 0) return '暫存區滿了，換不下來';
   run.gold -= p;
@@ -217,7 +231,7 @@ function buyToBag(run, k, x, y, r, swap) {
     run.bag.items = run.bag.items.filter(q => q !== swap);
     run.bench[benchFree(run)] = swap;
   }
-  run.bag.items.push({ ...newItem(run, s.id), x, y, r });
+  run.bag.items.push({ ...newItem(run, s.id, s.t || 1), x, y, r });
   run.shop[k] = null;
   return { merged: mergeAll(run, runR(run)) };
 }
@@ -302,7 +316,12 @@ function rivalSnap(rv, rid) {
   for (let k = ri - 1; k >= 0; k--) if (s[ROUNDS[k].id]) return s[ROUNDS[k].id];
   return undefined;
 }
-const rivalAlive = (rv, rid) => !!rivalSnap(rv, rid) && rivalSnap(rv, rid).hp > 0;
+/* 0.1.8 對手的生命：快照的生命再扣掉「你打贏他」造成的傷害（不然第 1 名的快照永遠不會死，打到最後一回合都分不出勝負） */
+const rivalHp = (rv, rid) => {
+  const sn = rivalSnap(rv, rid);
+  return sn ? Math.max(0, sn.hp - (rv.dmg || 0)) : 0;
+};
+const rivalAlive = (rv, rid) => rivalHp(rv, rid) > 0;
 const aliveRivals = run => run.rivals.filter(rv => rivalAlive(rv, curRound(run).id));
 /* 這回合的對手：PvP 輪流打還活著的；其他是野怪 */
 function opponentOf(run) {
@@ -362,6 +381,14 @@ function finishFight(run, fb) {
     run.ws++;
     run.lsk = 0;
     out.gold = r.type === 'pve' ? 2 : 1;
+    /* 打贏對手：他那局已經打完（第 1 名，沿用最後的快照）就換他扣血，不然生命永遠不變、一直打到最後一回合。
+       他那局還在進行的話，他的生命照他自己的快照走（本來就會扣，再扣一次對手會死太快） */
+    const rv = opp.kind === 'pvp' && run.rivals[opp.rv];
+    if (rv && !(rv.snaps || {})[r.id]) {
+      rv.dmg = (rv.dmg || 0) + r.loss;
+      out.hit = r.loss;
+      out.ko = !rivalAlive(rv, r.id);
+    }
   } else {
     run.lsk++;
     run.ws = 0;
@@ -414,7 +441,7 @@ function nextPvpId(run) {
 /* 打到最後一回合：比剩下的生命 */
 function finalPlace(run) {
   const last = ROUNDS[ROUNDS.length - 1].id;
-  return 1 + run.rivals.filter(rv => rivalSnap(rv, last) && rivalSnap(rv, last).hp > run.hp).length;
+  return 1 + run.rivals.filter(rv => rivalHp(rv, last) > run.hp).length;
 }
 function endRun(run, place) {
   if (run.place) return;
@@ -478,7 +505,7 @@ function botAct(run, theme, q = 0.7) {
           I.tags.includes('weapon') ||
           I.tags.includes('armor') ||
           r01(run) < 0.35;
-      if (want && run.gold >= shopPrice(run, s.id) && benchFree(run) >= 0) buyItem(run, k);
+      if (want && run.gold >= shopPrice(run, s.id, s.t) && benchFree(run) >= 0) buyItem(run, k);
     });
     if (run.gold >= 3 && run.gold < 8 && pass === 0 && r01(run) < q) rerollShop(run);
   }
@@ -517,6 +544,7 @@ function simLobby(seed, rating) {
         opts = rollClasses(run),
         cls = opts[fl(rr() * 3)];
       run.bag.cls = cls;
+      giveStarter(run);
       return {
         run,
         theme: CLSI[cls].th || THEMES[fl(rr() * THEMES.length)],

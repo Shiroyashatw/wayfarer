@@ -299,3 +299,6 @@ canvas.spr.flip{transform:scaleX(-1)}
 .prof .rank{margin-top:var(--sp-1)}
 .prof .rank img{width:34px;height:34px}
 .prof .kv3{margin-top:var(--sp-1)}
+/* 0.1.8 頂部資訊固定在最上方（背包大了往下拉看商店，金幣、生命還看得到） */
+.prep>.top{position:sticky;top:0;z-index:30;margin:calc(-1 * var(--sp-3) - var(--sat)) calc(-1 * var(--sp-5)) 0;padding:calc(var(--sp-2) + var(--sat)) var(--sp-5) var(--sp-2);background:var(--bg-top,var(--bg));box-shadow:0 1px 0 var(--line),0 6px 12px -8px #0006}
+.hpt{white-space:nowrap}.top .me span{overflow:hidden}
