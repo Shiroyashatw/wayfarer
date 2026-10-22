@@ -4,7 +4,7 @@ const SLOT = new URLSearchParams(location.search).get('p') || '';
 const KEY = 'serling_v1' + (SLOT ? '_p' + SLOT : '');
 /* ================= 一局 ================= */
 const START_HP = 20, // 生命
-  START_GOLD = 10, // 1-1 初始商店的金幣
+  START_GOLD = 10, // 1-1 開打前的金幣（商店 5 件 1★）
   BASE_INCOME = 5, // 每回合基礎收入
   INTEREST_MAX = 5, // 利息上限（每 10 金 +1）
   BENCH_N = 6, // 暫存區格數
@@ -27,12 +27,12 @@ const BAGLV = [
   { w: 6, h: 6, cost: 26, odds: [10, 25, 30, 25, 10] }
 ];
 const BAG_MAX = BAGLV.length - 1;
-/* 回合表（前短後長）：start 初始商店、pve 野怪、elite 菁英、boss 首領、pvp 打對手快照；loss 是輸了扣的生命。
-   每回合開始本來就能逛商店，0.1.1 起拿掉商店關，原本的位置改成菁英關（打完道具三選一） */
+/* 回合表（前短後長）：pve 野怪、elite 菁英、boss 首領、pvp 打對手快照；loss 是輸了扣的生命。
+   每回合開打前本來就能逛商店，0.1.1 起拿掉商店關（改成菁英關，打完道具三選一），0.1.4 起也拿掉開局回合，1-1 直接打野怪 */
 const ROUNDS = (() => {
   const out = [],
     add = (st, i, type, loss = 0) => out.push({ id: `${st}-${i}`, st, type, loss });
-  add(1, 1, 'start');
+  add(1, 1, 'pve', 1);
   add(1, 2, 'pve', 1);
   add(1, 3, 'pve', 1);
   add(1, 4, 'elite', 2);
@@ -55,9 +55,9 @@ const ROUNDS = (() => {
   }
   return out;
 })();
-const RTYPE = { start: '初始商店', pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
+const RTYPE = { pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
 /* 回合列的短名與顏色分類 */
-const RSHORT = { start: '開局', pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
+const RSHORT = { pve: '野怪', elite: '菁英', boss: '首領', pvp: '對戰' };
 /* 名次加減分 */
 const PLACE_PTS = [0, 40, 15, -10, -25];
 /* 頭像（PNG 像素圖） */
@@ -112,5 +112,5 @@ const NAME_A = [
   ];
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
-const GVER = 's2';
-const VER = '0.1.3';
+const GVER = 's3';
+const VER = '0.1.4';

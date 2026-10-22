@@ -58,16 +58,21 @@ const tierTxt = t => ['', '', ' Ⅱ', ' Ⅲ'][t];
 const tierBadge = t => (t > 1 ? `<b class="tier">${t === 2 ? 'Ⅱ' : 'Ⅲ'}</b>` : '');
 const avName = av => (AVATARS.find(a => a[0] === av) || AVATARS[0])[1];
 /* ================= 主題 ================= */
-/* 0.1.2 淺色（預設）／深色／跟隨系統：設在 <html data-theme> */
+/* 0.1.2 淺色／深色（0.1.4 起預設）／跟隨系統：設在 <html data-theme> */
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
 function applyTheme() {
-  const t = (S && S.theme) || 'light',
+  const t = (S && S.theme) || 'dark',
     d = t === 'dark' || (t === 'auto' && darkMQ.matches);
   document.documentElement.dataset.theme = d ? 'dark' : 'light';
   const m = document.querySelector('meta[name="theme-color"]');
   if (m) m.content = d ? '#1d1b21' : '#f2eee7';
 }
 darkMQ.addEventListener('change', () => S && S.theme === 'auto' && applyTheme());
+/* 畫面最上方的深淺切換（跟隨系統時切到相反的那一個） */
+const themeBtn = () => {
+  const d = document.documentElement.dataset.theme === 'dark';
+  return `<button class="iconbtn" data-act="themeTog" aria-label="${d ? '切到淺色' : '切到深色'}">${d ? '☀' : '☾'}</button>`;
+};
 /* ================= 畫面切換 ================= */
 function render() {
   if (!S) return;
@@ -98,6 +103,7 @@ const go = scr => {
 function homeHTML() {
   const run = S.run;
   return `<div class="home">
+    <div class="htop">${themeBtn()}</div>
     <div class="logo"><b>塞令老師</b><small>背包自動對戰</small></div>
     <div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b><small>${avName(S.av)}</small><div class="kv3"><span>分數<b>${S.rating}</b></span><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span></div></div></div>
     <button class="btn pri big" data-act="play">${run ? `繼續對局（${curRound(run) ? curRound(run).id : ''}）` : '開始對戰'}</button>
@@ -201,7 +207,23 @@ function bagHTML(bag, cs, opt = {}) {
         ''
       )}<img src="${itemIcon(o.id)}" alt="${I.n}">${tierBadge(o.t)}${buf && !opt.mini ? '<b class="buf">+</b>' : ''}</div>`;
   }
+  /* 0.1.4 選中的道具右上角放旋轉鈕，不用到下面說明區按 */
+  if (sel && !opt.mini && shapeOf(sel.id).length > 1) {
+    const c = cellsOf(sel),
+      rx = (Math.max(...c.map(p => p[0])) + 1) * (cs + GAP) - GAP,
+      ry = Math.min(...c.map(p => p[1])) * (cs + GAP);
+    h += `<button class="rotb" data-act="rot" aria-label="旋轉" style="left:${Math.min(rx - 16, W - 22)}px;top:${Math.max(ry - 12, -10)}px">↻</button>`;
+  }
   return h + '</div>';
+}
+/* 0.1.4 道具形狀的小圖（商店、說明、三選一）：幾格、怎麼排一眼看得出來 */
+function shapeMini(id, r = 0) {
+  const c = shapeOf(id, r),
+    w = Math.max(...c.map(p => p[0])) + 1,
+    h = Math.max(...c.map(p => p[1])) + 1;
+  return `<i class="shp" style="--w:${w};--h:${h}" aria-label="${c.length} 格">${c
+    .map(([x, y]) => `<i style="grid-area:${y + 1}/${x + 1}"></i>`)
+    .join('')}</i>`;
 }
 /* 0.1.1 回合列：這一階段每一輪的事件（過去的變暗、這一輪亮起來），右邊是下一階段的開頭 */
 function roundBarHTML(run) {
@@ -222,11 +244,10 @@ function prepHTML(run) {
     cs = cellSize(bag.w),
     mods = bagMods(bag),
     lvNext = run.lv < BAG_MAX ? BAGLV[run.lv + 1] : null,
-    noFight = r.type === 'start',
     nr = r.type === 'pvp' ? nextRival(run) : -1,
     oppTxt = r.type === 'pvp' ? (nr >= 0 ? `對戰 ${esc(run.rivals[nr].name)}` : '對戰') : RTYPE[r.type];
   return `<div class="prep">
-    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><div class="me">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}</small></span></div><div class="rinfo"><b class="gold">${run.gold} 金</b><small>${r.id}・${oppTxt}</small></div></div>
+    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><div class="me">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}</small></span></div><div class="rinfo"><b class="gold">${run.gold} 金</b><small>${r.id}・${oppTxt}</small></div>${themeBtn()}</div>
     ${roundBarHTML(run)}
     ${rivalHTML(run)}
     ${tutHTML()}
@@ -241,11 +262,11 @@ function prepHTML(run) {
     <div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
-          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt=""><span>${ITEMI[s.id].n}</span><b class="${run.gold < shopPrice(run, s.id) ? 'c-bad' : ''}">${shopPrice(run, s.id)} 金</b></button>`
+          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${shapeMini(s.id)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < shopPrice(run, s.id) ? 'c-bad' : ''}">${shopPrice(run, s.id)} 金</b></button>`
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
-    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL ? 'disabled' : ''}>刷新<small class="bnote">${REROLL} 金</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? lvNext.cost + ' 金' : ''}</small></button><button class="btn pri" data-act="fight">${r.type === 'start' ? '完成構築' : '開戰'}<small class="bnote">${noFight ? '' : `輸了 -${r.loss}`}</small></button></div>
+    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL ? 'disabled' : ''}>刷新<small class="bnote">${REROLL} 金</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? lvNext.cost + ' 金' : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div>
     ${detailHTML(run)}
   </div>`;
 }
@@ -280,7 +301,7 @@ function detailHTML(run) {
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || '道具';
-  return `<div class="det" id="det"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
+  return `<div class="det" id="det"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
     <p>${itemDesc(o.id, o.t)}</p>${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${Object.keys(tot).length ? `<p class="c-good">目前加成：${modTxt(tot)}</p>` : ''}
     <div class="btns">${
       where === 'shop'
@@ -298,7 +319,7 @@ function pickHTML(run) {
   return `<div class="ovl"><div class="dlg2"><b>${p.t}</b><div class="picks">${p.opts
     .map(
       id =>
-        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt=""><span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}</b><small>${itemDesc(id)}</small></span></button>`
+        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}</b><small>${itemDesc(id)}</small></span></button>`
     )
     .join('')}</div></div></div>`;
 }
@@ -482,7 +503,7 @@ function codexHTML() {
 function helpHTML() {
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
   <div class="card"><b>一局</b><p>4 位玩家一場，每人 ${START_HP} 點生命。每回合在商店買道具、擺進背包，然後自動戰鬥。輸了扣生命，歸零就淘汰；最後活下來的是第 1 名。</p></div>
-  <div class="card"><b>回合</b><p>1-1 初始商店（${START_GOLD} 金、5 件 1★）→ 1-2、1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完職業核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
+  <div class="card"><b>回合</b><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完職業核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
   <div class="card"><b>金幣</b><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></div>
   <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×6），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
   <div class="card"><b>合成</b><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></div>
@@ -503,7 +524,7 @@ function settingsHTML() {
   ]
     .map(
       ([k, n]) =>
-        `<button class="btn" data-act="theme" data-k="${k}" aria-pressed="${(S.theme || 'light') === k}">${n}</button>`
+        `<button class="btn" data-act="theme" data-k="${k}" aria-pressed="${(S.theme || 'dark') === k}">${n}</button>`
     )
     .join('')}</div>
   <h3>聲音</h3><div class="g2"><button class="btn" data-act="tog" data-k="music" aria-pressed="${S.music}">音樂 ${S.music ? '開' : '關'}</button><button class="btn" data-act="tog" data-k="sfx" aria-pressed="${S.sfx}">音效 ${S.sfx ? '開' : '關'}</button></div>
@@ -595,12 +616,6 @@ const A = {
     const run = S.run,
       r = curRound(run);
     V.sel = null;
-    if (r.type === 'start' || r.type === 'shop') {
-      if (S.tut === 2) S.tut = 3;
-      nextRound(run);
-      save();
-      return render();
-    }
     if (!run.bag.items.some(o => ITEMI[o.id].dmg)) return toast('背包裡還沒有武器或寵物，打不贏的！');
     beginFight();
   },
@@ -701,6 +716,13 @@ const A = {
   },
   theme: d => {
     S.theme = d.k;
+    S.themeSet = true;
+    save();
+    render();
+  },
+  themeTog: () => {
+    S.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    S.themeSet = true;
     save();
     render();
   },

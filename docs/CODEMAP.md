@@ -22,6 +22,8 @@
 | 快照對戰（Supabase） | `js/ghost.js`、`supabase/migrations/20261022000000_serling_ghosts.sql` | `ghostRivals`（配對＋機器人補位）、`ghostBegin`、`ghostSnap`、`ghostEnd`、`GHOST.off`、開服種子 `seedGhosts`；資料表 `runs`（`seed` 欄位）／`snaps`、RPC `pick_rivals`（真人優先） |
 | 首頁、圖鑑、說明、設定 | `js/ui.js` | `render`、`homeHTML`、`codexHTML`、`helpHTML`、`settingsHTML`、`go` |
 | 準備畫面（回合列、背包、暫存區、商店、道具說明） | `js/ui.js` | `prepHTML`、`roundBarHTML`、`bagHTML`、`rivalHTML`、`detailHTML`、`tutHTML`、`cellSize` |
+| 道具形狀小圖、背包旋轉鈕 ↻ | `js/ui.js` | `shapeMini`（商店、說明、三選一）、`bagHTML` 的 `.rotb`（`A.rot`） |
+| 深淺主題、右上角切換 | `js/ui.js` | `applyTheme`、`themeBtn`、`A.themeTog`、`A.theme`；預設與轉換在 `main.js` 的 `newGame`／`migrate`（`themeSet`） |
 | 拖曳擺放、從商店拖、交換位置 | `js/ui.js`、`js/run.js` | `pointerdown`／`pointermove`／`dropEnd`、`dropShop`、`cellAt`、`placeFromBench`、`V.drag`；`buyToBag`、`swapPlan`（run.js） |
 | 戰鬥播放 | `js/ui.js` | `beginFight`、`resumeFight`、`renderBattle`、`bTick`、`bPop`、`bFlash`、`bEnd`、`B` |
 | 結算、三選一、一局結束 | `js/ui.js` | `resultHTML`、`pickHTML`、`endHTML` |
@@ -76,13 +78,13 @@
 ### js/sim.js（152 行）
 
 
-### js/run.js（495 行）
+### js/run.js（502 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），3 個宣告
-- **一局**（80），18 個宣告
-- **對手**（252），7 個宣告
-- **戰鬥**（303），6 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（397），4 個宣告
+- **一局**（87），18 個宣告
+- **對手**（260），7 個宣告
+- **戰鬥**（311），6 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（405），4 個宣告
 
 ### js/ghost.js（122 行）
 
@@ -97,19 +99,19 @@
 - **cloud save (Supabase)**（4），7 個宣告
 - **accounts**（104），5 個宣告
 
-### js/ui.js（943 行）
+### js/ui.js（965 行）
 
 - **小工具**（6），13 個宣告
-- **主題**（60），2 個宣告
-- **畫面切換**（71），2 個宣告
-- **首頁**（97），2 個宣告
-- **準備畫面**（132），9 個宣告
-- **結算、三選一、一局結束**（291），3 個宣告
-- **戰鬥播放**（312），9 個宣告
-- **圖鑑、說明、設定**（463），3 個宣告
-- **動作**（518），4 個宣告
-- **拖曳擺放**（762），5 個宣告
+- **主題**（60），3 個宣告
+- **畫面切換**（76），2 個宣告
+- **首頁**（102），2 個宣告
+- **準備畫面**（138），10 個宣告
+- **結算、三選一、一局結束**（312），3 個宣告
+- **戰鬥播放**（333），9 個宣告
+- **圖鑑、說明、設定**（484），3 個宣告
+- **動作**（539），4 個宣告
+- **拖曳擺放**（784），5 個宣告
 
-### js/main.js（69 行）
+### js/main.js（72 行）
 
 <!-- index:end -->

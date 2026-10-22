@@ -74,6 +74,7 @@ canvas.spr.big{width:72px;height:72px}
 canvas.spr.flip{transform:scaleX(-1)}
 /* ---------- 首頁 ---------- */
 .home{display:grid;gap:var(--sp-2);padding-top:var(--sp-4)}
+.htop{display:flex;justify-content:flex-end;margin-bottom:calc(-1 * var(--sp-5))}
 .logo{text-align:center;padding:var(--sp-5) 0}
 .logo b{display:block;font-family:var(--f-pix);font-size:44px;color:var(--accent);text-shadow:0 3px 0 var(--accent2);letter-spacing:.06em;font-weight:400}
 .logo small{color:var(--dim);font-size:var(--fs-btn)}
@@ -226,3 +227,12 @@ canvas.spr.flip{transform:scaleX(-1)}
 .av small{font-size:var(--fs-cap);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .av.on{border-color:var(--accent)}
 .seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-1)}
+/* 0.1.4 道具形狀小圖、背包裡的旋轉鈕 */
+.shp{display:inline-grid;grid-template-columns:repeat(var(--w),6px);grid-template-rows:repeat(var(--h),6px);gap:1px;vertical-align:middle}
+.shp i{background:var(--sb,var(--dim));border-radius:1px}
+.sc{position:relative}
+.sc .shp{position:absolute;top:3px;right:3px}
+.pk{position:relative}
+.pk .shp{position:absolute;top:var(--sp-2);right:var(--sp-2)}
+.det .dh small .shp{--sb:var(--ink);margin-top:-2px}
+.rotb{position:absolute;z-index:5;width:30px;height:30px;border-radius:50%;border:2px solid var(--card);background:var(--accent);color:#fff;font-size:17px;font-weight:700;line-height:1;display:grid;place-items:center;box-shadow:var(--shadow);touch-action:manipulation}

@@ -28,13 +28,20 @@ const mkF = (hp, o = {}) => ({
   pots: []
 });
 const MOBS = {
+  '1-1': [
+    { n: '綠史萊姆', spr: 'a_m_slime_green', F: () => mkF(28, { w: [mkW(1.7, 1, 3)] }) },
+    { n: '蝙蝠', spr: 'a_m_bat', F: () => mkF(22, { dodge: 10, w: [mkW(1.1, 1, 2)] }) },
+    { n: '香菇', spr: 'a_m_mushroom', F: () => mkF(32, { w: [mkW(1.9, 1, 3)] }) }
+  ],
   '1-2': [
-    { n: '綠史萊姆', spr: 'a_m_slime_green', F: () => mkF(35, { w: [mkW(1.6, 2, 3)] }) },
-    { n: '蝙蝠', spr: 'a_m_bat', F: () => mkF(28, { dodge: 10, w: [mkW(1, 1, 2)] }) }
+    { n: '稻草人', spr: 'a_m_scarecrow', F: () => mkF(42, { arm: 1, w: [mkW(1.6, 2, 3)] }) },
+    { n: '流浪狗', spr: 'a_m_straydog', F: () => mkF(36, { w: [mkW(1.2, 1, 3)] }) },
+    { n: '垃圾史萊姆', spr: 'a_m_slime_trash', F: () => mkF(36, { w: [mkW(2.4, 1, 2, { poison: 1 })] }) }
   ],
   '1-3': [
-    { n: '稻草人', spr: 'a_m_scarecrow', F: () => mkF(50, { arm: 2, w: [mkW(1.5, 2, 4)] }) },
-    { n: '火史萊姆', spr: 'a_m_slime_fire', F: () => mkF(45, { w: [mkW(1.7, 2, 3, { burn: 1, el: 'fire' })] }) }
+    { n: '火史萊姆', spr: 'a_m_slime_fire', F: () => mkF(60, { w: [mkW(1.6, 2, 3, { burn: 1, el: 'fire' })] }) },
+    { n: '夜鷺', spr: 'a_m_nightheron', F: () => mkF(54, { dodge: 12, w: [mkW(1.2, 2, 3)] }) },
+    { n: '火蟻', spr: 'a_m_fireant', F: () => mkF(58, { arm: 2, w: [mkW(1.3, 2, 4)] }) }
   ],
   '1-4': [
     {
@@ -137,12 +144,13 @@ function rollItem(run, special) {
 }
 function rollShop(run, special = false) {
   run.sale = special;
-  run.shop = Array.from({ length: SHOP_N }, () => ({
+  /* 1-1 開打前的商店全是 1★，前 2 格保證是武器或寵物（不然第一場就打不了） */
+  run.shop = Array.from({ length: SHOP_N }, (_, k) => ({
     id:
       run.ri === 0
         ? pick(
             run,
-            ITEMS.filter(i => i.star === 1)
+            ITEMS.filter(i => i.star === 1 && !i.core && (k >= 2 || i.dmg))
           ).id
         : rollItem(run, special)
   }));
@@ -463,7 +471,6 @@ function simLobby(seed, rating) {
       botAct(b.run, b.theme, b.q);
     }
     const r = ROUNDS[k];
-    if (r.type === 'start' || r.type === 'shop') continue;
     for (const b of alive) b.info.snaps[r.id] = { hp: b.run.hp, bag: packBag(b.run.bag) };
     alive.forEach((b, i) => {
       const run = b.run;

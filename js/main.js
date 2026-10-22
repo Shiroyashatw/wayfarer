@@ -13,7 +13,8 @@ const newGame = () => ({
   music: true,
   sfx: true,
   speed: 1,
-  theme: 'light',
+  theme: 'dark',
+  themeSet: false,
   run: null,
   tut: 0,
   savedAt: 0
@@ -50,6 +51,8 @@ function migrate(s) {
   if (o.run && o.run.ver !== VER) o.run = null;
   /* 開發中用過的預設名字換成隨機名字 */
   if (o.name === '新來的老師') o.name = randName();
+  /* 0.1.4 預設改成深色：沒自己選過主題的存檔也跟著換 */
+  if (!o.themeSet) o.theme = 'dark';
   return o;
 }
 function start() {
