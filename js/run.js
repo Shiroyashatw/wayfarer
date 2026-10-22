@@ -460,7 +460,7 @@ function nextRound(run) {
 /* 第 1 名的對局在他贏的那回合就結束了，之後的回合沿用他最後的快照（不然會被當成淘汰） */
 function rivalSnap(rv, rid) {
   const s = rv.snaps || {};
-  if (s[rid] || rv.place !== 1) return s[rid];
+  if (s[rid] || (rv.place !== 1 && rv.duel == null)) return s[rid];
   const ri = ROUNDS.findIndex(r => r.id === rid);
   for (let k = ri - 1; k >= 0; k--) if (s[ROUNDS[k].id]) return s[ROUNDS[k].id];
   return undefined;
@@ -488,9 +488,18 @@ function otGrow(F, ot) {
 /* 對手的生命：照他自己那局的快照，減掉加時被你打掉的（rv.dmg）。
    0.1.10～0.1.21 是對手那局打完就直接照生命結算，局會在中途突然結束；0.1.22 改成加時打到分出勝負 */
 const rivalHp = (rv, rid) => {
+  if (rv.duel != null) return Math.max(0, rv.duel - (rv.dmg || 0));
   const sn = rivalSnap(rv, rid);
   return sn ? Math.max(0, sn.hp - (rv.dmg || 0)) : 0;
 };
+/* 0.1.24 對決：只剩一個對手時，他的生命凍結在那一刻（rv.duel），之後只照你打贏扣；
+   之前他自己那局還有別人活著就不算加時，你一直贏他卻一直不扣血（照他那局的快照鎖血） */
+function duelCheck(run, rid) {
+  const al = run.rivals.filter(rv => rivalAlive(rv, rid));
+  if (al.length !== 1 || al[0].duel != null) return;
+  al[0].duel = rivalHp(al[0], rid);
+  al[0].dmg = 0;
+}
 const rivalAlive = (rv, rid) => rivalHp(rv, rid) > 0;
 const aliveRivals = run => run.rivals.filter(rv => rivalAlive(rv, curRound(run).id));
 /* 這回合的對手：PvP 輪流打還活著的；其他是野怪 */
@@ -499,11 +508,12 @@ function opponentOf(run) {
   if (r.type === 'pvp') {
     const al = run.rivals.map((rv, i) => [rv, i]).filter(([rv]) => rivalAlive(rv, r.id));
     if (!al.length) return null;
+    if (al.length === 1) duelCheck(run, r.id);
     const [rv, i] = al.find(([, i]) => i >= run.rp % run.rivals.length) || al[0];
     run.rp = i + 1;
     const sn = rivalSnap(rv, r.id),
       ot = rivalOT(rv, r.id);
-    /* ex：他那局已經打完、這是加時（種子快照有 ot 標記，繼續買東西；真人的沒有，用 otGrow 加素質） */
+    /* ex：他那局已經打完、這是加時（種子快照有 ot 標記，繼續買東西；真人的沒有，用 otGrow 加素質），或只剩他一個（對決） */
     return {
       kind: 'pvp',
       n: rv.name,
@@ -512,7 +522,7 @@ function opponentOf(run) {
       bag: unpackBag(sn.bag),
       rv: i,
       ot,
-      ex: ot > 0 || !!sn.bag.ot
+      ex: ot > 0 || !!sn.bag.ot || rv.duel != null
     };
   }
   const m = mobOf(run, r);
@@ -647,6 +657,7 @@ function finishFight(run, fb) {
     /* 下一場對戰時對手都淘汰了：第 1 名（0.1.22 起對手那局打完不再提早結算，改加時打到分出勝負） */
     const np = nextPvpId(run);
     if (np && !run.rivals.some(rv => rivalAlive(rv, np))) endRun(run, 1);
+    else if (np) duelCheck(run, np);
   }
   return out;
 }

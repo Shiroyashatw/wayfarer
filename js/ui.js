@@ -254,8 +254,12 @@ function rivalHTML(run) {
         last = Math.max(-1, ...ids),
         now = Math.max(-1, ...ids.filter(k => k <= run.ri)),
         sn = now >= 0 ? rv.snaps[ROUNDS[now].id] : null,
-        out = last < run.ri && rv.place !== 1,
-        hp = out ? 0 : Math.max(0, (sn ? sn.hp : START_HP) - (rv.dmg || 0));
+        out = last < run.ri && rv.place !== 1 && rv.duel == null,
+        hp = out
+          ? 0
+          : rv.duel != null
+            ? Math.max(0, rv.duel - (rv.dmg || 0))
+            : Math.max(0, (sn ? sn.hp : START_HP) - (rv.dmg || 0));
       if (hp <= 0)
         return `<div class="rv out">${sprCv('a_' + rv.av)}<span><b>${esc(rv.name)}</b><i class="hpb"><i style="width:0"></i></i><small>淘汰</small></span></div>`;
       return `<div class="rv${out ? ' out' : ''}${i === nx ? ' nx' : ''}">${sprCv('a_' + rv.av)}<span><b>${esc(rv.name)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>${out ? '淘汰' : '♥ ' + hp}</small></span></div>`;
