@@ -10,7 +10,6 @@ const newGame = () => ({
   best: 9,
   hist: [],
   seen: {},
-  music: true,
   sfx: true,
   speed: 1,
   theme: 'dark',
@@ -37,12 +36,11 @@ function save() {
   }
   if (typeof CLOUD !== 'undefined') CLOUD.dirty = true;
 }
-/* 0.1.0 轉型：舊版（漫步勇者）的存檔不轉移，只留名字與聲音設定 */
+/* 0.1.0 轉型：舊版（漫步勇者）的存檔不轉移，只留名字與音效設定 */
 function migrate(s) {
   if (!s || !s.v || s.v < 100) {
     const n = newGame();
     if (s && s.name && s.name !== '旅人') n.name = s.name;
-    if (s && s.music === false) n.music = false;
     if (s && s.sfx === false) n.sfx = false;
     return n;
   }
@@ -53,6 +51,7 @@ function migrate(s) {
   if (o.name === '新來的老師') o.name = randName();
   /* 0.1.4 預設改成深色：沒自己選過主題的存檔也跟著換 */
   if (!o.themeSet) o.theme = 'dark';
+  delete o.music;
   return o;
 }
 function start() {

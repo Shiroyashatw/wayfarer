@@ -236,3 +236,28 @@ canvas.spr.flip{transform:scaleX(-1)}
 .pk .shp{position:absolute;top:var(--sp-2);right:var(--sp-2)}
 .det .dh small .shp{--sb:var(--ink);margin-top:-2px}
 .rotb{position:absolute;z-index:5;width:30px;height:30px;border-radius:50%;border:2px solid var(--card);background:var(--accent);color:#fff;font-size:17px;font-weight:700;line-height:1;display:grid;place-items:center;box-shadow:var(--shadow);touch-action:manipulation}
+/* 0.1.5 角色數值、5★ 詞綴開獎 */
+.top .me{background:none;border:0;padding:0;color:inherit;text-align:left;font:inherit;cursor:pointer}
+.hpt em{font-style:normal;font-family:var(--f-ui,inherit);font-size:var(--fs-cap);color:var(--dim);margin-left:var(--sp-2)}
+.stt{display:grid;gap:var(--sp-2);text-align:left}
+.stt .kv3 span{background:var(--fill);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-1)}
+.stt .kv3 b small{display:block;font-family:inherit;font-size:var(--fs-cap);color:var(--dim)}
+.stt h4{margin:var(--sp-2) 0 0;font-size:var(--fs-btn)}
+.stt h4 small{color:var(--gold);font-weight:400}
+.stt p{margin:0;font-size:var(--fs-sm);color:var(--dim)}
+.sw{display:flex;align-items:center;gap:var(--sp-3)}
+.sw img{width:32px;height:32px;image-rendering:pixelated;flex:none}
+.sw span{display:grid;flex:1;min-width:0}
+.sw span b{font-size:var(--fs-body)}
+.sw small{color:var(--dim);font-size:var(--fs-sm)}
+.sw>b{font-family:var(--f-pix);font-weight:400;font-size:var(--fs-title)}
+.mod5{margin:0;font-weight:700;font-size:var(--fs-body)}
+.mod5 small{font-weight:400;color:var(--dim);margin-left:2px}
+.mod5.q1{color:var(--ink)}
+.mod5.q2{color:var(--good)}
+.mod5.q3{color:var(--gold)}
+.reveal{justify-items:center}
+.reveal img{width:64px;height:64px;image-rendering:pixelated;animation:revealPop .5s ease-out}
+.reveal .mod5{font-size:var(--fs-title);animation:revealPop .5s .25s ease-out both}
+@keyframes revealPop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}
+#modal .dlg2{max-height:88vh;overflow:auto}

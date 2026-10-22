@@ -1,7 +1,7 @@
-/* 漫步勇者 · Web Audio 合成音樂與音效 */
+/* 塞令老師 · Web Audio 合成音效（0.1.5 拿掉背景音樂） */
 'use strict';
 /* ================= audio ================= */
-const AU = { ctx: null, music: null, sfx: null, song: null, step: 0, next: 0, noiseBuf: null };
+const AU = { ctx: null, sfx: null, noiseBuf: null };
 function audioInit() {
   if (!S) return;
   if (AU.ctx) {
@@ -14,18 +14,13 @@ function audioInit() {
   const master = AU.ctx.createGain();
   master.gain.value = 0.6;
   master.connect(AU.ctx.destination);
-  AU.music = AU.ctx.createGain();
-  AU.music.gain.value = S.music ? 0.5 : 0;
-  AU.music.connect(master);
   AU.sfx = AU.ctx.createGain();
-  AU.sfx.gain.value = S.sfx ? 0.8 : 0;
+  AU.sfx.gain.value = 0.8;
   AU.sfx.connect(master);
   const len = AU.ctx.sampleRate;
   AU.noiseBuf = AU.ctx.createBuffer(1, len, len);
   const d = AU.noiseBuf.getChannelData(0);
   for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  setInterval(schedule, 25);
-  playSong(B ? (B.boss ? 'boss' : 'battle') : 'field');
 }
 function tone(f, d, type = 'square', v = 0.15, delay = 0, slide = 0, bus) {
   const c = AU.ctx;
@@ -61,88 +56,6 @@ function noise(d, v = 0.2, delay = 0, freq = 1200, ft = 'bandpass', bus) {
   g.connect(bus || AU.sfx);
   s.start(t, Math.random() * 0.5);
   s.stop(t + d + 0.05);
-}
-const NS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-const nf = n => {
-  const r = /^([A-G])(#?)(\d)$/.exec(n);
-  if (!r) return 0;
-  return 440 * Math.pow(2, ((+r[3] + 1) * 12 + NS[r[1]] + (r[2] ? 1 : 0) - 69) / 12);
-};
-const SONGS = {
-  field: {
-    bpm: 92,
-    ch: [
-      {
-        w: 'square',
-        v: 0.045,
-        s: 'E5 . G5 . A5 . G5 E5 D5 . E5 . C5 . . . D5 . E5 . G5 . A5 C6 A5 . G5 . E5 . . . G5 . A5 . C6 . A5 G5 E5 . G5 . A5 . . . G5 E5 D5 . C5 . D5 E5 C5 . . . - - - -'
-      },
-      { w: 'triangle', v: 0.13, s: 'C3 . . . G3 . . . A2 . . . E3 . . . F2 . . . C3 . . . G2 . . . G3 . . .' },
-      {
-        w: 'square',
-        v: 0.022,
-        s: 'C4 E4 G4 E4 C4 E4 G4 E4 A3 C4 E4 C4 A3 C4 E4 C4 F3 A3 C4 A3 F3 A3 C4 A3 G3 B3 D4 B3 G3 B3 D4 B3'
-      },
-      { w: 'hat', v: 0.025, s: '- - x - - - x - - - x - - - x x' }
-    ]
-  },
-  battle: {
-    bpm: 156,
-    ch: [
-      {
-        w: 'square',
-        v: 0.055,
-        s: 'A4 C5 E5 . D5 C5 B4 C5 A4 . . . E4 . A4 . G4 B4 D5 . C5 B4 A4 B4 G4 . . . D4 . G4 . F4 A4 C5 . B4 A4 G4 A4 E5 . . . D5 . C5 . B4 . G#4 . B4 . E5 . . . . . - -'
-      },
-      {
-        w: 'sawtooth',
-        v: 0.045,
-        s: 'A2 A2 A3 A2 A2 A2 A3 A2 G2 G2 G3 G2 G2 G2 G3 G2 F2 F2 F3 F2 F2 F2 F3 F2 E2 E2 E3 E2 E2 E2 G#2 B2'
-      },
-      { w: 'kick', v: 0.3, s: 'x - - - x - - - x - - - x - x -' },
-      { w: 'snare', v: 0.12, s: '- - - - x - - - - - - - x - - x' },
-      { w: 'hat', v: 0.025, s: 'x x x x x x x x x x x x x x x x' }
-    ]
-  }
-};
-SONGS.boss = { bpm: 174, ch: SONGS.battle.ch };
-const PARSED = new Map();
-function parse(s) {
-  if (PARSED.has(s)) return PARSED.get(s);
-  const tk = s.trim().split(/\s+/),
-    out = tk.map((t, i) => {
-      if (t === '.' || t === '-') return null;
-      let len = 1;
-      while (tk[i + len] === '.') len++;
-      return { n: t, len };
-    });
-  PARSED.set(s, out);
-  return out;
-}
-function playSong(name) {
-  if (!AU.ctx || AU.song === name) return;
-  AU.song = name;
-  AU.step = 0;
-  AU.next = AU.ctx.currentTime + 0.08;
-}
-function schedule() {
-  if (!AU.ctx || !AU.song) return;
-  const song = SONGS[AU.song],
-    dur = 60 / song.bpm / 2;
-  while (AU.next < AU.ctx.currentTime + 0.12) {
-    for (const ch of song.ch) {
-      const seq = parse(ch.s),
-        ev = seq[AU.step % seq.length];
-      if (!ev) continue;
-      const t = AU.next - AU.ctx.currentTime;
-      if (ch.w === 'hat') noise(0.03, ch.v, t, 7000, 'highpass', AU.music);
-      else if (ch.w === 'kick') tone(130, 0.16, 'sine', ch.v, t, 40, AU.music);
-      else if (ch.w === 'snare') noise(0.12, ch.v, t, 1800, 'bandpass', AU.music);
-      else tone(nf(ev.n), dur * ev.len * 0.92, ch.w, ch.v, t, 0, AU.music);
-    }
-    AU.next += dur;
-    AU.step++;
-  }
 }
 const SFX = {
   step: () => noise(0.035, 0.03, 0, 900, 'lowpass'),

@@ -521,6 +521,43 @@ const affOf = (id, r) => {
     pool = AFFX.filter(a => (isW ? a.w : a.k === 'hp'));
   return pool[fl(r() * pool.length)].k;
 };
+/* 0.1.5 5★ 道具一拿到就開一條隨機詞綴（像 POE）：類型隨機、數值在範圍內隨機。
+   on：w 武器／寵物、s 盾、* 全部；F 是加在角色身上（生命、護甲、閃避、暴擊傷害），其他加在道具自己身上 */
+const MOD5 = [
+  { k: 'dmgPct', lo: 12, hi: 30, on: 'w' },
+  { k: 'spd', lo: 8, hi: 20, on: 'w' },
+  { k: 'crit', lo: 5, hi: 15, on: 'w' },
+  { k: 'ls', lo: 3, hi: 8, on: 'w' },
+  { k: 'burn', lo: 1, hi: 3, on: 'w' },
+  { k: 'poison', lo: 1, hi: 3, on: 'w' },
+  { k: 'stunCh', lo: 3, hi: 8, on: 'w' },
+  { k: 'freezeCh', lo: 3, hi: 8, on: 'w' },
+  { k: 'block', lo: 2, hi: 6, on: 's' },
+  { k: 'blockPct', lo: 10, hi: 25, on: 's' },
+  { k: 'spd', lo: 8, hi: 20, on: 's' },
+  { k: 'hp', lo: 15, hi: 40, on: '*', F: 1 },
+  { k: 'arm', lo: 2, hi: 6, on: '*', F: 1 },
+  { k: 'dodge', lo: 3, hi: 8, on: '*', F: 1 },
+  { k: 'critMul', lo: 10, hi: 30, on: '*', F: 1 },
+  { k: 'regen', lo: 1, hi: 3, on: '*' }
+];
+const mod5Pool = id => {
+  const I = ITEMI[id],
+    t = I.block ? 's' : I.dmg ? 'w' : '';
+  return MOD5.filter(x => x.on === '*' || x.on === t);
+};
+/* 擲一條：回傳 [類型索引, 數值]（存檔與快照只存這兩個數字） */
+const roll5 = (id, r) => {
+  const pool = mod5Pool(id),
+    x = pool[fl(r() * pool.length)];
+  return [MOD5.indexOf(x), x.lo + fl(r() * (x.hi - x.lo + 1))];
+};
+/* 這條詞綴開得好不好：0～1（數值在範圍裡的位置） */
+const mod5Q = m => {
+  const x = MOD5[m[0]];
+  return x.hi > x.lo ? (m[1] - x.lo) / (x.hi - x.lo) : 1;
+};
+const mod5Txt = m => MODN[MOD5[m[0]].k](m[1]);
 /* 說明文字 */
 const pct = v => Math.round(v) + '%';
 const MODN = {
@@ -536,7 +573,10 @@ const MODN = {
   freezeCh: v => `${pct(v)} 凍結`,
   stunCh: v => `${pct(v)} 暈眩`,
   regen: v => `每秒回復 +${v}`,
-  hp: v => `生命 +${v}`
+  hp: v => `生命 +${v}`,
+  arm: v => `護甲 +${v}`,
+  dodge: v => `閃避 +${pct(v)}`,
+  critMul: v => `暴擊傷害 +${pct(v)}`
 };
 const modTxt = m =>
   Object.entries(m)

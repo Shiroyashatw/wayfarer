@@ -73,6 +73,9 @@ function mergeAll(run, r) {
     }
     o.t++;
     o.a = affOf(o.id, r);
+    /* 5★ 合成：留三件裡開得最好的那條詞綴 */
+    const ms = use.map(([, q]) => q.m).filter(Boolean);
+    if (ms.length) o.m = ms.sort((x, y) => mod5Q(y) - mod5Q(x))[0];
     done.push(o);
   }
   return done;
@@ -121,6 +124,12 @@ function compileBag(bag, extra = {}) {
       const a = AFFX.find(x => x.k === s.a);
       if (a.k === 'hp') F.hp += a.v;
       else add(s, { [a.k]: a.v });
+    }
+    /* 0.1.5 5★ 的隨機詞綴 */
+    if (s.m && MOD5[s.m[0]]) {
+      const x = MOD5[s.m[0]];
+      if (x.F) F[x.k] += s.m[1];
+      else add(s, { [x.k]: s.m[1] });
     }
   }
   for (const o of its) {
@@ -188,12 +197,16 @@ function bagMods(bag) {
   }
   return out;
 }
-/* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴] */
-const packBag = bag => ({ w: bag.w, h: bag.h, it: bag.items.map(o => [o.id, o.t, o.x, o.y, o.r, o.a || 0]) });
+/* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴] */
+const packBag = bag => ({
+  w: bag.w,
+  h: bag.h,
+  it: bag.items.map(o => [o.id, o.t, o.x, o.y, o.r, o.a || 0, ...(o.m ? [o.m] : [])])
+});
 const unpackBag = p => ({
   w: p.w,
   h: p.h,
   items: (p.it || [])
     .filter(a => ITEMI[a[0]])
-    .map((a, i) => ({ u: 'g' + i, id: a[0], t: a[1], x: a[2], y: a[3], r: a[4], a: a[5] || null }))
+    .map((a, i) => ({ u: 'g' + i, id: a[0], t: a[1], x: a[2], y: a[3], r: a[4], a: a[5] || null, m: a[6] || null }))
 });

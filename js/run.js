@@ -156,7 +156,16 @@ function rollShop(run, special = false) {
   }));
 }
 const shopPrice = (run, id) => (run.sale ? Math.ceil(priceOf(id) / 2) : priceOf(id));
-const newItem = (run, id, t = 1) => ({ u: 'i' + run.un++, id, t, x: 0, y: 0, r: 0, a: null });
+const newItem = (run, id, t = 1) => ({
+  u: 'i' + run.un++,
+  id,
+  t,
+  x: 0,
+  y: 0,
+  r: 0,
+  a: null,
+  m: ITEMI[id].star === 5 ? roll5(id, runR(run)) : null
+});
 const benchFree = run => run.bench.indexOf(null);
 /* 買：放進暫存區，湊滿 3 件就合成 */
 function buyItem(run, k) {
@@ -165,12 +174,19 @@ function buyItem(run, k) {
   const p = shopPrice(run, s.id);
   if (run.gold < p) return '金幣不夠';
   const fi = benchFree(run);
-  if (fi < 0) return '暫存區滿了，先把道具放進背包或賣掉';
+  if (fi < 0 && !wouldMerge(run, s.id)) return '暫存區滿了，先把道具放進背包或賣掉';
   run.gold -= p;
-  run.bench[fi] = newItem(run, s.id);
+  /* 0.1.5 暫存區滿了但買了就湊滿 3 件：先放在多出來的一格，合成後收回 */
+  if (fi < 0) run.bench.push(newItem(run, s.id));
+  else run.bench[fi] = newItem(run, s.id);
   run.shop[k] = null;
-  return { merged: mergeAll(run, runR(run)) };
+  const merged = mergeAll(run, runR(run));
+  for (const o of run.bench.splice(BENCH_N)) if (o) run.bench[benchFree(run)] = o;
+  return { merged };
 }
+/* 買這件會不會馬上湊滿 3 件 1 階（暫存區滿了也能買） */
+const wouldMerge = (run, id) =>
+  [...run.bag.items, ...run.bench].filter(o => o && o.id === id && o.t === 1).length >= 2 && TIER_MAX > 1;
 /* 0.1.1 從商店直接拖進背包：買下並放在 (x, y)（放得下才會叫到這裡）；swap 是被擠出來要收進暫存區的道具 */
 function buyToBag(run, k, x, y, r, swap) {
   const s = run.shop[k];
@@ -485,7 +501,8 @@ function simLobby(seed, rating) {
       if (r.type === 'elite' || r.type === 'boss') {
         const [a, c] = eliteStars(r.st),
           pool = ITEMS.filter(it => (r.type === 'boss' ? it.core : !it.core && it.star >= a && it.star <= c));
-        run.pend = { opts: [pick(run, pool).id] };
+        /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了） */
+        takePick(run, pick(run, pool).id);
       }
     });
     for (const b of alive) if (b.run.hp <= 0) b.out = ++order;
