@@ -102,7 +102,8 @@ const TAGN = {
   poison: '毒',
   dark: '暗',
   twohand: '雙手',
-  holy: '聖'
+  holy: '聖',
+  tf: '質變'
 };
 /* 道具（ic：借用的圖示，0.1.1 起裝備類用舊版的 PNG 裝備圖 gear_欄位_序號；有 it_代號.png 時優先用）：
    cd 攻擊冷卻（秒）、dmg 傷害區間、crit 暴擊率、on 命中效果（burn 燃燒層、poison 中毒層、freeze／stun [機率%, 秒]、ls 吸血%）
@@ -1482,6 +1483,369 @@ const ITEMS = [
     dmg: [6, 9],
     on: { burn: 2 },
     ic: 'a:m_leopardcat'
+  },
+  /* ---------- 0.1.28 質變輔助（tf）：讓相鄰、有那個標籤的道具質變成「前綴・道具」，多了標籤（吃那一系的加成）和效果。
+     一件道具只吃一個質變（取星級最高、再取階數高的）；效果照輔助的階數放大（跟相鄰加成一樣 ×1.6／×2.6）。
+     tf：{ tag 對象標籤, n 前綴, add 多的標籤, m 加成（同 adj，另有 pierce、chain、guard、bash、heal、potBomb、preBoost、thornsF） } ---------- */
+  {
+    id: 'fireflower',
+    n: '火焰之花',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '火焰', add: ['fire'], m: { burn: 1 } },
+    ic: 'sup_sp_cvfire'
+  },
+  {
+    id: 'frostflower',
+    n: '冰晶之花',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '冰霜', add: ['cold'], m: { freezeCh: 15 } },
+    ic: 'sup_sp_cvcold'
+  },
+  {
+    id: 'venomflower',
+    n: '毒藤之花',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '劇毒', add: ['poison'], m: { poison: 1 } },
+    ic: 'sk_toxin'
+  },
+  {
+    id: 'holyflower',
+    n: '聖光之花',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '聖光', add: ['holy'], m: { blindCh: 12, dmg: 1 } },
+    ic: 'asc_s_lotus'
+  },
+  {
+    id: 'thunderflower',
+    n: '雷鳴之花',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '雷光', add: ['light'], m: { stunCh: 10, chain: 10 } },
+    ic: 'sup_sp_cvlight'
+  },
+  {
+    id: 'shadowflower',
+    n: '冥府之花',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '暗影', add: ['dark'], m: { weakCh: 15, ls: 8 } },
+    ic: 'sup_sp_cvchaos'
+  },
+  {
+    id: 'bloodrune',
+    n: '嗜血符文',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '嗜血', m: { bleed: 2, ls: 6 } },
+    ic: 'sk_rend'
+  },
+  {
+    id: 'piercerune',
+    n: '破甲符文',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '穿甲', m: { pierce: 40 } },
+    ic: 'sup_sp_pen'
+  },
+  {
+    id: 'assassinmark',
+    n: '刺客印記',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '暗殺', add: ['dagger'], m: { crit: 10 } },
+    ic: 'sk_shadowstep'
+  },
+  {
+    id: 'arcaneink',
+    n: '秘法墨水',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '秘法', add: ['staff'], m: { dmgPct: 10 } },
+    ic: 'asc_s_rune'
+  },
+  {
+    id: 'puppetstring',
+    n: '傀儡絲線',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    for: 'pet',
+    tf: { tag: 'weapon', n: '傀儡', add: ['pet'], m: { spd: 10 } },
+    ic: 'sk_possession'
+  },
+  {
+    id: 'echostone',
+    n: '迴音石',
+    star: 4,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '迴響', m: { chain: 25 } },
+    ic: 'sup_sp_echo'
+  },
+  /* 寵物質變（召喚物升級） */
+  {
+    id: 'venomgland',
+    n: '毒腺',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    for: 'pet',
+    tf: { tag: 'pet', n: '毒牙', add: ['poison'], m: { poison: 1, dmg: 1 } },
+    ic: 'sk_venomfang'
+  },
+  {
+    id: 'necroessence',
+    n: '死靈精華',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf', 'dark'],
+    for: 'pet',
+    tf: { tag: 'pet', n: '亡靈', add: ['dark'], m: { weakCh: 15, ls: 15 } },
+    ic: 'sup_ln_soul'
+  },
+  {
+    id: 'stormfeather',
+    n: '雷鳥羽',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    for: 'pet',
+    tf: { tag: 'pet', n: '雷獸', add: ['light'], m: { stunCh: 12, spd: 15 } },
+    ic: 'asc_s_feather'
+  },
+  {
+    id: 'holycollar',
+    n: '聖光項圈',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf', 'holy'],
+    for: 'pet',
+    tf: { tag: 'pet', n: '守護', add: ['holy'], m: { guard: 40 } },
+    ic: 'gear_amulet_3'
+  },
+  {
+    id: 'dragonblood',
+    n: '龍血',
+    star: 4,
+    sh: 's1',
+    tags: ['trinket', 'tf', 'fire'],
+    for: 'pet',
+    tf: { tag: 'pet', n: '龍裔', add: ['fire'], m: { burn: 2, dmgPct: 25 } },
+    ic: 'sup_ln_hellfire'
+  },
+  {
+    id: 'frenzywhistle',
+    n: '狂暴哨',
+    star: 4,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    for: 'pet',
+    tf: { tag: 'pet', n: '狂暴', m: { chain: 25, spd: 10 } },
+    ic: 'sup_ln_frenzy'
+  },
+  /* 盾、防具、藥水質變 */
+  {
+    id: 'spikestud',
+    n: '尖刺鑲片',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    for: 'shield',
+    tf: { tag: 'shield', n: '尖刺', m: { bash: 60 } },
+    ic: 'sup_sp_brutal'
+  },
+  {
+    id: 'holyoil',
+    n: '聖油',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf', 'holy'],
+    for: 'shield',
+    tf: { tag: 'shield', n: '神聖', add: ['holy'], m: { heal: 3, blockPct: 10 } },
+    ic: 'sk_sanct'
+  },
+  {
+    id: 'thornvine',
+    n: '荊棘藤',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'armor', n: '荊棘', m: { thornsF: 2 } },
+    ic: 'sup_sp_wither'
+  },
+  {
+    id: 'fuse',
+    n: '導火線',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    for: 'potion',
+    tf: { tag: 'potion', n: '爆裂', m: { potBomb: 100, preBoost: 50 } },
+    ic: 'sup_sp_boom'
+  },
+  /* ---------- 0.1.28 反制寵物 ---------- */
+  {
+    id: 'bugspray',
+    n: '殺蟲劑',
+    star: 2,
+    sh: 's1',
+    tags: ['potion'],
+    pre: { petSeal: 6 },
+    ic: 'sk_poisoncloud'
+  },
+  {
+    id: 'bugnet',
+    n: '捕蟲網',
+    star: 3,
+    sh: 'v2',
+    tags: ['trinket'],
+    pre: { petLock: 1 },
+    ic: 'sk_trapshot'
+  },
+  {
+    id: 'beastbell',
+    n: '驅獸鈴',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    fx: { petDown: 25 },
+    ic: 'sk_daunt'
+  },
+  {
+    id: 'hunterbadge',
+    n: '獵人徽章',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket'],
+    fx: { petHunt: 8 },
+    ic: 'sup_sp_foes'
+  },
+  /* ---------- 0.1.29 抗異常（反制燃燒、中毒、流血、凍結、暈眩、致盲、破甲、吸血回復、暴擊） ---------- */
+  {
+    id: 'fireproof',
+    n: '防火衣',
+    star: 2,
+    sh: 'v2',
+    tags: ['armor'],
+    hp: 15,
+    fx: { rBurn: 50 },
+    ic: 'gear_chest_5'
+  },
+  {
+    id: 'gasmask',
+    n: '毒氣面具',
+    star: 2,
+    sh: 's1',
+    tags: ['armor'],
+    fx: { rPoison: 30, poisonImm: 5 },
+    ic: 'gear_helm_7'
+  },
+  {
+    id: 'tourniquet',
+    n: '止血帶',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    fx: { rBleed: 50 },
+    ic: 'gear_belt_3'
+  },
+  {
+    id: 'handwarmer',
+    n: '暖暖包',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    fx: { rFreeze: 50 },
+    ic: 'ail_burn'
+  },
+  {
+    id: 'sunglasses',
+    n: '墨鏡',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    fx: { rBlind: 50, rWeak: 30 },
+    ic: 'asc_s_eye'
+  },
+  {
+    id: 'rivetvest',
+    n: '鉚釘背心',
+    star: 2,
+    sh: 'v2',
+    tags: ['armor'],
+    arm: 2,
+    fx: { rSunder: 50 },
+    ic: 'gear_chest_8'
+  },
+  {
+    id: 'lightningrod',
+    n: '避雷針',
+    star: 3,
+    sh: 'v2',
+    tags: ['trinket'],
+    fx: { rStun: 50 },
+    ic: 'sk_tesla'
+  },
+  {
+    id: 'cleansebell',
+    n: '淨化之鈴',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'holy'],
+    fx: { cleanse: 1 },
+    ic: 'sk_clarity'
+  },
+  {
+    id: 'cursedbandage',
+    n: '詛咒繃帶',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'dark'],
+    fx: { healCut: 40 },
+    ic: 'ail_curse'
+  },
+  {
+    id: 'thickhide',
+    n: '厚皮背心',
+    star: 3,
+    sh: 'v2',
+    tags: ['armor'],
+    hp: 30,
+    fx: { critRes: 40 },
+    ic: 'gear_chest_2'
+  },
+  /* ---------- 0.1.29 大件武器的融合（寵物 1 格好湊三階，這兩件讓佔越多格的武器越強） ---------- */
+  {
+    id: 'forgehammer',
+    n: '鍛造之錘',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '重鍛', m: { cellPct: 10 } },
+    ic: 'asc_s_anvil'
+  },
+  {
+    id: 'giantblood',
+    n: '巨人之血',
+    star: 4,
+    sh: 's1',
+    tags: ['trinket', 'tf'],
+    tf: { tag: 'weapon', n: '巨化', m: { cellPct: 6, cellHp: 10 } },
+    ic: 'sk_earthquake'
   }
 ];
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
@@ -1525,8 +1889,9 @@ const CLASSES = [
     n: '槍兵',
     ic: 'sk_spearrush',
     th: 'spear',
-    m: [{ tag: 'spear', dmgPct: 40, spd: 15, crit: 10 }],
-    F: { arm: 5 }
+    /* 0.1.29 6 人一場槍兵墊底（槍的道具少）：傷害 40% → 50%、多 20 生命 */
+    m: [{ tag: 'spear', dmgPct: 50, spd: 15, crit: 10 }],
+    F: { arm: 5, hp: 20 }
   },
   {
     id: 'assassin',
@@ -1585,8 +1950,9 @@ const CLASSES = [
     n: '騎士',
     ic: 'sk_shieldwall',
     th: 'shield',
-    m: [{ tag: 'shield', blockPct: 40 }],
-    F: { hp: 20 }
+    /* 0.1.29 6 人一場騎士墊底：格擋 40% → 60%、生命 20 → 40、被打中反彈 2 */
+    m: [{ tag: 'shield', blockPct: 60 }],
+    F: { hp: 40, thornsF: 2 }
   },
   {
     id: 'alchemist',
@@ -2014,8 +2380,39 @@ const MODN = {
   startBlock: v => `開戰時有 ${v} 護盾`,
   double: v => `${pct(v)} 機率連擊`,
   thornsF: v => `被打中時反彈 ${v}`,
-  critHeal: v => `暴擊時回復 ${v}`
+  critHeal: v => `暴擊時回復 ${v}`,
+  /* 0.1.28 質變與反制寵物 */
+  pierce: v => `無視 ${pct(Math.min(PIERCE_MAX, v))} 護甲與格擋`,
+  chain: v => `${pct(v)} 機率再打一次`,
+  guard: v => `命中時獲得傷害 ${pct(v)} 的格擋`,
+  bash: v => `格擋時對敵人造成格擋量 ${pct(v)} 的傷害`,
+  heal: v => `格擋時回復 ${sg(v)}${v}`,
+  potBomb: v => `喝下時對敵人造成回復量 ${pct(v)} 的傷害`,
+  preBoost: v => `開戰丟出的效果 +${pct(v)}`,
+  petDown: v => `敵人的寵物傷害 -${pct(Math.min(PETDOWN_MAX, v))}`,
+  petHunt: v => `敵人每有 1 隻寵物，你的武器傷害 +${pct(v)}（最多算 5 隻）`,
+  /* 0.1.29 抗異常、照格數 */
+  rBurn: v => `受到的燃燒 -${pct(Math.min(RES_MAX, v))}`,
+  rPoison: v => `受到的中毒 -${pct(Math.min(RES_MAX, v))}`,
+  rBleed: v => `受到的流血 -${pct(Math.min(RES_MAX, v))}`,
+  rSunder: v => `受到的破甲 -${pct(Math.min(RES_MAX, v))}`,
+  rFreeze: v => `被凍結的時間 -${pct(Math.min(RES_MAX, v))}`,
+  rStun: v => `被暈眩的時間 -${pct(Math.min(RES_MAX, v))}`,
+  rWeak: v => `被虛弱的時間 -${pct(Math.min(RES_MAX, v))}`,
+  rBlind: v => `被致盲的時間 -${pct(Math.min(RES_MAX, v))}`,
+  poisonImm: v => `開戰 ${v} 秒內不會中毒`,
+  cleanse: v => `每 ${CLEANSE_T} 秒清掉身上最嚴重的 ${v} 種異常`,
+  healCut: v => `敵人的回復與吸血 -${pct(Math.min(RES_MAX, v))}`,
+  critRes: v => `受到的暴擊額外傷害 -${pct(Math.min(RES_MAX, v))}`,
+  cellPct: v => `每佔 1 格傷害 +${pct(v)}`,
+  cellHp: v => `每佔 1 格生命 +${v}`
 };
+/* 0.1.29 抗異常最多 -80%、淨化每 5 秒一次 */
+const RES_MAX = 80,
+  CLEANSE_T = 5;
+/* 0.1.28 上限：穿甲最多無視 80%、驅獸最多 -60% */
+const PIERCE_MAX = 80,
+  PETDOWN_MAX = 60;
 const modTxt = m =>
   Object.entries(m)
     .filter(([k]) => MODN[k])
@@ -2034,7 +2431,10 @@ const PRE_T = ['seal', 'weak', 'blind', 'frozen'],
     burn: v => `開戰時讓敵人燃燒 ${v} 層`,
     poison: v => `開戰時讓敵人中毒 ${v} 層`,
     bleed: v => `開戰時讓敵人流血 ${v} 層`,
-    sunder: v => `開戰時讓敵人破甲 ${v}`
+    sunder: v => `開戰時讓敵人破甲 ${v}`,
+    /* 0.1.28 反制寵物 */
+    petSeal: v => `開戰時封鎖敵人最強的 3 隻寵物 ${v} 秒`,
+    petLock: v => `開戰時把敵人星級最高的 ${v} 隻寵物整場關住（不能攻擊）`
   };
 const preKey = p => Object.keys(p)[0];
 const preVal = (id, t = 1) => {
@@ -2042,6 +2442,8 @@ const preVal = (id, t = 1) => {
   if (!p) return 0;
   const k = preKey(p),
     v = p[k];
+  if (k === 'petLock') return v + (t - 1);
+  if (k === 'petSeal') return v + 2 * (t - 1);
   return k === 'down' ? 1 : PRE_T.includes(k) ? v + (t - 1) : Math.round(v * TIERM[t]);
 };
 function preTxt(id, t = 1) {
@@ -2087,6 +2489,7 @@ function itemDesc(id, t = 1) {
   ])
     for (const b of it[w] || [])
       out.push(`${n}${tagTxt(b.tag)}：${modTxt(scaleMod(b, t))}${b.per ? `（背包裡每有 1 件${tagTxt(b.per)}）` : ''}`);
+  if (it.tf) out.push(tfTxt(it.tf, t));
   if (it.fx) {
     const f = fxT(it, t),
       rest = Object.fromEntries(Object.entries(f).filter(([k]) => MODN[k]));
@@ -2098,6 +2501,12 @@ function itemDesc(id, t = 1) {
   if (it.gold) out.push(`放在背包裡每回合 +${it.gold} 金（每升一階 +1）`);
   if (it.pre) out.push(preTxt(id, t));
   return out.join('；');
+}
+/* 0.1.28 融合的說明：放到○○上融合成「前綴・○○」 */
+function tfTxt(T, t = 1) {
+  const m = modTxt(scaleMod(T.m, t)),
+    add = (T.add || []).map(x => TAGN[x]).join('、');
+  return `放到${tagTxt(T.tag)}上（或貼在旁邊）融合成「${T.n}・${tagTxt(T.tag)}」，這件會消失、空出格子：${add ? `變成${add}系（吃${add}的加成）、` : ''}${m}（一件只能融合一次）`;
 }
 /* 加成照階數放大（per、tag 不動） */
 function scaleMod(b, t) {

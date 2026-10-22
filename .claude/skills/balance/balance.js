@@ -3,14 +3,17 @@
    然後：
      coverage()          靜態檢查（馬上出結果）：各體系星級、輔助、異常來源、職業、核心、圖示、說明文字、怪物
      await sims('class') 機器人模擬（分批跑，避免 45 秒逾時；重複呼叫會累積樣本，sims('reset') 清掉）
-       'class'  各職業平均名次（4 個機器人一場，公平是 2.5）
+       'class'  各職業平均名次（LOBBY_N 個機器人一場，公平是 (LOBBY_N + 1) / 2，6 人是 3.5）
        'pve'    野怪／菁英／首領勝率、每個階段的背包格數
-       'fair'   用跟對手同強度的機器人代打：對戰勝率（約 50%）、平均名次（約 2.5）、一局幾回合
+       'fair'   用跟對手同強度的機器人代打：對戰勝率（約 50%）、平均名次（約 (LOBBY_N + 1) / 2）、一局幾回合
      report()            把累積的模擬結果整理成表
      itemPower()         單件道具強度：每件放進標準背包，看帶著它能打贏 ×N 倍強的對手（N 越大越強），同星級同類別比較，標出偏強偏弱的
    每個問題前面標 ❌（一定要修）或 ⚠️（看情況）。 */
 (() => {
   const W = window;
+  /* 0.1.29 一場 LOBBY_N 人：公平的平均名次與偏強偏弱的範圍（4 人時 2.5 ± 0.35） */
+  const FAIR = (LOBBY_N + 1) / 2,
+    BAND = (0.35 * (LOBBY_N - 1)) / 3;
   /* 體系：主打標籤（武器類看 dmg；防具、盾、藥水另外算） */
   const GROUPS = {
     劍: ['sword'],
@@ -248,7 +251,7 @@
   const avg = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
   /* 用機器人代打玩家的一局（跟 CLAUDE.md 說的一樣：newRun + botAct + startFight／finishFight） */
   function playOne(q, cb) {
-    const run = newRun(makeBots(3, 1000));
+    const run = newRun(makeBots(LOBBY_N - 1, 1000));
     run.bag.cls = run.clsOpts[0];
     run.phase = 'prep';
     giveStarter(run);
@@ -313,11 +316,11 @@
     const cls = Object.entries(SIM.cls);
     if (cls.length) {
       const n = cls.reduce((a, [, l]) => a + l.length, 0);
-      r.push(`## 職業平均名次（${n} 個機器人樣本；公平 2.5，每職業樣本 50 左右時 ±0.25 都算誤差）`);
+      r.push(`## 職業平均名次（${n} 個機器人樣本；公平 ${FAIR}，每職業樣本 50 左右時 ±${(BAND * 0.7).toFixed(2)} 都算誤差）`);
       cls
         .map(([c, l]) => [CLSI[c] ? CLSI[c].n : c, avg(l), l.length])
         .sort((a, b) => a[1] - b[1])
-        .forEach(([c, a, k]) => r.push(`${a < 2.15 ? '⚠️ 偏強 ' : a > 2.85 ? '⚠️ 偏弱 ' : ''}${c} ${a.toFixed(2)}（${k}）`));
+        .forEach(([c, a, k]) => r.push(`${a < FAIR - BAND ? '⚠️ 偏強 ' : a > FAIR + BAND ? '⚠️ 偏弱 ' : ''}${c} ${a.toFixed(2)}（${k}）`));
     }
     const pve = Object.entries(SIM.pve);
     if (pve.length) {
@@ -327,7 +330,7 @@
     }
     if (SIM.fair.pl.length) {
       const f = SIM.fair;
-      r.push(`\n## 公平性（${f.pl.length} 局）：對戰勝率 ${Math.round((f.w / f.n) * 100)}%（約 50%）、平均名次 ${avg(f.pl).toFixed(2)}（約 2.5）、平均 ${avg(f.rd).toFixed(1)} 回合`);
+      r.push(`\n## 公平性（${f.pl.length} 局）：對戰勝率 ${Math.round((f.w / f.n) * 100)}%（約 50%）、平均名次 ${avg(f.pl).toFixed(2)}（約 ${FAIR}）、平均 ${avg(f.rd).toFixed(1)} 回合`);
     }
     return r.join('\n') || '還沒有模擬資料：先跑 await sims("class")';
   };

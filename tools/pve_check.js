@@ -12,7 +12,7 @@ const st = {},
 let pw = 0,
   pn = 0;
 for (let g = 0; g < n; g++) {
-  const run = G.newRun(G.makeBots(3, 1000));
+  const run = G.newRun(G.makeBots(G.LOBBY_N - 1, 1000));
   run.bag.cls = run.clsOpts[g % 3];
   run.phase = 'prep';
   G.giveStarter(run);

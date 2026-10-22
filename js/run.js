@@ -300,7 +300,7 @@ function newRun(rivals) {
 const curRound = run => ROUNDS[run.ri];
 /* 商店的一格：照背包等級的機率抽星級 */
 function rollItem(run) {
-  const od = BAGLV[run.lv].odds;
+  const od = shopOdds(run);
   let x = r01(run) * 100,
     st = 1;
   for (let i = 0; i < 5; i++) {
@@ -408,7 +408,7 @@ function sellItem(run, u) {
     o = run.bench[i];
     run.bench[i] = null;
   }
-  const v = sellOf(o.id, o.t);
+  const v = sellO(o);
   run.gold += v;
   return v;
 }
@@ -519,22 +519,42 @@ function opponentOf(run) {
 }
 /* 這回合的野怪／菁英／首領：有指定回合的用那一組；其他菁英照階段換一組（照階段放大生命與傷害） */
 /* 0.1.12：第 2 階段七宗罪爪牙、第 3 階段墮落十二生肖、第 5 階段起四凶與冥府；4-4 首領是七宗罪之王 */
-const ELITE_POOL = st => (st <= 1 ? MOBS['1-4'] : st === 2 ? MOBS.sins : st <= 4 ? MOBS.zodiac : MOBS.fiends);
+/* 0.1.29 第 7 階段起菁英換成七宗罪之王等級（kings），再放大一點（ELITE_KING） */
+const ELITE_POOL = st =>
+  st <= 1 ? MOBS['1-4'] : st === 2 ? MOBS.sins : st <= 4 ? MOBS.zodiac : st <= 6 ? MOBS.fiends : MOBS.kings;
+let ELITE_KING = 1.15;
 function mobOf(run, r) {
   if (MOBS[r.id]) {
     const m = pick(run, MOBS[r.id]);
     return { n: m.n, spr: m.spr, F: m.F() };
   }
   const m = pick(run, r.type === 'boss' ? MOBS.kings : r.type === 'elite' ? ELITE_POOL(r.st) : MOBS['1-3']),
-    k = r.st <= 2 ? 1.3 : 0.9 + 0.55 * (r.st - 1),
+    k = (r.st <= 2 ? 1.3 : 0.9 + 0.55 * (r.st - 1)) * (r.type === 'elite' && r.st >= 7 ? ELITE_KING : 1),
     F = m.F();
   F.hp = Math.round(F.hp * k);
   F.weapons.forEach(w => (w.dmg = w.dmg.map(v => Math.round(v * k))));
   F.shields.forEach(s => (s.block = Math.round(s.block * k)));
-  return { n: (r.type === 'elite' ? '菁英・' : '') + m.n, spr: m.spr, F };
+  return { n: (r.type === 'elite' ? (r.st >= 7 ? '魔王・' : '菁英・') : '') + m.n, spr: m.spr, F };
 }
 /* 菁英戰利品的星級：越後面越高（不含職業核心） */
-const eliteStars = st => (st <= 2 ? [2, 3] : st <= 4 ? [3, 4] : [4, 5]);
+const eliteStars = st => (st <= 2 ? [2, 3] : st <= 4 ? [3, 4] : st <= 6 ? [4, 5] : [5, 5]);
+/* 0.1.29 第 7 階段起商店更常出高星：每過一階段把 1～2★ 的機率挪 8% 給 4～5★（最多 32%） */
+function shopOdds(run) {
+  const od = [...BAGLV[run.lv].odds],
+    r = curRound(run),
+    sh = Math.min(32, Math.max(0, ((r ? r.st : 1) - 6) * 8));
+  if (!sh) return od;
+  let left = sh;
+  for (const i of [0, 1]) {
+    const m = Math.min(od[i], left);
+    od[i] -= m;
+    left -= m;
+  }
+  const got = sh - left;
+  od[3] += got / 2;
+  od[4] += got / 2;
+  return od;
+}
 /* ================= 戰鬥 ================= */
 /* 0.1.19 戰鬥用的生命照階段放大（data.js 的 HP_ST）；回傳複本，不改原本的 */
 /* 怪物：生命跟著階段放大（MOB_HP）、傷害放大更多（MOB_DMG；玩家生命變多，怪也要打得痛）。0.1.20 機器人變聰明後重調 */
@@ -620,17 +640,7 @@ function finishFight(run, fb) {
   /* 菁英：三選一道具（星級照階段）；首領：三選一職業核心 */
   if (r.type === 'elite') {
     const [a, b] = eliteStars(r.st);
-    run.pend = {
-      kind: 'pick',
-      t: '菁英的戰利品：選一件',
-      opts: [0, 1, 2].map(
-        () =>
-          pick(
-            run,
-            ITEMS.filter(i => !i.core && i.star >= a && i.star <= b)
-          ).id
-      )
-    };
+    run.pend = { kind: 'pick', t: '菁英的戰利品：選一件', opts: eliteOpts(run, a, b) };
   }
   if (r.type === 'boss') {
     /* 0.1.10 2-5 抽自己職業的專屬核心、4-4 抽副核心 */
@@ -641,7 +651,16 @@ function finishFight(run, fb) {
       const c = pick(run, cs);
       if (!o.includes(c)) o.push(c);
     }
-    run.pend = { kind: 'pick', t: kind === 1 ? '首領掉落了專屬核心：選一個' : '首領掉落了副核心：選一個', opts: o };
+    run.pend = {
+      kind: 'pick',
+      t:
+        kind === 1
+          ? '首領掉落了專屬核心：選一個'
+          : mainCore(run)
+            ? '首領掉落了副核心：選一個融入專屬核心'
+            : '首領掉落了副核心：選一個',
+      opts: o
+    };
   }
   rivalFights(run, fb);
   if (run.hp <= 0) {
@@ -660,17 +679,22 @@ function rivalFights(run, fb) {
   const { r, opp } = fb,
     al = run.rivals.filter((rv, i) => rivalAlive(rv, r.id) && !(opp.kind === 'pvp' && i === opp.rv));
   if (opp.kind === 'pvp') {
-    if (al.length === 1) {
-      const a = rivalBag(al[0], r.id),
-        res = simulate(stageHp(a.F, r.st), fb.me, h(run.seed, run.ri, 994));
-      if (!res.win) al[0].hp = rivalHp(al[0]) - r.loss - petLoss(run.bag);
-      return;
+    /* 0.1.29 6 人：沒打你的對手兩兩互打（每回合換組合）；落單的那位打你這回合的背包，只有他會扣血 */
+    const n = al.length,
+      rot = n ? run.ri % n : 0,
+      q = [...al.slice(rot), ...al.slice(0, rot)];
+    for (let k = 0; k + 1 < n; k += 2) {
+      const [a, b] = [q[k], q[k + 1]].map(rv => rivalBag(rv, r.id)),
+        res = simulate(stageHp(a.F, r.st), stageHp(b.F, r.st), h(run.seed, run.ri, 992 + k));
+      const lr = q[res.win ? k + 1 : k];
+      lr.hp = rivalHp(lr) - r.loss - petLoss((res.win ? a : b).bag);
     }
-    if (al.length < 2) return;
-    const [a, b] = al.slice(0, 2).map(rv => rivalBag(rv, r.id)),
-      res = simulate(stageHp(a.F, r.st), stageHp(b.F, r.st), h(run.seed, run.ri, 992));
-    const lr = al[res.win ? 1 : 0];
-    lr.hp = rivalHp(lr) - r.loss - petLoss((res.win ? a : b).bag);
+    if (n % 2) {
+      const lone = q[n - 1],
+        a = rivalBag(lone, r.id),
+        res = simulate(stageHp(a.F, r.st), fb.me, h(run.seed, run.ri, 994));
+      if (!res.win) lone.hp = rivalHp(lone) - r.loss - petLoss(run.bag);
+    }
     return;
   }
   al.forEach((rv, j) => {
@@ -708,9 +732,37 @@ function endRun(run, place) {
     .map((x, i) => (i < HIST_FULL ? x : { at: x.at, place: x.place, d: x.d, r: x.r }));
   if (typeof ghostEnd === 'function') ghostEnd(run);
 }
+/* 0.1.29 菁英的三選一（星級 a～b）：保底一件職業主打的武器（照職業加成的標籤，沒有就任何武器），位置隨機 */
+function clsWeaponTags(cls) {
+  const C = CLSI[cls];
+  if (!C) return ['weapon'];
+  const t = [...new Set([...(C.m || []).map(b => b.tag), C.th].filter(Boolean))].filter(tag =>
+    ITEMS.some(i => i.dmg && !i.core && i.tags.includes(tag))
+  );
+  return t.length ? t : ['weapon'];
+}
+function eliteOpts(run, a, b) {
+  const pool = ITEMS.filter(i => !i.core && i.star >= a && i.star <= b),
+    tags = clsWeaponTags(run.bag.cls),
+    isW = i => i.dmg && tags.some(t => i.tags.includes(t));
+  let wp = pool.filter(isW);
+  if (!wp.length) wp = ITEMS.filter(i => !i.core && i.star <= b && isW(i));
+  const o = [0, 1].map(() => pick(run, pool).id);
+  if (wp.length) o.splice(fl(runR(run)() * 3), 0, pick(run, wp).id);
+  else o.push(pick(run, pool).id);
+  return o;
+}
 /* 三選一的獎勵放進暫存區 */
 /* 0.1.6 暫存區滿了：剛好湊滿 3 件就先放多出來的一格合成；不然玩家的話先寄放在 run.hold（下回合空出位置再領），不會卡住 */
+/* 0.1.29 專屬核心（背包或暫存區）；副核心直接融入它 */
+const mainCore = run => [...run.bag.items, ...run.bench].find(o => o && ITEMI[o.id].core === 1);
 function takePick(run, id, hold) {
+  const mc = ITEMI[id].core === 2 && mainCore(run);
+  if (mc) {
+    mc.sc = id;
+    run.pend = null;
+    return '';
+  }
   const fi = benchFree(run);
   if (fi < 0 && !wouldMerge(run, id)) {
     if (!hold) return '暫存區滿了，先騰出一格';
@@ -748,7 +800,7 @@ const THEMES = ['sword', 'bow', 'dagger', 'fire', 'pet', 'shield', 'mace', 'cold
    rating 越高的機器人買法越聰明（q：照戰力評估做決定的機率，見 bot.js）。 */
 function simLobby(seed, rating, opt = {}) {
   const rr = rng(h(seed, 5)),
-    bots = [0, 1, 2, 3].map(i => {
+    bots = [...Array(LOBBY_N).keys()].map(i => {
       const s = h(seed, i, 31),
         rt = Math.max(600, (rating || 1000) + fl((rr() - 0.5) * 150));
       const run = newRunState(s),
@@ -782,6 +834,18 @@ function simLobby(seed, rating, opt = {}) {
        opt.short：只要名次（訓練、平衡統計）就不跑加時 */
     if (!alive.length || (alive.length === 1 && (opt.short || bots.length === 1))) break;
     const solo = alive.length === 1;
+    /* 0.1.28 其他人平均幾隻寵物（機器人照這個決定要不要買反制寵物的道具） */
+    const pets = b => b.run.bag.items.filter(o => ITEMI[o.id].tags.includes('pet')).length,
+      tot = alive.reduce((n, b) => n + pets(b), 0);
+    for (const b of alive) b.run.epet = alive.length > 1 ? (tot - pets(b)) / (alive.length - 1) : 1;
+    /* 0.1.29 其他人的威脅（每種異常、回復、暴擊的比例），抗異常道具照這個估價 */
+    const thr = new Map(alive.map(b => [b, botThreat(compileBag(b.run.bag))]));
+    for (const b of alive) {
+      const os = alive.filter(x => x !== b);
+      if (!os.length) continue;
+      b.run.eres = {};
+      for (const k in BOT_ERES0) b.run.eres[k] = os.reduce((n, x) => n + thr.get(x)[k], 0) / os.length;
+    }
     for (const b of alive) {
       nextRound(b.run);
       if (b.run.ri > 0) b.run.gold = Math.max(0, b.run.gold + b.gb);
@@ -828,8 +892,16 @@ function simLobby(seed, rating, opt = {}) {
               ? it.core === (r.st <= 2 ? 1 : 2) && it.cls === run.bag.cls
               : !it.core && it.star >= a && it.star <= c
           );
-        /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了）；暫存區滿了先寄放，下回合 botAct 處理 */
-        takePick(run, pick(run, pool).id, true);
+        /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了）；暫存區滿了先寄放，下回合 botAct 處理。
+           0.1.29 菁英跟玩家一樣三選一（保底職業武器），照評估挑 */
+        if (r.type === 'elite') {
+          const opts = eliteOpts(run, a, c),
+            best =
+              r01(run) < b.q
+                ? opts.map(id => [id, botValue(run, id, 1, b.P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0]
+                : opts[0];
+          takePick(run, best, true);
+        } else takePick(run, pick(run, pool).id, true);
       }
     });
     for (const b of alive) if (b.run.hp <= 0) b.out = ++order;

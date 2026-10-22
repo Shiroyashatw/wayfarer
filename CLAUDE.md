@@ -61,12 +61,13 @@ python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 ```
 存檔在 localStorage（鍵 `serling_v1`）；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換（存檔版本是 `S.v`，0.1.0 起是 100）。進行中的一局記著版本（`S.run.ver`），版本不同會直接結束那局。
 測試用另一份存檔：網址加 `?p=2`。
-瀏覽器測一整局：`newRun(makeBots(3, 1000))` 後用 `botAct`（`js/bot.js`）代替玩家、`startFight`／`finishFight` 跑每回合（見 `docs/CODEMAP.md`）。
+瀏覽器測一整局：`newRun(makeBots(LOBBY_N - 1, 1000))` 後用 `botAct`（`js/bot.js`）代替玩家、`startFight`／`finishFight` 跑每回合（見 `docs/CODEMAP.md`）。
 
 ## Supabase
 - 專案 ref：`eugkdfhkoaxvqhztvptc`，URL `https://eugkdfhkoaxvqhztvptc.supabase.co`
 - 資料表 `public.saves`（user_id、data jsonb、game_version、updated_at），RLS 只允許本人讀寫。
 - 快照對戰：`public.runs`（`ver` 存的是快照版本 `GVER`，不是遊戲版本；回合表或道具改到舊快照不能用時才換 `GVER`，換了要重產種子）、`public.snaps`（大家可讀、只能寫自己的）、RPC `pick_rivals`；SQL 在 `supabase/migrations/20261022000000_serling_ghosts.sql`。資料表不存在時遊戲自動改用機器人對手（`GHOST.off`）。開服種子：在瀏覽器主控台執行 `seedGhosts(160)`，產生 160 局機器人對局（分數 700～2100 平均分布，每個牌階都有對手）（4 個一場真的互打）上傳成 `runs.seed = true`；配對時真人優先，真人夠多後可用 `delete from public.runs where seed;` 刪掉。
+- 排行榜（0.1.29）：`runs.cls`、`runs.rating_end`、RPC `leaderboard`／`class_stats`，SQL 在 `supabase/migrations/20261023000000_serling_leaderboard.sql`（要在 SQL Editor 跑過才有資料；沒跑時首頁職業勝率改用自己的對局）。
 - 前端只放 anon key。**絕對不要使用或要求 service_role key。**
 - 合併規則：本機與雲端各有 `savedAt`，啟動時取較新的那份。
 

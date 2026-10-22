@@ -14,7 +14,11 @@ async function ghostRivals(rating) {
   if (ghostOK())
     try {
       const job = (async () => {
-        const { data: runs, error } = await CLOUD.sb.rpc('pick_rivals', { p_ver: GVER, p_rating: rating, p_n: 3 });
+        const { data: runs, error } = await CLOUD.sb.rpc('pick_rivals', {
+          p_ver: GVER,
+          p_rating: rating,
+          p_n: GHOST_MAX
+        });
         if (error) throw error;
         if (!runs || !runs.length) return [];
         const { data: sn, error: e2 } = await CLOUD.sb
@@ -35,7 +39,9 @@ async function ghostRivals(rating) {
     } catch (e) {
       ghostFail(e);
     }
-  return [...got, ...makeBots(3 - got.length, rating)].slice(0, 3);
+  /* 0.1.29 6 人一場：真人快照最多 GHOST_MAX 位，其他機器人補滿 5 位 */
+  got = got.slice(0, GHOST_MAX);
+  return [...got, ...makeBots(LOBBY_N - 1 - got.length, rating)].slice(0, LOBBY_N - 1);
 }
 /* 開局：在 runs 建一筆（失敗就只是不存快照） */
 async function ghostBegin(run) {
@@ -78,6 +84,40 @@ function ghostEnd(run) {
     .update({ place: run.place, finished_at: new Date().toISOString() })
     .eq('id', run.rid)
     .then(({ error }) => error && ghostFail(error));
+  /* 0.1.29 排行榜用：職業、打完後的分數（另外更新；資料表還沒加欄位時失敗也不影響快照對戰） */
+  CLOUD.sb
+    .from('runs')
+    .update({ cls: run.bag.cls || null, rating_end: S.rating })
+    .eq('id', run.rid)
+    .then(() => {});
+  BOARD.at = 0;
+}
+/* ================= 排行榜（0.1.29） ================= */
+/* p：玩家排行（leaderboard）；c：各職業的局數、第 1 名、平均名次（class_stats，真人不到 40 局就連種子一起算，seed 標記）；
+   拿不到（離線、還沒跑 20261023000000_serling_leaderboard.sql）時 err 有值，首頁改顯示自己的職業戰績 */
+const BOARD = { at: 0, p: null, c: null, seed: false, err: '', busy: false };
+async function ghostBoard(force = false) {
+  if (!ghostOK() || BOARD.busy || (!force && Date.now() - BOARD.at < 60000)) return false;
+  BOARD.busy = true;
+  try {
+    const [a, b] = await Promise.all([
+      CLOUD.sb.rpc('leaderboard', { p_n: 20 }),
+      CLOUD.sb.rpc('class_stats', { p_seed: false, p_days: 30 })
+    ]);
+    if (a.error || b.error) throw a.error || b.error;
+    let c = b.data || [],
+      seed = false;
+    if (c.reduce((n, x) => n + x.games, 0) < 40) {
+      const s2 = await CLOUD.sb.rpc('class_stats', { p_seed: true, p_days: 30 });
+      if (!s2.error) (c = s2.data || []), (seed = true);
+    }
+    Object.assign(BOARD, { p: a.data || [], c, seed, err: '' });
+  } catch (e) {
+    BOARD.err = (e && e.message) || String(e);
+  }
+  BOARD.at = Date.now();
+  BOARD.busy = false;
+  return true;
 }
 /* ================= 開服種子資料（開發用） ================= */
 /* 在瀏覽器主控台執行 seedGhosts(160)：分數 700～2100 平均分布（每個牌階都有對手，越高越強），用目前的帳號產生 n 局機器人對局（4 個一場、真的互打），上傳成種子快照（runs.seed = true）。
@@ -101,6 +141,8 @@ async function seedGhosts(n = 160, lo = 700, hi = 2100) {
           rating: b.rating,
           rounds: ids.length,
           place: b.place,
+          /* 0.1.29 職業（各職業勝率用；要先跑 20261023000000_serling_leaderboard.sql） */
+          cls: (b.snaps[ids[ids.length - 1]].bag || {}).cls || null,
           seed: true,
           finished_at: new Date().toISOString()
         })

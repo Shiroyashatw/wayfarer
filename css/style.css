@@ -84,7 +84,7 @@ canvas.spr.flip{transform:scaleX(-1)}
 .hist{display:grid;gap:var(--sp-1)}
 .hist div.hr,.hist>div{display:flex;justify-content:space-between;background:var(--card);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);font-size:var(--fs-body);box-shadow:var(--shadow)}
 .pl{font-family:var(--f-pix);font-weight:400}
-.pl.p1{color:var(--gold)}.pl.p2{color:var(--s3)}.pl.p3{color:#b5652d}.pl.p4{color:var(--dim)}
+.pl.p1{color:var(--gold)}.pl.p2{color:var(--s3)}.pl.p3{color:#b5652d}.pl.p4,.pl.p5,.pl.p6{color:var(--dim)}
 .logo .pl{font-size:48px;text-shadow:none}
 .ver{text-align:center;margin-top:var(--sp-4)}
 /* ---------- 準備畫面 ---------- */
@@ -100,6 +100,11 @@ canvas.spr.flip{transform:scaleX(-1)}
 .rinfo small{color:var(--dim)}
 .gold .inc{font-size:var(--fs-sm);color:var(--good);margin-left:var(--sp-1)}
 .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-1)}
+/* 0.1.29 6 人一場：5 位對手一排，頭像在上、名字和生命在下 */
+.rivals.n5{grid-template-columns:repeat(5,1fr)}
+.rivals.n5 .rv{flex-direction:column;gap:2px;padding:var(--sp-1) 2px;text-align:center}
+.rivals.n5 .rv canvas{width:26px;height:26px}
+.rivals.n5 .rv span{width:100%}
 .rv{display:flex;align-items:center;gap:var(--sp-1);background:var(--card);border-radius:var(--r-md);padding:var(--sp-1);border:1.5px solid transparent;min-width:0;box-shadow:var(--shadow)}
 .rv canvas{width:28px;height:28px}
 .rv span{display:grid;min-width:0;flex:1}
@@ -139,9 +144,17 @@ canvas.spr.flip{transform:scaleX(-1)}
 .it.core .c{box-shadow:inset 0 0 10px #e08a1255}
 .it.sel .c{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 .it.lit .c{box-shadow:inset 0 0 0 2px var(--good),0 0 8px #2f9e4466}
+.it.src .c{box-shadow:inset 0 0 0 2px var(--gold),0 0 8px var(--gold)}
+.it.pv .c{border-color:var(--good);box-shadow:0 0 0 2px var(--good),0 0 10px var(--good)}
+.lk{position:absolute;z-index:3;pointer-events:none;background:var(--good);border-radius:4px;box-shadow:0 0 0 2px var(--card),0 0 6px var(--good);opacity:.9;transition:opacity .15s,transform .15s}
+.lk.h{width:14px;height:8px;margin:-4px 0 0 -7px}.lk.v{width:8px;height:14px;margin:-7px 0 0 -4px}
+.lk.tf{background:var(--s4);box-shadow:0 0 0 2px var(--card),0 0 6px var(--s4)}
+.bag.hassel .lk{opacity:.3}.bag.hassel .lk.on{opacity:1;transform:scale(1.3)}
 .it.lift{opacity:.35}
 .tier{position:absolute;left:3px;top:2px;font-family:var(--f-pix);font-size:10px;line-height:1;color:#fff;background:var(--accent2);border-radius:3px;padding:1px 2px;font-weight:400}
 .buf{position:absolute;right:3px;top:1px;font-size:12px;line-height:1;color:var(--good);font-weight:700}
+.buf.tfm{color:var(--s4)}.it .fui,.bs .fui{position:absolute;left:2px;bottom:2px;top:auto;transform:none;width:42%;max-width:22px;image-rendering:pixelated;filter:drop-shadow(0 0 1px #000)}
+.it img.fum,.bs.fu>img:first-child,.dh.fu>img{filter:drop-shadow(0 0 2px var(--fg)) drop-shadow(0 0 4px var(--fg))}.c-tf{color:var(--s4)}
 .bag.mini .it .c{border-width:1px}
 .bag.mini .cell{border-width:1px}
 .it.act .c{animation:actf .35s ease-out}
@@ -414,3 +427,20 @@ canvas.spr.flip{transform:scaleX(-1)}
   .prep>.det{position:absolute;grid-area:d;top:0;left:0;bottom:auto;transform:none;width:100%;box-shadow:0 0 0 1px var(--line)}
   .prep .top{position:static;margin:0;padding:var(--sp-2) 0;box-shadow:none;background:none}
 }
+/* 0.1.29 首頁排行榜 */
+.lbt{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-bottom:var(--sp-2)}
+.lb{display:grid;gap:var(--sp-1)}
+.lbr{display:flex;align-items:center;gap:var(--sp-2);background:var(--card);border-radius:var(--r-md);padding:var(--sp-1) var(--sp-3);min-height:44px;box-shadow:var(--shadow)}
+.lbr.me{outline:2px solid var(--accent)}
+.lbr .no{width:22px;text-align:center;font-family:var(--f-pix);font-weight:400;color:var(--dim)}
+.lbr .no.p1{color:var(--gold)}.lbr .no.p2{color:var(--s3)}.lbr .no.p3{color:#b5652d}
+.lbr img{width:28px;height:28px;image-rendering:pixelated}
+.lbr>span{flex:1;min-width:0}
+.lbr>span b{display:block;font-size:var(--fs-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbr>span small,.lbr .v small{display:block;font-size:var(--fs-sm);color:var(--dim);font-weight:400}
+.lbr .v{font-family:var(--f-pix);font-size:var(--fs-num);color:var(--gold);font-weight:400;text-align:right}
+/* 0.1.29 上方資訊欄的戰報按鈕 */
+.iconbtn.lgb{width:auto;min-width:46px;display:grid;place-items:center;align-content:center;gap:0;line-height:1.1;padding:0 2px}
+.iconbtn.lgb b{font-size:var(--fs-sm);font-weight:700}
+.iconbtn.lgb small{font-size:var(--fs-sm);font-weight:400}
+.iconbtn.lgb.w small{color:var(--good)}.iconbtn.lgb.l small{color:var(--bad)}

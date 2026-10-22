@@ -54,13 +54,18 @@ function mutate(P, seed) {
   }
   return Q;
 }
-/* A、B 各 2 個放同一場，回傳 [A 的平均名次, B 的平均名次] */
+/* A、B 各一半放同一場，回傳 [A 的平均名次, B 的平均名次] */
 function duel(A, B, n, seed0, old) {
   const pa = [],
     pb = [];
   for (let i = 0; i < n; i++) {
-    const side = i % 2 ? [1, 0, 1, 0] : [0, 1, 0, 1],
-      L = G.simLobby(seed0 + i * 7919, RATING, old ? { old: side, short: 1 } : { P: side.map(s => (s ? B : A)), short: 1 });
+    /* 0.1.29 一場 LOBBY_N 人：A、B 各一半交錯坐 */
+    const side = [...Array(G.LOBBY_N).keys()].map(k => (k + i) % 2),
+      L = G.simLobby(
+        seed0 + i * 7919,
+        RATING,
+        old ? { old: side, short: 1 } : { P: side.map(s => (s ? B : A)), short: 1 }
+      );
     L.forEach((b, k) => (side[k] ? pb : pa).push(b.place));
   }
   return [avg(pa), avg(pb)];
@@ -68,7 +73,7 @@ function duel(A, B, n, seed0, old) {
 
 if (opt('vs-old', false)) {
   const [a, b] = duel(G.BOT_P, null, LOBBIES, 424242, true);
-  console.log(`現在的機器人 平均名次 ${a.toFixed(2)}、舊買法 ${b.toFixed(2)}（${LOBBIES} 場，2 對 2）`);
+  console.log(`現在的機器人 平均名次 ${a.toFixed(2)}、舊買法 ${b.toFixed(2)}（${LOBBIES} 場，各一半）`);
   process.exit(0);
 }
 

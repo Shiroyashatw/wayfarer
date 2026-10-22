@@ -25,9 +25,11 @@ function borrowIcon(id) {
 }
 function itemIcon(id) {
   if (ICU.has(id)) return ICU.get(id);
-  const u = artIconURL('it_' + id) || borrowIcon(id);
+  const own = artIconURL('it_' + id),
+    u = own || borrowIcon(id);
   if (!u) return iconURL('star');
-  ICU.set(id, u);
+  /* 0.1.29 有專屬圖示但大圖還沒載好：先借舊圖，不要記住（不然載好之後一直是舊圖） */
+  if (own || typeof ART === 'undefined' || !ART['it_' + id]) ICU.set(id, u);
   return u;
 }
 /* 頭像：PNG 怪物圖畫到 canvas（render 後統一畫） */
@@ -213,6 +215,7 @@ function homeHTML() {
     <div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b>${rankHTML()}<div class="kv3"><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span><span>第 1 名<b>${(S.hist || []).filter(x => x.place === 1).length}</b></span></div></div></div>
     <button class="btn pri big" data-act="play">${run ? `繼續對局（${curRound(run) ? curRound(run).id : ''}）` : '開始對戰'}</button>
     <div class="g3"><button class="btn" data-act="go" data-k="help">怎麼玩</button><button class="btn" data-act="go" data-k="codex">道具圖鑑</button><button class="btn" data-act="go" data-k="settings">設定</button></div>
+    ${boardHTML()}
     ${
       (S.hist || []).length
         ? `<h3>最近的對局</h3><div class="hist">${S.hist
@@ -226,6 +229,61 @@ function homeHTML() {
     }
     <div class="hfoot"><button class="btn news" data-act="news">更新紀錄${S.newsSeen !== NEWS[0].v ? '<i class="dot" aria-label="有新的更新"></i>' : ''}</button><p class="sub">塞令老師 v${VER}・${esc(typeof CLOUD !== 'undefined' ? CLOUD.status : '')}</p></div>
   </div>`;
+}
+/* 0.1.29 首頁的排行榜：玩家（前 10 名＋你的位置）／職業（第 1 名率、平均名次、局數）；
+   雲端拿不到時職業那頁改用自己的對局紀錄 */
+function boardHTML() {
+  if (ghostOK() && Date.now() - BOARD.at > 60000) ghostBoard().then(ch => ch && V.scr === 'home' && render());
+  const tab = V.lb || 'p',
+    tabs = `<div class="lbt"><button class="btn sm" data-act="lb" data-k="p" aria-pressed="${tab === 'p'}">玩家排行</button><button class="btn sm" data-act="lb" data-k="c" aria-pressed="${tab === 'c'}">職業勝率</button></div>`;
+  let body;
+  if (tab === 'p') {
+    if (!BOARD.p)
+      body = `<p class="empty">${BOARD.busy || (ghostOK() && !BOARD.at) ? '讀取中…' : BOARD.err && ghostOK() ? '排行榜暫時拿不到，可以先看「職業勝率」裡你自己的戰績' : '連上雲端後才看得到排行'}</p>`;
+    else if (!BOARD.p.length) body = `<p class="empty">還沒有人打完一局，打完就會上榜</p>`;
+    else {
+      const me = BOARD.p.findIndex(x => x.name === S.name && x.avatar === S.av);
+      body =
+        `<div class="lb">${BOARD.p
+          .slice(0, 10)
+          .map(
+            (x, i) =>
+              `<div class="lbr${i === me ? ' me' : ''}"><b class="no p${i + 1}">${i + 1}</b>${sprCv('a_' + (AVATARS.some(a => a[0] === x.avatar) ? x.avatar : AVATARS[0][0]))}<span><b>${esc(x.name || '無名')}</b><small>${rankName(rankOf(x.rating))}・${x.games} 場・第 1 名 ${x.wins}</small></span><b class="v">${x.rating}</b></div>`
+          )
+          .join('')}</div>` +
+        (me < 0 || me >= 10
+          ? `<p class="sub">你：${S.rating} 分${me >= 10 ? `・第 ${me + 1} 名` : '（打完一局就會上榜）'}</p>`
+          : '');
+    }
+  } else {
+    const cloud = BOARD.c && BOARD.c.length,
+      rows = cloud
+        ? BOARD.c.map(x => ({ cls: x.cls, g: x.games, w: x.wins, avg: +x.avg_place }))
+        : Object.values(
+            (S.hist || [])
+              .filter(x => x.cls)
+              .reduce((m, x) => {
+                const o = (m[x.cls] = m[x.cls] || { cls: x.cls, g: 0, w: 0, sum: 0 });
+                o.g++;
+                o.w += x.place === 1;
+                o.sum += x.place;
+                return m;
+              }, {})
+          ).map(o => ({ ...o, avg: o.sum / o.g }));
+    rows.sort((a, b) => a.avg - b.avg);
+    body = rows.length
+      ? `<div class="lb">${rows
+          .filter(x => CLSI[x.cls])
+          .map(
+            x =>
+              `<div class="lbr"><img src="${artIconURL(CLSI[x.cls].ic) || iconURL('star')}" alt=""><span><b>${CLSI[x.cls].n}</b><small>${x.g} 場・平均第 ${x.avg.toFixed(2)} 名</small></span><b class="v">${Math.round((x.w / x.g) * 100)}%<small>第 1 名</small></b></div>`
+          )
+          .join(
+            ''
+          )}</div><p class="sub">${cloud ? `最近 30 天${BOARD.seed ? '（真人還不多，含電腦對局）' : ''}` : '你自己的對局（連上雲端後顯示全部玩家）'}</p>`
+      : `<p class="empty">還沒有對局紀錄，打完一局就會出現</p>`;
+  }
+  return `<h3>排行榜</h3>${tabs}${body}`;
 }
 async function startRun() {
   audioOn();
@@ -245,14 +303,16 @@ const GAP = 4;
 const cellSize = w =>
   Math.max(30, Math.min(w <= 3 ? 64 : 52, fl((Math.min(innerWidth, 480) - 32 - (w - 1) * GAP) / w)));
 function rivalHTML(run) {
-  const nx = curRound(run) && curRound(run).type === 'pvp' ? nextRival(run) : -1;
-  return `<div class="rivals">${run.rivals
+  const nx = curRound(run) && curRound(run).type === 'pvp' ? nextRival(run) : -1,
+    /* 0.1.29 5 位對手一排放不下全名：「憂鬱的咕咕鳥」只顯示「咕咕鳥」（全名在 title） */
+    nm = rv => esc(run.rivals.length > 3 ? String(rv.name).split('的').pop() : rv.name);
+  return `<div class="rivals n${run.rivals.length}">${run.rivals
     .map((rv, i) => {
       /* 0.1.26 生命在這局裡算（rv.hp） */
       const hp = rivalAlive(rv, (curRound(run) || ROUNDS[ROUNDS.length - 1]).id) ? rivalHp(rv) : 0;
       if (hp <= 0)
-        return `<div class="rv out">${sprCv('a_' + rv.av)}<span><b>${esc(rv.name)}</b><i class="hpb"><i style="width:0"></i></i><small>淘汰</small></span></div>`;
-      return `<div class="rv${i === nx ? ' nx' : ''}">${sprCv('a_' + rv.av)}<span><b>${esc(rv.name)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>♥ ${hp}</small></span></div>`;
+        return `<div class="rv out" title="${esc(rv.name)}">${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:0"></i></i><small>淘汰</small></span></div>`;
+      return `<div class="rv${i === nx ? ' nx' : ''}" title="${esc(rv.name)}">${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>♥ ${hp}</small></span></div>`;
     })
     .join('')}</div>`;
 }
@@ -279,9 +339,10 @@ function bagHTML(bag, cs, opt = {}) {
     H = bag.h * cs + (bag.h - 1) * GAP,
     mods = opt.mods,
     sel = V.sel && bag.items.find(o => o.u === V.sel),
-    lit = new Set();
+    lit = new Set(),
+    src = new Set(sel && mods && mods.get(sel.u) ? mods.get(sel.u).map(x => x.from) : []);
   if (sel && mods) for (const [u, l] of mods) if (l.some(x => x.from === sel.u)) lit.add(u);
-  let h = `<div class="bag${opt.mini ? ' mini' : ''}" id="${opt.id || 'bag'}" style="width:${W}px;height:${H}px;--cs:${cs}px">`;
+  let h = `<div class="bag${opt.mini ? ' mini' : ''}${sel ? ' hassel' : ''}" id="${opt.id || 'bag'}" style="width:${W}px;height:${H}px;--cs:${cs}px">`;
   for (let y = 0; y < bag.h; y++)
     for (let x = 0; x < bag.w; x++)
       h += `<i class="cell" style="left:${x * (cs + GAP)}px;top:${y * (cs + GAP)}px"></i>`;
@@ -294,8 +355,9 @@ function bagHTML(bag, cs, opt = {}) {
       My = Math.max(...cs0.map(p => p[1])),
       bw = (Mx - mx + 1) * (cs + GAP) - GAP,
       bh = (My - my + 1) * (cs + GAP) - GAP,
-      buf = mods && mods.get(o.u) && mods.get(o.u).length;
-    h += `<div class="it s${I.star}${V.sel === o.u ? ' sel' : ''}${lit.has(o.u) ? ' lit' : ''}${I.core ? ' core' : ''}" data-u="${o.u}" style="left:${mx * (cs + GAP)}px;top:${my * (cs + GAP)}px;width:${bw}px;height:${bh}px">${cs0
+      buf = mods && mods.get(o.u) && mods.get(o.u).length,
+      tfd = buf && mods.get(o.u).some(x => x.w === 'tf');
+    h += `<div class="it s${I.star}${V.sel === o.u ? ' sel' : ''}${lit.has(o.u) ? ' lit' : ''}${src.has(o.u) ? ' src' : ''}${I.core ? ' core' : ''}" data-u="${o.u}" style="left:${mx * (cs + GAP)}px;top:${my * (cs + GAP)}px;width:${bw}px;height:${bh}px">${cs0
       .map(([x, y]) => {
         /* 同一件的格子連在一起：相鄰那一邊補滿間隙、不畫框線與圓角 */
         const has = (a, b) => cs0.some(p => p[0] === a && p[1] === b),
@@ -309,8 +371,9 @@ function bagHTML(bag, cs, opt = {}) {
       })
       .join(
         ''
-      )}<img src="${itemIcon(o.id)}" alt="${I.n}">${tierBadge(o.t)}${buf && !opt.mini ? '<b class="buf">+</b>' : ''}</div>`;
+      )}<img src="${itemIcon(o.id)}" alt="${fuName(o)}"${o.f && ITEMI[o.f] ? ` class="fum" style="--fg:${fuColor(o)}"` : ''}>${o.f && ITEMI[o.f] ? `<img class="fui" src="${itemIcon(o.f)}" alt="">` : o.sc && ITEMI[o.sc] ? `<img class="fui" src="${itemIcon(o.sc)}" alt="">` : ''}${tierBadge(o.t)}${buf && !opt.mini ? (tfd ? '<b class="buf tfm">✦</b>' : '<b class="buf">+</b>') : ''}</div>`;
   }
+  if (mods && !opt.mini) h += linkHTML(bag, mods, cs, sel);
   /* 0.1.4 選中的道具右上角放旋轉鈕，不用到下面說明區按 */
   if (sel && !opt.mini && shapeOf(sel.id).length > 1) {
     const c = cellsOf(sel),
@@ -319,6 +382,56 @@ function bagHTML(bag, cs, opt = {}) {
     h += `<button class="rotb" data-act="rot" aria-label="旋轉" style="left:${Math.min(rx - 16, W - 22)}px;top:${Math.max(ry - 12, -10)}px">↻</button>`;
   }
   return h + '</div>';
+}
+/* 0.1.28 相鄰加成的連接點：有相鄰加成的兩件，在貼著的那條縫上畫一顆亮點（不用選就看得到誰加成誰）；
+   跟選中的道具有關的變亮、其他的變淡 */
+function linkHTML(bag, mods, cs, sel) {
+  const byU = new Map(bag.items.map(o => [o.u, o])),
+    seen = new Set(),
+    st = cs + GAP;
+  let h = '';
+  for (const [u, l] of mods)
+    for (const x of l) {
+      if ((x.w !== 'adj' && x.w !== 'tf') || !byU.has(x.from) || !byU.has(u)) continue;
+      const key = [x.from, u].sort().join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const a = byU.get(x.from),
+        b = byU.get(u),
+        bc = new Set(cellsOf(b).map(p => p + '')),
+        touch = [];
+      for (const [cx, cy] of cellsOf(a))
+        for (const [dx, dy] of [
+          [1, 0],
+          [0, 1],
+          [-1, 0],
+          [0, -1]
+        ])
+          if (bc.has([cx + dx, cy + dy] + '')) touch.push([cx, cy, dx, dy]);
+      if (!touch.length) continue;
+      const [cx, cy, dx, dy] = touch[fl(touch.length / 2)],
+        on = sel && (sel.u === a.u || sel.u === b.u);
+      h += `<i class="lk ${dx ? 'h' : 'v'}${on ? ' on' : ''}${x.w === 'tf' ? ' tf' : ''}" style="left:${cx * st + cs / 2 + (dx * st) / 2}px;top:${cy * st + cs / 2 + (dy * st) / 2}px"></i>`;
+    }
+  return h;
+}
+/* 0.1.28 拖曳中：放下後會跟它有加成（或能融合）的道具先亮起來 */
+function dragLit(d) {
+  const run = S.run,
+    t = d.tgt && d.ok ? { ...d.o, x: d.tgt[0], y: d.tgt[1], r: d.r } : null,
+    key = d.fuse ? 'f' + d.fuse.u : t ? [t.x, t.y, t.r] + '' : '';
+  if (d.lk === key) return;
+  d.lk = key;
+  const bag = $('bag');
+  if (!bag) return;
+  bag.querySelectorAll('.it.pv').forEach(e => e.classList.remove('pv'));
+  const on = q => {
+    const e = bag.querySelector(`.it[data-u="${q.u}"]`);
+    if (e) e.classList.add('pv');
+  };
+  if (d.fuse) return on(d.fuse);
+  if (!t) return;
+  for (const q of run.bag.items) if (q.u !== d.o.u && adjacent(t, q) && synergy(t, q) + synergy(q, t) > 0) on(q);
 }
 /* 0.1.4 道具形狀的小圖（商店、說明、三選一）：幾格、怎麼排一眼看得出來 */
 function shapeMini(id, r = 0) {
@@ -342,6 +455,13 @@ function roundBarHTML(run) {
     })
     .join('')}${nx ? `<span class="rb nx"><b>${nx.id}</b><small>下一階段</small></span>` : ''}</div>`;
 }
+/* 0.1.29 上方資訊欄的「戰報」：點一下直接看上一場的戰鬥紀錄（勝綠、敗紅） */
+function lastLogBtn(run) {
+  const l = (run.log || [])[run.log.length - 1];
+  return l
+    ? `<button class="iconbtn lgb ${l.win ? 'w' : 'l'}" data-act="lastLog" aria-label="上一場戰鬥紀錄"><b>戰報</b><small>${l.id}${l.win ? '勝' : '敗'}</small></button>`
+    : '';
+}
 /* 0.1.25 金幣旁的下回合預估收入（輸～贏） */
 function incTxt(run) {
   /* 0.1.27 結算／三選一時連勝連敗已經算進去了，再估會重複算：只在準備時顯示 */
@@ -359,7 +479,7 @@ function prepHTML(run) {
     nr = r.type === 'pvp' ? nextRival(run) : -1,
     oppTxt = r.type === 'pvp' ? (nr >= 0 ? `對戰 ${esc(run.rivals[nr].name)}` : '對戰') : RTYPE[r.type];
   return `<div class="prep">
-    <div class="pcol pa"><div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${themeBtn()}</div>
+    <div class="pcol pa"><div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${themeBtn()}</div>
     ${roundBarHTML(run)}
     ${rivalHTML(run)}
     ${tutHTML()}
@@ -368,7 +488,7 @@ function prepHTML(run) {
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
-          ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}" data-bu="${o.u}" data-bi="${i}"><img src="${itemIcon(o.id)}" alt="${ITEMI[o.id].n}">${shapeMini(o.id, o.r || 0)}${tierBadge(o.t)}</div>`
+          ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}${fuCls(o)}" data-bu="${o.u}" data-bi="${i}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt="${fuName(o)}">${o.f && ITEMI[o.f] ? `<img class="fui" src="${itemIcon(o.f)}" alt="">` : ''}${shapeMini(o.id, o.r || 0)}${tierBadge(o.t)}</div>`
           : `<div class="bs emp" data-bi="${i}"></div>`
       )
       .join('')}</div></div></div>
@@ -407,19 +527,39 @@ function detailHTML(run) {
   const I = ITEMI[o.id],
     mods = where === 'bag' ? bagMods(run.bag).get(o.u) || [] : [],
     tot = {};
-  for (const x of mods) for (const k2 in x.m) tot[k2] = (tot[k2] || 0) + x.m[k2];
+  /* 0.1.28 目前加成照來源分行（誰給的一看就知道） */
+  for (const x of mods) {
+    if (x.w === 'tf') continue;
+    const n =
+      x.from === 'cls'
+        ? (CLSI[run.bag.cls] || {}).n || '職業'
+        : x.from === 'f'
+          ? ITEMI[o.f].n
+          : fuName(run.bag.items.find(q => q.u === x.from) || { id: o.id });
+    const t = (tot[n] = tot[n] || {});
+    for (const k2 in x.m) t[k2] = (t[k2] || 0) + x.m[k2];
+  }
+  /* 0.1.28 被質變：名字加前綴、多的標籤 */
+  const tfm = tfOf(where === 'bag' ? run.bag.items : [o]),
+    by = tfm.get(o.u),
+    T = by && ITEMI[by.id].tf;
   const aff = o.a && AFFX.find(a => a.k === o.a),
     tags =
-      I.tags
+      tagsWith(o, tfm)
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || '道具';
-  return `<div class="det" id="det"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${Object.keys(tot).length ? `<p class="c-good">目前加成：${modTxt(tot)}</p>` : ''}
+  return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
+    <p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${itemDesc(o.sc)}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+      tot
+    )
+      .filter(([, m]) => modTxt(m))
+      .map(([n, m]) => `<p class="c-good">＋${esc(n)}：${modTxt(m)}</p>`)
+      .join('')}
     <div class="btns">${
       where === 'shop'
         ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < shopPrice(run, o.id, o.t) ? 'disabled' : ''}>買 ${shopPrice(run, o.id, o.t)} 金</button>`
-        : `${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellOf(o.id, o.t)} 金</button>`
+        : `${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o)} 金</button>`
     }</div></div>`;
 }
 /* 0.1.5 5★ 詞綴：數值越接近上限顏色越好，括號是這條詞綴的範圍 */
@@ -697,10 +837,17 @@ function bPop(side, txt, col, big) {
 }
 /* 0.1.13 即時戰鬥紀錄：每個事件一行（新的在上面，留最後 30 行）：誰的哪件道具、做了什麼 */
 function bNames() {
-  const nm = [{}, {}];
-  for (const o of S.run.bag.items) nm[0][o.u] = ITEMI[o.id].n;
+  const nm = [{}, {}],
+    put = (k, its) => {
+      for (const o of its) nm[k][o.u] = fuName(o);
+    };
+  put(0, S.run.bag.items);
   const ob = B.fb.opp.bag;
-  if (ob) for (const o of ob.items) nm[1][o.u] = ITEMI[o.id] ? ITEMI[o.id].n : '';
+  if (ob)
+    put(
+      1,
+      ob.items.filter(o => ITEMI[o.id])
+    );
   return nm;
 }
 function bLog(e, tg) {
@@ -724,7 +871,9 @@ function bLog(e, tg) {
   else if (e.k === 'blind') t = `${who(tg)} 致盲 ${e.v} 秒`;
   else if (e.k === 'thorns') t = `${who(e.s)} 反彈 ${e.v}`;
   else if (e.k === 'fatigue') t = `${who(tg)} 疲勞 -${e.v}`;
-  else if (e.k === 'seal') t = `${by(e.s, e.u)} 封鎖了${who(1 - e.s)}的${it(1 - e.s, e.tu) || '武器'} ${e.v} 秒`;
+  else if (e.k === 'cleanse') t = `${who(e.s)} 淨化了 ${e.v} 種異常`;
+  else if (e.k === 'seal')
+    t = `${by(e.s, e.u)} ${e.v >= MAX_T ? '關住' : '封鎖'}了${who(1 - e.s)}的${it(1 - e.s, e.tu) || '武器'}${e.v >= MAX_T ? '（整場）' : ` ${e.v} 秒`}`;
   else if (e.k === 'down') t = `${by(e.s, e.u)} 讓${who(1 - e.s)}的${it(1 - e.s, e.tu) || '武器'}降 1 階`;
   else if (e.k === 'throw') t = `${by(e.s, e.u)} 丟出藥劑：${STN[e.x] || ''} ${e.v}`;
   if (!t) return;
@@ -827,13 +976,14 @@ function bTick() {
       bPop(tg, '凍結', '#8fd8ff');
       bBurst(tg, '#8fd8ff', 8);
     } else if (e.k === 'thorns') bPop(tg, '反彈 ' + e.v, '#ffb15a');
+    else if (e.k === 'cleanse') bPop(tg, '淨化', '#ffe9a0');
     else if (e.k === 'weak') bPop(tg, '虛弱', '#c58cff');
     else if (e.k === 'blind') bPop(tg, '致盲', '#fff27a');
     else if (e.k === 'throw') {
-      bPop(tg, `${STN[e.x] || ''} ${e.v}`, ELC[e.x] || '#ffd27a', 1);
+      bPop(tg, e.v ? `${STN[e.x] || ''} ${e.v}` : `${STN[e.x] || ''} 免疫`, ELC[e.x] || '#ffd27a', 1);
       bFlash(e.s, e.u);
     } else if (e.k === 'seal') {
-      bPop(tg, `封鎖 ${e.v} 秒`, '#c58cff', 1);
+      bPop(tg, e.v >= MAX_T ? '關住！' : `封鎖 ${e.v} 秒`, '#c58cff', 1);
       bFlash(e.s, e.u);
     } else if (e.k === 'down') {
       bPop(tg, '降階！', '#ff8a8a', 1);
@@ -908,7 +1058,7 @@ function helpHTML() {
   <div class="card"><b>職業</b><p>每局開打前三選一（可以刷新一次），整局都有效：例如弓箭手讓弓、弩傷害 +20%、攻速 +15%。照職業去買武器和輔助道具（箭袋、劍帶、法術卷軸、火藥地雷、獸牙項鍊…），輔助道具要擺在武器旁邊或同一排才有用，背包空間要取捨。點左上角頭像可以看職業與數值。</p></div>
   <div class="card"><b>回合</b><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完專屬核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星），4-4 是首領（副核心三選一）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
   <div class="card"><b>金幣</b><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></div>
-  <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×7，越大越貴：3×4 要 14 金，開局只有 ${START_GOLD} 金，要在買道具和存錢之間取捨），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
+  <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×7，越大越貴：3×4 要 14 金，開局只有 ${START_GOLD} 金，要在買道具和存錢之間取捨），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉（電腦版拖曳中按 R、空白鍵、滑鼠右鍵或滾輪也能轉）；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
   <div class="card"><b>合成</b><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></div>
   <div class="card"><b>相鄰效果</b><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></div>
   <div class="card"><b>職業核心</b><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 掉副核心（主打武器的加成）。背包裡兩種各能放 1 個。圖鑑最下面可以看全部。</p></div>
@@ -992,7 +1142,16 @@ const A = {
   },
   stats: () => showDlg('角色數值', statsHTML(S.run), []),
   log: d => showLog(d.k),
+  lastLog: () => {
+    const l = S.run && (S.run.log || [])[S.run.log.length - 1];
+    if (l) showLog(l.id);
+  },
   match: d => showMatch(+d.k),
+  lb: d => {
+    V.lb = d.k;
+    snd('tap');
+    render();
+  },
   news: () => {
     S.newsSeen = NEWS[0].v;
     save();
@@ -1134,7 +1293,14 @@ const A = {
       i = run.bench.findIndex(q => q && q.u === V.sel);
     if (i < 0) return;
     const o = run.bench[i],
-      sp = findSpot(run.bag, o);
+      tg = run.bag.items.filter(q => canFuse(o, q)).sort((a, b) => tfRank(b) - tfRank(a))[0];
+    if (tg) {
+      fuseToast([fuseInto(run, o, tg)]);
+      V.sel = tg.u;
+      save();
+      return render();
+    }
+    const sp = findSpot(run.bag, o);
     if (!sp)
       return toast(
         ITEMI[o.id].core && run.bag.items.some(q => ITEMI[q.id].core)
@@ -1326,13 +1492,51 @@ document.addEventListener('click', ev => {
   const f = A[el.dataset.act];
   if (f) f(el.dataset);
 });
+/* 0.1.28 融合過的道具：圖示加元素顏色的光暈（變成哪一系就哪個顏色；沒換系的照效果）＋左下角小輔助圖示 */
+const FUC = {
+  holy: '#ffe9a0',
+  dagger: '#c58cff',
+  staff: '#8fb8ff',
+  pet: '#ffcf8a',
+  bleed: '#ff5a5a',
+  pierce: '#e6ecf5',
+  chain: '#7fe0ff',
+  bash: '#ffb15a',
+  thornsF: '#9be36b',
+  potBomb: '#ff9a5a'
+};
+function fuColor(o) {
+  const T = o.f && ITEMI[o.f] && ITEMI[o.f].tf;
+  if (!T) return '';
+  for (const k of T.add || []) if (ELC[k] || FUC[k]) return ELC[k] || FUC[k];
+  for (const k in T.m) if (FUC[k]) return FUC[k];
+  return '#c58cff';
+}
+const fuCls = o => (o.f && ITEMI[o.f] ? ' fu' : '');
+const fuSty = o => (o.f && ITEMI[o.f] ? ` style="--fg:${fuColor(o)}"` : '');
 /* ================= 拖曳擺放 ================= */
+/* 0.1.28 融合好的提示 */
+function fuseToast(l) {
+  if (l && l.length) {
+    snd('level');
+    toast(`融合！${l.map(fuName).join('、')}`);
+  }
+}
+/* 輔助 o 拖到哪一格：那格是能融合的道具就回傳它 */
+function fuseAt(run, o, c) {
+  if (!c || !ITEMI[o.id].tf) return null;
+  const g = bagGrid(run.bag),
+    u = g[c[1]] && g[c[1]][c[0]],
+    q = u != null && run.bag.items.find(x => x.u === u);
+  return q && canFuse(o, q) ? q : null;
+}
 function placeFromBench(run, i, x, y, r) {
   const o = run.bench[i];
   Object.assign(o, { x, y, r });
   run.bench[i] = null;
   run.bag.items.push(o);
   snd('select');
+  fuseToast(fuseAll(run));
   if (S.tut === 1) S.tut = 2;
   V.sel = null;
   save();
@@ -1376,7 +1580,12 @@ document.addEventListener('pointerdown', ev => {
     o = run.bag.items.find(q => q.u === c.dataset.u);
     grab = [+c.dataset.cx - o.x, +c.dataset.cy - o.y];
   }
-  V.drag = { o, from, grab, sk, sx: ev.clientX, sy: ev.clientY, on: false, el: null };
+  /* 0.1.29 gi：抓的是形狀的第幾格（拖曳中旋轉後，手指還是抓著同一格） */
+  const gi = Math.max(
+    0,
+    shapeOf(o.id, o.r || 0).findIndex(p => p[0] === grab[0] && p[1] === grab[1])
+  );
+  V.drag = { o, from, grab, gi, rot: 0, sk, sx: ev.clientX, sy: ev.clientY, on: false, el: null };
 });
 document.addEventListener(
   'pointermove',
@@ -1396,33 +1605,75 @@ document.addEventListener(
         .querySelectorAll(`.it[data-u="${d.o.u}"], .bs[data-bu="${d.o.u}"]`)
         .forEach(e => e.classList.add('lift'));
     }
-    const c = cellAt(ev.clientX, ev.clientY);
-    d.r = d.o.r;
-    d.g = d.grab;
-    d.tgt = c ? [c[0] - d.grab[0], c[1] - d.grab[1]] : null;
-    d.ok = !!d.tgt && canPlace(S.run.bag, d.o, d.tgt[0], d.tgt[1], d.o.r);
-    /* 0.1.5 從暫存區或商店拖進來放不下時，自動換個方向（手指底下那格還是道具的一部分），不動背包裡原本的道具 */
-    if (!d.ok && c && d.from !== 'bag') {
-      const f = autoFit(S.run.bag, d.o, c);
-      if (f) {
-        d.r = f.r;
-        d.g = [c[0] - f.x, c[1] - f.y];
-        d.tgt = [f.x, f.y];
-        d.ok = true;
-      }
+    d.px = ev.clientX;
+    d.py = ev.clientY;
+    dragMove(d);
+  },
+  { passive: false }
+);
+/* 拖曳中：照手指位置算放得下、交換、融合（d.px／d.py 是最後的指標位置；旋轉後重算也呼叫這個） */
+function dragMove(d) {
+  const c = cellAt(d.px, d.py);
+  /* 0.1.29 拖曳中可以旋轉（d.rot）：抓的那格跟著轉 */
+  const rr = ((d.o.r || 0) + d.rot) & 3,
+    ro = { ...d.o, r: rr };
+  d.r = rr;
+  d.g = shapeOf(d.o.id, rr)[d.gi] || d.grab;
+  d.tgt = c ? [c[0] - d.g[0], c[1] - d.g[1]] : null;
+  d.ok = !!d.tgt && canPlace(S.run.bag, d.o, d.tgt[0], d.tgt[1], rr);
+  /* 0.1.5 從暫存區或商店拖進來放不下時，自動換個方向（手指底下那格還是道具的一部分），不動背包裡原本的道具 */
+  if (!d.ok && c && d.from !== 'bag') {
+    const f = autoFit(S.run.bag, ro, c);
+    if (f) {
+      d.r = f.r;
+      d.g = [c[0] - f.x, c[1] - f.y];
+      d.tgt = [f.x, f.y];
+      d.ok = true;
     }
-    drawGhost(d);
-    const st = d.cs + GAP;
-    /* 影子也有縮放（.ghost 的 zoom），位置要換回縮放前的單位 */
-    d.el.style.left = ev.clientX / V.z - d.g[0] * st - d.cs / 2 + 'px';
-    d.el.style.top = ev.clientY / V.z - d.g[1] * st - d.cs / 2 + 'px';
-    /* 放不下但剛好擋到一件、而且換得過去：可以交換 */
-    d.swap = !d.ok && d.tgt ? swapPlan(S.run, d.o, d.tgt[0], d.tgt[1], d.from) : null;
-    d.el.classList.toggle('bad', !!d.tgt && !d.ok && !d.swap);
-    d.el.classList.toggle('good', !!d.ok);
-    d.el.classList.toggle('swap', !!d.swap);
-    const sh = $('shop');
-    if (sh) sh.classList.toggle('sellhot', d.from !== 'shop' && inside(sh, ev.clientX, ev.clientY));
+  }
+  drawGhost(d);
+  const st = d.cs + GAP;
+  /* 影子也有縮放（.ghost 的 zoom），位置要換回縮放前的單位 */
+  d.el.style.left = d.px / V.z - d.g[0] * st - d.cs / 2 + 'px';
+  d.el.style.top = d.py / V.z - d.g[1] * st - d.cs / 2 + 'px';
+  /* 放不下但剛好擋到一件、而且換得過去：可以交換 */
+  /* 0.1.28 輔助拖到能融合的道具上：融合 */
+  d.fuse = fuseAt(S.run, d.o, c);
+  d.swap = !d.ok && !d.fuse && d.tgt ? swapPlan(S.run, ro, d.tgt[0], d.tgt[1], d.from) : null;
+  d.el.classList.toggle('bad', !!d.tgt && !d.ok && !d.swap && !d.fuse);
+  d.el.classList.toggle('good', !!d.ok || !!d.fuse);
+  d.el.classList.toggle('swap', !!d.swap);
+  dragLit(d);
+  const sh = $('shop');
+  if (sh) sh.classList.toggle('sellhot', d.from !== 'shop' && inside(sh, d.px, d.py));
+}
+/* 0.1.29 拖曳中旋轉：R 鍵、空白鍵、滑鼠右鍵、滾輪（電腦版不用放下再按旋轉） */
+function dragRot(k = 1) {
+  const d = V.drag;
+  if (!d || !d.on || shapeOf(d.o.id).length < 2) return false;
+  d.rot = (d.rot + k + 4) & 3;
+  snd('tap');
+  dragMove(d);
+  return true;
+}
+document.addEventListener('keydown', ev => {
+  if ((ev.key === 'r' || ev.key === 'R' || ev.key === ' ') && dragRot()) ev.preventDefault();
+});
+document.addEventListener('contextmenu', ev => {
+  if (V.drag && V.drag.on) ev.preventDefault();
+});
+document.addEventListener('mousedown', ev => {
+  if (ev.button === 2 && dragRot()) ev.preventDefault();
+});
+let wheelAt = 0;
+document.addEventListener(
+  'wheel',
+  ev => {
+    if (!V.drag || !V.drag.on) return;
+    ev.preventDefault();
+    if (Date.now() - wheelAt < 150) return;
+    wheelAt = Date.now();
+    dragRot(ev.deltaY > 0 ? 1 : -1);
   },
   { passive: false }
 );
@@ -1462,22 +1713,24 @@ function dropEnd(ev) {
     snd('tap');
     return render();
   }
-  if (d.ok) {
+  if (d.fuse) fuseToast([fuseInto(run, d.o, d.fuse)]);
+  else if (d.ok) {
     if (d.from === 'bench') return placeFromBench(run, run.bench.indexOf(d.o), d.tgt[0], d.tgt[1], d.r);
     d.o.x = d.tgt[0];
     d.o.y = d.tgt[1];
+    d.o.r = d.r;
     snd('select');
   } else if (d.swap) {
     /* 交換位置：背包裡互換，或暫存區的換進來、背包那件收進暫存區 */
     const { B } = d.swap;
     if (d.from === 'bag') {
       Object.assign(B, { x: d.swap.x, y: d.swap.y, r: d.swap.r });
-      Object.assign(d.o, { x: d.tgt[0], y: d.tgt[1] });
+      Object.assign(d.o, { x: d.tgt[0], y: d.tgt[1], r: d.r });
     } else {
       const i = run.bench.indexOf(d.o);
       run.bag.items = run.bag.items.filter(q => q !== B);
       run.bench[i] = B;
-      Object.assign(d.o, { x: d.tgt[0], y: d.tgt[1] });
+      Object.assign(d.o, { x: d.tgt[0], y: d.tgt[1], r: d.r });
       run.bag.items.push(d.o);
     }
     snd('select');
@@ -1496,6 +1749,7 @@ function dropEnd(ev) {
         : '這裡放不下'
     );
   }
+  fuseToast(fuseAll(run));
   V.sel = null;
   save();
   render();
@@ -1505,8 +1759,13 @@ function dropShop(run, d, ev) {
   V.noClick = true;
   setTimeout(() => (V.noClick = false), 50);
   let res = null;
-  if (d.ok || (d.swap && d.swap.toBench))
-    res = buyToBag(run, d.sk, d.tgt[0], d.tgt[1], d.ok ? d.r : d.o.r, d.swap && d.swap.B);
+  if (d.fuse) {
+    /* 0.1.28 從商店直接拖到道具上：買下就融合 */
+    const before = new Set(run.bench.filter(Boolean).map(o => o.u));
+    res = buyItem(run, d.sk);
+    const o = typeof res === 'object' && run.bench.find(q => q && !before.has(q.u) && q.id === d.o.id);
+    if (o && canFuse(o, d.fuse)) res.merged.fused = [fuseInto(run, o, d.fuse)];
+  } else if (d.ok || (d.swap && d.swap.toBench)) res = buyToBag(run, d.sk, d.tgt[0], d.tgt[1], d.r, d.swap && d.swap.B);
   else if (
     inside($('bench'), ev.clientX, ev.clientY) ||
     (d.tgt && run.shop[d.sk] && wouldMerge(run, run.shop[d.sk].id, run.shop[d.sk].t || 1))
@@ -1524,6 +1783,7 @@ function dropShop(run, d, ev) {
     run.bench.forEach(o => o && (S.seen[o.id] = 1));
     run.bag.items.forEach(o => (S.seen[o.id] = 1));
     if (res.merged.length) toast(`合成！${res.merged.map(o => ITEMI[o.id].n + tierTxt(o.t)).join('、')}`);
+    fuseToast(res.merged.fused);
     if (S.tut < 2) S.tut = 2;
   }
   V.sel = null;

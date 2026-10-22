@@ -66,11 +66,66 @@ function findSpot(bag, o, prefer = true) {
   }
   return best;
 }
-/* a 給 b 的加成有幾條（相鄰／同排看位置，這裡只看標籤） */
+/* a 給 b 的加成有幾條（相鄰／同排看位置，這裡只看標籤）；質變算 2 條 */
 function synergy(a, b) {
   const A = ITEMI[a.id],
     tb = ITEMI[b.id].tags;
-  return [...(A.adj || []), ...(A.row || [])].filter(m => m.tag === '*' || tb.includes(m.tag)).length;
+  return (
+    [...(A.adj || []), ...(A.row || [])].filter(m => m.tag === '*' || tb.includes(m.tag)).length +
+    (A.tf && !ITEMI[b.id].tf && tb.includes(A.tf.tag) ? 2 : 0)
+  );
+}
+/* 0.1.28 融合（質變）：質變輔助（tf）放到道具上、或貼在旁邊，就跟它融合成一件新道具「前綴・道具」（輔助消失、空出格子）：
+   多了標籤和效果。融合過的道具記著 f（輔助代號）、ft（輔助的階）。一件只能融合一次。
+   回傳 Map(道具 u → { id: 輔助代號, t: 階, u: 還在背包裡的輔助 u（已經融合的是 null） })；
+   還沒融合、只是貼在旁邊的（機器人評估、擺放的瞬間）也算，每個輔助只算一件（星級最高、再來階數高的） */
+const tfRank = o => ITEMI[o.id].star * 10 + o.t;
+const canFuse = (s, q) => {
+  const T = ITEMI[s.id].tf,
+    Q = ITEMI[q.id];
+  return !!T && q !== s && !Q.tf && !q.f && Q.tags.includes(T.tag);
+};
+function tfOf(its, adjQ = adjacent) {
+  const out = new Map();
+  for (const o of its) if (o.f && ITEMI[o.f]) out.set(o.u, { id: o.f, t: o.ft || 1, u: null });
+  const cats = its.filter(o => ITEMI[o.id].tf).sort((a, b) => tfRank(b) - tfRank(a));
+  for (const s of cats) {
+    let best = null;
+    for (const q of its)
+      if (canFuse(s, q) && !out.has(q.u) && adjQ(s, q) && (!best || tfRank(q) > tfRank(best))) best = q;
+    if (best) out.set(best.u, { id: s.id, t: s.t, u: s.u });
+  }
+  return out;
+}
+/* 把輔助 s（背包或暫存區）融合進 q */
+function fuseInto(run, s, q) {
+  q.f = s.id;
+  q.ft = s.t;
+  run.bag.items = run.bag.items.filter(x => x !== s);
+  const i = run.bench.indexOf(s);
+  if (i >= 0) run.bench[i] = null;
+  return q;
+}
+/* 背包裡貼在一起的輔助與道具自動融合；回傳融合好的道具 */
+function fuseAll(run) {
+  const out = [];
+  for (const [u, c] of tfOf(run.bag.items)) {
+    if (!c.u) continue;
+    const s = run.bag.items.find(o => o.u === c.u),
+      q = run.bag.items.find(o => o.u === u);
+    if (s && q) out.push(fuseInto(run, s, q));
+  }
+  return out;
+}
+/* 賣價：融合過的連輔助一起算 */
+const sellO = o => sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0);
+/* 融合過的名字 */
+const fuName = o => (o.f && ITEMI[o.f] ? ITEMI[o.f].tf.n + '・' : '') + ITEMI[o.id].n;
+/* 質變後的標籤（原本的＋質變多的） */
+function tagsWith(o, tfm) {
+  const s = tfm.get(o.u),
+    I = ITEMI[o.id];
+  return s && ITEMI[s.id].tf.add ? [...ITEMI[s.id].tf.add, ...I.tags] : I.tags;
 }
 /* ================= 合成 ================= */
 /* 背包＋暫存區裡，同一種同一階的湊滿 3 件就合成（可能連鎖）；r 是亂數（詞綴） */
@@ -100,8 +155,15 @@ function mergeAll(run, r) {
       if (!o.m) (o.m = roll5(o.id, r)), (o.mv = 0);
       else if (!o.m2) (o.m2 = roll5(o.id, r)), (o.mv2 = 0);
     }
+    /* 0.1.28 三件裡有融合過的：留星級最高的那個融合 */
+    const fu = use
+      .map(([, q]) => q)
+      .filter(q => q.f)
+      .sort((x, y) => tfRank({ id: y.f, t: y.ft || 1 }) - tfRank({ id: x.f, t: x.ft || 1 }))[0];
+    if (fu) (o.f = fu.f), (o.ft = fu.ft);
     done.push(o);
   }
+  done.fused = fuseAll(run);
   return done;
 }
 /* ================= 戰鬥數值 ================= */
@@ -135,9 +197,24 @@ function compileBag(bag, extra = {}) {
       /* 0.1.18 開戰爆發（rush）：開頭幾秒攻速提升（血祭）；取最高的加成、秒數相加 */
       rushP: 0,
       rushT: 0,
+      /* 0.1.28 反制寵物：敵人寵物傷害 -%、敵人每隻寵物你的傷害 +% */
+      petDown: 0,
+      petHunt: 0,
+      /* 0.1.29 抗異常（%）、開戰免毒秒數、淨化、減敵人回復、減暴擊 */
+      rBurn: 0,
+      rPoison: 0,
+      rBleed: 0,
+      rSunder: 0,
+      rFreeze: 0,
+      rStun: 0,
+      rWeak: 0,
+      rBlind: 0,
+      poisonImm: 0,
+      cleanse: 0,
+      healCut: 0,
+      critRes: 0,
       ...extra
     };
-  const cnt = tag => its.filter(o => ITEMI[o.id].tags.includes(tag)).length;
   /* 先收集每件身上的加成 */
   const mods = new Map(its.map(o => [o.u, {}]));
   const add = (o, m, mul = 1) => {
@@ -147,7 +224,7 @@ function compileBag(bag, extra = {}) {
   /* 0.1.20 相鄰與同一排先用格子表算好（原本每一對都重算一次格子，機器人評估時太慢） */
   const NB = new Map(),
     RW = new Map();
-  if (its.some(o => ITEMI[o.id].adj || ITEMI[o.id].row)) {
+  if (its.some(o => ITEMI[o.id].adj || ITEMI[o.id].row || ITEMI[o.id].tf)) {
     const g = bagGrid(bag);
     for (const o of its) {
       const cs = cellsOf(o),
@@ -168,14 +245,19 @@ function compileBag(bag, extra = {}) {
   }
   const adjQ = (s, q) => NB.get(s.u).has(q.u),
     rowQ = (s, q) => [...RW.get(s.u)].some(y => RW.get(q.u).has(y));
+  /* 0.1.28 質變：先決定誰被質變（標籤會變，後面的加成都看質變後的標籤） */
+  const tfm = tfOf(its, adjQ),
+    TG = new Map(its.map(o => [o.u, tagsWith(o, tfm)])),
+    has = (o, tag) => TG.get(o.u).includes(tag),
+    cnt = tag => its.filter(o => has(o, tag)).length;
+  for (const [u, s] of tfm) add({ u }, scaleMod(ITEMI[s.id].tf.m, s.t));
   for (const s of its) {
     const S0 = ITEMI[s.id];
     const give = (list, test) => {
       for (const b0 of list || []) {
         const b = scaleMod(b0, s.t),
           mul = b.per ? cnt(b.per) : 1;
-        for (const q of its)
-          if (q !== s && test(q) && (b.tag === '*' || ITEMI[q.id].tags.includes(b.tag))) add(q, b, mul);
+        for (const q of its) if (q !== s && test(q) && (b.tag === '*' || has(q, b.tag))) add(q, b, mul);
       }
     };
     if (S0.adj) give(S0.adj, q => adjQ(s, q));
@@ -184,6 +266,15 @@ function compileBag(bag, extra = {}) {
     if (S0.fx) {
       const f = fxT(S0, s.t);
       for (const k in f) F[k] += f[k];
+    }
+    /* 0.1.29 融入專屬核心的副核心（sc）：效果跟副核心本身一樣，不佔格子 */
+    const X = s.sc && ITEMI[s.sc];
+    if (X) {
+      give(X.all, () => true);
+      if (X.fx) {
+        const f = fxT(X, 1);
+        for (const k in f) F[k] += f[k];
+      }
     }
     if (s.a) {
       const a = AFFX.find(x => x.k === s.a);
@@ -201,7 +292,7 @@ function compileBag(bag, extra = {}) {
   /* 0.1.7 開局職業：對有那個標籤的道具加成、角色加成 */
   const C = CLSI[bag.cls];
   if (C) {
-    for (const b of C.m || []) for (const q of its) if (ITEMI[q.id].tags.includes(b.tag)) add(q, b);
+    for (const b of C.m || []) for (const q of its) if (has(q, b.tag)) add(q, b);
     for (const k in C.F || {}) F[k] += C.F[k];
   }
   for (const o of its) {
@@ -212,6 +303,9 @@ function compileBag(bag, extra = {}) {
     if (I.arm) F.arm += Math.round(I.arm * k);
     if (I.dodge) F.dodge += Math.round(I.dodge * TIERB[o.t]);
     if (I.regen || m.regen) F.regen += Math.round((I.regen || 0) * k) + (m.regen || 0);
+    if (m.thornsF) F.thornsF += m.thornsF;
+    /* 0.1.29 照格數：巨化的生命 */
+    if (m.cellHp) F.hp += m.cellHp * shapeOf(o.id).length;
     if (I.rush) {
       F.rushP = Math.max(F.rushP, Math.round(I.rush[0] * TIERB[o.t]));
       F.rushT += I.rush[1];
@@ -220,26 +314,40 @@ function compileBag(bag, extra = {}) {
       /* 鍊金術士：丟出去的藥劑（藥水標籤）效果加強 */
       const k = preKey(I.pre),
         boost = I.tags.includes('potion') && F.throwPct ? 1 + F.throwPct / 100 : 1;
-      F.pre.push({ u: o.u, k, v: k === 'down' ? 1 : Math.round(preVal(o.id, o.t) * boost) });
+      const pb = 1 + (m.preBoost || 0) / 100;
+      F.pre.push({
+        u: o.u,
+        k,
+        v: k === 'down' || k === 'petLock' ? preVal(o.id, o.t) : Math.round(preVal(o.id, o.t) * boost * pb)
+      });
     }
-    if (I.pot) F.pots.push({ u: o.u, at: I.pot[0], v: Math.round(I.pot[1] * k), n: I.pot[2] + (o.t === 3 ? 1 : 0) });
+    if (I.pot)
+      F.pots.push({
+        u: o.u,
+        at: I.pot[0],
+        v: Math.round(I.pot[1] * k),
+        n: I.pot[2] + (o.t === 3 ? 1 : 0),
+        bomb: m.potBomb || 0
+      });
     if (I.block)
       F.shields.push({
         u: o.u,
         cd: Math.max(0.6, cdT(I, o.t) / (1 + (m.spd || 0) / 100)),
         block: Math.round((I.block * k + (m.block || 0)) * (1 + (m.blockPct || 0) / 100)),
         thorns: Math.round((I.thorns || 0) * k),
-        heal: Math.round((I.heal || 0) * k)
+        heal: Math.round((I.heal || 0) * k) + (m.heal || 0),
+        bash: m.bash || 0
       });
     else if (I.dmg) {
       const on = onT(I, o.t),
-        mul = 1 + (m.dmgPct || 0) / 100;
+        mul = 1 + ((m.dmgPct || 0) + (m.cellPct || 0) * shapeOf(o.id).length) / 100;
       F.weapons.push({
         u: o.u,
         id: o.id,
         t: o.t,
-        pet: I.tags.includes('pet'),
-        el: ['fire', 'cold', 'light', 'poison', 'dark'].find(t => I.tags.includes(t)) || 'phys',
+        star: I.star,
+        pet: has(o, 'pet'),
+        el: TG.get(o.u).find(t => ['fire', 'cold', 'light', 'poison', 'dark'].includes(t)) || 'phys',
         cd: Math.max(0.4, cdT(I, o.t) / (1 + (m.spd || 0) / 100)),
         dmg: [Math.round((I.dmg[0] * k + (m.dmg || 0)) * mul), Math.round((I.dmg[1] * k + (m.dmg || 0)) * mul)],
         crit: on.crit + (m.crit || 0),
@@ -251,7 +359,10 @@ function compileBag(bag, extra = {}) {
         bleed: (on.bleed || 0) + (m.bleed || 0),
         sunder: (on.sunder || 0) + (m.sunder || 0),
         weak: (on.weak || 0) + (m.weakCh || 0),
-        blind: (on.blind || 0) + (m.blindCh || 0)
+        blind: (on.blind || 0) + (m.blindCh || 0),
+        pierce: Math.min(PIERCE_MAX, m.pierce || 0),
+        chain: m.chain || 0,
+        guard: m.guard || 0
       });
     }
   }
@@ -263,7 +374,10 @@ function compileBag(bag, extra = {}) {
 function bagMods(bag) {
   const its = bag.items,
     out = new Map(its.map(o => [o.u, []]));
-  const cnt = tag => its.filter(o => ITEMI[o.id].tags.includes(tag)).length;
+  const tfm = tfOf(its),
+    has = (o, tag) => tagsWith(o, tfm).includes(tag),
+    cnt = tag => its.filter(o => has(o, tag)).length;
+  for (const [u, s] of tfm) out.get(u).push({ from: s.u || 'f', w: 'tf', m: scaleMod(ITEMI[s.id].tf.m, s.t) });
   for (const s of its) {
     const S0 = ITEMI[s.id];
     for (const [w, test] of [
@@ -271,11 +385,11 @@ function bagMods(bag) {
       ['row', q => sameRow(s, q)],
       ['all', () => true]
     ])
-      for (const b0 of S0[w] || []) {
+      for (const b0 of [...(S0[w] || []), ...(w === 'all' && s.sc && ITEMI[s.sc] ? ITEMI[s.sc].all || [] : [])]) {
         const b = scaleMod(b0, s.t),
           mul = b.per ? cnt(b.per) : 1;
         for (const q of its)
-          if (q !== s && test(q) && (b.tag === '*' || ITEMI[q.id].tags.includes(b.tag))) {
+          if (q !== s && test(q) && (b.tag === '*' || has(q, b.tag))) {
             const m = {};
             for (const k in b) if (k !== 'tag' && k !== 'per') m[k] = b[k] * mul;
             out.get(q.u).push({ from: s.u, w, m });
@@ -286,19 +400,30 @@ function bagMods(bag) {
   if (C)
     for (const b of C.m || [])
       for (const q of its)
-        if (ITEMI[q.id].tags.includes(b.tag)) {
+        if (has(q, b.tag)) {
           const m = {};
           for (const k in b) if (k !== 'tag') m[k] = b[k];
           out.get(q.u).push({ from: 'cls', w: 'cls', m });
         }
   return out;
 }
-/* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴] */
+/* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的副核心] */
 const packBag = bag => ({
   w: bag.w,
   h: bag.h,
   cls: bag.cls || null,
-  it: bag.items.map(o => [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0, ...(o.m2 ? [o.m2] : [])])
+  it: bag.items.map(o => [
+    o.id,
+    o.t,
+    o.x,
+    o.y,
+    o.r,
+    o.a || 0,
+    o.m || 0,
+    ...(o.m2 || o.f || o.sc ? [o.m2 || 0] : []),
+    ...(o.f || o.sc ? [o.f || 0, o.ft || 1] : []),
+    ...(o.sc ? [o.sc] : [])
+  ])
 });
 const unpackBag = p => ({
   w: p.w,
@@ -315,6 +440,9 @@ const unpackBag = p => ({
       r: a[4],
       a: a[5] || null,
       m: a[6] || null,
-      m2: a[7] || null
+      m2: a[7] || null,
+      f: a[8] || null,
+      ft: a[9] || 1,
+      sc: a[10] || null
     }))
 });
