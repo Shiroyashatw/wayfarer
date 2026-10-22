@@ -444,3 +444,18 @@ canvas.spr.flip{transform:scaleX(-1)}
 .iconbtn.lgb b{font-size:var(--fs-sm);font-weight:700}
 .iconbtn.lgb small{font-size:var(--fs-sm);font-weight:400}
 .iconbtn.lgb.w small{color:var(--good)}.iconbtn.lgb.l small{color:var(--bad)}
+/* 0.1.32 圖鑑的職業核心折疊 */
+.page details.more{background:var(--card);border-radius:var(--r-md);margin-bottom:var(--sp-2);box-shadow:var(--shadow)}
+.page details.more summary{display:block;cursor:pointer;padding:var(--sp-2) var(--sp-3);font-weight:700;font-size:var(--fs-btn);min-height:44px;list-style:none}
+.page details.more summary::-webkit-details-marker{display:none}
+.page details.more summary::after{content:'▾';float:right;color:var(--dim)}
+.page details.more[open] summary::after{content:'▴'}
+.page details.more summary small{display:block;font-weight:400;font-size:var(--fs-sm);color:var(--dim)}
+.page details.more .cores{padding:0 var(--sp-3) var(--sp-2)}
+/* 0.1.32 對手卡可以點（看他上一回合的背包） */
+button.rv{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%}
+.rivals.n5 button.rv{text-align:center}
+.rvit{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-top:var(--sp-2);max-height:30vh;overflow:auto}
+.rvit span.s1{--sb:var(--s1)}.rvit span.s2{--sb:var(--s2)}.rvit span.s3{--sb:var(--s3)}.rvit span.s4{--sb:var(--s4)}.rvit span.s5{--sb:var(--s5)}
+.rvit span{display:inline-flex;align-items:center;gap:2px;background:var(--card2);border-radius:var(--r-sm);padding:2px var(--sp-1) 2px 2px;font-size:var(--fs-sm);border:1.5px solid var(--sb,var(--line))}
+.rvit img{width:20px;height:20px;image-rendering:pixelated}

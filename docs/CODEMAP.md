@@ -64,6 +64,7 @@
 | 6 人一場、真人快照上限（0.1.29） | `js/data.js`、`js/ghost.js`、`js/run.js`、`js/ui.js` | `LOBBY_N`、`GHOST_MAX`、`PLACE_PTS`（data）；`ghostRivals`（ghost）；`simLobby`、`rivalFights`（兩兩互打）（run）；`rivalHTML` 的 `.rivals.n5`（ui） |
 | 後期魔王菁英、高星機率（0.1.29） | `js/run.js` | `ELITE_POOL`（7 階段起 `kings`）、`ELITE_KING`、`eliteStars`、`shopOdds`（`rollItem` 用） |
 | 菁英三選一保底職業武器、副核心融入專屬核心（0.1.29） | `js/run.js`、`js/bag.js`、`js/bot.js`、`js/ui.js` | `eliteOpts`、`clsWeaponTags`、`mainCore`、`takePick`（run）；道具的 `sc`、`compileBag`／`bagMods`、`packBag`（bag）；`botValue0` 的 `how: 'core'`（bot）；`detailHTML`、`bagHTML` 的 `.fui`（ui） |
+| 點對手看上一回合的背包、重畫保留折疊（0.1.32） | `js/ui.js` | `showRivalBag`、`A.rvBag`、`rivalHTML` 的 `button.rv`；`render` 保留 `details[data-k]`（圖鑑 `codexHTML` 的 `cx_職業`） |
 | 戰報按鈕、拖曳中旋轉（0.1.29） | `js/ui.js` | `lastLogBtn`、`A.lastLog`；`dragMove`、`dragRot`（keydown／mousedown 右鍵／wheel）、`V.drag` 的 `rot`／`gi` |
 | 首頁排行榜、各職業勝率（0.1.29） | `js/ghost.js`、`js/ui.js`、`supabase/migrations/20261023000000_serling_leaderboard.sql` | `BOARD`、`ghostBoard`、`ghostEnd`（寫 `cls`／`rating_end`）（ghost）；`boardHTML`、`A.lb`、`V.lb`（ui）；RPC `leaderboard`、`class_stats` |
 | 抗異常、淨化、減回復、減暴擊（0.1.29） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js` | `fx` 的 `rBurn`～`rBlind`、`poisonImm`、`cleanse`、`healCut`、`critRes`、`RES_MAX`、`CLEANSE_T`（items）；`compileBag` 預設值（bag）；`simulate` 的 `res`、`healOf`、`cleanse` 事件（sim）；`botThreat`、`BOT_ERES`、`run.eres`（bot、`simLobby`） |
@@ -144,22 +145,22 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（101），5 個宣告
 
-### js/news.js（206 行）
+### js/news.js（210 行）
 
 
-### js/ui.js（1810 行）
+### js/ui.js（1846 行）
 
 - **小工具**（6），12 個宣告
 - **牌階**（61），5 個宣告
 - **主題**（164），3 個宣告
 - **畫面切換**（180），2 個宣告
-- **首頁**（209），3 個宣告
-- **準備畫面**（301），17 個宣告
-- **結算、三選一、一局結束**（612），6 個宣告
-- **戰鬥播放**（659），20 個宣告
-- **圖鑑、說明、設定**（1027），3 個宣告
-- **動作**（1092），11 個宣告
-- **拖曳擺放**（1517），13 個宣告
+- **首頁**（215），3 個宣告
+- **準備畫面**（307），18 個宣告
+- **結算、三選一、一局結束**（642），6 個宣告
+- **戰鬥播放**（689），20 個宣告
+- **圖鑑、說明、設定**（1057），3 個宣告
+- **動作**（1124），11 個宣告
+- **拖曳擺放**（1553），13 個宣告
 
 ### js/main.js（74 行）
 

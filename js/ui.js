@@ -198,7 +198,13 @@ function render() {
   else if (V.scr === 'help') html = helpHTML();
   else if (V.scr === 'settings') html = settingsHTML();
   else html = homeHTML();
+  /* 0.1.32 重畫時保留打開的折疊（details[data-k]）：圖鑑打開時一直在載大圖、每載好一張就重畫，之前一打開馬上被收起來 */
+  const open = [...app.querySelectorAll('details[data-k][open]')].map(d => d.dataset.k);
   app.innerHTML = html;
+  for (const k of open) {
+    const d = app.querySelector(`details[data-k="${k}"]`);
+    if (d) d.open = true;
+  }
   paintSprites(app);
 }
 const go = scr => {
@@ -311,10 +317,34 @@ function rivalHTML(run) {
       /* 0.1.26 生命在這局裡算（rv.hp） */
       const hp = rivalAlive(rv, (curRound(run) || ROUNDS[ROUNDS.length - 1]).id) ? rivalHp(rv) : 0;
       if (hp <= 0)
-        return `<div class="rv out" title="${esc(rv.name)}">${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:0"></i></i><small>淘汰</small></span></div>`;
-      return `<div class="rv${i === nx ? ' nx' : ''}" title="${esc(rv.name)}">${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>♥ ${hp}</small></span></div>`;
+        return `<button class="rv out" title="${esc(rv.name)}" data-act="rvBag" data-k="${i}">${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:0"></i></i><small>淘汰</small></span></button>`;
+      return `<button class="rv${i === nx ? ' nx' : ''}" title="${esc(rv.name)}" data-act="rvBag" data-k="${i}">${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>♥ ${hp}</small></span></button>`;
     })
     .join('')}</div>`;
+}
+/* 0.1.32 點對手：看他上一回合的背包（準備時看上一回合；打完結算時看剛打完的這回合，你已經看過了）。不給看這回合的，跟機器人一樣 */
+function showRivalBag(i) {
+  const run = S.run,
+    rv = run && run.rivals[i];
+  if (!rv) return;
+  const idx = run.phase === 'prep' || run.phase === 'cls' ? run.ri - 1 : run.ri,
+    r = ROUNDS[idx],
+    sn = r && rivalSnap(rv, r.id),
+    cls = sn && sn.bag && CLSI[sn.bag.cls];
+  let body;
+  if (!sn) body = `<p class="empty">還沒有上一回合的背包（打完第一回合就看得到）</p>`;
+  else {
+    const bag = unpackBag(sn.bag),
+      cs = Math.min(36, fl(260 / bag.w));
+    body = `<p class="sub">${cls ? cls.n + '・' : ''}${r.id} 的背包・${bag.items.length} 件</p><div class="bagwrap">${bagHTML(bag, cs, { mini: 1, id: 'rvbag' })}</div><div class="rvit">${bag.items
+      .map(
+        o =>
+          `<span class="s${ITEMI[o.id].star}"><img src="${itemIcon(o.id)}" alt="">${esc(fuName(o))}${tierTxt(o.t)}</span>`
+      )
+      .join('')}</div>`;
+  }
+  showDlg(`${esc(rv.name)}・♥ ${Math.max(0, rivalHp(rv))}`, body, []);
+  paintSprites($('modal'));
 }
 /* 下一場 PvP 會打誰（跟 opponentOf 一樣的規則，只看不改）；
    0.1.27 結算／三選一時 run.rp 已經換下一位，改回傳剛剛打的那位 */
@@ -1043,9 +1073,11 @@ function codexHTML() {
           )
           .join('')}</div>`
     )
-    .join('')}<h3>職業核心（2-5 首領掉專屬核心、4-4 首領掉副核心，都從你的職業池三選一）</h3>${CLASSES.map(
+    .join(
+      ''
+    )}<h3>職業核心（2-5 首領掉專屬核心、4-4 首領掉副核心並融入專屬核心，都從你的職業池三選一）</h3>${CLASSES.map(
     C =>
-      `<details class="more"><summary>${C.n}（${ITEMS.filter(i => i.cls === C.id).length}）</summary><div class="cores">${ITEMS.filter(
+      `<details class="more" data-k="cx_${C.id}"><summary>${C.n}<small>${clsDesc(C.id)}</small></summary><div class="cores">${ITEMS.filter(
         i => i.cls === C.id
       )
         .map(i => `<p><b>${i.core === 2 ? i.n : i.n.split('・')[1]}</b>　${itemDesc(i.id)}</p>`)
@@ -1142,6 +1174,10 @@ const A = {
   },
   stats: () => showDlg('角色數值', statsHTML(S.run), []),
   log: d => showLog(d.k),
+  rvBag: d => {
+    snd('tap');
+    showRivalBag(+d.k);
+  },
   lastLog: () => {
     const l = S.run && (S.run.log || [])[S.run.log.length - 1];
     if (l) showLog(l.id);
