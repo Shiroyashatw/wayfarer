@@ -79,7 +79,7 @@ function botPower(F, P = BOT_P) {
     hit *= 1 + ctrl * 0.4 * P.ctrlW;
     hit *= 1 + (w.ls || 0) / 200;
     /* 0.1.28 質變：連鎖、穿甲、守護 */
-    hit *= (1 + (w.chain || 0) / 100) * (1 + (w.pierce || 0) * 0.004);
+    hit *= (1 + (w.chain || 0) / 100) * (1 + (w.pierce || 0) * 0.004) * (1 + ((w.chainN || 0) * CHAIN_DMG) / 100);
     dps += hit / Math.max(0.3, w.cd);
     if (w.guard) gd += ((hit * w.guard) / 100 / Math.max(0.3, w.cd)) * 9;
   }
@@ -87,6 +87,9 @@ function botPower(F, P = BOT_P) {
   for (const p of F.pots) if (p.bomb) dps += (p.v * p.n * p.bomb) / 100 / 15;
   if (F.petHunt) dps *= 1 + (F.petHunt * Math.min(5, ep)) / 100;
   dps *= 1 + (F.double || 0) / 100;
+  /* 0.1.33 連珠箭（開戰 N 秒必定連擊，一場大約 15 秒）、先手射擊 */
+  if (F.openDbl) dps *= 1 + Math.min(1, F.openDbl / 15) * 0.8;
+  if (F.firstStrike) dps *= 1.04;
   dps *= 1 + ((F.execute || 0) * 0.25 + (F.rage || 0) * 0.3 + (F.ramp || 0) * 1.5 + (F.opener || 0) * 0.05) / 100;
   if (F.rushT) dps *= 1 + (F.rushP / 100) * Math.min(1, F.rushT / 9);
   let ehp = (F.hp * (1 + Math.max(-10, F.arm || 0) / 50)) / (1 - Math.min(40, F.dodge || 0) / 100);
@@ -104,6 +107,8 @@ function botPower(F, P = BOT_P) {
     else if (p.k === 'seal') pre += 0.03 * p.v;
     else if (p.k === 'down') pre += 0.12;
     else if (p.k === 'petLock') pre += 0.12 * Math.min(p.v, ep);
+    else if (p.k === 'sealAll') pre += 0.07 * p.v;
+    else if (p.k === 'lockBest') pre += 0.3;
     else if (p.k === 'petSeal') pre += 0.012 * p.v * Math.min(3, ep);
     else if (p.k === 'sunder') pre += 0.01 * Math.min(SUNDER_MAX, p.v);
     else dps += ((p.k === 'poison' ? Math.min(POISON_MAX, p.v) : p.v) * P.dotW) / 9;
@@ -293,7 +298,10 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
       for (const o of run.bench) if (o) botPlace(run, o, P, cx);
       continue;
     }
-    if (rolls < P.maxRolls && run.gold - REROLL >= Math.max(P.rollGold, keep) && r01(run) < q + 0.2) {
+    if (
+      (freeRolls(run) > 0 && rolls < P.maxRolls + 1) ||
+      (rolls < P.maxRolls && run.gold - REROLL >= Math.max(P.rollGold, keep) && r01(run) < q + 0.2)
+    ) {
       rerollShop(run);
       rolls++;
       continue;

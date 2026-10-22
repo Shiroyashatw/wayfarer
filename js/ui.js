@@ -464,8 +464,8 @@ function dragLit(d) {
   for (const q of run.bag.items) if (q.u !== d.o.u && adjacent(t, q) && synergy(t, q) + synergy(q, t) > 0) on(q);
 }
 /* 0.1.4 道具形狀的小圖（商店、說明、三選一）：幾格、怎麼排一眼看得出來 */
-function shapeMini(id, r = 0) {
-  const c = shapeOf(id, r),
+function shapeMini(id, r = 0, sm = 0) {
+  const c = shapeOf(id, r, sm),
     w = Math.max(...c.map(p => p[0])) + 1,
     h = Math.max(...c.map(p => p[1])) + 1;
   return `<i class="shp" style="--w:${w};--h:${h}" aria-label="${c.length} 格">${c
@@ -529,7 +529,7 @@ function prepHTML(run) {
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
-    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL ? 'disabled' : ''}>刷新<small class="bnote">${REROLL} 金</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvNext.cost + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div></div>
+    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL && freeRolls(run) <= 0 ? 'disabled' : ''}>刷新<small class="bnote">${freeRolls(run) > 0 ? '免費' : REROLL + ' 金'}</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvNext.cost + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div></div>
     ${detailHTML(run)}
   </div>`;
 }
@@ -902,6 +902,7 @@ function bLog(e, tg) {
   else if (e.k === 'thorns') t = `${who(e.s)} 反彈 ${e.v}`;
   else if (e.k === 'fatigue') t = `${who(tg)} 疲勞 -${e.v}`;
   else if (e.k === 'cleanse') t = `${who(e.s)} 淨化了 ${e.v} 種異常`;
+  else if (e.k === 'sealAll') t = `${by(e.s, e.u)} 封鎖了${who(1 - e.s)}所有武器 ${e.v} 秒`;
   else if (e.k === 'seal')
     t = `${by(e.s, e.u)} ${e.v >= MAX_T ? '關住' : '封鎖'}了${who(1 - e.s)}的${it(1 - e.s, e.tu) || '武器'}${e.v >= MAX_T ? '（整場）' : ` ${e.v} 秒`}`;
   else if (e.k === 'down') t = `${by(e.s, e.u)} 讓${who(1 - e.s)}的${it(1 - e.s, e.tu) || '武器'}降 1 階`;
@@ -1007,6 +1008,7 @@ function bTick() {
       bBurst(tg, '#8fd8ff', 8);
     } else if (e.k === 'thorns') bPop(tg, '反彈 ' + e.v, '#ffb15a');
     else if (e.k === 'cleanse') bPop(tg, '淨化', '#ffe9a0');
+    else if (e.k === 'sealAll') bPop(tg, `全封鎖 ${e.v} 秒`, '#c58cff', 1);
     else if (e.k === 'weak') bPop(tg, '虛弱', '#c58cff');
     else if (e.k === 'blind') bPop(tg, '致盲', '#fff27a');
     else if (e.k === 'throw') {
@@ -1573,6 +1575,7 @@ function placeFromBench(run, i, x, y, r) {
   run.bag.items.push(o);
   snd('select');
   fuseToast(fuseAll(run));
+  syncShrink(run);
   if (S.tut === 1) S.tut = 2;
   V.sel = null;
   save();
@@ -1610,7 +1613,7 @@ document.addEventListener('pointerdown', ev => {
   } else if (c.dataset.bu) {
     from = 'bench';
     o = run.bench[+c.dataset.bi];
-    grab = shapeOf(o.id, o.r)[0];
+    grab = shapeOf(o.id, o.r, o.sm)[0];
   } else {
     from = 'bag';
     o = run.bag.items.find(q => q.u === c.dataset.u);
@@ -1619,7 +1622,7 @@ document.addEventListener('pointerdown', ev => {
   /* 0.1.29 gi：抓的是形狀的第幾格（拖曳中旋轉後，手指還是抓著同一格） */
   const gi = Math.max(
     0,
-    shapeOf(o.id, o.r || 0).findIndex(p => p[0] === grab[0] && p[1] === grab[1])
+    shapeOf(o.id, o.r || 0, o.sm).findIndex(p => p[0] === grab[0] && p[1] === grab[1])
   );
   V.drag = { o, from, grab, gi, rot: 0, sk, sx: ev.clientX, sy: ev.clientY, on: false, el: null };
 });
@@ -1654,7 +1657,7 @@ function dragMove(d) {
   const rr = ((d.o.r || 0) + d.rot) & 3,
     ro = { ...d.o, r: rr };
   d.r = rr;
-  d.g = shapeOf(d.o.id, rr)[d.gi] || d.grab;
+  d.g = shapeOf(d.o.id, rr, d.o.sm)[d.gi] || d.grab;
   d.tgt = c ? [c[0] - d.g[0], c[1] - d.g[1]] : null;
   d.ok = !!d.tgt && canPlace(S.run.bag, d.o, d.tgt[0], d.tgt[1], rr);
   /* 0.1.5 從暫存區或商店拖進來放不下時，自動換個方向（手指底下那格還是道具的一部分），不動背包裡原本的道具 */
@@ -1720,7 +1723,7 @@ function drawGhost(d) {
   d.shown = key;
   const cs = d.cs;
   d.el.innerHTML =
-    shapeOf(d.o.id, d.r)
+    shapeOf(d.o.id, d.r, d.o.sm)
       .map(([x, y]) => `<i style="left:${x * (cs + GAP)}px;top:${y * (cs + GAP)}px;width:${cs}px;height:${cs}px"></i>`)
       .join('') +
     `<img src="${itemIcon(d.o.id)}" style="width:${cs * 0.8}px;left:${d.g[0] * (cs + GAP) + cs * 0.1}px;top:${d.g[1] * (cs + GAP) + cs * 0.1}px" alt="">`;
@@ -1729,7 +1732,7 @@ function drawGhost(d) {
 function autoFit(bag, o, c) {
   for (let i = 0; i < 4; i++) {
     const r = (o.r + i) & 3;
-    for (const [gx, gy] of shapeOf(o.id, r))
+    for (const [gx, gy] of shapeOf(o.id, r, o.sm))
       if (canPlace(bag, o, c[0] - gx, c[1] - gy, r)) return { r, x: c[0] - gx, y: c[1] - gy };
   }
   return null;
@@ -1786,6 +1789,7 @@ function dropEnd(ev) {
     );
   }
   fuseToast(fuseAll(run));
+  syncShrink(run);
   V.sel = null;
   save();
   render();

@@ -1,7 +1,7 @@
 /* 塞令老師 · 背包：格子、擺放、相鄰、合成，以及把背包算成戰鬥用的角色（compileBag） */
 'use strict';
 /* 背包裡的一件：{ u: 編號, id, t: 階, x, y, r: 旋轉, a: 升階詞綴 } */
-const cellsOf = o => shapeOf(o.id, o.r).map(([x, y]) => [o.x + x, o.y + y]);
+const cellsOf = o => shapeOf(o.id, o.r, o.sm).map(([x, y]) => [o.x + x, o.y + y]);
 /* 格子上是哪一件（u），沒有回傳 null */
 function bagGrid(bag) {
   const g = Array.from({ length: bag.h }, () => Array(bag.w).fill(null));
@@ -11,7 +11,7 @@ function bagGrid(bag) {
 /* 能不能把 o 放在 (x, y)、旋轉 r（忽略自己） */
 function canPlace(bag, o, x, y, r) {
   const g = bagGrid(bag);
-  for (const [dx, dy] of shapeOf(o.id, r)) {
+  for (const [dx, dy] of shapeOf(o.id, r, o.sm)) {
     const cx = x + dx,
       cy = y + dy;
     if (cx < 0 || cy < 0 || cx >= bag.w || cy >= bag.h) return false;
@@ -43,7 +43,7 @@ function findSpot(bag, o, prefer = true) {
       : [];
   let best = null;
   for (let r = 0; r < 4; r++) {
-    const sh = shapeOf(o.id, r);
+    const sh = shapeOf(o.id, r, o.sm);
     for (let y = 0; y < bag.h; y++)
       for (let x = 0; x < bag.w; x++) {
         let ok = true;
@@ -164,6 +164,7 @@ function mergeAll(run, r) {
     done.push(o);
   }
   done.fused = fuseAll(run);
+  syncShrink(run);
   return done;
 }
 /* ================= 戰鬥數值 ================= */
@@ -200,6 +201,10 @@ function compileBag(bag, extra = {}) {
       /* 0.1.28 反制寵物：敵人寵物傷害 -%、敵人每隻寵物你的傷害 +% */
       petDown: 0,
       petHunt: 0,
+      /* 0.1.33 核心新機制 */
+      openDbl: 0,
+      firstStrike: 0,
+      armDmg: 0,
       /* 0.1.29 抗異常（%）、開戰免毒秒數、淨化、減敵人回復、減暴擊 */
       rBurn: 0,
       rPoison: 0,
@@ -245,6 +250,9 @@ function compileBag(bag, extra = {}) {
   }
   const adjQ = (s, q) => NB.get(s.u).has(q.u),
     rowQ = (s, q) => [...RW.get(s.u)].some(y => RW.get(q.u).has(y));
+  /* 0.1.33 鐵甲戰士：防具、盾的效果 ×defX */
+  const defX = Math.max(1, ...its.map(o => ITEMI[o.id].defX || 0)),
+    isDef = I => I.tags.includes('armor') || I.tags.includes('shield');
   /* 0.1.28 質變：先決定誰被質變（標籤會變，後面的加成都看質變後的標籤） */
   const tfm = tfOf(its, adjQ),
     TG = new Map(its.map(o => [o.u, tagsWith(o, tfm)])),
@@ -267,6 +275,10 @@ function compileBag(bag, extra = {}) {
       const f = fxT(S0, s.t);
       for (const k in f) F[k] += f[k];
     }
+    /* 0.1.33 方陣：背包裡每有 1 件某標籤，角色加成 */
+    for (const b of S0.fxPer || []) for (const k in b) if (k !== 'tag') F[k] += b[k] * cnt(b.tag);
+    /* 0.1.33 賄賂：開戰前付過錢（bag.pay）才有效 */
+    if (S0.bribe && bag.pay) F.pre.push({ u: s.u, k: 'lockBest', v: MAX_T });
     /* 0.1.29 融入專屬核心的副核心（sc）：效果跟副核心本身一樣，不佔格子 */
     const X = s.sc && ITEMI[s.sc];
     if (X) {
@@ -297,11 +309,12 @@ function compileBag(bag, extra = {}) {
   }
   for (const o of its) {
     const I = ITEMI[o.id],
-      k = TIERM[o.t],
+      dx = isDef(I) ? defX : 1,
+      k = TIERM[o.t] * dx,
       m = mods.get(o.u);
     if (I.hp) F.hp += Math.round(I.hp * k);
     if (I.arm) F.arm += Math.round(I.arm * k);
-    if (I.dodge) F.dodge += Math.round(I.dodge * TIERB[o.t]);
+    if (I.dodge) F.dodge += Math.round(I.dodge * TIERB[o.t] * dx);
     if (I.regen || m.regen) F.regen += Math.round((I.regen || 0) * k) + (m.regen || 0);
     if (m.thornsF) F.thornsF += m.thornsF;
     /* 0.1.29 照格數：巨化的生命 */
@@ -362,10 +375,13 @@ function compileBag(bag, extra = {}) {
         blind: (on.blind || 0) + (m.blindCh || 0),
         pierce: Math.min(PIERCE_MAX, m.pierce || 0),
         chain: m.chain || 0,
-        guard: m.guard || 0
+        guard: m.guard || 0,
+        chainN: Math.min(CHAIN_MAX, m.chainN || 0)
       });
     }
   }
+  /* 0.1.33 審判：每把武器的傷害 +護甲值 */
+  if (F.armDmg && F.arm > 0) for (const w of F.weapons) w.dmg = w.dmg.map(v => v + F.arm);
   if (F.potMul) F.pots.forEach(p => ((p.v = Math.round(p.v * (1 + F.potMul / 100))), (p.n += F.potUse)));
   F.dodge = Math.min(40, F.dodge);
   return F;
@@ -412,6 +428,7 @@ const packBag = bag => ({
   w: bag.w,
   h: bag.h,
   cls: bag.cls || null,
+  ...(bag.pay ? { pay: 1 } : {}),
   it: bag.items.map(o => [
     o.id,
     o.t,
@@ -420,15 +437,17 @@ const packBag = bag => ({
     o.r,
     o.a || 0,
     o.m || 0,
-    ...(o.m2 || o.f || o.sc ? [o.m2 || 0] : []),
-    ...(o.f || o.sc ? [o.f || 0, o.ft || 1] : []),
-    ...(o.sc ? [o.sc] : [])
+    ...(o.m2 || o.f || o.sc || o.sm ? [o.m2 || 0] : []),
+    ...(o.f || o.sc || o.sm ? [o.f || 0, o.ft || 1] : []),
+    ...(o.sc || o.sm ? [o.sc || 0] : []),
+    ...(o.sm ? [1] : [])
   ])
 });
 const unpackBag = p => ({
   w: p.w,
   h: p.h,
   cls: p.cls || null,
+  pay: p.pay || 0,
   items: (p.it || [])
     .filter(a => ITEMI[a[0]])
     .map((a, i) => ({
@@ -443,6 +462,24 @@ const unpackBag = p => ({
       m2: a[7] || null,
       f: a[8] || null,
       ft: a[9] || 1,
-      sc: a[10] || null
+      sc: a[10] || null,
+      sm: a[11] || 0
     }))
 });
+/* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */
+function syncShrink(run) {
+  const tag = (run.bag.items.find(o => ITEMI[o.id].shrink) || {}).id;
+  const t = tag && ITEMI[tag].shrink;
+  for (const o of [...run.bag.items, ...run.bench]) {
+    if (!o) continue;
+    const want = t && ITEMI[o.id].tags.includes(t) && !ITEMI[o.id].core ? 1 : 0;
+    if ((o.sm || 0) === want) continue;
+    o.sm = want;
+    if (!want && run.bag.items.includes(o) && !canPlace(run.bag, o, o.x, o.y, o.r)) {
+      run.bag.items = run.bag.items.filter(q => q !== o);
+      const fi = run.bench.indexOf(null);
+      if (fi >= 0) run.bench[fi] = o;
+      else run.gold += sellO(o);
+    }
+  }
+}

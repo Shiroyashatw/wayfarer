@@ -382,7 +382,7 @@ function swapPlan(run, o, tx, ty, from) {
   const bag = run.bag,
     g = bagGrid(bag),
     hit = new Set();
-  for (const [dx, dy] of shapeOf(o.id, o.r)) {
+  for (const [dx, dy] of shapeOf(o.id, o.r, o.sm)) {
     const cx = tx + dx,
       cy = ty + dy;
     if (cx < 0 || cy < 0 || cx >= bag.w || cy >= bag.h) return null;
@@ -411,9 +411,17 @@ function sellItem(run, u) {
   }
   const v = sellO(o);
   run.gold += v;
+  syncShrink(run);
   return v;
 }
+/* 0.1.33 投機商人：每回合免費刷新次數（run.fr 是這回合用掉的） */
+const freeRolls = run => Math.max(0, ...run.bag.items.map(o => ITEMI[o.id].freeRoll || 0)) - (run.fr || 0);
 function rerollShop(run) {
+  if (freeRolls(run) > 0) {
+    run.fr = (run.fr || 0) + 1;
+    rollShop(run);
+    return '';
+  }
   if (run.gold < REROLL) return '金幣不夠';
   run.gold -= REROLL;
   rollShop(run);
@@ -449,6 +457,7 @@ function nextRound(run) {
   run.ri++;
   const r = curRound(run);
   run.pend = null;
+  run.fr = 0;
   if (!r) return endRun(run, finalPlace(run));
   if (run.ri === 0) {
     run.gold = START_GOLD;
@@ -573,8 +582,15 @@ function stageHp(F, st, mob) {
 let MOB_HP = 1,
   MOB_DMG = 1.5;
 /* 開戰：存快照（給別人當對手）、算好整場（固定亂數） */
+/* 0.1.33 賄賂：背包有這個核心、金幣超過 N 就付 N，這場（快照也一樣）整場封鎖敵人星級最高的武器 */
+function payBribe(run) {
+  const b = Math.max(0, ...run.bag.items.map(o => ITEMI[o.id].bribe || 0));
+  run.bag.pay = b && run.gold > b ? 1 : 0;
+  if (run.bag.pay) run.gold -= b;
+}
 function startFight(run) {
   const r = curRound(run);
+  payBribe(run);
   if (typeof ghostSnap === 'function') ghostSnap(run, r.id);
   /* 0.1.30 即時機器人先推進到這回合（看的是你上一回合的背包），再記下你這回合的背包給下回合用 */
   liveStep(run, r);
@@ -647,7 +663,10 @@ function finishFight(run, fb) {
   /* 菁英：三選一道具（星級照階段）；首領：三選一職業核心 */
   if (r.type === 'elite') {
     const [a, b] = eliteStars(r.st);
-    run.pend = { kind: 'pick', t: '菁英的戰利品：選一件', opts: eliteOpts(run, a, b) };
+    run.pend = { kind: 'pick', t: '菁英的戰利品：選一件', opts: eliteOpts(run, a, b, res.win) };
+    /* 0.1.33 商人：打完菁英多拿金幣 */
+    const eg = (CLSI[run.bag.cls] || {}).eliteGold || 0;
+    if (eg) (run.gold += eg), (out.gold += eg);
   }
   if (r.type === 'boss') {
     /* 0.1.10 2-5 抽自己職業的專屬核心、4-4 抽副核心 */
@@ -753,7 +772,20 @@ function clsWeaponTags(cls) {
   );
   return t.length ? t : ['weapon'];
 }
-function eliteOpts(run, a, b) {
+function eliteOpts(run, a, b, win = true) {
+  /* 0.1.33 劍修大師：打贏菁英時三件都是那個標籤的武器 */
+  const mc = mainCore(run),
+    all = win && mc && ITEMI[mc.id].eliteAll;
+  if (all) {
+    let wp = ITEMS.filter(i => !i.core && i.dmg && i.tags.includes(all) && i.star >= a && i.star <= b);
+    if (wp.length < 3) wp = ITEMS.filter(i => !i.core && i.dmg && i.tags.includes(all) && i.star <= b);
+    const o = [];
+    for (let k = 0; o.length < 3 && k < 30; k++) {
+      const id = pick(run, wp).id;
+      if (!o.includes(id) || wp.length < 3) o.push(id);
+    }
+    return o;
+  }
   const pool = ITEMS.filter(i => !i.core && i.star >= a && i.star <= b),
     tags = clsWeaponTags(run.bag.cls),
     isW = i => i.dmg && tags.some(t => i.tags.includes(t));
@@ -785,6 +817,17 @@ function takePick(run, id, hold) {
   if (fi < 0) run.bench.push(newItem(run, id));
   else run.bench[fi] = newItem(run, id);
   run.pend = null;
+  /* 0.1.33 保鏢：送 N 隻隨機 X★ 寵物（暫存區滿了就換成賣價） */
+  const G = ITEMI[id].gift;
+  if (G) {
+    const pool = ITEMS.filter(i => !i.core && i.star === G[0] && i.tags.includes(G[1]));
+    for (let k = 0; k < G[2] && pool.length; k++) {
+      const o = newItem(run, pick(run, pool).id),
+        f2 = benchFree(run);
+      if (f2 >= 0) run.bench[f2] = o;
+      else run.gold += sellOf(o.id, o.t);
+    }
+  }
   mergeAll(run, runR(run));
   for (const o of run.bench.splice(BENCH_N)) if (o) run.bench[benchFree(run)] = o;
   return '';
@@ -852,7 +895,8 @@ function botAfter(run, r, win, q, P) {
   /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了）；暫存區滿了先寄放，下回合 botAct 處理。
      0.1.29 菁英跟玩家一樣三選一（保底職業武器），照評估挑 */
   if (r.type === 'elite') {
-    const opts = eliteOpts(run, a, c),
+    run.gold += (CLSI[run.bag.cls] || {}).eliteGold || 0;
+    const opts = eliteOpts(run, a, c, win),
       best =
         r01(run) < q
           ? opts.map(id => [id, botValue(run, id, 1, P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0]
@@ -891,6 +935,7 @@ function simLobby(seed, rating, opt = {}) {
       if (b.run.ri > 0) b.run.gold = Math.max(0, b.run.gold + b.gb);
       if (b.old) botActOld(b.run, b.theme, b.q);
       else botAct(b.run, b.theme, b.q, b.P);
+      payBribe(b.run);
     }
     const r = ROUNDS[k];
     for (const b of alive)
@@ -972,6 +1017,7 @@ function liveStep(run, r) {
       for (const k in BOT_ERES0) br.eres[k] = os.reduce((n, p) => n + p.thr[k] * p.w, 0) / W;
     }
     botAct(br, L.theme, L.q, BOT_P);
+    payBribe(br);
     rv.snaps = rv.snaps || {};
     rv.snaps[r.id] = { hp: rivalHp(rv), bag: packBag(br.bag) };
     /* 存檔不要越來越大：即時機器人只留這回合和上一回合的快照（下回合看的就是這兩筆） */

@@ -1943,7 +1943,7 @@ const CLASSES = [
       { tag: 'dagger', poison: 1 }
     ]
   },
-  { id: 'tamer', st: 'treefrog', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 50, spd: 25 }] },
+  { id: 'tamer', st: 'treefrog', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 35, spd: 15 }] },
   {
     id: 'knight',
     st: 'woodshield',
@@ -1952,7 +1952,8 @@ const CLASSES = [
     th: 'shield',
     /* 0.1.29 6 人一場騎士墊底：格擋 40% → 60%、生命 20 → 40、被打中反彈 2 */
     m: [{ tag: 'shield', blockPct: 60 }],
-    F: { hp: 40, thornsF: 2 }
+    /* 0.1.33 生命 40 → 50、反彈 2 → 3 */
+    F: { hp: 50, thornsF: 3 }
   },
   {
     id: 'alchemist',
@@ -1962,7 +1963,8 @@ const CLASSES = [
     th: 'potion',
     F: { potMul: 30, throwPct: 50, regen: 1 }
   },
-  { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_regal', gold: 1 }
+  /* 0.1.33 eliteGold：打完菁英多拿的金幣 */
+  { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_regal', gold: 1, eliteGold: 3 }
 ];
 const CLSI = Object.fromEntries(CLASSES.map(c => [c.id, c]));
 /* 0.1.10 職業核心兩次：2-5 首領掉「專屬核心」（每個職業 12 個、各有特色），4-4 首領掉「副核心」（照模板對主打標籤加成，12 個）。
@@ -1986,9 +1988,11 @@ const onP = (P, m) => P.map(tag => ({ tag, ...m }));
 /* 專屬核心：[名字, 效果]；效果用 all（對標籤加成）、fx（角色身上，含 0.1.10 的新機制）、pre（開戰效果）、gold */
 const CORE_MAIN = {
   archer: P => [
-    ['連珠箭', { all: onP(P, { spd: 25 }), fx: { double: 15 } }],
+    /* 0.1.33 開戰 6 秒內每一下都連擊（之前 15% 連擊） */
+    ['連珠箭', { all: onP(P, { spd: 25 }), fx: { openDbl: 6 } }],
     ['穿雲箭', { all: onP(P, { dmgPct: 30, crit: 10 }) }],
-    ['先手射擊', { all: onP(P, { dmgPct: 15 }), fx: { opener: 90 } }],
+    /* 0.1.33 先充能 90% → 80%，星級最高的一把開戰先打一下 */
+    ['先手射擊', { all: onP(P, { dmgPct: 15 }), fx: { opener: 80, firstStrike: 1 } }],
     ['狙擊', { all: onP(P, { crit: 15 }), fx: { execute: 60 } }],
     ['火箭', { all: onP(P, { burn: 2, dmgPct: 10 }) }],
     ['毒箭', { all: onP(P, { poison: 2, dmgPct: 10 }) }],
@@ -2002,14 +2006,15 @@ const CORE_MAIN = {
   swordsman: P => [
     ['劍意', { all: onP(P, { dmgPct: 35 }) }],
     ['拔刀術', { all: onP(P, { crit: 15 }), fx: { opener: 100 } }],
-    ['血劍', { all: onP(P, { bleed: 2, ls: 10 }) }],
+    ['血劍', { all: onP(P, { bleed: 4, ls: 15 }) }],
     ['斬殺', { all: onP(P, { dmgPct: 10 }), fx: { execute: 70 } }],
     ['招架', { all: onP(P, { dmgPct: 15 }), fx: { startBlock: 30 } }],
     ['連斬', { all: onP(P, { dmgPct: 10 }), fx: { double: 20 } }],
     ['劍心', { all: onP(P, { crit: 20 }), fx: { critMul: 50 } }],
     ['背水', { all: onP(P, { spd: 10 }), fx: { rage: 50 } }],
     ['雙手大師', { all: [{ tag: 'twohand', dmgPct: 40, spd: 10 }] }],
-    ['劍陣', { all: onP(P, { dmgPct: 10, per: 'sword' }) }],
+    /* 0.1.33 劍陣 → 劍修大師：打贏菁英時三選一都是劍 */
+    ['劍修大師', { eliteAll: 'sword' }],
     ['破甲斬', { all: onP(P, { sunder: 2, dmgPct: 10 }) }],
     ['劍舞', { all: onP(P, { dmgPct: 10 }), fx: { ramp: 10 } }]
   ],
@@ -2029,15 +2034,17 @@ const CORE_MAIN = {
   ],
   spearman: P => [
     ['突刺', { all: onP(P, { dmgPct: 35 }) }],
-    ['方陣', { fx: { arm: 10, startBlock: 20 } }],
-    ['貫穿', { all: onP(P, { sunder: 2, crit: 10 }) }],
+    /* 0.1.33 護甲 20、開戰護盾 10，背包裡每有 1 件矛再 +10 */
+    ['方陣', { fx: { arm: 20, startBlock: 10 }, fxPer: [{ tag: 'spear', startBlock: 10 }] }],
+    ['貫穿', { all: onP(P, { sunder: 5, crit: 10 }) }],
     ['槍林', { all: onP(P, { spd: 25 }) }],
     ['衝鋒', { all: onP(P, { dmgPct: 15 }), fx: { opener: 100 } }],
     ['放血', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
     ['反擊', { all: onP(P, { dmgPct: 10 }), fx: { thornsF: 5 } }],
     ['致命一擊', { all: onP(P, { crit: 20 }), fx: { critMul: 40 } }],
     ['連刺', { all: onP(P, { dmgPct: 10 }), fx: { double: 18 } }],
-    ['長柄大師', { all: [{ tag: 'twohand', dmgPct: 35, spd: 10 }] }],
+    /* 0.1.33 雙手武器少佔 1 格（shrink） */
+    ['長柄大師', { all: [{ tag: 'twohand', dmgPct: 35, spd: 10 }], shrink: 'twohand' }],
     ['戰意', { fx: { ramp: 8, hp: 30 } }],
     ['處決', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60 } }]
   ],
@@ -2087,11 +2094,13 @@ const CORE_MAIN = {
     ['雷鳴', { all: onP(P, { stunCh: 15, dmgPct: 10 }) }],
     ['落雷', { all: onP(P, { dmgPct: 35 }) }],
     ['雷暴', { all: onP(P, { dmgPct: 10 }), fx: { double: 20 } }],
-    ['閃電鏈', { all: onP(P, { dmgPct: 10, per: 'light' }) }],
+    /* 0.1.33 背包裡每有 1 件雷，所有雷連鎖 +1（每次攻擊多打 1 下，多打的傷害 CHAIN_DMG%，最多 CHAIN_MAX） */
+    ['閃電鏈', { all: onP(P, { chainN: 1, per: 'light' }) }],
     ['電光', { all: onP(P, { blindCh: 15 }), pre: { blind: 4 } }],
     ['雷神', { all: onP(P, { crit: 20 }), fx: { critMul: 40 } }],
     ['超載', { all: onP(P, { dmgPct: 10 }), fx: { ramp: 12 } }],
-    ['靜電場', { fx: { thornsF: 5, startBlock: 15 } }],
+    /* 0.1.33 開戰 5 秒內封鎖敵人所有武器 */
+    ['靜電場', { pre: { sealAll: 5 } }],
     ['雷擊', { all: onP(P, { stunCh: 5 }), fx: { opener: 100 } }],
     ['天譴', { all: onP(P, { dmgPct: 10 }), fx: { execute: 70 } }],
     ['疾雷', { all: onP(P, { spd: 25 }) }],
@@ -2112,7 +2121,7 @@ const CORE_MAIN = {
     ['疾毒', { all: onP(P, { spd: 25 }) }]
   ],
   tamer: P => [
-    ['獸群', { all: onP(P, { dmgPct: 10, per: 'pet' }) }],
+    ['獸群', { all: onP(P, { dmgPct: 8, per: 'pet' }) }],
     ['野性', { all: onP(P, { dmgPct: 35 }) }],
     ['狂奔', { all: onP(P, { spd: 30 }) }],
     ['撕咬', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
@@ -2132,8 +2141,10 @@ const CORE_MAIN = {
     ['起手盾', { fx: { startBlock: 40 } }],
     ['鐵壁', { fx: { arm: 14 } }],
     ['聖光', { all: onP(P, { blindCh: 15 }), fx: { regen: 2 } }],
-    ['不動如山', { fx: { hp: 100 } }],
-    ['審判', { all: onP(P, { dmgPct: 10 }), fx: { execute: 50 } }],
+    /* 0.1.33 不動如山 → 鐵甲戰士：防具、盾的效果 ×1.5 */
+    ['鐵甲戰士', { defX: 1.5 }],
+    /* 0.1.33 護甲變成每把武器的傷害、每把武器暈眩 +10% */
+    ['審判', { all: onP(P, { stunCh: 10 }), fx: { armDmg: 1 } }],
     ['守護誓約', { all: [{ tag: 'shield', spd: 30 }] }],
     ['復仇', { fx: { rage: 40, thornsF: 3 } }],
     ['騎士精神', { all: onP(P, { dmgPct: 20, spd: 10 }) }],
@@ -2157,14 +2168,17 @@ const CORE_MAIN = {
     ['財神', { gold: 3 }],
     ['大富翁', { gold: 2, all: onP(P, { dmgPct: 10 }) }],
     ['投資', { gold: 1, fx: { hp: 40 } }],
-    ['傭兵', { all: onP(P, { dmgPct: 25 }) }],
+    /* 0.1.33 傭兵 → 投機商人：每回合免費刷新商店 1 次 */
+    ['投機商人', { freeRoll: 1 }],
     ['黃金甲', { gold: 1, fx: { arm: 10 } }],
     ['精品', { all: onP(P, { crit: 15 }), fx: { critMul: 30 } }],
-    ['賄賂', { all: onP(P, { dmgPct: 10 }), pre: { seal: 5 } }],
+    /* 0.1.33 開戰時金幣超過 5 金就花 5 金，整場封鎖敵人星級最高的武器 */
+    ['賄賂', { bribe: 5 }],
     ['搶先', { all: onP(P, { spd: 10 }), fx: { opener: 100 } }],
     ['回扣', { gold: 1, fx: { regen: 3 } }],
     ['奸商', { gold: 1, pre: { down: 1 } }],
-    ['保鏢', { fx: { startBlock: 30, thornsF: 3 } }],
+    /* 0.1.33 拿到時送 2 隻隨機 4★ 寵物 */
+    ['保鏢', { gift: [4, 'pet', 2] }],
     ['豪賭', { fx: { rage: 50, execute: 40 } }]
   ]
 };
@@ -2231,7 +2245,7 @@ function clsDesc(id) {
   const out = [...g].map(([t, tags]) => `${tags.join('、')}：${t}`);
   if (c.F) out.push(modTxt(Object.fromEntries(Object.entries(c.F).filter(([k]) => MODN[k]))));
   if (c.F && c.F.potMul) out.push(`藥水回復 +${c.F.potMul}%${c.F.potUse ? `、多喝 ${c.F.potUse} 次` : ''}`);
-  if (c.gold) out.push(`每回合 +${c.gold} 金（沒有戰鬥加成）`);
+  if (c.gold) out.push(`每回合 +${c.gold} 金${c.eliteGold ? `、打完菁英 +${c.eliteGold} 金` : ''}（沒有戰鬥加成）`);
   return out.filter(Boolean).join('；');
 }
 /* 升階：3 件相同、相同階的合成高一階（最多 3 階）；數值倍率與加成倍率 */
@@ -2280,14 +2294,34 @@ const sellOf = (id, t = 1) => Math.max(1, Math.ceil((ITEMI[id].star * 3 ** (t - 
 /* 形狀旋轉 r 次（90°），回傳從 0 開始的格子 */
 /* 0.1.20 形狀算過就記住（機器人評估時一回合要算上千次）；回傳的陣列大家共用，不要改它 */
 const SHC = new Map();
-function shapeOf(id, rot = 0) {
-  const key = id + '|' + (rot & 3);
+/* sm：0.1.33 長柄大師讓雙手武器少佔 1 格（拿掉一格，剩下的還連在一起） */
+function shapeOf(id, rot = 0, sm = 0) {
+  const key = id + '|' + (rot & 3) + (sm ? 's' : '');
   let v = SHC.get(key);
-  if (!v) SHC.set(key, (v = shapeRaw(id, rot)));
+  if (!v) SHC.set(key, (v = shapeRaw(id, rot, sm)));
   return v;
 }
-function shapeRaw(id, rot) {
+function shrinkShape(c) {
+  if (c.length < 2) return c;
+  const linked = a => {
+    const seen = new Set([a[0] + '']),
+      st = [a[0]];
+    while (st.length) {
+      const [x, y] = st.pop();
+      for (const p of a)
+        if (!seen.has(p + '') && Math.abs(p[0] - x) + Math.abs(p[1] - y) === 1) seen.add(p + ''), st.push(p);
+    }
+    return seen.size === a.length;
+  };
+  for (let i = c.length - 1; i >= 0; i--) {
+    const d = c.filter((_, j) => j !== i);
+    if (linked(d)) return d;
+  }
+  return c.slice(0, -1);
+}
+function shapeRaw(id, rot, sm) {
   let c = SH[ITEMI[id].sh].map(p => [...p]);
+  if (sm) c = shrinkShape(c);
   for (let i = 0; i < (rot & 3); i++) c = c.map(([x, y]) => [-y, x]);
   const mx = Math.min(...c.map(p => p[0])),
     my = Math.min(...c.map(p => p[1]));
@@ -2383,7 +2417,7 @@ const MODN = {
   critHeal: v => `暴擊時回復 ${v}`,
   /* 0.1.28 質變與反制寵物 */
   pierce: v => `無視 ${pct(Math.min(PIERCE_MAX, v))} 護甲與格擋`,
-  chain: v => `${pct(v)} 機率再打一次`,
+  chain: v => `${pct(v)} 機率連鎖（多打一次）`,
   guard: v => `命中時獲得傷害 ${pct(v)} 的格擋`,
   bash: v => `格擋時對敵人造成格擋量 ${pct(v)} 的傷害`,
   heal: v => `格擋時回復 ${sg(v)}${v}`,
@@ -2405,11 +2439,19 @@ const MODN = {
   healCut: v => `敵人的回復與吸血 -${pct(Math.min(RES_MAX, v))}`,
   critRes: v => `受到的暴擊額外傷害 -${pct(Math.min(RES_MAX, v))}`,
   cellPct: v => `每佔 1 格傷害 +${pct(v)}`,
-  cellHp: v => `每佔 1 格生命 +${v}`
+  cellHp: v => `每佔 1 格生命 +${v}`,
+  /* 0.1.33 核心新機制（連鎖 = 這一下打完再多打一下） */
+  chainN: v => `連鎖 +${v}（每次攻擊多打 ${Math.min(CHAIN_MAX, v)} 下、傷害 ${CHAIN_DMG}%，最多 +${CHAIN_MAX}）`,
+  openDbl: v => `開戰 ${v} 秒內每次攻擊都連擊`,
+  firstStrike: () => '開戰時星級最高的一把武器先打一下',
+  armDmg: () => '每把武器的傷害 +護甲值'
 };
 /* 0.1.29 抗異常最多 -80%、淨化每 5 秒一次 */
 const RES_MAX = 80,
-  CLEANSE_T = 5;
+  CLEANSE_T = 5,
+  /* 0.1.33 閃電鏈的連鎖：最多多打 2 下、多打的那幾下傷害 50% */
+  CHAIN_MAX = 2,
+  CHAIN_DMG = 50;
 /* 0.1.28 上限：穿甲最多無視 80%、驅獸最多 -60% */
 const PIERCE_MAX = 80,
   PETDOWN_MAX = 60;
@@ -2421,7 +2463,7 @@ const modTxt = m =>
 const tagTxt = t => (t === 'weapon' ? '武器' : t === '*' ? '道具' : TAGN[t] || t);
 /* 0.1.6 開戰前的特殊效果（越強越稀有）：seal 封鎖敵人隨機一把武器 N 秒（每升一階 +1 秒）、down 敵人隨機一把武器降 1 階（最低 Ⅰ 階） */
 /* 0.1.9 擴充成各種開戰效果（藥劑丟出去）：秒數類每升一階 +1 秒，層數類照升階倍率 */
-const PRE_T = ['seal', 'weak', 'blind', 'frozen'],
+const PRE_T = ['seal', 'weak', 'blind', 'frozen', 'sealAll'],
   PREN = {
     seal: v => `開戰時封鎖敵人隨機一把武器 ${v} 秒`,
     down: () => '開戰時把敵人隨機一把武器降 1 階（最低 Ⅰ 階）',
@@ -2434,7 +2476,9 @@ const PRE_T = ['seal', 'weak', 'blind', 'frozen'],
     sunder: v => `開戰時讓敵人破甲 ${v}`,
     /* 0.1.28 反制寵物 */
     petSeal: v => `開戰時封鎖敵人最強的 3 隻寵物 ${v} 秒`,
-    petLock: v => `開戰時把敵人星級最高的 ${v} 隻寵物整場關住（不能攻擊）`
+    petLock: v => `開戰時把敵人星級最高的 ${v} 隻寵物整場關住（不能攻擊）`,
+    /* 0.1.33 靜電場 */
+    sealAll: v => `開戰後 ${v} 秒內封鎖敵人所有武器`
   };
 const preKey = p => Object.keys(p)[0];
 const preVal = (id, t = 1) => {
@@ -2490,6 +2534,17 @@ function itemDesc(id, t = 1) {
     for (const b of it[w] || [])
       out.push(`${n}${tagTxt(b.tag)}：${modTxt(scaleMod(b, t))}${b.per ? `（背包裡每有 1 件${tagTxt(b.per)}）` : ''}`);
   if (it.tf) out.push(tfTxt(it.tf, t));
+  /* 0.1.33 核心的特殊效果 */
+  for (const b of it.fxPer || [])
+    out.push(
+      `背包裡每有 1 件${tagTxt(b.tag)}：${modTxt(Object.fromEntries(Object.entries(b).filter(([k]) => k !== 'tag')))}`
+    );
+  if (it.shrink) out.push(`所有${tagTxt(it.shrink)}武器少佔 1 格`);
+  if (it.eliteAll) out.push(`打贏菁英時，三選一的三件都是${tagTxt(it.eliteAll)}`);
+  if (it.defX) out.push(`所有防具、盾的效果 ×${it.defX}`);
+  if (it.bribe) out.push(`開戰時金幣超過 ${it.bribe} 金就花 ${it.bribe} 金，整場封鎖敵人星級最高的武器`);
+  if (it.gift) out.push(`拿到時送 ${it.gift[2]} 隻隨機 ${it.gift[0]}★ ${tagTxt(it.gift[1])}`);
+  if (it.freeRoll) out.push(`每回合可以免費刷新商店 ${it.freeRoll} 次`);
   if (it.fx) {
     const f = fxT(it, t),
       rest = Object.fromEntries(Object.entries(f).filter(([k]) => MODN[k]));

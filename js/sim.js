@@ -77,10 +77,11 @@ function simulate(FA, FB, seed) {
     k === 'poison' && t < (d.F.poisonImm || 0) ? 0 : 1 - Math.min(RES_MAX, d.F[RK[k]] || 0) / 100;
   /* 回復（a 是誰回血）：敵人的詛咒繃帶會減少 */
   const healOf = (a, h) => h * (1 - Math.min(RES_MAX, S[1 - S.indexOf(a)].F.healCut || 0) / 100);
-  const attack = (t, a, ai, w) => {
+  /* mul：0.1.33 連鎖多打的那幾下傷害打折 */
+  const attack = (t, a, ai, w, mul = 1) => {
     const d = S[1 - ai];
     if (r() * 100 < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) return log(t, ai, 'miss', 0, { u: w.u });
-    let v = w.dmg[0] + r() * (w.dmg[1] - w.dmg[0]);
+    let v = (w.dmg[0] + r() * (w.dmg[1] - w.dmg[0])) * mul;
     const crit = r() * 100 < w.crit;
     /* 0.1.29 厚皮：暴擊多出來的傷害減少 */
     if (crit) v *= 1 + (a.F.critMul / 100 - 1) * (1 - Math.min(RES_MAX, d.F.critRes || 0) / 100);
@@ -180,10 +181,31 @@ function simulate(FA, FB, seed) {
           log(0, i, 'seal', v, { u: p.u, tu: w.u });
         }
       }
+  /* 0.1.33 靜電場（開戰 N 秒封鎖敵人所有武器）、賄賂（整場封鎖敵人星級最高的一把） */
+  for (let i = 0; i < 2; i++)
+    for (const p of S[i].F.pre || []) {
+      const d = S[1 - i];
+      if (p.k === 'sealAll') {
+        for (const w of d.w) w.seal = Math.max(w.seal || 0, p.v);
+        if (d.w.length) log(0, i, 'sealAll', p.v, { u: p.u });
+      } else if (p.k === 'lockBest') {
+        const w = [...d.w].sort((x, y) => petRank(y) - petRank(x))[0];
+        if (w) {
+          w.seal = MAX_T;
+          log(0, i, 'seal', MAX_T, { u: p.u, tu: w.u });
+        }
+      }
+    }
+  /* 0.1.33 先手射擊：星級最高的一把開戰先打一下 */
+  for (let i = 0; i < 2; i++)
+    if (S[i].F.firstStrike) {
+      const w = [...S[i].w].filter(x => !(x.seal > 0)).sort((x, y) => petRank(y) - petRank(x))[0];
+      if (w) attack(0, S[i], i, w);
+    }
   /* 0.1.9 開戰丟出去的藥劑：對方直接吃到異常 */
   for (let i = 0; i < 2; i++)
     for (const p of S[i].F.pre || []) {
-      if (p.k === 'seal' || p.k === 'down' || p.k === 'petLock' || p.k === 'petSeal') continue;
+      if (['seal', 'down', 'petLock', 'petSeal', 'sealAll', 'lockBest'].includes(p.k)) continue;
       const d = S[1 - i],
         v = p.v * res(d, p.k, 0);
       if (p.k === 'weak' || p.k === 'blind' || p.k === 'frozen') d[p.k] = Math.max(d[p.k], v);
@@ -221,8 +243,11 @@ function simulate(FA, FB, seed) {
         if (w.tt >= w.cd) {
           w.tt -= w.cd;
           attack(t, a, i, w);
-          /* 0.1.10 連擊：有機率馬上再打一次；0.1.28 質變的連鎖（這一件自己的機率） */
-          if (a.F.double && S[1 - i].hp > 0 && r() * 100 < a.F.double) attack(t, a, i, w);
+          /* 0.1.10 連擊：有機率馬上再打一次；0.1.33 連珠箭：開戰 openDbl 秒內必定連擊；0.1.28 質變的連鎖（這一件自己的機率） */
+          if (S[1 - i].hp > 0 && ((a.F.openDbl && t <= a.F.openDbl) || (a.F.double && r() * 100 < a.F.double)))
+            attack(t, a, i, w);
+          /* 0.1.33 閃電鏈：連鎖 N（每次攻擊多打 N 下） */
+          for (let c = 0; c < (w.chainN || 0) && S[1 - i].hp > 0; c++) attack(t, a, i, w, CHAIN_DMG / 100);
           if (w.chain && S[1 - i].hp > 0 && r() * 100 < w.chain) attack(t, a, i, w);
         }
       }
