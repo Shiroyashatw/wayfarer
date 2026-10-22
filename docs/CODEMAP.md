@@ -91,7 +91,7 @@
 ### js/art.js（1217 行）
 
 
-### js/items.js（1892 行）
+### js/items.js（2099 行）
 
 
 ### js/bag.js（290 行）

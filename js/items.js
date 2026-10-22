@@ -113,7 +113,7 @@ const ITEMS = [
   /* ---------- 武器 ---------- */
   {
     id: 'woodsword',
-    n: '木劍',
+    n: '桃木劍',
     star: 1,
     sh: 'v2',
     tags: ['weapon', 'sword'],
@@ -135,7 +135,7 @@ const ITEMS = [
   { id: 'huntbow', n: '獵弓', star: 1, sh: 'v3', tags: ['weapon', 'bow'], cd: 1.6, dmg: [3, 5], ic: 'gear_weapon_3' },
   {
     id: 'club',
-    n: '木棒',
+    n: '單手錘',
     star: 1,
     sh: 'v2',
     tags: ['weapon', 'mace'],
@@ -146,7 +146,7 @@ const ITEMS = [
   },
   {
     id: 'ironsword',
-    n: '鐵劍',
+    n: '長劍',
     star: 2,
     sh: 'v2',
     tags: ['weapon', 'sword'],
@@ -157,25 +157,25 @@ const ITEMS = [
   },
   {
     id: 'firestaff',
-    n: '火焰法杖',
+    n: '火球法杖',
     star: 2,
     sh: 'v3',
     tags: ['weapon', 'staff', 'fire'],
     cd: 1.7,
     dmg: [3, 5],
     on: { burn: 2 },
-    ic: 'gear_weapon_4'
+    ic: 'sk_fire'
   },
   {
     id: 'icestaff',
-    n: '冰霜法杖',
+    n: '冰錐法杖',
     star: 2,
     sh: 'v3',
     tags: ['weapon', 'staff', 'cold'],
     cd: 1.8,
     dmg: [3, 5],
     on: { freeze: [35, 1] },
-    ic: 'gear_weapon_15'
+    ic: 'sk_iceshard'
   },
   {
     id: 'venomknife',
@@ -231,11 +231,11 @@ const ITEMS = [
     tags: ['weapon', 'xbow'],
     cd: 0.8,
     dmg: [2, 4],
-    ic: 'gear_weapon_12'
+    ic: 'sk_barrage'
   },
   {
     id: 'scythe',
-    n: '吸血鐮刀',
+    n: '血關刀',
     star: 3,
     sh: 'l3',
     tags: ['weapon', 'dark'],
@@ -247,7 +247,7 @@ const ITEMS = [
   },
   {
     id: 'dragonslayer',
-    n: '屠龍大劍',
+    n: '斬鐵大劍',
     star: 4,
     sh: 'big',
     tags: ['weapon', 'sword', 'twohand'],
@@ -255,18 +255,18 @@ const ITEMS = [
     dmg: [12, 18],
     crit: 10,
     on: { bleed: 2 },
-    ic: 'gear_weapon_5'
+    ic: 'sk_slash2'
   },
   {
     id: 'phoenixbow',
-    n: '鳳凰弓',
+    n: '火焰弓',
     star: 4,
     sh: 'v3',
     tags: ['weapon', 'bow', 'fire'],
     cd: 1.4,
     dmg: [6, 9],
     on: { burn: 3 },
-    ic: 'gear_weapon_24'
+    ic: 'sk_firearrow'
   },
   {
     id: 'skythunder',
@@ -290,7 +290,7 @@ const ITEMS = [
     cd: 2,
     dmg: [12, 18],
     on: { bleed: 2 },
-    ic: 'gear_weapon_0'
+    ic: 'gear_weapon_5'
   },
   {
     id: 'greataxe',
@@ -305,14 +305,14 @@ const ITEMS = [
   },
   {
     id: 'pickaxe',
-    n: '破城鎬',
+    n: '碎石鎚',
     star: 3,
     sh: 'v3',
     tags: ['weapon', 'mace', 'twohand'],
     cd: 2.2,
     dmg: [8, 12],
     on: { sunder: 3 },
-    ic: 'gear_weapon_22'
+    ic: 'sk_shatter'
   },
   {
     id: 'longbow',
@@ -334,7 +334,7 @@ const ITEMS = [
     cd: 1.8,
     dmg: [7, 11],
     on: { bleed: 1 },
-    ic: 'gear_weapon_29'
+    ic: 'gear_weapon_10'
   },
   {
     id: 'flail',
@@ -345,7 +345,7 @@ const ITEMS = [
     cd: 1.6,
     dmg: [4, 7],
     on: { sunder: 1 },
-    ic: 'sk_bash'
+    ic: 'gear_weapon_22'
   },
   {
     id: 'twinblades',
@@ -356,7 +356,7 @@ const ITEMS = [
     cd: 0.8,
     dmg: [1, 3],
     on: { bleed: 1 },
-    ic: 'gear_weapon_17'
+    ic: 'sk_whirlblade'
   },
   {
     id: 'katana',
@@ -368,7 +368,7 @@ const ITEMS = [
     dmg: [9, 14],
     crit: 15,
     on: { bleed: 2 },
-    ic: 'sk_crosscut'
+    ic: 'gear_weapon_18'
   },
   {
     id: 'shadowstaff',
@@ -379,7 +379,7 @@ const ITEMS = [
     cd: 1.6,
     dmg: [4, 7],
     on: { weak: 25 },
-    ic: 'sk_shadowbolt'
+    ic: 'gear_weapon_4'
   },
   {
     id: 'holymace',
@@ -390,7 +390,7 @@ const ITEMS = [
     cd: 1.7,
     dmg: [5, 8],
     on: { blind: 20 },
-    ic: 'sk_smite'
+    ic: 'sk_titanfall'
   },
   /* ---------- 0.1.13 補上各系星級的空窗（冰、雷、毒、暗、聖、匕首、弓弩、斧、槍、法杖） ---------- */
   {
@@ -404,21 +404,30 @@ const ITEMS = [
     on: { bleed: 1 },
     ic: 'sk_hack'
   },
-  { id: 'handxbow', n: '手弩', star: 1, sh: 's1', tags: ['weapon', 'xbow'], cd: 1.2, dmg: [1, 3], ic: 'sk_apshot' },
+  {
+    id: 'handxbow',
+    n: '手弩',
+    star: 1,
+    sh: 's1',
+    tags: ['weapon', 'xbow'],
+    cd: 1.2,
+    dmg: [1, 3],
+    ic: 'gear_weapon_12'
+  },
   {
     id: 'huntxbow',
-    n: '獵人弩',
+    n: '爆矢弩',
     star: 2,
     sh: 'h2',
     tags: ['weapon', 'xbow'],
     cd: 1.1,
     dmg: [2, 4],
     crit: 5,
-    ic: 'sk_trapshot'
+    ic: 'sk_burstbolt'
   },
   {
     id: 'pike',
-    n: '長矛',
+    n: '投矛',
     star: 2,
     sh: 'v3',
     tags: ['weapon', 'spear'],
@@ -429,7 +438,7 @@ const ITEMS = [
   },
   {
     id: 'sparkdagger',
-    n: '雷光短刀',
+    n: '電弧刃',
     star: 2,
     sh: 's1',
     tags: ['weapon', 'dagger', 'light'],
@@ -440,18 +449,18 @@ const ITEMS = [
   },
   {
     id: 'shadowknife',
-    n: '暗影短刀',
+    n: '暗影之牙',
     star: 2,
     sh: 's1',
     tags: ['weapon', 'dagger', 'dark'],
     cd: 1,
     dmg: [1, 3],
     on: { weak: 15 },
-    ic: 'sk_shadowstep'
+    ic: 'sk_malice'
   },
   {
     id: 'holywand',
-    n: '聖光短杖',
+    n: '淨蓮法杖',
     star: 2,
     sh: 'v2',
     tags: ['weapon', 'staff', 'holy'],
@@ -485,18 +494,18 @@ const ITEMS = [
   },
   {
     id: 'flamesword',
-    n: '火焰劍',
+    n: '炎槍',
     star: 3,
-    sh: 'v2',
-    tags: ['weapon', 'sword', 'fire'],
+    sh: 'v3',
+    tags: ['weapon', 'spear', 'fire'],
     cd: 1.4,
     dmg: [4, 7],
     on: { burn: 2 },
-    ic: 'sk_fire'
+    ic: 'sk_flamelance'
   },
   {
     id: 'rotstaff',
-    n: '腐蝕法杖',
+    n: '枯萎法杖',
     star: 3,
     sh: 'v3',
     tags: ['weapon', 'staff', 'poison'],
@@ -507,7 +516,7 @@ const ITEMS = [
   },
   {
     id: 'icefang',
-    n: '冰牙匕首',
+    n: '碎冰刃',
     star: 4,
     sh: 's1',
     tags: ['weapon', 'dagger', 'cold'],
@@ -519,7 +528,7 @@ const ITEMS = [
   },
   {
     id: 'frostaxe',
-    n: '霜斧',
+    n: '冰河斧',
     star: 4,
     sh: 'l3',
     tags: ['weapon', 'axe', 'cold'],
@@ -530,7 +539,7 @@ const ITEMS = [
   },
   {
     id: 'crystalstaff',
-    n: '冰晶法杖',
+    n: '暴風雪法杖',
     star: 4,
     sh: 'v3',
     tags: ['weapon', 'staff', 'cold'],
@@ -552,14 +561,14 @@ const ITEMS = [
   },
   {
     id: 'venomspear',
-    n: '毒龍槍',
+    n: '毒三叉戟',
     star: 4,
     sh: 'v3',
     tags: ['weapon', 'spear', 'poison'],
     cd: 1.5,
     dmg: [6, 10],
     on: { poison: 3 },
-    ic: 'sk_venomfang'
+    ic: 'gear_weapon_29'
   },
   {
     id: 'heavyxbow',
@@ -571,7 +580,7 @@ const ITEMS = [
     dmg: [10, 15],
     crit: 10,
     on: { sunder: 2 },
-    ic: 'unit_ballista'
+    ic: 'gear_weapon_26'
   },
   {
     id: 'nightscythe',
@@ -596,7 +605,7 @@ const ITEMS = [
     on: { blind: 20 },
     ic: 'sk_judgment'
   },
-  { id: 'mithril', n: '秘銀甲', star: 4, sh: 'sq', tags: ['armor'], hp: 80, arm: 6, dodge: 5, ic: 'gear_chest_3' },
+  { id: 'mithril', n: '精鋼板甲', star: 4, sh: 'sq', tags: ['armor'], hp: 80, arm: 6, dodge: 5, ic: 'gear_chest_3' },
   {
     id: 'phoenixdown',
     n: '鳳凰羽毛',
@@ -607,6 +616,40 @@ const ITEMS = [
     regen: 1,
     ic: 'sk_phoenix'
   },
+  /* ---------- 0.1.14 補武器空窗（暗、聖沒有 1★；吸血缺 1～2★） ---------- */
+  {
+    id: 'shadowdirk',
+    n: '暗影拳刃',
+    star: 1,
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'dark'],
+    cd: 1.1,
+    dmg: [1, 2],
+    on: { weak: 10 },
+    ic: 'gear_weapon_27'
+  },
+  {
+    id: 'acolytewand',
+    n: '見習權杖',
+    star: 1,
+    sh: 'v2',
+    tags: ['weapon', 'staff', 'holy'],
+    cd: 1.6,
+    dmg: [1, 3],
+    on: { blind: 10 },
+    ic: 'gear_weapon_15'
+  },
+  {
+    id: 'bloodsword',
+    n: '吸血短劍',
+    star: 2,
+    sh: 'v2',
+    tags: ['weapon', 'sword', 'dark'],
+    cd: 1.3,
+    dmg: [3, 5],
+    on: { ls: 15 },
+    ic: 'gear_weapon_0'
+  },
   /* ---------- 0.1.8 職業的 1★ 起手武器（選完職業送一把） ---------- */
   {
     id: 'woodspear',
@@ -616,11 +659,11 @@ const ITEMS = [
     tags: ['weapon', 'spear'],
     cd: 1.6,
     dmg: [2, 4],
-    ic: 'gear_weapon_19'
+    ic: 'sk_lunge'
   },
   {
     id: 'emberwand',
-    n: '火苗短杖',
+    n: '鬼火骨杖',
     star: 1,
     sh: 'v2',
     tags: ['weapon', 'staff', 'fire'],
@@ -631,7 +674,7 @@ const ITEMS = [
   },
   {
     id: 'frostwand',
-    n: '霜木杖',
+    n: '冰矛短杖',
     star: 1,
     sh: 'v2',
     tags: ['weapon', 'staff', 'cold'],
@@ -642,30 +685,30 @@ const ITEMS = [
   },
   {
     id: 'sparkrod',
-    n: '電擊棒',
+    n: '雷紋棍',
     star: 1,
     sh: 'v2',
     tags: ['weapon', 'mace', 'light'],
     cd: 1.5,
     dmg: [2, 3],
     on: { stun: [10, 0.4] },
-    ic: 'unit_tesla'
+    ic: 'sk_mantra'
   },
   {
     id: 'needle',
-    n: '毒針',
+    n: '毒牙',
     star: 1,
     sh: 's1',
     tags: ['weapon', 'dagger', 'poison'],
     cd: 1.2,
     dmg: [1, 1],
     on: { poison: 1 },
-    ic: 'gear_weapon_18'
+    ic: 'msk_venom'
   },
   /* ---------- 0.1.8 各系的 5★ ---------- */
   {
     id: 'excalibur',
-    n: '王者之劍',
+    n: '符文王劍',
     star: 5,
     sh: 'v3',
     tags: ['weapon', 'sword', 'holy'],
@@ -677,7 +720,7 @@ const ITEMS = [
   },
   {
     id: 'sunbow',
-    n: '落日神弓',
+    n: '流星神弓',
     star: 5,
     sh: 'v3',
     tags: ['weapon', 'bow', 'fire'],
@@ -685,18 +728,18 @@ const ITEMS = [
     dmg: [10, 15],
     crit: 15,
     on: { burn: 2 },
-    ic: 'gear_weapon_25'
+    ic: 'sk_starfall'
   },
   {
     id: 'stormxbow',
-    n: '暴風連弩',
+    n: '攻城弩砲',
     star: 5,
     sh: 'h2',
     tags: ['weapon', 'xbow'],
     cd: 0.7,
     dmg: [5, 8],
     crit: 10,
-    ic: 'gear_weapon_26'
+    ic: 'unit_ballista'
   },
   {
     id: 'shadowclaw',
@@ -707,7 +750,7 @@ const ITEMS = [
     cd: 0.7,
     dmg: [5, 8],
     crit: 25,
-    on: { poison: 1, ls: 10 },
+    on: { poison: 1, ls: 10, weak: 20 },
     ic: 'gear_weapon_14'
   },
   {
@@ -719,7 +762,7 @@ const ITEMS = [
     cd: 1.8,
     dmg: [10, 15],
     on: { burn: 3, freeze: [25, 1] },
-    ic: 'sk_staffstrike'
+    ic: 'sk_elemweak'
   },
   {
     id: 'plaguestaff',
@@ -771,19 +814,19 @@ const ITEMS = [
   { id: 'leatherarmor', n: '皮甲', star: 1, sh: 'sq', tags: ['armor'], hp: 30, ic: 'gear_chest_0' },
   { id: 'woodshield', n: '木盾', star: 1, sh: 'sq', tags: ['shield'], cd: 3, block: 6, ic: 'gear_offhand_2' },
   { id: 'ironhelm', n: '鐵盔', star: 2, sh: 's1', tags: ['armor'], hp: 10, arm: 3, ic: 'gear_helm_1' },
-  { id: 'ironshield', n: '鐵盾', star: 2, sh: 'sq', tags: ['shield'], cd: 3, block: 10, ic: 'gear_offhand_3' },
+  { id: 'ironshield', n: '鐵盾', star: 2, sh: 'sq', tags: ['shield'], cd: 3, block: 10, ic: 'ail_guard' },
   { id: 'boots', n: '輕靴', star: 2, sh: 's1', tags: ['armor'], dodge: 8, ic: 'gear_boots_0' },
   { id: 'chainmail', n: '鎖子甲', star: 3, sh: 'sq', tags: ['armor'], hp: 50, arm: 3, ic: 'gear_chest_1' },
   {
     id: 'thornshield',
-    n: '荊棘盾',
+    n: '骨刺盾',
     star: 3,
     sh: 'sq',
     tags: ['shield'],
     cd: 3,
     block: 12,
     thorns: 3,
-    ic: 'gear_offhand_12'
+    ic: 'gear_offhand_10'
   },
   {
     id: 'paladinshield',
@@ -809,11 +852,11 @@ const ITEMS = [
     block: 30,
     thorns: 6,
     heal: 5,
-    ic: 'gear_offhand_8'
+    ic: 'sk_holyshield'
   },
-  { id: 'towershield', n: '塔盾', star: 3, sh: 'v3', tags: ['shield'], cd: 2.6, block: 16, ic: 'sk_phalanx' },
-  { id: 'spikedmail', n: '尖刺鎧甲', star: 3, sh: 'x5', tags: ['armor'], hp: 60, arm: 4, ic: 'gear_chest_4' },
-  { id: 'cape', n: '披風', star: 2, sh: 'h3', tags: ['armor'], hp: 20, dodge: 6, ic: 'gear_chest_11' },
+  { id: 'towershield', n: '塔盾', star: 3, sh: 'v3', tags: ['shield'], cd: 2.6, block: 16, ic: 'gear_offhand_3' },
+  { id: 'spikedmail', n: '鱗甲', star: 3, sh: 'x5', tags: ['armor'], hp: 60, arm: 4, ic: 'gear_chest_4' },
+  { id: 'cape', n: '聖袍', star: 2, sh: 'h3', tags: ['armor'], hp: 20, dodge: 6, ic: 'gear_chest_11' },
   /* ---------- 飾品（相鄰加成；天賦都變成這些） ---------- */
   {
     id: 'whetstone',
@@ -826,7 +869,7 @@ const ITEMS = [
   },
   {
     id: 'clover',
-    n: '幸運草',
+    n: '翡翠護符',
     star: 1,
     sh: 's1',
     tags: ['trinket'],
@@ -853,7 +896,7 @@ const ITEMS = [
   },
   {
     id: 'venomsac',
-    n: '毒囊',
+    n: '毒性寶石',
     star: 2,
     sh: 's1',
     tags: ['trinket', 'poison'],
@@ -889,22 +932,22 @@ const ITEMS = [
   },
   {
     id: 'shieldrack',
-    n: '盾牌架',
+    n: '守護圖騰',
     star: 3,
     sh: 'h2',
     tags: ['trinket'],
     adj: [{ tag: 'shield', spd: 20, block: 3 }],
-    ic: 'sk_shieldcharge'
+    ic: 'sk_guardtotem'
   },
   {
     id: 'bersmask',
-    n: '狂戰面具',
+    n: '詛咒面具',
     star: 4,
     sh: 's1',
     tags: ['trinket'],
     all: [{ tag: 'weapon', spd: 15 }],
     fx: { take: 10 },
-    ic: 'sk_berserk'
+    ic: 'sk_despair'
   },
   /* ---------- 0.1.7 輔助道具（配合開局職業的流派；佔格子，要取捨） ---------- */
   {
@@ -922,7 +965,7 @@ const ITEMS = [
   },
   {
     id: 'hawkeye',
-    n: '鷹眼鏡',
+    n: '神射之眼',
     star: 4,
     sh: 's1',
     tags: ['trinket'],
@@ -945,13 +988,13 @@ const ITEMS = [
   },
   {
     id: 'anvil',
-    n: '重擊護符',
+    n: '重擊寶石',
     star: 4,
     sh: 'sq',
     tags: ['trinket'],
     for: 'mace',
     adj: [{ tag: 'weapon', dmgPct: 30, spd: -10 }],
-    ic: 'sk_groundslam'
+    ic: 'sup_sp_heavy'
   },
   {
     id: 'cloak',
@@ -976,13 +1019,13 @@ const ITEMS = [
   },
   {
     id: 'powder',
-    n: '火藥桶',
+    n: '火藥地雷',
     star: 3,
     sh: 'sq',
     tags: ['trinket'],
     for: 'fire',
     adj: [{ tag: 'fire', burn: 2, dmgPct: 10 }],
-    ic: 'sk_detonate'
+    ic: 'unit_blastmine'
   },
   {
     id: 'frostrune',
@@ -1006,7 +1049,7 @@ const ITEMS = [
   },
   {
     id: 'toxinvial',
-    n: '劇毒瓶',
+    n: '毒氣罐',
     star: 3,
     sh: 'v2',
     tags: ['trinket'],
@@ -1015,7 +1058,7 @@ const ITEMS = [
       { tag: 'poison', poison: 1 },
       { tag: 'dagger', poison: 1 }
     ],
-    ic: 'sk_toxin'
+    ic: 'unit_poisontrap'
   },
   {
     id: 'bone',
@@ -1039,13 +1082,13 @@ const ITEMS = [
   },
   {
     id: 'crest',
-    n: '盾徽',
+    n: '小圓盾',
     star: 2,
     sh: 's1',
     tags: ['trinket'],
     for: 'shield',
     adj: [{ tag: 'shield', block: 4, blockPct: 15 }],
-    ic: 'sk_holyshield'
+    ic: 'gear_offhand_8'
   },
   {
     id: 'warbanner',
@@ -1068,7 +1111,7 @@ const ITEMS = [
   },
   {
     id: 'cauldron',
-    n: '鍊金燒瓶',
+    n: '點金石',
     star: 3,
     sh: 'sq',
     tags: ['trinket'],
@@ -1076,7 +1119,7 @@ const ITEMS = [
     fx: { potMul: 40, potUse: 1 },
     ic: 'cur_alch'
   },
-  { id: 'purse', n: '錢袋', star: 2, sh: 's1', tags: ['trinket'], gold: 1, ic: 'mat_gold' },
+  { id: 'purse', n: '金幣堆', star: 2, sh: 's1', tags: ['trinket'], gold: 1, ic: 'mat_gold' },
   {
     id: 'kingcrown',
     n: '王者之冠',
@@ -1089,23 +1132,23 @@ const ITEMS = [
   /* ---------- 0.1.9 異常狀態的輔助道具 ---------- */
   {
     id: 'whetwheel',
-    n: '磨刀輪',
+    n: '流血寶石',
     star: 3,
     sh: 'z4',
     tags: ['trinket'],
     for: 'sword',
     adj: [{ tag: 'weapon', bleed: 1 }],
-    ic: 'sk_rend'
+    ic: 'sup_sp_bleed'
   },
   {
     id: 'sunderstone',
-    n: '碎甲石',
+    n: '破甲片',
     star: 2,
     sh: 's1',
     tags: ['trinket'],
     for: 'mace',
     adj: [{ tag: 'weapon', sunder: 1 }],
-    ic: 'mat_frag'
+    ic: 'msk_sunder'
   },
   {
     id: 'hexdoll',
@@ -1118,16 +1161,16 @@ const ITEMS = [
   },
   {
     id: 'holymirror',
-    n: '聖光鏡',
+    n: '八卦鏡',
     star: 3,
     sh: 's1',
     tags: ['trinket', 'holy'],
     adj: [{ tag: 'weapon', blindCh: 12 }],
-    ic: 'gear_offhand_11'
+    ic: 'gear_offhand_12'
   },
   {
     id: 'weaponrack',
-    n: '武器架',
+    n: '槍林',
     star: 4,
     sh: 'h3',
     tags: ['trinket'],
@@ -1136,7 +1179,7 @@ const ITEMS = [
   },
   {
     id: 'grimoire',
-    n: '禁忌魔典',
+    n: '符文法珠',
     star: 4,
     sh: 'x5',
     tags: ['trinket'],
@@ -1144,16 +1187,169 @@ const ITEMS = [
     all: [{ tag: 'staff', dmgPct: 25 }],
     ic: 'gear_offhand_4'
   },
+  /* ---------- 0.1.14 補輔助道具（平衡檢查：斧、雙手、暗、聖沒有，槍、火、冰、雷、毒只有 1 件） ---------- */
+  {
+    id: 'axestone',
+    n: '斧魂',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'axe',
+    adj: [{ tag: 'axe', bleed: 1, dmg: 2 }],
+    ic: 'sk_cleave'
+  },
+  {
+    id: 'warpaint',
+    n: '血月',
+    star: 4,
+    sh: 'v2',
+    tags: ['trinket'],
+    for: 'axe',
+    all: [{ tag: 'axe', dmgPct: 20, spd: 10 }],
+    ic: 'sk_bloodlust'
+  },
+  {
+    id: 'grip',
+    n: '鐵手甲',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'twohand',
+    adj: [{ tag: 'twohand', spd: 15 }],
+    ic: 'gear_gloves_1'
+  },
+  {
+    id: 'giantbelt',
+    n: '巨人腰帶',
+    star: 4,
+    sh: 'h2',
+    tags: ['trinket'],
+    for: 'twohand',
+    all: [{ tag: 'twohand', dmgPct: 25 }],
+    fx: { hp: 20 },
+    ic: 'gear_belt_1'
+  },
+  {
+    id: 'darkorb',
+    n: '暗影寶珠',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'dark'],
+    for: 'dark',
+    adj: [{ tag: 'dark', weakCh: 10, ls: 5 }],
+    ic: 'msk_chaosb'
+  },
+  {
+    id: 'necrotome',
+    n: '生死簿',
+    star: 4,
+    sh: 'sq',
+    tags: ['trinket', 'dark'],
+    for: 'dark',
+    all: [{ tag: 'dark', dmgPct: 20, ls: 5 }],
+    ic: 'ail_doom'
+  },
+  {
+    id: 'holywater',
+    n: '聖光提燈',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'holy'],
+    for: 'holy',
+    adj: [{ tag: 'holy', blindCh: 10, dmg: 2 }],
+    ic: 'gear_offhand_1'
+  },
+  {
+    id: 'holysigil',
+    n: '聖星護符',
+    star: 4,
+    sh: 'v2',
+    tags: ['trinket', 'holy'],
+    for: 'holy',
+    all: [{ tag: 'holy', dmgPct: 20 }],
+    fx: { regen: 1 },
+    ic: 'gear_amulet_7'
+  },
+  {
+    id: 'spearrest',
+    n: '槍魂',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'spear',
+    adj: [{ tag: 'spear', crit: 10, bleed: 1 }],
+    ic: 'sk_spinspear'
+  },
+  {
+    id: 'emberstone',
+    n: '餘燼石',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'fire',
+    adj: [{ tag: 'fire', burn: 1, dmg: 1 }],
+    ic: 'mat_dcrys'
+  },
+  {
+    id: 'lavaheart',
+    n: '煉獄之火',
+    star: 4,
+    sh: 'sq',
+    tags: ['trinket'],
+    for: 'fire',
+    all: [{ tag: 'fire', dmgPct: 20 }],
+    ic: 'sk_inferno'
+  },
+  {
+    id: 'frostgem',
+    n: '霜晶',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'cold',
+    adj: [{ tag: 'cold', freezeCh: 10, dmg: 1 }],
+    ic: 'mat_crystal'
+  },
+  {
+    id: 'iceheart',
+    n: '冰甲',
+    star: 4,
+    sh: 'sq',
+    tags: ['trinket'],
+    for: 'cold',
+    all: [{ tag: 'cold', dmgPct: 20 }],
+    ic: 'sk_iceshield'
+  },
+  {
+    id: 'stormcore',
+    n: '雷霆之核',
+    star: 4,
+    sh: 'v2',
+    tags: ['trinket'],
+    for: 'light',
+    all: [{ tag: 'light', dmgPct: 20, stunCh: 5 }],
+    ic: 'sk_staticfield'
+  },
+  {
+    id: 'venomking',
+    n: '毒王之刃',
+    star: 4,
+    sh: 's1',
+    tags: ['trinket'],
+    for: 'poison',
+    all: [{ tag: 'poison', dmgPct: 20, poison: 1 }],
+    ic: 'sk_venomblade'
+  },
   /* ---------- 藥水 ---------- */
   { id: 'potion', n: '生命藥水', star: 1, sh: 's1', tags: ['potion'], pot: [50, 20, 1], ic: 'p:ic_potion' },
   { id: 'herb', n: '再生花', star: 2, sh: 's1', tags: ['potion'], regen: 1, ic: 'sk_regenaura' },
   { id: 'bigpotion', n: '大生命藥水', star: 3, sh: 'v2', tags: ['potion'], pot: [40, 45, 1], ic: 'sk_heal' },
   /* ---------- 0.1.9 藥劑（開戰時丟向敵人；鍊金術士加強） ---------- */
-  { id: 'weakbrew', n: '虛弱藥劑', star: 2, sh: 's1', tags: ['potion'], pre: { weak: 3 }, ic: 'sk_weaken' },
-  { id: 'firebottle', n: '火焰瓶', star: 2, sh: 's1', tags: ['potion', 'fire'], pre: { burn: 3 }, ic: 'sk_combust' },
+  { id: 'weakbrew', n: '弱化符咒', star: 2, sh: 's1', tags: ['potion'], pre: { weak: 3 }, ic: 'sk_weaken' },
+  { id: 'firebottle', n: '隕火彈', star: 2, sh: 's1', tags: ['potion', 'fire'], pre: { burn: 3 }, ic: 'sk_meteor' },
   { id: 'blindpowder', n: '致盲粉', star: 2, sh: 's1', tags: ['potion'], pre: { blind: 3 }, ic: 'sk_smokebomb' },
-  { id: 'bleedoil', n: '放血毒油', star: 2, sh: 's1', tags: ['potion'], pre: { bleed: 4 }, ic: 'sk_bloodburst' },
-  { id: 'ironskin', n: '鐵膚藥水', star: 2, sh: 's1', tags: ['potion'], fx: { arm: 4 }, ic: 'sk_determination' },
+  { id: 'bleedoil', n: '血爆珠', star: 2, sh: 's1', tags: ['potion'], pre: { bleed: 4 }, ic: 'sk_bloodburst' },
+  { id: 'ironskin', n: '鐵膚藥水', star: 2, sh: 's1', tags: ['potion'], fx: { arm: 4 }, ic: 'msk_harden' },
   {
     id: 'poisonbrew',
     n: '劇毒藥劑',
@@ -1172,15 +1368,15 @@ const ITEMS = [
     pre: { frozen: 3 },
     ic: 'sk_coldsnap'
   },
-  { id: 'acidflask', n: '酸液瓶', star: 3, sh: 's1', tags: ['potion'], pre: { sunder: 4 }, ic: 'sk_decay' },
+  { id: 'acidflask', n: '腐化毒霧', star: 3, sh: 's1', tags: ['potion'], pre: { sunder: 4 }, ic: 'sk_decay' },
   {
     id: 'ragepotion',
-    n: '狂暴藥水',
+    n: '血祭',
     star: 3,
     sh: 's1',
     tags: ['potion'],
     all: [{ tag: 'weapon', spd: 15 }],
-    ic: 'sk_frenzy'
+    ic: 'sk_sacrifice'
   },
   { id: 'elixir', n: '萬靈藥', star: 5, sh: 's1', tags: ['potion'], pot: [50, 70, 2], regen: 2, ic: 'sk_vitality' },
   /* ---------- 寵物（原本的契靈） ---------- */
@@ -1252,11 +1448,22 @@ const ITEMS = [
     on: { sunder: 2 },
     ic: 'a:m_blackbear'
   },
+  {
+    id: 'vampbat',
+    n: '吸血蝙蝠',
+    star: 1,
+    sh: 's1',
+    tags: ['pet', 'dark'],
+    cd: 1.2,
+    dmg: [1, 2],
+    on: { ls: 20 },
+    ic: 'a:m_bat'
+  },
   /* ---------- 0.1.8 寵物：1★ 起手、5★ ---------- */
   { id: 'treefrog', n: '樹蛙', star: 1, sh: 's1', tags: ['pet'], cd: 1.4, dmg: [1, 2], ic: 'a:m_treefrog' },
   {
     id: 'qilin',
-    n: '麒麟',
+    n: '風獅爺',
     star: 5,
     sh: 'sq',
     tags: ['pet', 'light', 'holy'],
@@ -1389,7 +1596,7 @@ const CLASSES = [
     th: 'potion',
     F: { potMul: 20, throwPct: 25 }
   },
-  { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_exalt', gold: 1 }
+  { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_regal', gold: 1 }
 ];
 const CLSI = Object.fromEntries(CLASSES.map(c => [c.id, c]));
 /* 0.1.10 職業核心兩次：2-5 首領掉「專屬核心」（每個職業 12 個、各有特色），4-4 首領掉「副核心」（照模板對主打標籤加成，12 個）。
