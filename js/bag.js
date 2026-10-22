@@ -154,7 +154,10 @@ function compileBag(bag, extra = {}) {
     give(S0.adj, q => adjacent(s, q));
     give(S0.row, q => sameRow(s, q));
     give(S0.all, () => true);
-    if (S0.fx) for (const k in S0.fx) F[k] += S0.fx[k];
+    if (S0.fx) {
+      const f = fxT(S0, s.t);
+      for (const k in f) F[k] += f[k];
+    }
     if (s.a) {
       const a = AFFX.find(x => x.k === s.a);
       if (a.k === 'hp') F.hp += a.v;

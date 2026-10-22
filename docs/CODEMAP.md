@@ -22,6 +22,8 @@
 | 快照對戰（Supabase） | `js/ghost.js`、`supabase/migrations/20261022000000_serling_ghosts.sql` | `ghostRivals`（配對＋機器人補位）、`ghostBegin`、`ghostSnap`、`ghostEnd`、`GHOST.off`、開服種子 `seedGhosts`；資料表 `runs`（`seed` 欄位）／`snaps`、RPC `pick_rivals`（真人優先） |
 | 首頁、圖鑑、說明、設定 | `js/ui.js` | `render`、`homeHTML`、`codexHTML`、`helpHTML`、`settingsHTML`、`go` |
 | 準備畫面（回合列、背包、暫存區、商店、道具說明） | `js/ui.js` | `prepHTML`、`roundBarHTML`、`bagHTML`、`rivalHTML`、`detailHTML`、`tutHTML`、`cellSize` |
+| 即時戰鬥紀錄（0.1.13） | `js/ui.js` | `bLog`、`bNames`（`bTick` 每個事件呼叫）、`#blog` |
+| 角色加成照升階（0.1.13） | `js/items.js`、`js/bag.js` | `fxT`、`FX_FLAT`；`compileBag` |
 | 怪物模板與怪物池（0.1.12） | `js/run.js` | `ARCH`、`archMix`、`mob`、`pool`、`MOBS`（`1-1`～`2-5`、`sins`、`zodiac`、`kings`、`fiends`）、`ELITE_POOL`、`mobOf` |
 | 戰鬥紀錄（0.1.12） | `js/run.js`、`js/ui.js` | `fightSum`（run）；`showLog`、`A.log`、回合列與結算的入口（ui） |
 | 戰鬥特效（0.1.12） | `js/ui.js`、`css/style.css` | `bHit`、`bAnim`、`bBurst`、`bSlash`；`.sp` 的動畫 |
@@ -89,10 +91,10 @@
 ### js/art.js（1217 行）
 
 
-### js/items.js（1665 行）
+### js/items.js（1892 行）
 
 
-### js/bag.js（287 行）
+### js/bag.js（290 行）
 
 - **合成**（75），1 個宣告
 - **戰鬥數值**（107），4 個宣告
@@ -121,7 +123,7 @@
 - **cloud save (Supabase)**（4），7 個宣告
 - **accounts**（104），5 個宣告
 
-### js/ui.js（1445 行）
+### js/ui.js（1486 行）
 
 - **小工具**（6），13 個宣告
 - **牌階**（60），5 個宣告
@@ -130,10 +132,10 @@
 - **首頁**（208），2 個宣告
 - **準備畫面**（244），13 個宣告
 - **結算、三選一、一局結束**（468），6 個宣告
-- **戰鬥播放**（515），18 個宣告
-- **圖鑑、說明、設定**（831），3 個宣告
-- **動作**（896），5 個宣告
-- **拖曳擺放**（1232），7 個宣告
+- **戰鬥播放**（515），20 個宣告
+- **圖鑑、說明、設定**（872），3 個宣告
+- **動作**（937），5 個宣告
+- **拖曳擺放**（1273），7 個宣告
 
 ### js/main.js（71 行）
 

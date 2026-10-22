@@ -574,6 +574,7 @@ function renderBattle() {
     <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, 'big flip')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div></div>
     <div class="fx" id="fx"></div></div>
     <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
+    <div class="blog" id="blog" aria-live="off"></div>
     <div class="bctl"><button class="btn" data-act="spd">×${S.speed || 1}</button><button class="btn" data-act="skip">跳過</button></div>
   </div>`;
   paintSprites();
@@ -690,6 +691,45 @@ function bPop(side, txt, col, big) {
   fx.appendChild(s);
   setTimeout(() => s.remove(), 900);
 }
+/* 0.1.13 即時戰鬥紀錄：每個事件一行（新的在上面，留最後 30 行）：誰的哪件道具、做了什麼 */
+function bNames() {
+  const nm = [{}, {}];
+  for (const o of S.run.bag.items) nm[0][o.u] = ITEMI[o.id].n;
+  const ob = B.fb.opp.bag;
+  if (ob) for (const o of ob.items) nm[1][o.u] = ITEMI[o.id] ? ITEMI[o.id].n : '';
+  return nm;
+}
+function bLog(e, tg) {
+  const box = $('blog');
+  if (!box) return;
+  if (!B.nm) B.nm = bNames();
+  const who = s => (s ? esc(B.fb.opp.n) : '你'),
+    it = (s, u) => (u && B.nm[s][u]) || (s ? '' : ''),
+    by = (s, u) => `${who(s)}${it(s, u) ? '的' + it(s, u) : ''}`;
+  let t = '';
+  if (e.k === 'hit' || e.k === 'crit')
+    t = `${by(e.s, e.u)}${e.k === 'crit' ? ' 暴擊' : ''} → ${e.v}${e.ab ? `（擋 ${e.ab}）` : ''}`;
+  else if (e.k === 'miss') t = `${by(e.s, e.u)} 被閃開`;
+  else if (e.k === 'block') t = `${by(e.s, e.u)} 格擋 +${e.v}`;
+  else if (e.k === 'dot') t = `${who(tg)} ${STN[e.el === 'fire' ? 'burn' : e.el] || ''} -${e.v}`;
+  else if (e.k === 'pot') t = `${by(e.s, e.u)} 回復 ${e.v}`;
+  else if (e.k === 'heal' && !e.regen) t = `${who(e.s)} 回復 ${e.v}`;
+  else if (e.k === 'stun') t = `${who(tg)} 被暈眩 ${e.v} 秒`;
+  else if (e.k === 'freeze') t = `${who(tg)} 被凍結 ${e.v} 秒`;
+  else if (e.k === 'weak') t = `${who(tg)} 虛弱 ${e.v} 秒`;
+  else if (e.k === 'blind') t = `${who(tg)} 致盲 ${e.v} 秒`;
+  else if (e.k === 'thorns') t = `${who(e.s)} 反彈 ${e.v}`;
+  else if (e.k === 'fatigue') t = `${who(tg)} 疲勞 -${e.v}`;
+  else if (e.k === 'seal') t = `${by(e.s, e.u)} 封鎖了${who(1 - e.s)}的${it(1 - e.s, e.tu) || '武器'} ${e.v} 秒`;
+  else if (e.k === 'down') t = `${by(e.s, e.u)} 讓${who(1 - e.s)}的${it(1 - e.s, e.tu) || '武器'}降 1 階`;
+  else if (e.k === 'throw') t = `${by(e.s, e.u)} 丟出藥劑：${STN[e.x] || ''} ${e.v}`;
+  if (!t) return;
+  const d = document.createElement('p');
+  d.className = e.s ? 'op' : 'me';
+  d.innerHTML = `<i>${e.t.toFixed(1)}</i>${t}`;
+  box.prepend(d);
+  while (box.childElementCount > 30) box.lastElementChild.remove();
+}
 /* 0.1.12 戰鬥特效：攻擊方往前衝、被打的閃白抖動、暴擊整個場地震、元素粒子、補血往上飄、格擋光圈、倒下 */
 function bAnim(el, cls) {
   if (!el) return;
@@ -750,6 +790,7 @@ function bTick() {
     if (e.st) B.st = e.st;
     if ((e.k === 'hit' || e.k === 'crit') && e.ab) B.block[tg] = Math.max(0, B.block[tg] - e.ab);
     if (e.k === 'block') B.block[e.s] += e.v;
+    bLog(e, tg);
     if (k++ > 6) continue;
     if (e.k === 'hit' || e.k === 'crit') {
       bPop(

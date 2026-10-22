@@ -392,6 +392,221 @@ const ITEMS = [
     on: { blind: 20 },
     ic: 'sk_smite'
   },
+  /* ---------- 0.1.13 補上各系星級的空窗（冰、雷、毒、暗、聖、匕首、弓弩、斧、槍、法杖） ---------- */
+  {
+    id: 'handaxe',
+    n: '手斧',
+    star: 1,
+    sh: 's1',
+    tags: ['weapon', 'axe'],
+    cd: 1.5,
+    dmg: [2, 4],
+    on: { bleed: 1 },
+    ic: 'sk_hack'
+  },
+  { id: 'handxbow', n: '手弩', star: 1, sh: 's1', tags: ['weapon', 'xbow'], cd: 1.2, dmg: [1, 3], ic: 'sk_apshot' },
+  {
+    id: 'huntxbow',
+    n: '獵人弩',
+    star: 2,
+    sh: 'h2',
+    tags: ['weapon', 'xbow'],
+    cd: 1.1,
+    dmg: [2, 4],
+    crit: 5,
+    ic: 'sk_trapshot'
+  },
+  {
+    id: 'pike',
+    n: '長矛',
+    star: 2,
+    sh: 'v3',
+    tags: ['weapon', 'spear'],
+    cd: 1.5,
+    dmg: [3, 6],
+    on: { bleed: 1 },
+    ic: 'sk_javelin'
+  },
+  {
+    id: 'sparkdagger',
+    n: '雷光短刀',
+    star: 2,
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'light'],
+    cd: 1,
+    dmg: [1, 3],
+    on: { stun: [10, 0.4] },
+    ic: 'sk_arc'
+  },
+  {
+    id: 'shadowknife',
+    n: '暗影短刀',
+    star: 2,
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'dark'],
+    cd: 1,
+    dmg: [1, 3],
+    on: { weak: 15 },
+    ic: 'sk_shadowstep'
+  },
+  {
+    id: 'holywand',
+    n: '聖光短杖',
+    star: 2,
+    sh: 'v2',
+    tags: ['weapon', 'staff', 'holy'],
+    cd: 1.6,
+    dmg: [2, 4],
+    on: { blind: 20 },
+    ic: 'sk_purify'
+  },
+  {
+    id: 'frostbow',
+    n: '冰霜長弓',
+    star: 3,
+    sh: 'v3',
+    tags: ['weapon', 'bow', 'cold'],
+    cd: 1.5,
+    dmg: [4, 7],
+    on: { freeze: [25, 1] },
+    ic: 'sk_frostarrow'
+  },
+  {
+    id: 'assassinblade',
+    n: '刺客短劍',
+    star: 3,
+    sh: 's1',
+    tags: ['weapon', 'dagger'],
+    cd: 0.9,
+    dmg: [2, 4],
+    crit: 20,
+    on: { bleed: 1 },
+    ic: 'sk_assassinate'
+  },
+  {
+    id: 'flamesword',
+    n: '火焰劍',
+    star: 3,
+    sh: 'v2',
+    tags: ['weapon', 'sword', 'fire'],
+    cd: 1.4,
+    dmg: [4, 7],
+    on: { burn: 2 },
+    ic: 'sk_fire'
+  },
+  {
+    id: 'rotstaff',
+    n: '腐蝕法杖',
+    star: 3,
+    sh: 'v3',
+    tags: ['weapon', 'staff', 'poison'],
+    cd: 1.5,
+    dmg: [2, 4],
+    on: { poison: 2, sunder: 1 },
+    ic: 'sk_blight'
+  },
+  {
+    id: 'icefang',
+    n: '冰牙匕首',
+    star: 4,
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'cold'],
+    cd: 0.8,
+    dmg: [3, 6],
+    crit: 15,
+    on: { freeze: [20, 0.8] },
+    ic: 'sk_iceshatter'
+  },
+  {
+    id: 'frostaxe',
+    n: '霜斧',
+    star: 4,
+    sh: 'l3',
+    tags: ['weapon', 'axe', 'cold'],
+    cd: 1.8,
+    dmg: [9, 14],
+    on: { freeze: [25, 1], bleed: 1 },
+    ic: 'sk_glacier'
+  },
+  {
+    id: 'crystalstaff',
+    n: '冰晶法杖',
+    star: 4,
+    sh: 'v3',
+    tags: ['weapon', 'staff', 'cold'],
+    cd: 1.7,
+    dmg: [7, 11],
+    on: { freeze: [35, 1.2] },
+    ic: 'sk_blizzard'
+  },
+  {
+    id: 'stormhammer',
+    n: '雷神之錘',
+    star: 4,
+    sh: 'sq',
+    tags: ['weapon', 'mace', 'light'],
+    cd: 2,
+    dmg: [11, 16],
+    on: { stun: [25, 0.7], sunder: 1 },
+    ic: 'sk_thorhammer'
+  },
+  {
+    id: 'venomspear',
+    n: '毒龍槍',
+    star: 4,
+    sh: 'v3',
+    tags: ['weapon', 'spear', 'poison'],
+    cd: 1.5,
+    dmg: [6, 10],
+    on: { poison: 3 },
+    ic: 'sk_venomfang'
+  },
+  {
+    id: 'heavyxbow',
+    n: '重弩',
+    star: 4,
+    sh: 'sq',
+    tags: ['weapon', 'xbow', 'twohand'],
+    cd: 1.6,
+    dmg: [10, 15],
+    crit: 10,
+    on: { sunder: 2 },
+    ic: 'unit_ballista'
+  },
+  {
+    id: 'nightscythe',
+    n: '夜魔鐮',
+    star: 4,
+    sh: 'l3',
+    tags: ['weapon', 'dark'],
+    cd: 1.5,
+    dmg: [7, 11],
+    on: { weak: 25, ls: 20 },
+    ic: 'sk_souldrain'
+  },
+  {
+    id: 'holysword',
+    n: '聖劍',
+    star: 4,
+    sh: 'v3',
+    tags: ['weapon', 'sword', 'holy'],
+    cd: 1.4,
+    dmg: [8, 12],
+    crit: 10,
+    on: { blind: 20 },
+    ic: 'sk_judgment'
+  },
+  { id: 'mithril', n: '秘銀甲', star: 4, sh: 'sq', tags: ['armor'], hp: 80, arm: 6, dodge: 5, ic: 'gear_chest_3' },
+  {
+    id: 'phoenixdown',
+    n: '鳳凰羽毛',
+    star: 4,
+    sh: 's1',
+    tags: ['potion', 'fire'],
+    pot: [30, 60, 1],
+    regen: 1,
+    ic: 'sk_phoenix'
+  },
   /* ---------- 0.1.8 職業的 1★ 起手武器（選完職業送一把） ---------- */
   {
     id: 'woodspear',
@@ -1448,13 +1663,25 @@ function clsDesc(id) {
 }
 /* 升階：3 件相同、相同階的合成高一階（最多 3 階）；數值倍率與加成倍率 */
 const TIER_MAX = 3,
-  TIERM = [0, 1, 1.6, 3.5],
-  TIERB = [0, 1, 1.4, 2.2];
-/* 0.1.10 升階連冷卻、暴擊、命中效果一起變強：Ⅱ 小幅、Ⅲ 大幅（基礎數值 ×1.6／×3.5、冷卻 -8%／-20%、
-   機率 +5／+12、層數 ×1.4／×2.2、藥水 Ⅲ 多喝 1 次） */
+  TIERM = [0, 1, 3, 9],
+  TIERB = [0, 1, 1.6, 2.6];
+/* 升階連冷卻、暴擊、命中效果一起變強。0.1.13：合成是自動的，合完不能比 3 件分開放還弱，
+   所以基礎數值（傷害、生命、護甲、格擋、回復）×3／×9（等於 3 件、9 件的總和，再加上冷卻 -8%／-20%、機率 +5／+12、
+   空出格子）；百分比與層數 ×1.6／×2.6；藥水 Ⅲ 多喝 1 次 */
 const TIERCD = [0, 1, 0.92, 0.8],
   TIERCH = [0, 0, 5, 12];
 const cdT = (it, t = 1) => Math.round(it.cd * TIERCD[t] * 100) / 100;
+/* 0.1.13 fx（角色身上的加成，例如鐵膚藥水的護甲）也照升階變強：固定數值照 TIERM、百分比照 TIERB；
+   受到的傷害（懲罰）與多喝幾次不變 */
+const FX_FLAT = ['hp', 'arm', 'regen', 'thornsF', 'startBlock', 'critHeal'];
+function fxT(it, t = 1) {
+  const o = {};
+  for (const k in it.fx || {}) {
+    const v = it.fx[k];
+    o[k] = k === 'take' || k === 'potUse' ? v : Math.round(v * (FX_FLAT.includes(k) ? TIERM[t] : TIERB[t]));
+  }
+  return o;
+}
 function onT(it, t = 1) {
   const o = it.on || {},
     st = v => (v ? Math.round(v * TIERB[t]) : 0),
@@ -1553,8 +1780,8 @@ const MODN = {
   ls: v => `吸血 ${pct(v)}`,
   block: v => `格擋 ${sg(v)}${v}`,
   blockPct: v => `格擋 ${sg(v)}${pct(v)}`,
-  freezeCh: v => `${pct(v)} 凍結`,
-  stunCh: v => `${pct(v)} 暈眩`,
+  freezeCh: v => `命中時凍結機率 ${sg(v)}${pct(v)}`,
+  stunCh: v => `命中時暈眩機率 ${sg(v)}${pct(v)}`,
   regen: v => `每秒回復 ${sg(v)}${v}`,
   hp: v => `生命 ${sg(v)}${v}`,
   arm: v => `護甲 ${sg(v)}${v}`,
@@ -1562,8 +1789,8 @@ const MODN = {
   critMul: v => `暴擊傷害 ${sg(v)}${pct(v)}`,
   bleed: v => `命中流血 ${sg(v)}${v}`,
   sunder: v => `命中破甲 ${sg(v)}${v}`,
-  weakCh: v => `${pct(v)} 虛弱`,
-  blindCh: v => `${pct(v)} 致盲`,
+  weakCh: v => `命中時虛弱機率 ${sg(v)}${pct(v)}`,
+  blindCh: v => `命中時致盲機率 ${sg(v)}${pct(v)}`,
   throwPct: v => `丟出的藥劑效果 ${sg(v)}${pct(v)}`,
   opener: v => `開戰時武器先充能 ${pct(v)}`,
   execute: v => `對生命低於 30% 的敵人傷害 +${pct(v)}`,
@@ -1618,15 +1845,15 @@ function itemDesc(id, t = 1) {
     out.push(`每 ${cdT(it, t)} 秒造成 ${a}～${b} 傷害${o.crit ? `（暴擊 ${o.crit}%）` : ''}`);
   }
   if (it.on) {
-    if (o.burn) out.push(`命中燃燒 ${o.burn} 層`);
-    if (o.poison) out.push(`命中中毒 ${o.poison} 層`);
-    if (o.freeze) out.push(`${o.freeze[0]}% 凍結 ${o.freeze[1]} 秒`);
-    if (o.stun) out.push(`${o.stun[0]}% 暈眩 ${o.stun[1]} 秒`);
+    if (o.burn) out.push(`命中時讓敵人燃燒 ${o.burn} 層（每秒扣層數，每秒少 1 層）`);
+    if (o.poison) out.push(`命中時讓敵人中毒 ${o.poison} 層（每秒扣層數，不會退）`);
+    if (o.freeze) out.push(`命中時 ${o.freeze[0]}% 機率凍結敵人 ${o.freeze[1]} 秒（攻速減半）`);
+    if (o.stun) out.push(`命中時 ${o.stun[0]}% 機率暈眩敵人 ${o.stun[1]} 秒（不能動）`);
     if (o.ls) out.push(`吸血 ${o.ls}%`);
-    if (o.bleed) out.push(`命中流血 ${o.bleed} 層`);
-    if (o.sunder) out.push(`命中破甲 ${o.sunder}`);
-    if (o.weak) out.push(`${o.weak}% 虛弱 3 秒`);
-    if (o.blind) out.push(`${o.blind}% 致盲 2.5 秒`);
+    if (o.bleed) out.push(`命中時讓敵人流血 ${o.bleed} 層（每秒扣層數，然後減半）`);
+    if (o.sunder) out.push(`命中時讓敵人護甲 -${o.sunder}（會疊加）`);
+    if (o.weak) out.push(`命中時 ${o.weak}% 機率讓敵人虛弱 3 秒（敵人傷害 -25%）`);
+    if (o.blind) out.push(`命中時 ${o.blind}% 機率讓敵人致盲 2.5 秒（敵人 30% 打不中）`);
   }
   if (it.block)
     out.push(
@@ -1646,7 +1873,7 @@ function itemDesc(id, t = 1) {
     for (const b of it[w] || [])
       out.push(`${n}${tagTxt(b.tag)}：${modTxt(scaleMod(b, t))}${b.per ? `（背包裡每有 1 件${tagTxt(b.per)}）` : ''}`);
   if (it.fx) {
-    const f = it.fx,
+    const f = fxT(it, t),
       rest = Object.fromEntries(Object.entries(f).filter(([k]) => MODN[k]));
     if (Object.keys(rest).length) out.push(modTxt(rest));
     if (f.take) out.push(`受到的傷害 +${f.take}%`);

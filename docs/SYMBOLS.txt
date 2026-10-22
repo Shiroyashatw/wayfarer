@@ -81,41 +81,43 @@ ART js/art.js:126
 SH js/items.js:4
 TAGN js/items.js:83
 ITEMS js/items.js:112
-ITEMI js/items.js:1065
-CLASSES js/items.js:1069
-CLSI js/items.js:1179
-CORE_P js/items.js:1182
-onP js/items.js:1197
-CORE_MAIN js/items.js:1199
-CORE_SUB js/items.js:1384
-genCores js/items.js:1398
-clsDesc js/items.js:1434
-TIER_MAX js/items.js:1450
-TIERCD js/items.js:1455
-cdT js/items.js:1457
-onT js/items.js:1458
-STARC js/items.js:1476
-priceOf js/items.js:1478
-sellOf js/items.js:1479
-shapeOf js/items.js:1481
-AFFX js/items.js:1489
-affOf js/items.js:1496
-MOD5 js/items.js:1503
-mod5Pool js/items.js:1525
-roll5 js/items.js:1531
-mod5Q js/items.js:1537
-mod5Txt js/items.js:1541
-pct js/items.js:1543
-sg js/items.js:1545
-MODN js/items.js:1546
-modTxt js/items.js:1577
-tagTxt js/items.js:1582
-PRE_T js/items.js:1585
-preKey js/items.js:1597
-preVal js/items.js:1598
-preTxt js/items.js:1605
-itemDesc js/items.js:1609
-scaleMod js/items.js:1660
+ITEMI js/items.js:1280
+CLASSES js/items.js:1284
+CLSI js/items.js:1394
+CORE_P js/items.js:1397
+onP js/items.js:1412
+CORE_MAIN js/items.js:1414
+CORE_SUB js/items.js:1599
+genCores js/items.js:1613
+clsDesc js/items.js:1649
+TIER_MAX js/items.js:1665
+TIERCD js/items.js:1671
+cdT js/items.js:1673
+FX_FLAT js/items.js:1676
+fxT js/items.js:1677
+onT js/items.js:1685
+STARC js/items.js:1703
+priceOf js/items.js:1705
+sellOf js/items.js:1706
+shapeOf js/items.js:1708
+AFFX js/items.js:1716
+affOf js/items.js:1723
+MOD5 js/items.js:1730
+mod5Pool js/items.js:1752
+roll5 js/items.js:1758
+mod5Q js/items.js:1764
+mod5Txt js/items.js:1768
+pct js/items.js:1770
+sg js/items.js:1772
+MODN js/items.js:1773
+modTxt js/items.js:1804
+tagTxt js/items.js:1809
+PRE_T js/items.js:1812
+preKey js/items.js:1824
+preVal js/items.js:1825
+preTxt js/items.js:1832
+itemDesc js/items.js:1836
+scaleMod js/items.js:1887
 cellsOf js/bag.js:4
 bagGrid js/bag.js:6
 canPlace js/bag.js:12
@@ -126,9 +128,9 @@ findSpot js/bag.js:37
 synergy js/bag.js:70
 mergeAll js/bag.js:77 [合成]
 compileBag js/bag.js:109 [戰鬥數值]
-bagMods js/bag.js:229 [戰鬥數值]
-packBag js/bag.js:263 [戰鬥數值]
-unpackBag js/bag.js:269 [戰鬥數值]
+bagMods js/bag.js:232 [戰鬥數值]
+packBag js/bag.js:266 [戰鬥數值]
+unpackBag js/bag.js:272 [戰鬥數值]
 SIM_DT js/sim.js:4
 WEAK_PCT js/sim.js:6
 simSide js/sim.js:12
@@ -261,35 +263,37 @@ beginFight js/ui.js:517 [戰鬥播放]
 leadIn js/ui.js:543 [戰鬥播放]
 resumeFight js/ui.js:548 [戰鬥播放]
 renderBattle js/ui.js:564 [戰鬥播放]
-bShow js/ui.js:584 [戰鬥播放]
-cdTimeline js/ui.js:595 [戰鬥播放]
-bCd js/ui.js:605 [戰鬥播放]
-STN js/ui.js:626 [戰鬥播放]
-bSts js/ui.js:646 [戰鬥播放]
-ELC js/ui.js:667 [戰鬥播放]
-bPop js/ui.js:681 [戰鬥播放]
-bAnim js/ui.js:694 [戰鬥播放]
-bBurst js/ui.js:700 [戰鬥播放]
-bSlash js/ui.js:713 [戰鬥播放]
-bHit js/ui.js:723 [戰鬥播放]
-bFlash js/ui.js:730 [戰鬥播放]
-bTick js/ui.js:738 [戰鬥播放]
-bEnd js/ui.js:808 [戰鬥播放]
-codexHTML js/ui.js:832 [圖鑑、說明、設定]
-helpHTML js/ui.js:859 [圖鑑、說明、設定]
-settingsHTML js/ui.js:872 [圖鑑、說明、設定]
-audioOn js/ui.js:897 [動作]
-A js/ui.js:900 [動作]
-authDo js/ui.js:1164 [動作]
-showLog js/ui.js:1180 [動作]
-showDlg js/ui.js:1214 [動作]
-placeFromBench js/ui.js:1233 [拖曳擺放]
-cellAt js/ui.js:1245 [拖曳擺放]
-inside js/ui.js:1254 [拖曳擺放]
-drawGhost js/ui.js:1332 [拖曳擺放]
-autoFit js/ui.js:1344 [拖曳擺放]
-dropEnd js/ui.js:1352 [拖曳擺放]
-dropShop js/ui.js:1406 [拖曳擺放]
+bShow js/ui.js:585 [戰鬥播放]
+cdTimeline js/ui.js:596 [戰鬥播放]
+bCd js/ui.js:606 [戰鬥播放]
+STN js/ui.js:627 [戰鬥播放]
+bSts js/ui.js:647 [戰鬥播放]
+ELC js/ui.js:668 [戰鬥播放]
+bPop js/ui.js:682 [戰鬥播放]
+bNames js/ui.js:695 [戰鬥播放]
+bLog js/ui.js:702 [戰鬥播放]
+bAnim js/ui.js:734 [戰鬥播放]
+bBurst js/ui.js:740 [戰鬥播放]
+bSlash js/ui.js:753 [戰鬥播放]
+bHit js/ui.js:763 [戰鬥播放]
+bFlash js/ui.js:770 [戰鬥播放]
+bTick js/ui.js:778 [戰鬥播放]
+bEnd js/ui.js:849 [戰鬥播放]
+codexHTML js/ui.js:873 [圖鑑、說明、設定]
+helpHTML js/ui.js:900 [圖鑑、說明、設定]
+settingsHTML js/ui.js:913 [圖鑑、說明、設定]
+audioOn js/ui.js:938 [動作]
+A js/ui.js:941 [動作]
+authDo js/ui.js:1205 [動作]
+showLog js/ui.js:1221 [動作]
+showDlg js/ui.js:1255 [動作]
+placeFromBench js/ui.js:1274 [拖曳擺放]
+cellAt js/ui.js:1286 [拖曳擺放]
+inside js/ui.js:1295 [拖曳擺放]
+drawGhost js/ui.js:1373 [拖曳擺放]
+autoFit js/ui.js:1385 [拖曳擺放]
+dropEnd js/ui.js:1393 [拖曳擺放]
+dropShop js/ui.js:1447 [拖曳擺放]
 newGame js/main.js:4
 load js/main.js:21
 save js/main.js:29
