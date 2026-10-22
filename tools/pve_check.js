@@ -1,5 +1,5 @@
 /* PvE 勝率與對戰秒數（Node 版，比瀏覽器快）：用機器人代打玩家打 N 局，統計每種野怪／菁英／首領的勝率。
-   用法：node tools/pve_check.js [局數=40] [q=0.8] [MOB_HP] [MOB_DMG]
+   用法：node tools/pve_check.js [局數=40] [q=0.8] [MOB_HP] [MOB_DMG]（PRE=1 用開局先跑完的機器人）
    後兩個參數可以暫時改 run.js 的怪物成長倍率來試（不會改檔案）。skill balance／bot-ai 用。 */
 const vm = require('vm');
 const G = require('./game_node');
@@ -12,7 +12,10 @@ const st = {},
 let pw = 0,
   pn = 0;
 for (let g = 0; g < n; g++) {
-  const run = G.newRun(G.makeBots(G.LOBBY_N - 1, 1000));
+  /* 0.1.30 對手預設是即時機器人（跟遊戲一樣）；環境變數 PRE=1 改回開局先跑完一整局的機器人（比較用） */
+  const run = G.newRun(
+    process.env.PRE ? G.makeBots(G.LOBBY_N - 1, 1000) : G.liveBots(G.LOBBY_N - 1, 1000, g * 7919 + 13)
+  );
   run.bag.cls = run.clsOpts[g % 3];
   run.phase = 'prep';
   G.giveStarter(run);

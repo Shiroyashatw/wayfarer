@@ -494,7 +494,8 @@ function otGrow(F, ot) {
   };
 }
 const rivalHp = rv => Math.max(0, rv.hp ?? START_HP);
-const rivalAlive = (rv, rid) => rivalHp(rv) > 0 && !!rivalSnap(rv, rid);
+/* 0.1.30 即時機器人還沒推進到這回合也算活著（開戰前才存快照） */
+const rivalAlive = (rv, rid) => rivalHp(rv) > 0 && (!!rv.live || !!rivalSnap(rv, rid));
 const aliveRivals = run => run.rivals.filter(rv => rivalAlive(rv, curRound(run).id));
 /* 他這回合的背包與戰鬥數值（加時的照 otGrow 變強） */
 function rivalBag(rv, rid) {
@@ -575,6 +576,9 @@ let MOB_HP = 1,
 function startFight(run) {
   const r = curRound(run);
   if (typeof ghostSnap === 'function') ghostSnap(run, r.id);
+  /* 0.1.30 即時機器人先推進到這回合（看的是你上一回合的背包），再記下你這回合的背包給下回合用 */
+  liveStep(run, r);
+  run.myPrev = packBag(run.bag);
   const opp = opponentOf(run);
   if (!opp) return null;
   opp.F = stageHp(opp.F, r.st, opp.kind !== 'pvp');
@@ -626,6 +630,7 @@ function finishFight(run, fb) {
     /* 打贏對手：他扣跟你輸了會扣的一樣多（加上你背包的寵物）；結果視窗顯示他扣多少、是否淘汰 */
     if (opp.kind === 'pvp') {
       const rv = run.rivals[opp.rv];
+      rv.lw = [r.id, false];
       out.hit = r.loss + petLoss(run.bag);
       rv.hp = rivalHp(rv) - out.hit;
       out.ko = rivalHp(rv) <= 0;
@@ -635,6 +640,7 @@ function finishFight(run, fb) {
     run.ws = 0;
     out.loss = r.loss + (opp.kind === 'pvp' ? petLoss(opp.bag) : 0);
     run.hp -= out.loss;
+    if (opp.kind === 'pvp') run.rivals[opp.rv].lw = [r.id, true];
   }
   run.gold += out.gold;
   run.log.push({ id: r.id, type: r.type, win: res.win, opp: opp.n, loss: out.loss, ...fightSum(run, fb) });
@@ -664,6 +670,7 @@ function finishFight(run, fb) {
     };
   }
   rivalFights(run, fb);
+  liveAfter(run, r);
   if (run.hp <= 0) {
     /* 0.1.27 同回合倒下的對手：扣完剩得比你多（負得少）的排你前面；大家一起倒下時你最多第 2 */
     const al = aliveRivals(run).length,
@@ -688,18 +695,22 @@ function rivalFights(run, fb) {
       const [a, b] = [q[k], q[k + 1]].map(rv => rivalBag(rv, r.id)),
         res = simulate(stageHp(a.F, r.st), stageHp(b.F, r.st), h(run.seed, run.ri, 992 + k));
       const lr = q[res.win ? k + 1 : k];
+      q[k].lw = [r.id, res.win];
+      q[k + 1].lw = [r.id, !res.win];
       lr.hp = rivalHp(lr) - r.loss - petLoss((res.win ? a : b).bag);
     }
     if (n % 2) {
       const lone = q[n - 1],
         a = rivalBag(lone, r.id),
         res = simulate(stageHp(a.F, r.st), fb.me, h(run.seed, run.ri, 994));
+      lone.lw = [r.id, res.win];
       if (!res.win) lone.hp = rivalHp(lone) - r.loss - petLoss(run.bag);
     }
     return;
   }
   al.forEach((rv, j) => {
     const res = simulate(stageHp(rivalBag(rv, r.id).F, r.st), opp.F, h(run.seed, run.ri, 993 + j));
+    rv.lw = [r.id, res.win];
     if (!res.win) rv.hp = rivalHp(rv) - r.loss;
   });
 }
@@ -799,34 +810,62 @@ const THEMES = ['sword', 'bow', 'dagger', 'fire', 'pet', 'shield', 'mace', 'cold
 /* 機器人一場（0.1.0）：4 個機器人用跟玩家一樣的規則跑一整局，每回合真的用背包互打（同一套戰鬥模擬），
    生命與淘汰照實際勝負；強的背包活得久。回傳每個機器人的快照（開戰前的生命與背包）、名次。
    rating 越高的機器人買法越聰明（q：照戰力評估做決定的機率，見 bot.js）。 */
+/* 一個機器人（第 i 個；rr 是這一場共用的亂數）：自己的一局、職業、主題、聰明程度 q、每回合多拿的金幣 gb */
+function mkBot(seed, i, rr, rating, opt = {}) {
+  const s = h(seed, i, 31),
+    rt = Math.max(600, (rating || 1000) + fl((rr() - 0.5) * 150));
+  const run = newRunState(s),
+    opts = rollClasses(run),
+    cls = opts[fl(rr() * 3)];
+  run.bag.cls = cls;
+  giveStarter(run);
+  return {
+    run,
+    theme: CLSI[cls].th || THEMES[fl(rr() * THEMES.length)],
+    q: Math.max(0.3, Math.min(0.95, 0.6 + (rt - 1000) / 800)),
+    /* 0.1.20 機器人的腦（bot.js）：opt.P[i] 給訓練用（第 i 個機器人用哪組參數），opt.old[i] 用舊的買法比較 */
+    P: (opt.P && opt.P[i]) || BOT_P,
+    old: !!(opt.old && opt.old[i]),
+    /* 0.1.6 牌階越高的機器人每回合多拿一點金幣（越往上越強）；鐵牌、銅牌少拿 */
+    gb: Math.max(-2, Math.min(5, fl((rt - 1000) / 200))),
+    info: {
+      name: randName(rng(h(s, 9))),
+      av: AVATARS[(s >>> 3) % AVATARS.length][0],
+      rating: rt,
+      snaps: {}
+    },
+    out: null
+  };
+}
+/* 打完一回合：經濟（打贏拿金幣、連勝連敗）、菁英三選一（照評估挑）、首領核心（隨機）。simLobby 和即時機器人共用 */
+function botAfter(run, r, win, q, P) {
+  if (win) {
+    run.ws++;
+    run.lsk = 0;
+    run.gold += winGold(r);
+  } else {
+    run.lsk++;
+    run.ws = 0;
+  }
+  if (r.type !== 'elite' && r.type !== 'boss') return;
+  const [a, c] = eliteStars(r.st);
+  /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了）；暫存區滿了先寄放，下回合 botAct 處理。
+     0.1.29 菁英跟玩家一樣三選一（保底職業武器），照評估挑 */
+  if (r.type === 'elite') {
+    const opts = eliteOpts(run, a, c),
+      best =
+        r01(run) < q
+          ? opts.map(id => [id, botValue(run, id, 1, P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0]
+          : opts[0];
+    takePick(run, best, true);
+  } else {
+    const pool = ITEMS.filter(it => it.core === (r.st <= 2 ? 1 : 2) && it.cls === run.bag.cls);
+    takePick(run, pick(run, pool).id, true);
+  }
+}
 function simLobby(seed, rating, opt = {}) {
   const rr = rng(h(seed, 5)),
-    bots = [...Array(LOBBY_N).keys()].map(i => {
-      const s = h(seed, i, 31),
-        rt = Math.max(600, (rating || 1000) + fl((rr() - 0.5) * 150));
-      const run = newRunState(s),
-        opts = rollClasses(run),
-        cls = opts[fl(rr() * 3)];
-      run.bag.cls = cls;
-      giveStarter(run);
-      return {
-        run,
-        theme: CLSI[cls].th || THEMES[fl(rr() * THEMES.length)],
-        q: Math.max(0.3, Math.min(0.95, 0.6 + (rt - 1000) / 800)),
-        /* 0.1.20 機器人的腦（bot.js）：opt.P[i] 給訓練用（第 i 個機器人用哪組參數），opt.old[i] 用舊的買法比較 */
-        P: (opt.P && opt.P[i]) || BOT_P,
-        old: !!(opt.old && opt.old[i]),
-        /* 0.1.6 牌階越高的機器人每回合多拿一點金幣（越往上越強）；鐵牌、銅牌少拿 */
-        gb: Math.max(-2, Math.min(5, fl((rt - 1000) / 200))),
-        info: {
-          name: randName(rng(h(s, 9))),
-          av: AVATARS[(s >>> 3) % AVATARS.length][0],
-          rating: rt,
-          snaps: {}
-        },
-        out: null
-      };
-    });
+    bots = [...Array(LOBBY_N).keys()].map(i => mkBot(seed, i, rr, rating, opt));
   let order = 0;
   for (let k = 0; k < ROUNDS.length; k++) {
     const alive = bots.filter(b => !b.out);
@@ -877,33 +916,8 @@ function simLobby(seed, rating, opt = {}) {
       } else F = mobOf(run, r).F;
       const res = simulate(stageHp(compileBag(run.bag), r.st), stageHp(F, r.st, r.type !== 'pvp'), h(seed, k, i));
       /* 0.1.10 跟玩家一樣的經濟：打贏拿金幣、連勝連敗（之前沒算，機器人的背包比玩家窮、快照偏弱） */
-      if (res.win) {
-        run.ws++;
-        run.lsk = 0;
-        run.gold += winGold(r);
-      } else {
-        run.lsk++;
-        run.ws = 0;
-        if (!solo) run.hp -= r.loss;
-      }
-      if (r.type === 'elite' || r.type === 'boss') {
-        const [a, c] = eliteStars(r.st),
-          pool = ITEMS.filter(it =>
-            r.type === 'boss'
-              ? it.core === (r.st <= 2 ? 1 : 2) && it.cls === run.bag.cls
-              : !it.core && it.star >= a && it.star <= c
-          );
-        /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了）；暫存區滿了先寄放，下回合 botAct 處理。
-           0.1.29 菁英跟玩家一樣三選一（保底職業武器），照評估挑 */
-        if (r.type === 'elite') {
-          const opts = eliteOpts(run, a, c),
-            best =
-              r01(run) < b.q
-                ? opts.map(id => [id, botValue(run, id, 1, b.P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0]
-                : opts[0];
-          takePick(run, best, true);
-        } else takePick(run, pick(run, pool).id, true);
-      }
+      if (!res.win && !solo) run.hp -= r.loss;
+      botAfter(run, r, res.win, b.q, b.P);
     });
     for (const b of alive) if (b.run.hp <= 0) b.out = ++order;
   }
@@ -911,6 +925,63 @@ function simLobby(seed, rating, opt = {}) {
   const rk = [...bots].sort((a, b) => (b.out || 99) - (a.out || 99) || b.run.hp - a.run.hp);
   rk.forEach((b, i) => (b.info.place = i + 1));
   return bots.map(b => b.info);
+}
+/* ================= 即時機器人（0.1.30） ================= */
+/* 跟玩家一起一回合一回合推進的機器人對手：每回合開戰前才逛商店、擺背包（liveStep），打完照這局的勝負拿金幣、三選一（liveAfter）。
+   買東西時看得到「大家上一回合的背包」（跟玩家看得到對手背包一樣，不偷看這回合），你的背包權重 LIVE_ME 倍，會針對你的陣容買反制。
+   rv.live = { run: 他自己的一局, theme, q, gb }；快照照樣存進 rv.snaps，其他流程（對手互打、戰鬥紀錄）不用改 */
+const LIVE_ME = 2;
+function liveBots(n, rating, seed = (Math.random() * 2 ** 31) | 0) {
+  if (n <= 0) return [];
+  const rr = rng(h(seed, 5));
+  return [...Array(n).keys()].map(i => {
+    const b = mkBot(seed, i, rr, rating);
+    return { ...b.info, live: { run: b.run, theme: b.theme, q: b.q, gb: b.gb } };
+  });
+}
+/* 這回合開戰前：還活著的即時機器人推進到這回合（逛商店、擺背包），存這回合的快照。已經存過就不重算（重新整理不會變） */
+function liveStep(run, r) {
+  const al = run.rivals.filter(rv => rv.live && rivalHp(rv) > 0 && !(rv.snaps || {})[r.id]);
+  if (!al.length) return;
+  /* 大家上一回合的背包：你的（myPrev）＋每位對手上一筆快照 */
+  const prev = [];
+  if (run.myPrev) prev.push({ rv: null, w: LIVE_ME, bag: run.myPrev });
+  const pr = ROUNDS[run.ri - 1];
+  if (pr)
+    for (const rv of run.rivals) {
+      const sn = rivalHp(rv) > 0 && rivalSnap(rv, pr.id);
+      if (sn) prev.push({ rv, w: 1, bag: sn.bag });
+    }
+  for (const p of prev) {
+    const b = unpackBag(p.bag);
+    p.pets = b.items.filter(o => ITEMI[o.id].tags.includes('pet')).length;
+    p.thr = botThreat(compileBag(b));
+  }
+  for (const rv of al) {
+    const L = rv.live,
+      br = L.run,
+      os = prev.filter(p => p.rv !== rv),
+      W = os.reduce((n, p) => n + p.w, 0);
+    while (br.ri < run.ri) {
+      nextRound(br);
+      if (br.ri > 0) br.gold = Math.max(0, br.gold + L.gb);
+    }
+    if (W) {
+      br.epet = os.reduce((n, p) => n + p.pets * p.w, 0) / W;
+      br.eres = {};
+      for (const k in BOT_ERES0) br.eres[k] = os.reduce((n, p) => n + p.thr[k] * p.w, 0) / W;
+    }
+    botAct(br, L.theme, L.q, BOT_P);
+    rv.snaps = rv.snaps || {};
+    rv.snaps[r.id] = { hp: rivalHp(rv), bag: packBag(br.bag) };
+    /* 存檔不要越來越大：即時機器人只留這回合和上一回合的快照（下回合看的就是這兩筆） */
+    for (const k of Object.keys(rv.snaps)) if (k !== r.id && (!pr || k !== pr.id)) delete rv.snaps[k];
+  }
+}
+/* 這回合打完：即時機器人照這局的勝負（rv.lw = [回合, 贏了沒]）拿金幣、連勝連敗、菁英／首領三選一 */
+function liveAfter(run, r) {
+  for (const rv of run.rivals)
+    if (rv.live && rv.lw && rv.lw[0] === r.id && rivalHp(rv) > 0) botAfter(rv.live.run, r, rv.lw[1], rv.live.q, BOT_P);
 }
 /* 補位用的 n 位機器人對手（從一場機器人對局裡取） */
 function makeBots(n, rating) {

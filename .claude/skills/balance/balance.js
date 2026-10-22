@@ -251,7 +251,7 @@
   const avg = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
   /* 用機器人代打玩家的一局（跟 CLAUDE.md 說的一樣：newRun + botAct + startFight／finishFight） */
   function playOne(q, cb) {
-    const run = newRun(makeBots(LOBBY_N - 1, 1000));
+    const run = newRun(liveBots(LOBBY_N - 1, 1000));
     run.bag.cls = run.clsOpts[0];
     run.phase = 'prep';
     giveStarter(run);

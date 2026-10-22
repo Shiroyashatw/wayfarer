@@ -61,7 +61,7 @@ python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 ```
 存檔在 localStorage（鍵 `serling_v1`）；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換（存檔版本是 `S.v`，0.1.0 起是 100）。進行中的一局記著版本（`S.run.ver`），版本不同會直接結束那局。
 測試用另一份存檔：網址加 `?p=2`。
-瀏覽器測一整局：`newRun(makeBots(LOBBY_N - 1, 1000))` 後用 `botAct`（`js/bot.js`）代替玩家、`startFight`／`finishFight` 跑每回合（見 `docs/CODEMAP.md`）。
+瀏覽器測一整局：`newRun(liveBots(LOBBY_N - 1, 1000))` 後用 `botAct`（`js/bot.js`）代替玩家、`startFight`／`finishFight` 跑每回合（見 `docs/CODEMAP.md`）。
 
 ## Supabase
 - 專案 ref：`eugkdfhkoaxvqhztvptc`，URL `https://eugkdfhkoaxvqhztvptc.supabase.co`

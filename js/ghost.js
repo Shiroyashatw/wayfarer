@@ -41,7 +41,8 @@ async function ghostRivals(rating) {
     }
   /* 0.1.29 6 人一場：真人快照最多 GHOST_MAX 位，其他機器人補滿 5 位 */
   got = got.slice(0, GHOST_MAX);
-  return [...got, ...makeBots(LOBBY_N - 1 - got.length, rating)].slice(0, LOBBY_N - 1);
+  /* 0.1.30 機器人改成即時的（跟你一起每回合推進，會看你的背包反制），不用開局先跑完一整局 */
+  return [...got, ...liveBots(LOBBY_N - 1 - got.length, rating)].slice(0, LOBBY_N - 1);
 }
 /* 開局：在 runs 建一筆（失敗就只是不存快照） */
 async function ghostBegin(run) {

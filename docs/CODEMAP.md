@@ -60,6 +60,7 @@
 | 結算、三選一、一局結束 | `js/ui.js` | `resultHTML`、`pickHTML`、`endHTML` |
 | 按鈕動作 | `js/ui.js` | `A`（`data-act`）、`showDlg` |
 | 背包相鄰加成的連接點、來源高亮、拖曳預覽（0.1.28） | `js/ui.js`、`css/style.css` | `linkHTML`、`bagHTML` 的 `lit`／`src`／`.hassel`、`dragLit`（pointermove 呼叫）、`detailHTML` 的加成來源分行；CSS `.lk`、`.it.src`、`.it.pv` |
+| 即時機器人（0.1.31：每回合跟玩家一起推進、看你上一回合的背包反制） | `js/run.js`、`js/ghost.js` | `liveBots`、`liveStep`（`startFight` 呼叫）、`liveAfter`（`finishFight` 呼叫）、`LIVE_ME`、`rv.live`、`rv.lw`、`run.myPrev`；共用 `mkBot`、`botAfter`（`simLobby` 也用）；`ghostRivals` 用 `liveBots` 補位 |
 | 6 人一場、真人快照上限（0.1.29） | `js/data.js`、`js/ghost.js`、`js/run.js`、`js/ui.js` | `LOBBY_N`、`GHOST_MAX`、`PLACE_PTS`（data）；`ghostRivals`（ghost）；`simLobby`、`rivalFights`（兩兩互打）（run）；`rivalHTML` 的 `.rivals.n5`（ui） |
 | 後期魔王菁英、高星機率（0.1.29） | `js/run.js` | `ELITE_POOL`（7 階段起 `kings`）、`ELITE_KING`、`eliteStars`、`shopOdds`（`rollItem` 用） |
 | 菁英三選一保底職業武器、副核心融入專屬核心（0.1.29） | `js/run.js`、`js/bag.js`、`js/bot.js`、`js/ui.js` | `eliteOpts`、`clsWeaponTags`、`mainCore`、`takePick`（run）；道具的 `sc`、`compileBag`／`bagMods`、`packBag`（bag）；`botValue0` 的 `how: 'core'`（bot）；`detailHTML`、`bagHTML` 的 `.fui`（ui） |
@@ -115,23 +116,24 @@
 ### js/sim.js（310 行）
 
 
-### js/run.js（920 行）
+### js/run.js（992 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），26 個宣告
-- **對手**（462），15 個宣告
-- **戰鬥**（558），14 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（796），3 個宣告
+- **對手**（463），15 個宣告
+- **戰鬥**（560），14 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（808），4 個宣告
+- **即時機器人（0.1.30）**（929），5 個宣告
 
 ### js/bot.js（371 行）
 
 - **戰力分數**（22），13 個宣告
 - **每回合**（231），2 個宣告
 
-### js/ghost.js（162 行）
+### js/ghost.js（163 行）
 
-- **排行榜（0.1.29）**（95），2 個宣告
-- **開服種子資料（開發用）**（122），1 個宣告
+- **排行榜（0.1.29）**（96），2 個宣告
+- **開服種子資料（開發用）**（123），1 個宣告
 
 ### js/audio.js（101 行）
 
@@ -142,7 +144,7 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（101），5 個宣告
 
-### js/news.js（195 行）
+### js/news.js（206 行）
 
 
 ### js/ui.js（1810 行）

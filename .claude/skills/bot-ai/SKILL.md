@@ -14,6 +14,7 @@ description: 塞令老師的機器人（電腦對手）AI 與訓練。新增道�
   - `botAct(run, theme, q, P)`：每回合的決定。`q` 是「照評估做」的機率（`simLobby` 依牌階給：`0.6 + (分數 - 1000) / 800`，0.3～0.95），其他時候照主題隨便買，所以低牌階笨一點。
   - `BOT_P`：習慣參數（多少戰力才買、存多少利息錢、什麼時候刷新、背包幾成滿就升、賣舊換新的門檻、合成偏好、持續傷害／控制／防禦的權重），**由訓練寫回**。
   - `botActOld`：0.1.19 以前的舊買法，留著比較用。
+- **即時機器人（0.1.31）**：玩家遇到的機器人對手是 `run.js` 的 `liveBots`，每回合 `startFight` 時 `liveStep` 推進（`botAct`），打完 `liveAfter`（`botAfter`）；估價看大家上一回合的背包（玩家權重 `LIVE_ME`），`run.epet`／`run.eres` 就是從這裡來的。開服種子和訓練仍然用 `simLobby`（6 個機器人互打），兩邊共用 `mkBot`、`botAfter`，改經濟或三選一時只要改 `botAfter`。
 - **`tools/game_node.js`**：在 Node 載入遊戲的純邏輯（core、data、items、bag、sim、run、bot），訓練與大量模擬用。新增遊戲邏輯檔案時把檔名加進 `FILES`（照 `index.html` 的順序，`ui.js` 以後的不用）。
 - **`tools/bot_train.js`**：自我對打調 `BOT_P`。每輪把最好的參數隨機微調成挑戰者，2 對 2 打 N 場比平均名次，明顯比較好就換。
 
