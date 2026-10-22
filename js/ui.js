@@ -43,11 +43,13 @@ function paintSprites(root = document) {
   });
 }
 /* 大圖載好時重畫（sprites.js 呼叫）；拖曳中、戰鬥中不重畫整頁 */
+/* 正在輸入框裡打字 */
+const typing = () => !!document.activeElement && document.activeElement.matches('input,textarea,select');
 function artRepaint() {
   clearTimeout(artRepaint.t);
   artRepaint.t = setTimeout(() => {
     ICU.clear();
-    if (!V.drag && !B) render();
+    if (!V.drag && !B && !typing()) render();
     else paintSprites();
   }, 80);
 }
@@ -934,6 +936,7 @@ document.addEventListener('pointercancel', () => {
   V.drag = null;
   render();
 });
+/* 手機叫出鍵盤也會觸發 resize：正在打字時不要重畫（不然輸入框會被換掉、鍵盤一直收起來） */
 window.addEventListener('resize', () => {
-  if (!B && !V.drag) render();
+  if (!B && !V.drag && !typing()) render();
 });

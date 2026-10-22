@@ -59,7 +59,7 @@ function start() {
     if (remote && remote.v >= 100 && (remote.savedAt || 0) > (S.savedAt || 0)) {
       S = migrate(remote);
       save();
-      render();
+      if (!typing()) render();
       toast('已從雲端載入存檔');
     } else cloudPush();
   });
