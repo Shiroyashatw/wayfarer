@@ -350,6 +350,12 @@ function roundBarHTML(run) {
     })
     .join('')}${nx ? `<span class="rb nx"><b>${nx.id}</b><small>下一階段</small></span>` : ''}</div>`;
 }
+/* 0.1.25 金幣旁的下回合預估收入（輸～贏） */
+function incTxt(run) {
+  const e = incomeEst(run);
+  if (!e) return '';
+  return `<small class="inc" title="下回合收入（輸～贏）">+${e[0] === e[1] ? e[0] : e[0] + '～' + e[1]}</small>`;
+}
 function prepHTML(run) {
   const r = curRound(run),
     bag = run.bag,
@@ -359,27 +365,27 @@ function prepHTML(run) {
     nr = r.type === 'pvp' ? nextRival(run) : -1,
     oppTxt = r.type === 'pvp' ? (nr >= 0 ? `對戰 ${esc(run.rivals[nr].name)}` : '對戰') : RTYPE[r.type];
   return `<div class="prep">
-    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金</b><small>${r.id}・${oppTxt}</small></div>${themeBtn()}</div>
+    <div class="pcol pa"><div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${themeBtn()}</div>
     ${roundBarHTML(run)}
     ${rivalHTML(run)}
     ${tutHTML()}
-    ${holdHTML(run)}
-    <div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
+    ${holdHTML(run)}</div>
+    <div class="pcol pb"><div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
           ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}" data-bu="${o.u}" data-bi="${i}"><img src="${itemIcon(o.id)}" alt="${ITEMI[o.id].n}">${shapeMini(o.id, o.r || 0)}${tierBadge(o.t)}</div>`
           : `<div class="bs emp" data-bi="${i}"></div>`
       )
-      .join('')}</div></div>
-    <div class="shop" id="shop">${run.shop
+      .join('')}</div></div></div>
+    <div class="pcol pc"><div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
           ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${shapeMini(s.id)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < shopPrice(run, s.id, s.t) ? 'c-bad' : ''}">${shopPrice(run, s.id, s.t)} 金</b></button>`
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
-    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL ? 'disabled' : ''}>刷新<small class="bnote">${REROLL} 金</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvNext.cost + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div>
+    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL ? 'disabled' : ''}>刷新<small class="bnote">${REROLL} 金</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvNext.cost + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div></div>
     ${detailHTML(run)}
   </div>`;
 }
@@ -1344,7 +1350,7 @@ function cellAt(px, py) {
   if (!el) return null;
   const rc = el.getBoundingClientRect(),
     cs = parseFloat(el.style.getPropertyValue('--cs')),
-    st = cs + GAP;
+    st = (cs + GAP) * V.z;
   if (px < rc.left - st / 2 || py < rc.top - st / 2 || px > rc.right + st / 2 || py > rc.bottom + st / 2) return null;
   return [fl((px - rc.left + GAP / 2) / st), fl((py - rc.top + GAP / 2) / st)];
 }
@@ -1413,8 +1419,9 @@ document.addEventListener(
     }
     drawGhost(d);
     const st = d.cs + GAP;
-    d.el.style.left = ev.clientX - d.g[0] * st - d.cs / 2 + 'px';
-    d.el.style.top = ev.clientY - d.g[1] * st - d.cs / 2 + 'px';
+    /* 影子也有縮放（.ghost 的 zoom），位置要換回縮放前的單位 */
+    d.el.style.left = ev.clientX / V.z - d.g[0] * st - d.cs / 2 + 'px';
+    d.el.style.top = ev.clientY / V.z - d.g[1] * st - d.cs / 2 + 'px';
     /* 放不下但剛好擋到一件、而且換得過去：可以交換 */
     d.swap = !d.ok && d.tgt ? swapPlan(S.run, d.o, d.tgt[0], d.tgt[1], d.from) : null;
     d.el.classList.toggle('bad', !!d.tgt && !d.ok && !d.swap);
@@ -1537,5 +1544,12 @@ document.addEventListener('pointercancel', () => {
 });
 /* 手機叫出鍵盤也會觸發 resize：正在打字時不要重畫（不然輸入框會被換掉、鍵盤一直收起來） */
 window.addEventListener('resize', () => {
+  fitZoom();
   if (!B && !V.drag && !typing()) render();
 });
+/* 0.1.25 電腦版放大：寬 1040 以上（跟 CSS 的兩欄版面同一個寬度）整個介面等比例放大（CSS 變數 --z，給 #app、對話框、影子的 zoom 用），手機維持 1 */
+function fitZoom() {
+  V.z = innerWidth >= 1040 ? Math.max(1, Math.min(1.6, innerWidth / 1040, innerHeight / 660)) : 1;
+  document.documentElement.style.setProperty('--z', V.z);
+}
+fitZoom();

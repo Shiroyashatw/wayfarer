@@ -98,6 +98,7 @@ canvas.spr.flip{transform:scaleX(-1)}
 .rinfo{display:grid;text-align:right}
 .gold{font-family:var(--f-pix);font-size:var(--fs-num);color:var(--gold);font-weight:400}
 .rinfo small{color:var(--dim)}
+.gold .inc{font-size:var(--fs-sm);color:var(--good);margin-left:var(--sp-1)}
 .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-1)}
 .rv{display:flex;align-items:center;gap:var(--sp-1);background:var(--card);border-radius:var(--r-md);padding:var(--sp-1);border:1.5px solid transparent;min-width:0;box-shadow:var(--shadow)}
 .rv canvas{width:28px;height:28px}
@@ -180,7 +181,7 @@ canvas.spr.flip{transform:scaleX(-1)}
 .ghost.bad i{border-color:var(--danger);background:#f8d7d7}
 .ghost.swap i{border-color:var(--accent);box-shadow:0 0 10px var(--accent)}
 /* ---------- 對話框 ---------- */
-.ovl,#modal{position:fixed;inset:0;z-index:45;background:#1a140f80;backdrop-filter:blur(3px);display:grid;place-items:center;padding:var(--sp-5)}
+.ovl,#modal{position:fixed;inset:0;z-index:45;background:#1a140fb8;display:grid;place-items:center;padding:var(--sp-5)}
 .dlg2{width:min(420px,100%);background:var(--card);border-radius:var(--r-lg);padding:var(--sp-5);display:grid;gap:var(--sp-2);text-align:center;box-shadow:0 10px 40px #0004}
 .dlg2>b{font-size:var(--fs-title)}
 .dlg2 b.big{font-family:var(--f-pix);font-size:36px;font-weight:400}
@@ -300,7 +301,7 @@ canvas.spr.flip{transform:scaleX(-1)}
 .prof .rank img{width:34px;height:34px}
 .prof .kv3{margin-top:var(--sp-1)}
 /* 0.1.8 頂部資訊固定在最上方（背包大了往下拉看商店，金幣、生命還看得到） */
-.prep>.top{position:sticky;top:0;z-index:30;margin:calc(-1 * var(--sp-3) - var(--sat)) calc(-1 * var(--sp-5)) 0;padding:calc(var(--sp-2) + var(--sat)) var(--sp-5) var(--sp-2);background:var(--bg-top,var(--bg));box-shadow:0 1px 0 var(--line),0 6px 12px -8px #0006}
+.prep .top{position:sticky;top:0;z-index:30;margin:calc(-1 * var(--sp-3) - var(--sat)) calc(-1 * var(--sp-5)) 0;padding:calc(var(--sp-2) + var(--sat)) var(--sp-5) var(--sp-2);background:var(--bg-top,var(--bg));box-shadow:0 1px 0 var(--line),0 6px 12px -8px #0006}
 .hpt{white-space:nowrap}.top .me span{overflow:hidden}
 /* 0.1.9 暫存區只留圖示與形狀（名字點開說明看），格子小一點、方的 */
 .bs,.bs.emp{aspect-ratio:1;min-height:0;padding:0}
@@ -314,7 +315,7 @@ canvas.spr.flip{transform:scaleX(-1)}
 .sts b{position:absolute;right:-3px;bottom:-3px;font-family:var(--f-pix);font-weight:400;font-size:10px;line-height:1;color:#fff;text-shadow:0 0 2px #000,0 0 2px #000}
 .cores p{margin:0 0 var(--sp-2);font-size:var(--fs-sm);color:var(--dim)}.cores b{color:var(--ink)}
 /* 0.1.9 頂部固定列改用陰影把底色往兩邊延伸（負邊距會讓版面變寬） */
-.prep>.top{margin:calc(-1 * var(--sp-3) - var(--sat)) 0 0;padding:calc(var(--sp-2) + var(--sat)) 0 var(--sp-2);box-shadow:calc(-1 * var(--sp-5)) 0 0 var(--bg-top,var(--bg)),var(--sp-5) 0 0 var(--bg-top,var(--bg)),0 1px 0 var(--line),0 6px 12px -8px #0006}
+.prep .top{margin:calc(-1 * var(--sp-3) - var(--sat)) 0 0;padding:calc(var(--sp-2) + var(--sat)) 0 var(--sp-2);box-shadow:calc(-1 * var(--sp-5)) 0 0 var(--bg-top,var(--bg)),var(--sp-5) 0 0 var(--bg-top,var(--bg)),0 1px 0 var(--line),0 6px 12px -8px #0006}
 /* 0.1.10 電腦版拖曳時不要反白選到文字與圖片 */
 #app,#modal,.ghost{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #app input,#app textarea{-webkit-user-select:text;user-select:text}
@@ -398,3 +399,18 @@ canvas.spr.flip{transform:scaleX(-1)}
 .matchd h4{margin:var(--sp-2) 0 0;font-size:var(--fs-btn)}
 .matchd .bagwrap{justify-self:center}
 .matchd .lgl{max-height:none}
+/* 0.1.25 遮罩不用 backdrop-filter:blur（全螢幕模糊在電腦版大畫面、背後有戰鬥動畫時很卡），改深一點的半透明底色 */
+/* 0.1.25 準備畫面分三塊：手機照原本順序排（display:contents），電腦版左邊背包＋暫存、右邊資訊＋商店＋按鈕 */
+.pcol{display:contents}
+/* 0.1.25 電腦版：整個介面等比例放大（--z 由 fitZoom 依視窗大小算） */
+#app,#modal>*,#toast,.ghost{zoom:var(--z,1)}
+@media (min-width:1040px){
+  #app:has(>.prep){max-width:1000px;display:grid;align-content:center}
+  .prep{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"b a" "b c" "b d";grid-template-rows:auto auto 1fr;column-gap:var(--sp-5);align-items:start}
+  .pcol{display:grid;gap:var(--sp-2);align-content:start;min-width:0}
+  .pa{grid-area:a}.pb{grid-area:b;padding-top:var(--sp-3)}.pc{grid-area:c}
+  /* 詳情放在右欄下方；用絕對定位（容器是 grid 區塊 d），打開時版面不會跳 */
+  .prep{position:relative}
+  .prep>.det{position:absolute;grid-area:d;top:0;left:0;bottom:auto;transform:none;width:100%;box-shadow:0 0 0 1px var(--line)}
+  .prep .top{position:static;margin:0;padding:var(--sp-2) 0;box-shadow:none;background:none}
+}

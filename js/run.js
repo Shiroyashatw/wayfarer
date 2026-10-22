@@ -437,6 +437,18 @@ function levelUp(run) {
   run.bag.h = BAGLV[run.lv].h;
   return '';
 }
+/* 0.1.25 每回合收入：基礎＋利息＋連勝連敗＋額外金幣（nextRound 與準備畫面的預估共用） */
+const incomeOf = (run, gold = run.gold, streak = Math.max(run.ws, run.lsk)) =>
+  BASE_INCOME + Math.min(INTEREST_MAX, fl(gold / 10)) + streakBonus(streak) + bonusGold(run);
+/* 打贏的金幣：PvE +2、其他 +1 */
+const winGold = r => (r.type === 'pve' ? 2 : 1);
+/* 下回合預估拿到的金幣 [輸, 贏]（贏的含打贏獎勵，獎勵也算進利息）；沒有下一回合回傳 null */
+function incomeEst(run) {
+  const r = curRound(run);
+  if (!r || !ROUNDS[run.ri + 1]) return null;
+  const w = winGold(r);
+  return [incomeOf(run, run.gold, run.lsk + 1), w + incomeOf(run, run.gold + w, run.ws + 1)];
+}
 /* 下一回合：收入、商店 */
 function nextRound(run) {
   run.ri++;
@@ -447,8 +459,7 @@ function nextRound(run) {
     run.gold = START_GOLD;
     rollShop(run);
   } else {
-    run.gold +=
-      BASE_INCOME + Math.min(INTEREST_MAX, fl(run.gold / 10)) + streakBonus(Math.max(run.ws, run.lsk)) + bonusGold(run);
+    run.gold += incomeOf(run);
     if (!run.lock) rollShop(run);
     run.sale = false;
   }
@@ -611,7 +622,7 @@ function finishFight(run, fb) {
   if (res.win) {
     run.ws++;
     run.lsk = 0;
-    out.gold = r.type === 'pve' ? 2 : 1;
+    out.gold = winGold(r);
     /* 加時打贏：他扣跟你輸了會扣的一樣多 */
     if (opp.ex) run.rivals[opp.rv].dmg = (run.rivals[opp.rv].dmg || 0) + r.loss;
   } else {
@@ -804,7 +815,7 @@ function simLobby(seed, rating, opt = {}) {
       if (res.win) {
         run.ws++;
         run.lsk = 0;
-        run.gold += r.type === 'pve' ? 2 : 1;
+        run.gold += winGold(r);
       } else {
         run.lsk++;
         run.ws = 0;
