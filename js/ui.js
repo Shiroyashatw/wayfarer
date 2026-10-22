@@ -342,7 +342,7 @@ function roundBarHTML(run) {
     .map(q => {
       const k = ROUNDS.indexOf(q),
         lg = run.log.find(l => l.id === q.id);
-      return `<span class="rb t-${q.type}${k === run.ri ? ' on' : k < run.ri ? ' past' : ''}${lg ? (lg.win ? ' w' : ' l') : ''}"><b>${q.id}</b><small>${RSHORT[q.type]}</small></span>`;
+      return `<span class="rb t-${q.type}${k === run.ri ? ' on' : k < run.ri ? ' past' : ''}${lg ? (lg.win ? ' w' : ' l') : ''}"${lg ? ` data-act="log" data-k="${q.id}"` : ''}><b>${q.id}</b><small>${RSHORT[q.type]}</small></span>`;
     })
     .join('')}${nx ? `<span class="rb nx"><b>${nx.id}</b><small>下一階段</small></span>` : ''}</div>`;
 }
@@ -468,7 +468,7 @@ function statsHTML(run) {
 /* ================= 結算、三選一、一局結束 ================= */
 function resultHTML(run) {
   const l = run.last;
-  return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.hit ? `<p class="c-good">${l.ko ? '對手淘汰！' : `對手生命 -${l.hit}`}</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金</p>` : ''}<button class="btn pri" data-act="afterRes">繼續</button></div></div>`;
+  return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.hit ? `<p class="c-good">${l.ko ? '對手淘汰！' : `對手生命 -${l.hit}`}</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金</p>` : ''}<div class="g2"><button class="btn" data-act="log" data-k="${run.log.length ? run.log[run.log.length - 1].id : ''}">詳細</button><button class="btn pri" data-act="afterRes">繼續</button></div></div></div>`;
 }
 function pickHTML(run) {
   const p = run.pend;
@@ -569,9 +569,9 @@ function renderBattle() {
     ob = fb.opp.bag;
   $('app').innerHTML = `<div class="bt">
     <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b></div>
-    <div class="arena"><div class="fr">${sprCv('a_' + S.av, 'big')}<b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div></div>
+    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div></div>
     <div class="vs">VS</div>
-    <div class="fr">${sprCv(fb.opp.spr, 'big flip')}<b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div></div>
+    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, 'big flip')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div></div>
     <div class="fx" id="fx"></div></div>
     <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
     <div class="bctl"><button class="btn" data-act="spd">×${S.speed || 1}</button><button class="btn" data-act="skip">跳過</button></div>
@@ -650,6 +650,13 @@ function bSts() {
       key = B.st[s].join(',');
     if (!el || el.dataset.k === key) continue;
     el.dataset.k = key;
+    /* 身上的異常也染色角色：凍結藍、中毒綠、燃燒紅 */
+    const sp = $('sp' + s);
+    if (sp) {
+      sp.classList.toggle('frz', B.st[s][4] > 0);
+      sp.classList.toggle('psn', B.st[s][1] > 0 && !(B.st[s][4] > 0));
+      sp.classList.toggle('brn', B.st[s][0] > 0 && !(B.st[s][4] > 0) && !(B.st[s][1] > 0));
+    }
     el.innerHTML = STI.map(([k, ic, n], i) =>
       B.st[s][i] > 0
         ? `<span title="${STN[k]}"><img src="${artIconURL(ic) || iconURL('star')}" alt="${STN[k]}">${n ? `<b>${B.st[s][i]}</b>` : ''}</span>`
@@ -683,6 +690,43 @@ function bPop(side, txt, col, big) {
   fx.appendChild(s);
   setTimeout(() => s.remove(), 900);
 }
+/* 0.1.12 戰鬥特效：攻擊方往前衝、被打的閃白抖動、暴擊整個場地震、元素粒子、補血往上飄、格擋光圈、倒下 */
+function bAnim(el, cls) {
+  if (!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+}
+function bBurst(side, col, n = 6, up) {
+  const fx = $('fx');
+  if (!fx) return;
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement('i');
+    p.className = 'pt' + (up ? ' up' : '');
+    const a = Math.random() * Math.PI * 2,
+      d = 20 + Math.random() * 26;
+    p.style.cssText = `left:${side ? 75 : 25}%;top:${up ? 70 : 45}%;background:${col};--dx:${Math.cos(a) * d}px;--dy:${up ? -30 - Math.random() * 30 : Math.sin(a) * d}px`;
+    fx.appendChild(p);
+    setTimeout(() => p.remove(), 650);
+  }
+}
+function bSlash(side, crit) {
+  const fx = $('fx');
+  if (!fx) return;
+  const s = document.createElement('i');
+  s.className = 'slash' + (crit ? ' crit' : '');
+  s.style.left = (side ? 75 : 25) + '%';
+  s.style.setProperty('--r', (Math.random() * 60 - 30).toFixed(0) + 'deg');
+  fx.appendChild(s);
+  setTimeout(() => s.remove(), 300);
+}
+function bHit(e, tg) {
+  bAnim($('sp' + e.s), e.s ? 'atkL' : 'atkR');
+  bAnim($('sp' + tg), 'hurt');
+  if (e.el && e.el !== 'phys') bBurst(tg, ELC[e.el], e.k === 'crit' ? 10 : 5);
+  else bSlash(tg, e.k === 'crit');
+  if (e.k === 'crit') bAnim(document.querySelector('.arena'), 'shake');
+}
 function bFlash(side, u) {
   if (!u) return;
   const el = document.querySelector(`#bb${side} .it[data-u="${u}"]`);
@@ -715,18 +759,29 @@ function bTick() {
         e.k === 'crit'
       );
       bFlash(e.s, e.u);
+      bHit(e, tg);
       if (k < 2) snd(e.k === 'crit' ? 'crit' : 'hit');
     } else if (e.k === 'miss') bPop(tg, '閃避', '#b3a9bd');
-    else if (e.k === 'dot') bPop(tg, e.v, ELC[e.el]);
-    else if (e.k === 'fatigue') bPop(tg, '疲勞 ' + e.v, '#ff6a3a');
-    else if (e.k === 'heal' && !e.regen) bPop(e.s, '+' + e.v, '#7bd36b');
-    else if (e.k === 'pot') {
+    else if (e.k === 'dot') {
+      bPop(tg, e.v, ELC[e.el]);
+      bBurst(tg, ELC[e.el], 3);
+    } else if (e.k === 'fatigue') bPop(tg, '疲勞 ' + e.v, '#ff6a3a');
+    else if (e.k === 'heal' && !e.regen) {
+      bPop(e.s, '+' + e.v, '#7bd36b');
+      bBurst(e.s, '#7bd36b', 5, 1);
+    } else if (e.k === 'pot') {
       bPop(e.s, '藥水 +' + e.v, '#7bd36b', 1);
       bFlash(e.s, e.u);
-    } else if (e.k === 'block') bFlash(e.s, e.u);
-    else if (e.k === 'stun') bPop(tg, '暈眩', '#ffe27a');
-    else if (e.k === 'freeze') bPop(tg, '凍結', '#8fd8ff');
-    else if (e.k === 'thorns') bPop(tg, '反彈 ' + e.v, '#ffb15a');
+    } else if (e.k === 'block') {
+      bFlash(e.s, e.u);
+      bAnim($('sp' + e.s), 'guard');
+    } else if (e.k === 'stun') {
+      bPop(tg, '暈眩', '#ffe27a');
+      bBurst(tg, '#ffe27a', 6);
+    } else if (e.k === 'freeze') {
+      bPop(tg, '凍結', '#8fd8ff');
+      bBurst(tg, '#8fd8ff', 8);
+    } else if (e.k === 'thorns') bPop(tg, '反彈 ' + e.v, '#ffb15a');
     else if (e.k === 'weak') bPop(tg, '虛弱', '#c58cff');
     else if (e.k === 'blind') bPop(tg, '致盲', '#fff27a');
     else if (e.k === 'throw') {
@@ -743,6 +798,10 @@ function bTick() {
   bShow();
   bSts();
   bCd();
+  for (let s = 0; s < 2; s++) {
+    const sp = $('sp' + s);
+    if (sp && B.hp[s] <= 0 && !sp.classList.contains('ko')) sp.classList.add('ko');
+  }
   if (B.i >= ev.length && B.t >= B.fb.res.t + 0.6) bEnd();
 }
 /* 播完（或跳過）：結算 */
@@ -803,7 +862,7 @@ function helpHTML() {
   <div class="card"><b>職業</b><p>每局開打前三選一（可以刷新一次），整局都有效：例如弓箭手讓弓、弩傷害 +20%、攻速 +15%。照職業去買武器和輔助道具（箭袋、劍鞘、法術書、火藥桶、肉骨頭…），輔助道具要擺在武器旁邊或同一排才有用，背包空間要取捨。點左上角頭像可以看職業與數值。</p></div>
   <div class="card"><b>回合</b><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完專屬核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星），4-4 是首領（副核心三選一）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
   <div class="card"><b>金幣</b><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></div>
-  <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×7，每一級從固定的回合起才開放，例如 3×4 要 1-3、4×4 要 2-1），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
+  <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×7，越大越貴：3×4 要 14 金，開局只有 ${START_GOLD} 金，要在買道具和存錢之間取捨），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
   <div class="card"><b>合成</b><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></div>
   <div class="card"><b>相鄰效果</b><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></div>
   <div class="card"><b>職業核心</b><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 掉副核心（主打武器的加成）。背包裡兩種各能放 1 個。圖鑑最下面可以看全部。</p></div>
@@ -855,6 +914,7 @@ const A = {
   menu: () => {
     const run = S.run;
     showDlg('選單', `<p class="sub">${curRound(run).id}・生命 ${run.hp}・${run.gold} 金</p>`, [
+      ['戰鬥紀錄', () => showLog()],
       ['回首頁（這局會保留）', () => go('home')],
       ['怎麼玩', () => go('help')],
       [
@@ -885,6 +945,7 @@ const A = {
     render();
   },
   stats: () => showDlg('角色數值', statsHTML(S.run), []),
+  log: d => showLog(d.k),
   seen5: d => {
     const o = [...S.run.bag.items, ...S.run.bench].find(q => q && q.u === d.k);
     if (o) {
@@ -1115,6 +1176,41 @@ async function authDo(f) {
   render();
 }
 /* 簡單的對話框：buttons [[文字, 動作]] */
+/* 0.1.12 戰鬥紀錄：列表（新的在上面），點一筆看詳細：秒數、傷害、傷害最高的道具、對手的背包 */
+function showLog(id) {
+  const run = S.run,
+    m = $('modal');
+  if (!run) return;
+  const lg = id && run.log.find(l => l.id === id),
+    row = l =>
+      `<button class="lgr ${l.win ? 'w' : 'l'}" data-lg="${l.id}">${sprCv(l.spr || 'a_' + S.av)}<span><b>${l.id}・${esc(l.opp)}</b><small>${RTYPE[l.type]}${l.t ? `・${l.t} 秒` : ''}</small></span><em>${l.win ? '勝' : `敗 -${l.loss}`}</em></button>`;
+  let body;
+  if (lg) {
+    const mx = Math.max(1, ...(lg.top || []).map(x => x[2]));
+    body = `<div class="lgd">${row(lg)}<div class="kv3"><span>造成<b>${lg.dealt ?? '—'}</b></span><span>受到<b>${lg.taken ?? '—'}</b></span><span>秒數<b>${lg.t ?? '—'}</b></span></div>${
+      (lg.top || []).length
+        ? `<h4>傷害最高</h4>${lg.top
+            .map(
+              ([iid, t, v]) =>
+                `<div class="lgb"><img src="${itemIcon(iid)}" alt=""><span><b>${ITEMI[iid] ? ITEMI[iid].n : iid}${tierTxt(t)}</b><i><i style="width:${Math.round((v / mx) * 100)}%"></i></i></span><em>${v}</em></div>`
+            )
+            .join('')}`
+        : ''
+    }${lg.ob ? `<h4>對手的背包</h4><div class="bagwrap">${bagHTML(unpackBag(lg.ob), 24, { mini: 1, id: 'lgbag' })}</div>` : ''}</div>`;
+  } else
+    body = run.log.length
+      ? `<div class="lgl">${[...run.log].reverse().map(row).join('')}</div>`
+      : '<p class="c-dim">還沒有打過</p>';
+  m.innerHTML = `<div class="dlg2"><b>${lg ? '這場的紀錄' : '戰鬥紀錄'}</b>${body}<div class="btns col">${lg ? '<button class="btn" data-lgx="1">所有紀錄</button>' : ''}<button class="btn" data-lgc="1">關閉</button></div></div>`;
+  m.hidden = false;
+  paintSprites(m);
+  m.onclick = ev => {
+    const r = ev.target.closest('[data-lg]');
+    if (r && !lg) return showLog(r.dataset.lg);
+    if (ev.target.closest('[data-lgx]')) return showLog();
+    if (ev.target.closest('[data-lgc]') || ev.target === m) m.hidden = true;
+  };
+}
 function showDlg(title, body, buttons) {
   const m = $('modal');
   m.innerHTML = `<div class="dlg2"><b>${title}</b>${body}<div class="btns col">${buttons.map(([t], i) => `<button class="btn" data-mi="${i}">${t}</button>`).join('')}<button class="btn" data-mi="x">關閉</button></div></div>`;

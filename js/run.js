@@ -7,16 +7,21 @@ const mkW = (cd, a, b, on = {}) => ({
   pet: false,
   el: on.el || 'phys',
   cd,
-  dmg: [a, b],
+  dmg: [Math.max(1, Math.round(a)), Math.max(1, Math.round(b))],
   crit: on.crit || 0,
   burn: on.burn || 0,
   poison: on.poison || 0,
   freeze: on.freeze || [0, 0],
   stun: on.stun || [0, 0],
-  ls: on.ls || 0
+  ls: on.ls || 0,
+  bleed: on.bleed || 0,
+  sunder: on.sunder || 0,
+  weak: on.weak || 0,
+  blind: on.blind || 0
 });
+/* o.x：0.1.12 怪物也能用核心的機制（反彈、越戰越快、背水、連擊、開戰護盾…）；o.pre：開戰效果 [{k, v}] */
 const mkF = (hp, o = {}) => ({
-  hp,
+  hp: Math.round(hp),
   arm: o.arm || 0,
   dodge: o.dodge || 0,
   regen: o.regen || 0,
@@ -24,65 +29,207 @@ const mkF = (hp, o = {}) => ({
   critMul: 160,
   take: 0,
   weapons: o.w || [],
-  shields: (o.s || []).map(([cd, block]) => ({ u: 'm', cd, block, thorns: 0, heal: 0 })),
-  pots: []
+  shields: (o.s || []).map(([cd, block]) => ({ u: 'm', cd, block: Math.round(block), thorns: 0, heal: 0 })),
+  pots: [],
+  pre: o.pre || [],
+  ...(o.x || {})
 });
+/* 0.1.12 怪物模板：給生命 hp、一下的基準傷害 d，照模板做成有特色的怪（各系的異常、坦、快、群體…） */
+const ARCH = {
+  basic: (hp, d) => mkF(hp, { w: [mkW(1.6, d * 0.8, d * 1.4)] }),
+  brute: (hp, d) => mkF(hp * 1.1, { arm: 2 + fl(hp / 50), w: [mkW(2.3, d * 1.7, d * 2.5, { sunder: 1 })] }),
+  swift: (hp, d) => mkF(hp * 0.85, { dodge: 15, w: [mkW(0.9, d * 0.5, d * 0.9), mkW(1.1, d * 0.5, d * 0.8)] }),
+  fire: (hp, d) => mkF(hp, { w: [mkW(1.7, d, d * 1.5, { burn: 1 + fl(d / 4), el: 'fire' })] }),
+  cold: (hp, d) => mkF(hp * 1.05, { w: [mkW(1.7, d, d * 1.5, { freeze: [25, 1], el: 'cold' })] }),
+  storm: (hp, d) => mkF(hp, { dodge: 8, w: [mkW(1.4, d * 0.8, d * 1.3, { stun: [18, 0.5], el: 'light' })] }),
+  venom: (hp, d) => mkF(hp, { w: [mkW(1.3, d * 0.5, d * 0.8, { poison: 1 + fl(d / 5), el: 'poison' })] }),
+  bleed: (hp, d) => mkF(hp, { w: [mkW(1.2, d * 0.7, d * 1.1, { bleed: 1 + fl(d / 4) })] }),
+  breaker: (hp, d) => mkF(hp * 1.05, { arm: 2, w: [mkW(1.9, d * 1.2, d * 1.8, { sunder: 2 })] }),
+  hexer: (hp, d) => mkF(hp, { w: [mkW(1.6, d * 0.9, d * 1.4, { weak: 30, el: 'dark' })], pre: [{ k: 'weak', v: 3 }] }),
+  blinder: (hp, d) => mkF(hp, { w: [mkW(1.4, d * 0.8, d * 1.2, { blind: 30 })], pre: [{ k: 'blind', v: 3 }] }),
+  tank: (hp, d) =>
+    mkF(hp * 1.3, {
+      arm: 3 + fl(hp / 40),
+      regen: 1 + fl(hp / 80),
+      w: [mkW(2, d, d * 1.6)],
+      s: [[3.5, d * 2.5]],
+      x: { thornsF: 1 + fl(d / 4) }
+    }),
+  swarm: (hp, d) =>
+    mkF(hp, {
+      w: [mkW(1.4, d * 0.4, d * 0.8), mkW(1.6, d * 0.4, d * 0.8), mkW(1.8, d * 0.4, d * 0.8), mkW(2, d * 0.4, d * 0.8)]
+    }),
+  vamp: (hp, d) => mkF(hp, { w: [mkW(1.5, d * 0.9, d * 1.4, { ls: 35 })] }),
+  berserk: (hp, d) => mkF(hp, { w: [mkW(1.6, d * 0.9, d * 1.4)], x: { ramp: 10, rage: 40 } })
+};
+/* 兩個模板合在一起（首領）：生命取平均，武器都帶上（傷害打 6 折），特性合併 */
+function archMix(a, b, hp, d) {
+  const A = ARCH[a](hp, d),
+    B = ARCH[b](hp, d);
+  const w = [...A.weapons, ...B.weapons].map(x => ({ ...x, dmg: x.dmg.map(v => Math.max(1, Math.round(v * 0.6))) }));
+  return {
+    ...A,
+    ...B,
+    hp: Math.round((A.hp + B.hp) / 2),
+    arm: Math.max(A.arm, B.arm),
+    dodge: Math.max(A.dodge, B.dodge),
+    regen: Math.max(A.regen, B.regen),
+    weapons: w,
+    shields: [...A.shields, ...B.shields],
+    pre: [...A.pre, ...B.pre]
+  };
+}
+/* 一隻怪：[名字, 圖, 模板（或兩個模板）]，L 是這一組的基準 [生命, 傷害] */
+const mob =
+  L =>
+  ([n, spr, a]) => ({
+    n,
+    spr: 'a_' + spr,
+    arch: a,
+    F: () => (Array.isArray(a) ? archMix(a[0], a[1], L[0], L[1]) : ARCH[a](L[0], L[1]))
+  });
+const pool = (L, list) => list.map(mob(L));
+/* 野怪、菁英、首領。1-1～1-3、2-2、2-5 固定強度；其他菁英與 4-4 首領照階段放大（mobOf） */
 const MOBS = {
-  '1-1': [
-    { n: '綠史萊姆', spr: 'a_m_slime_green', F: () => mkF(28, { w: [mkW(1.7, 1, 3)] }) },
-    { n: '蝙蝠', spr: 'a_m_bat', F: () => mkF(22, { dodge: 10, w: [mkW(1.1, 1, 2)] }) },
-    { n: '香菇', spr: 'a_m_mushroom', F: () => mkF(32, { w: [mkW(1.9, 1, 3)] }) }
-  ],
-  '1-2': [
-    { n: '稻草人', spr: 'a_m_scarecrow', F: () => mkF(42, { arm: 1, w: [mkW(1.6, 2, 3)] }) },
-    { n: '流浪狗', spr: 'a_m_straydog', F: () => mkF(36, { w: [mkW(1.2, 1, 3)] }) },
-    { n: '垃圾史萊姆', spr: 'a_m_slime_trash', F: () => mkF(36, { w: [mkW(2.4, 1, 2, { poison: 1 })] }) }
-  ],
-  '1-3': [
-    { n: '火史萊姆', spr: 'a_m_slime_fire', F: () => mkF(60, { w: [mkW(1.6, 2, 3, { burn: 1, el: 'fire' })] }) },
-    { n: '夜鷺', spr: 'a_m_nightheron', F: () => mkF(54, { dodge: 12, w: [mkW(1.2, 2, 3)] }) },
-    { n: '火蟻', spr: 'a_m_fireant', F: () => mkF(58, { arm: 2, w: [mkW(1.3, 2, 4)] }) }
-  ],
-  '1-4': [
-    {
-      n: '雷蝠王',
-      spr: 'a_m_thunderbat',
-      F: () => mkF(85, { dodge: 12, w: [mkW(1.1, 2, 4, { stun: [10, 0.4], el: 'light' })] })
-    },
-    { n: '殭屍', spr: 'a_jiangshi', F: () => mkF(100, { arm: 3, regen: 1, w: [mkW(1.8, 4, 6)] }) }
-  ],
+  '1-1': pool(
+    [26, 2],
+    [
+      ['綠史萊姆', 'm_slime_green', 'basic'],
+      ['蝙蝠', 'm_bat', 'swift'],
+      ['香菇', 'm_mushroom', 'venom'],
+      ['樹蛙', 'm_treefrog', 'basic'],
+      ['海鷗', 'm_seagull', 'swift'],
+      ['山羌', 'm_muntjac', 'basic']
+    ]
+  ),
+  '1-2': pool(
+    [44, 3],
+    [
+      ['稻草人', 'm_scarecrow', 'breaker'],
+      ['流浪狗', 'm_straydog', 'bleed'],
+      ['垃圾史萊姆', 'm_slime_trash', 'venom'],
+      ['山豬', 'm_boar', 'brute'],
+      ['獼猴', 'm_macaque', 'swift'],
+      ['椰子蟹', 'm_coconutcrab', 'tank']
+    ]
+  ),
+  '1-3': pool(
+    [62, 3.6],
+    [
+      ['火史萊姆', 'm_slime_fire', 'fire'],
+      ['夜鷺', 'm_nightheron', 'swift'],
+      ['火蟻', 'm_fireant', 'breaker'],
+      ['眼鏡蛇', 'm_cobra', 'venom'],
+      ['冰史萊姆', 'm_slime_ice', 'cold'],
+      ['獨角仙', 'm_beetle', 'brute']
+    ]
+  ),
+  /* 1-4（第 1 階段菁英，第 2 階段的菁英放大 1.3 倍用另一組）：各地的精怪王 */
+  '1-4': pool(
+    [80, 3.7],
+    [
+      ['雷蝠王', 'm_thunderbat', 'storm'],
+      ['殭屍', 'jiangshi', 'tank'],
+      ['菇菇王', 'm_mushking', 'venom'],
+      ['鼠王', 'm_ratking', 'bleed'],
+      ['水鹿王', 'm_sambarking', 'brute'],
+      ['猴王', 'm_monkeyking', 'swift'],
+      ['石魔像', 'm_golem', 'tank'],
+      ['熔岩魔像', 'm_lavagolem', 'fire']
+    ]
+  ),
   /* 2-2 群體小怪：很多隻一起打（很多把弱武器），考驗範圍傷害與清怪效率 */
-  '2-2': [
-    {
-      n: '史萊姆群',
-      spr: 'a_m_slime_green',
-      F: () => mkF(110, { w: [mkW(1.4, 1, 3), mkW(1.6, 1, 3), mkW(1.8, 1, 3), mkW(2, 1, 3)] })
-    },
-    {
-      n: '蝙蝠群',
-      spr: 'a_m_bat',
-      F: () => mkF(90, { dodge: 15, w: [mkW(0.9, 1, 2), mkW(1, 1, 2), mkW(1.1, 1, 2), mkW(1.2, 1, 2)] })
-    },
-    {
-      n: '骷髏兵團',
-      spr: 'a_skeleton',
-      F: () => mkF(120, { arm: 3, w: [mkW(1.6, 2, 3), mkW(1.8, 2, 3), mkW(2, 2, 4)] })
-    }
-  ],
-  /* 2-5 菁英首領：各有一個機制要破（高護甲、高閃避會暈人、會回血會凍人） */
-  '2-5': [
-    { n: '牛頭', spr: 'a_oxhead', F: () => mkF(190, { arm: 4, w: [mkW(2, 7, 10)], s: [[4, 12]] }) },
-    {
-      n: '馬面',
-      spr: 'a_horseface',
-      F: () => mkF(170, { dodge: 10, w: [mkW(1.2, 4, 6), mkW(2.5, 6, 8, { stun: [20, 0.5] })] })
-    },
-    {
-      n: '水鬼',
-      spr: 'a_shuigui',
-      F: () => mkF(175, { regen: 3, w: [mkW(1.5, 4, 7, { freeze: [30, 1], el: 'cold' })] })
-    }
-  ]
+  '2-2': pool(
+    [105, 2.4],
+    [
+      ['史萊姆群', 'm_slime_green', 'swarm'],
+      ['蝙蝠群', 'm_bat', 'swarm'],
+      ['骷髏兵團', 'skeleton', 'swarm'],
+      ['火蟻群', 'm_fireant', 'swarm'],
+      ['獼猴群', 'm_macaque', 'swarm'],
+      ['鬼火群', 'm_ghostfire', 'swarm']
+    ]
+  ),
+  /* 2-5 首領：地府（兩個模板合在一起，各有機制要破） */
+  '2-5': pool(
+    [150, 4.6],
+    [
+      ['牛頭', 'oxhead', ['brute', 'tank']],
+      ['馬面', 'horseface', ['swift', 'storm']],
+      ['水鬼', 'shuigui', ['cold', 'tank']],
+      ['孟婆', 'mengpo', ['hexer', 'venom']],
+      ['虎姑婆', 'hugupo', ['bleed', 'berserk']],
+      ['陳守娘', 'chenshouniang', ['blinder', 'vamp']]
+    ]
+  ),
+  /* 第 2 階段菁英（2-4）：七宗罪的爪牙 */
+  sins: pool(
+    [100, 4.4],
+    [
+      ['傲慢聖騎', 'sin_pride_paladin', 'tank'],
+      ['傲慢之鏡', 'sin_pride_mirror', 'blinder'],
+      ['貪婪地精', 'sin_greed_goblin', 'swift'],
+      ['貪婪傭兵', 'sin_greed_merc', 'bleed'],
+      ['色慾魅魔', 'sin_lust_succubus', 'hexer'],
+      ['色慾藤蔓', 'sin_lust_vine', 'venom'],
+      ['憤怒狂戰士', 'sin_wrath_berserker', 'berserk'],
+      ['憤怒炸彈魔', 'sin_wrath_bomber', 'fire'],
+      ['暴食大嘴', 'sin_glut_maw', 'vamp'],
+      ['暴食鬣狗', 'sin_glut_hyena', 'bleed'],
+      ['嫉妒巨蛇', 'sin_envy_serpent', 'venom'],
+      ['嫉妒魚人', 'sin_envy_fishman', 'cold'],
+      ['怠惰巨人', 'sin_sloth_giant', 'brute'],
+      ['怠惰蝸牛', 'sin_sloth_snail', 'tank']
+    ]
+  ),
+  /* 第 3 階段菁英（3-4）：墮落十二生肖 */
+  zodiac: pool(
+    [90, 4],
+    [
+      ['墮落・子鼠', 'z_rat', 'swift'],
+      ['墮落・丑牛', 'z_ox', 'brute'],
+      ['墮落・寅虎', 'z_tiger', 'bleed'],
+      ['墮落・卯兔', 'z_rabbit', 'swift'],
+      ['墮落・辰龍', 'z_dragon', 'fire'],
+      ['墮落・巳蛇', 'z_snake', 'venom'],
+      ['墮落・午馬', 'z_horse', 'berserk'],
+      ['墮落・未羊', 'z_goat', 'hexer'],
+      ['墮落・申猴', 'z_monkey', 'blinder'],
+      ['墮落・酉雞', 'z_rooster', 'storm'],
+      ['墮落・戌狗', 'z_dog', 'bleed'],
+      ['墮落・亥豬', 'z_pig', 'tank']
+    ]
+  ),
+  /* 4-4 首領：七宗罪之王 */
+  kings: pool(
+    [125, 4],
+    [
+      ['傲慢之王・路西法', 'lucifer', ['tank', 'blinder']],
+      ['貪婪之王・瑪門', 'mammon', ['swift', 'bleed']],
+      ['色慾之王・阿斯莫德', 'asmodeus', ['hexer', 'vamp']],
+      ['憤怒之王・撒旦', 'satan', ['berserk', 'fire']],
+      ['暴食之王・別西卜', 'beelzebub', ['vamp', 'venom']],
+      ['嫉妒之王・利維坦', 'leviathan', ['cold', 'storm']],
+      ['怠惰之王・貝爾芬格', 'belphegor', ['tank', 'breaker']]
+    ]
+  ),
+  /* 第 5 階段以後的菁英：四凶與冥府 */
+  fiends: pool(
+    [90, 4],
+    [
+      ['四凶・混沌', 'hundun', ['hexer', 'tank']],
+      ['四凶・窮奇', 'qiongqi', ['bleed', 'swift']],
+      ['四凶・饕餮', 'taotie', ['vamp', 'brute']],
+      ['四凶・檮杌', 'taowu', ['berserk', 'breaker']],
+      ['燭龍', 'zhulong', 'fire'],
+      ['巫妖王', 'lichking', 'cold'],
+      ['骨王', 'bonelord', 'breaker'],
+      ['死神', 'reaper', 'bleed'],
+      ['冥將', 'wraith_general', 'tank'],
+      ['骨巨人', 'bone_colossus', 'brute'],
+      ['閻羅王', 'yanluo', ['storm', 'hexer']]
+    ]
+  )
 };
 /* ================= 一局 ================= */
 /* 這局專用的亂數（存在存檔裡，重新整理也一樣） */
@@ -278,15 +425,11 @@ function rerollShop(run) {
   return '';
 }
 /* 背包升級：變大、商店機率變好；放不下的不會發生（只會變大） */
-/* 0.1.9 下一級背包開放了沒（BAGLV 的 from） */
-const lvOpen = run => {
-  const nx = BAGLV[run.lv + 1];
-  return !!nx && (!nx.from || run.ri >= ROUNDS.findIndex(r => r.id === nx.from));
-};
+/* 下一級背包（0.1.9 曾經有開放回合，0.1.12 改回只看金幣） */
+const lvOpen = run => !!BAGLV[run.lv + 1];
 function levelUp(run) {
   if (run.lv >= BAG_MAX) return '背包已經最大了';
   const c = BAGLV[run.lv + 1].cost;
-  if (!lvOpen(run)) return `${BAGLV[run.lv + 1].from} 才能升級背包`;
   if (run.gold < c) return '金幣不夠';
   run.gold -= c;
   run.lv++;
@@ -350,15 +493,15 @@ function opponentOf(run) {
   const m = mobOf(run, r);
   return { kind: r.type, n: m.n, spr: m.spr, F: m.F };
 }
-/* 這回合的野怪／菁英／首領：有指定回合的用那一組；第 3 階段以後的菁英從菁英池挑一隻、照階段放大生命與傷害 */
-/* 第 2 階段的菁英只用 1-4 那組（不能比 2-5 首領強），第 3 階段起加入首領那組 */
-const ELITE_POOL = st => (st <= 2 ? MOBS['1-4'] : [...MOBS['1-4'], ...MOBS['2-5']]);
+/* 這回合的野怪／菁英／首領：有指定回合的用那一組；其他菁英照階段換一組（照階段放大生命與傷害） */
+/* 0.1.12：第 2 階段七宗罪爪牙、第 3 階段墮落十二生肖、第 5 階段起四凶與冥府；4-4 首領是七宗罪之王 */
+const ELITE_POOL = st => (st <= 1 ? MOBS['1-4'] : st === 2 ? MOBS.sins : st <= 4 ? MOBS.zodiac : MOBS.fiends);
 function mobOf(run, r) {
   if (MOBS[r.id]) {
     const m = pick(run, MOBS[r.id]);
     return { n: m.n, spr: m.spr, F: m.F() };
   }
-  const m = pick(run, r.type === 'boss' ? MOBS['2-5'] : r.type === 'elite' ? ELITE_POOL(r.st) : MOBS['1-3']),
+  const m = pick(run, r.type === 'boss' ? MOBS.kings : r.type === 'elite' ? ELITE_POOL(r.st) : MOBS['1-3']),
     k = r.st <= 2 ? 1.3 : 0.9 + 0.55 * (r.st - 1),
     F = m.F();
   F.hp = Math.round(F.hp * k);
@@ -379,6 +522,29 @@ function startFight(run) {
     res = simulate(me, opp.F, h(run.seed, run.ri, 991));
   return { r, opp, me, res };
 }
+/* 0.1.12 戰鬥紀錄：秒數、造成與受到的傷害、傷害最高的 5 件、對手的背包（對戰才有）、圖 */
+function fightSum(run, fb) {
+  const { res, opp } = fb,
+    by = {};
+  let dealt = 0,
+    taken = 0;
+  for (const e of res.ev) {
+    if (!['hit', 'crit', 'dot', 'thorns', 'fatigue'].includes(e.k)) continue;
+    if (e.s === 0) {
+      dealt += e.v;
+      if (e.u && (e.k === 'hit' || e.k === 'crit')) by[e.u] = (by[e.u] || 0) + e.v;
+    } else taken += e.v;
+  }
+  const top = Object.entries(by)
+    .map(([u, v]) => {
+      const o = run.bag.items.find(q => q.u === u);
+      return o ? [o.id, o.t, v] : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => b[2] - a[2])
+    .slice(0, 5);
+  return { t: Math.round(res.t * 10) / 10, dealt, taken, top, spr: opp.spr, ob: opp.bag ? packBag(opp.bag) : null };
+}
 /* 打完：扣血、連勝連敗、獎勵；回傳這場的結算 */
 function finishFight(run, fb) {
   const { r, opp, res } = fb,
@@ -396,7 +562,7 @@ function finishFight(run, fb) {
     run.hp -= out.loss;
   }
   run.gold += out.gold;
-  run.log.push({ id: r.id, type: r.type, win: res.win, opp: opp.n, loss: out.loss });
+  run.log.push({ id: r.id, type: r.type, win: res.win, opp: opp.n, loss: out.loss, ...fightSum(run, fb) });
   /* 菁英：三選一道具（星級照階段）；首領：三選一職業核心 */
   if (r.type === 'elite') {
     const [a, b] = eliteStars(r.st);
