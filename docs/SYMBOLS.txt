@@ -44,7 +44,7 @@ PIX js/sprites.js:93 [程式像素圖（道具 ic: 'p:鍵'）]
 PIXC js/sprites.js:99 [程式像素圖（道具 ic: 'p:鍵'）]
 pixURL js/sprites.js:100 [程式像素圖（道具 ic: 'p:鍵'）]
 ART_SHEET js/art.js:3
-ART js/art.js:134
+ART js/art.js:151
 SH js/items.js:4
 TAGN js/items.js:91
 ITEMS js/items.js:121

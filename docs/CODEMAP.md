@@ -109,7 +109,7 @@
 
 - **程式像素圖（道具 ic: 'p:鍵'）**（92），3 個宣告
 
-### js/art.js（1305 行）
+### js/art.js（1528 行）
 
 
 ### js/items.js（2843 行）
@@ -152,7 +152,7 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（101），5 個宣告
 
-### js/news.js（256 行）
+### js/news.js（260 行）
 
 
 ### js/ui.js（2074 行）
