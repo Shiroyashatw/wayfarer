@@ -789,6 +789,8 @@ function finishFight(run, fb) {
     pre = run.rivals.filter(rv => rivalAlive(rv, r.id));
   /* 0.1.35 金錢標花掉的金幣 */
   out.spent = afterSim(run, res, 0);
+  /* 0.1.40 這場每件道具觸發了幾次（道具詳細顯示「上一回合觸發 N 次」） */
+  run.trig = (res.trig || [])[0] || null;
   if (opp.kind === 'pvp' && run.rivals[opp.rv].live) afterSim(run.rivals[opp.rv].live.run, res, 1);
   if (res.win) {
     run.ws++;

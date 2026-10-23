@@ -337,7 +337,7 @@ function rvDetHTML(o) {
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
-  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeOf(o.id).length} 格</small></div></div><p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${brewTxt(o.ex)}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${itemDesc(o.sc)}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
+  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeOf(o.id).length} 格</small></div></div><p>${dsc(itemDesc(o.id, o.t))}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
 }
 /* 0.1.32 點對手：看他上一回合的背包（準備時看上一回合；打完結算時看剛打完的這回合，你已經看過了）。不給看這回合的，跟機器人一樣；
    0.1.38 點清單或背包裡的道具看詳細（sel 是選中的道具） */
@@ -612,17 +612,50 @@ function detailHTML(run) {
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
   return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${brewTxt(o.ex)}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${itemDesc(o.sc)}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+    <p>${dsc(itemDesc(o.id, o.t))}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
       .filter(([, m]) => modTxt(m))
-      .map(([n, m]) => `<p class="c-good">＋${esc(n)}：${modTxt(m)}</p>`)
+      .map(([n, m]) => `<p class="c-good">＋${esc(n)}：${dsc(modTxt(m))}</p>`)
       .join('')}
     <div class="btns">${
       where === 'shop'
         ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < slotPrice(run, o) ? 'disabled' : ''}>買 ${slotPrice(run, o)} 金</button>`
         : `${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o)} 金</button>`
     }</div></div>`;
+}
+/* 0.1.40 上一場這件觸發了幾次（武器以外的道具：飾品、防具、盾、藥水；武器看戰鬥紀錄的傷害） */
+function trigHTML(run, o, where) {
+  const I = ITEMI[o.id];
+  if (where !== 'bag' || I.dmg || !run.trig || !run.log || !run.log.length) return '';
+  const n = run.trig[o.u] || 0;
+  return `<p class="${n ? 'c-good' : 'c-dim'}">上一場（${run.log[run.log.length - 1].id}）觸發 ${n} 次</p>`;
+}
+/* 0.1.41 說明文字裡的異常、護盾前面加上對應的小圖示（長的先比，劇毒不會被當成中毒） */
+const KW_IC = [
+  ['劇毒', 'ail_dmark'],
+  ['中毒', 'ail_poison'],
+  ['點燃', 'sk_fireburst'],
+  ['燃燒', 'ail_burn'],
+  ['流血', 'ail_bleed'],
+  ['破甲', 'ail_vul'],
+  ['凍結', 'ail_frozen'],
+  ['冰緩', 'sk_frostnova'],
+  ['暈眩', 'ail_stun'],
+  ['虛弱', 'ail_curse'],
+  ['致盲', 'ail_mark'],
+  ['衰老', 'ail_slow'],
+  ['腐蝕', 'asc_alchemist_c0'],
+  ['混亂', 'ail_shock'],
+  ['封鎖', 'ail_guard'],
+  ['護盾', 'ail_shield']
+];
+const KW_RE = new RegExp(KW_IC.map(k => k[0]).join('|'), 'g');
+function dsc(t) {
+  return String(t || '').replace(KW_RE, w => {
+    const u = artIconURL(KW_IC.find(k => k[0] === w)[1]);
+    return u ? `<img class="kw" src="${u}" alt="">${w}` : w;
+  });
 }
 /* 0.1.35 魔劍正宗吸收的數值 */
 function abHTML(o) {
@@ -646,7 +679,7 @@ function abHTML(o) {
 function mod5HTML(m) {
   const x = MOD5[m[0]],
     q = mod5Q(m);
-  return `<p class="mod5 ${q >= 0.8 ? 'q3' : q >= 0.4 ? 'q2' : 'q1'}">✦ ${mod5Txt(m)}<small>（${x.lo}～${x.hi}）</small></p>`;
+  return `<p class="mod5 ${q >= 0.8 ? 'q3' : q >= 0.4 ? 'q2' : 'q1'}">✦ ${dsc(mod5Txt(m))}<small>（${x.lo}～${x.hi}）</small></p>`;
 }
 /* 剛拿到的 5★ 道具：開獎畫面（看過就標 mv） */
 function revealHTML(run) {
@@ -674,7 +707,7 @@ function statsHTML(run) {
         .filter(Boolean)
         .join('・');
   const C = CLSI[run.bag.cls];
-  return `<div class="stt">${C ? `<div class="sw"><img src="${artIconURL(C.ic) || iconURL('star')}" alt=""><span><b>職業：${C.n}</b><small>${clsDesc(C.id)}</small></span></div>` : ''}
+  return `<div class="stt">${C ? `<div class="sw"><img src="${artIconURL(C.ic) || iconURL('star')}" alt=""><span><b>職業：${C.n}</b><small>${dsc(clsDesc(C.id))}</small></span></div>` : ''}
     <div class="kv3">${kv('生命', `${Math.round(F.hp * hpMul(curRound(run) ? curRound(run).st : 1))}<small>這階段 ×${hpMul(curRound(run) ? curRound(run).st : 1)}</small>`)}${kv('護甲', `${F.arm}<small>減傷 ${red}%</small>`)}${kv('閃避', F.dodge + '%')}${kv('每秒回復', F.regen)}${kv('吸血', F.ls + '%')}${kv('暴擊傷害', F.critMul + '%')}</div>
     <h4>攻擊　<small>每秒約 ${tot.toFixed(1)} 傷害</small></h4>
     ${
@@ -699,16 +732,16 @@ function pickHTML(run) {
   const t = p.tier || 1;
   /* 0.1.37 煉成：選的是藥劑效果（已經選的列在上面） */
   if (p.brew)
-    return `<div class="ovl"><div class="dlg2"><b>${p.t}</b>${p.ex.length ? `<p class="c-dim">已經煉進去：${brewTxt(p.ex)}</p>` : ''}<div class="picks">${p.opts
+    return `<div class="ovl"><div class="dlg2"><b>${p.t}</b>${p.ex.length ? `<p class="c-dim">已經煉進去：${dsc(brewTxt(p.ex))}</p>` : ''}<div class="picks">${p.opts
       .map(
         k =>
-          `<button class="pk s5" data-act="pick" data-k="${k}"><img src="${itemIcon('ultelixir')}" alt=""><span><b style="color:${STARC[5]}">${BREW[k].n}</b><small>終極藥劑喝下時的效果</small></span></button>`
+          `<button class="pk s5" data-act="pick" data-k="${k}"><img src="${itemIcon('ultelixir')}" alt=""><span><b style="color:${STARC[5]}">${dsc(BREW[k].n)}</b><small>終極藥劑喝下時的效果</small></span></button>`
       )
       .join('')}</div></div></div>`;
   return `<div class="ovl"><div class="dlg2"><b>${p.t}</b><div class="picks">${p.opts
     .map(
       id =>
-        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${t > 1 ? tierBadge(t) : ''}${shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}${t > 1 ? tierTxt(t) : ''}</b><small>${itemDesc(id, t)}</small></span></button>`
+        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${t > 1 ? tierBadge(t) : ''}${shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}${t > 1 ? tierTxt(t) : ''}</b><small>${dsc(itemDesc(id, t))}</small></span></button>`
     )
     .join('')}</div></div></div>`;
 }
@@ -717,7 +750,7 @@ function clsHTML(run) {
   return `<div class="ovl"><div class="dlg2"><b>選擇職業</b><p class="c-dim">整局都有效，照職業去買道具</p><div class="picks">${run.clsOpts
     .map(
       id =>
-        `<button class="pk cls" data-act="cls" data-k="${id}"><img src="${artIconURL(CLSI[id].ic) || iconURL('star')}" alt=""><span><b>${CLSI[id].n}</b><small>${clsDesc(id)}</small></span></button>`
+        `<button class="pk cls" data-act="cls" data-k="${id}"><img src="${artIconURL(CLSI[id].ic) || iconURL('star')}" alt=""><span><b>${CLSI[id].n}</b><small>${dsc(clsDesc(id))}</small></span></button>`
     )
     .join(
       ''
@@ -1262,10 +1295,10 @@ function codexHTML() {
   if (tab === 'cls')
     return `${top}<h3>職業核心（2-5 首領掉專屬核心，4-4 首領再掉一個專屬核心融入第一個，都從你的職業池三選一）</h3>${CLASSES.map(
       C =>
-        `<details class="more" data-k="cx_${C.id}"><summary>${C.n}<small>${clsDesc(C.id)}</small></summary><div class="cores">${ITEMS.filter(
+        `<details class="more" data-k="cx_${C.id}"><summary>${C.n}<small>${dsc(clsDesc(C.id))}</small></summary><div class="cores">${ITEMS.filter(
           i => i.cls === C.id && i.core === 1
         )
-          .map(i => `<p><b>${i.n.split('・')[1]}</b>　${itemDesc(i.id)}</p>`)
+          .map(i => `<p><b>${i.n.split('・')[1]}</b>　${dsc(itemDesc(i.id))}</p>`)
           .join('')}</div></details>`
     ).join('')}</div>`;
   return `${top}${[1, 2, 3, 4, 5]
@@ -1279,7 +1312,7 @@ function codexHTML() {
               `<div class="cx s${st}${S.seen[i.id] ? '' : ' unseen'}"><img src="${itemIcon(i.id)}" alt=""><div><b>${i.n}</b><small>${i.tags
                 .filter(t => t !== 'weapon')
                 .map(t => TAGN[t])
-                .join('・')}・${shapeOf(i.id).length} 格</small><p>${itemDesc(i.id)}</p></div></div>`
+                .join('・')}・${shapeOf(i.id).length} 格</small><p>${dsc(itemDesc(i.id))}</p></div></div>`
           )
           .join('')}</div>`
     )
@@ -1633,7 +1666,8 @@ async function authDo(f) {
 }
 /* 簡單的對話框：buttons [[文字, 動作]] */
 /* 0.1.12 戰鬥紀錄：列表（新的在上面），點一筆看詳細：秒數、傷害、傷害最高的道具、對手的背包 */
-function showLog(id, hi) {
+/* 0.1.40 sel：戰鬥紀錄裡對手的背包，點道具看詳細 */
+function showLog(id, hi, sel) {
   const H = hi != null ? S.hist[hi] : null,
     logs = H ? H.log || [] : S.run && S.run.log,
     m = $('modal');
@@ -1653,7 +1687,7 @@ function showLog(id, hi) {
             )
             .join('')}`
         : ''
-    }${lg.ob ? `<h4>對手的背包</h4><div class="bagwrap">${bagHTML(unpackBag(lg.ob), 24, { mini: 1, id: 'lgbag' })}</div>` : ''}</div>`;
+    }${lg.ob ? lgBagHTML(unpackBag(lg.ob), sel) : ''}</div>`;
   } else
     body = logs.length
       ? `<div class="lgl">${[...logs].reverse().map(row).join('')}</div>`
@@ -1661,12 +1695,32 @@ function showLog(id, hi) {
   m.innerHTML = `<div class="dlg2"><b>${lg ? '這場的紀錄' : '戰鬥紀錄'}</b>${body}<div class="btns col">${lg ? `<button class="btn" data-lgx="1">${H ? '回到這一局' : '所有紀錄'}</button>` : ''}<button class="btn" data-lgc="1">關閉</button></div></div>`;
   m.hidden = false;
   paintSprites(m);
+  if (sel) {
+    const el = m.querySelector(`#lgbag .it[data-u="${sel}"]`);
+    if (el) el.classList.add('sel');
+  }
   m.onclick = ev => {
     const r = ev.target.closest('[data-lg]');
     if (r && !lg) return showLog(r.dataset.lg, hi);
+    const it = lg && ev.target.closest('[data-rvu], #lgbag .it[data-u]');
+    if (it) {
+      snd('tap');
+      const u = it.dataset.rvu || it.dataset.u;
+      return showLog(id, hi, u === sel ? null : u);
+    }
     if (ev.target.closest('[data-lgx]')) return H ? showMatch(hi) : showLog();
     if (ev.target.closest('[data-lgc]') || ev.target === m) m.hidden = true;
   };
+}
+/* 戰鬥紀錄的對手背包：格子＋清單，點了看詳細（跟看對手背包同一套） */
+function lgBagHTML(bag, sel) {
+  const so = bag.items.find(o => o.u === sel);
+  return `<h4>對手的背包<small class="c-dim">・點道具看詳細</small></h4><div class="bagwrap">${bagHTML(bag, 24, { mini: 1, id: 'lgbag' })}</div>${so ? rvDetHTML(so) : ''}<div class="rvit">${bag.items
+    .map(
+      o =>
+        `<button class="s${ITEMI[o.id].star}${o.u === sel ? ' sel' : ''}" data-rvu="${o.u}"><img src="${itemIcon(o.id)}" alt="">${esc(fuName(o))}${tierTxt(o.t)}</button>`
+    )
+    .join('')}</div>`;
 }
 /* 0.1.21 過去的對局（首頁「最近的對局」點進來）：名次、職業、最後的背包、整局每件道具的傷害、每一場（點了看詳細） */
 function showMatch(hi) {

@@ -70,6 +70,8 @@
 | 商店池子、職業偏好、對手職業圖示（0.1.36） | `js/run.js`、`js/ui.js` | `POOL`／`poolOf`、`poolAdd`、`poolHeld`、`poolOthers`、`poolUsed`、`poolLeft`、`CLS_W`／`clsShopTags`／`clsBoost`、`wpick`、`rollItem`、`rollShop`、`run.lob`（`liveStep`、`simLobby` 設的其他人）、`rivalCls`（run）；`rvClsIc`、`rivalHTML`（ui）；池子剩多少不顯示 |
 | 異常重製與陷阱（0.1.37：劇毒、點燃、腐蝕、衰老、冰緩、混亂、單件凍結、陷阱、時段加成、萬能藥、自殘、以毒為生、免疫、煉成、別西卜、寒冰之心） | `js/sim.js`、`js/bag.js`、`js/items.js`、`js/run.js`、`js/bot.js`、`js/ui.js` | `simulate` 的 `freezeIt`／`chillIt`／`trapFire`／`addPoison`／`addVenom`／`gainBlock`／`brewFx`、`phaseOf`、常數 `VENOM_MAX`／`FREEZE_T`／`CHILL_T`／`BOMB_DMG`（sim）；`compileBag` 的 `grid`／`traps`／`phase`／`potBuff`、`coreFx`、`packBag` 的 `ex`／`hh`／`rc`（bag）；核心的 `pres`／`traps`／`phase`／`potBuff`／`brew`／`earlyPot`、道具 `philstone`／`ultelixir`／`fsnake`／`bzseal`／`beelzebub`／`icheart`、`BREW`／`brewTxt`、`SEAL_RC`（items）；`afterSim`、`putItem`、`brewPend`、`sealTick`、`takePick` 的 `pend.brew`（run）；`botPend` 的煉成、`BOT_BREW`（bot）；`cdTimeline` 的 `ice`／`trap`、`STN`／`STI`／`TRAPN`、`pickHTML` 的煉成（ui） |
 | 對手背包詳細、右鍵旋轉、百科（0.1.38） | `js/ui.js`、`css/style.css`、`tools/icon_sheets.py` | `rvDetHTML`、`showRivalBag(i, sel)`、`rotIt`、`pointermove` 的右鍵偵測、`contextmenu`；`codexHTML`、`CX_TABS`／`CX_AIL`／`CX_STAT`、動作 `cxTab`；`.rvit button`、`.rvdet`、`.cxtab`；圖示圖表新增「職業核心」組（tools/icon_sheets.py） |
+| 戰鬥紀錄對手背包詳細、道具觸發次數（0.1.40） | `js/sim.js`、`js/bag.js`、`js/run.js`、`js/ui.js` | `simulate` 的 `tr`／`trig`、`compileBag` 的 `F.src`（sim／bag）；`finishFight` 的 `run.trig`（run）；`lgBagHTML`、`showLog(id, hi, sel)`、`trigHTML`（ui） |
+| 說明文字的異常圖示（0.1.41） | `js/ui.js`、`css/style.css` | `dsc`、`KW_IC`／`KW_RE`（包在 `itemDesc`／`clsDesc`／`modTxt`／`brewTxt`／`mod5Txt` 外面）；`img.kw` |
 | 點對手看上一回合的背包、重畫保留折疊（0.1.32） | `js/ui.js` | `showRivalBag`、`A.rvBag`、`rivalHTML` 的 `button.rv`；`render` 保留 `details[data-k]`（圖鑑 `codexHTML` 的 `cx_職業`） |
 | 戰報按鈕、拖曳中旋轉（0.1.29） | `js/ui.js` | `lastLogBtn`、`A.lastLog`；`dragMove`、`dragRot`（keydown／mousedown 右鍵／wheel）、`V.drag` 的 `rot`／`gi` |
 | 首頁排行榜、各職業勝率（0.1.29） | `js/ghost.js`、`js/ui.js`、`supabase/migrations/20261023000000_serling_leaderboard.sql` | `BOARD`、`ghostBoard`、`ghostEnd`（寫 `cls`／`rating_end`）（ghost）；`boardHTML`、`A.lb`、`V.lb`（ui）；RPC `leaderboard`、`class_stats` |
@@ -115,23 +117,23 @@
 ### js/items.js（2843 行）
 
 
-### js/bag.js（597 行）
+### js/bag.js（603 行）
 
 - **合成**（159），3 個宣告
 - **戰鬥數值**（214），7 個宣告
 
-### js/sim.js（659 行）
+### js/sim.js（686 行）
 
 
-### js/run.js（1294 行）
+### js/run.js（1296 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），9 個宣告
 - **0.1.36 池子**（309），34 個宣告
 - **對手**（605），16 個宣告
 - **戰鬥**（707），22 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1087），4 個宣告
-- **即時機器人（0.1.30）**（1221），5 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1089），4 個宣告
+- **即時機器人（0.1.30）**（1223），5 個宣告
 
 ### js/bot.js（476 行）
 
@@ -152,22 +154,22 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（101），5 個宣告
 
-### js/news.js（260 行）
+### js/news.js（271 行）
 
 
-### js/ui.js（2074 行）
+### js/ui.js（2128 行）
 
 - **小工具**（6），12 個宣告
 - **牌階**（61），5 個宣告
 - **主題**（164），3 個宣告
 - **畫面切換**（180），2 個宣告
 - **首頁**（215），3 個宣告
-- **準備畫面**（307），21 個宣告
-- **結算、三選一、一局結束**（692），6 個宣告
-- **戰鬥播放**（748），20 個宣告
-- **圖鑑、說明、設定**（1193），6 個宣告
-- **動作**（1327），11 個宣告
-- **拖曳擺放**（1755），14 個宣告
+- **準備畫面**（307），25 個宣告
+- **結算、三選一、一局結束**（725），6 個宣告
+- **戰鬥播放**（781），20 個宣告
+- **圖鑑、說明、設定**（1226），6 個宣告
+- **動作**（1360），12 個宣告
+- **拖曳擺放**（1809），14 個宣告
 
 ### js/main.js（74 行）
 

@@ -63,6 +63,8 @@ function simSide(F) {
     /* 0.1.37 放在這個人背包裡的陷阱；這個人觸發的凍結＋冰緩次數（寒冰之心）；萬能藥的加成到幾秒 */
     traps: [],
     iceN: 0,
+    /* 0.1.40 每件道具這場觸發了幾次（給道具詳細顯示「上一回合觸發 N 次」） */
+    trig: {},
     buffT: 0,
     bDmg: 0,
     bSpd: 0
@@ -103,6 +105,10 @@ function simulate(FA, FB, seed) {
     S = [simSide(FA), simSide(FB)],
     ev = [];
   const items = x => [...x.w, ...x.s];
+  /* 0.1.40 記一次觸發：x 那邊給了加成 k 的道具都 +n */
+  const tr = (x, k, n = 1) => {
+    for (const u of (x.F.src || {})[k] || []) x.trig[u] = (x.trig[u] || 0) + n;
+  };
   const log = (t, s, k, v, extra) =>
     ev.push({
       t: Math.round(t * 100) / 100,
@@ -153,15 +159,21 @@ function simulate(FA, FB, seed) {
     blind: 'rBlind',
     confuse: 'rBlind'
   };
-  const res = (d, k, t) =>
-    d.F.immAll ||
-    ((k === 'frozen' || k === 'chill') && d.F.immFz) ||
-    ((k === 'poison' || k === 'venom') && t < (d.F.poisonImm || 0)) ||
-    t < (d.F.immT || 0)
-      ? 0
-      : 1 - Math.min(RES_MAX, d.F[RK[k]] || 0) / 100;
+  const res = (d, k, t) => {
+    if (d.F.immAll) return tr(d, 'immAll'), 0;
+    if ((k === 'frozen' || k === 'chill') && d.F.immFz) return tr(d, 'immFz'), 0;
+    if ((k === 'poison' || k === 'venom') && t < (d.F.poisonImm || 0)) return tr(d, 'poisonImm'), 0;
+    if (t < (d.F.immT || 0)) return 0;
+    const v = Math.min(RES_MAX, d.F[RK[k]] || 0);
+    if (v > 0) tr(d, RK[k]);
+    return 1 - v / 100;
+  };
   /* 回復（a 是誰回血）：敵人的詛咒繃帶會減少 */
-  const healOf = (a, h) => h * (1 - Math.min(RES_MAX, S[1 - S.indexOf(a)].F.healCut || 0) / 100);
+  const healOf = (a, h) => {
+    const o = S[1 - S.indexOf(a)];
+    if (o.F.healCut) tr(o, 'healCut');
+    return h * (1 - Math.min(RES_MAX, o.F.healCut || 0) / 100);
+  };
   const heal = (t, a, i, v, extra = {}) => {
     const h = Math.min(a.max - a.hp, healOf(a, v));
     if (h > 0) {
@@ -238,7 +250,10 @@ function simulate(FA, FB, seed) {
     /* 0.1.37 混亂：一半機率打到自己 */
     const self = a.confuse > 0 && r() * 100 < CONFUSE,
       d = self ? a : S[1 - ai];
-    if (!self && r() * 100 < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) return log(t, ai, 'miss', 0, { u: w.u });
+    if (!self && r() * 100 < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) {
+      if (d.F.dodge) tr(d, 'dodge');
+      return log(t, ai, 'miss', 0, { u: w.u });
+    }
     /* 0.1.35 招架：有機率格擋這一下（不受傷害）；第一次成功後護甲 +parryArm */
     if (!self && d.F.parry && r() * 100 < d.F.parry) {
       if (d.F.parryArm && !d.parried) (d.parried = 1), (d.parA += d.F.parryArm);
@@ -256,6 +271,7 @@ function simulate(FA, FB, seed) {
     const crit = !(a.age > 0) && r() * 100 < w.crit + ph.crit;
     /* 0.1.29 厚皮：暴擊多出來的傷害減少 */
     if (crit) v *= 1 + (a.F.critMul / 100 - 1) * (1 - Math.min(RES_MAX, d.F.critRes || 0) / 100);
+    if (crit && d.F.critRes) tr(d, 'critRes');
     if (a.weak > 0) v *= 1 - WEAK_PCT / 100;
     /* 0.1.37 時段加成、萬能藥（喝藥水後幾秒）、腐蝕藥劑（整場傷害降低）、碎冰（敵人每件凍結中的道具） */
     v *= Math.max(0.1, 1 + ph.dmgPct / 100);
@@ -282,9 +298,9 @@ function simulate(FA, FB, seed) {
     /* 0.1.28 守護（質變）：命中時獲得傷害一部分的格擋 */
     if (w.guard && v > 0) gainBlock(t, a, ai, (v * w.guard) / 100, w.u);
     /* 0.1.10 暴擊回血、被打中反彈 */
-    if (crit && a.F.critHeal && a.hp > 0) heal(t, a, ai, a.F.critHeal);
+    if (crit && a.F.critHeal && a.hp > 0) heal(t, a, ai, a.F.critHeal), tr(a, 'critHeal');
     if (!self) {
-      if (d.F.thornsF && v > 0) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {});
+      if (d.F.thornsF && v > 0) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {}), tr(d, 'thornsF');
       /* 0.1.37 毒刺皮膚：被打中時讓攻擊者中毒 */
       if (d.F.thornsP && v > 0) addPoison(d, a, d.F.thornsP, t);
       /* 格擋時反彈 */
@@ -334,6 +350,8 @@ function simulate(FA, FB, seed) {
     const a = S[i],
       d = S[1 - i],
       n = Math.min(5, d.w.filter(w => w.pet).length);
+    if (a.F.petDown && n) tr(a, 'petDown', n);
+    if (a.F.petHunt && n) tr(a, 'petHunt', n);
     if (a.F.petDown)
       for (const w of d.w)
         if (w.pet) w.dmg = w.dmg.map(v => Math.max(1, Math.round(v * (1 - Math.min(PETDOWN_MAX, a.F.petDown) / 100))));
@@ -552,6 +570,7 @@ function simulate(FA, FB, seed) {
         if (p.n > 0 && a.hp > 0 && a.hp < (a.max * p.at) / 100) {
           p.n--;
           trapFire(t, i, p.u);
+          tr(a, 'potMul');
           const pv = healOf(a, p.v);
           a.hp = Math.min(a.max, a.hp + pv);
           log(t, i, 'pot', Math.round(pv), { self: 1, u: p.u });
@@ -610,9 +629,9 @@ function simulate(FA, FB, seed) {
             'sunder'
           ].filter(k => a[k] > 0);
           for (const k of ks.slice(0, a.F.cleanse)) a[k] = 0;
-          if (ks.length) log(t, i, 'cleanse', Math.min(ks.length, a.F.cleanse), { self: 1 });
+          if (ks.length) log(t, i, 'cleanse', Math.min(ks.length, a.F.cleanse), { self: 1 }), tr(a, 'cleanse');
         }
-        if (a.F.regen && a.hp > 0 && a.hp < a.max) heal(t, a, i, a.F.regen, { regen: 1 });
+        if (a.F.regen && a.hp > 0 && a.hp < a.max) heal(t, a, i, a.F.regen, { regen: 1 }), tr(a, 'regen');
         if (sec >= FATIGUE_T) hurt(t, 2 * (sec - FATIGUE_T + 1), a, 1 - i, 'fatigue', {});
       }
     }
@@ -653,6 +672,14 @@ function simulate(FA, FB, seed) {
     max: [S[0].max, S[1].max],
     /* 0.1.35 金錢標花掉的金幣；0.1.37 各自觸發的凍結＋冰緩次數（寒冰之心） */
     spent: [S[0].spent, S[1].spent],
-    ice: [S[0].iceN, S[1].iceN]
+    ice: [S[0].iceN, S[1].iceN],
+    /* 0.1.40 每件道具觸發了幾次：角色加成的觸發＋有標道具的事件（攻擊、格擋、喝藥水、開戰效果、陷阱） */
+    trig: S.map((x, i) => {
+      const o = { ...x.trig };
+      for (const e of ev)
+        if (e.s === i && e.u && !['dot', 'heal', 'thorns', 'fatigue', 'corrode'].includes(e.k))
+          o[e.u] = (o[e.u] || 0) + 1;
+      return o;
+    })
   };
 }

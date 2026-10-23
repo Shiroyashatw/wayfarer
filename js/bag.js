@@ -286,6 +286,8 @@ function compileBag(bag, extra = {}) {
       potBuff: null,
       /* 0.1.37 格子：每件道具佔哪幾格（敵人的陷阱放在格子上） */
       grid: { w: bag.w, h: bag.h, at: Object.fromEntries(bag.items.map(o => [o.u, cellsOf(o)])) },
+      /* 0.1.40 角色加成的來源：{ 加成: [道具 u…] } */
+      src: {},
       ...extra
     };
   /* 先收集每件身上的加成 */
@@ -351,7 +353,10 @@ function compileBag(bag, extra = {}) {
     if (S0.fx) {
       const f = fxT(S0, s.t);
       for (const k in f) F[k] += f[k];
+      /* 0.1.40 這件給了哪些角色加成（戰鬥中照這個記觸發次數） */
+      for (const k in f) (F.src[k] = F.src[k] || []).push(s.u);
     }
+    if (S0.pre) (F.src.pre = F.src.pre || []).push(s.u);
     /* 0.1.33 方陣：背包裡每有 1 件某標籤，角色加成 */
     for (const b of S0.fxPer || []) for (const k in b) if (k !== 'tag') F[k] += b[k] * cnt(b.tag);
     /* 0.1.33 賄賂：開戰前付過錢（bag.pay）才有效 */
@@ -401,6 +406,7 @@ function compileBag(bag, extra = {}) {
     if (I.arm) F.arm += Math.round(I.arm * k);
     if (I.dodge) F.dodge += Math.round(I.dodge * TIERB[o.t] * dx);
     if (I.regen || m.regen) F.regen += Math.round((I.regen || 0) * k) + (m.regen || 0);
+    if (I.regen) (F.src.regen = F.src.regen || []).push(o.u);
     if (m.thornsF) F.thornsF += m.thornsF;
     /* 0.1.29 照格數：巨化的生命 */
     if (m.cellHp) F.hp += m.cellHp * shapeOf(o.id).length;
