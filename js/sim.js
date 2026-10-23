@@ -101,7 +101,11 @@ function simSide(F) {
     cbT: 0,
     phx: 0,
     /* 0.1.52 印記守護 3 級：下一次能盾擊的時間 */
-    gT: 0
+    gT: 0,
+    /* 0.1.53 馴獸師：撲殺過了沒、狂暴層數、馴獸鞭計時 */
+    pnc: 0,
+    frz: 0,
+    wpT: 0
   };
 }
 /* 0.1.35 金錢標花 1 金那一下：傷害、暴擊率、命中效果、吸血都翻倍 */
@@ -367,6 +371,7 @@ function simulate(FA, FB, seed) {
     const v = Math.round(sec * res(d, 'stun', t) * 100) / 100;
     if (v <= 0) return;
     d.stun = Math.max(d.stun, v);
+    d.frz = 0;
     log(t, ai, 'stun', v, {});
     const a = S[ai];
     if (a.F.stunCharge && d !== a) {
@@ -469,6 +474,9 @@ function simulate(FA, FB, seed) {
     if (a.F.fury && w.kind && a.furyN) v *= 1 + (a.F.fury * a.furyN) / 100;
     /* 0.1.51 火之化身：不是火的武器傷害 +10% */
     if (a.avatarOn && w.el !== 'fire') v *= 1.1;
+    /* 0.1.53 饕餮吞噬（這場累積）、檮杌（你受到的攻擊傷害 -%） */
+    if (w.gb) v *= 1 + w.gb / 100;
+    if (d.F.dr) v *= Math.max(0.2, 1 - d.F.dr / 100);
     /* 0.1.52 印記：幸運一擊（幸運道具 10% 傷害 ×3）、力量的重擊（o.hv） */
     const lucky = w.sgK && r() * 100 < 10;
     if (lucky) v *= 3;
@@ -477,6 +485,12 @@ function simulate(FA, FB, seed) {
     const arm = d.F.arm + d.parA - d.sunder;
     v *= 50 / (50 + Math.max(-10, arm * (arm > 0 ? 1 - pc : 1)));
     v *= 1 + d.F.take / 100;
+    /* 0.1.53 護主：被打時機率由寵物擋下一半，那隻寵物反咬 */
+    let biter = null;
+    if (!self && !inGd && d.F.petGuard && r() * 100 < d.F.petGuard) {
+      const ps = d.w.filter(x => x.pet && !(x.seal > 0));
+      if (ps.length) (biter = ps[fl(r() * ps.length)]), (v *= 0.5);
+    }
     let ab = 0;
     if (d.block > 0) {
       ab = Math.min(d.block, v * (1 - pc));
@@ -505,8 +519,20 @@ function simulate(FA, FB, seed) {
     if (w.guard && v > 0) gainBlock(t, a, ai, (v * w.guard) / 100, w.u);
     /* 0.1.10 暴擊回血、被打中反彈 */
     if (crit && a.F.critHeal && a.hp > 0) heal(t, a, ai, a.F.critHeal), tr(a, 'critHeal');
+    /* 0.1.53 馴獸師：寵物的攻擊不觸發反彈；共生（寵物命中回血）；狂暴（寵物命中疊層） */
+    const noTh = w.pet && a.F.petNoThorns;
+    if (w.pet && !self && v > 0) {
+      if (a.F.symHeal && a.hp > 0) heal(t, a, ai, a.F.symHeal);
+      if (a.F.frenzy) a.frz = Math.min(FRENZY_MAX, a.frz + 1);
+    }
+    if (biter && a.hp > 0 && d.hp > 0) {
+      inGd = 1;
+      log(t, di, 'petGuard', 0, { u: biter.u, self: 1 });
+      attack(t, d, di, biter);
+      inGd = 0;
+    }
     if (!self) {
-      if (d.F.thornsF && v > 0) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {}), tr(d, 'thornsF');
+      if (d.F.thornsF && v > 0 && !noTh) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {}), tr(d, 'thornsF');
       /* 0.1.37 毒刺皮膚：被打中時讓攻擊者中毒 */
       if (d.F.thornsP && v > 0) addPoison(d, a, d.F.thornsP, t);
       /* 0.1.51 火焰護體（攻擊者燃燒）、避雷針（機率電擊攻擊者） */
@@ -517,7 +543,7 @@ function simulate(FA, FB, seed) {
         tr(d, 'rod');
       }
       /* 格擋時反彈 */
-      if (ab > 0) {
+      if (ab > 0 && !noTh) {
         const th = d.s.reduce((n, s) => n + s.thorns, 0);
         if (th) hurt(t, th, a, 1 - ai, 'thorns', {});
       }
@@ -576,6 +602,21 @@ function simulate(FA, FB, seed) {
     if (w.stun[0] && !o.ch && r() * 100 < w.stun[0]) stunIt(t, ai, d, w.stun[1]);
     /* 0.1.37 墮落蛇、別西卜：命中衰老、腐蝕 N 秒 */
     if (w.age) ctl('age', 'age', w.age);
+    /* 0.1.53 四兇 */
+    if (w.gorge && !self) w.gb = Math.min(GORGE_MAX, (w.gb || 0) + w.gorge);
+    if (w.sealHit && !self && r() * 100 < w.sealHit[0]) {
+      const x = rndIt(d, o => d.w.includes(o) && !(o.seal > 0));
+      if (x) (x.seal = Math.max(x.seal || 0, w.sealHit[1])), log(t, ai, 'seal', w.sealHit[1], { u: w.u, tu: x.u });
+    }
+    if (w.chaos && !self) {
+      const k = fl(r() * 6);
+      if (k === 0) d.burn += 3 * res(d, 'burn', t);
+      else if (k === 1) addPoison(a, d, 3, t);
+      else if (k === 2) d.bleed += 4 * res(d, 'bleed', t);
+      else if (k === 3) ctl('weak', 'weak', WEAK_T);
+      else if (k === 4) ctl('blind', 'blind', BLIND_T);
+      else ctl('confuse', 'confuse', 1);
+    }
     if (w.corr) ctl('corrode', 'corrode', w.corr);
   };
   /* 0.1.50 迴避反擊：閃避、招架、盾格擋時，最強的一把矛（沒有矛就最強的武器）立刻反擊（反擊不會再引發反擊） */
@@ -593,7 +634,8 @@ function simulate(FA, FB, seed) {
     inCtr = 0;
   };
   /* 0.1.50 一把武器出手一次：狙擊（每第 N 次）、元素箭袋輪替、矛弓連攜（×2）、多重射擊（射 N 支） */
-  let inHv = 0;
+  let inHv = 0,
+    inGd = 0;
   const fire = (t, a, ai, w, mul = 1) => {
     const o = {};
     w.k = (w.k || 0) + 1;
@@ -686,8 +728,9 @@ function simulate(FA, FB, seed) {
       for (const p of S[i].F.pre || []) {
         if (p.k !== k) continue;
         const c = S[1 - i].w.filter(w => w.pet && !w.imm && !(w.seal >= MAX_T)).sort((x, y) => petRank(y) - petRank(x));
-        for (const w of c.slice(0, k === 'petLock' ? p.v : 3)) {
-          const v = k === 'petLock' ? MAX_T : p.v;
+        /* 0.1.53 捕蟲網關住星級最高的 1 隻 N 秒（之前整場關住 N 隻）；殺蟲劑封鎖最強的 3 隻 N 秒 */
+        for (const w of c.slice(0, k === 'petLock' ? 1 : 3)) {
+          const v = p.v;
           w.seal = Math.max(w.seal || 0, v);
           log(0, i, 'seal', v, { u: p.u, tu: w.u });
         }
@@ -881,7 +924,12 @@ function simulate(FA, FB, seed) {
           ice(w) *
           (w.cold ? shS : 1) *
           (night && w.kind === 'bow' ? 1 + a.F.sunmoon / 100 : 1) *
-          (w.sgL && a.F.sgLife >= 3 && a.hp < a.max * 0.3 ? 2 : 1);
+          (w.sgL && a.F.sgLife >= 3 && a.hp < a.max * 0.3 ? 2 : 1) *
+          /* 0.1.53 撲殺之後寵物攻速 ×2、狂暴 */
+          (w.pet && a.pnc ? 2 : 1) *
+          (w.pet && a.frz ? 1 + (a.frz * a.F.frenzy) / 100 : 1);
+        /* 0.1.53 召喚的戰狼解封時記一筆（畫面跳「戰狼加入」） */
+        if (w.vw && !w.joined && !(w.seal > 0)) (w.joined = 1), log(t, i, 'wolf', w.vw, { u: w.u, self: 1 });
         if (w.tt >= w.cd) {
           w.tt -= w.cd;
           /* 0.1.51 靜電場（敵人的）：機率觸電，這次落空、電荷 +1 */
@@ -903,6 +951,10 @@ function simulate(FA, FB, seed) {
           if (miss) continue;
           fire(t, a, i, w);
           if (w.sgS) relay(a, w);
+          /* 0.1.53 群狼戰術：寵物出手時其他寵物充能 */
+          if (a.F.pack && w.pet)
+            for (const x of a.w)
+              if (x.pet && x !== w && !(x.seal > 0)) x.tt = Math.min(x.cd * 0.99, x.tt + (x.cd * a.F.pack) / 100);
           /* 0.1.50 戰舞：矛出手時弓充能、弓出手時矛充能 */
           if (a.F.link && w.kind)
             for (const x of a.w)
@@ -970,6 +1022,18 @@ function simulate(FA, FB, seed) {
       const a = S[i],
         o = S[1 - i];
       if (a.hp <= 0 || o.hp <= 0) continue;
+      /* 0.1.53 撲殺（敵人第一次低於 30%：寵物全部出手一次）、馴獸鞭（每 N 秒最慢的寵物出手 ×2） */
+      if (a.F.pounce && !a.pnc && o.hp < o.max * 0.3) {
+        a.pnc = 1;
+        log(t, i, 'pounce', 0, { self: 1 });
+        for (const x of a.w) if (x.pet && !(x.seal > 0) && o.hp > 0) fire(t, a, i, x);
+        tr(a, 'pounce');
+      }
+      if (a.F.whip && (a.wpT += SIM_DT) >= a.F.whip - 1e-6) {
+        a.wpT = 0;
+        const x = a.w.filter(x => x.pet && !(x.seal > 0) && !(x.fz > 0)).sort((p, q) => q.cd - p.cd)[0];
+        if (x) log(t, i, 'whip', 0, { u: x.u, self: 1 }), fire(t, a, i, x, 2), tr(a, 'whip');
+      }
       if (a.F.meteor && (a.metT += SIM_DT) >= (o.ignite ? METEOR_FAST : METEOR_T) - 1e-6) {
         a.metT = 0;
         hurt(t, a.F.meteor, o, i, 'meteor', { el: 'fire' });

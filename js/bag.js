@@ -224,6 +224,9 @@ function mergeAll(run, r) {
       .sort((x, y) => tfRank({ id: y.f, t: y.ft || 1 }) - tfRank({ id: x.f, t: x.ft || 1 }))[0];
     if (fu) (o.f = fu.f), (o.ft = fu.ft);
     /* 0.1.52 印記：三件的印記不一樣，玩家三選一（run.sgq 排隊，畫面跳出來選）；機器人（auto）直接選背包裡最多的那個 */
+    /* 0.1.53 馴獸師的成長：留三件裡最高的 */
+    const gw = Math.max(0, ...use.map(([, q]) => q.gw || 0));
+    if (gw) o.gw = gw;
     const sgs = [...new Set(use.map(([, q]) => q.sg).filter(x => x != null))];
     if (sgs.length > 1) {
       if (run.auto) {
@@ -360,12 +363,31 @@ function compileBag(bag, extra = {}) {
       sgGuard: 0,
       sgLife: 0,
       sgLuck: 0,
+      /* 0.1.53 馴獸師 */
+      petGrow: 0,
+      petNoThorns: 0,
+      wolves: 0,
+      alpha: 0,
+      giant: 0,
+      pack: 0,
+      petGuard: 0,
+      pounce: 0,
+      frenzy: 0,
+      whip: 0,
+      symHeal: 0,
+      dr: 0,
       /* 0.1.37 格子：每件道具佔哪幾格（敵人的陷阱放在格子上） */
       grid: { w: bag.w, h: bag.h, at: Object.fromEntries(bag.items.map(o => [o.u, cellsOf(o)])) },
       /* 0.1.40 角色加成的來源：{ 加成: [道具 u…] } */
       src: {},
       ...extra
     };
+  /* 0.1.53 獸群召喚：先放 N 隻看不見的戰狼（不在格子上，吃寵物的加成；開戰後每 WOLF_T 秒解封一隻），階數跟背包裡最高階的寵物一樣 */
+  const WN = Math.max(0, ...its.flatMap(o => defsOf(o).map(d => (d.fx && d.fx.wolves) || 0)));
+  if (WN) {
+    const wt = Math.max(1, ...bag.items.filter(o => ITEMI[o.id].tags.includes('pet')).map(o => o.t));
+    for (let k = 0; k < WN; k++) its.push({ u: 'wv' + k, id: 'wolf', t: wt, x: -1, y: -1, r: 0, vw: k + 1 });
+  }
   /* 先收集每件身上的加成 */
   const mods = new Map(its.map(o => [o.u, {}]));
   const add = (o, m, mul = 1) => {
@@ -600,9 +622,29 @@ function compileBag(bag, extra = {}) {
         sgM: o.sg === 0 && SGL[0] ? 1 : 0,
         sgS: o.sg === 1 && SGL[1] ? 1 : 0,
         sgL: o.sg === 3 && SGL[3] ? 1 : 0,
-        sgK: o.sg === 4 && SGL[4] ? 1 : 0
+        sgK: o.sg === 4 && SGL[4] ? 1 : 0,
+        /* 0.1.53 召喚的戰狼（第幾隻、開戰封住到幾秒）、馴獸師的成長 */
+        ...(o.vw ? { vw: o.vw, seal: o.vw * WOLF_T } : {}),
+        gw: o.gw || 0,
+        /* 0.1.53 四兇：吞噬（饕餮）、命中封鎖（窮奇）、隨機異常（混沌） */
+        gorge: I.gorge || 0,
+        sealHit: I.sealHit || null,
+        chaos: I.chaos ? 1 : 0
       });
     }
+  }
+  /* 0.1.53 馴獸師：成長（每層傷害 +petGrow%）、巨獸化（只有 1～2 隻寵物）、頭狼（星級最高的 ×2、其他 +15%） */
+  const pets = F.weapons.filter(w => w.pet && !w.vw),
+    mulD = (w, k) => (w.dmg = w.dmg.map(v => Math.round(v * k)));
+  if (F.petGrow) for (const w of pets) if (w.gw) mulD(w, 1 + (F.petGrow * Math.min(10, w.gw)) / 100);
+  if (F.giant && pets.length && pets.length <= 2) {
+    for (const w of pets) mulD(w, 2.5);
+    F.hp += 80;
+  }
+  if (F.alpha && pets.length) {
+    const top = [...pets].sort((x, y) => y.star * 10 + y.t - (x.star * 10 + x.t))[0];
+    for (const w of pets) mulD(w, w === top ? 2 : 1.15);
+    top.alpha = 1;
   }
   /* 0.1.33 審判：每把武器的傷害 +護甲值 */
   if (F.armDmg && F.arm > 0) for (const w of F.weapons) w.dmg = w.dmg.map(v => v + F.arm);
@@ -656,7 +698,7 @@ function bagMods(bag) {
 }
 /* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值, 終極藥劑的效果, 寒冰之心的生命, 封印過了幾回合]；
    後面是預設值的就不存。gp：0.1.35 開戰時的金幣（鈔能力、金錢標） */
-const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0];
+const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0];
 const packIt = o => {
   const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
     /* 0.1.52 最後一格是印記（+1，0 是沒有） */
@@ -670,7 +712,8 @@ const packIt = o => {
       o.ex || 0,
       o.hh || 0,
       o.rc || 0,
-      o.sg != null ? o.sg + 1 : 0
+      o.sg != null ? o.sg + 1 : 0,
+      o.gw || 0
     ];
   while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
   return [...a, ...t];
@@ -703,7 +746,8 @@ const unpackIt = (a, u) => ({
   ex: a[13] || null,
   hh: a[14] || 0,
   rc: a[15] || 0,
-  ...(a[16] ? { sg: a[16] - 1 } : {})
+  ...(a[16] ? { sg: a[16] - 1 } : {}),
+  ...(a[17] ? { gw: a[17] } : {})
 });
 const unpackBag = p => ({
   w: p.w,
@@ -732,7 +776,8 @@ const unpackBag = p => ({
       ex: a[13] || null,
       hh: a[14] || 0,
       rc: a[15] || 0,
-      ...(a[16] ? { sg: a[16] - 1 } : {})
+      ...(a[16] ? { sg: a[16] - 1 } : {}),
+      ...(a[17] ? { gw: a[17] } : {})
     }))
 });
 /* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */

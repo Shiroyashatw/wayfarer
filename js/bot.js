@@ -6,18 +6,18 @@
 /* 訓練出來的參數（tools/bot_train.js 會覆寫這一段） */
 let BOT_P = {
   gainMin: 0.01, // 一件道具至少要讓戰力提升這個比例才買
-  perGold: 0.012, // 每 1 金至少要換到多少戰力（比例）
-  reserve: 23, // 想留著吃利息的錢（後期才存）
-  reserveFrom: 7, // 第幾回合開始存利息
-  rollGold: 2, // 錢多於這個、又沒東西好買就刷新
-  maxRolls: 7, // 一回合最多刷新幾次
+  perGold: 0.01, // 每 1 金至少要換到多少戰力（比例）
+  reserve: 34, // 想留著吃利息的錢（後期才存）
+  reserveFrom: 10, // 第幾回合開始存利息
+  rollGold: 3, // 錢多於這個、又沒東西好買就刷新
+  maxRolls: 8, // 一回合最多刷新幾次
   lvFill: 0.97, // 背包塞到幾成滿就考慮升級
-  lvKeep: 2, // 升級後至少留幾金
+  lvKeep: 1, // 升級後至少留幾金
   sellMargin: 0, // 賣掉舊的換新的，戰力至少要多這個比例
-  mergeBonus: 0.024, // 湊合成的額外偏好（還沒湊滿也先收）
-  dotW: 0.533, // 燃燒、中毒、流血每層的價值（約幾秒）
-  ctrlW: 0.919, // 暈眩、凍結、虛弱、致盲的價值倍率
-  ehpW: 1.477
+  mergeBonus: 0.158, // 湊合成的額外偏好（還沒湊滿也先收）
+  dotW: 0.5, // 燃燒、中毒、流血每層的價值（約幾秒）
+  ctrlW: 1.084, // 暈眩、凍結、虛弱、致盲的價值倍率
+  ehpW: 1.581
 };
 /* ================= 戰力分數 ================= */
 /* 0.1.28 對手平均有幾隻寵物（反制寵物的道具照這個估價）；simLobby 每回合照其他機器人的背包設 run.epet */
@@ -88,6 +88,10 @@ function botPower(F, P = BOT_P) {
     if (w.pin) hit *= 1.15;
     if (w.elem) hit = hit * 1.3 + 3 * P.dotW;
     if (w.sure) hit *= 1.05;
+    /* 0.1.53 四兇：吞噬、命中封鎖、隨機異常 */
+    if (w.gorge) hit *= 1.3;
+    if (w.sealHit) hit *= 1 + (w.sealHit[0] / 100) * w.sealHit[1] * 0.15 * P.ctrlW;
+    if (w.chaos) hit += 2 * P.dotW;
     /* 0.1.37 劇毒不退、每秒 ×2；中毒上限高（毒師）多算一點 */
     hit +=
       ((w.burn || 0) +
@@ -113,7 +117,8 @@ function botPower(F, P = BOT_P) {
     /* 0.1.35 雙手大師（這一件的連擊）、金錢標（開戰時的錢夠打大半場才算翻倍） */
     hit *= 1 + (w.dbl || 0) / 100;
     if (w.coin) hit *= 1 + Math.min(1, (F.gold || 0) / 15);
-    dps += hit / Math.max(0.3, w.cd);
+    /* 0.1.53 召喚的戰狼開戰後才陸續加入，算一半 */
+    dps += (hit / Math.max(0.3, w.cd)) * (w.vw ? 0.5 : 1);
     if (w.guard) gd += ((hit * w.guard) / 100 / Math.max(0.3, w.cd)) * 9;
   }
   for (const s of F.shields) if (s.bash) dps += (s.block * s.bash) / 100 / Math.max(0.6, s.cd);
@@ -159,6 +164,13 @@ function botPower(F, P = BOT_P) {
   if (F.sgSwift) dps *= 1 + sh('sgS') * (F.sgSwift >= 2 ? 0.3 : 0.17) * (F.sgSwift >= 3 ? 1.3 : 1);
   if (F.sgLuck) dps *= (1 + sh('sgK') * 0.2) * (F.sgLuck >= 3 ? 1.15 : 1);
   if (F.sgGuard >= 3) dps *= 1.12;
+  /* 0.1.53 馴獸師：群狼戰術、撲殺、狂暴、馴獸鞭（寵物佔幾成） */
+  const nP = F.weapons.filter(w => w.pet).length,
+    pS = nP / nW;
+  if (F.pack && nP > 1) dps *= 1 + (F.pack / 100) * (nP - 1) * 0.5 * pS;
+  if (F.pounce && nP) dps *= 1 + 0.15 * pS;
+  if (F.frenzy && nP) dps *= 1 + ((F.frenzy * 8) / 100) * pS;
+  if (F.whip && nP) dps *= 1.08;
   /* 0.1.51 火法師：點燃（職業）、爆燃、流星火雨、焚盡、自焚、火之化身、引火、炎爆、熱浪、星星之火 */
   if (burnSrc || F.meteor || F.spark) {
     if (F.igniteAt) dps *= 1.12;
@@ -210,6 +222,11 @@ function botPower(F, P = BOT_P) {
   if (F.revive) ehp *= 1 + F.revive / 100 + 0.1;
   /* 0.1.52 印記：守護 2 級（護盾被打破反彈）、生命 2、3 級（溢出變護盾、低血加速） */
   if (F.sgGuard >= 2) ehp += 40;
+  /* 0.1.53 護主、共生（寵物每秒命中幾次 × 回復） */
+  const petRate = F.weapons.filter(w => w.pet).reduce((n, w) => n + 1 / Math.max(0.3, w.cd), 0);
+  if (F.petGuard && petRate) ehp *= 1 + (F.petGuard / 100) * 0.5;
+  if (F.dr) ehp /= Math.max(0.2, 1 - F.dr / 100);
+  if (F.symHeal) ehp += petRate * F.symHeal * 9;
   if (F.sgLife >= 2) ehp *= F.sgLife >= 3 ? 1.15 : 1.05;
   /* 0.1.51 鳳凰涅槃（一次大回復）、灼命、火焰護體、避雷針 */
   if (F.phoenix) ehp *= 1.25;
@@ -233,7 +250,7 @@ function botPower(F, P = BOT_P) {
     else if (p.k === 'blind') pre += 0.03 * p.v;
     else if (p.k === 'seal') pre += 0.03 * p.v;
     else if (p.k === 'down') pre += 0.12;
-    else if (p.k === 'petLock') pre += 0.12 * Math.min(p.v, ep);
+    else if (p.k === 'petLock') pre += 0.008 * p.v * Math.min(1, ep);
     else if (p.k === 'sealAll') pre += 0.07 * p.v;
     else if (p.k === 'lockBest') pre += 0.3;
     else if (p.k === 'petSeal') pre += 0.012 * p.v * Math.min(3, ep);
@@ -339,6 +356,9 @@ function botEcon(run, d) {
   if (d.bribe) v += run.gold > d.bribe ? 0.15 : 0.05;
   if (d.rollCap) v -= 0.03 * left;
   if (d.rich) v += Math.min(0.3, run.gold / 200);
+  /* 0.1.53 馴獸師：捕獲、進化 */
+  if (d.capture) v += 0.15 * left;
+  if (d.evolve) v += 0.2 * left;
   return v;
 }
 function botValue1(run, id, t, P, cx, bag, base, o) {
@@ -524,6 +544,11 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
     floor = botFloor(run);
   const cx = {};
   botBump(cx);
+  /* 0.1.53 遠古之器：暫存區的寵物（不是四兇）都拿去獻祭 */
+  if ([...run.bag.items, ...run.bench].some(o => o && ITEMI[o.id].sacrifice)) {
+    const us = run.bench.filter(o => sacOK(o) && !wouldMerge(run, o.id, o.t)).map(o => o.u);
+    if (us.length) sacrifice(run, us), botBump(cx);
+  }
   /* 0.1.52 流浪商隊：先跟商人交易 */
   if (botCaravan(run, q, P, cx)) {
     botBump(cx);

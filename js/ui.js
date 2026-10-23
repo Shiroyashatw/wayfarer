@@ -622,7 +622,7 @@ function detailHTML(run) {
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
   return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div>${oddsHTML(run, o.id)}<button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p>${dsc(itemDesc(o.id, o.t))}</p>${sgLineHTML(run, o.sg)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+    <p>${dsc(itemDesc(o.id, o.t))}</p>${sgLineHTML(run, o.sg)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
       .filter(([, m]) => modTxt(m))
@@ -631,7 +631,7 @@ function detailHTML(run) {
     <div class="btns">${
       where === 'shop'
         ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < slotPrice(run, o) ? 'disabled' : ''}>買 ${slotPrice(run, o)} 金</button>`
-        : `${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o)} 金</button>`
+        : `${I.sacrifice ? '<button class="btn buy" data-act="sacr">獻祭寵物</button>' : ''}${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o)} 金</button>`
     }</div></div>`;
 }
 /* ================= 0.1.52 賽制 ================= */
@@ -738,6 +738,55 @@ function vanPick(sel = []) {
     const nx = sel.includes(u) ? sel.filter(x => x !== u) : [...sel, u];
     if (nx.length === 2) return (m.hidden = true), vanGo(nx);
     vanPick(nx);
+  };
+}
+/* 0.1.53 遠古之器：選要獻祭的寵物（可以多選，顯示合計幾星），按「獻祭」 */
+function sacPick(sel = []) {
+  const run = S.run,
+    v = [...run.bag.items, ...run.bench].find(o => o && ITEMI[o.id].sacrifice),
+    c = [...run.bag.items, ...run.bench].filter(sacOK),
+    val = o => ITEMI[o.id].star * 3 ** (o.t - 1),
+    tot = c.filter(o => sel.includes(o.u)).reduce((n, o) => n + val(o), 0),
+    have = (v && v.sv) || 0;
+  const body = c.length
+    ? `<p class="sub">已累積 ${have}／${VESSEL_N} 星；選了 ${tot} 星${have + tot >= VESSEL_N ? `，可以召喚 ${fl((have + tot) / VESSEL_N)} 隻四兇` : ''}（Ⅱ 階算 3 倍、Ⅲ 階 9 倍）</p><div class="rvit">${c
+        .map(
+          o =>
+            `<button class="s${ITEMI[o.id].star}${sel.includes(o.u) ? ' sel' : ''}" data-su="${o.u}"><img src="${itemIcon(o.id)}" alt="">${esc(fuName(o))}${tierTxt(o.t)}<small>${val(o)} 星</small></button>`
+        )
+        .join('')}</div>`
+    : '<p class="empty">背包和暫存區沒有寵物可以獻祭</p>';
+  showDlg(
+    '遠古之器：獻祭寵物',
+    body,
+    sel.length
+      ? [
+          [
+            `獻祭（${tot} 星）`,
+            () => {
+              const r = sacrifice(run, sel);
+              if (typeof r === 'string') return toast(r);
+              snd('buy');
+              toast(
+                r.length
+                  ? `召喚了 ${r.map(id => ITEMI[id].n).join('、')}！`
+                  : `獻祭完成，累積 ${(v && v.sv) || 0}／${VESSEL_N} 星`
+              );
+              V.sel = null;
+              save();
+              render();
+            }
+          ]
+        ]
+      : []
+  );
+  const m = $('modal'),
+    close = m.onclick;
+  m.onclick = ev => {
+    const b = ev.target.closest('[data-su]');
+    if (!b) return close(ev);
+    const u = b.dataset.su;
+    sacPick(sel.includes(u) ? sel.filter(x => x !== u) : [...sel, u]);
   };
 }
 /* 0.1.42 詳細的右上角：下次刷新商店出現這件的機率 */
@@ -870,7 +919,7 @@ function statsHTML(run) {
 /* ================= 結算、三選一、一局結束 ================= */
 function resultHTML(run) {
   const l = run.last;
-  return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.hit ? `<p class="c-good">${l.ko ? '對手淘汰！' : `對手生命 -${l.hit}`}</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金${l.luck ? '（幸運 +2）' : ''}</p>` : ''}${l.spent ? `<p class="c-dim">金錢標花了 ${l.spent} 金</p>` : ''}<div class="g2"><button class="btn" data-act="log" data-k="${run.log.length ? run.log[run.log.length - 1].id : ''}">詳細</button><button class="btn pri" data-act="afterRes">繼續</button></div></div></div>`;
+  return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.hit ? `<p class="c-good">${l.ko ? '對手淘汰！' : `對手生命 -${l.hit}`}</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金${l.luck ? '（幸運 +2）' : ''}</p>` : ''}${l.capture && ITEMI[l.capture] ? `<p class="c-good">捕獲了${ITEMI[l.capture].n}！（放進暫存區）</p>` : ''}${l.spent ? `<p class="c-dim">金錢標花了 ${l.spent} 金</p>` : ''}<div class="g2"><button class="btn" data-act="log" data-k="${run.log.length ? run.log[run.log.length - 1].id : ''}">詳細</button><button class="btn pri" data-act="afterRes">繼續</button></div></div></div>`;
 }
 function pickHTML(run) {
   const p = run.pend;
@@ -1225,6 +1274,8 @@ function bNames() {
       for (const o of its) nm[k][o.u] = fuName(o);
     };
   put(0, S.run.bag.items);
+  /* 0.1.53 獸群召喚的戰狼 */
+  for (const e of B.fb.res.ev) if (e.k === 'wolf') nm[e.s][e.u] = '戰狼';
   /* 0.1.50 召喚的戰士：「戰士（長槍）」 */
   for (const e of B.fb.res.ev)
     if (e.k === 'summon') nm[e.s][e.u] = `亞馬遜戰士（${ITEMI[e.id] ? ITEMI[e.id].n : '武器'}）`;
@@ -1264,6 +1315,10 @@ function bLog(e, tg) {
   else if (e.k === 'blind') t = `${who(tg)} 致盲 ${e.v} 秒`;
   else if (e.k === 'thorns') t = `${who(e.s)} ${e.rod ? '避雷針電擊' : e.sg ? '護盾破裂反彈' : '反彈'} ${e.v}`;
   /* 0.1.52 印記 */ else if (e.k === 'sgBash') t = `${by(e.s, e.u)} 盾擊出手`;
+  /* 0.1.53 馴獸師 */ else if (e.k === 'wolf') t = `${who(e.s)} 的戰狼加入戰鬥（第 ${e.v} 隻）`;
+  else if (e.k === 'pounce') t = `${who(e.s)} 撲殺！寵物全部出手`;
+  else if (e.k === 'whip') t = `${by(e.s, e.u)} 被鞭策出手`;
+  else if (e.k === 'petGuard') t = `${by(e.s, e.u)} 護主反咬`;
   else if (e.k === 'dice') t = `${by(e.s, e.u)} 擲骰：這場升到 ${e.v === 3 ? 'Ⅲ' : 'Ⅱ'} 階`;
   else if (e.k === 'fatigue') t = `${who(tg)} 疲勞 -${e.v}`;
   else if (e.k === 'cleanse') t = `${who(e.s)} 淨化了 ${e.v} 種異常`;
@@ -1561,7 +1616,17 @@ function bTick() {
       bPop(tg, '拔矛・撕裂', '#ff3a5a', 1);
       bBurst(tg, '#ff3a5a', 8);
     } else if (e.k === 'summon') bBurst(e.s, '#bfe9ff', 6, 1);
-    else if (e.k === 'sgBash') {
+    else if (e.k === 'wolf') {
+      bPop(e.s, '戰狼加入', '#ffd27a');
+      bBurst(e.s, '#ffd27a', 6, 1);
+    } else if (e.k === 'pounce') {
+      bPop(e.s, '撲殺！', '#ff8a5a', 1);
+      bBurst(1 - e.s, '#ff8a5a', 12);
+    } else if (e.k === 'whip') bPop(e.s, '鞭策', '#ffd27a');
+    else if (e.k === 'petGuard') {
+      bPop(e.s, '護主', '#bfe9ff');
+      bFlash(e.s, e.u);
+    } else if (e.k === 'sgBash') {
       bPop(e.s, '盾擊', SIGILS[2].c);
       bFlash(e.s, e.u);
     } else if (e.k === 'dice') {
@@ -1626,6 +1691,7 @@ function bEnd() {
     gold: out.gold,
     spent: out.spent || 0,
     luck: out.luck || 0,
+    capture: out.capture || null,
     hit: out.hit,
     ko: out.ko,
     rv: B.fb.opp.kind === 'pvp' ? B.fb.opp.rv : -1,
@@ -1947,6 +2013,7 @@ const A = {
     if (!run.bag.items.some(o => ITEMI[o.id].dmg)) return toast('背包裡還沒有武器或寵物，打不贏的！');
     beginFight();
   },
+  sacr: () => sacPick(),
   /* 0.1.52 賽制 */
   modeOk: () => {
     S.run.phase = 'cls';

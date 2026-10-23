@@ -664,6 +664,7 @@ function nextRound(run) {
   if (!r) return endRun(run, finalPlace(run));
   coreSync(run);
   sealTick(run);
+  petEvolve(run);
   if (run.ri === 0) {
     run.gold = START_GOLD;
     rollShop(run);
@@ -871,6 +872,8 @@ function finishFight(run, fb) {
     out.gold = winGold(r);
     /* 0.1.52 印記：幸運 2 級，打贏 30% 多拿 2 金 */
     if (luckWin(run)) (out.gold += 2), (out.luck = 1);
+    /* 0.1.53 馴獸師：寵物成長、捕獲 */
+    out.capture = petWin(run, r);
     /* 打贏對手：他扣跟你輸了會扣的一樣多（加上你背包的寵物）；結果視窗顯示他扣多少、是否淘汰 */
     if (opp.kind === 'pvp') {
       const rv = run.rivals[opp.rv];
@@ -1072,6 +1075,55 @@ function putItem(run, o) {
   if (f2 >= 0) run.bench[f2] = o;
   else if (!run.hold) run.hold = o;
   else run.gold += sellOf(o.id, o.t);
+}
+/* 0.1.53 馴獸師打贏一場：背包裡的寵物成長 +1 層（最多 10）；捕獲（野怪、菁英，機率拿一隻寵物）。回傳捕獲到的道具代號 */
+function petWin(run, r) {
+  if ((CLSI[run.bag.cls] || {}).F && CLSI[run.bag.cls].F.petGrow)
+    for (const o of run.bag.items) if (ITEMI[o.id].tags.includes('pet')) o.gw = Math.min(10, (o.gw || 0) + 1);
+  const cap = coreProp(bagAll(run.bag), 'capture');
+  if (!cap || (r.type !== 'pve' && r.type !== 'elite') || r01(run) * 100 >= cap) return null;
+  const id = vanRoll(run, shopTop(run), it => it.tags.includes('pet'));
+  putItem(run, newItem(run, id));
+  mergeAll(run, runR(run));
+  return id;
+}
+/* 0.1.53 遠古之器：獻祭寵物（us 是道具 u），累積星數（vessel 的 sv），每 VESSEL_N 星召喚一隻四兇（先給還沒有的）。
+   回傳召喚到的四兇代號；失敗回傳原因 */
+const sacOK = o => o && ITEMI[o.id].tags.includes('pet') && !PERILS.includes(o.id);
+function sacrifice(run, us) {
+  const v = [...run.bag.items, ...run.bench, run.hold].find(o => o && ITEMI[o.id].sacrifice);
+  if (!v) return '沒有遠古之器';
+  const ps = us.map(u => findU(run, u)).filter(sacOK);
+  if (!ps.length) return '要選寵物';
+  for (const o of ps) {
+    takeOut(run, o.u);
+    v.sv = (v.sv || 0) + ITEMI[o.id].star * 3 ** (o.t - 1);
+  }
+  const got = [];
+  while (v.sv >= VESSEL_N) {
+    v.sv -= VESSEL_N;
+    const own = new Set([...run.bag.items, ...run.bench, run.hold].filter(Boolean).map(o => o.id)),
+      c = PERILS.filter(id => !own.has(id)),
+      id = (c.length ? c : PERILS)[fl(r01(run) * (c.length || PERILS.length))];
+    putItem(run, newItem(run, id));
+    got.push(id);
+  }
+  syncShrink(run);
+  return got;
+}
+/* 0.1.53 進化：寵物在背包裡每待滿 N 回合升一階（Ⅲ 階開詞綴） */
+function petEvolve(run) {
+  const n = coreProp(bagAll(run.bag), 'evolve');
+  if (!n) return;
+  for (const o of run.bag.items) {
+    if (!ITEMI[o.id].tags.includes('pet') || o.t >= TIER_MAX) continue;
+    o.ev = (o.ev || 0) + 1;
+    if (o.ev < n) continue;
+    o.ev = 0;
+    o.t++;
+    o.a = affOf(o.id, runR(run));
+    if (o.t === TIER_MAX && !o.m) (o.m = roll5(o.id, runR(run))), (o.mv = 0);
+  }
 }
 /* 0.1.52 印記：幸運 2 級（4 件）以上，打贏 30% 多拿 2 金 */
 const luckWin = run => run.mode === 'sigil' && sgLv(sgCount(run.bag)[4]) >= 2 && r01(run) < 0.3;
@@ -1336,6 +1388,7 @@ function botAfter(run, r, win, q, P) {
     run.ws++;
     run.lsk = 0;
     run.gold += winGold(r) + (luckWin(run) ? 2 : 0);
+    petWin(run, r);
   } else {
     run.lsk++;
     run.ws = 0;

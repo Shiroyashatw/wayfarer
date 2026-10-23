@@ -1294,6 +1294,71 @@ const ITEMS = [
     chainN: 1,
     ic: 'a:m_thunderbat'
   },
+  /* 0.1.53 馴獸師核心「四兇召來」：遠古之器（獻祭寵物累積星數，每 VESSEL_N 星召喚一隻四兇）；四兇都免疫異常與封鎖（imm） */
+  {
+    id: 'vessel',
+    n: '遠古之器',
+    star: 5,
+    sh: 's1',
+    tags: ['trinket'],
+    sacrifice: 1,
+    ns: 1,
+    ic: 'it_cauldron'
+  },
+  {
+    id: 'taotie',
+    n: '四兇・饕餮',
+    star: 5,
+    sh: 'sq',
+    tags: ['pet', 'dark'],
+    cd: 1.3,
+    dmg: [14, 20],
+    on: { ls: 25 },
+    gorge: 3,
+    imm: 1,
+    ns: 1,
+    ic: 'a:taotie'
+  },
+  {
+    id: 'qiongqi',
+    n: '四兇・窮奇',
+    star: 5,
+    sh: 'sq',
+    tags: ['pet'],
+    cd: 1,
+    dmg: [12, 18],
+    sealHit: [30, 1.5],
+    imm: 1,
+    ns: 1,
+    ic: 'a:qiongqi'
+  },
+  {
+    id: 'taowu',
+    n: '四兇・檮杌',
+    star: 5,
+    sh: 'sq',
+    tags: ['pet'],
+    cd: 1.8,
+    dmg: [18, 28],
+    hp: 120,
+    fx: { dr: 15 },
+    imm: 1,
+    ns: 1,
+    ic: 'a:taowu'
+  },
+  {
+    id: 'hundun',
+    n: '四兇・混沌',
+    star: 5,
+    sh: 'sq',
+    tags: ['pet', 'dark'],
+    cd: 1.2,
+    dmg: [12, 18],
+    chaos: 1,
+    imm: 1,
+    ns: 1,
+    ic: 'a:hundun'
+  },
   {
     id: 'kingcrown',
     n: '王者之冠',
@@ -1886,7 +1951,7 @@ const ITEMS = [
     star: 3,
     sh: 'v2',
     tags: ['trinket'],
-    pre: { petLock: 1 },
+    pre: { petLock: 8 },
     ic: 'sk_trapshot'
   },
   {
@@ -1895,7 +1960,7 @@ const ITEMS = [
     star: 2,
     sh: 's1',
     tags: ['trinket'],
-    fx: { petDown: 25 },
+    fx: { petDown: 15 },
     ic: 'sk_daunt'
   },
   {
@@ -2135,7 +2200,16 @@ const CLASSES = [
     ],
     F: { poisonCap: 24 }
   },
-  { id: 'tamer', st: 'treefrog', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 35, spd: 15 }] },
+  /* 0.1.53 馴獸師重製：寵物 +30%、攻速 +10%（機器人測 +45%／+20% 排第 1；玩家擺法比機器人好，再砍）；寵物會成長、寵物的攻擊不觸發反彈 */
+  {
+    id: 'tamer',
+    st: 'treefrog',
+    n: '馴獸師',
+    ic: 'sk_tauntroar',
+    th: 'pet',
+    m: [{ tag: 'pet', dmgPct: 30, spd: 10 }],
+    F: { petGrow: 4, petNoThorns: 1 }
+  },
   {
     id: 'knight',
     st: 'woodshield',
@@ -2315,19 +2389,20 @@ const CORE_MAIN = {
     ['血毒', { all: onP(P, { bleed: 4, poison: 1 }) }],
     ['別西卜的封印', { give: 'bzseal' }]
   ],
+  /* 0.1.53 馴獸師重製：捕獲、進化、獸群召喚、獸群首領、巨獸化、群狼戰術、護主、撲殺、狂暴、馴獸鞭、共生、四兇召來 */
   tamer: P => [
-    ['獸群', { all: onP(P, { dmgPct: 8, per: 'pet' }) }],
-    ['野性', { all: onP(P, { dmgPct: 35 }) }],
-    ['狂奔', { all: onP(P, { spd: 30 }) }],
-    ['撕咬', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
-    ['守護獸', { fx: { startBlock: 25, hp: 40 } }],
-    ['獸王之怒', { all: onP(P, { dmgPct: 10 }), fx: { rage: 50 } }],
-    ['獵殺', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60 } }],
-    ['群獵', { all: onP(P, { dmgPct: 10 }), fx: { double: 15 } }],
-    ['野獸本能', { all: onP(P, { crit: 15 }), fx: { opener: 80 } }],
-    ['血脈', { all: onP(P, { ls: 15, dmgPct: 10 }) }],
-    ['獸牙', { all: onP(P, { sunder: 2, dmgPct: 10 }) }],
-    ['共生', { fx: { regen: 4, hp: 20 } }]
+    ['捕獲', { capture: 35, ic: 'it_bugnet' }],
+    ['進化', { evolve: 6, ic: 'asc_tamer_c1' }],
+    ['獸群召喚', { fx: { wolves: 4 }, ic: 'asc_tamer_b0' }],
+    ['獸群首領', { fx: { alpha: 1 }, ic: 'asc_tamer_b4' }],
+    ['巨獸化', { fx: { giant: 1 }, ic: 'sin_sloth_giant' }],
+    ['群狼戰術', { fx: { pack: 5 }, ic: 'asc_tamer_c2' }],
+    ['護主', { fx: { petGuard: 25 }, ic: 'asc_tamer_b3' }],
+    ['撲殺', { fx: { pounce: 1 }, ic: 'asc_tamer_b5' }],
+    ['狂暴', { fx: { frenzy: 3 }, ic: 'msk_roar' }],
+    ['馴獸鞭', { fx: { whip: 5 }, ic: 'asc_tamer_c0' }],
+    ['共生', { fx: { symHeal: 1 }, fxPer: [{ tag: 'pet', hp: 12 }], ic: 'asc_tamer_b2' }],
+    ['四兇召來', { give: 'vessel', ic: 'it_cauldron' }]
   ],
   knight: P => [
     ['聖盾', { all: [{ tag: 'shield', blockPct: 60 }] }],
@@ -2736,7 +2811,20 @@ const MODN = {
   zapIgnite: () => '放電時點燃敵人',
   static: v => `敵人每次出手 ${pct(v)} 機率觸電：那次出手落空、電荷 +1`,
   rod: v => `被攻擊打中時 ${pct(v)} 機率電擊攻擊者：${ROD_DMG} 傷害（固定）、電荷 +1`,
-  zapPct: v => `放電傷害 +${pct(v)}`
+  zapPct: v => `放電傷害 +${pct(v)}`,
+  /* 0.1.53 馴獸師 */
+  petGrow: v => `寵物每打贏一場，那隻永久傷害 +${v}%（最多 +${v * 10}%，合成時留最高的）`,
+  petNoThorns: () => '寵物的攻擊不會觸發對手的反彈',
+  wolves: v => `開戰後每 ${WOLF_T} 秒召喚一隻戰狼加入戰鬥（最多 ${v} 隻，吃寵物的加成）`,
+  alpha: () => '星級最高的寵物成為首領：傷害 ×2；其他寵物傷害 +15%',
+  dr: v => `受到的攻擊傷害 -${pct(v)}`,
+  giant: () => '背包裡只有 1～2 隻寵物時，牠們變成巨獸：傷害 ×2.5、生命 +80',
+  pack: v => `每隻寵物出手時，其他寵物充能 +${pct(v)}`,
+  petGuard: v => `被攻擊時 ${pct(v)} 機率由寵物擋下一半傷害，那隻寵物立刻反咬`,
+  pounce: () => '敵人生命第一次低於 30% 時，所有寵物立刻出手一次，之後寵物攻速 ×2',
+  frenzy: v => `寵物每命中一次疊 1 層狂暴：寵物攻速 +${pct(v)}（最多 ${FRENZY_MAX} 層；你被暈眩時歸零）`,
+  whip: v => `每 ${v} 秒鞭策：最慢的寵物立刻出手，這一下傷害 ×2`,
+  symHeal: v => `寵物每命中一次，你回復 ${v}`
 };
 /* 0.1.37 終極藥劑的效果（煉成三選一）：喝下時套用 */
 const BREW = {
@@ -2810,6 +2898,13 @@ const SPARK_T = 2,
 /* 0.1.50 插箭（最多幾支、爆裂箭幾秒後引爆與燃燒、箭雨每支傷害、多重射擊每支傷害）、連珠箭層數、
    插矛（最多幾把、每把攻速 -%、拔出的撕裂）、撕裂（每 0.5 秒扣層數、之後剩 3/4）、矛弓連攜與反擊的撕裂、
    日月輪轉每幾秒交替、浴血戰姬層數、女武神的加成 */
+/* 0.1.53 馴獸師：獸群召喚每幾秒一隻、狂暴最多幾層 */
+const WOLF_T = 4,
+  FRENZY_MAX = 20,
+  /* 遠古之器：每幾星召喚一隻四兇；饕餮吞噬最多 +% */
+  VESSEL_N = 20,
+  GORGE_MAX = 60,
+  PERILS = ['taotie', 'qiongqi', 'taowu', 'hundun'];
 const ARROW_MAX = 30,
   BOOM_T = 4,
   BOOM_BURN = 1,
@@ -2835,7 +2930,7 @@ const ARROW_MAX = 30,
   STAKE_REND = 3;
 /* 0.1.28 上限：穿甲最多無視 80%、驅獸最多 -60% */
 const PIERCE_MAX = 80,
-  PETDOWN_MAX = 60;
+  PETDOWN_MAX = 40;
 /* 0.1.44 說明文字的寫法（skill item-text）：同樣的開頭只寫一次，「命中時凍結機率 +10%、命中時冰緩機率 +20%」→「命中時凍結機率 +10%、冰緩機率 +20%」。
    開頭後面接空格、數字或「時」的不合併（「命中時 35% 機率…」那種句子各自完整） */
 const JOIN_P = [
@@ -2890,8 +2985,9 @@ const PRE_T = ['seal', 'weak', 'blind', 'frozen', 'sealAll', 'corrode', 'age', '
     bleed: v => `開戰時讓敵人流血 ${v} 層`,
     sunder: v => `開戰時讓敵人破甲 ${v}`,
     /* 0.1.28 反制寵物 */
+    /* 0.1.53 捕蟲網改成限時：整場關住 N 隻 → 關住 1 隻 N 秒 */
     petSeal: v => `開戰時封鎖敵人最強的 3 隻寵物 ${v} 秒`,
-    petLock: v => `開戰時把敵人星級最高的 ${v} 隻寵物整場關住（不能攻擊）`,
+    petLock: v => `開戰時關住敵人星級最高的寵物 ${v} 秒（不能攻擊）`,
     /* 0.1.33 靜電場 */
     sealAll: v => `開戰後 ${v} 秒內封鎖敵人所有武器`
   };
@@ -2901,7 +2997,7 @@ const preVal = (id, t = 1) => {
   if (!p) return 0;
   const k = preKey(p),
     v = p[k];
-  if (k === 'petLock') return v + (t - 1);
+  if (k === 'petLock') return v + 4 * (t - 1);
   if (k === 'petSeal') return v + 2 * (t - 1);
   return k === 'down' ? v : PRE_T.includes(k) ? v + (t - 1) : Math.round(v * TIERM[t]);
 };
@@ -3040,6 +3136,16 @@ function itemDesc(id, t = 1) {
   if (it.imm) out.push('免疫所有異常與封鎖');
   if (it.chainN && it.dmg) out.push(MODN.chainN(it.chainN));
   if (it.stick) out.push(MODN.stick(it.stick) + '（再加上職業的插箭）');
+  /* 0.1.53 遠古之器、四兇 */
+  if (it.sacrifice)
+    out.push(
+      `點這件可以獻祭背包或暫存區的寵物：每累積 ${VESSEL_N} 星，召喚一隻隨機四兇（饕餮、窮奇、檮杌、混沌，先給還沒有的）`
+    );
+  if (it.gorge) out.push(`吞噬：每命中一次這隻的傷害 +${it.gorge}%（這場累積，最多 +${GORGE_MAX}%）`);
+  if (it.sealHit) out.push(`命中時 ${it.sealHit[0]}% 機率封鎖敵人一把武器 ${it.sealHit[1]} 秒`);
+  if (it.chaos) out.push('命中時隨機附加一種：燃燒 3、中毒 3、流血 4、虛弱、致盲、混亂 1 秒');
+  if (it.capture) out.push(`打贏野怪、菁英時 ${it.capture}% 機率捕獲一隻寵物（星級照現在商店最高的，首領不行）`);
+  if (it.evolve) out.push(`寵物在背包裡每待滿 ${it.evolve} 回合，自動升一階（最多 Ⅲ 階）`);
   if (it.sisters)
     out.push(`背包裡矛和弓、弩一樣多（至少各 1 件）時，所有武器傷害 +${it.sisters[0]}%、攻速 +${it.sisters[1]}%`);
   if (it.defX) out.push(`所有防具、盾的效果 ×${it.defX}`);

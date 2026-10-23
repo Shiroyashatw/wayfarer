@@ -600,3 +600,5 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 /* 0.1.52 規範第 4 節的小按鈕、購買鈕（之前規範有寫、樣式沒做） */
 .btn.sm{min-height:38px;font-size:var(--fs-sm);padding:var(--sp-1) var(--sp-2)}
 .btn.buy{background:var(--accent-soft);color:var(--gold);box-shadow:inset 0 0 0 1.5px var(--gold)}
+/* 0.1.53 遠古之器的獻祭清單：每件右邊是幾星 */
+.rvit button small{margin-left:var(--sp-1);color:var(--dim);font-size:var(--fs-cap)}
