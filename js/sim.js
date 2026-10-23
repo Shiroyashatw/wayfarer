@@ -8,8 +8,20 @@ const WEAK_PCT = 25,
   BLIND_MISS = 30,
   BLIND_T = 2.5,
   SUNDER_MAX = 15,
-  /* 0.1.19 中毒不會退，戰鬥拉長以後會一直疊、太強：最多 12 層 */
-  POISON_MAX = 12;
+  /* 0.1.19 中毒不會退，戰鬥拉長以後會一直疊、太強：最多 12 層（0.1.37 毒師提高到 24，看攻擊方的 poisonCap） */
+  POISON_MAX = 12,
+  /* 0.1.37 新異常：劇毒（不退，每秒層數 ×2）、點燃（燃燒每秒 +1、傷害 ×1.5）、腐蝕（不能獲得護盾，本來會獲得時扣 CORRODE_HP）、
+     衰老（不能暴擊）、混亂（出手 CONFUSE% 打到自己）；凍結、冰緩改成單件道具的狀態：凍結 FREEZE_T 秒充能 ×0（凍結中的不能再凍）、冰緩充能 ×0.5 */
+  VENOM_MAX = 20,
+  VENOM_MUL = 2,
+  IGNITE_MUL = 1.5,
+  CORRODE_HP = 30,
+  CONFUSE = 50,
+  FREEZE_T = 6,
+  CHILL_T = 4,
+  /* 0.1.37 陷阱：藥劑炸彈的傷害與流血 */
+  BOMB_DMG = [8, 12],
+  BOMB_BLEED = 4;
 /* 一方的戰鬥狀態 */
 function simSide(F) {
   return {
@@ -19,23 +31,41 @@ function simSide(F) {
     block: F.startBlock || 0,
     burn: 0,
     poison: 0,
-    frozen: 0,
     stun: 0,
     /* 0.1.9 新異常：流血（層數，每秒扣層數然後減半）、破甲（扣護甲，會疊）、虛弱（秒，傷害 -25%）、致盲（秒，30% 打不中） */
     bleed: 0,
     sunder: 0,
     weak: 0,
     blind: 0,
-    /* 0.1.10 先手（opener）：開戰時武器已經充能幾 % */
-    w: F.weapons.map((w, i) => ({ ...w, i, tt: w.cd * Math.max(0.25, Math.min(0.99, (F.opener || 0) / 100)) })),
-    s: F.shields.map((s, i) => ({ ...s, i, tt: s.cd * 0.5 })),
+    /* 0.1.37 劇毒（層）、點燃（0／1）、腐蝕、衰老、混亂（秒）；傷害降低 %（腐蝕藥劑） */
+    venom: 0,
+    ignite: 0,
+    corrode: 0,
+    age: 0,
+    confuse: 0,
+    dmgDown: 0,
+    /* 0.1.10 先手（opener）：開戰時武器已經充能幾 %；0.1.37 每件道具的凍結 fz、冰緩 ch（秒） */
+    w: F.weapons.map((w, i) => ({
+      ...w,
+      i,
+      fz: 0,
+      ch: 0,
+      tt: w.cd * Math.max(0.25, Math.min(0.99, (F.opener || 0) / 100))
+    })),
+    s: F.shields.map((s, i) => ({ ...s, i, fz: 0, ch: 0, tt: s.cd * 0.5 })),
     pots: F.pots.map(p => ({ ...p })),
     dmgDone: 0,
     /* 0.1.35 金錢標：身上的金幣、花掉的金幣；招架成功後多的護甲 */
     gold: F.gold || 0,
     spent: 0,
     parA: 0,
-    parried: 0
+    parried: 0,
+    /* 0.1.37 放在這個人背包裡的陷阱；這個人觸發的凍結＋冰緩次數（寒冰之心）；萬能藥的加成到幾秒 */
+    traps: [],
+    iceN: 0,
+    buffT: 0,
+    bDmg: 0,
+    bSpd: 0
   };
 }
 /* 0.1.35 金錢標花 1 金那一下：傷害、暴擊率、命中效果、吸血都翻倍 */
@@ -52,15 +82,27 @@ function coinW(w) {
     ls: d(w.ls),
     weak: d(w.weak),
     blind: d(w.blind),
+    venom: d(w.venom || 0),
+    chill: d(w.chill || 0),
     freeze: [d(w.freeze[0]), w.freeze[1]],
     stun: [d(w.stun[0]), w.stun[1]]
   };
+}
+/* 0.1.37 時段加成（狂暴藥劑、致命毒素）：t 秒以前用 a，以後用 b */
+function phaseOf(F, t) {
+  const o = { dmgPct: 0, spd: 0, crit: 0 };
+  for (const p of F.phase || []) {
+    const x = t <= p.t ? p.a : p.b;
+    for (const k in o) o[k] += x[k] || 0;
+  }
+  return o;
 }
 /* A 是你（左邊）、B 是對手；回傳 { win, t, ev: [事件], end: [A 剩生命, B 剩生命] } */
 function simulate(FA, FB, seed) {
   const r = rng(seed),
     S = [simSide(FA), simSide(FB)],
     ev = [];
+  const items = x => [...x.w, ...x.s];
   const log = (t, s, k, v, extra) =>
     ev.push({
       t: Math.round(t * 100) / 100,
@@ -68,16 +110,23 @@ function simulate(FA, FB, seed) {
       k,
       v,
       hp: [Math.max(0, Math.round(S[0].hp)), Math.max(0, Math.round(S[1].hp))],
+      /* 異常（給畫面）：燃燒、中毒、流血、破甲、凍結中幾件、暈眩、虛弱、致盲、劇毒、點燃、腐蝕、衰老、冰緩中幾件、混亂 */
       st: S.map(x => [
         /* 0.1.29 抗性會讓層數有小數，顯示用無條件進位 */
         Math.ceil(x.burn),
         Math.ceil(x.poison),
         Math.ceil(x.bleed),
         Math.ceil(x.sunder),
-        +(x.frozen > 0),
+        items(x).filter(o => o.fz > 0).length,
         +(x.stun > 0),
         +(x.weak > 0),
-        +(x.blind > 0)
+        +(x.blind > 0),
+        Math.ceil(x.venom),
+        x.ignite,
+        +(x.corrode > 0),
+        +(x.age > 0),
+        items(x).filter(o => o.ch > 0).length,
+        +(x.confuse > 0)
       ]),
       /* 0.1.35 雙方的護盾（格擋量），戰鬥畫面的白色護盾條用 */
       bk: [Math.round(S[0].block), Math.round(S[1].block)],
@@ -87,30 +136,111 @@ function simulate(FA, FB, seed) {
     def.hp -= d;
     log(t, src, k, Math.round(d), extra);
   };
-  /* 0.1.29 抗異常：k 是 d 身上的異常（burn、poison…），回傳抗完剩幾成；開戰免毒的秒數內不會中毒 */
+  /* 0.1.29 抗異常：k 是 d 身上的異常（burn、poison…），回傳抗完剩幾成；開戰免毒的秒數內不會中毒；
+     0.1.37 賢者之石免疫所有異常、冰甲免疫凍結與冰緩 */
   const RK = {
     burn: 'rBurn',
+    ignite: 'rBurn',
     poison: 'rPoison',
+    venom: 'rPoison',
     bleed: 'rBleed',
     sunder: 'rSunder',
     frozen: 'rFreeze',
+    chill: 'rFreeze',
     stun: 'rStun',
     weak: 'rWeak',
-    blind: 'rBlind'
+    age: 'rWeak',
+    blind: 'rBlind',
+    confuse: 'rBlind'
   };
-  /* 0.1.35 心如止水：開戰 immT 秒內不會中任何異常 */
   const res = (d, k, t) =>
-    (k === 'poison' && t < (d.F.poisonImm || 0)) || t < (d.F.immT || 0)
+    d.F.immAll ||
+    ((k === 'frozen' || k === 'chill') && d.F.immFz) ||
+    ((k === 'poison' || k === 'venom') && t < (d.F.poisonImm || 0)) ||
+    t < (d.F.immT || 0)
       ? 0
       : 1 - Math.min(RES_MAX, d.F[RK[k]] || 0) / 100;
   /* 回復（a 是誰回血）：敵人的詛咒繃帶會減少 */
   const healOf = (a, h) => h * (1 - Math.min(RES_MAX, S[1 - S.indexOf(a)].F.healCut || 0) / 100);
+  const heal = (t, a, i, v, extra = {}) => {
+    const h = Math.min(a.max - a.hp, healOf(a, v));
+    if (h > 0) {
+      a.hp += h;
+      log(t, i, 'heal', Math.round(h), { self: 1, ...extra });
+    }
+  };
+  /* 0.1.37 獲得護盾：腐蝕中不能獲得，改成扣 CORRODE_HP 生命 */
+  const gainBlock = (t, a, i, v, u) => {
+    if (a.corrode > 0) return hurt(t, CORRODE_HP, a, 1 - i, 'corrode', { u });
+    a.block = Math.min(a.max, a.block + v);
+    return true;
+  };
+  /* 0.1.37 中毒、劇毒：上限看攻擊方（毒師 24、劇毒核心 40）；以毒為生：讓敵人中毒時自己也中毒（自己的中毒變回血） */
+  const pCap = a => Math.max(POISON_MAX, a.F.poisonCap || 0),
+    vCap = a => Math.max(VENOM_MAX, a.F.venomCap || 0);
+  const addPoison = (a, d, n, t) => {
+    if (!n) return;
+    d.poison = Math.min(pCap(a), d.poison + n * res(d, 'poison', t));
+    if (a.F.poisonLife && d !== a) a.poison = Math.min(pCap(a), a.poison + n);
+  };
+  const addVenom = (a, d, n, t) => {
+    if (n) d.venom = Math.min(vCap(a), d.venom + n * res(d, 'venom', t));
+  };
+  /* 0.1.37 凍結／冰緩一件道具（di 是被凍的那邊）：凍結中的不能再凍；抗性縮短秒數；ai 那邊記一次（寒冰之心） */
+  const freezeIt = (t, di, o, ai, sec = FREEZE_T) => {
+    const d = S[di];
+    if (!o || o.imm || o.fz > 0) return;
+    const v = Math.round(sec * res(d, 'frozen', t) * 100) / 100;
+    if (v <= 0) return;
+    o.fz = v;
+    S[ai].iceN++;
+    log(t, ai, 'freeze', v, { tu: o.u });
+  };
+  const chillIt = (t, di, o, ai, sec = CHILL_T) => {
+    const d = S[di];
+    if (!o || o.imm) return;
+    const v = Math.round(sec * res(d, 'chill', t) * 100) / 100;
+    if (v <= 0) return;
+    if (!(o.ch > 0)) log(t, ai, 'chill', v, { tu: o.u });
+    o.ch = Math.max(o.ch, v);
+    S[ai].iceN++;
+  };
+  const rndIt = (x, f) => {
+    const c = items(x).filter(o => !o.imm && f(o));
+    return c.length ? c[fl(r() * c.length)] : null;
+  };
+  /* 0.1.37 陷阱觸發：di 那邊的道具 u 出手時，蓋在它格子上的陷阱都觸發（每次都會） */
+  const trapFire = (t, di, u) => {
+    const d = S[di];
+    for (const p of d.traps) {
+      if (!p.us.has(u)) continue;
+      const a = S[p.by];
+      if (p.k === 'ignite') {
+        if (!d.ignite && res(d, 'ignite', t) > 0) (d.ignite = 1), log(t, p.by, 'ignite', 1, { tu: u });
+      } else if (p.k === 'bomb') {
+        hurt(t, BOMB_DMG[0] + r() * (BOMB_DMG[1] - BOMB_DMG[0]), d, p.by, 'trap', { tu: u, x: 'bomb', el: 'fire' });
+        d.bleed += BOMB_BLEED * res(d, 'bleed', t);
+      } else if (p.k === 'spore') {
+        addPoison(a, d, 3, t);
+        addVenom(a, d, 3, t);
+        log(t, p.by, 'trap', 0, { tu: u, x: 'spore' });
+      } else if (p.k === 'icicle')
+        freezeIt(
+          t,
+          di,
+          items(d).find(o => o.u === u),
+          p.by
+        );
+    }
+  };
   /* mul：0.1.33 連鎖多打的那幾下傷害打折 */
   const attack = (t, a, ai, w, mul = 1) => {
-    const d = S[1 - ai];
-    if (r() * 100 < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) return log(t, ai, 'miss', 0, { u: w.u });
+    /* 0.1.37 混亂：一半機率打到自己 */
+    const self = a.confuse > 0 && r() * 100 < CONFUSE,
+      d = self ? a : S[1 - ai];
+    if (!self && r() * 100 < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) return log(t, ai, 'miss', 0, { u: w.u });
     /* 0.1.35 招架：有機率格擋這一下（不受傷害）；第一次成功後護甲 +parryArm */
-    if (d.F.parry && r() * 100 < d.F.parry) {
+    if (!self && d.F.parry && r() * 100 < d.F.parry) {
       if (d.F.parryArm && !d.parried) (d.parried = 1), (d.parA += d.F.parryArm);
       return log(t, ai, 'miss', 0, { u: w.u, parry: 1 });
     }
@@ -120,11 +250,18 @@ function simulate(FA, FB, seed) {
       a.spent++;
       w = coinW(w);
     }
+    const ph = phaseOf(a.F, t);
     let v = (w.dmg[0] + r() * (w.dmg[1] - w.dmg[0])) * mul;
-    const crit = r() * 100 < w.crit;
+    /* 0.1.37 衰老：不能暴擊 */
+    const crit = !(a.age > 0) && r() * 100 < w.crit + ph.crit;
     /* 0.1.29 厚皮：暴擊多出來的傷害減少 */
     if (crit) v *= 1 + (a.F.critMul / 100 - 1) * (1 - Math.min(RES_MAX, d.F.critRes || 0) / 100);
     if (a.weak > 0) v *= 1 - WEAK_PCT / 100;
+    /* 0.1.37 時段加成、萬能藥（喝藥水後幾秒）、腐蝕藥劑（整場傷害降低）、碎冰（敵人每件凍結中的道具） */
+    v *= Math.max(0.1, 1 + ph.dmgPct / 100);
+    if (a.buffT > t) v *= 1 + a.bDmg / 100;
+    if (a.dmgDown) v *= Math.max(0, 1 - a.dmgDown / 100);
+    if (a.F.shatterF && w.cold) v *= 1 + (a.F.shatterF * items(S[1 - ai]).filter(o => o.fz > 0).length) / 100;
     /* 0.1.10 處決（敵人生命低於 30%）、背水（自己生命低於 50%） */
     if (a.F.execute && d.hp < d.max * 0.3) v *= 1 + a.F.execute / 100;
     if (a.F.rage && a.hp < a.max * 0.5) v *= 1 + a.F.rage / 100;
@@ -140,34 +277,28 @@ function simulate(FA, FB, seed) {
       v -= ab;
     }
     v = Math.max(ab > 0 ? 0 : 1, v);
-    hurt(t, v, d, ai, crit ? 'crit' : 'hit', { u: w.u, ab: Math.round(ab), el: w.el });
+    hurt(t, v, d, ai, crit ? 'crit' : 'hit', { u: w.u, ab: Math.round(ab), el: w.el, ...(self ? { self: 1 } : {}) });
     a.dmgDone += v;
     /* 0.1.28 守護（質變）：命中時獲得傷害一部分的格擋 */
-    if (w.guard && v > 0) a.block = Math.min(a.max, a.block + (v * w.guard) / 100);
+    if (w.guard && v > 0) gainBlock(t, a, ai, (v * w.guard) / 100, w.u);
     /* 0.1.10 暴擊回血、被打中反彈 */
-    if (crit && a.F.critHeal && a.hp > 0) {
-      const h = Math.min(a.max - a.hp, healOf(a, a.F.critHeal));
-      if (h > 0) {
-        a.hp += h;
-        log(t, ai, 'heal', Math.round(h), { self: 1 });
+    if (crit && a.F.critHeal && a.hp > 0) heal(t, a, ai, a.F.critHeal);
+    if (!self) {
+      if (d.F.thornsF && v > 0) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {});
+      /* 0.1.37 毒刺皮膚：被打中時讓攻擊者中毒 */
+      if (d.F.thornsP && v > 0) addPoison(d, a, d.F.thornsP, t);
+      /* 格擋時反彈 */
+      if (ab > 0) {
+        const th = d.s.reduce((n, s) => n + s.thorns, 0);
+        if (th) hurt(t, th, a, 1 - ai, 'thorns', {});
       }
+      const ls = (w.ls + a.F.ls) / 100;
+      if (ls > 0 && v > 0) heal(t, a, ai, v * ls);
     }
-    if (d.F.thornsF && v > 0) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {});
-    /* 格擋時反彈 */
-    if (ab > 0) {
-      const th = d.s.reduce((n, s) => n + s.thorns, 0);
-      if (th) hurt(t, th, a, 1 - ai, 'thorns', {});
-    }
-    const ls = (w.ls + a.F.ls) / 100;
-    if (ls > 0 && v > 0) {
-      const h = Math.min(a.max - a.hp, healOf(a, v * ls));
-      if (h >= 1) {
-        a.hp += h;
-        log(t, ai, 'heal', Math.round(h), { self: 1 });
-      }
-    }
+    const di = S.indexOf(d);
     if (w.burn) d.burn += w.burn * res(d, 'burn', t);
-    if (w.poison) d.poison = Math.min(POISON_MAX, d.poison + w.poison * res(d, 'poison', t));
+    addPoison(a, d, w.poison, t);
+    addVenom(a, d, w.venom || 0, t);
     if (w.bleed) d.bleed += w.bleed * res(d, 'bleed', t);
     if (w.sunder) d.sunder = Math.min(SUNDER_MAX, d.sunder + w.sunder * res(d, 'sunder', t));
     /* 控制：抗性縮短秒數（抗到 0 秒就不算） */
@@ -179,8 +310,24 @@ function simulate(FA, FB, seed) {
     };
     if (w.weak && r() * 100 < w.weak) ctl('weak', 'weak', WEAK_T);
     if (w.blind && r() * 100 < w.blind) ctl('blind', 'blind', BLIND_T);
-    if (w.freeze[0] && r() * 100 < w.freeze[0]) ctl('frozen', 'freeze', w.freeze[1]);
+    if (w.freeze[0] && r() * 100 < w.freeze[0])
+      freezeIt(
+        t,
+        di,
+        rndIt(d, o => !(o.fz > 0)),
+        ai
+      );
+    if (w.chill && r() * 100 < w.chill)
+      chillIt(
+        t,
+        di,
+        rndIt(d, () => true),
+        ai
+      );
     if (w.stun[0] && r() * 100 < w.stun[0]) ctl('stun', 'stun', w.stun[1]);
+    /* 0.1.37 墮落蛇、別西卜：命中衰老、腐蝕 N 秒 */
+    if (w.age) ctl('age', 'age', w.age);
+    if (w.corr) ctl('corrode', 'corrode', w.corr);
   };
   /* 0.1.28 反制寵物：驅獸（敵人寵物傷害 -%）、獵人（敵人每隻寵物，自己武器傷害 +%） */
   for (let i = 0; i < 2; i++) {
@@ -192,7 +339,7 @@ function simulate(FA, FB, seed) {
         if (w.pet) w.dmg = w.dmg.map(v => Math.max(1, Math.round(v * (1 - Math.min(PETDOWN_MAX, a.F.petDown) / 100))));
     if (a.F.petHunt && n) for (const w of a.w) w.dmg = w.dmg.map(v => Math.round(v * (1 + (a.F.petHunt * n) / 100)));
   }
-  /* 0.1.6 開戰前：降階、封鎖（打對方隨機一把武器） */
+  /* 0.1.6 開戰前：降階、封鎖（打對方隨機一把武器）；0.1.37 免疫的（別西卜）不會被封鎖 */
   for (const k of ['down', 'seal'])
     for (let i = 0; i < 2; i++)
       for (const p of S[i].F.pre || []) {
@@ -200,7 +347,7 @@ function simulate(FA, FB, seed) {
         /* 0.1.35 降階的 v 是幾把（奸商 2 把） */
         for (let n = 0; n < (k === 'down' ? p.v || 1 : 1); n++) {
           const d = S[1 - i],
-            c = d.w.filter(w => (k === 'down' ? w.t > 1 : !w.seal));
+            c = d.w.filter(w => !w.imm && (k === 'down' ? w.t > 1 : !w.seal));
           if (!c.length) continue;
           const w = c[fl(r() * c.length)];
           if (k === 'down') {
@@ -217,7 +364,7 @@ function simulate(FA, FB, seed) {
     for (let i = 0; i < 2; i++)
       for (const p of S[i].F.pre || []) {
         if (p.k !== k) continue;
-        const c = S[1 - i].w.filter(w => w.pet && !(w.seal >= MAX_T)).sort((x, y) => petRank(y) - petRank(x));
+        const c = S[1 - i].w.filter(w => w.pet && !w.imm && !(w.seal >= MAX_T)).sort((x, y) => petRank(y) - petRank(x));
         for (const w of c.slice(0, k === 'petLock' ? p.v : 3)) {
           const v = k === 'petLock' ? MAX_T : p.v;
           w.seal = Math.max(w.seal || 0, v);
@@ -229,14 +376,45 @@ function simulate(FA, FB, seed) {
     for (const p of S[i].F.pre || []) {
       const d = S[1 - i];
       if (p.k === 'sealAll') {
-        for (const w of d.w) w.seal = Math.max(w.seal || 0, p.v);
+        for (const w of d.w) if (!w.imm) w.seal = Math.max(w.seal || 0, p.v);
         if (d.w.length) log(0, i, 'sealAll', p.v, { u: p.u });
       } else if (p.k === 'lockBest') {
-        const w = [...d.w].sort((x, y) => petRank(y) - petRank(x))[0];
+        const w = [...d.w].filter(w => !w.imm).sort((x, y) => petRank(y) - petRank(x))[0];
         if (w) {
           w.seal = MAX_T;
           log(0, i, 'seal', MAX_T, { u: p.u, tu: w.u });
         }
+      }
+    }
+  /* 0.1.37 陷阱：放進對方背包（1 格或 2 格，整個背包隨機、含空格）；怪物沒有背包，掛在隨機一把武器上 */
+  for (let i = 0; i < 2; i++)
+    for (const tp of S[i].F.traps || []) {
+      const d = S[1 - i],
+        G = d.F.grid;
+      for (let n = 0; n < tp.n; n++) {
+        let cells = [],
+          us = new Set();
+        if (G && G.w && G.h) {
+          const x = fl(r() * G.w),
+            y = fl(r() * G.h);
+          cells.push([x, y]);
+          if (tp.sz > 1) {
+            const dir = [
+              [1, 0],
+              [0, 1],
+              [-1, 0],
+              [0, -1]
+            ].filter(([dx, dy]) => x + dx >= 0 && y + dy >= 0 && x + dx < G.w && y + dy < G.h);
+            if (dir.length) {
+              const [dx, dy] = dir[fl(r() * dir.length)];
+              cells.push([x + dx, y + dy]);
+            }
+          }
+          const key = new Set(cells.map(c => c + ''));
+          for (const u in G.at) if (G.at[u].some(c => key.has(c + ''))) us.add(u);
+        } else if (d.w.length) us.add(d.w[fl(r() * d.w.length)].u);
+        d.traps.push({ k: tp.k, by: i, us });
+        log(0, i, 'trapSet', tp.sz || 1, { x: tp.k, cells, tus: [...us] });
       }
     }
   /* 0.1.33 先手射擊：星級最高的一把開戰先打一下 */
@@ -245,48 +423,94 @@ function simulate(FA, FB, seed) {
       const w = [...S[i].w].filter(x => !(x.seal > 0)).sort((x, y) => petRank(y) - petRank(x))[0];
       if (w) attack(0, S[i], i, w);
     }
-  /* 0.1.9 開戰丟出去的藥劑：對方直接吃到異常 */
+  /* 0.1.9 開戰丟出去的藥劑：對方直接吃到異常；0.1.37 凍結 N 秒改成所有道具冰緩 N 秒，多了劇毒、腐蝕、衰老、混亂、傷害降低、
+     凍結 N 把武器、自殘（N 把武器出手時自己吃劇毒） */
+  const SKIP = ['seal', 'down', 'petLock', 'petSeal', 'sealAll', 'lockBest'];
   for (let i = 0; i < 2; i++)
     for (const p of S[i].F.pre || []) {
-      if (['seal', 'down', 'petLock', 'petSeal', 'sealAll', 'lockBest'].includes(p.k)) continue;
-      const d = S[1 - i],
-        v = p.v * res(d, p.k, 0);
-      if (p.k === 'weak' || p.k === 'blind' || p.k === 'frozen') d[p.k] = Math.max(d[p.k], v);
+      if (SKIP.includes(p.k)) continue;
+      const a = S[i],
+        d = S[1 - i];
+      if (p.k === 'frozen') {
+        for (const o of items(d)) chillIt(0, 1 - i, o, i, p.v);
+        log(0, i, 'throw', p.v, { u: p.u, x: 'chill' });
+        continue;
+      }
+      if (p.k === 'freezeN') {
+        for (let n = 0; n < p.v; n++)
+          freezeIt(
+            0,
+            1 - i,
+            rndIt(d, o => !(o.fz > 0) && d.w.includes(o)),
+            i
+          );
+        continue;
+      }
+      if (p.k === 'selfV') {
+        const c = d.w.filter(w => !w.imm && !w.selfV);
+        for (let n = 0; n < (p.n || 1) && c.length; n++) c.splice(fl(r() * c.length), 1)[0].selfV = p.v;
+        log(0, i, 'throw', p.v, { u: p.u, x: 'selfV' });
+        continue;
+      }
+      if (p.k === 'dmgDown') {
+        d.dmgDown = Math.min(90, d.dmgDown + p.v * (d.F.immAll ? 0 : 1));
+        log(0, i, 'throw', p.v, { u: p.u, x: 'dmgDown' });
+        continue;
+      }
+      const v = p.v * res(d, p.k, 0);
+      if (['weak', 'blind', 'corrode', 'age', 'confuse'].includes(p.k)) d[p.k] = Math.max(d[p.k], v);
       else if (p.k === 'sunder') d.sunder = Math.min(SUNDER_MAX, d.sunder + v);
-      else d[p.k] = p.k === 'poison' ? Math.min(POISON_MAX, d[p.k] + v) : d[p.k] + v;
+      else if (p.k === 'poison') d.poison = Math.min(pCap(a), d.poison + v);
+      else if (p.k === 'venom') d.venom = Math.min(vCap(a), d.venom + v);
+      else d[p.k] += v;
       log(0, i, 'throw', Math.round(v * 10) / 10, { u: p.u, x: p.k });
     }
+  /* 0.1.37 致命毒素：時段結束後衰老（整場） */
+  const ageAt = S.map(x => Math.min(MAX_T + 1, ...(x.F.phase || []).filter(p => p.b.age).map(p => p.t)));
   let t = 0,
     sec = 0;
   while (t < MAX_T) {
     t += SIM_DT;
     for (let i = 0; i < 2; i++) {
       const a = S[i];
-      if (a.weak > 0) a.weak -= SIM_DT;
-      if (a.blind > 0) a.blind -= SIM_DT;
+      if (t > ageAt[i] && !(a.age >= MAX_T)) a.age = MAX_T;
+      for (const k of ['weak', 'blind', 'corrode', 'age', 'confuse']) if (a[k] > 0) a[k] -= SIM_DT;
+      for (const o of items(a)) {
+        if (o.fz > 0) o.fz -= SIM_DT;
+        if (o.ch > 0) o.ch -= SIM_DT;
+      }
       if (a.stun > 0) {
         a.stun -= SIM_DT;
-        /* 0.1.27 暈眩時凍結、封鎖照樣倒數（之前會跟著暫停，暈眩＋凍結變得比說明強） */
-        if (a.frozen > 0) a.frozen -= SIM_DT;
+        /* 0.1.27 暈眩時封鎖照樣倒數（之前會跟著暫停，暈眩＋凍結變得比說明強） */
         for (const w of a.w) if (w.seal > 0) w.seal -= SIM_DT;
         continue;
       }
       /* 0.1.10 越戰越快（ramp）：每 5 秒攻速 +N%，最多 5 次 */
-      const rate =
-        (a.frozen > 0 ? 0.5 : 1) *
-        (1 + (Math.min(5, fl(t / 5)) * (a.F.ramp || 0)) / 100) *
-        (a.F.rushT && t <= a.F.rushT ? 1 + a.F.rushP / 100 : 1);
-      if (a.frozen > 0) a.frozen -= SIM_DT;
-      /* 0.1.35 背水：生命低於 50% 時武器攻速提升 */
-      const wr = rate * (a.F.rageSpd && a.hp < a.max * 0.5 ? 1 + a.F.rageSpd / 100 : 1);
+      const ph = phaseOf(a.F, t),
+        rate =
+          (1 + (Math.min(5, fl(t / 5)) * (a.F.ramp || 0)) / 100) *
+          (a.F.rushT && t <= a.F.rushT ? 1 + a.F.rushP / 100 : 1);
+      /* 0.1.35 背水：生命低於 50% 時武器攻速提升；0.1.37 時段加成、萬能藥、碎冰（敵人每件冰緩中的道具，冰系武器攻速 +） */
+      const wr =
+          rate *
+          (a.F.rageSpd && a.hp < a.max * 0.5 ? 1 + a.F.rageSpd / 100 : 1) *
+          Math.max(0.1, 1 + ph.spd / 100) *
+          (a.buffT > t ? 1 + a.bSpd / 100 : 1),
+        shS = a.F.shatterS ? 1 + (a.F.shatterS * items(S[1 - i]).filter(o => o.ch > 0).length) / 100 : 1;
+      /* 0.1.37 凍結：充能 ×0；冰緩：×0.5 */
+      const ice = o => (o.fz > 0 ? 0 : o.ch > 0 ? 0.5 : 1);
       for (const w of a.w) {
         if (w.seal > 0) {
           w.seal -= SIM_DT;
           continue;
         }
-        w.tt += SIM_DT * wr;
+        w.tt += SIM_DT * wr * ice(w) * (w.cold ? shS : 1);
         if (w.tt >= w.cd) {
           w.tt -= w.cd;
+          /* 0.1.37 出手：先觸發蓋在它上面的陷阱、自殘的劇毒 */
+          trapFire(t, i, w.u);
+          if (w.selfV) addVenom(S[1 - i], a, w.selfV, t);
+          if (a.hp <= 0) break;
           attack(t, a, i, w);
           /* 0.1.10 連擊：有機率馬上再打一次；0.1.33 連珠箭：開戰 openDbl 秒內必定連擊；0.1.28 質變的連鎖（這一件自己的機率）；
              0.1.35 連鎖追擊（triple：再打兩下）、雙手大師（這一件自己的連擊機率 dbl） */
@@ -300,11 +524,11 @@ function simulate(FA, FB, seed) {
         }
       }
       for (const s of a.s) {
-        s.tt += SIM_DT * rate;
+        s.tt += SIM_DT * rate * ice(s);
         if (s.tt >= s.cd) {
           s.tt -= s.cd;
-          a.block = Math.min(a.max, a.block + s.block);
-          log(t, i, 'block', s.block, { u: s.u });
+          trapFire(t, i, s.u);
+          if (gainBlock(t, a, i, s.block, s.u)) log(t, i, 'block', s.block, { u: s.u });
           /* 0.1.28 尖刺（質變）：格擋時順便撞敵人（吃護甲） */
           if (s.bash) {
             const d = S[1 - i];
@@ -321,54 +545,103 @@ function simulate(FA, FB, seed) {
               }
             );
           }
-          if (s.heal) {
-            const h = Math.min(a.max - a.hp, healOf(a, s.heal));
-            if (h > 0) {
-              a.hp += h;
-              log(t, i, 'heal', Math.round(h), { self: 1, u: s.u });
-            }
-          }
+          if (s.heal) heal(t, a, i, s.heal, { u: s.u });
         }
       }
       for (const p of a.pots)
         if (p.n > 0 && a.hp > 0 && a.hp < (a.max * p.at) / 100) {
           p.n--;
+          trapFire(t, i, p.u);
           const pv = healOf(a, p.v);
           a.hp = Math.min(a.max, a.hp + pv);
           log(t, i, 'pot', Math.round(pv), { self: 1, u: p.u });
           /* 0.1.28 爆裂（質變）：喝藥水時炸敵人 */
           if (p.bomb) hurt(t, (p.v * p.bomb) / 100, S[1 - i], i, 'hit', { u: p.u, ab: 0, el: 'fire' });
+          /* 0.1.37 萬能藥：喝下時獲得護盾、幾秒內傷害與攻速提升 */
+          if (a.F.potBuff) {
+            gainBlock(t, a, i, a.F.potBuff[0], p.u);
+            a.buffT = t + a.F.potBuff[1];
+            a.bDmg = Math.max(a.bDmg, a.F.potBuff[2]);
+            a.bSpd = Math.max(a.bSpd, a.F.potBuff[3]);
+          }
+          /* 0.1.37 終極藥劑的效果 */
+          if (p.ex) brewFx(t, a, i, p);
         }
     }
-    /* 每秒：燃燒（每秒 -1 層）、中毒（不會退）、回復、疲勞 */
+    /* 每秒：燃燒（每秒 -1 層；點燃時 +1 層、傷害 ×1.5）、中毒（不會退）、劇毒（不退，×2）、回復、疲勞 */
     if (fl(t + 1e-6) > sec) {
       sec = fl(t + 1e-6);
       for (let i = 0; i < 2; i++) {
-        const a = S[i];
+        const a = S[i],
+          o = S[1 - i];
         if (a.burn > 0) {
-          hurt(t, a.burn, a, 1 - i, 'dot', { el: 'fire' });
-          a.burn--;
+          hurt(t, a.burn * (a.ignite ? IGNITE_MUL : 1), a, 1 - i, 'dot', { el: 'fire' });
+          a.burn += a.ignite ? 1 : -1;
         }
-        if (a.poison > 0) hurt(t, a.poison, a, 1 - i, 'dot', { el: 'poison' });
+        /* 0.1.37 以毒為生：自己身上的中毒變成回血 */
+        if (a.poison > 0) {
+          if (a.F.poisonLife) heal(t, a, i, a.poison, { el: 'poison' });
+          else hurt(t, a.poison, a, 1 - i, 'dot', { el: 'poison' });
+        }
+        if (a.venom > 0) hurt(t, a.venom * VENOM_MUL, a, 1 - i, 'dot', { el: 'venom' });
         if (a.bleed > 0) {
           hurt(t, a.bleed, a, 1 - i, 'dot', { el: 'bleed' });
           a.bleed = fl(a.bleed / 2);
         }
+        /* 0.1.37 劇毒核心：敵人中毒滿層後每 2 秒 +1 劇毒；毒師的腐蝕：每 N 秒讓敵人腐蝕 N 秒 */
+        if (o.F.p2v && sec % 2 === 0 && a.poison >= pCap(o) - 0.01) addVenom(o, a, 1, t);
+        if (o.F.corrodeRe && (sec - 1) % o.F.corrodeRe === 0) {
+          const v = o.F.corrodeRe * res(a, 'corrode', t);
+          if (v > 0) a.corrode = Math.max(a.corrode, v);
+        }
         /* 0.1.29 淨化：每 CLEANSE_T 秒清掉最嚴重的 N 種異常（持續傷害先清） */
         if (a.F.cleanse && sec % CLEANSE_T === 0) {
-          const ks = ['poison', 'burn', 'bleed', 'frozen', 'stun', 'weak', 'blind', 'sunder'].filter(k => a[k] > 0);
+          const ks = [
+            'venom',
+            'poison',
+            'burn',
+            'bleed',
+            'stun',
+            'corrode',
+            'weak',
+            'age',
+            'blind',
+            'confuse',
+            'sunder'
+          ].filter(k => a[k] > 0);
           for (const k of ks.slice(0, a.F.cleanse)) a[k] = 0;
           if (ks.length) log(t, i, 'cleanse', Math.min(ks.length, a.F.cleanse), { self: 1 });
         }
-        if (a.F.regen && a.hp > 0 && a.hp < a.max) {
-          const h = Math.min(a.max - a.hp, healOf(a, a.F.regen));
-          a.hp += h;
-          log(t, i, 'heal', Math.round(h), { self: 1, regen: 1 });
-        }
+        if (a.F.regen && a.hp > 0 && a.hp < a.max) heal(t, a, i, a.F.regen, { regen: 1 });
         if (sec >= FATIGUE_T) hurt(t, 2 * (sec - FATIGUE_T + 1), a, 1 - i, 'fatigue', {});
       }
     }
     if (S[0].hp <= 0 || S[1].hp <= 0) break;
+  }
+  /* 0.1.37 終極藥劑：喝下時依序套用煉成選的效果 */
+  function brewFx(t, a, i, p) {
+    const d = S[1 - i];
+    for (const k of p.ex) {
+      const B = BREW[k];
+      if (!B) continue;
+      if (B.heal) heal(t, a, i, B.heal, { u: p.u });
+      if (B.block) gainBlock(t, a, i, B.block, p.u);
+      if (B.buff) {
+        a.buffT = Math.max(a.buffT, t + B.buff[0]);
+        a.bDmg = Math.max(a.bDmg, B.buff[1]);
+        a.bSpd = Math.max(a.bSpd, B.buff[2]);
+      }
+      if (B.regen) a.F = { ...a.F, regen: (a.F.regen || 0) + B.regen };
+      if (B.cleanse)
+        for (const k2 of ['venom', 'poison', 'burn', 'bleed', 'stun', 'corrode', 'weak', 'age', 'blind', 'confuse'])
+          a[k2] = 0;
+      if (B.poison) addPoison(a, d, B.poison, t);
+      if (B.venom) addVenom(a, d, B.venom, t);
+      if (B.burn) d.burn += B.burn * res(d, 'burn', t);
+      if (B.ignite && res(d, 'ignite', t) > 0) d.ignite = 1;
+      if (B.chill) for (const o of items(d)) chillIt(t, 1 - i, o, i, B.chill);
+      if (B.age) d.age = Math.max(d.age, B.age * res(d, 'age', t));
+    }
   }
   /* 同時倒下：剩比較多血的贏；完全一樣算對手贏 */
   const win = S[1].hp <= 0 && (S[0].hp > 0 || S[0].hp > S[1].hp);
@@ -378,7 +651,8 @@ function simulate(FA, FB, seed) {
     ev,
     end: [Math.max(0, Math.round(S[0].hp)), Math.max(0, Math.round(S[1].hp))],
     max: [S[0].max, S[1].max],
-    /* 0.1.35 金錢標花掉的金幣 */
-    spent: [S[0].spent, S[1].spent]
+    /* 0.1.35 金錢標花掉的金幣；0.1.37 各自觸發的凍結＋冰緩次數（寒冰之心） */
+    spent: [S[0].spent, S[1].spent],
+    ice: [S[0].iceN, S[1].iceN]
   };
 }

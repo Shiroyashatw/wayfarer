@@ -585,7 +585,7 @@ function detailHTML(run) {
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
   return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${itemDesc(o.sc)}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+    <p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${brewTxt(o.ex)}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${itemDesc(o.sc)}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
       .filter(([, m]) => modTxt(m))
@@ -670,6 +670,14 @@ function resultHTML(run) {
 function pickHTML(run) {
   const p = run.pend;
   const t = p.tier || 1;
+  /* 0.1.37 煉成：選的是藥劑效果（已經選的列在上面） */
+  if (p.brew)
+    return `<div class="ovl"><div class="dlg2"><b>${p.t}</b>${p.ex.length ? `<p class="c-dim">已經煉進去：${brewTxt(p.ex)}</p>` : ''}<div class="picks">${p.opts
+      .map(
+        k =>
+          `<button class="pk s5" data-act="pick" data-k="${k}"><img src="${itemIcon('ultelixir')}" alt=""><span><b style="color:${STARC[5]}">${BREW[k].n}</b><small>終極藥劑喝下時的效果</small></span></button>`
+      )
+      .join('')}</div></div></div>`;
   return `<div class="ovl"><div class="dlg2"><b>${p.t}</b><div class="picks">${p.opts
     .map(
       id =>
@@ -796,16 +804,21 @@ function bShow() {
   $('btime').textContent = B.t.toFixed(1) + ' 秒' + (B.t >= FATIGUE_T ? '・疲勞' : '');
 }
 /* 0.1.6 冷卻條：照時間軸，每件武器／盾在兩次出手之間格子由下往上填滿；被封鎖的變暗。
-   B.cdt[邊][u] = 出手時間；B.seal[邊][u] = 封鎖到幾秒 */
+   B.cdt[邊][u] = 出手時間；B.seal[邊][u] = 封鎖到幾秒；0.1.37 ice[邊][u] = [[開始, 結束, 凍結?]…]、trap[邊][u] = 蓋著幾個陷阱 */
 function cdTimeline(ev) {
   const t = [{}, {}],
-    seal = [{}, {}];
+    seal = [{}, {}],
+    ice = [{}, {}],
+    trap = [{}, {}];
   for (const e of ev) {
     if (e.u && (e.k === 'hit' || e.k === 'crit' || e.k === 'miss' || e.k === 'block'))
       (t[e.s][e.u] = t[e.s][e.u] || []).push(e.t);
     if (e.k === 'seal') seal[1 - e.s][e.tu] = e.v;
+    if ((e.k === 'freeze' || e.k === 'chill') && e.tu)
+      (ice[1 - e.s][e.tu] = ice[1 - e.s][e.tu] || []).push([e.t, e.t + e.v, e.k === 'freeze']);
+    if (e.k === 'trapSet') for (const u of e.tus || []) trap[1 - e.s][u] = (trap[1 - e.s][u] || 0) + 1;
   }
-  return { t, seal };
+  return { t, seal, ice, trap };
 }
 function bCd() {
   if (!B.cdt) B.cdt = cdTimeline(B.fb.res.ev);
@@ -825,6 +838,24 @@ function bCd() {
       const el = root.querySelector(`.it[data-u="${u}"]`);
       if (el) el.classList.toggle('sealed', B.t < v);
     }
+    /* 0.1.37 凍結（深藍、「凍」）、冰緩（淡藍）、蓋著陷阱（右上角紅點） */
+    for (const [u, l] of Object.entries(B.cdt.ice[s])) {
+      const el = root.querySelector(`.it[data-u="${u}"]`);
+      if (!el) continue;
+      const on = l.filter(([a, b]) => B.t >= a && B.t < b);
+      el.classList.toggle(
+        'frzI',
+        on.some(x => x[2])
+      );
+      el.classList.toggle(
+        'chlI',
+        on.some(x => !x[2])
+      );
+    }
+    for (const u of Object.keys(B.cdt.trap[s])) {
+      const el = root.querySelector(`.it[data-u="${u}"]`);
+      if (el) el.classList.add('trapped');
+    }
   }
 }
 /* 0.1.9 戰鬥中角色身上的異常（照時間軸最後一筆事件的狀態）：圖示＋層數 */
@@ -836,8 +867,19 @@ const STN = {
     frozen: '凍結',
     stun: '暈眩',
     weak: '虛弱',
-    blind: '致盲'
+    blind: '致盲',
+    /* 0.1.37 新異常與開戰效果 */
+    venom: '劇毒',
+    ignite: '點燃',
+    corrode: '腐蝕',
+    age: '衰老',
+    chill: '冰緩',
+    confuse: '混亂',
+    selfV: '自殘',
+    dmgDown: '傷害降低'
   },
+  /* 0.1.37 陷阱的名字 */
+  TRAPN = { ignite: '點燃', bomb: '藥劑炸彈', spore: '劇毒孢子', icicle: '冰錐' },
   STI = [
     ['burn', 'ail_burn', 1],
     ['poison', 'ail_poison', 1],
@@ -846,7 +888,13 @@ const STN = {
     ['frozen', 'ail_frozen', 0],
     ['stun', 'ail_stun', 0],
     ['weak', 'ail_curse', 0],
-    ['blind', 'ail_mark', 0]
+    ['blind', 'ail_mark', 0],
+    ['venom', 'ail_dmark', 1],
+    ['ignite', 'sk_fireburst', 0],
+    ['corrode', 'asc_alchemist_c0', 0],
+    ['age', 'ail_slow', 0],
+    ['chill', 'sk_frostnova', 1],
+    ['confuse', 'ail_shock', 0]
   ];
 function bSts() {
   if (!B.st) return;
@@ -881,7 +929,11 @@ const ELC = {
   sunder: '#ffb15a',
   frozen: '#8fd8ff',
   weak: '#c58cff',
-  blind: '#fff27a'
+  blind: '#fff27a',
+  venom: '#5fd38a',
+  chill: '#bfe9ff',
+  corrode: '#d6e36b',
+  age: '#c9b89a'
 };
 function bPop(side, txt, col, big) {
   const fx = $('fx');
@@ -926,7 +978,14 @@ function bLog(e, tg) {
   else if (e.k === 'pot') t = `${by(e.s, e.u)} 回復 ${e.v}`;
   else if (e.k === 'heal' && !e.regen) t = `${who(e.s)} 回復 ${e.v}`;
   else if (e.k === 'stun') t = `${who(tg)} 被暈眩 ${e.v} 秒`;
-  else if (e.k === 'freeze') t = `${who(tg)} 被凍結 ${e.v} 秒`;
+  else if (e.k === 'freeze') t = `${who(1 - e.s)}的${it(1 - e.s, e.tu) || '道具'} 被凍結 ${e.v} 秒`;
+  else if (e.k === 'chill') t = `${who(1 - e.s)}的${it(1 - e.s, e.tu) || '道具'} 冰緩 ${e.v} 秒`;
+  else if (e.k === 'ignite') t = `${who(1 - e.s)} 被點燃`;
+  else if (e.k === 'age') t = `${who(tg)} 衰老 ${e.v} 秒`;
+  else if (e.k === 'corrode') t = e.u ? `${who(tg)} 腐蝕中：護盾變成 -${e.v} 生命` : `${who(tg)} 腐蝕 ${e.v} 秒`;
+  else if (e.k === 'trapSet') t = `${who(e.s)} 在${who(1 - e.s)}的背包放了${TRAPN[e.x] || '陷阱'}`;
+  else if (e.k === 'trap')
+    t = `${who(1 - e.s)}的${it(1 - e.s, e.tu) || '道具'} 觸發${TRAPN[e.x] || '陷阱'}${e.v ? ` -${e.v}` : ''}`;
   else if (e.k === 'weak') t = `${who(tg)} 虛弱 ${e.v} 秒`;
   else if (e.k === 'blind') t = `${who(tg)} 致盲 ${e.v} 秒`;
   else if (e.k === 'thorns') t = `${who(e.s)} 反彈 ${e.v}`;
@@ -1037,8 +1096,22 @@ function bTick() {
       bPop(tg, '暈眩', '#ffe27a');
       bBurst(tg, '#ffe27a', 6);
     } else if (e.k === 'freeze') {
-      bPop(tg, '凍結', '#8fd8ff');
-      bBurst(tg, '#8fd8ff', 8);
+      bPop(1 - e.s, '凍結', '#8fd8ff');
+      bBurst(1 - e.s, '#8fd8ff', 8);
+      bFlash(1 - e.s, e.tu);
+    } else if (e.k === 'chill') {
+      bPop(1 - e.s, '冰緩', '#bfe9ff');
+      bFlash(1 - e.s, e.tu);
+    } else if (e.k === 'ignite') {
+      bPop(1 - e.s, '點燃！', '#ff7a3a', 1);
+      bBurst(1 - e.s, '#ff7a3a', 8);
+    } else if (e.k === 'trap') {
+      bPop(1 - e.s, (TRAPN[e.x] || '陷阱') + (e.v ? ' ' + e.v : ''), e.x === 'bomb' ? '#ff9a5a' : '#5fd38a', 1);
+      bFlash(1 - e.s, e.tu);
+    } else if (e.k === 'corrode') {
+      bPop(tg, e.u ? '腐蝕 -' + e.v : '腐蝕', '#d6e36b');
+    } else if (e.k === 'age') {
+      bPop(tg, '衰老', '#c9b89a');
     } else if (e.k === 'thorns') bPop(tg, '反彈 ' + e.v, '#ffb15a');
     else if (e.k === 'cleanse') bPop(tg, '淨化', '#ffe9a0');
     else if (e.k === 'sealAll') bPop(tg, `全封鎖 ${e.v} 秒`, '#c58cff', 1);
@@ -1131,6 +1204,8 @@ function helpHTML() {
   <div class="card"><b>相鄰效果</b><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></div>
   <div class="card"><b>職業核心</b><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 再掉一個專屬核心，選了直接融入第一個（兩個效果都有、不佔格子）。圖鑑最下面可以看全部。</p></div>
   <div class="card"><b>戰鬥</b><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></div>
+  <div class="card"><b>異常狀態</b><p>燃燒、中毒、流血、劇毒每秒扣血（劇毒不會退、×2）；點燃讓燃燒越燒越多；破甲扣護甲；凍結讓一件道具 6 秒不能充能、冰緩讓它充能減半；暈眩不能動；虛弱傷害 -25%；致盲 30% 打不中；衰老不能暴擊；腐蝕不能獲得護盾（改成扣血）；混亂一半打到自己。</p></div>
+  <div class="card"><b>陷阱</b><p>有些核心會在開戰時把陷阱放進敵人背包的格子（含空格），那格的道具每次出手都會觸發。戰鬥時有陷阱的道具右上角有紅點。</p></div>
   <div class="card"><b>對手</b><p>對戰的對手是其他玩家在同一回合留下的背包快照，不用等人上線。沒有真人時由機器人補位。</p></div></div>`;
 }
 function settingsHTML() {
@@ -1328,10 +1403,11 @@ const A = {
       e = takePick(run, d.k, true);
     if (e) return toast(e);
     if (run.hold) toast('暫存區滿了：戰利品先寄放，空出一格再領');
-    S.seen[d.k] = 1;
+    if (ITEMI[d.k]) S.seen[d.k] = 1;
     snd('level');
-    /* 0.1.35 回扣送的三選一在準備中途：選完回到準備 */
-    if (mid) run.phase = 'prep';
+    /* 0.1.37 選完還有下一步（煉成）：留在三選一 */
+    if (run.pend) run.phase = 'pick';
+    /* 0.1.35 回扣送的三選一在準備中途：選完回到準備 */ else if (mid) run.phase = 'prep';
     else nextRound(run);
     save();
     render();

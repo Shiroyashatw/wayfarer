@@ -316,6 +316,10 @@ canvas.spr.flip{transform:scaleX(-1)}
 .bag.mini .it .c{overflow:hidden}
 .bag.mini .it .c::after{content:'';position:absolute;left:0;right:0;bottom:0;height:calc(var(--cd,0) * 100%);background:var(--accent);opacity:.38;box-shadow:0 -2px 0 var(--accent);pointer-events:none}
 .bag.mini .it.sealed .c{filter:grayscale(1) brightness(.6)}
+.bag.mini .it.frzI .c{filter:saturate(.3) brightness(1.1) hue-rotate(160deg);box-shadow:inset 0 0 0 2px #8fd8ff}
+.bag.mini .it.frzI::after{content:'凍';position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:var(--fs-sm);color:#dff4ff;text-shadow:0 1px 2px #003;z-index:2}
+.bag.mini .it.chlI .c{box-shadow:inset 0 0 0 2px #bfe9ff}
+.bag.mini .it.trapped::before{content:'';position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--bad);box-shadow:0 0 0 1px #0008;z-index:3}
 .bag.mini .it.sealed::after{content:'封';position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:var(--fs-sm);color:#fff;text-shadow:0 1px 2px #000;z-index:2}
 .prof .rank{margin-top:var(--sp-1)}
 .prof .rank img{width:34px;height:34px}

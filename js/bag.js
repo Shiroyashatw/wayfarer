@@ -168,7 +168,9 @@ function mergeNeed(its, id, t = merge2Of(its)) {
 /* 背包＋暫存區裡，同一種同一階的湊滿 3 件就合成（可能連鎖）；r 是亂數（詞綴） */
 function mergeAll(run, r) {
   const done = [],
-    early = coreProp(run.bag.items, 'early');
+    early = coreProp(run.bag.items, 'early'),
+    /* 0.1.37 再生藥劑：生命藥水 Ⅱ 階就開詞綴 */
+    earlyPot = coreProp(run.bag.items, 'earlyPot');
   for (let guard = 0; guard < 20; guard++) {
     const all = [...run.bag.items.map(o => ['bag', o]), ...run.bench.filter(Boolean).map(o => ['bench', o])],
       key = {};
@@ -193,7 +195,7 @@ function mergeAll(run, r) {
     /* 0.1.35 回扣送的（賣價 0）：全部都是送的才保留 */
     o.z = use.every(([, q]) => q.z) ? 1 : 0;
     /* 0.1.8 升到 Ⅲ 階也開一條隨機詞綴（5★ 已經有一條的話就是第二條）；0.1.35 精品：Ⅱ 階就開 */
-    if (o.t === TIER_MAX || (early && o.t === 2 && !o.m)) {
+    if (o.t === TIER_MAX || ((early || (earlyPot && ITEMI[o.id].pot)) && o.t === 2 && !o.m)) {
       if (!o.m) (o.m = roll5(o.id, r)), (o.mv = 0);
       else if (!o.m2) (o.m2 = roll5(o.id, r)), (o.mv2 = 0);
     }
@@ -268,6 +270,22 @@ function compileBag(bag, extra = {}) {
       cleanse: 0,
       healCut: 0,
       critRes: 0,
+      /* 0.1.37 異常重製：中毒／劇毒上限、劇毒滿層轉換、以毒為生、每 N 秒腐蝕、毒刺中毒、免疫、碎冰、陷阱、時段加成、萬能藥 */
+      poisonCap: 0,
+      venomCap: 0,
+      p2v: 0,
+      poisonLife: 0,
+      corrodeRe: 0,
+      thornsP: 0,
+      immAll: 0,
+      immFz: 0,
+      shatterF: 0,
+      shatterS: 0,
+      traps: [],
+      phase: [],
+      potBuff: null,
+      /* 0.1.37 格子：每件道具佔哪幾格（敵人的陷阱放在格子上） */
+      grid: { w: bag.w, h: bag.h, at: Object.fromEntries(bag.items.map(o => [o.u, cellsOf(o)])) },
       ...extra
     };
   /* 先收集每件身上的加成 */
@@ -338,6 +356,7 @@ function compileBag(bag, extra = {}) {
     for (const b of S0.fxPer || []) for (const k in b) if (k !== 'tag') F[k] += b[k] * cnt(b.tag);
     /* 0.1.33 賄賂：開戰前付過錢（bag.pay）才有效 */
     if (S0.bribe && bag.pay) F.pre.push({ u: s.u, k: 'lockBest', v: MAX_T });
+    coreFx(F, S0, s.u);
     /* 0.1.29 融入專屬核心的副核心（sc）：效果跟副核心本身一樣，不佔格子 */
     /* 融入的第二個核心：全背包加成、角色加成、每件某標籤的加成、開戰效果、賄賂都算 */
     const X = s.sc && ITEMI[s.sc];
@@ -350,6 +369,7 @@ function compileBag(bag, extra = {}) {
       for (const b of X.fxPer || []) for (const k in b) if (k !== 'tag') F[k] += b[k] * cnt(b.tag);
       if (X.pre) F.pre.push({ u: s.u, k: preKey(X.pre), v: preVal(s.sc, 1) });
       if (X.bribe && bag.pay && !S0.bribe) F.pre.push({ u: s.u, k: 'lockBest', v: MAX_T });
+      coreFx(F, X, s.u);
     }
     if (s.a) {
       const a = AFFX.find(x => x.k === s.a);
@@ -376,6 +396,8 @@ function compileBag(bag, extra = {}) {
       k = TIERM[o.t] * dx,
       m = mods.get(o.u);
     if (I.hp) F.hp += Math.round(I.hp * k);
+    /* 0.1.37 寒冰之心：跨場累積的生命 */
+    if (o.hh) F.hp += o.hh;
     if (I.arm) F.arm += Math.round(I.arm * k);
     if (I.dodge) F.dodge += Math.round(I.dodge * TIERB[o.t] * dx);
     if (I.regen || m.regen) F.regen += Math.round((I.regen || 0) * k) + (m.regen || 0);
@@ -403,7 +425,9 @@ function compileBag(bag, extra = {}) {
         at: I.pot[0],
         v: Math.round(I.pot[1] * k),
         n: I.pot[2] + (o.t === 3 ? 1 : 0),
-        bomb: m.potBomb || 0
+        bomb: m.potBomb || 0,
+        /* 0.1.37 終極藥劑：煉成選的效果 */
+        ...(o.ex ? { ex: o.ex, v: (o.ex || []).includes('heal') ? 0 : Math.round(I.pot[1] * k) } : {})
       });
     if (I.block)
       F.shields.push({
@@ -449,15 +473,29 @@ function compileBag(bag, extra = {}) {
         chainN: Math.min(CHAIN_MAX, m.chainN || 0),
         /* 0.1.35 雙手大師：每佔 1 格的連擊機率；金錢標：有錢時每次攻擊花 1 金、數值翻倍 */
         dbl: (m.cellDbl || 0) * shapeOf(o.id).length,
-        coin: I.coin ? 1 : 0
+        coin: I.coin ? 1 : 0,
+        /* 0.1.37 冰緩機率、劇毒層、命中衰老／腐蝕秒數、冰系（碎冰）、免疫異常與封鎖（別西卜） */
+        chill: (on.chill || 0) + (m.chillCh || 0),
+        venom: (on.venom || 0) + (m.venom || 0),
+        age: on.age || 0,
+        corr: on.corrode || 0,
+        cold: has(o, 'cold'),
+        imm: I.imm ? 1 : 0
       });
     }
   }
   /* 0.1.33 審判：每把武器的傷害 +護甲值 */
   if (F.armDmg && F.arm > 0) for (const w of F.weapons) w.dmg = w.dmg.map(v => v + F.arm);
-  if (F.potMul) F.pots.forEach(p => ((p.v = Math.round(p.v * (1 + F.potMul / 100))), (p.n += F.potUse)));
+  if (F.potMul || F.potUse) F.pots.forEach(p => ((p.v = Math.round(p.v * (1 + F.potMul / 100))), (p.n += F.potUse)));
   F.dodge = Math.min(40, F.dodge);
   return F;
+}
+/* 0.1.37 核心的開戰效果：多個開戰效果（pres）、陷阱（traps）、時段加成（phase）、萬能藥（potBuff） */
+function coreFx(F, D, u) {
+  for (const k in D.pres || {}) F.pre.push({ u, k, v: D.pres[k], ...(k === 'selfV' ? { n: D.selfN || 1 } : {}) });
+  for (const t of D.traps || []) F.traps.push({ ...t, u });
+  if (D.phase) F.phase.push(D.phase);
+  if (D.potBuff) F.potBuff = D.potBuff;
 }
 /* 給畫面用：每件道具目前吃到的加成（說明裡顯示「＋」） */
 function bagMods(bag) {
@@ -496,9 +534,9 @@ function bagMods(bag) {
         }
   return out;
 }
-/* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值]；
+/* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值, 終極藥劑的效果, 寒冰之心的生命, 封印過了幾回合]；
    後面是預設值的就不存。gp：0.1.35 開戰時的金幣（鈔能力、金錢標） */
-const PACK_DEF = [0, 0, 1, 0, 0, 0];
+const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0];
 const packBag = bag => ({
   w: bag.w,
   h: bag.h,
@@ -507,7 +545,7 @@ const packBag = bag => ({
   ...(bag.gp ? { gp: bag.gp } : {}),
   it: bag.items.map(o => {
     const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
-      t = [o.m2 || 0, o.f || 0, o.ft || 1, o.sc || 0, o.sm ? 1 : 0, o.ab || 0];
+      t = [o.m2 || 0, o.f || 0, o.ft || 1, o.sc || 0, o.sm ? 1 : 0, o.ab || 0, o.ex || 0, o.hh || 0, o.rc || 0];
     while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
     return [...a, ...t];
   })
@@ -534,7 +572,10 @@ const unpackBag = p => ({
       ft: a[9] || 1,
       sc: a[10] || null,
       sm: a[11] || 0,
-      ab: a[12] || null
+      ab: a[12] || null,
+      ex: a[13] || null,
+      hh: a[14] || 0,
+      rc: a[15] || 0
     }))
 });
 /* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */

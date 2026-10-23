@@ -48,7 +48,8 @@ function botThreat(F) {
     o.poison += (w.poison || 0) * sp * 2;
     o.bleed += (w.bleed || 0) * sp;
     o.sunder += (w.sunder || 0) * sp * 0.5;
-    o.frozen += ((w.freeze ? w.freeze[0] * w.freeze[1] : 0) / 100) * avg;
+    o.frozen += (((w.freeze ? w.freeze[0] * FREEZE_T * 0.3 : 0) + (w.chill || 0) * CHILL_T * 0.08) / 100) * avg;
+    o.poison += (w.venom || 0) * sp * 4;
     o.stun += ((w.stun ? w.stun[0] * w.stun[1] * 2 : 0) / 100) * avg;
     o.weak += ((w.weak || 0) / 100) * avg * 0.5;
     o.blind += ((w.blind || 0) / 100) * avg * 0.5;
@@ -68,13 +69,23 @@ function botPower(F, P = BOT_P) {
     const avg = (w.dmg[0] + w.dmg[1]) / 2,
       crit = Math.min(100, w.crit || 0) / 100;
     let hit = avg * (1 + crit * (cm - 1));
-    hit += ((w.burn || 0) + (w.poison || 0) * 1.4 + (w.bleed || 0) * 0.7) * P.dotW;
+    /* 0.1.37 劇毒不退、每秒 ×2；中毒上限高（毒師）多算一點 */
+    hit +=
+      ((w.burn || 0) +
+        (w.poison || 0) * 1.4 * (F.poisonCap > POISON_MAX ? 1.3 : 1) +
+        (w.bleed || 0) * 0.7 +
+        (w.venom || 0) * 2.6) *
+      P.dotW;
     hit *= 1 + (w.sunder || 0) * 0.02;
     const ctrl =
+      /* 0.1.37 凍結：一件道具 6 秒不能充能；冰緩：一件 4 秒減半；衰老：命中就衰老幾秒 */
       ((w.stun ? w.stun[0] * w.stun[1] : 0) +
-        (w.freeze ? w.freeze[0] * w.freeze[1] * 0.5 : 0) +
+        (w.freeze ? w.freeze[0] * FREEZE_T * 0.3 : 0) +
+        (w.chill || 0) * CHILL_T * 0.08 +
         (w.weak || 0) * 0.75 +
-        (w.blind || 0) * 0.75) /
+        (w.blind || 0) * 0.75 +
+        (w.age || 0) * 8 +
+        (w.corr || 0) * 6) /
       100;
     hit *= 1 + ctrl * 0.4 * P.ctrlW;
     hit *= 1 + (w.ls || 0) / 200;
@@ -102,6 +113,17 @@ function botPower(F, P = BOT_P) {
       (F.opener || 0) * 0.05) /
       100;
   if (F.rushT) dps *= 1 + (F.rushP / 100) * Math.min(1, F.rushT / 9);
+  /* 0.1.37 時段加成（一場大約 15 秒，看前 15 秒）、碎冰、以毒為生、劇毒滿層轉換、萬能藥 */
+  for (const p of F.phase || []) {
+    const f = Math.min(1, p.t / 15);
+    dps *=
+      Math.max(0.3, 1 + ((p.a.dmgPct || 0) + (p.a.spd || 0) * 0.8) / 100) * f +
+      Math.max(0.3, 1 + ((p.b.dmgPct || 0) + (p.b.spd || 0) * 0.8) / 100) * (1 - f);
+  }
+  if (F.shatterF)
+    dps *= 1 + Math.min(2, F.weapons.filter(w => w.cold).length * 0.15) * (F.shatterF / 100 + F.shatterS / 200);
+  if (F.p2v) dps *= 1.1;
+  if (F.potBuff && F.pots.length) dps *= 1 + (F.potBuff[2] + F.potBuff[3]) / 400;
   /* 0.1.35 招架：格擋機率像閃避，第一次成功後的護甲算一半 */
   let ehp =
     (F.hp * (1 + Math.max(-10, (F.arm || 0) + (F.parry ? (F.parryArm || 0) / 2 : 0)) / 50)) /
@@ -109,8 +131,11 @@ function botPower(F, P = BOT_P) {
     (1 - Math.min(40, F.parry || 0) / 100);
   for (const s of F.shields)
     ehp += (s.block / Math.max(0.6, s.cd)) * 9 + (s.heal / Math.max(0.6, s.cd)) * 9 + s.thorns * 3;
-  ehp += (F.regen || 0) * 9 + (F.startBlock || 0) + (F.thornsF || 0) * 6 + (F.critHeal || 0) * 4;
-  for (const p of F.pots) ehp += p.v * p.n;
+  ehp += (F.regen || 0) * 9 + (F.startBlock || 0) + (F.thornsF || 0) * 6 + (F.critHeal || 0) * 4 + (F.thornsP || 0) * 8;
+  for (const p of F.pots) ehp += p.v * p.n + (p.ex ? p.ex.length * 25 * p.n : 0) + (F.potBuff ? F.potBuff[0] * p.n : 0);
+  if (F.poisonLife) ehp *= 1.08;
+  if (F.immAll) ehp *= 1.15;
+  else if (F.immFz) ehp *= 1.05;
   ehp += gd;
   /* 開戰效果：讓對手變弱（虛弱、凍結、致盲、封鎖、降階）≈ 自己變強；開戰的燃燒中毒流血算傷害 */
   let pre = 1;
@@ -125,9 +150,20 @@ function botPower(F, P = BOT_P) {
     else if (p.k === 'lockBest') pre += 0.3;
     else if (p.k === 'petSeal') pre += 0.012 * p.v * Math.min(3, ep);
     else if (p.k === 'sunder') pre += 0.01 * Math.min(SUNDER_MAX, p.v);
+    /* 0.1.37 新的開戰效果 */ else if (p.k === 'freezeN') pre += 0.05 * p.v;
+    else if (p.k === 'selfV') pre += 0.03 * p.v * (p.n || 1);
+    else if (p.k === 'corrode') pre += 0.012 * p.v;
+    else if (p.k === 'age') pre += 0.012 * p.v;
+    else if (p.k === 'confuse') pre += 0.025 * p.v;
+    else if (p.k === 'dmgDown') pre += p.v / 100;
+    else if (p.k === 'venom') dps += (p.v * 2 * 12 * P.dotW) / 9 / 9;
     else dps += ((p.k === 'poison' ? Math.min(POISON_MAX, p.v) : p.v) * P.dotW) / 9;
   }
   if (F.petDown) pre += (Math.min(PETDOWN_MAX, F.petDown) / 100) * 0.3 * Math.min(1, ep / 2);
+  /* 0.1.37 陷阱：大約每個 1 格陷阱蓋到一件道具的機率一半，蓋到的話每次出手都觸發 */
+  const TW = { ignite: 0.05, bomb: 0.04, spore: 0.06, icicle: 0.07 };
+  for (const t of F.traps || []) pre += (TW[t.k] || 0.04) * t.n * (t.sz > 1 ? 1.5 : 1);
+  if (F.corrodeRe) pre += 0.12;
   /* 0.1.29 抗異常：照對手平均每種異常的強度（run.eres，跟 epet 一樣看上一回合其他人的背包）估價 */
   const er = BOT_ERES,
     rv = k => Math.min(RES_MAX, F[k] || 0) / 100;
@@ -210,6 +246,7 @@ function botEcon(run, d) {
   if (d.give) v += 0.2 * left;
   if (d.eliteAll) v += 0.12 * left;
   if (d.gift) v += 0.15;
+  if (d.brew) v += 0.2 * left;
   return v;
 }
 function botValue1(run, id, t, P, cx, bag, base, o) {
@@ -276,8 +313,18 @@ function botHold(run, P, cx = {}) {
 }
 /* ================= 每回合 ================= */
 /* 三選一（菁英、首領、回扣）：照評估挑，pend.tier 是送的階 */
+/* 0.1.37 煉成的效果偏好（機器人照這個順序挑） */
+const BOT_BREW = ['dmg', 'shield', 'heal', 'poison', 'spd', 'burn', 'chill', 'age', 'regen', 'cleanse'];
 function botPend(run, q, P) {
   if (!run.pend) return;
+  if (run.pend.brew) {
+    const o = run.pend.opts;
+    return takePick(
+      run,
+      r01(run) < q ? [...o].sort((a, b) => BOT_BREW.indexOf(a) - BOT_BREW.indexOf(b))[0] : o[0],
+      true
+    );
+  }
   const opts = run.pend.opts,
     t = run.pend.tier || 1,
     pick =
@@ -292,7 +339,7 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
   BOT_EPET = run.epet ?? 1;
   BOT_ERES = run.eres || BOT_ERES0;
   /* 三選一：挑戰力最高的 */
-  botPend(run, q, P);
+  for (let g = 0; g < 5 && run.pend; g++) botPend(run, q, P);
   botHold(run, P);
   /* 0.1.35 鈔能力：評估時用現在的金幣 */
   run.bag.gp = run.gold;

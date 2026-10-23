@@ -1155,6 +1155,76 @@ const ITEMS = [
     ns: 1,
     ic: 'asc_master_b4'
   },
+  /* 0.1.37 核心送的道具（ns：商店、戰利品、池子都不會出） */
+  {
+    id: 'philstone',
+    n: '賢者之石',
+    star: 5,
+    sh: 's1',
+    tags: ['trinket'],
+    fx: { immAll: 1 },
+    ns: 1,
+    ic: 'asc_alchemist_c1'
+  },
+  /* 煉成做出來的：效果存在道具的 ex（BREW 的代號），生命低於 50% 喝、可以喝 2 次 */
+  {
+    id: 'ultelixir',
+    n: '終極藥劑',
+    star: 5,
+    sh: 's1',
+    tags: ['potion'],
+    pot: [50, 0, 2],
+    ns: 1,
+    ic: 'asc_alchemist_b1'
+  },
+  {
+    id: 'fsnake',
+    n: '墮落十二生肖・蛇',
+    star: 5,
+    sh: 'sq',
+    tags: ['pet', 'poison'],
+    cd: 1.4,
+    dmg: [8, 12],
+    on: { poison: 5, venom: 3, age: 2 },
+    ns: 1,
+    ic: 'z_snake'
+  },
+  /* 別西卜的封印：拿到後過 SEAL_RC 回合變成別西卜（nextRound 的 sealTick） */
+  {
+    id: 'bzseal',
+    n: '別西卜的封印',
+    star: 5,
+    sh: 's1',
+    tags: ['trinket'],
+    hatch: 'beelzebub',
+    ns: 1,
+    ic: 'asc_talisman_b4'
+  },
+  {
+    id: 'beelzebub',
+    n: '七宗罪・別西卜',
+    star: 5,
+    sh: 'sq',
+    tags: ['pet', 'poison', 'dark'],
+    cd: 1.8,
+    dmg: [20, 34],
+    on: { poison: 12, venom: 8, age: 5, corrode: 5 },
+    imm: 1,
+    ns: 1,
+    ic: 'beelzebub'
+  },
+  /* 寒冰之心：生命 +10，每場自己觸發的凍結、冰緩每次 +5 生命（o.hh，跨場累積） */
+  {
+    id: 'icheart',
+    n: '寒冰之心',
+    star: 5,
+    sh: 'sq',
+    tags: ['trinket', 'cold'],
+    hp: 10,
+    iceHp: 5,
+    ns: 1,
+    ic: 'tree_n039'
+  },
   {
     id: 'kingcrown',
     n: '王者之冠',
@@ -1963,7 +2033,8 @@ const CLASSES = [
     ic: 'sk_frostnova',
     th: 'cold',
     m: [
-      { tag: 'cold', freezeCh: 20, dmgPct: 30 },
+      /* 0.1.37 凍結改成單件 6 秒：凍結 +20% → +10%，多了冰緩 +20% */
+      { tag: 'cold', freezeCh: 10, chillCh: 20, dmgPct: 30 },
       { tag: 'staff', spd: 20 }
     ]
   },
@@ -1982,9 +2053,11 @@ const CLASSES = [
     ic: 'sk_poison',
     th: 'poison',
     m: [
-      { tag: 'poison', poison: 1, dmgPct: 25 },
+      /* 0.1.37 傷害 +25% → +15%，中毒上限 12 → 24 */
+      { tag: 'poison', poison: 1, dmgPct: 15 },
       { tag: 'dagger', poison: 1 }
-    ]
+    ],
+    F: { poisonCap: 24 }
   },
   { id: 'tamer', st: 'treefrog', n: '馴獸師', ic: 'sk_tauntroar', th: 'pet', m: [{ tag: 'pet', dmgPct: 35, spd: 15 }] },
   {
@@ -2004,7 +2077,8 @@ const CLASSES = [
     n: '鍊金術士',
     ic: 'cur_vaal',
     th: 'potion',
-    F: { potMul: 30, throwPct: 50, regen: 1 }
+    /* 0.1.37 藥劑效果 +50%、生命藥水多喝 1 次（拿掉藥水回復 +30%、回復 +1） */
+    F: { throwPct: 50, potUse: 1 }
   },
   /* 0.1.33 eliteGold：打完菁英多拿的金幣 */
   { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_regal', gold: 1, eliteGold: 3 }
@@ -2120,19 +2194,21 @@ const CORE_MAIN = {
     ['炙熱', { all: onP(P, { crit: 15 }), fx: { critMul: 40 } }],
     ['火焰護體', { fx: { thornsF: 6, hp: 20 } }]
   ],
+  /* 0.1.37 冰法重製：冰錐（陷阱）、碎冰（照敵人凍結／冰緩的道具數）、冰甲、暴風雪、寒冰之心（送會成長的道具） */
   cryo: P => [
-    ['寒霜', { all: onP(P, { freezeCh: 20 }) }],
+    ['寒霜', { all: onP(P, { freezeCh: 35 }) }],
+    /* 0.1.37 開戰凍結改成開戰冰緩 */
     ['冰封', { all: onP(P, { dmgPct: 10 }), pre: { frozen: 4 } }],
-    ['冰錐', { all: onP(P, { dmgPct: 35 }) }],
-    ['碎冰', { all: onP(P, { freezeCh: 10 }), fx: { execute: 60 } }],
-    ['冰甲', { fx: { arm: 10, startBlock: 25 } }],
-    ['暴風雪', { all: onP(P, { spd: 25 }) }],
+    ['冰錐', { traps: [{ k: 'icicle', n: 3, sz: 2 }] }],
+    ['碎冰', { fx: { shatterF: 20, shatterS: 5 } }],
+    ['冰甲', { fx: { startBlock: 100, immFz: 1 } }],
+    ['暴風雪', { pre: { frozen: 8 } }],
     ['冰晶共鳴', { all: onP(P, { dmgPct: 10, per: 'cold' }) }],
     ['凍傷', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
-    ['寒冰之心', { fx: { regen: 3, hp: 40 } }],
+    ['寒冰之心', { give: 'icheart' }],
     ['冰刃', { all: onP(P, { crit: 20 }), fx: { critMul: 30 } }],
     ['霜凍連擊', { all: onP(P, { dmgPct: 10 }), fx: { double: 18 } }],
-    ['永凍', { all: onP(P, { weakCh: 20, freezeCh: 10 }) }]
+    ['永凍', { all: onP(P, { weakCh: 20, freezeCh: 15, chillCh: 10 }) }]
   ],
   storm: P => [
     ['雷鳴', { all: onP(P, { stunCh: 15, dmgPct: 10 }) }],
@@ -2150,19 +2226,20 @@ const CORE_MAIN = {
     ['疾雷', { all: onP(P, { spd: 25 }) }],
     ['電磁破甲', { all: onP(P, { sunder: 2, dmgPct: 10 }) }]
   ],
+  /* 0.1.37 毒師重製：劇毒（新異常）、以毒為生、腐蝕、墮落蛇、致命毒素（時段）、毒囊（陷阱）、別西卜的封印 */
   venom: P => [
-    ['劇毒', { all: onP(P, { poison: 3 }) }],
-    ['瘟疫', { all: onP(P, { dmgPct: 10 }), pre: { poison: 5 } }],
-    ['毒霧', { all: onP(P, { weakCh: 10 }), pre: { weak: 4 } }],
-    ['腐蝕', { all: onP(P, { sunder: 2, poison: 1 }) }],
-    ['毒液噴濺', { all: onP(P, { poison: 1, per: 'poison' }) }],
-    ['蛇吻', { all: onP(P, { dmgPct: 10 }), fx: { double: 18 } }],
-    ['致命毒素', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60 } }],
-    ['毒囊', { fx: { hp: 50, regen: 2 } }],
-    ['毒刺皮膚', { fx: { thornsF: 5, hp: 20 } }],
-    ['麻痺毒', { all: onP(P, { stunCh: 10, poison: 1 }) }],
-    ['血毒', { all: onP(P, { bleed: 2, poison: 1 }) }],
-    ['疾毒', { all: onP(P, { spd: 25 }) }]
+    ['劇毒', { fx: { p2v: 1, venomCap: 40 } }],
+    ['瘟疫', { all: onP(P, { dmgPct: 10 }), pres: { poison: 12, venom: 4 } }],
+    ['以毒為生', { fx: { poisonLife: 1 } }],
+    ['腐蝕', { fx: { corrodeRe: 3 } }],
+    ['毒液噴濺', { all: onP(P, { poison: 2 }) }],
+    ['蛇吻', { give: 'fsnake' }],
+    ['致命毒素', { phase: { t: 20, a: { dmgPct: 80, spd: 50, crit: 30 }, b: { dmgPct: -30, spd: -20, age: 1 } } }],
+    ['毒囊', { traps: [{ k: 'spore', n: 3, sz: 2 }] }],
+    ['毒刺皮膚', { fx: { startBlock: 150, hp: 100, thornsF: 5, thornsP: 2 } }],
+    ['麻痺毒', { all: onP(P, { stunCh: 20, poison: 1 }) }],
+    ['血毒', { all: onP(P, { bleed: 4, poison: 1 }) }],
+    ['別西卜的封印', { give: 'bzseal' }]
   ],
   tamer: P => [
     ['獸群', { all: onP(P, { dmgPct: 8, per: 'pet' }) }],
@@ -2194,19 +2271,20 @@ const CORE_MAIN = {
     ['騎士精神', { all: onP(P, { dmgPct: 20, spd: 10 }) }],
     ['盾牆', { all: [{ tag: 'shield', blockPct: 15, per: 'shield' }] }]
   ],
+  /* 0.1.37 鍊金重製：煉成（三次三選一做終極藥劑）、萬能藥、開戰的多重效果（pres）、陷阱（點燃、藥劑炸彈）、狂暴藥劑（時段）、賢者之石 */
   alchemist: P => [
-    ['煉成', { fx: { throwPct: 80, potMul: 30 } }],
-    ['萬能藥', { fx: { potMul: 60, potUse: 1 } }],
-    ['劇毒煉金', { fx: { throwPct: 30 }, pre: { poison: 4 } }],
-    ['爆裂藥劑', { fx: { throwPct: 20 }, pre: { burn: 6 } }],
-    ['腐蝕藥劑', { fx: { throwPct: 20 }, pre: { sunder: 8 } }],
-    ['迷霧藥劑', { fx: { throwPct: 20 }, pre: { blind: 5 } }],
-    ['衰弱藥劑', { fx: { throwPct: 20 }, pre: { weak: 5 } }],
-    ['冰凍藥劑', { fx: { throwPct: 20 }, pre: { frozen: 4 } }],
-    ['再生藥劑', { fx: { regen: 5 } }],
-    ['鋼鐵藥劑', { fx: { arm: 10, startBlock: 20 } }],
-    ['狂暴藥劑', { all: onP(P, { spd: 25 }) }],
-    ['賢者之石', { gold: 2, fx: { throwPct: 40 } }]
+    ['煉成', { brew: 3 }],
+    ['萬能藥', { potBuff: [80, 5, 35, 20] }],
+    ['劇毒煉金', { pres: { selfV: 3, poison: 6 }, selfN: 2 }],
+    ['爆裂藥劑', { pres: { burn: 30 }, traps: [{ k: 'ignite', n: 4, sz: 1 }] }],
+    ['腐蝕藥劑', { pres: { corrode: 10, dmgDown: 30 } }],
+    ['迷霧藥劑', { pres: { blind: 15, confuse: 15 } }],
+    ['衰弱藥劑', { pres: { weak: 10, age: 10 } }],
+    ['冰凍藥劑', { pres: { freezeN: 4 } }],
+    ['再生藥劑', { fx: { potUse: 2 }, earlyPot: 1 }],
+    ['藥劑炸彈', { traps: [{ k: 'bomb', n: 5, sz: 1 }] }],
+    ['狂暴藥劑', { phase: { t: 20, a: { dmgPct: 50, spd: 40 }, b: { dmgPct: 25, spd: 20 } } }],
+    ['賢者之石', { give: 'philstone' }]
   ],
   /* 0.1.35 商人改版：大多是經濟效果（拿到送錢、照階段的收入、照身上金幣的加成、商店打亂價格、背包升級打折、買 5 次送三選一） */
   merchant: P => [
@@ -2300,6 +2378,7 @@ function clsDesc(id) {
   const out = [...g].map(([t, tags]) => `${tags.join('、')}：${t}`);
   if (c.F) out.push(modTxt(Object.fromEntries(Object.entries(c.F).filter(([k]) => MODN[k]))));
   if (c.F && c.F.potMul) out.push(`藥水回復 +${c.F.potMul}%${c.F.potUse ? `、多喝 ${c.F.potUse} 次` : ''}`);
+  else if (c.F && c.F.potUse) out.push(`生命藥水多喝 ${c.F.potUse} 次`);
   if (c.gold) out.push(`每回合 +${c.gold} 金${c.eliteGold ? `、打完菁英 +${c.eliteGold} 金` : ''}（沒有戰鬥加成）`);
   return out.filter(Boolean).join('；');
 }
@@ -2338,7 +2417,12 @@ function onT(it, t = 1) {
     weak: ch(o.weak),
     blind: ch(o.blind),
     freeze: o.freeze ? [ch(o.freeze[0]), o.freeze[1]] : null,
-    stun: o.stun ? [ch(o.stun[0]), o.stun[1]] : null
+    stun: o.stun ? [ch(o.stun[0]), o.stun[1]] : null,
+    /* 0.1.37 劇毒層、命中衰老／腐蝕秒數、冰緩機率 */
+    venom: st(o.venom),
+    age: o.age || 0,
+    corrode: o.corrode || 0,
+    chill: ch(o.chill)
   };
 }
 /* 星級顏色：CSS 變數（跟著淺色／深色主題變） */
@@ -2506,8 +2590,41 @@ const MODN = {
   triple: v => `${pct(v)} 機率連鎖追擊（一共打三下）`,
   immT: v => `開戰 ${v} 秒內不會中任何異常`,
   rageSpd: v => `自己生命低於 50% 時攻速 +${pct(v)}`,
-  cellDbl: v => `每佔 1 格 ${pct(v)} 機率連擊`
+  cellDbl: v => `每佔 1 格 ${pct(v)} 機率連擊`,
+  /* 0.1.37 異常重製 */
+  chillCh: v => `命中時冰緩機率 ${sg(v)}${pct(v)}`,
+  venom: v => `命中劇毒 ${sg(v)}${v}`,
+  poisonCap: v => `敵人中毒上限提高到 ${v} 層`,
+  venomCap: v => `敵人劇毒上限提高到 ${v} 層`,
+  p2v: () => '敵人中毒滿層後，每 2 秒 +1 劇毒',
+  poisonLife: () => '以毒為生：讓敵人中毒時自己也中毒，但自己身上的中毒改成回血',
+  corrodeRe: v => `每 ${v} 秒讓敵人腐蝕 ${v} 秒`,
+  thornsP: v => `被打中時讓攻擊者中毒 ${v} 層`,
+  immAll: () => '免疫所有異常狀態',
+  immFz: () => '免疫凍結與冰緩',
+  shatterF: v => `敵人每有 1 件凍結中的道具，所有冰傷害 +${pct(v)}`,
+  shatterS: v => `敵人每有 1 件冰緩中的道具，所有冰攻速 +${pct(v)}`
 };
+/* 0.1.37 終極藥劑的效果（煉成三選一）：喝下時套用 */
+const BREW = {
+  heal: { n: '回復 80', heal: 80 },
+  shield: { n: '獲得 100 護盾', block: 100 },
+  dmg: { n: '8 秒內傷害 +50%', buff: [8, 50, 0] },
+  spd: { n: '8 秒內攻速 +40%', buff: [8, 0, 40] },
+  regen: { n: '之後每秒回復 +5', regen: 5 },
+  cleanse: { n: '清掉身上所有異常', cleanse: 1 },
+  poison: { n: '讓敵人中毒 10、劇毒 4', poison: 10, venom: 4 },
+  burn: { n: '讓敵人燃燒 15 並點燃', burn: 15, ignite: 1 },
+  chill: { n: '敵人所有道具冰緩 6 秒', chill: 6 },
+  age: { n: '讓敵人衰老 8 秒', age: 8 }
+};
+/* 0.1.37 別西卜的封印：拿到後過幾回合變成別西卜 */
+const SEAL_RC = 10;
+const brewTxt = ex =>
+  (ex || [])
+    .map(k => (BREW[k] ? BREW[k].n : ''))
+    .filter(Boolean)
+    .join('、');
 /* 0.1.35 鈔能力：開戰時身上的金幣到幾金有什麼加成（同一種取最高的那一級，不疊加） */
 const RICH = [
   [10, { dmgPct: 10 }],
@@ -2543,13 +2660,21 @@ const modTxt = m =>
 const tagTxt = t => (t === 'weapon' ? '武器' : t === '*' ? '道具' : TAGN[t] || t);
 /* 0.1.6 開戰前的特殊效果（越強越稀有）：seal 封鎖敵人隨機一把武器 N 秒（每升一階 +1 秒）、down 敵人隨機一把武器降 1 階（最低 Ⅰ 階） */
 /* 0.1.9 擴充成各種開戰效果（藥劑丟出去）：秒數類每升一階 +1 秒，層數類照升階倍率 */
-const PRE_T = ['seal', 'weak', 'blind', 'frozen', 'sealAll'],
+const PRE_T = ['seal', 'weak', 'blind', 'frozen', 'sealAll', 'corrode', 'age', 'confuse'],
   PREN = {
     seal: v => `開戰時封鎖敵人隨機一把武器 ${v} 秒`,
     down: v => `開戰時把敵人隨機 ${v > 1 ? v + ' 把' : '一把'}武器降 1 階（最低 Ⅰ 階）`,
     weak: v => `開戰時讓敵人虛弱 ${v} 秒（傷害 -25%）`,
     blind: v => `開戰時讓敵人致盲 ${v} 秒（30% 打不中）`,
-    frozen: v => `開戰時凍結敵人 ${v} 秒（攻速減半）`,
+    /* 0.1.37 凍結改成單件道具 6 秒，開戰的「凍結」改成所有道具冰緩 */
+    frozen: v => `開戰時敵人所有道具冰緩 ${v} 秒（充能減半）`,
+    freezeN: v => `開戰時凍結敵人隨機 ${v} 把武器（6 秒不能充能）`,
+    selfV: (v, n) => `開戰時讓敵人 ${n || 1} 把武器自殘（那把出手時敵人自己 +${v} 劇毒）`,
+    venom: v => `開戰時讓敵人劇毒 ${v} 層`,
+    corrode: v => `開戰時讓敵人腐蝕 ${v} 秒（不能獲得護盾，本來會獲得時扣 30 生命）`,
+    age: v => `開戰時讓敵人衰老 ${v} 秒（不能暴擊）`,
+    confuse: v => `開戰時讓敵人混亂 ${v} 秒（出手一半機率打到自己）`,
+    dmgDown: v => `敵人整場傷害 -${v}%`,
     burn: v => `開戰時讓敵人燃燒 ${v} 層`,
     poison: v => `開戰時讓敵人中毒 ${v} 層`,
     bleed: v => `開戰時讓敵人流血 ${v} 層`,
@@ -2592,12 +2717,16 @@ function itemDesc(id, t = 1) {
   if (it.on) {
     if (o.burn) out.push(`命中時讓敵人燃燒 ${o.burn} 層（每秒扣層數，每秒少 1 層）`);
     if (o.poison) out.push(`命中時讓敵人中毒 ${o.poison} 層（每秒扣層數，不會退，最多 12 層）`);
-    if (o.freeze) out.push(`命中時 ${o.freeze[0]}% 機率凍結敵人 ${o.freeze[1]} 秒（攻速減半）`);
+    if (o.freeze) out.push(`命中時 ${o.freeze[0]}% 機率凍結敵人一件道具 6 秒（不能充能）`);
     if (o.stun) out.push(`命中時 ${o.stun[0]}% 機率暈眩敵人 ${o.stun[1]} 秒（不能動）`);
     if (o.ls) out.push(`吸血 ${o.ls}%`);
     if (o.bleed) out.push(`命中時讓敵人流血 ${o.bleed} 層（每秒扣層數，然後減半）`);
     if (o.sunder) out.push(`命中時讓敵人護甲 -${o.sunder}（會疊加）`);
     if (o.weak) out.push(`命中時 ${o.weak}% 機率讓敵人虛弱 3 秒（敵人傷害 -25%）`);
+    if (o.venom) out.push(`命中時讓敵人劇毒 ${o.venom} 層（不會退，每秒扣層數 ×2）`);
+    if (o.chill) out.push(`命中時 ${o.chill}% 機率讓敵人一件道具冰緩 4 秒（充能減半）`);
+    if (o.age) out.push(`命中時讓敵人衰老 ${o.age} 秒（不能暴擊）`);
+    if (o.corrode) out.push(`命中時讓敵人腐蝕 ${o.corrode} 秒`);
     if (o.blind) out.push(`命中時 ${o.blind}% 機率讓敵人致盲 2.5 秒（敵人 30% 打不中）`);
   }
   if (it.block)
@@ -2630,7 +2759,7 @@ function itemDesc(id, t = 1) {
     );
   /* 0.1.35 浪人、商人的核心 */
   if (it.merge2) out.push(`${tagTxt(it.merge2)}只要 2 件一樣的就能合成升階（本來要 3 件）`);
-  if (it.give) out.push(`拿到時送一把 ${ITEMI[it.give].star}★ ${ITEMI[it.give].n}`);
+  if (it.give) out.push(`拿到時送${ITEMI[it.give].dmg ? '一把' : '一件'} ${ITEMI[it.give].star}★ ${ITEMI[it.give].n}`);
   if (it.coin) out.push('開戰時身上有金幣：每次攻擊花 1 金，傷害、暴擊率、命中效果翻倍');
   if (it.absorb)
     out.push(`貼在旁邊的${tagTxt(it.absorb)}會被吸收（那件消失），加上它的傷害、暴擊率與命中效果（可以一直變強）`);
@@ -2648,6 +2777,40 @@ function itemDesc(id, t = 1) {
   if (it.lvOff) out.push(`背包升級費用 -${it.lvOff}%`);
   if (it.kick) out.push(`每買 ${it.kick} 次送一次菁英三選一（拿到的道具賣價 0 金）`);
   if (it.rollCap) out.push(`每回合最多只能刷新商店 ${it.rollCap} 次`);
+  /* 0.1.37 異常重製的核心與道具 */
+  for (const k in it.pres || {}) if (PREN[k]) out.push(PREN[k](it.pres[k], it.selfN));
+  const TRN = {
+    ignite: '點燃（觸發時敵人被點燃：燃燒不退反增、傷害 ×1.5）',
+    bomb: `藥劑炸彈（觸發時敵人受 ${BOMB_DMG[0]}～${BOMB_DMG[1]} 傷害、流血 ${BOMB_BLEED}）`,
+    spore: '劇毒孢子（觸發時敵人中毒 +3、劇毒 +3）',
+    icicle: '冰錐（觸發時凍結觸發的那件道具）'
+  };
+  for (const t of it.traps || [])
+    out.push(
+      `開戰時在敵人背包隨機放 ${t.n} 個${t.sz > 1 ? ` ${t.sz} 格` : ''}${TRN[t.k]}，敵人那格的道具每次出手都會觸發（打怪時掛在怪物的武器上）`
+    );
+  if (it.phase) {
+    const f = x =>
+      [
+        x.dmgPct && `傷害 ${sg(x.dmgPct)}${x.dmgPct}%`,
+        x.spd && `攻速 ${sg(x.spd)}${x.spd}%`,
+        x.crit && `暴擊率 ${sg(x.crit)}${x.crit}%`,
+        x.age && '衰老（不能暴擊）'
+      ]
+        .filter(Boolean)
+        .join('、');
+    out.push(`開戰 ${it.phase.t} 秒內所有武器${f(it.phase.a)}；之後${f(it.phase.b)}`);
+  }
+  if (it.potBuff)
+    out.push(
+      `生命藥水每次喝下：獲得 ${it.potBuff[0]} 護盾、${it.potBuff[1]} 秒內傷害 +${it.potBuff[2]}%、攻速 +${it.potBuff[3]}%`
+    );
+  if (it.brew)
+    out.push(`拿到時連續 ${it.brew} 次三選一藥劑效果，煉成一瓶 1 格「終極藥劑」（生命低於 50% 喝，可以喝 2 次）`);
+  if (it.earlyPot) out.push('生命藥水合成到 Ⅱ 階就開一條隨機詞綴');
+  if (it.hatch) out.push(`拿到後過 ${SEAL_RC} 回合變成「${ITEMI[it.hatch].n}」`);
+  if (it.iceHp) out.push(`每場自己觸發一次凍結或冰緩，最大生命 +${it.iceHp}（一直累積）`);
+  if (it.imm) out.push('免疫所有異常與封鎖');
   if (it.defX) out.push(`所有防具、盾的效果 ×${it.defX}`);
   if (it.bribe) out.push(`開戰時金幣超過 ${it.bribe} 金就花 ${it.bribe} 金，整場封鎖敵人星級最高的武器`);
   if (it.gift) out.push(`拿到時送 ${it.gift[2]} 隻隨機 ${it.gift[0]}★ ${tagTxt(it.gift[1])}`);
@@ -2658,6 +2821,7 @@ function itemDesc(id, t = 1) {
     if (Object.keys(rest).length) out.push(modTxt(rest));
     if (f.take) out.push(`受到的傷害 +${f.take}%`);
     if (f.potMul) out.push(`藥水回復 +${f.potMul}%${f.potUse ? `、多喝 ${f.potUse} 次` : ''}`);
+    else if (f.potUse) out.push(`生命藥水多喝 ${f.potUse} 次`);
   }
   if (it.rush) out.push(`開戰後 ${it.rush[1]} 秒內所有武器攻速 +${Math.round(it.rush[0] * TIERB[t])}%`);
   if (it.gold) out.push(`放在背包裡每回合 +${it.gold} 金（每升一階 +1）`);

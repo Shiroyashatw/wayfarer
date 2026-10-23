@@ -590,6 +590,7 @@ function nextRound(run) {
   run.fr = 0;
   run.nr = 0;
   if (!r) return endRun(run, finalPlace(run));
+  sealTick(run);
   if (run.ri === 0) {
     run.gold = START_GOLD;
     rollShop(run);
@@ -748,7 +749,7 @@ function fightSum(run, fb) {
   let dealt = 0,
     taken = 0;
   for (const e of res.ev) {
-    if (!['hit', 'crit', 'dot', 'thorns', 'fatigue'].includes(e.k)) continue;
+    if (!['hit', 'crit', 'dot', 'thorns', 'fatigue', 'trap', 'corrode'].includes(e.k)) continue;
     if (e.s === 0) {
       dealt += e.v;
       if (e.u && (e.k === 'hit' || e.k === 'crit')) by[e.u] = (by[e.u] || 0) + e.v;
@@ -773,13 +774,22 @@ function fightSum(run, fb) {
     .slice(0, 5);
   return { t: Math.round(res.t * 10) / 10, dealt, taken, top, spr: opp.spr, ob: opp.bag ? packBag(opp.bag) : null };
 }
+/* 0.1.35／0.1.37 打完一場對那一局的影響（side 是那一局在這場的哪一邊）：金錢標花掉的金幣、寒冰之心長的生命；回傳花掉的金幣 */
+function afterSim(run, res, side) {
+  const sp = (res.spent || [])[side] || 0,
+    ice = (res.ice || [])[side] || 0;
+  if (sp) run.gold = Math.max(0, run.gold - sp);
+  if (ice) for (const o of run.bag.items) if (ITEMI[o.id].iceHp) o.hh = (o.hh || 0) + ITEMI[o.id].iceHp * ice;
+  return sp;
+}
 /* 打完：扣血、連勝連敗、獎勵；回傳這場的結算 */
 function finishFight(run, fb) {
   const { r, opp, res } = fb,
     out = { win: res.win, loss: 0, gold: 0 },
     pre = run.rivals.filter(rv => rivalAlive(rv, r.id));
   /* 0.1.35 金錢標花掉的金幣 */
-  if (res.spent && res.spent[0]) (run.gold = Math.max(0, run.gold - res.spent[0])), (out.spent = res.spent[0]);
+  out.spent = afterSim(run, res, 0);
+  if (opp.kind === 'pvp' && run.rivals[opp.rv].live) afterSim(run.rivals[opp.rv].live.run, res, 1);
   if (res.win) {
     run.ws++;
     run.lsk = 0;
@@ -850,6 +860,8 @@ function rivalFights(run, fb) {
       const [a, b] = [q[k], q[k + 1]].map(rv => rivalBag(rv, r.id)),
         res = simulate(stageHp(a.F, r.st), stageHp(b.F, r.st), h(run.seed, run.ri, 992 + k));
       const lr = q[res.win ? k + 1 : k];
+      if (q[k].live) afterSim(q[k].live.run, res, 0);
+      if (q[k + 1].live) afterSim(q[k + 1].live.run, res, 1);
       q[k].lw = [r.id, res.win];
       q[k + 1].lw = [r.id, !res.win];
       lr.hp = rivalHp(lr) - r.loss - petLoss((res.win ? a : b).bag);
@@ -858,6 +870,7 @@ function rivalFights(run, fb) {
       const lone = q[n - 1],
         a = rivalBag(lone, r.id),
         res = simulate(stageHp(a.F, r.st), fb.me, h(run.seed, run.ri, 994));
+      if (lone.live) afterSim(lone.live.run, res, 0);
       lone.lw = [r.id, res.win];
       if (!res.win) lone.hp = rivalHp(lone) - r.loss - petLoss(run.bag);
     }
@@ -865,6 +878,7 @@ function rivalFights(run, fb) {
   }
   al.forEach((rv, j) => {
     const res = simulate(stageHp(rivalBag(rv, r.id).F, r.st), opp.F, h(run.seed, run.ri, 993 + j));
+    if (rv.live) afterSim(rv.live.run, res, 0);
     rv.lw = [r.id, res.win];
     if (!res.win) rv.hp = rivalHp(rv) - r.loss;
   });
@@ -948,13 +962,9 @@ function giveGift(run, id) {
   const I = ITEMI[id],
     G = I.gift;
   if (I.gain) run.gold += I.gain;
-  if (I.give && ITEMI[I.give]) {
-    const o = newItem(run, I.give),
-      f2 = benchFree(run);
-    if (f2 >= 0) run.bench[f2] = o;
-    else if (!run.hold) run.hold = o;
-    else run.gold += sellOf(o.id, o.t);
-  }
+  if (I.give && ITEMI[I.give]) putItem(run, newItem(run, I.give));
+  /* 0.1.37 煉成：接著三次三選一藥劑效果 */
+  if (I.brew) run.pend = brewPend(run, [], I.brew, run.pend && run.pend.mid);
   if (!G) return;
   const pool = ITEMS.filter(i => shopOK(i) && i.star === G[0] && i.tags.includes(G[1]));
   for (let k = 0; k < G[2] && pool.length; k++) {
@@ -962,6 +972,46 @@ function giveGift(run, id) {
       f2 = benchFree(run);
     if (f2 >= 0) run.bench[f2] = o;
     else run.gold += sellOf(o.id, o.t);
+  }
+}
+/* 送的道具放進暫存區；滿了先寄放，寄放也有了就換成賣價 */
+function putItem(run, o) {
+  const f2 = benchFree(run);
+  if (f2 >= 0) run.bench[f2] = o;
+  else if (!run.hold) run.hold = o;
+  else run.gold += sellOf(o.id, o.t);
+}
+/* 0.1.37 煉成的一步：從還沒選過的效果抽 3 個（ex 是已經選的，n 是總共幾步） */
+function brewPend(run, ex, n = 3, mid) {
+  const ks = Object.keys(BREW).filter(k => !ex.includes(k)),
+    opts = [];
+  while (opts.length < 3 && ks.length) opts.push(ks.splice(fl(r01(run) * ks.length), 1)[0]);
+  return {
+    kind: 'pick',
+    brew: n,
+    ex,
+    opts,
+    t: `煉成（${ex.length + 1}／${n}）：選一個藥劑效果`,
+    ...(mid ? { mid: 1 } : {})
+  };
+}
+/* 0.1.37 別西卜的封印：每回合 +1，到 SEAL_RC 回合變成別西卜（形狀變大，背包放不下就收進暫存區） */
+function sealTick(run) {
+  for (const o of [...run.bag.items, ...run.bench, run.hold]) {
+    const I = o && ITEMI[o.id];
+    if (!I || !I.hatch) continue;
+    o.rc = (o.rc || 0) + 1;
+    if (o.rc < SEAL_RC) continue;
+    const old = o.id;
+    o.id = I.hatch;
+    o.rc = 0;
+    if (!run.bag.items.includes(o) || canPlace(run.bag, o, o.x, o.y, o.r)) continue;
+    const sp = findSpot({ ...run.bag, items: run.bag.items.filter(q => q !== o) }, o);
+    if (sp) Object.assign(o, sp);
+    else if (benchFree(run) >= 0) {
+      run.bag.items = run.bag.items.filter(q => q !== o);
+      run.bench[benchFree(run)] = o;
+    } else (o.id = old), (o.rc = SEAL_RC - 1);
   }
 }
 /* 首領的核心三選一：自己職業的專屬核心，排除已經有的（第一個和融入的） */
@@ -980,6 +1030,17 @@ function bossCores(run) {
 }
 /* 0.1.35 三選一的階（pend.tier，劍修大師 Ⅱ 階）、回扣送的賣價 0（pend.z） */
 function takePick(run, id, hold) {
+  /* 0.1.37 煉成的三選一：記下效果，選滿就送終極藥劑 */
+  if (run.pend && run.pend.brew) {
+    const P = run.pend,
+      ex = [...P.ex, id];
+    if (ex.length < P.brew) run.pend = brewPend(run, ex, P.brew, P.mid);
+    else {
+      run.pend = null;
+      putItem(run, Object.assign(newItem(run, 'ultelixir'), { ex }));
+    }
+    return '';
+  }
   const mc = ITEMI[id].core && mainCore(run),
     P = run.pend || {},
     t = P.tier || 1,
@@ -1086,6 +1147,8 @@ function botAfter(run, r, win, q, P) {
     const best =
       r01(run) < q ? opts.map(id => [id, botValue(run, id, 1, P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0] : opts[0];
     takePick(run, best, true);
+    /* 0.1.37 煉成：馬上選完三步 */
+    for (let g = 0; g < 5 && run.pend && run.pend.brew; g++) botPend(run, q, P);
   }
 }
 function simLobby(seed, rating, opt = {}) {
@@ -1143,7 +1206,7 @@ function simLobby(seed, rating, opt = {}) {
         F = compileBag(o.run.bag);
       } else F = mobOf(run, r).F;
       const res = simulate(stageHp(compileBag(run.bag), r.st), stageHp(F, r.st, r.type !== 'pvp'), h(seed, k, i));
-      run.gold = Math.max(0, run.gold - res.spent[0]);
+      afterSim(run, res, 0);
       /* 0.1.10 跟玩家一樣的經濟：打贏拿金幣、連勝連敗（之前沒算，機器人的背包比玩家窮、快照偏弱） */
       if (!res.win && !solo) run.hp -= r.loss;
       botAfter(run, r, res.win, b.q, b.P);
