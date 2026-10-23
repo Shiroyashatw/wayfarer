@@ -525,11 +525,11 @@ function prepHTML(run) {
     <div class="pcol pc"><div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
-          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${shapeMini(s.id)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < shopPrice(run, s.id, s.t) ? 'c-bad' : ''}">${shopPrice(run, s.id, s.t)} 金</b></button>`
+          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${shapeMini(s.id)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金</b></button>`
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
-    <div class="acts"><button class="btn" data-act="reroll" ${run.gold < REROLL && freeRolls(run) <= 0 ? 'disabled' : ''}>刷新<small class="bnote">${freeRolls(run) > 0 ? '免費' : REROLL + ' 金'}</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvNext.cost ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvNext.cost + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div></div>
+    <div class="acts"><button class="btn" data-act="reroll" ${(run.gold < REROLL && freeRolls(run) <= 0) || rollsLeft(run) <= 0 ? 'disabled' : ''}>刷新<small class="bnote">${rollsLeft(run) <= 0 ? '用完了' : freeRolls(run) > 0 ? '免費' : REROLL + ' 金'}</small></button><button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvCost(run) ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvCost(run) + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div></div>
     ${detailHTML(run)}
   </div>`;
 }
@@ -543,7 +543,7 @@ function detailHTML(run) {
     k = +V.sel.slice(4);
     const s = run.shop[k];
     if (!s) return '';
-    o = { id: s.id, t: s.t || 1 };
+    o = { id: s.id, t: s.t || 1, p: s.p };
     where = 'shop';
   } else {
     o = run.bag.items.find(q => q.u === V.sel);
@@ -578,9 +578,9 @@ function detailHTML(run) {
       tagsWith(o, tfm)
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
-        .join('・') || '道具';
+        .join('・') || (I.dmg ? '武器' : '道具');
   return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${itemDesc(o.sc)}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+    <p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${itemDesc(o.sc)}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
       .filter(([, m]) => modTxt(m))
@@ -588,9 +588,27 @@ function detailHTML(run) {
       .join('')}
     <div class="btns">${
       where === 'shop'
-        ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < shopPrice(run, o.id, o.t) ? 'disabled' : ''}>買 ${shopPrice(run, o.id, o.t)} 金</button>`
+        ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < slotPrice(run, o) ? 'disabled' : ''}>買 ${slotPrice(run, o)} 金</button>`
         : `${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o)} 金</button>`
     }</div></div>`;
+}
+/* 0.1.35 魔劍正宗吸收的數值 */
+function abHTML(o) {
+  const ab = o.ab;
+  if (!ab || !ab.n) return '';
+  const on = [
+    ab.crit && `暴擊率 +${ab.crit}%`,
+    ab.burn && `燃燒 +${ab.burn}`,
+    ab.poison && `中毒 +${ab.poison}`,
+    ab.bleed && `流血 +${ab.bleed}`,
+    ab.sunder && `破甲 +${ab.sunder}`,
+    ab.ls && `吸血 ${ab.ls}%`,
+    ab.freezeCh && `凍結 +${ab.freezeCh}%`,
+    ab.stunCh && `暈眩 +${ab.stunCh}%`,
+    ab.weak && `虛弱 +${ab.weak}%`,
+    ab.blind && `致盲 +${ab.blind}%`
+  ].filter(Boolean);
+  return `<p class="c-tf">✦ 吸收了 ${ab.n} 把劍：傷害 +${ab.d0}～${ab.d1}${on.length ? '、' + on.join('、') : ''}</p>`;
 }
 /* 0.1.5 5★ 詞綴：數值越接近上限顏色越好，括號是這條詞綴的範圍 */
 function mod5HTML(m) {
@@ -642,14 +660,15 @@ function statsHTML(run) {
 /* ================= 結算、三選一、一局結束 ================= */
 function resultHTML(run) {
   const l = run.last;
-  return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.hit ? `<p class="c-good">${l.ko ? '對手淘汰！' : `對手生命 -${l.hit}`}</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金</p>` : ''}<div class="g2"><button class="btn" data-act="log" data-k="${run.log.length ? run.log[run.log.length - 1].id : ''}">詳細</button><button class="btn pri" data-act="afterRes">繼續</button></div></div></div>`;
+  return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.hit ? `<p class="c-good">${l.ko ? '對手淘汰！' : `對手生命 -${l.hit}`}</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金</p>` : ''}${l.spent ? `<p class="c-dim">金錢標花了 ${l.spent} 金</p>` : ''}<div class="g2"><button class="btn" data-act="log" data-k="${run.log.length ? run.log[run.log.length - 1].id : ''}">詳細</button><button class="btn pri" data-act="afterRes">繼續</button></div></div></div>`;
 }
 function pickHTML(run) {
   const p = run.pend;
+  const t = p.tier || 1;
   return `<div class="ovl"><div class="dlg2"><b>${p.t}</b><div class="picks">${p.opts
     .map(
       id =>
-        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}</b><small>${itemDesc(id)}</small></span></button>`
+        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${t > 1 ? tierBadge(t) : ''}${shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}${t > 1 ? tierTxt(t) : ''}</b><small>${itemDesc(id, t)}</small></span></button>`
     )
     .join('')}</div></div></div>`;
 }
@@ -705,7 +724,7 @@ function beginFight() {
     i: 0,
     hp: [fb.me.hp, fb.opp.F.hp],
     max: fb.res.max,
-    block: [0, 0],
+    block: [fb.me.startBlock || 0, fb.opp.F.startBlock || 0],
     done: false,
     last: performance.now()
   };
@@ -730,11 +749,12 @@ function resumeFight() {
     i: 0,
     hp: [me.hp, f.opp.F.hp],
     max: res.max,
-    block: [0, 0],
+    block: [me.startBlock || 0, f.opp.F.startBlock || 0],
     done: false,
     last: performance.now()
   };
 }
+/* 0.1.35 怪物的圖本來就朝左，不翻；對戰的對手是玩家頭像（朝右）才左右翻 */
 function renderBattle() {
   if (!B) resumeFight();
   const { fb } = B,
@@ -743,9 +763,9 @@ function renderBattle() {
     ob = fb.opp.bag;
   $('app').innerHTML = `<div class="bt">
     <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b></div>
-    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div></div>
+    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div></div>
     <div class="vs">VS</div>
-    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, 'big flip')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div></div>
+    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div></div>
     <div class="fx" id="fx"></div></div>
     <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
     <div class="blog" id="blog" aria-live="off"></div>
@@ -760,8 +780,13 @@ function bShow() {
   for (let i = 0; i < 2; i++) {
     const el = $('hp' + i);
     if (!el) return;
-    el.style.width = Math.max(0, (B.hp[i] / B.max[i]) * 100) + '%';
-    $('hpt' + i).textContent = `${Math.max(0, B.hp[i])}${B.block[i] > 0 ? `　盾 ${B.block[i]}` : ''}`;
+    /* 0.1.35 紅色生命＋緊接著的白色護盾；加起來超過上限就照總量縮放 */
+    const hp = Math.max(0, B.hp[i]),
+      bk = Math.max(0, B.block[i]),
+      tot = Math.max(B.max[i], hp + bk);
+    el.style.width = (hp / tot) * 100 + '%';
+    $('bk' + i).style.width = (bk / tot) * 100 + '%';
+    $('hpt' + i).innerHTML = `${hp}${bk > 0 ? `<b class="bkt">+${bk}</b>` : ''}`;
   }
   $('btime').textContent = B.t.toFixed(1) + ' 秒' + (B.t >= FATIGUE_T ? '・疲勞' : '');
 }
@@ -890,7 +915,7 @@ function bLog(e, tg) {
   let t = '';
   if (e.k === 'hit' || e.k === 'crit')
     t = `${by(e.s, e.u)}${e.k === 'crit' ? ' 暴擊' : ''} → ${e.v}${e.ab ? `（擋 ${e.ab}）` : ''}`;
-  else if (e.k === 'miss') t = `${by(e.s, e.u)} 被閃開`;
+  else if (e.k === 'miss') t = `${by(e.s, e.u)} ${e.parry ? '被招架' : '被閃開'}`;
   else if (e.k === 'block') t = `${by(e.s, e.u)} 格擋 +${e.v}`;
   else if (e.k === 'dot') t = `${who(tg)} ${STN[e.el === 'fire' ? 'burn' : e.el] || ''} -${e.v}`;
   else if (e.k === 'pot') t = `${by(e.s, e.u)} 回復 ${e.v}`;
@@ -972,8 +997,11 @@ function bTick() {
       tg = e.self ? e.s : 1 - e.s;
     B.hp = e.hp;
     if (e.st) B.st = e.st;
-    if ((e.k === 'hit' || e.k === 'crit') && e.ab) B.block[tg] = Math.max(0, B.block[tg] - e.ab);
-    if (e.k === 'block') B.block[e.s] += e.v;
+    if (e.bk) B.block = e.bk;
+    else {
+      if ((e.k === 'hit' || e.k === 'crit') && e.ab) B.block[tg] = Math.max(0, B.block[tg] - e.ab);
+      if (e.k === 'block') B.block[e.s] += e.v;
+    }
     bLog(e, tg);
     if (k++ > 6) continue;
     if (e.k === 'hit' || e.k === 'crit') {
@@ -986,7 +1014,7 @@ function bTick() {
       bFlash(e.s, e.u);
       bHit(e, tg);
       if (k < 2) snd(e.k === 'crit' ? 'crit' : 'hit');
-    } else if (e.k === 'miss') bPop(tg, '閃避', '#b3a9bd');
+    } else if (e.k === 'miss') bPop(tg, e.parry ? '招架' : '閃避', '#b3a9bd');
     else if (e.k === 'dot') {
       bPop(tg, e.v, ELC[e.el]);
       bBurst(tg, ELC[e.el], 3);
@@ -1043,6 +1071,7 @@ function bEnd() {
     win: out.win,
     loss: out.loss,
     gold: out.gold,
+    spent: out.spent || 0,
     hit: out.hit,
     ko: out.ko,
     rv: B.fb.opp.kind === 'pvp' ? B.fb.opp.rv : -1,
@@ -1290,12 +1319,15 @@ const A = {
   },
   pick: d => {
     const run = S.run,
+      mid = run.pend && run.pend.mid,
       e = takePick(run, d.k, true);
     if (e) return toast(e);
     if (run.hold) toast('暫存區滿了：戰利品先寄放，空出一格再領');
     S.seen[d.k] = 1;
     snd('level');
-    nextRound(run);
+    /* 0.1.35 回扣送的三選一在準備中途：選完回到準備 */
+    if (mid) run.phase = 'prep';
+    else nextRound(run);
     save();
     render();
   },

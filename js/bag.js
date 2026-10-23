@@ -115,14 +115,39 @@ function fuseAll(run) {
       q = run.bag.items.find(o => o.u === u);
     if (s && q) out.push(fuseInto(run, s, q));
   }
+  out.push(...absorbAll(run));
+  return out;
+}
+/* 0.1.35 魔劍正宗（absorb）：貼在旁邊的劍被吸收，o.ab 累加那把劍（照它的階）的傷害、暴擊率、命中效果 */
+const AB_K = ['crit', 'burn', 'poison', 'bleed', 'sunder', 'ls', 'weak', 'blind'];
+function absorbAll(run) {
+  const out = [];
+  for (const o of run.bag.items) {
+    const tag = ITEMI[o.id].absorb;
+    if (!tag) continue;
+    for (const q of run.bag.items.filter(q => q !== o && !ITEMI[q.id].core && ITEMI[q.id].dmg && !ITEMI[q.id].absorb)) {
+      if (!ITEMI[q.id].tags.includes(tag) || !adjacent(o, q)) continue;
+      const I = ITEMI[q.id],
+        on = onT(I, q.t),
+        ab = (o.ab = o.ab || { d0: 0, d1: 0, n: 0 });
+      ab.d0 += Math.round(I.dmg[0] * TIERM[q.t]);
+      ab.d1 += Math.round(I.dmg[1] * TIERM[q.t]);
+      for (const k of AB_K) if (on[k]) ab[k] = (ab[k] || 0) + on[k];
+      if (on.freeze) ab.freezeCh = (ab.freezeCh || 0) + on.freeze[0];
+      if (on.stun) ab.stunCh = (ab.stunCh || 0) + on.stun[0];
+      ab.n++;
+      run.bag.items = run.bag.items.filter(x => x !== q);
+      out.push(o);
+    }
+  }
   return out;
 }
 /* 0.1.34 一件道具的定義＋融入它的第二個核心（sc，4-4 首領選的第二個專屬核心；舊存檔可能是副核心） */
 const defsOf = o => (o.sc && ITEMI[o.sc] ? [ITEMI[o.id], ITEMI[o.sc]] : [ITEMI[o.id]]);
 /* 背包裡某個核心效果的最大值（例如 freeRoll、bribe、defX），融入的也算 */
 const coreProp = (its, k) => Math.max(0, ...its.flatMap(o => defsOf(o).map(d => d[k] || 0)));
-/* 賣價：融合過的連輔助一起算 */
-const sellO = o => sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0);
+/* 賣價：融合過的連輔助一起算；0.1.35 回扣送的（z）賣 0 金 */
+const sellO = o => (o.z ? 0 : sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0));
 /* 融合過的名字 */
 const fuName = o => (o.f && ITEMI[o.f] ? ITEMI[o.f].tf.n + '・' : '') + ITEMI[o.id].n;
 /* 質變後的標籤（原本的＋質變多的） */
@@ -132,16 +157,27 @@ function tagsWith(o, tfm) {
   return s && ITEMI[s.id].tf.add ? [...ITEMI[s.id].tf.add, ...I.tags] : I.tags;
 }
 /* ================= 合成 ================= */
+/* 0.1.35 合成要幾件：二天一流（merge2）讓那個標籤的道具 2 件就合成 */
+const merge2Of = its => {
+  for (const o of its) if (o) for (const d of defsOf(o)) if (d.merge2) return d.merge2;
+  return null;
+};
+function mergeNeed(its, id, t = merge2Of(its)) {
+  return t && ITEMI[id].tags.includes(t) && !ITEMI[id].absorb ? 2 : 3;
+}
 /* 背包＋暫存區裡，同一種同一階的湊滿 3 件就合成（可能連鎖）；r 是亂數（詞綴） */
 function mergeAll(run, r) {
-  const done = [];
+  const done = [],
+    early = coreProp(run.bag.items, 'early');
   for (let guard = 0; guard < 20; guard++) {
     const all = [...run.bag.items.map(o => ['bag', o]), ...run.bench.filter(Boolean).map(o => ['bench', o])],
       key = {};
     for (const [w, o] of all) (key[o.id + '|' + o.t] = key[o.id + '|' + o.t] || []).push([w, o]);
-    const hit = Object.values(key).find(l => l.length >= 3 && l[0][1].t < TIER_MAX);
+    const m2 = merge2Of(all.map(([, o]) => o)),
+      need = id => mergeNeed(null, id, m2),
+      hit = Object.values(key).find(l => l.length >= need(l[0][1].id) && l[0][1].t < TIER_MAX);
     if (!hit) break;
-    const use = hit.slice(0, 3),
+    const use = hit.slice(0, need(hit[0][1].id)),
       keep = use.find(([w]) => w === 'bag') || use[0],
       o = keep[1];
     for (const [w, q] of use) {
@@ -154,8 +190,10 @@ function mergeAll(run, r) {
     /* 5★ 合成：留三件裡開得最好的那條詞綴 */
     const ms = use.map(([, q]) => q.m).filter(Boolean);
     if (ms.length) o.m = ms.sort((x, y) => mod5Q(y) - mod5Q(x))[0];
-    /* 0.1.8 升到 Ⅲ 階也開一條隨機詞綴（5★ 已經有一條的話就是第二條） */
-    if (o.t === TIER_MAX) {
+    /* 0.1.35 回扣送的（賣價 0）：全部都是送的才保留 */
+    o.z = use.every(([, q]) => q.z) ? 1 : 0;
+    /* 0.1.8 升到 Ⅲ 階也開一條隨機詞綴（5★ 已經有一條的話就是第二條）；0.1.35 精品：Ⅱ 階就開 */
+    if (o.t === TIER_MAX || (early && o.t === 2 && !o.m)) {
       if (!o.m) (o.m = roll5(o.id, r)), (o.mv = 0);
       else if (!o.m2) (o.m2 = roll5(o.id, r)), (o.mv2 = 0);
     }
@@ -209,6 +247,14 @@ function compileBag(bag, extra = {}) {
       openDbl: 0,
       firstStrike: 0,
       armDmg: 0,
+      /* 0.1.35 招架（被攻擊時的格擋機率、第一次格擋後的護甲）、連鎖追擊、開戰免異常、背水攻速 */
+      parry: 0,
+      parryArm: 0,
+      triple: 0,
+      immT: 0,
+      rageSpd: 0,
+      /* 0.1.35 開戰時身上的金幣（金錢標每次攻擊花 1 金） */
+      gold: bag.gp || 0,
       /* 0.1.29 抗異常（%）、開戰免毒秒數、淨化、減敵人回復、減暴擊 */
       rBurn: 0,
       rPoison: 0,
@@ -263,6 +309,15 @@ function compileBag(bag, extra = {}) {
     has = (o, tag) => TG.get(o.u).includes(tag),
     cnt = tag => its.filter(o => has(o, tag)).length;
   for (const [u, s] of tfm) add({ u }, scaleMod(ITEMI[s.id].tf.m, s.t));
+  /* 0.1.35 鈔能力：照開戰時的金幣，所有武器加成、開戰護盾與封鎖 */
+  const RB = coreProp(its, 'rich') ? richOf(bag.gp || 0) : null;
+  if (RB) {
+    const ru = its.find(o => defsOf(o).some(d => d.rich)).u;
+    for (const q of its) if (has(q, 'weapon')) add(q, { dmgPct: RB.dmgPct || 0, spd: RB.spd || 0, crit: RB.crit || 0 });
+    F.startBlock += RB.startBlock || 0;
+    if (RB.seal) F.pre.push({ u: ru, k: 'seal', v: RB.seal });
+    if (RB.sealAll) F.pre.push({ u: ru, k: 'sealAll', v: RB.sealAll });
+  }
   for (const s of its) {
     const S0 = ITEMI[s.id];
     const give = (list, test) => {
@@ -361,7 +416,11 @@ function compileBag(bag, extra = {}) {
       });
     else if (I.dmg) {
       const on = onT(I, o.t),
-        mul = 1 + ((m.dmgPct || 0) + (m.cellPct || 0) * shapeOf(o.id).length) / 100;
+        mul = 1 + ((m.dmgPct || 0) + (m.cellPct || 0) * shapeOf(o.id).length) / 100,
+        /* 0.1.35 魔劍正宗吸收的數值（o.ab）當成這把的基礎數值 */
+        ab = o.ab || {};
+      for (const k of AB_K) if (ab[k]) on[k] = (on[k] || 0) + ab[k];
+      for (const k of ['freezeCh', 'stunCh']) if (ab[k]) m[k] = (m[k] || 0) + ab[k];
       F.weapons.push({
         u: o.u,
         id: o.id,
@@ -370,7 +429,10 @@ function compileBag(bag, extra = {}) {
         pet: has(o, 'pet'),
         el: TG.get(o.u).find(t => ['fire', 'cold', 'light', 'poison', 'dark'].includes(t)) || 'phys',
         cd: Math.max(0.4, cdT(I, o.t) / (1 + (m.spd || 0) / 100)),
-        dmg: [Math.round((I.dmg[0] * k + (m.dmg || 0)) * mul), Math.round((I.dmg[1] * k + (m.dmg || 0)) * mul)],
+        dmg: [
+          Math.round((I.dmg[0] * k + (ab.d0 || 0) + (m.dmg || 0)) * mul),
+          Math.round((I.dmg[1] * k + (ab.d1 || 0) + (m.dmg || 0)) * mul)
+        ],
         crit: on.crit + (m.crit || 0),
         burn: (on.burn || 0) + (m.burn || 0),
         poison: (on.poison || 0) + (m.poison || 0),
@@ -384,7 +446,10 @@ function compileBag(bag, extra = {}) {
         pierce: Math.min(PIERCE_MAX, m.pierce || 0),
         chain: m.chain || 0,
         guard: m.guard || 0,
-        chainN: Math.min(CHAIN_MAX, m.chainN || 0)
+        chainN: Math.min(CHAIN_MAX, m.chainN || 0),
+        /* 0.1.35 雙手大師：每佔 1 格的連擊機率；金錢標：有錢時每次攻擊花 1 金、數值翻倍 */
+        dbl: (m.cellDbl || 0) * shapeOf(o.id).length,
+        coin: I.coin ? 1 : 0
       });
     }
   }
@@ -431,31 +496,28 @@ function bagMods(bag) {
         }
   return out;
 }
-/* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的副核心] */
+/* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值]；
+   後面是預設值的就不存。gp：0.1.35 開戰時的金幣（鈔能力、金錢標） */
+const PACK_DEF = [0, 0, 1, 0, 0, 0];
 const packBag = bag => ({
   w: bag.w,
   h: bag.h,
   cls: bag.cls || null,
   ...(bag.pay ? { pay: 1 } : {}),
-  it: bag.items.map(o => [
-    o.id,
-    o.t,
-    o.x,
-    o.y,
-    o.r,
-    o.a || 0,
-    o.m || 0,
-    ...(o.m2 || o.f || o.sc || o.sm ? [o.m2 || 0] : []),
-    ...(o.f || o.sc || o.sm ? [o.f || 0, o.ft || 1] : []),
-    ...(o.sc || o.sm ? [o.sc || 0] : []),
-    ...(o.sm ? [1] : [])
-  ])
+  ...(bag.gp ? { gp: bag.gp } : {}),
+  it: bag.items.map(o => {
+    const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
+      t = [o.m2 || 0, o.f || 0, o.ft || 1, o.sc || 0, o.sm ? 1 : 0, o.ab || 0];
+    while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
+    return [...a, ...t];
+  })
 });
 const unpackBag = p => ({
   w: p.w,
   h: p.h,
   cls: p.cls || null,
   pay: p.pay || 0,
+  gp: p.gp || 0,
   items: (p.it || [])
     .filter(a => ITEMI[a[0]])
     .map((a, i) => ({
@@ -471,7 +533,8 @@ const unpackBag = p => ({
       f: a[8] || null,
       ft: a[9] || 1,
       sc: a[10] || null,
-      sm: a[11] || 0
+      sm: a[11] || 0,
+      ab: a[12] || null
     }))
 });
 /* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */

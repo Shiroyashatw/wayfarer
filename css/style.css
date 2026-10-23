@@ -6,7 +6,7 @@
   --ink:#201b17; --dim:#6a6158; --faint:#9b9289;
   /* 強調色（主要按鈕、金幣、這一輪）：琥珀 */
   --gold:#b46d08; --accent:#e08a12; --accent2:#c97500; --on-accent:#ffffff; --accent-soft:#fbe9cc;
-  --hp:#e5484d; --hp-track:#eee6dc; --mp:#2f8be0; --good:#2f9e44; --warn:#d9822b; --bad:#d93838; --danger:#e5484d;
+  --hp:#e5484d; --hp-track:#eee6dc; --shield:#9aa9b8; --mp:#2f8be0; --good:#2f9e44; --warn:#d9822b; --bad:#d93838; --danger:#e5484d;
   /* 背包：托盤比底色深一點，空格是亮的方塊＋框線，一眼看出有幾格 */
   --tray:#e4ddd1; --tray-line:#d3cabb; --cell:#fbf9f5; --cell-line:#cbc1b1;
   /* 星級：框線色與底色 */
@@ -26,7 +26,7 @@
   --bg:#1d1b21; --bg-top:#26232c; --card:#2c2932; --card2:#34313b; --fill:#3e3a45; --fill-hi:#4a4652; --line:#4a4551; --shadow:0 1px 2px #0006,0 4px 14px #0004;
   --ink:#f3efe8; --dim:#bcb4c6; --faint:#8f8899;
   --gold:#f5bf52; --accent:#f0a630; --accent2:#d88d18; --on-accent:#241604; --accent-soft:#4a3816;
-  --hp:#ef5257; --hp-track:#433d48; --good:#6cd17f; --warn:#ffb15a; --bad:#ff8a8a;
+  --hp:#ef5257; --hp-track:#433d48; --shield:#f4f1ea; --good:#6cd17f; --warn:#ffb15a; --bad:#ff8a8a;
   --tray:#25222a; --tray-line:#3a3640; --cell:#3a3641; --cell-line:#5a5463;
   --s1:#a59d91; --s2:#5fc46b; --s3:#5aa2f5; --s4:#b384f0; --s5:#f2ad2e;
   --s1b:#3e3a40; --s2b:#2c3e30; --s3b:#29374c; --s4b:#3a2e4c; --s5b:#4a3a1c;
@@ -114,8 +114,12 @@ canvas.spr.flip{transform:scaleX(-1)}
 .rv.out{opacity:.4;filter:grayscale(1)}
 .hpb{display:block;height:5px;border-radius:3px;background:var(--hp-track);overflow:hidden;position:relative}
 .hpb>i{display:block;height:100%;background:var(--hp);transition:width .2s}
-.hpb.big{height:20px;border-radius:var(--r-sm);width:100%}
-.hpb.big em{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;font-family:var(--f-pix);font-size:var(--fs-sm);line-height:1;color:#fff;text-shadow:0 1px 0 #0009,0 0 3px #0008}
+.hpb.big{height:20px;border-radius:var(--r-sm);width:100%;display:flex}
+/* 0.1.35 護盾（格擋量）：接在生命後面的白色段 */
+.hpb>i.bk{background:var(--shield);flex:none}
+.hpb.big>i{flex:none}
+.hpb.big em .bkt{font-weight:normal;margin-left:var(--sp-1)}
+.hpb.big em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-style:normal;font-family:var(--f-pix);font-size:var(--fs-sm);line-height:1;color:#fff;text-shadow:0 1px 0 #0009,0 0 3px #0008}
 .tut{background:var(--accent-soft);color:var(--ink);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);font-size:var(--fs-sm)}
 /* 回合列 */
 .rbar{display:flex;gap:3px}

@@ -254,10 +254,17 @@ function newRunState(seed) {
     un: 0
   };
 }
-/* 0.1.7 每回合多拿的金幣：商人職業、背包裡的錢袋（每升一階 +1） */
-const bonusGold = run =>
-  ((CLSI[run.bag.cls] || {}).gold || 0) +
-  run.bag.items.reduce((n, o) => n + (ITEMI[o.id].gold ? ITEMI[o.id].gold + o.t - 1 : 0), 0);
+/* 0.1.7 每回合多拿的金幣：商人職業、背包裡的錢袋（每升一階 +1）；0.1.35 融入的核心也算、財源滾滾照階段 */
+const bonusGold = run => {
+  const st = (curRound(run) || { st: 1 }).st;
+  let n = (CLSI[run.bag.cls] || {}).gold || 0;
+  for (const o of run.bag.items)
+    for (const d of defsOf(o)) {
+      if (d.gold) n += d.gold + (d === ITEMI[o.id] ? o.t - 1 : 0);
+      if (d.goldSt) n += goldStOf(d.goldSt, st);
+    }
+  return n;
+};
 /* 0.1.8 選完職業送的起手道具：放進暫存區，回傳道具代號 */
 function giveStarter(run) {
   const id = (CLSI[run.bag.cls] || {}).st,
@@ -298,9 +305,9 @@ function newRun(rivals) {
   return run;
 }
 const curRound = run => ROUNDS[run.ri];
-/* 商店的一格：照背包等級的機率抽星級 */
-function rollItem(run) {
-  const od = shopOdds(run);
+/* 商店的一格：照背包等級的機率抽星級；lotto：0.1.35 六合彩的那一輪更常出高星 */
+function rollItem(run, lotto) {
+  const od = lotto ? lottoOdds(shopOdds(run)) : shopOdds(run);
   let x = r01(run) * 100,
     st = 1;
   for (let i = 0; i < 5; i++) {
@@ -311,24 +318,38 @@ function rollItem(run) {
     x -= od[i];
   }
   /* 商店不出職業核心（核心只從首領三選一拿） */
-  const pool = ITEMS.filter(it => it.star === st && !it.core);
-  return pick(run, pool.length ? pool : ITEMS.filter(it => it.star === 1)).id;
+  const pool = ITEMS.filter(it => it.star === st && shopOK(it));
+  return pick(run, pool.length ? pool : ITEMS.filter(it => it.star === 1 && shopOK(it))).id;
 }
-function rollShop(run) {
+/* 0.1.35 六合彩：1～2★ 的機率挪六成給 3～5★（2：4：4） */
+function lottoOdds(od) {
+  const o = [...od],
+    mv = (o[0] + o[1]) * 0.6;
+  o[0] *= 0.4;
+  o[1] *= 0.4;
+  o[2] += mv * 0.2;
+  o[3] += mv * 0.4;
+  o[4] += mv * 0.4;
+  return o;
+}
+function rollShop(run, lotto) {
   /* 1-1 開打前的商店全是 1★，前 2 格保證是武器或寵物（不然第一場就打不了） */
   run.shop = Array.from({ length: SHOP_N }, (_, k) => ({
     id:
       run.ri === 0
         ? pick(
             run,
-            ITEMS.filter(i => i.star === 1 && !i.core && (k >= 2 || i.dmg))
+            ITEMS.filter(i => i.star === 1 && shopOK(i) && (k >= 2 || i.dmg))
           ).id
-        : rollItem(run),
+        : rollItem(run, lotto),
     t: run.ri > 0 && r01(run) * 100 < (BAGLV[run.lv].t2 || 0) ? 2 : 1
   }));
+  /* 0.1.35 六合彩：價格打亂成 0 金～5★ 的價格（p） */
+  if (lotto) for (const s of run.shop) s.p = fl(r01(run) * (5 * 3 ** (s.t - 1) + 1));
 }
-/* t：商店也可能直接賣 Ⅱ 階（後期才有），價錢 ×3 */
-const shopPrice = (run, id, t = 1) => priceOf(id) * 3 ** ((t || 1) - 1);
+/* t：商店也可能直接賣 Ⅱ 階（後期才有），價錢 ×3；p：0.1.35 六合彩打亂過的價格 */
+const shopPrice = (run, id, t = 1, p) => (p != null ? p : priceOf(id) * 3 ** ((t || 1) - 1));
+const slotPrice = (run, s) => shopPrice(run, s.id, s.t, s.p);
 const newItem = (run, id, t = 1) => ({
   u: 'i' + run.un++,
   id,
@@ -344,7 +365,7 @@ const benchFree = run => run.bench.indexOf(null);
 function buyItem(run, k) {
   const s = run.shop[k];
   if (!s) return '這格已經買了';
-  const p = shopPrice(run, s.id, s.t);
+  const p = slotPrice(run, s);
   if (run.gold < p) return '金幣不夠';
   const fi = benchFree(run);
   if (fi < 0 && !wouldMerge(run, s.id, s.t || 1)) return '暫存區滿了，先把道具放進背包或賣掉';
@@ -355,16 +376,34 @@ function buyItem(run, k) {
   run.shop[k] = null;
   const merged = mergeAll(run, runR(run));
   for (const o of run.bench.splice(BENCH_N)) if (o) run.bench[benchFree(run)] = o;
+  kickback(run);
   return { merged };
 }
-/* 買這件會不會馬上湊滿 3 件 1 階（暫存區滿了也能買） */
+/* 0.1.35 回扣：每買 N 次送一次菁英三選一（mid：準備中途的三選一，選完回到準備；z：送的道具賣價 0） */
+function kickback(run) {
+  const n = coreProp(run.bag.items, 'kick');
+  if (!n || run.pend) return;
+  run.kb = (run.kb || 0) + 1;
+  if (run.kb % n) return;
+  const [a, b] = eliteStars(curRound(run).st);
+  run.pend = {
+    kind: 'pick',
+    t: `回扣：買滿 ${n} 次，送你一次菁英三選一（賣價 0 金）`,
+    opts: eliteOpts(run, a, b, false),
+    z: 1,
+    mid: 1
+  };
+  if (run.phase === 'prep') run.phase = 'pick';
+}
+/* 買這件會不會馬上湊滿合成（3 件，二天一流 2 件；暫存區滿了也能買） */
 const wouldMerge = (run, id, t = 1) =>
-  [...run.bag.items, ...run.bench].filter(o => o && o.id === id && o.t === t).length >= 2 && t < TIER_MAX;
+  [...run.bag.items, ...run.bench].filter(o => o && o.id === id && o.t === t).length >=
+    mergeNeed([...run.bag.items, ...run.bench], id) - 1 && t < TIER_MAX;
 /* 0.1.1 從商店直接拖進背包：買下並放在 (x, y)（放得下才會叫到這裡）；swap 是被擠出來要收進暫存區的道具 */
 function buyToBag(run, k, x, y, r, swap) {
   const s = run.shop[k];
   if (!s) return '這格已經買了';
-  const p = shopPrice(run, s.id, s.t);
+  const p = slotPrice(run, s);
   if (run.gold < p) return '金幣不夠';
   if (swap && benchFree(run) < 0) return '暫存區滿了，換不下來';
   run.gold -= p;
@@ -374,7 +413,9 @@ function buyToBag(run, k, x, y, r, swap) {
   }
   run.bag.items.push({ ...newItem(run, s.id, s.t || 1), x, y, r });
   run.shop[k] = null;
-  return { merged: mergeAll(run, runR(run)) };
+  const merged = mergeAll(run, runR(run));
+  kickback(run);
+  return { merged };
 }
 /* 0.1.1 交換：o 要放到 (tx, ty)，那裡剛好擋著一件 B；B 換到 o 原本的位置（試每個旋轉）。
    o 從暫存區或商店來的話，B 收進暫存區。回傳交換方式，不能換回傳 null */
@@ -416,23 +457,34 @@ function sellItem(run, u) {
 }
 /* 0.1.33 投機商人：每回合免費刷新次數（run.fr 是這回合用掉的） */
 const freeRolls = run => coreProp(run.bag.items, 'freeRoll') - (run.fr || 0);
+/* 0.1.35 豪賭：這回合還能刷新幾次（沒有上限回傳 Infinity；run.nr 是這回合刷新過的次數） */
+const rollsLeft = run => {
+  const c = coreProp(run.bag.items, 'rollCap');
+  return c ? Math.max(0, c - (run.nr || 0)) : Infinity;
+};
 function rerollShop(run) {
+  if (rollsLeft(run) <= 0) return '這回合不能再刷新了';
   if (freeRolls(run) > 0) {
     run.fr = (run.fr || 0) + 1;
+    run.nr = (run.nr || 0) + 1;
     rollShop(run);
     return '';
   }
   if (run.gold < REROLL) return '金幣不夠';
   run.gold -= REROLL;
+  run.nr = (run.nr || 0) + 1;
   rollShop(run);
   return '';
 }
 /* 背包升級：變大、商店機率變好；放不下的不會發生（只會變大） */
 /* 下一級背包（0.1.9 曾經有開放回合，0.1.12 改回只看金幣） */
 const lvOpen = run => !!BAGLV[run.lv + 1];
+/* 0.1.35 折價卷：背包升級打折 */
+const lvCost = run =>
+  BAGLV[run.lv + 1] ? Math.ceil(BAGLV[run.lv + 1].cost * (1 - coreProp(run.bag.items, 'lvOff') / 100)) : 0;
 function levelUp(run) {
   if (run.lv >= BAG_MAX) return '背包已經最大了';
-  const c = BAGLV[run.lv + 1].cost;
+  const c = lvCost(run);
   if (run.gold < c) return '金幣不夠';
   run.gold -= c;
   run.lv++;
@@ -458,13 +510,15 @@ function nextRound(run) {
   const r = curRound(run);
   run.pend = null;
   run.fr = 0;
+  run.nr = 0;
   if (!r) return endRun(run, finalPlace(run));
   if (run.ri === 0) {
     run.gold = START_GOLD;
     rollShop(run);
   } else {
     run.gold += incomeOf(run);
-    if (!run.lock) rollShop(run);
+    /* 0.1.35 六合彩：每回合第一輪的商店價格打亂、更常出高星 */
+    if (!run.lock) rollShop(run, !!coreProp(run.bag.items, 'lotto'));
   }
   run.lock = false;
   run.phase = 'prep';
@@ -583,10 +637,12 @@ let MOB_HP = 1,
   MOB_DMG = 1.5;
 /* 開戰：存快照（給別人當對手）、算好整場（固定亂數） */
 /* 0.1.33 賄賂：背包有這個核心、金幣超過 N 就付 N，這場（快照也一樣）整場封鎖敵人星級最高的武器 */
+/* 0.1.35 也記下開戰時的金幣（bag.gp：鈔能力的加成、金錢標能花的錢） */
 function payBribe(run) {
   const b = coreProp(run.bag.items, 'bribe');
   run.bag.pay = b && run.gold > b ? 1 : 0;
   if (run.bag.pay) run.gold -= b;
+  run.bag.gp = run.gold;
 }
 function startFight(run) {
   const r = curRound(run);
@@ -639,6 +695,8 @@ function finishFight(run, fb) {
   const { r, opp, res } = fb,
     out = { win: res.win, loss: 0, gold: 0 },
     pre = run.rivals.filter(rv => rivalAlive(rv, r.id));
+  /* 0.1.35 金錢標花掉的金幣 */
+  if (res.spent && res.spent[0]) (run.gold = Math.max(0, run.gold - res.spent[0])), (out.spent = res.spent[0]);
   if (res.win) {
     run.ws++;
     run.lsk = 0;
@@ -663,7 +721,12 @@ function finishFight(run, fb) {
   /* 菁英：三選一道具（星級照階段）；首領：三選一職業核心 */
   if (r.type === 'elite') {
     const [a, b] = eliteStars(r.st);
-    run.pend = { kind: 'pick', t: '菁英的戰利品：選一件', opts: eliteOpts(run, a, b, res.win) };
+    run.pend = {
+      kind: 'pick',
+      t: '菁英的戰利品：選一件',
+      opts: eliteOpts(run, a, b, res.win),
+      tier: eliteTier(run, res.win)
+    };
     /* 0.1.33 商人：打完菁英多拿金幣 */
     const eg = (CLSI[run.bag.cls] || {}).eliteGold || 0;
     if (eg) (run.gold += eg), (out.gold += eg);
@@ -758,17 +821,24 @@ function clsWeaponTags(cls) {
   const C = CLSI[cls];
   if (!C) return ['weapon'];
   const t = [...new Set([...(C.m || []).map(b => b.tag), C.th].filter(Boolean))].filter(tag =>
-    ITEMS.some(i => i.dmg && !i.core && i.tags.includes(tag))
+    ITEMS.some(i => i.dmg && shopOK(i) && i.tags.includes(tag))
   );
   return t.length ? t : ['weapon'];
 }
+/* 0.1.35 劍修大師：打贏菁英時三選一必定是 Ⅱ 階（沒有就 1） */
+const eliteTier = (run, win = true) => {
+  const mc = mainCore(run);
+  return (win && mc && (defsOf(mc).find(d => d.eliteT) || {}).eliteT) || 1;
+};
 function eliteOpts(run, a, b, win = true) {
-  /* 0.1.33 劍修大師：打贏菁英時三件都是那個標籤的武器 */
+  /* 0.1.33 劍修大師：打贏菁英時三件都是那個標籤的武器（0.1.35 可以是幾個標籤） */
   const mc = mainCore(run),
     all = win && mc && (defsOf(mc).find(d => d.eliteAll) || {}).eliteAll;
   if (all) {
-    let wp = ITEMS.filter(i => !i.core && i.dmg && i.tags.includes(all) && i.star >= a && i.star <= b);
-    if (wp.length < 3) wp = ITEMS.filter(i => !i.core && i.dmg && i.tags.includes(all) && i.star <= b);
+    const ts = [all].flat(),
+      isA = i => shopOK(i) && i.dmg && ts.some(t => i.tags.includes(t));
+    let wp = ITEMS.filter(i => isA(i) && i.star >= a && i.star <= b);
+    if (wp.length < 3) wp = ITEMS.filter(i => isA(i) && i.star <= b);
     const o = [];
     for (let k = 0; o.length < 3 && k < 30; k++) {
       const id = pick(run, wp).id;
@@ -776,11 +846,11 @@ function eliteOpts(run, a, b, win = true) {
     }
     return o;
   }
-  const pool = ITEMS.filter(i => !i.core && i.star >= a && i.star <= b),
+  const pool = ITEMS.filter(i => shopOK(i) && i.star >= a && i.star <= b),
     tags = clsWeaponTags(run.bag.cls),
     isW = i => i.dmg && tags.some(t => i.tags.includes(t));
   let wp = pool.filter(isW);
-  if (!wp.length) wp = ITEMS.filter(i => !i.core && i.star <= b && isW(i));
+  if (!wp.length) wp = ITEMS.filter(i => shopOK(i) && i.star <= b && isW(i));
   const o = [0, 1].map(() => pick(run, pool).id);
   if (wp.length) o.splice(fl(runR(run)() * 3), 0, pick(run, wp).id);
   else o.push(pick(run, pool).id);
@@ -790,11 +860,20 @@ function eliteOpts(run, a, b, win = true) {
 /* 0.1.6 暫存區滿了：剛好湊滿 3 件就先放多出來的一格合成；不然玩家的話先寄放在 run.hold（下回合空出位置再領），不會卡住 */
 /* 0.1.29 專屬核心（背包或暫存區）；第二個核心（0.1.34 起是專屬核心，以前是副核心）直接融入它 */
 const mainCore = run => [...run.bag.items, ...run.bench].find(o => o && ITEMI[o.id].core === 1);
-/* 0.1.33 保鏢：拿到時送 N 隻隨機 X★ 寵物（暫存區滿了就換成賣價） */
+/* 0.1.33 保鏢：拿到時送 N 隻隨機 X★ 寵物（暫存區滿了就換成賣價）；0.1.35 第一桶金送錢（gain）、魔劍正宗送一件道具（give，暫存區滿了先寄放） */
 function giveGift(run, id) {
-  const G = ITEMI[id].gift;
+  const I = ITEMI[id],
+    G = I.gift;
+  if (I.gain) run.gold += I.gain;
+  if (I.give && ITEMI[I.give]) {
+    const o = newItem(run, I.give),
+      f2 = benchFree(run);
+    if (f2 >= 0) run.bench[f2] = o;
+    else if (!run.hold) run.hold = o;
+    else run.gold += sellOf(o.id, o.t);
+  }
   if (!G) return;
-  const pool = ITEMS.filter(i => !i.core && i.star === G[0] && i.tags.includes(G[1]));
+  const pool = ITEMS.filter(i => shopOK(i) && i.star === G[0] && i.tags.includes(G[1]));
   for (let k = 0; k < G[2] && pool.length; k++) {
     const o = newItem(run, pick(run, pool).id),
       f2 = benchFree(run);
@@ -816,8 +895,12 @@ function bossCores(run) {
   }
   return o;
 }
+/* 0.1.35 三選一的階（pend.tier，劍修大師 Ⅱ 階）、回扣送的賣價 0（pend.z） */
 function takePick(run, id, hold) {
-  const mc = ITEMI[id].core && mainCore(run);
+  const mc = ITEMI[id].core && mainCore(run),
+    P = run.pend || {},
+    t = P.tier || 1,
+    mk = () => Object.assign(newItem(run, id, t), P.z ? { z: 1 } : {});
   if (mc && mc.id !== id) {
     mc.sc = id;
     run.pend = null;
@@ -826,14 +909,15 @@ function takePick(run, id, hold) {
     return '';
   }
   const fi = benchFree(run);
-  if (fi < 0 && !wouldMerge(run, id)) {
+  if (fi < 0 && !wouldMerge(run, id, t)) {
     if (!hold) return '暫存區滿了，先騰出一格';
-    run.hold = newItem(run, id);
+    run.hold = mk();
     run.pend = null;
+    giveGift(run, id);
     return '';
   }
-  if (fi < 0) run.bench.push(newItem(run, id));
-  else run.bench[fi] = newItem(run, id);
+  if (fi < 0) run.bench.push(mk());
+  else run.bench[fi] = mk();
   run.pend = null;
   giveGift(run, id);
   mergeAll(run, runR(run));
@@ -905,10 +989,12 @@ function botAfter(run, r, win, q, P) {
   if (r.type === 'elite') {
     run.gold += (CLSI[run.bag.cls] || {}).eliteGold || 0;
     const opts = eliteOpts(run, a, c, win),
+      tier = eliteTier(run, win),
       best =
         r01(run) < q
-          ? opts.map(id => [id, botValue(run, id, 1, P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0]
+          ? opts.map(id => [id, botValue(run, id, tier, P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0]
           : opts[0];
+    run.pend = { kind: 'pick', opts, tier };
     takePick(run, best, true);
   } else {
     /* 0.1.34 首領核心：跟玩家一樣三選一（4-4 是第二個專屬核心），照評估挑 */
@@ -972,6 +1058,7 @@ function simLobby(seed, rating, opt = {}) {
         F = compileBag(o.run.bag);
       } else F = mobOf(run, r).F;
       const res = simulate(stageHp(compileBag(run.bag), r.st), stageHp(F, r.st, r.type !== 'pvp'), h(seed, k, i));
+      run.gold = Math.max(0, run.gold - res.spent[0]);
       /* 0.1.10 跟玩家一樣的經濟：打贏拿金幣、連勝連敗（之前沒算，機器人的背包比玩家窮、快照偏弱） */
       if (!res.win && !solo) run.hp -= r.loss;
       botAfter(run, r, res.win, b.q, b.P);

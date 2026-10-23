@@ -77,6 +77,14 @@ const SH = {
     [0, 1],
     [0, 2],
     [1, 1]
+  ],
+  /* 0.1.35 直五格（魔劍正宗） */
+  v5: [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [0, 3],
+    [0, 4]
   ]
 };
 /* 標籤的中文 */
@@ -1121,6 +1129,32 @@ const ITEMS = [
     ic: 'cur_alch'
   },
   { id: 'purse', n: '金幣堆', star: 2, sh: 's1', tags: ['trinket'], gold: 1, ic: 'mat_gold' },
+  /* 0.1.35 金錢標：傷害只有同星一格武器的六成，開戰時身上有錢就每次攻擊花 1 金、整把武器的攻擊數值翻倍（coin） */
+  {
+    id: 'coindart',
+    n: '金錢標',
+    star: 3,
+    sh: 's1',
+    tags: ['weapon'],
+    cd: 1,
+    dmg: [1, 3],
+    crit: 10,
+    coin: 1,
+    ic: 'tree_n089'
+  },
+  /* 0.1.35 魔劍正宗：浪人核心送的，商店與戰利品不會出（ns）；本身沒有數值，貼在旁邊的劍會被吸收、加上那把劍的數值（absorb） */
+  {
+    id: 'masamune',
+    n: '魔劍正宗',
+    star: 5,
+    sh: 'v5',
+    tags: ['weapon', 'sword'],
+    cd: 1.3,
+    dmg: [0, 0],
+    absorb: 'sword',
+    ns: 1,
+    ic: 'asc_master_b4'
+  },
   {
     id: 'kingcrown',
     n: '王者之冠',
@@ -1849,6 +1883,8 @@ const ITEMS = [
   }
 ];
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
+/* 商店、戰利品、送的寵物會出的道具：不是職業核心、也不是核心送的專屬道具（ns） */
+const shopOK = it => !it.core && !it.ns;
 /* 0.1.7 開局職業：1-1 開打前三選一（可以刷新一次），整局都有效。
    m：對有那個標籤的道具加成（跟飾品一樣算進道具身上）；F：角色身上；gold：每回合多拿的金幣；th：機器人選了這個職業偏好買的標籤；
    st：0.1.8 選完送的 1★ 起手道具 */
@@ -1867,10 +1903,14 @@ const CLASSES = [
   {
     id: 'swordsman',
     st: 'woodsword',
-    n: '劍士',
+    /* 0.1.35 劍士 → 浪人：劍、矛都吃職業加成 */
+    n: '浪人',
     ic: 'sk_swordwave',
     th: 'sword',
-    m: [{ tag: 'sword', dmgPct: 35, crit: 15, bleed: 2 }]
+    m: [
+      { tag: 'sword', dmgPct: 35, crit: 15, bleed: 2 },
+      { tag: 'spear', dmgPct: 35, crit: 15, bleed: 2 }
+    ]
   },
   {
     id: 'berserker',
@@ -1886,11 +1926,14 @@ const CLASSES = [
   {
     id: 'spearman',
     st: 'woodspear',
-    n: '槍兵',
+    /* 0.1.35 槍兵 → 亞馬遜：矛、弓都吃職業加成（傷害 +30% 墊底 4.28 → +40%，護甲 +5、生命 +20 加回來） */
+    n: '亞馬遜',
     ic: 'sk_spearrush',
     th: 'spear',
-    /* 0.1.29 6 人一場槍兵墊底（槍的道具少）：傷害 40% → 50%、多 20 生命 */
-    m: [{ tag: 'spear', dmgPct: 50, spd: 15, crit: 10 }],
+    m: [
+      { tag: 'spear', dmgPct: 40, spd: 15, crit: 10 },
+      { tag: 'bow', dmgPct: 40, spd: 15, crit: 10 }
+    ],
     F: { arm: 5, hp: 20 }
   },
   {
@@ -1971,9 +2014,9 @@ const CLSI = Object.fromEntries(CLASSES.map(c => [c.id, c]));
    背包裡專屬核心、副核心各最多 1 個。P 是那個職業主打的標籤 */
 const CORE_P = {
   archer: ['bow', 'xbow'],
-  swordsman: ['sword'],
+  swordsman: ['sword', 'spear'],
   berserker: ['axe', 'mace'],
-  spearman: ['spear'],
+  spearman: ['spear', 'bow'],
   assassin: ['dagger'],
   pyro: ['fire'],
   cryo: ['cold'],
@@ -2003,20 +2046,21 @@ const CORE_MAIN = {
     ['連射', { all: onP(P, { spd: 10 }), fx: { ramp: 8 } }],
     ['獵人陷阱', { all: onP(P, { bleed: 1 }), pre: { bleed: 6 } }]
   ],
+  /* 0.1.35 浪人（P 是劍、矛）：武士道只加劍；二天一流兩件就合成；招架是被打時的格擋機率；魔劍正宗送一把會吸收劍的 5★ 劍 */
   swordsman: P => [
-    ['劍意', { all: onP(P, { dmgPct: 35 }) }],
-    ['拔刀術', { all: onP(P, { crit: 15 }), fx: { opener: 100 } }],
-    ['血劍', { all: onP(P, { bleed: 4, ls: 15 }) }],
-    ['斬殺', { all: onP(P, { dmgPct: 10 }), fx: { execute: 70 } }],
-    ['招架', { all: onP(P, { dmgPct: 15 }), fx: { startBlock: 30 } }],
-    ['連斬', { all: onP(P, { dmgPct: 10 }), fx: { double: 20 } }],
-    ['劍心', { all: onP(P, { crit: 20 }), fx: { critMul: 50 } }],
-    ['背水', { all: onP(P, { spd: 10 }), fx: { rage: 50 } }],
-    ['雙手大師', { all: [{ tag: 'twohand', dmgPct: 40, spd: 10 }] }],
-    /* 0.1.33 劍陣 → 劍修大師：打贏菁英時三選一都是劍 */
-    ['劍修大師', { eliteAll: 'sword' }],
-    ['破甲斬', { all: onP(P, { sunder: 2, dmgPct: 10 }) }],
-    ['劍舞', { all: onP(P, { dmgPct: 10 }), fx: { ramp: 10 } }]
+    ['武士道', { all: [{ tag: 'sword', dmgPct: 35, spd: 20, crit: 5 }] }],
+    ['拔刀術', { all: onP(P, { crit: 25 }), fx: { opener: 100 } }],
+    ['浴血越戰', { all: onP(P, { bleed: 6, ls: 30 }) }],
+    ['二天一流', { merge2: 'sword' }],
+    ['招架', { fx: { parry: 15, parryArm: 30 } }],
+    ['連斬', { all: onP(P, { dmgPct: 10 }), fx: { double: 30, triple: 10 } }],
+    ['心如止水', { all: onP(P, { crit: 20 }), fx: { critMul: 60, immT: 5 } }],
+    ['背水', { fx: { rage: 50, rageSpd: 50, double: 10 } }],
+    ['雙手大師', { all: [{ tag: 'twohand', dmgPct: 40, spd: 20, cellDbl: 5 }] }],
+    /* 0.1.33 劍陣 → 劍修大師：打贏菁英時三選一都是劍；0.1.35 劍或矛、必定 Ⅱ 階 */
+    ['劍修大師', { eliteAll: ['sword', 'spear'], eliteT: 2 }],
+    ['破甲斬', { all: onP(P, { sunder: 5, dmgPct: 20, pierce: 50 }) }],
+    ['魔劍正宗', { give: 'masamune' }]
   ],
   berserker: P => [
     ['狂怒', { all: onP(P, { dmgPct: 15 }), fx: { rage: 60 } }],
@@ -2164,22 +2208,33 @@ const CORE_MAIN = {
     ['狂暴藥劑', { all: onP(P, { spd: 25 }) }],
     ['賢者之石', { gold: 2, fx: { throwPct: 40 } }]
   ],
+  /* 0.1.35 商人改版：大多是經濟效果（拿到送錢、照階段的收入、照身上金幣的加成、商店打亂價格、背包升級打折、買 5 次送三選一） */
   merchant: P => [
-    ['財神', { gold: 3 }],
-    ['大富翁', { gold: 2, all: onP(P, { dmgPct: 10 }) }],
-    ['投資', { gold: 1, fx: { hp: 40 } }],
-    /* 0.1.33 傭兵 → 投機商人：每回合免費刷新商店 1 次 */
-    ['投機商人', { freeRoll: 1 }],
-    ['黃金甲', { gold: 1, fx: { arm: 10 } }],
-    ['精品', { all: onP(P, { crit: 15 }), fx: { critMul: 30 } }],
+    ['第一桶金', { gain: 60 }],
+    /* [從第幾階段起, 每回合幾金] */
+    [
+      '財源滾滾',
+      {
+        goldSt: [
+          [1, 2],
+          [4, 4],
+          [6, 6]
+        ]
+      }
+    ],
+    ['鈔能力', { rich: 1 }],
+    /* 0.1.33 傭兵 → 投機商人：每回合免費刷新商店；0.1.35 1 → 2 次 */
+    ['投機商人', { freeRoll: 2 }],
+    ['六合彩', { lotto: 1 }],
+    ['精品', { early: 1 }],
     /* 0.1.33 開戰時金幣超過 5 金就花 5 金，整場封鎖敵人星級最高的武器 */
     ['賄賂', { bribe: 5 }],
-    ['搶先', { all: onP(P, { spd: 10 }), fx: { opener: 100 } }],
-    ['回扣', { gold: 1, fx: { regen: 3 } }],
-    ['奸商', { gold: 1, pre: { down: 1 } }],
+    ['折價卷', { lvOff: 50 }],
+    ['回扣', { kick: 5 }],
+    ['奸商', { gold: 1, pre: { down: 2 } }],
     /* 0.1.33 拿到時送 2 隻隨機 4★ 寵物 */
     ['保鏢', { gift: [4, 'pet', 2] }],
-    ['豪賭', { fx: { rage: 50, execute: 40 } }]
+    ['豪賭', { all: onP(P, { dmgPct: 50, spd: 30 }), rollCap: 2 }]
   ]
 };
 /* 副核心：通用模板，對職業主打的標籤加成 */
@@ -2444,8 +2499,33 @@ const MODN = {
   chainN: v => `連鎖 +${v}（每次攻擊多打 ${Math.min(CHAIN_MAX, v)} 下、傷害 ${CHAIN_DMG}%，最多 +${CHAIN_MAX}）`,
   openDbl: v => `開戰 ${v} 秒內每次攻擊都連擊`,
   firstStrike: () => '開戰時星級最高的一把武器先打一下',
-  armDmg: () => '每把武器的傷害 +護甲值'
+  armDmg: () => '每把武器的傷害 +護甲值',
+  /* 0.1.35 浪人核心 */
+  parry: v => `被攻擊時 ${pct(v)} 機率格擋（這一下不受傷害）`,
+  parryArm: v => `第一次格擋成功後護甲 +${v}`,
+  triple: v => `${pct(v)} 機率連鎖追擊（一共打三下）`,
+  immT: v => `開戰 ${v} 秒內不會中任何異常`,
+  rageSpd: v => `自己生命低於 50% 時攻速 +${pct(v)}`,
+  cellDbl: v => `每佔 1 格 ${pct(v)} 機率連擊`
 };
+/* 0.1.35 鈔能力：開戰時身上的金幣到幾金有什麼加成（同一種取最高的那一級，不疊加） */
+const RICH = [
+  [10, { dmgPct: 10 }],
+  [25, { dmgPct: 10, spd: 25, seal: 3 }],
+  [40, { dmgPct: 25, spd: 25, seal: 3, startBlock: 150 }],
+  [60, { dmgPct: 25, spd: 25, sealAll: 4, startBlock: 150 }],
+  [100, { dmgPct: 40, spd: 35, crit: 15, sealAll: 4, startBlock: 150 }]
+];
+const richOf = g => (RICH.filter(([n]) => g >= n).pop() || [0, null])[1];
+const RICHN = [
+  '10 金：所有武器傷害 +10%',
+  '25 金：所有武器攻速 +25%、開戰封鎖敵人一把武器 3 秒',
+  '40 金：開戰有 150 護盾、所有武器傷害提升到 +25%',
+  '60 金：開戰封鎖敵人所有武器 4 秒',
+  '100 金：所有武器傷害提升到 +40%、攻速提升到 +35%、暴擊率 +15%'
+];
+/* 0.1.35 財源滾滾：這個階段每回合幾金 */
+const goldStOf = (G, st) => (G.filter(([s]) => st >= s).pop() || [0, 0])[1];
 /* 0.1.29 抗異常最多 -80%、淨化每 5 秒一次 */
 const RES_MAX = 80,
   CLEANSE_T = 5,
@@ -2466,7 +2546,7 @@ const tagTxt = t => (t === 'weapon' ? '武器' : t === '*' ? '道具' : TAGN[t] 
 const PRE_T = ['seal', 'weak', 'blind', 'frozen', 'sealAll'],
   PREN = {
     seal: v => `開戰時封鎖敵人隨機一把武器 ${v} 秒`,
-    down: () => '開戰時把敵人隨機一把武器降 1 階（最低 Ⅰ 階）',
+    down: v => `開戰時把敵人隨機 ${v > 1 ? v + ' 把' : '一把'}武器降 1 階（最低 Ⅰ 階）`,
     weak: v => `開戰時讓敵人虛弱 ${v} 秒（傷害 -25%）`,
     blind: v => `開戰時讓敵人致盲 ${v} 秒（30% 打不中）`,
     frozen: v => `開戰時凍結敵人 ${v} 秒（攻速減半）`,
@@ -2488,7 +2568,7 @@ const preVal = (id, t = 1) => {
     v = p[k];
   if (k === 'petLock') return v + (t - 1);
   if (k === 'petSeal') return v + 2 * (t - 1);
-  return k === 'down' ? 1 : PRE_T.includes(k) ? v + (t - 1) : Math.round(v * TIERM[t]);
+  return k === 'down' ? v : PRE_T.includes(k) ? v + (t - 1) : Math.round(v * TIERM[t]);
 };
 function preTxt(id, t = 1) {
   const p = ITEMI[id].pre;
@@ -2503,7 +2583,11 @@ function itemDesc(id, t = 1) {
   if (it.dmg) {
     const a = Math.round(it.dmg[0] * k),
       b = Math.round(it.dmg[1] * k);
-    out.push(`每 ${cdT(it, t)} 秒造成 ${a}～${b} 傷害${o.crit ? `（暴擊 ${o.crit}%）` : ''}`);
+    out.push(
+      it.absorb
+        ? `每 ${cdT(it, t)} 秒攻擊一次（本身沒有傷害）`
+        : `每 ${cdT(it, t)} 秒造成 ${a}～${b} 傷害${o.crit ? `（暴擊 ${o.crit}%）` : ''}`
+    );
   }
   if (it.on) {
     if (o.burn) out.push(`命中時讓敵人燃燒 ${o.burn} 層（每秒扣層數，每秒少 1 層）`);
@@ -2540,7 +2624,30 @@ function itemDesc(id, t = 1) {
       `背包裡每有 1 件${tagTxt(b.tag)}：${modTxt(Object.fromEntries(Object.entries(b).filter(([k]) => k !== 'tag')))}`
     );
   if (it.shrink) out.push(`所有${tagTxt(it.shrink)}武器少佔 1 格`);
-  if (it.eliteAll) out.push(`打贏菁英時，三選一的三件都是${tagTxt(it.eliteAll)}`);
+  if (it.eliteAll)
+    out.push(
+      `打贏菁英時，三選一的三件都是${[it.eliteAll].flat().map(tagTxt).join('或')}${it.eliteT ? `，而且必定是 ${'Ⅰ Ⅱ Ⅲ'.split(' ')[it.eliteT - 1]} 階` : ''}`
+    );
+  /* 0.1.35 浪人、商人的核心 */
+  if (it.merge2) out.push(`${tagTxt(it.merge2)}只要 2 件一樣的就能合成升階（本來要 3 件）`);
+  if (it.give) out.push(`拿到時送一把 ${ITEMI[it.give].star}★ ${ITEMI[it.give].n}`);
+  if (it.coin) out.push('開戰時身上有金幣：每次攻擊花 1 金，傷害、暴擊率、命中效果翻倍');
+  if (it.absorb)
+    out.push(`貼在旁邊的${tagTxt(it.absorb)}會被吸收（那件消失），加上它的傷害、暴擊率與命中效果（可以一直變強）`);
+  if (it.gain) out.push(`拿到時立刻獲得 ${it.gain} 金`);
+  if (it.goldSt)
+    out.push(
+      `每回合 +${it.goldSt[0][1]} 金${it.goldSt
+        .slice(1)
+        .map(([st, g]) => `、第 ${st} 階段起 +${g} 金`)
+        .join('')}`
+    );
+  if (it.rich) out.push(`開戰時身上的金幣越多加成越高（同一種取最高的）：${RICHN.join('；')}`);
+  if (it.lotto) out.push('每回合第一次的商店價格打亂（0 金到 5★ 的價格都有可能），而且更常出高星級');
+  if (it.early) out.push('合成到 Ⅱ 階就開一條隨機詞綴（本來要 Ⅲ 階）');
+  if (it.lvOff) out.push(`背包升級費用 -${it.lvOff}%`);
+  if (it.kick) out.push(`每買 ${it.kick} 次送一次菁英三選一（拿到的道具賣價 0 金）`);
+  if (it.rollCap) out.push(`每回合最多只能刷新商店 ${it.rollCap} 次`);
   if (it.defX) out.push(`所有防具、盾的效果 ×${it.defX}`);
   if (it.bribe) out.push(`開戰時金幣超過 ${it.bribe} 金就花 ${it.bribe} 金，整場封鎖敵人星級最高的武器`);
   if (it.gift) out.push(`拿到時送 ${it.gift[2]} 隻隨機 ${it.gift[0]}★ ${tagTxt(it.gift[1])}`);

@@ -80,19 +80,33 @@ function botPower(F, P = BOT_P) {
     hit *= 1 + (w.ls || 0) / 200;
     /* 0.1.28 質變：連鎖、穿甲、守護 */
     hit *= (1 + (w.chain || 0) / 100) * (1 + (w.pierce || 0) * 0.004) * (1 + ((w.chainN || 0) * CHAIN_DMG) / 100);
+    /* 0.1.35 雙手大師（這一件的連擊）、金錢標（開戰時的錢夠打大半場才算翻倍） */
+    hit *= 1 + (w.dbl || 0) / 100;
+    if (w.coin) hit *= 1 + Math.min(1, (F.gold || 0) / 15);
     dps += hit / Math.max(0.3, w.cd);
     if (w.guard) gd += ((hit * w.guard) / 100 / Math.max(0.3, w.cd)) * 9;
   }
   for (const s of F.shields) if (s.bash) dps += (s.block * s.bash) / 100 / Math.max(0.6, s.cd);
   for (const p of F.pots) if (p.bomb) dps += (p.v * p.n * p.bomb) / 100 / 15;
   if (F.petHunt) dps *= 1 + (F.petHunt * Math.min(5, ep)) / 100;
-  dps *= 1 + (F.double || 0) / 100;
+  dps *= 1 + (F.double || 0) / 100 + ((F.triple || 0) * 2) / 100;
   /* 0.1.33 連珠箭（開戰 N 秒必定連擊，一場大約 15 秒）、先手射擊 */
   if (F.openDbl) dps *= 1 + Math.min(1, F.openDbl / 15) * 0.8;
   if (F.firstStrike) dps *= 1.04;
-  dps *= 1 + ((F.execute || 0) * 0.25 + (F.rage || 0) * 0.3 + (F.ramp || 0) * 1.5 + (F.opener || 0) * 0.05) / 100;
+  dps *=
+    1 +
+    ((F.execute || 0) * 0.25 +
+      (F.rage || 0) * 0.3 +
+      (F.rageSpd || 0) * 0.3 +
+      (F.ramp || 0) * 1.5 +
+      (F.opener || 0) * 0.05) /
+      100;
   if (F.rushT) dps *= 1 + (F.rushP / 100) * Math.min(1, F.rushT / 9);
-  let ehp = (F.hp * (1 + Math.max(-10, F.arm || 0) / 50)) / (1 - Math.min(40, F.dodge || 0) / 100);
+  /* 0.1.35 招架：格擋機率像閃避，第一次成功後的護甲算一半 */
+  let ehp =
+    (F.hp * (1 + Math.max(-10, (F.arm || 0) + (F.parry ? (F.parryArm || 0) / 2 : 0)) / 50)) /
+    (1 - Math.min(40, F.dodge || 0) / 100) /
+    (1 - Math.min(40, F.parry || 0) / 100);
   for (const s of F.shields)
     ehp += (s.block / Math.max(0.6, s.cd)) * 9 + (s.heal / Math.max(0.6, s.cd)) * 9 + s.thorns * 3;
   ehp += (F.regen || 0) * 9 + (F.startBlock || 0) + (F.thornsF || 0) * 6 + (F.critHeal || 0) * 4;
@@ -127,6 +141,8 @@ function botPower(F, P = BOT_P) {
     rv('rWeak') * er.weak +
     rv('rBlind') * er.blind +
     Math.min(1, (F.poisonImm || 0) / 10) * er.poison * 0.5 +
+    Math.min(1, (F.immT || 0) / 15) *
+      (er.burn + er.poison + er.bleed + er.sunder + er.frozen + er.stun + er.weak + er.blind) +
     (F.cleanse || 0) * 0.04 * (er.burn + er.poison + er.bleed + er.frozen + er.stun + 0.5) +
     rv('healCut') * er.heal +
     rv('critRes') * er.crit;
@@ -170,8 +186,33 @@ function botValue0(run, id, t, P, cx) {
   const mc = ITEMI[id].core && bag.items.find(q => ITEMI[q.id].core === 1 && q.id !== id);
   if (mc) {
     const nb = { ...bag, items: bag.items.map(q => (q === mc ? { ...q, sc: id } : q)) };
-    return { gain: botPowerOf(nb, P) / base - 1, how: 'core' };
+    return { gain: botPowerOf(nb, P) / base - 1 + botEcon(run, ITEMI[id]), how: 'core' };
   }
+  if (ITEMI[id].core) {
+    const v = botValue1(run, id, t, P, cx, bag, base, o);
+    return { ...v, gain: v.gain + botEcon(run, ITEMI[id]) };
+  }
+  return botValue1(run, id, t, P, cx, bag, base, o);
+}
+/* 0.1.35 核心的經濟效果（戰力分數算不到的）大約值多少戰力比例：送錢、收入、刷新、商店、背包折價、合成、送的道具 */
+function botEcon(run, d) {
+  const left = Math.max(0, ROUNDS.length - run.ri) / ROUNDS.length;
+  let v = 0;
+  if (d.gain) v += d.gain / 200;
+  if (d.goldSt) v += 0.25 * left;
+  if (d.gold) v += d.gold * 0.05 * left;
+  if (d.freeRoll) v += d.freeRoll * 0.04 * left;
+  if (d.lotto) v += 0.18 * left;
+  if (d.lvOff) v += (run.lv < BAG_MAX ? 0.12 : 0) * left;
+  if (d.kick) v += 0.18 * left;
+  if (d.early) v += 0.1 * left;
+  if (d.merge2) v += 0.25 * left;
+  if (d.give) v += 0.2 * left;
+  if (d.eliteAll) v += 0.12 * left;
+  if (d.gift) v += 0.15;
+  return v;
+}
+function botValue1(run, id, t, P, cx, bag, base, o) {
   /* 湊滿 3 件：當成背包那件直接升一階 */
   if (wouldMerge(run, id, t)) {
     const inBag = bag.items.find(q => q.id === id && q.t === t);
@@ -234,26 +275,32 @@ function botHold(run, P, cx = {}) {
   run.bench[benchFree(run)] = o;
 }
 /* ================= 每回合 ================= */
+/* 三選一（菁英、首領、回扣）：照評估挑，pend.tier 是送的階 */
+function botPend(run, q, P) {
+  if (!run.pend) return;
+  const opts = run.pend.opts,
+    t = run.pend.tier || 1,
+    pick =
+      r01(run) < q
+        ? opts.map(id => [id, botValue(run, id, t, P, {}).gain]).sort((a, b) => b[1] - a[1])[0][0]
+        : opts[fl(r01(run) * opts.length)];
+  takePick(run, pick, true);
+}
 /* q：照評估做的機率（牌階高 q 高）；其他時候用簡單的舊規則（照主題、隨便買），低牌階才會笨一點 */
 function botAct(run, theme, q = 0.7, P = BOT_P) {
   const r = curRound(run);
   BOT_EPET = run.epet ?? 1;
   BOT_ERES = run.eres || BOT_ERES0;
   /* 三選一：挑戰力最高的 */
-  if (run.pend) {
-    const opts = run.pend.opts,
-      pick =
-        r01(run) < q
-          ? opts.map(id => [id, botValue(run, id, 1, P, {}).gain]).sort((a, b) => b[1] - a[1])[0][0]
-          : opts[fl(r01(run) * opts.length)];
-    takePick(run, pick, true);
-  }
+  botPend(run, q, P);
   botHold(run, P);
+  /* 0.1.35 鈔能力：評估時用現在的金幣 */
+  run.bag.gp = run.gold;
   /* 升背包：背包快滿、錢夠而且升完還留一點 */
   const lv = BAGLV[run.lv + 1],
     cells = run.bag.items.reduce((n, o) => n + shapeOf(o.id).length, 0),
     fill = cells / (run.bag.w * run.bag.h);
-  if (lv && lvOpen(run) && run.gold >= lv.cost + P.lvKeep && fill >= P.lvFill) levelUp(run);
+  if (lv && lvOpen(run) && run.gold >= lvCost(run) + P.lvKeep && fill >= P.lvFill) levelUp(run);
   /* 買：每輪挑「每金幣換到最多戰力」的一件，直到沒有值得買的；沒得買又有錢就刷新 */
   const keep = run.ri >= P.reserveFrom ? P.reserve : 0;
   const cx = {};
@@ -262,7 +309,7 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
     let best = null;
     run.shop.forEach((s, k) => {
       if (!s) return;
-      const price = shopPrice(run, s.id, s.t);
+      const price = slotPrice(run, s);
       if (price > run.gold) return;
       const smart = r01(run) < q;
       let gain;
@@ -276,7 +323,7 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
       }
       /* 動用到要存的利息錢：門檻提高 */
       const need = Math.max(P.gainMin, price * P.perGold) * (run.gold - price < keep ? 2 : 1);
-      if (gain >= need && (!best || gain / price > best.v)) best = { k, v: gain / price };
+      if (gain >= need && (!best || gain / Math.max(0.5, price) > best.v)) best = { k, v: gain / Math.max(0.5, price) };
     });
     if (best) {
       const s = run.shop[best.k];
@@ -290,6 +337,8 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
       }
       const res = buyItem(run, best.k);
       if (typeof res === 'string') break;
+      /* 0.1.35 回扣：買滿幾次送的三選一 */
+      if (run.pend) botPend(run, q, P), botHold(run, P);
       botBump(
         cx,
         res.merged.some(o => run.bag.items.includes(o))
@@ -299,8 +348,9 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
       continue;
     }
     if (
-      (freeRolls(run) > 0 && rolls < P.maxRolls + 1) ||
-      (rolls < P.maxRolls && run.gold - REROLL >= Math.max(P.rollGold, keep) && r01(run) < q + 0.2)
+      rollsLeft(run) > 0 &&
+      ((freeRolls(run) > 0 && rolls < P.maxRolls + 1) ||
+        (rolls < P.maxRolls && run.gold - REROLL >= Math.max(P.rollGold, keep) && r01(run) < q + 0.2))
     ) {
       rerollShop(run);
       rolls++;
@@ -336,7 +386,7 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
 /* 舊的買法（0.1.0～0.1.19）：照主題標籤＋隨機買、能升背包就升、全部擺進背包。留著跟新的比較強度（simLobby 的 opt.old） */
 function botActOld(run, theme, q = 0.7) {
   const r = curRound(run);
-  if (run.lv < BAG_MAX && run.gold >= BAGLV[run.lv + 1].cost + 2 && (run.ri > 3 || run.gold > 12)) levelUp(run);
+  if (run.lv < BAG_MAX && run.gold >= lvCost(run) + 2 && (run.ri > 3 || run.gold > 12)) levelUp(run);
   for (let pass = 0; pass < 2; pass++) {
     run.shop.forEach((s, k) => {
       if (!s) return;
@@ -347,7 +397,7 @@ function botActOld(run, theme, q = 0.7) {
           I.tags.includes('weapon') ||
           I.tags.includes('armor') ||
           r01(run) < 0.35;
-      if (want && run.gold >= shopPrice(run, s.id, s.t) && benchFree(run) >= 0) buyItem(run, k);
+      if (want && run.gold >= slotPrice(run, s) && benchFree(run) >= 0) buyItem(run, k);
     });
     if (run.gold >= 3 && run.gold < 8 && pass === 0 && r01(run) < q) rerollShop(run);
   }

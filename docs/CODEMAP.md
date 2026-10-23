@@ -66,6 +66,7 @@
 | 菁英三選一保底職業武器、副核心融入專屬核心（0.1.29） | `js/run.js`、`js/bag.js`、`js/bot.js`、`js/ui.js` | `eliteOpts`、`clsWeaponTags`、`mainCore`、`takePick`（run）；道具的 `sc`、`compileBag`／`bagMods`、`packBag`（bag）；`botValue0` 的 `how: 'core'`（bot）；`detailHTML`、`bagHTML` 的 `.fui`（ui） |
 | 第二個專屬核心融入第一個（0.1.34，取代副核心） | `js/bag.js`、`js/run.js`、`js/bot.js` | `defsOf`、`coreProp`、`compileBag` 的 `X`（bag）；`bossCores`、`takePick`、`giveGift`、`botAfter` 的首領三選一（run）；`botValue0`（bot） |
 | 核心新機制（0.1.33：開場必連擊、先手、連鎖 N、全封鎖、賄賂、防具倍率、護甲轉傷害、每件某標籤加成、雙手少 1 格、送寵物、免費刷新、菁英全劍、商人菁英金） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/run.js`、`js/ui.js` | 核心的 `openDbl`、`firstStrike`、`chainN`（`CHAIN_MAX`／`CHAIN_DMG`）、`pre.sealAll`、`bribe`、`defX`、`armDmg`、`fxPer`、`shrink`、`gift`、`freeRoll`、`eliteAll`、職業的 `eliteGold`（items）；`compileBag`、`syncShrink`、`shapeOf` 的 `sm`（bag／items）；`simulate` 的 `attack(…, mul)`（sim）；`payBribe`、`freeRolls`、`eliteOpts(win)`、`takePick` 的 `gift`（run） |
+| 商人／浪人／亞馬遜改版（0.1.35：金錢標花錢翻倍、魔劍正宗吸收劍、二天一流 2 件合成、招架、連鎖追擊、開戰免異常、背水攻速、每格連擊、第一桶金、財源滾滾、鈔能力、六合彩、精品提早詞綴、折價卷、回扣三選一、豪賭刷新上限） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/run.js`、`js/bot.js`、`js/ui.js` | 道具 `coindart`／`masamune`、`shopOK`、`RICH`／`richOf`、`goldStOf`、核心的 `gain`／`goldSt`／`rich`／`lotto`／`early`／`lvOff`／`kick`／`rollCap`／`merge2`／`give`／`eliteT`（items）；`absorbAll`、`mergeNeed`／`merge2Of`、`compileBag` 的 `gold`／`parry`／`triple`／`immT`／`rageSpd`／武器 `dbl`／`coin`、`packBag` 的 `gp`／`ab`（bag）；`coinW`、`simulate` 的 `spent`、`parA`（sim）；`bonusGold`、`lottoOdds`、`slotPrice`、`kickback`、`rollsLeft`、`lvCost`、`eliteTier`、`giveGift`、`takePick` 的 `pend.tier`／`pend.z`（run）；`botEcon`、`botPend`（bot）；`abHTML`、`pickHTML`、`pick` 的 `mid`（ui） |
 | 點對手看上一回合的背包、重畫保留折疊（0.1.32） | `js/ui.js` | `showRivalBag`、`A.rvBag`、`rivalHTML` 的 `button.rv`；`render` 保留 `details[data-k]`（圖鑑 `codexHTML` 的 `cx_職業`） |
 | 戰報按鈕、拖曳中旋轉（0.1.29） | `js/ui.js` | `lastLogBtn`、`A.lastLog`；`dragMove`、`dragRot`（keydown／mousedown 右鍵／wheel）、`V.drag` 的 `rot`／`gi` |
 | 首頁排行榜、各職業勝率（0.1.29） | `js/ghost.js`、`js/ui.js`、`supabase/migrations/20261023000000_serling_leaderboard.sql` | `BOARD`、`ghostBoard`、`ghostEnd`（寫 `cls`／`rating_end`）（ghost）；`boardHTML`、`A.lb`、`V.lb`（ui）；RPC `leaderboard`、`class_stats` |
@@ -108,30 +109,30 @@
 ### js/art.js（1305 行）
 
 
-### js/items.js（2572 行）
+### js/items.js（2678 行）
 
 
-### js/bag.js（493 行）
+### js/bag.js（556 行）
 
-- **合成**（134），1 個宣告
-- **戰鬥數值**（174），5 個宣告
+- **合成**（159），3 個宣告
+- **戰鬥數值**（212），6 個宣告
 
-### js/sim.js（335 行）
+### js/sim.js（385 行）
 
 
-### js/run.js（1050 行）
+### js/run.js（1137 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
-- **一局**（234），27 個宣告
-- **對手**（472），15 個宣告
-- **戰鬥**（569），17 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（859），4 個宣告
-- **即時機器人（0.1.30）**（986），5 個宣告
+- **一局**（234），32 個宣告
+- **對手**（526），15 個宣告
+- **戰鬥**（623），18 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（943），4 個宣告
+- **即時機器人（0.1.30）**（1073），5 個宣告
 
-### js/bot.js（379 行）
+### js/bot.js（429 行）
 
-- **戰力分數**（22），13 個宣告
-- **每回合**（236），2 個宣告
+- **戰力分數**（22），15 個宣告
+- **每回合**（277），3 個宣告
 
 ### js/ghost.js（163 行）
 
@@ -147,22 +148,22 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（101），5 個宣告
 
-### js/news.js（222 行）
+### js/news.js（231 行）
 
 
-### js/ui.js（1850 行）
+### js/ui.js（1882 行）
 
 - **小工具**（6），12 個宣告
 - **牌階**（61），5 個宣告
 - **主題**（164），3 個宣告
 - **畫面切換**（180），2 個宣告
 - **首頁**（215），3 個宣告
-- **準備畫面**（307），18 個宣告
-- **結算、三選一、一局結束**（642），6 個宣告
-- **戰鬥播放**（689），20 個宣告
-- **圖鑑、說明、設定**（1059），3 個宣告
-- **動作**（1126），11 個宣告
-- **拖曳擺放**（1555），13 個宣告
+- **準備畫面**（307），19 個宣告
+- **結算、三選一、一局結束**（660），6 個宣告
+- **戰鬥播放**（708），20 個宣告
+- **圖鑑、說明、設定**（1088），3 個宣告
+- **動作**（1155），11 個宣告
+- **拖曳擺放**（1587），13 個宣告
 
 ### js/main.js（74 行）
 
