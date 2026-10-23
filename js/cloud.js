@@ -12,6 +12,8 @@ const CLOUD = {
   email: null,
   no: null,
   pending: null,
+  /* 0.1.49 從重設密碼信的連結回來：要設定新密碼 */
+  recovery: /type=recovery/.test(location.hash),
   status: '連線中…',
   busy: false,
   dirty: false
@@ -45,6 +47,13 @@ async function cloudInit() {
         detectSessionInUrl: true,
         ...(SLOT ? { storageKey: 'wayfarer-auth-p' + SLOT } : {})
       }
+    });
+    /* 0.1.49 點了重設密碼信的連結回來：Supabase 先用那個帳號登入，再請玩家設定新密碼 */
+    CLOUD.sb.auth.onAuthStateChange(ev => {
+      if (ev !== 'PASSWORD_RECOVERY') return;
+      CLOUD.recovery = true;
+      if (typeof V !== 'undefined') V.scr = 'settings';
+      if (typeof render === 'function') setTimeout(render, 0);
     });
     let {
       data: { session }
@@ -113,7 +122,7 @@ const authMsg = e =>
 async function authRegister(email, password) {
   if (!CLOUD.sb) throw new Error('雲端尚未連線');
   const { data, error } = await CLOUD.sb.auth.signUp({
-    email,
+    email: email.toLowerCase(),
     password,
     options: { emailRedirectTo: location.origin + location.pathname }
   });
@@ -128,10 +137,30 @@ async function authRegister(email, password) {
   await cloudPush();
   return 'ok';
 }
+/* 0.1.49 忘記密碼：寄重設密碼信（連結回到遊戲，再設定新密碼） */
+async function authReset(email) {
+  if (!CLOUD.sb) throw new Error('雲端尚未連線');
+  const { error } = await CLOUD.sb.auth.resetPasswordForEmail(email.toLowerCase(), {
+    redirectTo: location.origin + location.pathname
+  });
+  if (error) throw new Error(authMsg(error));
+  return 'reset';
+}
+/* 設定新密碼（重設密碼信的連結回來後） */
+async function authNewPw(password) {
+  const { data, error } = await CLOUD.sb.auth.updateUser({ password });
+  if (error) throw new Error(authMsg(error));
+  CLOUD.recovery = false;
+  history.replaceState(null, '', location.pathname + location.search);
+  await cloudUser(data.user);
+  const remote = await cloudFetch();
+  if (remote) S = migrate(remote);
+  return 'newpw';
+}
 /* 登入：改用該帳號的雲端存檔；帳號還沒有存檔就把目前進度存上去 */
 async function authLogin(email, password) {
   if (!CLOUD.sb) throw new Error('雲端尚未連線');
-  const { data, error } = await CLOUD.sb.auth.signInWithPassword({ email, password });
+  const { data, error } = await CLOUD.sb.auth.signInWithPassword({ email: email.toLowerCase(), password });
   if (error) throw new Error(authMsg(error));
   await cloudUser(data.user);
   const remote = await cloudFetch();
