@@ -104,7 +104,11 @@ const AUTH_ERR = {
   'Email not confirmed': '這個信箱還沒完成驗證，請先點確認信裡的連結',
   'User already registered': '這個信箱已經註冊過，請改用登入'
 };
-const authMsg = e => AUTH_ERR[e.message] || e.message;
+/* 0.1.48 沒有翻譯的錯誤也顯示原文（連同錯誤代碼），方便查 */
+const authMsg = e =>
+  AUTH_ERR[e.message] ||
+  (/rate limit|security purposes/i.test(e.message || '') ? '嘗試太多次，請過一分鐘再試' : '') ||
+  `登入失敗：${e.message || e}${e.code ? `（${e.code}）` : ''}`;
 /* 註冊：遊客進度會跟著搬到新帳號。需要驗證信時先回傳 'confirm' */
 async function authRegister(email, password) {
   if (!CLOUD.sb) throw new Error('雲端尚未連線');

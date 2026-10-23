@@ -51,7 +51,7 @@ function artRepaint() {
   clearTimeout(artRepaint.t);
   artRepaint.t = setTimeout(() => {
     ICU.clear();
-    if (!V.drag && !B && !typing()) render();
+    if (!V.drag && !B && !typing() && !V.authBusy) render();
     else paintSprites();
   }, 80);
 }
@@ -1480,7 +1480,7 @@ function settingsHTML() {
   <h3>聲音</h3><button class="btn" data-act="tog" data-k="sfx" aria-pressed="${S.sfx}">音效 ${S.sfx ? '開' : '關'}</button>
   <h3>帳號</h3><div class="card"><p class="sub">${typeof CLOUD !== 'undefined' ? esc(CLOUD.status) : ''}${anon ? '・目前是遊客，存檔綁在這台裝置' : '・' + esc(CLOUD.email || '')}</p>${
     anon
-      ? `<input class="inp" id="authEmail" type="email" placeholder="信箱" autocomplete="email"><input class="inp" id="authPw" type="password" placeholder="密碼（至少 6 個字）" autocomplete="current-password"><div class="g2"><button class="btn pri" data-act="register">註冊</button><button class="btn" data-act="login">登入</button></div><p class="sub" id="authMsg"></p>`
+      ? `<input class="inp" id="authEmail" type="email" placeholder="信箱" autocomplete="email" value="${esc(V.authEm || '')}"><input class="inp" id="authPw" type="password" placeholder="密碼（至少 6 個字）" autocomplete="current-password" value="${esc(V.authPw || '')}"><div class="g2"><button class="btn pri" data-act="register" ${V.authBusy ? 'disabled' : ''}>註冊</button><button class="btn" data-act="login" ${V.authBusy ? 'disabled' : ''}>登入</button></div><p class="sub${V.authErr ? ' c-bad' : ''}" id="authMsg">${esc(V.authMsg || '')}</p>`
       : '<button class="btn" data-act="logout">登出</button>'
   }</div>
   <h3>新手教學</h3><button class="btn" data-act="tutReset">重看新手提示</button>
@@ -1784,20 +1784,40 @@ const A = {
     render();
   }
 };
+/* 0.1.48 登入、註冊：信箱、密碼、訊息記在 V（畫面重畫時不會被清掉；之前按下按鈕後圖示載好一重畫，
+   輸入的帳密和錯誤訊息就不見了，看起來像「無事發生」）；等待中不重畫、按鈕停用 */
 async function authDo(f) {
-  const em = $('authEmail').value.trim(),
-    pw = $('authPw').value;
-  if (!em || pw.length < 6) return ($('authMsg').textContent = '請輸入信箱與至少 6 個字的密碼');
-  $('authMsg').textContent = '處理中…';
+  const em = ($('authEmail') ? $('authEmail').value : V.authEm || '').trim(),
+    pw = $('authPw') ? $('authPw').value : V.authPw || '';
+  V.authEm = em;
+  V.authPw = pw;
+  const show = (msg, err) => {
+    V.authMsg = msg;
+    V.authErr = !!err;
+    render();
+  };
+  if (!em || pw.length < 6) return show('請輸入信箱與至少 6 個字的密碼', 1);
+  V.authBusy = true;
+  show('處理中…');
   try {
     const r = await f(em, pw);
-    toast(r === 'confirm' ? '確認信已寄出，點信裡的連結完成註冊' : r === 'loaded' ? '已載入這個帳號的存檔' : '完成');
+    V.authBusy = false;
+    V.authPw = '';
+    if (r === 'confirm') return show('確認信已寄出：點信裡的連結完成註冊，再回來按「登入」');
+    V.authEm = '';
+    V.authMsg = '';
+    toast(r === 'loaded' ? '登入成功，已載入這個帳號的存檔' : '登入成功');
+    render();
   } catch (e) {
-    $('authMsg').textContent = e.message;
-    return;
+    V.authBusy = false;
+    show(e.message || '登入失敗', 1);
   }
-  render();
 }
+/* 帳密輸入時記下來（重畫後還在） */
+document.addEventListener('input', ev => {
+  if (ev.target.id === 'authEmail') V.authEm = ev.target.value;
+  if (ev.target.id === 'authPw') V.authPw = ev.target.value;
+});
 /* 簡單的對話框：buttons [[文字, 動作]] */
 /* 0.1.12 戰鬥紀錄：列表（新的在上面），點一筆看詳細：秒數、傷害、傷害最高的道具、對手的背包 */
 /* 0.1.40 sel：戰鬥紀錄裡對手的背包，點道具看詳細 */
