@@ -318,6 +318,31 @@ function botHold(run, P, cx = {}) {
   }
   run.bench[benchFree(run)] = o;
 }
+/* 0.1.46 試著把吸收型的道具（魔劍正宗）放進背包：找旁邊最多可吸收武器的位置，模擬吸收後戰力不變差就放；
+   放不下就賣最弱的（不賣會被吸收的）再試 */
+function botAbsorb(run, o, P) {
+  const tags = [ITEMI[o.id].absorb].flat(),
+    eat = q =>
+      !ITEMI[q.id].core && ITEMI[q.id].dmg && !ITEMI[q.id].absorb && tags.some(t => ITEMI[q.id].tags.includes(t)),
+    base = botPowerOf(run.bag, P);
+  for (let g = 0; g < 3 && !findSpot(run.bag, o); g++) {
+    const w = botWeakest(run.bag, P).find(x => !eat(x.o));
+    if (!w) return;
+    sellItem(run, w.o.u);
+  }
+  const sp = findSpot(run.bag, o, true);
+  if (!sp) return;
+  /* 模擬：複製一份背包，放下去後吸收旁邊的 */
+  const tmp = { ...run, bag: { ...run.bag, items: run.bag.items.map(q => ({ ...q })) } },
+    t = { ...o, ...sp, ab: o.ab ? JSON.parse(JSON.stringify(o.ab)) : null };
+  tmp.bag.items.push(t);
+  absorbAll(tmp);
+  if (botPowerOf(tmp.bag, P) < base * 0.97 && !(t.ab && t.ab.n)) return;
+  Object.assign(o, sp);
+  run.bench[run.bench.indexOf(o)] = null;
+  run.bag.items.push(o);
+  absorbAll(run);
+}
 /* 0.1.43 照核心與道具要留著不花的錢：鈔能力（守住已經到的那一級）、金錢標（開戰每下花 1 金）、賄賂（要超過 5 金） */
 /* 鈔能力已經到的那一級是硬底線（掉級就少一截加成），其他是軟的（動到時門檻加倍） */
 const botFloor = run =>
@@ -365,7 +390,11 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
   const lv = BAGLV[run.lv + 1],
     cells = run.bag.items.reduce((n, o) => n + shapeOf(o.id).length, 0),
     fill = cells / (run.bag.w * run.bag.h);
-  if (lv && lvOpen(run) && run.gold >= lvCost(run) + Math.max(P.lvKeep, botFloor(run)) && fill >= P.lvFill)
+  /* 0.1.46 暫存區有背包放不下的長條（吸收型的道具）：錢夠就先升背包 */
+  const tooLong = run.bench.some(
+    o => o && ITEMI[o.id].absorb && Math.max(...shapeOf(o.id).flat()) + 1 > Math.max(run.bag.w, run.bag.h)
+  );
+  if (lv && lvOpen(run) && run.gold >= lvCost(run) + Math.max(P.lvKeep, botFloor(run)) && (fill >= P.lvFill || tooLong))
     levelUp(run);
   /* 買：每輪挑「每金幣換到最多戰力」的一件，直到沒有值得買的；沒得買又有錢就刷新 */
   const keep = Math.max(run.ri >= P.reserveFrom ? P.reserve : 0, botKeep(run)),
@@ -440,6 +469,8 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
       run.bag.items.push(o);
     }
   }
+  /* 0.1.46 魔劍正宗（absorb）：本身沒有數值，照評估不會想放；改成「放下去、旁邊的劍矛被吸收」之後的戰力來決定 */
+  for (const o of run.bench) if (o && ITEMI[o.id].absorb) botAbsorb(run, o, P);
   /* 暫存區：放得進去而且有用的放，沒用而且湊不到合成的賣掉 */
   botBump(cx);
   for (const o of run.bench) if (o) botPlace(run, o, P, cx);

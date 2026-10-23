@@ -91,7 +91,49 @@ function ghostEnd(run) {
     .update({ cls: run.bag.cls || null, rating_end: S.rating })
     .eq('id', run.rid)
     .then(() => {});
+  /* 0.1.45 核心統計：最後的兩個核心、三選一紀錄（要先跑 20261024000000_serling_core_stats.sql；沒跑時失敗也不影響） */
+  CLOUD.sb
+    .from('runs')
+    .update(coreCols(run.bag.core, run.coreLog))
+    .eq('id', run.rid)
+    .then(() => {});
   BOARD.at = 0;
+}
+/* runs 的核心欄位：core 是核心欄的道具（{ id, sc }），log 是三選一紀錄 */
+const coreCols = (core, log) => ({
+  core1: (core && core.id) || null,
+  core2: (core && core.sc) || null,
+  core_log: log && log.length ? log : null
+});
+/* 0.1.45 真人（或 seed 也算）的核心統計：每個核心出現、被選、拿著的名次，以及組合；在主控台 await coreStatsCloud() 看 */
+async function coreStatsCloud(seed = false, days = 30) {
+  if (!ghostOK()) throw new Error('雲端還沒連線');
+  const [a, b] = await Promise.all([
+    CLOUD.sb.rpc('core_stats', { p_seed: seed, p_days: days }),
+    CLOUD.sb.rpc('core_combo_stats', { p_seed: seed, p_days: days })
+  ]);
+  if (a.error || b.error) throw a.error || b.error;
+  const nm = id => (ITEMI[id] ? ITEMI[id].n : id);
+  console.table(
+    (a.data || []).map(x => ({
+      職業: (CLSI[x.cls] || {}).n || x.cls,
+      核心: nm(x.core),
+      出現: x.offered,
+      被選: x.picked,
+      選擇率: x.offered ? Math.round((x.picked / x.offered) * 100) + '%' : '—',
+      拿著: x.held,
+      平均名次: x.avg_place
+    }))
+  );
+  console.table(
+    (b.data || []).slice(0, 30).map(x => ({
+      職業: (CLSI[x.cls] || {}).n || x.cls,
+      組合: nm(x.core1) + '＋' + nm(x.core2),
+      局數: x.games,
+      平均名次: x.avg_place
+    }))
+  );
+  return { cores: a.data, combos: b.data };
 }
 /* ================= 排行榜（0.1.29） ================= */
 /* p：玩家排行（leaderboard）；c：各職業的局數、第 1 名、平均名次（class_stats，真人不到 40 局就連種子一起算，seed 標記）；
@@ -154,6 +196,12 @@ async function seedGhosts(n = 160, lo = 700, hi = 2100) {
         .from('snaps')
         .insert(ids.map(id => ({ run_id: data.id, round: id, hp: b.snaps[id].hp, bag: b.snaps[id].bag })));
       if (e2) throw e2;
+      /* 0.1.45 核心統計（欄位還沒加時失敗也沒關係） */
+      if (b.stat)
+        await CLOUD.sb
+          .from('runs')
+          .update(coreCols({ id: b.stat.core[0], sc: b.stat.core[1] }, b.stat.log))
+          .eq('id', data.id);
       ok++;
     }
     console.log(`種子對局 ${ok}/${n}`);

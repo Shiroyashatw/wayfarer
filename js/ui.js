@@ -702,7 +702,8 @@ function abHTML(o) {
     ab.weak && `虛弱 +${ab.weak}%`,
     ab.blind && `致盲 +${ab.blind}%`
   ].filter(Boolean);
-  return `<p class="c-tf">✦ 吸收了 ${ab.n} 把劍：傷害 +${ab.d0}～${ab.d1}${on.length ? '、' + on.join('、') : ''}</p>`;
+  const ex = [ab.am && modTxt(ab.am), ab.F && modTxt(ab.F)].filter(Boolean).join('、');
+  return `<p class="c-tf">✦ 吸收了 ${ab.n} 把：傷害 +${ab.d0}～${ab.d1}${on.length ? '、' + on.join('、') : ''}${ex ? '、' + dsc(ex) : ''}</p>`;
 }
 /* 0.1.5 5★ 詞綴：數值越接近上限顏色越好，括號是這條詞綴的範圍 */
 function mod5HTML(m) {
@@ -865,9 +866,9 @@ function renderBattle() {
     ob = fb.opp.bag;
   $('app').innerHTML = `<div class="bt">
     <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b></div>
-    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div></div>
+    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div></div>
     <div class="vs">VS</div>
-    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div></div>
+    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div></div>
     <div class="fx" id="fx"></div></div>
     <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
     <div class="blog" id="blog" aria-live="off"></div>
@@ -969,6 +970,13 @@ const STN = {
   },
   /* 0.1.37 陷阱的名字 */
   TRAPN = { ignite: '點燃', bomb: '藥劑炸彈', spore: '劇毒孢子', icicle: '冰錐' },
+  /* 0.1.47 陷阱的圖示與顏色 */
+  TRAPI = {
+    ignite: ['sk_fireburst', '#ff7a3a'],
+    bomb: ['asc_alchemist_b0', '#ffb15a'],
+    spore: ['it_c_venom_7', '#5fd38a'],
+    icicle: ['it_c_cryo_2', '#8fd8ff']
+  },
   STI = [
     ['burn', 'ail_burn', 1],
     ['poison', 'ail_poison', 1],
@@ -1137,6 +1145,75 @@ function bFlash(side, u) {
   void el.offsetWidth;
   el.classList.add('act');
 }
+/* 0.1.47 陷阱放置：從丟的人飛到對方背包的那幾格，落地後留一個圖示（空格也看得到）；
+   對方沒有背包（怪物）就在牠下面排一個圖示。n 是第幾個（錯開時間） */
+function bTrapSet(e, n) {
+  const side = 1 - e.s,
+    [ic, col] = TRAPI[e.x] || ['ail_mark', '#fff'],
+    url = artIconURL(ic) || iconURL('star'),
+    root = $('bb' + side),
+    delay = n * 140,
+    marks = [];
+  if (root && e.cells && e.cells.length) {
+    const cs = parseFloat(root.style.getPropertyValue('--cs')) || 24;
+    for (const [x, y] of e.cells) {
+      const m = document.createElement('i');
+      m.className = 'trapm';
+      m.dataset.ti = e.ti;
+      m.style.cssText = `left:${x * (cs + GAP)}px;top:${y * (cs + GAP)}px;width:${cs}px;height:${cs}px;--tc:${col};animation-delay:${delay + 380}ms`;
+      m.innerHTML = `<img src="${url}" alt="${TRAPN[e.x] || ''}">`;
+      root.appendChild(m);
+      marks.push(m);
+    }
+  } else {
+    const row = $('trp' + side);
+    if (!row) return;
+    const m = document.createElement('i');
+    m.className = 'trapm inrow';
+    m.dataset.ti = e.ti;
+    m.style.cssText = `--tc:${col};animation-delay:${delay + 380}ms`;
+    m.innerHTML = `<img src="${url}" alt="${TRAPN[e.x] || ''}">`;
+    row.appendChild(m);
+    marks.push(m);
+  }
+  /* 飛過去：從丟的人的頭像中心，畫一條弧線到每一格 */
+  const from = $('sp' + e.s);
+  if (!from || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const fr = from.getBoundingClientRect();
+  for (const m of marks) {
+    const to = m.getBoundingClientRect(),
+      f = document.createElement('img');
+    f.className = 'trapfly';
+    f.src = url;
+    document.body.appendChild(f);
+    const x0 = fr.left + fr.width / 2 - 10,
+      y0 = fr.top + fr.height / 2 - 10,
+      x1 = to.left + to.width / 2 - 10,
+      y1 = to.top + to.height / 2 - 10,
+      mx = (x0 + x1) / 2,
+      my = Math.min(y0, y1) - 60;
+    f.animate(
+      [
+        { transform: `translate(${x0}px,${y0}px) scale(.8)`, opacity: 0 },
+        { transform: `translate(${mx}px,${my}px) scale(1.2) rotate(180deg)`, opacity: 1, offset: 0.5 },
+        { transform: `translate(${x1}px,${y1}px) scale(1) rotate(360deg)`, opacity: 1 }
+      ],
+      { duration: 420, delay, easing: 'ease-in-out', fill: 'both' }
+    ).onfinish = () => f.remove();
+  }
+}
+/* 0.1.47 陷阱觸發：那個陷阱的圖示閃一下、冒出一圈光 */
+function bTrapHit(e) {
+  const side = 1 - e.s;
+  for (const m of document.querySelectorAll(
+    `#bb${side} .trapm[data-ti="${e.ti}"], #trp${side} .trapm[data-ti="${e.ti}"]`
+  )) {
+    m.classList.remove('hit');
+    void m.offsetWidth;
+    m.classList.add('hit');
+  }
+  bFlash(side, e.tu);
+}
 function bTick() {
   if (!B || B.done) return;
   const n = performance.now(),
@@ -1156,6 +1233,9 @@ function bTick() {
       if (e.k === 'block') B.block[e.s] += e.v;
     }
     bLog(e, tg);
+    /* 0.1.47 陷阱的放置與觸發每一筆都要畫（不受一次最多 6 個特效的限制） */
+    if (e.k === 'trapSet') bTrapSet(e, (B.trapN = (B.trapN || 0) + 1) - 1);
+    if (e.k === 'trapHit') bTrapHit(e);
     if (k++ > 6) continue;
     if (e.k === 'hit' || e.k === 'crit') {
       bPop(

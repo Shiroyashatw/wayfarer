@@ -227,6 +227,8 @@ function simulate(FA, FB, seed) {
     for (const p of d.traps) {
       if (!p.us.has(u)) continue;
       const a = S[p.by];
+      /* 0.1.47 每次觸發都記一筆（畫面讓那個陷阱閃一下）；i 是放陷阱時的編號 */
+      log(t, p.by, 'trapHit', 0, { tu: u, x: p.k, ti: p.i });
       if (p.k === 'ignite') {
         if (!d.ignite && res(d, 'ignite', t) > 0) (d.ignite = 1), log(t, p.by, 'ignite', 1, { tu: u });
       } else if (p.k === 'bomb') {
@@ -431,8 +433,8 @@ function simulate(FA, FB, seed) {
           const key = new Set(cells.map(c => c + ''));
           for (const u in G.at) if (G.at[u].some(c => key.has(c + ''))) us.add(u);
         } else if (d.w.length) us.add(d.w[fl(r() * d.w.length)].u);
-        d.traps.push({ k: tp.k, by: i, us });
-        log(0, i, 'trapSet', tp.sz || 1, { x: tp.k, cells, tus: [...us] });
+        d.traps.push({ k: tp.k, by: i, us, i: d.traps.length });
+        log(0, i, 'trapSet', tp.sz || 1, { x: tp.k, cells, tus: [...us], ti: d.traps.length - 1 });
       }
     }
   /* 0.1.33 先手射擊：星級最高的一把開戰先打一下 */

@@ -923,7 +923,9 @@ function endRun(run, place) {
     dmg: Object.values(run.dmg || {})
       .sort((a, b) => b[2] - a[2])
       .slice(0, 12),
-    log: (run.log || []).map(({ ob, ...l }) => l)
+    log: (run.log || []).map(({ ob, ...l }) => l),
+    /* 0.1.44 核心三選一紀錄 */
+    cl: run.coreLog || []
   };
   S.hist = [{ at: Date.now(), place, d, r: curRound(run) ? curRound(run).id : 'end', ...full }, ...(S.hist || [])]
     .slice(0, 30)
@@ -1060,6 +1062,9 @@ function bossCores(run) {
 }
 /* 0.1.35 三選一的階（pend.tier，劍修大師 Ⅱ 階）、回扣送的賣價 0（pend.z） */
 function takePick(run, id, hold) {
+  /* 0.1.44 核心統計：記下首領三選一給了哪些、選了哪個（run.coreLog，對局紀錄與 tools/core_stats.js 用） */
+  if (ITEMI[id] && ITEMI[id].core && run.pend && run.pend.opts)
+    (run.coreLog = run.coreLog || []).push({ o: [...run.pend.opts], p: id, r: (curRound(run) || {}).id || '' });
   /* 0.1.37 煉成的三選一：記下效果，選滿就送終極藥劑 */
   if (run.pend && run.pend.brew) {
     const P = run.pend,
@@ -1184,6 +1189,7 @@ function botAfter(run, r, win, q, P) {
     if (!opts.length) return;
     const best =
       r01(run) < q ? opts.map(id => [id, botValue(run, id, 1, P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0] : opts[0];
+    run.pend = { kind: 'pick', opts };
     takePick(run, best, true);
     /* 0.1.37 煉成：馬上選完三步 */
     for (let g = 0; g < 5 && run.pend && run.pend.brew; g++) botPend(run, q, P);
@@ -1254,6 +1260,11 @@ function simLobby(seed, rating, opt = {}) {
   /* 名次：越晚淘汰越前面；活到最後的照剩下生命 */
   const rk = [...bots].sort((a, b) => (b.out || 99) - (a.out || 99) || b.run.hp - a.run.hp);
   rk.forEach((b, i) => (b.info.place = i + 1));
+  /* 0.1.44 核心統計用：職業、三選一紀錄、最後的核心（不會上傳到快照） */
+  for (const b of bots) {
+    const c = b.run.bag.core;
+    b.info.stat = { cls: b.run.bag.cls, log: b.run.coreLog || [], core: c ? [c.id, c.sc || null] : [] };
+  }
   return bots.map(b => b.info);
 }
 /* ================= 即時機器人（0.1.30） ================= */

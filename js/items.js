@@ -1147,11 +1147,12 @@ const ITEMS = [
     id: 'masamune',
     n: '魔劍正宗',
     star: 5,
-    sh: 'v5',
+    sh: 'v4',
     tags: ['weapon', 'sword'],
     cd: 1.3,
     dmg: [0, 0],
-    absorb: 'sword',
+    /* 0.1.46 劍、矛都會吸收（浪人的職業加成也是劍、矛）；0.1.47 直五格 → 直四格（4×4 背包也放得下） */
+    absorb: ['sword', 'spear'],
     ns: 1,
     ic: 'asc_master_b4'
   },
@@ -2792,7 +2793,9 @@ function itemDesc(id, t = 1) {
   if (it.give) out.push(`拿到時送${ITEMI[it.give].dmg ? '一把' : '一件'} ${ITEMI[it.give].star}★ ${ITEMI[it.give].n}`);
   if (it.coin) out.push('開戰時身上有金幣：每次攻擊花 1 金，傷害、暴擊率、命中效果翻倍');
   if (it.absorb)
-    out.push(`貼在旁邊的${tagTxt(it.absorb)}會被吸收（那件消失），加上它的傷害、暴擊率與命中效果（可以一直變強）`);
+    out.push(
+      `貼在旁邊的${[it.absorb].flat().map(tagTxt).join('、')}會被吸收（那件消失），加上它的傷害、暴擊率、命中效果、詞綴與融合的效果（可以一直變強）`
+    );
   if (it.gain) out.push(`拿到時立刻獲得 ${it.gain} 金`);
   if (it.goldSt)
     out.push(

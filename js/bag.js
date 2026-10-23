@@ -76,7 +76,7 @@ function synergy(a, b) {
     [...(A.adj || []), ...(A.row || [])].filter(m => m.tag === '*' || tb.includes(m.tag)).length +
     (A.tf && !ITEMI[b.id].tf && tb.includes(A.tf.tag) ? 2 : 0) +
     /* 0.1.43 魔劍正宗：劍擺在旁邊會被吸收（機器人找位置時會貼過去） */
-    (A.absorb && tb.includes(A.absorb) && !ITEMI[b.id].absorb ? 3 : 0)
+    (A.absorb && [A.absorb].flat().some(t => tb.includes(t)) && !ITEMI[b.id].absorb ? 3 : 0)
   );
 }
 /* 0.1.28 融合（質變）：質變輔助（tf）放到道具上、或貼在旁邊，就跟它融合成一件新道具「前綴・道具」（輔助消失、空出格子）：
@@ -122,24 +122,38 @@ function fuseAll(run) {
   out.push(...absorbAll(run));
   return out;
 }
-/* 0.1.35 魔劍正宗（absorb）：貼在旁邊的劍被吸收，o.ab 累加那把劍（照它的階）的傷害、暴擊率、命中效果 */
+/* 0.1.35 魔劍正宗（absorb）：貼在旁邊的劍被吸收，o.ab 累加那把劍（照它的階）的傷害、暴擊率、命中效果；
+   0.1.46 也吸收矛、詞綴（升階詞綴、5★ 詞綴 → ab.am 道具加成、ab.F 角色加成）與融合輔助的加成（照格數的不吸） */
+function absorbInto(o, q) {
+  const I = ITEMI[q.id],
+    on = onT(I, q.t),
+    ab = (o.ab = o.ab || { d0: 0, d1: 0, n: 0 }),
+    am = (ab.am = ab.am || {}),
+    aF = (ab.F = ab.F || {}),
+    put = (t, k, v) => v && (t[k] = (t[k] || 0) + v);
+  ab.d0 += Math.round(I.dmg[0] * TIERM[q.t]);
+  ab.d1 += Math.round(I.dmg[1] * TIERM[q.t]);
+  for (const k of AB_K) if (on[k]) ab[k] = (ab[k] || 0) + on[k];
+  if (on.freeze) ab.freezeCh = (ab.freezeCh || 0) + on.freeze[0];
+  if (on.stun) ab.stunCh = (ab.stunCh || 0) + on.stun[0];
+  const a = q.a && AFFX.find(x => x.k === q.a);
+  if (a) put(a.k === 'hp' ? aF : am, a.k, a.v);
+  for (const mm of [q.m, q.m2]) if (mm && MOD5[mm[0]]) put(MOD5[mm[0]].F ? aF : am, MOD5[mm[0]].k, mm[1]);
+  if (q.f && ITEMI[q.f] && ITEMI[q.f].tf) {
+    const tm = scaleMod(ITEMI[q.f].tf.m, q.ft || 1);
+    for (const k in tm) if (!['tag', 'per', 'cellPct', 'cellHp'].includes(k)) put(am, k, tm[k]);
+  }
+  ab.n++;
+}
 const AB_K = ['crit', 'burn', 'poison', 'bleed', 'sunder', 'ls', 'weak', 'blind'];
 function absorbAll(run) {
   const out = [];
   for (const o of run.bag.items) {
-    const tag = ITEMI[o.id].absorb;
-    if (!tag) continue;
+    const tags = ITEMI[o.id].absorb && [ITEMI[o.id].absorb].flat();
+    if (!tags) continue;
     for (const q of run.bag.items.filter(q => q !== o && !ITEMI[q.id].core && ITEMI[q.id].dmg && !ITEMI[q.id].absorb)) {
-      if (!ITEMI[q.id].tags.includes(tag) || !adjacent(o, q)) continue;
-      const I = ITEMI[q.id],
-        on = onT(I, q.t),
-        ab = (o.ab = o.ab || { d0: 0, d1: 0, n: 0 });
-      ab.d0 += Math.round(I.dmg[0] * TIERM[q.t]);
-      ab.d1 += Math.round(I.dmg[1] * TIERM[q.t]);
-      for (const k of AB_K) if (on[k]) ab[k] = (ab[k] || 0) + on[k];
-      if (on.freeze) ab.freezeCh = (ab.freezeCh || 0) + on.freeze[0];
-      if (on.stun) ab.stunCh = (ab.stunCh || 0) + on.stun[0];
-      ab.n++;
+      if (!tags.some(t => ITEMI[q.id].tags.includes(t)) || !adjacent(o, q)) continue;
+      absorbInto(o, q);
       run.bag.items = run.bag.items.filter(x => x !== q);
       out.push(o);
     }
@@ -450,6 +464,11 @@ function compileBag(bag, extra = {}) {
         bash: m.bash || 0
       });
     else if (I.dmg) {
+      /* 0.1.46 魔劍正宗吸收的詞綴、融合加成 */
+      if (o.ab) {
+        for (const k in o.ab.am || {}) m[k] = (m[k] || 0) + o.ab.am[k];
+        for (const k in o.ab.F || {}) F[k] = (F[k] || 0) + o.ab.F[k];
+      }
       const on = onT(I, o.t),
         mul = 1 + ((m.dmgPct || 0) + (m.cellPct || 0) * shapeOf(o.id).length) / 100,
         /* 0.1.35 魔劍正宗吸收的數值（o.ab）當成這把的基礎數值 */

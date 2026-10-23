@@ -12,7 +12,7 @@
 - 說明文字：新增或修改道具、核心、職業、異常、機制後用 skill `item-text`：照規則改產生器（`items.js` 的 `MODN`／`PREN`／`itemDesc`）、百科（`ui.js` 的 `CX_AIL`／`CX_STAT`），跑 `node .claude/skills/item-text/audit.js` 沒有問題才交差。
 - 圖示：新增道具或借用圖示（`ic`）後用 skill `icon-check`：`python3 tools/icon_check.py` 產生 `docs/圖示對照.md`（名字 ↔ 圖示原本畫的東西），對不上就換圖示或改名字。
 - 機器人：新增道具、體系、機制或改經濟、戰鬥規則後用 skill `bot-ai`：確認 `js/bot.js` 的 `botPower` 有算到新東西，`node tools/bot_train.js --iters 30 --lobbies 40 --write` 重新訓練，再重傳種子。
-- 平衡：改道具、職業、核心、怪物、經濟或升階倍率後用 skill `balance`：跑 `.claude/skills/balance/balance.js` 的 `coverage()`（各體系各星級、輔助、異常來源、職業、核心、圖示、說明文字）與 `sims()`（職業名次、PvE 勝率、公平性、局長、背包成長），沒有 ❌ 才交差。
+- 平衡：改道具、職業、核心、怪物、經濟或升階倍率後用 skill `balance`（核心統計：`node tools/core_stats.js 500 1300 --write`）：跑 `.claude/skills/balance/balance.js` 的 `coverage()`（各體系各星級、輔助、異常來源、職業、核心、圖示、說明文字）與 `sims()`（職業名次、PvE 勝率、公平性、局長、背包成長），沒有 ❌ 才交差。
 
 ## 專案結構
 純靜態網頁，沒有建置步驟。所有 JS 是一般 `<script>`（非 module），依 `index.html` 的順序載入、共用全域；`main.js` 必須最後。
@@ -69,6 +69,7 @@ python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 - 資料表 `public.saves`（user_id、data jsonb、game_version、updated_at），RLS 只允許本人讀寫。
 - 快照對戰：`public.runs`（`ver` 存的是快照版本 `GVER`，不是遊戲版本；回合表或道具改到舊快照不能用時才換 `GVER`，換了要重產種子）、`public.snaps`（大家可讀、只能寫自己的）、RPC `pick_rivals`；SQL 在 `supabase/migrations/20261022000000_serling_ghosts.sql`。資料表不存在時遊戲自動改用機器人對手（`GHOST.off`）。開服種子：在瀏覽器主控台執行 `seedGhosts(160)`，產生 160 局機器人對局（分數 700～2100 平均分布，每個牌階都有對手）（4 個一場真的互打）上傳成 `runs.seed = true`；配對時真人優先，真人夠多後可用 `delete from public.runs where seed;` 刪掉。
 - 排行榜（0.1.29）：`runs.cls`、`runs.rating_end`、RPC `leaderboard`／`class_stats`，SQL 在 `supabase/migrations/20261023000000_serling_leaderboard.sql`（要在 SQL Editor 跑過才有資料；沒跑時首頁職業勝率改用自己的對局）。
+- 核心統計（0.1.45）：`runs.core1`／`core2`／`core_log`（首領核心三選一紀錄）、RPC `core_stats`／`core_combo_stats`，SQL 在 `supabase/migrations/20261024000000_serling_core_stats.sql`（要在 SQL Editor 跑過才會存）；瀏覽器主控台 `await coreStatsCloud()` 看真人的選擇率與組合（`coreStatsCloud(true)` 連種子一起算）。
 - 前端只放 anon key。**絕對不要使用或要求 service_role key。**
 - 合併規則：本機與雲端各有 `savedAt`，啟動時取較新的那份。
 
