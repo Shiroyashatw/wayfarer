@@ -107,6 +107,9 @@ canvas.spr.flip{transform:scaleX(-1)}
 .rivals.n5 .rv span{width:100%}
 .rv{display:flex;align-items:center;gap:var(--sp-1);background:var(--card);border-radius:var(--r-md);padding:var(--sp-1);border:1.5px solid transparent;min-width:0;box-shadow:var(--shadow)}
 .rv canvas{width:28px;height:28px}
+/* 0.1.36 對手的職業小圖示 */
+.rv{position:relative}
+.rv .rvc{position:absolute;top:2px;right:2px;width:16px;height:16px;image-rendering:pixelated;border-radius:var(--r-sm);background:var(--bg);box-shadow:0 0 0 1px var(--line)}
 .rv span{display:grid;min-width:0;flex:1}
 .rv b{font-size:var(--fs-cap);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rv small{font-size:var(--fs-cap);color:var(--dim)}

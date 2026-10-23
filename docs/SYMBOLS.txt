@@ -51,51 +51,51 @@ ITEMS js/items.js:121
 ITEMI js/items.js:1885
 shopOK js/items.js:1887
 CLASSES js/items.js:1891
-CLSI js/items.js:2011
-CORE_P js/items.js:2014
-onP js/items.js:2029
-CORE_MAIN js/items.js:2031
-CORE_SUB js/items.js:2240
-genCores js/items.js:2254
-clsDesc js/items.js:2290
-TIER_MAX js/items.js:2306
-TIERCD js/items.js:2312
-cdT js/items.js:2314
-FX_FLAT js/items.js:2317
-fxT js/items.js:2318
-onT js/items.js:2326
-STARC js/items.js:2344
-priceOf js/items.js:2346
-sellOf js/items.js:2347
-SHC js/items.js:2350
-shapeOf js/items.js:2352
-shrinkShape js/items.js:2358
-shapeRaw js/items.js:2376
-AFFX js/items.js:2385
-affOf js/items.js:2392
-MOD5 js/items.js:2399
-mod5Pool js/items.js:2421
-roll5 js/items.js:2427
-mod5Q js/items.js:2433
-mod5Txt js/items.js:2437
-pct js/items.js:2439
-sg js/items.js:2441
-MODN js/items.js:2442
-RICH js/items.js:2511
-richOf js/items.js:2518
-RICHN js/items.js:2519
-goldStOf js/items.js:2527
-RES_MAX js/items.js:2529
-PIERCE_MAX js/items.js:2535
-modTxt js/items.js:2537
-tagTxt js/items.js:2542
-PRE_T js/items.js:2545
-preKey js/items.js:2562
-preVal js/items.js:2563
-preTxt js/items.js:2572
-itemDesc js/items.js:2576
-tfTxt js/items.js:2667
-scaleMod js/items.js:2673
+CLSI js/items.js:2012
+CORE_P js/items.js:2015
+onP js/items.js:2030
+CORE_MAIN js/items.js:2032
+CORE_SUB js/items.js:2241
+genCores js/items.js:2255
+clsDesc js/items.js:2291
+TIER_MAX js/items.js:2307
+TIERCD js/items.js:2313
+cdT js/items.js:2315
+FX_FLAT js/items.js:2318
+fxT js/items.js:2319
+onT js/items.js:2327
+STARC js/items.js:2345
+priceOf js/items.js:2347
+sellOf js/items.js:2348
+SHC js/items.js:2351
+shapeOf js/items.js:2353
+shrinkShape js/items.js:2359
+shapeRaw js/items.js:2377
+AFFX js/items.js:2386
+affOf js/items.js:2393
+MOD5 js/items.js:2400
+mod5Pool js/items.js:2422
+roll5 js/items.js:2428
+mod5Q js/items.js:2434
+mod5Txt js/items.js:2438
+pct js/items.js:2440
+sg js/items.js:2442
+MODN js/items.js:2443
+RICH js/items.js:2512
+richOf js/items.js:2519
+RICHN js/items.js:2520
+goldStOf js/items.js:2528
+RES_MAX js/items.js:2530
+PIERCE_MAX js/items.js:2536
+modTxt js/items.js:2538
+tagTxt js/items.js:2543
+PRE_T js/items.js:2546
+preKey js/items.js:2563
+preVal js/items.js:2564
+preTxt js/items.js:2573
+itemDesc js/items.js:2577
+tfTxt js/items.js:2668
+scaleMod js/items.js:2674
 cellsOf js/bag.js:4
 bagGrid js/bag.js:6
 canPlace js/bag.js:12
@@ -146,71 +146,83 @@ giveStarter js/run.js:269 [一局]
 rollClasses js/run.js:278 [一局]
 newRun js/run.js:288 [一局]
 curRound js/run.js:307 [一局]
-rollItem js/run.js:309 [一局]
-lottoOdds js/run.js:325 [一局]
-rollShop js/run.js:335 [一局]
-shopPrice js/run.js:351 [一局]
-slotPrice js/run.js:352 [一局]
-newItem js/run.js:353 [一局]
-benchFree js/run.js:363 [一局]
-buyItem js/run.js:365 [一局]
-kickback js/run.js:383 [一局]
-wouldMerge js/run.js:399 [一局]
-buyToBag js/run.js:403 [一局]
-swapPlan js/run.js:422 [一局]
-sellItem js/run.js:444 [一局]
-freeRolls js/run.js:459 [一局]
-rollsLeft js/run.js:461 [一局]
-rerollShop js/run.js:465 [一局]
-lvOpen js/run.js:481 [一局]
-lvCost js/run.js:483 [一局]
-levelUp js/run.js:485 [一局]
-incomeOf js/run.js:496 [一局]
-winGold js/run.js:499 [一局]
-incomeEst js/run.js:501 [一局]
-nextRound js/run.js:508 [一局]
-rivalSnap js/run.js:531 [對手]
-rivalOT js/run.js:540 [對手]
-OT_DMG js/run.js:548 [對手]
-otGrow js/run.js:550 [對手]
-rivalHp js/run.js:559 [對手]
-rivalAlive js/run.js:561 [對手]
-aliveRivals js/run.js:562 [對手]
-rivalBag js/run.js:564 [對手]
-petLoss js/run.js:570 [對手]
-opponentOf js/run.js:572 [對手]
-ELITE_POOL js/run.js:588 [對手]
-ELITE_KING js/run.js:590 [對手]
-mobOf js/run.js:591 [對手]
-eliteStars js/run.js:605 [對手]
-shopOdds js/run.js:607 [對手]
-stageHp js/run.js:626 [戰鬥]
-MOB_HP js/run.js:636 [戰鬥]
-payBribe js/run.js:641 [戰鬥]
-startFight js/run.js:647 [戰鬥]
-fightSum js/run.js:662 [戰鬥]
-finishFight js/run.js:694 [戰鬥]
-rivalFights js/run.js:758 [戰鬥]
-finalPlace js/run.js:790 [戰鬥]
-HIST_FULL js/run.js:794 [戰鬥]
-endRun js/run.js:795 [戰鬥]
-clsWeaponTags js/run.js:820 [戰鬥]
-eliteTier js/run.js:829 [戰鬥]
-eliteOpts js/run.js:833 [戰鬥]
-mainCore js/run.js:862 [戰鬥]
-giveGift js/run.js:864 [戰鬥]
-bossCores js/run.js:885 [戰鬥]
-takePick js/run.js:899 [戰鬥]
-claimHold js/run.js:928 [戰鬥]
-THEMES js/run.js:944 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-mkBot js/run.js:949 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-botAfter js/run.js:976 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-simLobby js/run.js:1008 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
-LIVE_ME js/run.js:1077 [即時機器人（0.1.30）]
-liveBots js/run.js:1078 [即時機器人（0.1.30）]
-liveStep js/run.js:1087 [即時機器人（0.1.30）]
-liveAfter js/run.js:1127 [即時機器人（0.1.30）]
-makeBots js/run.js:1132 [即時機器人（0.1.30）]
+POOL js/run.js:313 [0.1.36 池子]
+poolOf js/run.js:314 [0.1.36 池子]
+poolAdd js/run.js:315 [0.1.36 池子]
+poolHeld js/run.js:320 [0.1.36 池子]
+poolOthers js/run.js:330 [0.1.36 池子]
+poolUsed js/run.js:340 [0.1.36 池子]
+poolLeft js/run.js:347 [0.1.36 池子]
+CLS_W js/run.js:349 [0.1.36 池子]
+clsShopTags js/run.js:350 [0.1.36 池子]
+clsBoost js/run.js:355 [0.1.36 池子]
+wpick js/run.js:357 [0.1.36 池子]
+rollItem js/run.js:366 [0.1.36 池子]
+lottoOdds js/run.js:395 [0.1.36 池子]
+rollShop js/run.js:405 [0.1.36 池子]
+shopPrice js/run.js:427 [0.1.36 池子]
+slotPrice js/run.js:428 [0.1.36 池子]
+newItem js/run.js:429 [0.1.36 池子]
+benchFree js/run.js:439 [0.1.36 池子]
+buyItem js/run.js:441 [0.1.36 池子]
+kickback js/run.js:459 [0.1.36 池子]
+wouldMerge js/run.js:475 [0.1.36 池子]
+buyToBag js/run.js:479 [0.1.36 池子]
+swapPlan js/run.js:498 [0.1.36 池子]
+sellItem js/run.js:520 [0.1.36 池子]
+freeRolls js/run.js:535 [0.1.36 池子]
+rollsLeft js/run.js:537 [0.1.36 池子]
+rerollShop js/run.js:541 [0.1.36 池子]
+lvOpen js/run.js:557 [0.1.36 池子]
+lvCost js/run.js:559 [0.1.36 池子]
+levelUp js/run.js:561 [0.1.36 池子]
+incomeOf js/run.js:572 [0.1.36 池子]
+winGold js/run.js:575 [0.1.36 池子]
+incomeEst js/run.js:577 [0.1.36 池子]
+nextRound js/run.js:584 [0.1.36 池子]
+rivalSnap js/run.js:607 [對手]
+rivalOT js/run.js:616 [對手]
+OT_DMG js/run.js:624 [對手]
+otGrow js/run.js:626 [對手]
+rivalHp js/run.js:635 [對手]
+rivalCls js/run.js:637 [對手]
+rivalAlive js/run.js:642 [對手]
+aliveRivals js/run.js:643 [對手]
+rivalBag js/run.js:645 [對手]
+petLoss js/run.js:651 [對手]
+opponentOf js/run.js:653 [對手]
+ELITE_POOL js/run.js:669 [對手]
+ELITE_KING js/run.js:671 [對手]
+mobOf js/run.js:672 [對手]
+eliteStars js/run.js:686 [對手]
+shopOdds js/run.js:688 [對手]
+stageHp js/run.js:707 [戰鬥]
+MOB_HP js/run.js:717 [戰鬥]
+payBribe js/run.js:722 [戰鬥]
+startFight js/run.js:728 [戰鬥]
+fightSum js/run.js:743 [戰鬥]
+finishFight js/run.js:775 [戰鬥]
+rivalFights js/run.js:839 [戰鬥]
+finalPlace js/run.js:871 [戰鬥]
+HIST_FULL js/run.js:875 [戰鬥]
+endRun js/run.js:876 [戰鬥]
+clsWeaponTags js/run.js:901 [戰鬥]
+eliteTier js/run.js:910 [戰鬥]
+eliteOpts js/run.js:914 [戰鬥]
+mainCore js/run.js:943 [戰鬥]
+giveGift js/run.js:945 [戰鬥]
+bossCores js/run.js:966 [戰鬥]
+takePick js/run.js:980 [戰鬥]
+claimHold js/run.js:1009 [戰鬥]
+THEMES js/run.js:1025 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+mkBot js/run.js:1030 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+botAfter js/run.js:1057 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+simLobby js/run.js:1089 [機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）]
+LIVE_ME js/run.js:1160 [即時機器人（0.1.30）]
+liveBots js/run.js:1161 [即時機器人（0.1.30）]
+liveStep js/run.js:1170 [即時機器人（0.1.30）]
+liveAfter js/run.js:1219 [即時機器人（0.1.30）]
+makeBots js/run.js:1224 [即時機器人（0.1.30）]
 BOT_P js/bot.js:7
 BOT_EPET js/bot.js:24 [戰力分數]
 BOT_ERES0 js/bot.js:26 [戰力分數]
@@ -287,76 +299,77 @@ boardHTML js/ui.js:241 [首頁]
 startRun js/ui.js:294 [首頁]
 GAP js/ui.js:308 [準備畫面]
 cellSize js/ui.js:309 [準備畫面]
-rivalHTML js/ui.js:311 [準備畫面]
-showRivalBag js/ui.js:326 [準備畫面]
-nextRival js/ui.js:351 [準備畫面]
-tutHTML js/ui.js:358 [準備畫面]
-bagHTML js/ui.js:367 [準備畫面]
-linkHTML js/ui.js:418 [準備畫面]
-dragLit js/ui.js:449 [準備畫面]
-shapeMini js/ui.js:467 [準備畫面]
-roundBarHTML js/ui.js:476 [準備畫面]
-lastLogBtn js/ui.js:489 [準備畫面]
-incTxt js/ui.js:496 [準備畫面]
-prepHTML js/ui.js:503 [準備畫面]
-detailHTML js/ui.js:537 [準備畫面]
-abHTML js/ui.js:596 [準備畫面]
-mod5HTML js/ui.js:614 [準備畫面]
-revealHTML js/ui.js:620 [準備畫面]
-statsHTML js/ui.js:628 [準備畫面]
-resultHTML js/ui.js:661 [結算、三選一、一局結束]
-pickHTML js/ui.js:665 [結算、三選一、一局結束]
-clsHTML js/ui.js:676 [結算、三選一、一局結束]
-holdHTML js/ui.js:687 [結算、三選一、一局結束]
-rankMove js/ui.js:693 [結算、三選一、一局結束]
-endHTML js/ui.js:701 [結算、三選一、一局結束]
-beginFight js/ui.js:710 [戰鬥播放]
-leadIn js/ui.js:736 [戰鬥播放]
-resumeFight js/ui.js:741 [戰鬥播放]
-renderBattle js/ui.js:758 [戰鬥播放]
-bShow js/ui.js:779 [戰鬥播放]
-cdTimeline js/ui.js:795 [戰鬥播放]
-bCd js/ui.js:805 [戰鬥播放]
-STN js/ui.js:826 [戰鬥播放]
-bSts js/ui.js:846 [戰鬥播放]
-ELC js/ui.js:867 [戰鬥播放]
-bPop js/ui.js:881 [戰鬥播放]
-bNames js/ui.js:894 [戰鬥播放]
-bLog js/ui.js:908 [戰鬥播放]
-bAnim js/ui.js:943 [戰鬥播放]
-bBurst js/ui.js:949 [戰鬥播放]
-bSlash js/ui.js:962 [戰鬥播放]
-bHit js/ui.js:972 [戰鬥播放]
-bFlash js/ui.js:979 [戰鬥播放]
-bTick js/ui.js:987 [戰鬥播放]
-bEnd js/ui.js:1063 [戰鬥播放]
-codexHTML js/ui.js:1089 [圖鑑、說明、設定]
-helpHTML js/ui.js:1118 [圖鑑、說明、設定]
-settingsHTML js/ui.js:1131 [圖鑑、說明、設定]
-audioOn js/ui.js:1156 [動作]
-A js/ui.js:1159 [動作]
-authDo js/ui.js:1452 [動作]
-showLog js/ui.js:1468 [動作]
-showMatch js/ui.js:1504 [動作]
-showNews js/ui.js:1536 [動作]
-showDlg js/ui.js:1547 [動作]
-FUC js/ui.js:1566 [動作]
-fuColor js/ui.js:1578 [動作]
-fuCls js/ui.js:1585 [動作]
-fuSty js/ui.js:1586 [動作]
-fuseToast js/ui.js:1589 [拖曳擺放]
-fuseAt js/ui.js:1596 [拖曳擺放]
-placeFromBench js/ui.js:1603 [拖曳擺放]
-cellAt js/ui.js:1617 [拖曳擺放]
-inside js/ui.js:1626 [拖曳擺放]
-dragMove js/ui.js:1686 [拖曳擺放]
-dragRot js/ui.js:1722 [拖曳擺放]
-wheelAt js/ui.js:1739 [拖曳擺放]
-drawGhost js/ui.js:1752 [拖曳擺放]
-autoFit js/ui.js:1764 [拖曳擺放]
-dropEnd js/ui.js:1772 [拖曳擺放]
-dropShop js/ui.js:1830 [拖曳擺放]
-fitZoom js/ui.js:1877 [拖曳擺放]
+rvClsIc js/ui.js:312 [準備畫面]
+rivalHTML js/ui.js:316 [準備畫面]
+showRivalBag js/ui.js:331 [準備畫面]
+nextRival js/ui.js:356 [準備畫面]
+tutHTML js/ui.js:363 [準備畫面]
+bagHTML js/ui.js:372 [準備畫面]
+linkHTML js/ui.js:423 [準備畫面]
+dragLit js/ui.js:454 [準備畫面]
+shapeMini js/ui.js:472 [準備畫面]
+roundBarHTML js/ui.js:481 [準備畫面]
+lastLogBtn js/ui.js:494 [準備畫面]
+incTxt js/ui.js:501 [準備畫面]
+prepHTML js/ui.js:508 [準備畫面]
+detailHTML js/ui.js:542 [準備畫面]
+abHTML js/ui.js:601 [準備畫面]
+mod5HTML js/ui.js:619 [準備畫面]
+revealHTML js/ui.js:625 [準備畫面]
+statsHTML js/ui.js:633 [準備畫面]
+resultHTML js/ui.js:666 [結算、三選一、一局結束]
+pickHTML js/ui.js:670 [結算、三選一、一局結束]
+clsHTML js/ui.js:681 [結算、三選一、一局結束]
+holdHTML js/ui.js:692 [結算、三選一、一局結束]
+rankMove js/ui.js:698 [結算、三選一、一局結束]
+endHTML js/ui.js:706 [結算、三選一、一局結束]
+beginFight js/ui.js:715 [戰鬥播放]
+leadIn js/ui.js:741 [戰鬥播放]
+resumeFight js/ui.js:746 [戰鬥播放]
+renderBattle js/ui.js:763 [戰鬥播放]
+bShow js/ui.js:784 [戰鬥播放]
+cdTimeline js/ui.js:800 [戰鬥播放]
+bCd js/ui.js:810 [戰鬥播放]
+STN js/ui.js:831 [戰鬥播放]
+bSts js/ui.js:851 [戰鬥播放]
+ELC js/ui.js:872 [戰鬥播放]
+bPop js/ui.js:886 [戰鬥播放]
+bNames js/ui.js:899 [戰鬥播放]
+bLog js/ui.js:913 [戰鬥播放]
+bAnim js/ui.js:948 [戰鬥播放]
+bBurst js/ui.js:954 [戰鬥播放]
+bSlash js/ui.js:967 [戰鬥播放]
+bHit js/ui.js:977 [戰鬥播放]
+bFlash js/ui.js:984 [戰鬥播放]
+bTick js/ui.js:992 [戰鬥播放]
+bEnd js/ui.js:1068 [戰鬥播放]
+codexHTML js/ui.js:1094 [圖鑑、說明、設定]
+helpHTML js/ui.js:1123 [圖鑑、說明、設定]
+settingsHTML js/ui.js:1136 [圖鑑、說明、設定]
+audioOn js/ui.js:1161 [動作]
+A js/ui.js:1164 [動作]
+authDo js/ui.js:1457 [動作]
+showLog js/ui.js:1473 [動作]
+showMatch js/ui.js:1509 [動作]
+showNews js/ui.js:1541 [動作]
+showDlg js/ui.js:1552 [動作]
+FUC js/ui.js:1571 [動作]
+fuColor js/ui.js:1583 [動作]
+fuCls js/ui.js:1590 [動作]
+fuSty js/ui.js:1591 [動作]
+fuseToast js/ui.js:1594 [拖曳擺放]
+fuseAt js/ui.js:1601 [拖曳擺放]
+placeFromBench js/ui.js:1608 [拖曳擺放]
+cellAt js/ui.js:1622 [拖曳擺放]
+inside js/ui.js:1631 [拖曳擺放]
+dragMove js/ui.js:1691 [拖曳擺放]
+dragRot js/ui.js:1727 [拖曳擺放]
+wheelAt js/ui.js:1744 [拖曳擺放]
+drawGhost js/ui.js:1757 [拖曳擺放]
+autoFit js/ui.js:1769 [拖曳擺放]
+dropEnd js/ui.js:1777 [拖曳擺放]
+dropShop js/ui.js:1835 [拖曳擺放]
+fitZoom js/ui.js:1882 [拖曳擺放]
 newGame js/main.js:4
 load js/main.js:22
 save js/main.js:30

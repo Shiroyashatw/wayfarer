@@ -306,7 +306,66 @@ function newRun(rivals) {
 }
 const curRound = run => ROUNDS[run.ri];
 /* 商店的一格：照背包等級的機率抽星級；lotto：0.1.35 六合彩的那一輪更常出高星 */
-function rollItem(run, lotto) {
+/* ================= 0.1.36 池子 ================= */
+/* 一場裡每件道具大家共用一個池子（越稀有越少）：別人背包、暫存區、商店裡的都算拿走了，一件 Ⅱ 階算 3 件、Ⅲ 階 9 件。
+   商店照「池子剩幾件」加權抽，別人在收的道具你就比較難刷到（要轉陣）；淘汰的人拿的會回到池子。
+   一起算的人：玩家那局是自己＋對手（即時機器人的那局、快照的這回合背包）；機器人那局用 run.lob() 給（不會存進存檔） */
+/* 0.1.36 合成變難、PvE 勝率掉太多，放大一點（21／18／15／12／9 → 27／24／20／15／10）；道具可以用 pool 欄位自己指定。
+   被魔劍正宗吸收、融合掉、賣掉的會回到池子（已經不在誰身上） */
+const POOL = [0, 27, 24, 20, 15, 10];
+const poolOf = id => ITEMI[id].pool || POOL[ITEMI[id].star] || 0;
+function poolAdd(m, id, t = 1) {
+  if (!ITEMI[id] || !shopOK(ITEMI[id])) return;
+  m.set(id, (m.get(id) || 0) + 3 ** ((t || 1) - 1));
+}
+/* 一個人拿著的：一局（背包、暫存區、寄放、商店）或快照的背包（packBag 格式） */
+function poolHeld(m, x, shop = true) {
+  if (!x) return;
+  if (x.it) {
+    for (const a of x.it) poolAdd(m, a[0], a[1]), a[8] && poolAdd(m, a[8], a[9] || 1);
+    return;
+  }
+  for (const o of [...x.bag.items, ...x.bench, x.hold]) if (o) poolAdd(m, o.id, o.t), o.f && poolAdd(m, o.f, o.ft || 1);
+  if (shop) for (const o of x.shop || []) if (o) poolAdd(m, o.id, o.t);
+}
+/* 玩家那局的其他人：還活著的對手（即時機器人的那局、其他人這回合的快照） */
+function poolOthers(run) {
+  if (run.lob) return run.lob();
+  const r = curRound(run);
+  if (!r || !run.rivals) return [];
+  return run.rivals
+    .filter(rv => rivalHp(rv) > 0)
+    .map(rv => (rv.live ? rv.live.run : (rivalSnap(rv, r.id) || {}).bag))
+    .filter(Boolean);
+}
+/* 大家拿走了多少：selfShop 為 false 時不算自己的商店（重抽商店時舊的會放回去） */
+function poolUsed(run, selfShop = false) {
+  const m = new Map();
+  poolHeld(m, run, selfShop);
+  for (const x of poolOthers(run)) poolHeld(m, x);
+  return m;
+}
+/* 池子還剩幾件（不顯示給玩家，跟戰棋遊戲一樣是隱藏的；測試與除錯用） */
+const poolLeft = (run, id, used = poolUsed(run, true)) => Math.max(0, poolOf(id) - (used.get(id) || 0));
+/* 0.1.36 職業偏好：職業加成的標籤、主題（騎士的盾、鍊金術士的藥水…）的道具，背包越大越常出（等級 1 ×1，每升一級 +CLS_W） */
+const CLS_W = 0.3;
+function clsShopTags(cls) {
+  const C = CLSI[cls];
+  if (!C) return [];
+  return [...new Set([...(C.m || []).map(b => b.tag), C.th].filter(t => t && t !== 'weapon'))];
+}
+const clsBoost = run => 1 + CLS_W * ((run.lv || 1) - 1);
+/* 照權重抽：w(道具) ≤ 0 的不會抽到；全部是 0 回傳 null */
+function wpick(run, arr, w) {
+  const ws = arr.map(w),
+    tot = ws.reduce((a, b) => a + b, 0);
+  if (tot <= 0) return null;
+  let x = r01(run) * tot;
+  for (let i = 0; i < arr.length; i++) if ((x -= ws[i]) < 0) return arr[i];
+  return arr[arr.length - 1];
+}
+/* 商店的一格：照背包等級的機率抽星級，同星級照「池子剩幾件 × 職業偏好」加權；那個星級抽光了就往下找 */
+function rollItem(run, lotto, used = poolUsed(run), filt = () => true) {
   const od = lotto ? lottoOdds(shopOdds(run)) : shopOdds(run);
   let x = r01(run) * 100,
     st = 1;
@@ -317,9 +376,22 @@ function rollItem(run, lotto) {
     }
     x -= od[i];
   }
+  const tags = clsShopTags(run.bag.cls),
+    cb = clsBoost(run),
+    w = it => Math.max(0, poolOf(it.id) - (used.get(it.id) || 0)) * (tags.some(t => it.tags.includes(t)) ? cb : 1);
   /* 商店不出職業核心（核心只從首領三選一拿） */
-  const pool = ITEMS.filter(it => it.star === st && shopOK(it));
-  return pick(run, pool.length ? pool : ITEMS.filter(it => it.star === 1 && shopOK(it))).id;
+  for (const s of [st, ...[5, 4, 3, 2, 1].filter(v => v !== st)]) {
+    const it = wpick(
+      run,
+      ITEMS.filter(it => it.star === s && shopOK(it) && filt(it)),
+      w
+    );
+    if (it) return it.id;
+  }
+  return pick(
+    run,
+    ITEMS.filter(it => it.star === 1 && shopOK(it) && filt(it))
+  ).id;
 }
 /* 0.1.35 六合彩：1～2★ 的機率挪六成給 3～5★（2：4：4） */
 function lottoOdds(od) {
@@ -333,17 +405,23 @@ function lottoOdds(od) {
   return o;
 }
 function rollShop(run, lotto) {
+  /* 0.1.36 舊的商店放回池子，每抽一格就從池子拿走（同一輪不會抽超過池子剩的） */
+  const used = poolUsed(run);
   /* 1-1 開打前的商店全是 1★，前 2 格保證是武器或寵物（不然第一場就打不了） */
-  run.shop = Array.from({ length: SHOP_N }, (_, k) => ({
-    id:
-      run.ri === 0
-        ? pick(
-            run,
-            ITEMS.filter(i => i.star === 1 && shopOK(i) && (k >= 2 || i.dmg))
-          ).id
-        : rollItem(run, lotto),
-    t: run.ri > 0 && r01(run) * 100 < (BAGLV[run.lv].t2 || 0) ? 2 : 1
-  }));
+  run.shop = Array.from({ length: SHOP_N }, (_, k) => {
+    const id =
+        run.ri === 0
+          ? wpick(
+              run,
+              ITEMS.filter(i => i.star === 1 && shopOK(i) && (k >= 2 || i.dmg)),
+              i => Math.max(0.01, poolOf(i.id) - (used.get(i.id) || 0))
+            ).id
+          : rollItem(run, lotto, used),
+      /* Ⅱ 階要池子還有 3 件 */
+      t2 = run.ri > 0 && r01(run) * 100 < (BAGLV[run.lv].t2 || 0) && poolOf(id) - (used.get(id) || 0) >= 3;
+    poolAdd(used, id, t2 ? 2 : 1);
+    return { id, t: t2 ? 2 : 1 };
+  });
   /* 0.1.35 六合彩：價格打亂成 0 金～5★ 的價格（p） */
   if (lotto) for (const s of run.shop) s.p = fl(r01(run) * (5 * 3 ** (s.t - 1) + 1));
 }
@@ -557,6 +635,11 @@ function otGrow(F, ot) {
   };
 }
 const rivalHp = rv => Math.max(0, rv.hp ?? START_HP);
+/* 0.1.36 對手的職業：即時機器人看他那局，快照看任何一筆背包 */
+const rivalCls = rv =>
+  rv.live
+    ? rv.live.run.bag.cls
+    : (Object.values(rv.snaps || {}).find(s => s && s.bag && s.bag.cls) || { bag: {} }).bag.cls;
 /* 0.1.30 即時機器人還沒推進到這回合也算活著（開戰前才存快照） */
 const rivalAlive = (rv, rid) => rivalHp(rv) > 0 && (!!rv.live || !!rivalSnap(rv, rid));
 const aliveRivals = run => run.rivals.filter(rv => rivalAlive(rv, curRound(run).id));
@@ -1008,6 +1091,8 @@ function botAfter(run, r, win, q, P) {
 function simLobby(seed, rating, opt = {}) {
   const rr = rng(h(seed, 5)),
     bots = [...Array(LOBBY_N).keys()].map(i => mkBot(seed, i, rr, rating, opt));
+  /* 0.1.36 池子：同一場的機器人共用（淘汰的不算） */
+  for (const b of bots) b.run.lob = () => bots.filter(x => x !== b && !x.out).map(x => x.run);
   let order = 0;
   for (let k = 0; k < ROUNDS.length; k++) {
     const alive = bots.filter(b => !b.out);
@@ -1106,6 +1191,14 @@ function liveStep(run, r) {
       br = L.run,
       os = prev.filter(p => p.rv !== rv),
       W = os.reduce((n, p) => n + p.w, 0);
+    /* 0.1.36 池子：這個機器人以外的人（你這局、其他即時機器人的那局、快照的這回合背包） */
+    br.lob = () => [
+      run,
+      ...run.rivals
+        .filter(x => x !== rv && rivalHp(x) > 0)
+        .map(x => (x.live ? x.live.run : (rivalSnap(x, r.id) || {}).bag))
+        .filter(Boolean)
+    ];
     while (br.ri < run.ri) {
       nextRound(br);
       if (br.ri > 0) br.gold = Math.max(0, br.gold + L.gb);
@@ -1117,6 +1210,7 @@ function liveStep(run, r) {
     }
     botAct(br, L.theme, L.q, BOT_P);
     payBribe(br);
+    delete br.lob;
     rv.snaps = rv.snaps || {};
     rv.snaps[r.id] = { hp: rivalHp(rv), bag: packBag(br.bag) };
     /* 存檔不要越來越大：即時機器人只留這回合和上一回合的快照（下回合看的就是這兩筆） */

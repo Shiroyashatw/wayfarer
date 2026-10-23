@@ -308,6 +308,11 @@ async function startRun() {
 const GAP = 4;
 const cellSize = w =>
   Math.max(30, Math.min(w <= 3 ? 64 : 52, fl((Math.min(innerWidth, 480) - 32 - (w - 1) * GAP) / w)));
+/* 0.1.36 對手的職業小圖示（右上角）：你選完職業後才顯示 */
+function rvClsIc(run, rv) {
+  const C = run.bag.cls && CLSI[rivalCls(rv)];
+  return C ? `<img class="rvc" src="${artIconURL(C.ic) || iconURL('star')}" alt="${C.n}" title="${C.n}">` : '';
+}
 function rivalHTML(run) {
   const nx = curRound(run) && curRound(run).type === 'pvp' ? nextRival(run) : -1,
     /* 0.1.29 5 位對手一排放不下全名：「憂鬱的咕咕鳥」只顯示「咕咕鳥」（全名在 title） */
@@ -317,8 +322,8 @@ function rivalHTML(run) {
       /* 0.1.26 生命在這局裡算（rv.hp） */
       const hp = rivalAlive(rv, (curRound(run) || ROUNDS[ROUNDS.length - 1]).id) ? rivalHp(rv) : 0;
       if (hp <= 0)
-        return `<button class="rv out" title="${esc(rv.name)}" data-act="rvBag" data-k="${i}">${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:0"></i></i><small>淘汰</small></span></button>`;
-      return `<button class="rv${i === nx ? ' nx' : ''}" title="${esc(rv.name)}" data-act="rvBag" data-k="${i}">${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>♥ ${hp}</small></span></button>`;
+        return `<button class="rv out" title="${esc(rv.name)}" data-act="rvBag" data-k="${i}">${rvClsIc(run, rv)}${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:0"></i></i><small>淘汰</small></span></button>`;
+      return `<button class="rv${i === nx ? ' nx' : ''}" title="${esc(rv.name)}" data-act="rvBag" data-k="${i}">${rvClsIc(run, rv)}${sprCv('a_' + rv.av)}<span><b>${nm(rv)}</b><i class="hpb"><i style="width:${(hp / START_HP) * 100}%"></i></i><small>♥ ${hp}</small></span></button>`;
     })
     .join('')}</div>`;
 }
