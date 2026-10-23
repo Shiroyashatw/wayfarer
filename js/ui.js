@@ -1,4 +1,4 @@
-/* 塞令老師 · 畫面：首頁、準備（背包、暫存區、商店）、戰鬥播放、結算、三選一、圖鑑、說明、設定；拖曳擺放 */
+/* 塞令老師 · 畫面：首頁、準備（背包、暫存區、商店）、戰鬥播放、結算、三選一、百科、說明、設定；拖曳擺放 */
 'use strict';
 let S = null, // 存檔（main.js）
   B = null; // 播放中的戰鬥
@@ -220,7 +220,7 @@ function homeHTML() {
     <div class="logo"><b>塞令老師</b><small>背包自動對戰</small></div>
     <div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b>${rankHTML()}<div class="kv3"><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span><span>第 1 名<b>${(S.hist || []).filter(x => x.place === 1).length}</b></span></div></div></div>
     <button class="btn pri big" data-act="play">${run ? `繼續對局（${curRound(run) ? curRound(run).id : ''}）` : '開始對戰'}</button>
-    <div class="g3"><button class="btn" data-act="go" data-k="help">怎麼玩</button><button class="btn" data-act="go" data-k="codex">道具圖鑑</button><button class="btn" data-act="go" data-k="settings">設定</button></div>
+    <div class="g3"><button class="btn" data-act="go" data-k="help">怎麼玩</button><button class="btn" data-act="go" data-k="codex">百科</button><button class="btn" data-act="go" data-k="settings">設定</button></div>
     ${boardHTML()}
     ${
       (S.hist || []).length
@@ -327,8 +327,21 @@ function rivalHTML(run) {
     })
     .join('')}</div>`;
 }
-/* 0.1.32 點對手：看他上一回合的背包（準備時看上一回合；打完結算時看剛打完的這回合，你已經看過了）。不給看這回合的，跟機器人一樣 */
-function showRivalBag(i) {
+/* 0.1.38 對手背包裡一件道具的詳細（點清單或背包格子）：說明、詞綴、融合、吸收、煉成… */
+function rvDetHTML(o) {
+  const I = ITEMI[o.id],
+    aff = o.a && AFFX.find(a => a.k === o.a),
+    T = o.f && ITEMI[o.f] && ITEMI[o.f].tf,
+    tags =
+      I.tags
+        .filter(t => t !== 'weapon')
+        .map(t => TAGN[t])
+        .join('・') || (I.dmg ? '武器' : '道具');
+  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeOf(o.id).length} 格</small></div></div><p>${itemDesc(o.id, o.t)}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${brewTxt(o.ex)}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${itemDesc(o.sc)}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
+}
+/* 0.1.32 點對手：看他上一回合的背包（準備時看上一回合；打完結算時看剛打完的這回合，你已經看過了）。不給看這回合的，跟機器人一樣；
+   0.1.38 點清單或背包裡的道具看詳細（sel 是選中的道具） */
+function showRivalBag(i, sel) {
   const run = S.run,
     rv = run && run.rivals[i];
   if (!rv) return;
@@ -341,15 +354,29 @@ function showRivalBag(i) {
   else {
     const bag = unpackBag(sn.bag),
       cs = Math.min(36, fl(260 / bag.w));
-    body = `<p class="sub">${cls ? cls.n + '・' : ''}${r.id} 的背包・${bag.items.length} 件</p><div class="bagwrap">${bagHTML(bag, cs, { mini: 1, id: 'rvbag' })}</div><div class="rvit">${bag.items
+    const so = bag.items.find(o => o.u === sel);
+    body = `<p class="sub">${cls ? cls.n + '・' : ''}${r.id} 的背包・${bag.items.length} 件・點道具看詳細</p><div class="bagwrap">${bagHTML(bag, cs, { mini: 1, id: 'rvbag' })}</div>${so ? rvDetHTML(so) : ''}<div class="rvit">${bag.items
       .map(
         o =>
-          `<span class="s${ITEMI[o.id].star}"><img src="${itemIcon(o.id)}" alt="">${esc(fuName(o))}${tierTxt(o.t)}</span>`
+          `<button class="s${ITEMI[o.id].star}${o.u === sel ? ' sel' : ''}" data-rvu="${o.u}"><img src="${itemIcon(o.id)}" alt="">${esc(fuName(o))}${tierTxt(o.t)}</button>`
       )
       .join('')}</div>`;
   }
   showDlg(`${esc(rv.name)}・♥ ${Math.max(0, rivalHp(rv))}`, body, []);
   paintSprites($('modal'));
+  const m = $('modal'),
+    close = m.onclick;
+  if (sel) {
+    const el = m.querySelector(`#rvbag .it[data-u="${sel}"]`);
+    if (el) el.classList.add('sel');
+  }
+  m.onclick = ev => {
+    const b = ev.target.closest('[data-rvu], #rvbag .it[data-u]');
+    if (!b) return close(ev);
+    snd('tap');
+    const u = b.dataset.rvu || b.dataset.u;
+    showRivalBag(i, u === sel ? null : u);
+  };
 }
 /* 下一場 PvP 會打誰（跟 opponentOf 一樣的規則，只看不改）；
    0.1.27 結算／三選一時 run.rp 已經換下一位，改回傳剛剛打的那位 */
@@ -1164,10 +1191,84 @@ function bEnd() {
   render();
 }
 /* ================= 圖鑑、說明、設定 ================= */
+/* 0.1.38 圖鑑 → 百科：道具、職業、異常狀態、屬性四個分頁（V.cxTab） */
+const CX_TABS = [
+  ['item', '道具'],
+  ['cls', '職業'],
+  ['ail', '異常'],
+  ['stat', '屬性']
+];
+/* 異常狀態：[圖示, 名字, 說明] */
+const CX_AIL = () => [
+  ['ail_burn', '燃燒', '每秒受「層數」傷害，之後少 1 層（N 層一共約 N×(N+1)/2）。'],
+  ['sk_fireburst', '點燃', `被點燃後整場有效、只有一層：燃燒不再每秒 -1，改成每秒 +1，而且燃燒傷害 ×${IGNITE_MUL}。`],
+  ['ail_poison', '中毒', `每秒受「層數」傷害，層數不會退。最多 ${POISON_MAX} 層（毒師讓敵人最多 24 層）。`],
+  [
+    'ail_dmark',
+    '劇毒',
+    `每秒受「層數 ×${VENOM_MUL}」傷害，層數不會退。最多 ${VENOM_MAX} 層（毒師核心「劇毒」40 層）。`
+  ],
+  ['ail_bleed', '流血', '每秒受「層數」傷害，之後層數減半（N 層一共約 2N）。'],
+  ['ail_vul', '破甲', `扣敵人的護甲，整場不退、會疊加，最多 ${SUNDER_MAX}；護甲最低到 -10（受到的傷害最多 ×1.25）。`],
+  ['ail_frozen', '凍結', `凍住敵人一件武器或盾 ${FREEZE_T} 秒，期間完全不能充能；凍結中的道具不能再被凍。`],
+  ['sk_frostnova', '冰緩', `敵人一件武器或盾充能速度減半（命中觸發 ${CHILL_T} 秒）。`],
+  ['ail_stun', '暈眩', '整個人不能動：武器、盾不能充能，也不能喝藥水。'],
+  ['ail_curse', '虛弱', `造成的傷害 -${WEAK_PCT}%（${WEAK_T} 秒）。`],
+  ['ail_mark', '致盲', `攻擊多 ${BLIND_MISS}% 打不中（${BLIND_T} 秒）。`],
+  ['ail_slow', '衰老', '不能暴擊。'],
+  ['asc_alchemist_c0', '腐蝕', `不能獲得護盾；本來會獲得護盾時（盾格擋、喝藥水的護盾…）改成扣 ${CORRODE_HP} 生命。`],
+  ['ail_shock', '混亂', `武器出手時 ${CONFUSE}% 機率打到自己。`],
+  ['ail_guard', '封鎖', '開戰時被封鎖的武器幾秒內不能充能（整場的叫「關住」）。'],
+  ['ail_stacks', '降階', '開戰時把敵人一把 Ⅱ 階以上的武器降 1 階（傷害變成三分之一）。']
+];
+/* 屬性與機制：[名字, 說明] */
+const CX_STAT = () => [
+  ['傷害', '每次攻擊造成的傷害區間；「傷害 +%」是乘在基礎傷害上。'],
+  ['攻速', '充能速度：攻速 +100% 等於冷卻減半。'],
+  ['暴擊率／暴擊傷害', '暴擊時傷害 ×暴擊傷害（基礎 160%）；暴擊率超過 100% 沒有用。'],
+  ['護甲', '固定減傷：受到的傷害 ×50÷(50+護甲)，例如護甲 50 受到一半傷害。'],
+  ['護盾（格擋）', '白色護盾條：先吃掉傷害，被打完才扣生命。盾每隔幾秒給一次，開戰護盾一開始就有。'],
+  ['閃避', `有機率完全不受那一下傷害，最多 40%。`],
+  ['招架', '被攻擊時有機率格擋那一下（浪人核心）。'],
+  ['吸血', '造成傷害的幾 % 回復成生命。'],
+  ['每秒回復', '每秒回復固定生命。'],
+  ['反彈', '被打中（或格擋）時反彈固定傷害給攻擊者。'],
+  ['連擊／連鎖', '連擊：有機率馬上再打一下；連鎖：每次攻擊多打幾下，多打的傷害打折。'],
+  ['穿甲', `無視一部分護甲與護盾，最多 ${PIERCE_MAX}%。`],
+  ['處決／背水', '處決：敵人生命低於 30% 時傷害提高；背水：自己生命低於 50% 時傷害（或攻速）提高。'],
+  ['先手', '開戰時武器已經充能幾 %，第一下比較快。'],
+  ['越戰越快', '每 5 秒攻速提高，最多 5 次。'],
+  ['抗性', `受到某種異常的層數或秒數減少，最多 -${RES_MAX}%；淨化每 ${CLEANSE_T} 秒清掉身上最嚴重的異常。`],
+  ['陷阱', '開戰時放進敵人背包的格子（含空格），那格的道具每次出手都會觸發；打怪時掛在怪物的武器上。'],
+  ['疲勞', `開戰 ${FATIGUE_T} 秒後雙方每秒受到越來越高的傷害，一定分出勝負。`],
+  ['升階', '3 件相同、同階的道具自動合成高一階（最多 Ⅲ 階），數值大幅提升，還會多一條詞綴。'],
+  ['池子', '一場裡每件道具大家共用數量（越稀有越少），別人收走的就比較難刷到。']
+];
 function codexHTML() {
-  return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>道具圖鑑</b><small>${ITEMS.length} 種・拿過的會亮起來</small></div>${[
-    1, 2, 3, 4, 5
-  ]
+  const tab = V.cxTab || 'item',
+    nav = `<div class="cxtab">${CX_TABS.map(([k, n]) => `<button aria-pressed="${tab === k}" data-act="cxTab" data-k="${k}">${n}</button>`).join('')}</div>`,
+    top = `<div class="page"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>百科</b><small>${tab === 'item' ? `${ITEMS.filter(i => !i.core).length} 種道具・拿過的會亮起來` : ''}</small></div>${nav}`;
+  if (tab === 'ail')
+    return `${top}<p class="sub">戰鬥中角色身上和道具上的狀態。抗性可以減少層數或秒數。</p><div class="codex">${CX_AIL()
+      .map(
+        ([ic, n, d]) =>
+          `<div class="cx"><img src="${artIconURL(ic) || iconURL('star')}" alt=""><div><b>${n}</b><p>${d}</p></div></div>`
+      )
+      .join('')}</div></div>`;
+  if (tab === 'stat')
+    return `${top}<p class="sub">道具說明裡常見的數值與機制。</p><div class="codex">${CX_STAT()
+      .map(([n, d]) => `<div class="cx"><div><b>${n}</b><p>${d}</p></div></div>`)
+      .join('')}</div></div>`;
+  if (tab === 'cls')
+    return `${top}<h3>職業核心（2-5 首領掉專屬核心，4-4 首領再掉一個專屬核心融入第一個，都從你的職業池三選一）</h3>${CLASSES.map(
+      C =>
+        `<details class="more" data-k="cx_${C.id}"><summary>${C.n}<small>${clsDesc(C.id)}</small></summary><div class="cores">${ITEMS.filter(
+          i => i.cls === C.id && i.core === 1
+        )
+          .map(i => `<p><b>${i.n.split('・')[1]}</b>　${itemDesc(i.id)}</p>`)
+          .join('')}</div></details>`
+    ).join('')}</div>`;
+  return `${top}${[1, 2, 3, 4, 5]
     .map(
       st =>
         `<h3 style="color:${STARC[st]}">${stars(st)}</h3><div class="codex">${ITEMS.filter(
@@ -1182,16 +1283,7 @@ function codexHTML() {
           )
           .join('')}</div>`
     )
-    .join(
-      ''
-    )}<h3>職業核心（2-5 首領掉專屬核心，4-4 首領再掉一個專屬核心融入第一個，都從你的職業池三選一）</h3>${CLASSES.map(
-    C =>
-      `<details class="more" data-k="cx_${C.id}"><summary>${C.n}<small>${clsDesc(C.id)}</small></summary><div class="cores">${ITEMS.filter(
-        i => i.cls === C.id && i.core === 1
-      )
-        .map(i => `<p><b>${i.n.split('・')[1]}</b>　${itemDesc(i.id)}</p>`)
-        .join('')}</div></details>`
-  ).join('')}</div>`;
+    .join('')}</div>`;
 }
 function helpHTML() {
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
@@ -1202,7 +1294,7 @@ function helpHTML() {
   <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×7，越大越貴：3×4 要 14 金，開局只有 ${START_GOLD} 金，要在買道具和存錢之間取捨），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉（電腦版拖曳中按 R、空白鍵、滑鼠右鍵或滾輪也能轉）；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
   <div class="card"><b>合成</b><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></div>
   <div class="card"><b>相鄰效果</b><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></div>
-  <div class="card"><b>職業核心</b><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 再掉一個專屬核心，選了直接融入第一個（兩個效果都有、不佔格子）。圖鑑最下面可以看全部。</p></div>
+  <div class="card"><b>職業核心</b><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 再掉一個專屬核心，選了直接融入第一個（兩個效果都有、不佔格子）。百科的「職業」分頁可以看全部。</p></div>
   <div class="card"><b>戰鬥</b><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></div>
   <div class="card"><b>異常狀態</b><p>燃燒、中毒、流血、劇毒每秒扣血（劇毒不會退、×2）；點燃讓燃燒越燒越多；破甲扣護甲；凍結讓一件道具 6 秒不能充能、冰緩讓它充能減半；暈眩不能動；虛弱傷害 -25%；致盲 30% 打不中；衰老不能暴擊；腐蝕不能獲得護盾（改成扣血）；混亂一半打到自己。</p></div>
   <div class="card"><b>陷阱</b><p>有些核心會在開戰時把陷阱放進敵人背包的格子（含空格），那格的道具每次出手都會觸發。戰鬥時有陷阱的道具右上角有紅點。</p></div>
@@ -1285,6 +1377,12 @@ const A = {
   },
   stats: () => showDlg('角色數值', statsHTML(S.run), []),
   log: d => showLog(d.k),
+  cxTab: d => {
+    V.cxTab = d.k;
+    snd('tap');
+    render();
+    scrollTo(0, 0);
+  },
   rvBag: d => {
     snd('tap');
     showRivalBag(+d.k);
@@ -1413,19 +1511,8 @@ const A = {
     render();
   },
   rot: () => {
-    const run = S.run,
-      o = run.bag.items.find(q => q.u === V.sel);
-    if (!o) return;
-    for (let i = 1; i <= 3; i++) {
-      const r = (o.r + i) & 3;
-      if (canPlace(run.bag, o, o.x, o.y, r)) {
-        o.r = r;
-        snd('tap');
-        save();
-        return render();
-      }
-    }
-    toast('旋轉後放不下，先把它挪到空一點的地方');
+    const o = S.run.bag.items.find(q => q.u === V.sel);
+    if (o) rotIt(o);
   },
   toBench: () => {
     const run = S.run,
@@ -1716,6 +1803,12 @@ document.addEventListener('pointerdown', ev => {
   /* 滑鼠拖曳：不要開始選取文字或拖出圖片（點一下的 click 照常觸發） */
   if (ev.pointerType === 'mouse') ev.preventDefault();
   const run = S.run;
+  /* 0.1.38 右鍵（沒在拖曳時）：直接旋轉背包裡的那件，不開始拖曳 */
+  if (ev.button === 2) {
+    const o = c.dataset.u && run.bag.items.find(q => q.u === c.dataset.u);
+    if (o) rotIt(o);
+    return;
+  }
   let o, from, grab, sk;
   if (c.dataset.sk != null) {
     /* 0.1.1 商店的道具也能直接拖 */
@@ -1744,6 +1837,10 @@ document.addEventListener(
   ev => {
     const d = V.drag;
     if (!d) return;
+    /* 0.1.38 拖曳中按右鍵旋轉：按下左鍵時取消了預設動作，瀏覽器不會再送右鍵的 mousedown，改看 pointermove 的 buttons */
+    const b2 = (ev.buttons & 2) > 0;
+    if (b2 && !d.b2 && d.on) dragRot();
+    d.b2 = b2;
     if (!d.on && Math.hypot(ev.clientX - d.sx, ev.clientY - d.sy) < 8) return;
     ev.preventDefault();
     if (!d.on) {
@@ -1799,6 +1896,21 @@ function dragMove(d) {
   const sh = $('shop');
   if (sh) sh.classList.toggle('sellhot', d.from !== 'shop' && inside(sh, d.px, d.py));
 }
+/* 旋轉背包裡的一件（旋轉鈕、右鍵）：照順時針試下一個放得下的方向 */
+function rotIt(o) {
+  const run = S.run;
+  if (shapeOf(o.id).length < 2) return;
+  for (let i = 1; i <= 3; i++) {
+    const r = (o.r + i) & 3;
+    if (canPlace(run.bag, o, o.x, o.y, r)) {
+      o.r = r;
+      snd('tap');
+      save();
+      return render();
+    }
+  }
+  toast('旋轉後放不下，先把它挪到空一點的地方');
+}
 /* 0.1.29 拖曳中旋轉：R 鍵、空白鍵、滑鼠右鍵、滾輪（電腦版不用放下再按旋轉） */
 function dragRot(k = 1) {
   const d = V.drag;
@@ -1811,11 +1923,10 @@ function dragRot(k = 1) {
 document.addEventListener('keydown', ev => {
   if ((ev.key === 'r' || ev.key === 'R' || ev.key === ' ') && dragRot()) ev.preventDefault();
 });
+/* 拖曳中、或在準備畫面的背包／暫存區／商店上按右鍵：不要跳出瀏覽器選單（右鍵是旋轉） */
 document.addEventListener('contextmenu', ev => {
-  if (V.drag && V.drag.on) ev.preventDefault();
-});
-document.addEventListener('mousedown', ev => {
-  if (ev.button === 2 && dragRot()) ev.preventDefault();
+  if ((V.drag && V.drag.on) || (V.scr === 'run' && ev.target.closest('.prep .bag:not(.mini), .bench, .shop')))
+    ev.preventDefault();
 });
 let wheelAt = 0;
 document.addEventListener(

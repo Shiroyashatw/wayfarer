@@ -53,6 +53,8 @@ GROUPS = [
     ('asc', '昇華節點', 'ascendancy emblems, rich colors with gold trim'),
     ('ui', '介面圖示', 'status effects, currencies, monster skills and materials as clear readable symbols'),
     ('item', '道具', 'backpack items for an auto-battler, chunky readable silhouettes, natural material colors'),
+    # 0.1.38 每個職業核心一張（it_c_職業_編號）：像一枚徽章，主體清楚
+    ('core', '職業核心', 'class core emblems for an auto-battler, one bold central symbol each, rich saturated colors with a thin gold rim'),
 ]
 GN = {k: n for k, n, _ in GROUPS}
 GH = {k: h for k, _, h in GROUPS}
@@ -64,6 +66,7 @@ SUPER = [
     ('tree', ['tree']),
     ('asc', ['asc']),
     ('item', ['item']),
+    ('core', ['core']),
 ]
 
 
@@ -81,6 +84,8 @@ def rows_of(src_only=False):
 
 
 def group_of(f, kind, p):
+    if f.startswith('it_c_'):
+        return 'core'
     if f.startswith('it_'):
         return 'item'
     if f.startswith('gear_'):
