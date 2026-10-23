@@ -99,7 +99,9 @@ function simSide(F) {
     metT: 0,
     clT: 0,
     cbT: 0,
-    phx: 0
+    phx: 0,
+    /* 0.1.52 印記守護 3 級：下一次能盾擊的時間 */
+    gT: 0
   };
 }
 /* 0.1.35 金錢標花 1 金那一下：傷害、暴擊率、命中效果、吸血都翻倍 */
@@ -226,16 +228,28 @@ function simulate(FA, FB, seed) {
     return h * (1 - Math.min(RES_MAX, o.F.healCut || 0) / 100);
   };
   const heal = (t, a, i, v, extra = {}) => {
-    const h = Math.min(a.max - a.hp, healOf(a, v));
+    const raw = healOf(a, v),
+      h = Math.min(a.max - a.hp, raw);
     if (h > 0) {
       a.hp += h;
       log(t, i, 'heal', Math.round(h), { self: 1, ...extra });
     }
+    /* 0.1.52 印記生命 2 級：回復超過上限的部分變成護盾 */
+    if (a.F.sgLife >= 2 && raw - Math.max(0, h) > 0.5) gainBlock(t, a, i, raw - Math.max(0, h), null);
   };
   /* 0.1.37 獲得護盾：腐蝕中不能獲得，改成扣 CORRODE_HP 生命 */
   const gainBlock = (t, a, i, v, u) => {
     if (a.corrode > 0) return hurt(t, CORRODE_HP, a, 1 - i, 'corrode', { u });
     a.block = Math.min(a.max, a.block + v);
+    /* 0.1.52 印記守護 3 級：獲得護盾時最強的武器立刻出手（每秒最多一次） */
+    if (a.F.sgGuard >= 3 && t >= a.gT && a.hp > 0 && S[1 - i].hp > 0) {
+      const w = a.w.filter(x => !(x.seal > 0) && !(x.fz > 0)).sort((x, y) => wPow(y) - wPow(x))[0];
+      if (w) {
+        a.gT = t + 1;
+        log(t, i, 'sgBash', 0, { u: w.u, self: 1 });
+        attack(t, a, i, w);
+      }
+    }
     return true;
   };
   /* 0.1.37 中毒、劇毒：上限看攻擊方（毒師 24、劇毒核心 40）；以毒為生：讓敵人中毒時自己也中毒（自己的中毒變回血） */
@@ -455,6 +469,9 @@ function simulate(FA, FB, seed) {
     if (a.F.fury && w.kind && a.furyN) v *= 1 + (a.F.fury * a.furyN) / 100;
     /* 0.1.51 火之化身：不是火的武器傷害 +10% */
     if (a.avatarOn && w.el !== 'fire') v *= 1.1;
+    /* 0.1.52 印記：幸運一擊（幸運道具 10% 傷害 ×3）、力量的重擊（o.hv） */
+    const lucky = w.sgK && r() * 100 < 10;
+    if (lucky) v *= 3;
     /* 0.1.28 穿甲：無視一部分護甲，那部分傷害也不會被格擋吃掉 */
     const pc = o.force ? 1 : (w.pierce || 0) / 100;
     const arm = d.F.arm + d.parA - d.sunder;
@@ -465,6 +482,8 @@ function simulate(FA, FB, seed) {
       ab = Math.min(d.block, v * (1 - pc));
       d.block -= ab;
       v -= ab;
+      /* 0.1.52 印記守護 2 級：護盾被打破時反彈 */
+      if (d.F.sgGuard >= 2 && d.block <= 0.5 && !self) hurt(t, 20, a, di, 'thorns', { sg: 1 });
     }
     v = Math.max(ab > 0 ? 0 : 1, v);
     hurt(t, v, d, ai, crit ? 'crit' : 'hit', {
@@ -474,7 +493,9 @@ function simulate(FA, FB, seed) {
       ...(self ? { self: 1 } : {}),
       ...(o.ctr ? { ctr: 1 } : {}),
       ...(o.lk ? { lk: 1 } : {}),
-      ...(o.ch ? { ch: 1 } : {})
+      ...(o.ch ? { ch: 1 } : {}),
+      ...(o.hv ? { hv: 1 } : {}),
+      ...(lucky ? { luck: 1 } : {})
     });
     a.dmgDone += v;
     if (a.F.streak) a.streak = Math.min(STREAK_MAX, a.streak + 1);
@@ -572,9 +593,13 @@ function simulate(FA, FB, seed) {
     inCtr = 0;
   };
   /* 0.1.50 一把武器出手一次：狙擊（每第 N 次）、元素箭袋輪替、矛弓連攜（×2）、多重射擊（射 N 支） */
+  let inHv = 0;
   const fire = (t, a, ai, w, mul = 1) => {
     const o = {};
     w.k = (w.k || 0) + 1;
+    /* 0.1.52 印記力量：每第 4 次出手是重擊（×2）；2 級暈眩、3 級其他力量道具跟著出手 */
+    const hv = w.sgM && w.k % 4 === 0;
+    if (hv) (mul *= 2), (o.hv = 1);
     if (w.snipe && w.k % w.snipe === 0) o.force = 1;
     if (w.elem) o.el3 = w.k % 3;
     if (a.F.link3 && w.kind) {
@@ -587,6 +612,28 @@ function simulate(FA, FB, seed) {
     /* 多射的箭（第 2 支起）只有傷害與插箭，不重複命中效果 */
     for (let c = 0; c < n && S[1 - ai].hp > 0; c++)
       attack(t, a, ai, w, mul * (n > 1 ? SHOT_DMG / 100 : 1), c ? { ...o, sub: 1, el3: -1 } : o);
+    if (hv && S[1 - ai].hp > 0) {
+      if (a.F.sgMight >= 2) stunIt(t, ai, S[1 - ai], 0.3);
+      if (a.F.sgMight >= 3 && !inHv) {
+        inHv = 1;
+        for (const x of a.w)
+          if (x !== w && x.sgM && !(x.seal > 0) && !(x.fz > 0) && S[1 - ai].hp > 0) fire(t, a, ai, x);
+        inHv = 0;
+      }
+    }
+  };
+  /* 0.1.52 印記迅捷：出手後下一件迅捷道具充能（接力）；3 級 25% 再往下接 */
+  const relay = (a, w) => {
+    const l = a.w.filter(x => x.sgS);
+    if (l.length < 2) return;
+    const p = a.F.sgSwift >= 2 ? 35 : 20;
+    let i = l.indexOf(w);
+    for (let n = 0; n < l.length - 1; n++) {
+      i = (i + 1) % l.length;
+      const x = l[i];
+      if (x !== w && !(x.seal > 0)) x.tt = Math.min(x.cd * 0.99, x.tt + (x.cd * p) / 100);
+      if (!(a.F.sgSwift >= 3 && r() * 100 < 25)) break;
+    }
   };
   /* 0.1.50 協同作戰：開戰召喚亞馬遜戰士，各自隨機繼承一把武器（不是寵物；複製一份、u 是 sm0、sm1，不在背包格子上） */
   for (let i = 0; i < 2; i++) {
@@ -715,6 +762,16 @@ function simulate(FA, FB, seed) {
       tr(a, 'spark');
     }
     if (a.F.igniteStart) igniteIt(0, i, S[1 - i]);
+    /* 0.1.52 印記幸運 3 級：擲骰，隨機一把 Ⅲ 階以下的武器這場升一階（傷害 ×3） */
+    if (a.F.sgLuck >= 3) {
+      const c = a.w.filter(w => w.t < TIER_MAX && !w.src);
+      if (c.length) {
+        const w = c[fl(r() * c.length)];
+        w.dmg = w.dmg.map(v => v * (TIERM[w.t + 1] / TIERM[w.t]));
+        w.t++;
+        log(0, i, 'dice', w.t, { u: w.u, self: 1 });
+      }
+    }
   }
   /* 0.1.33 先手射擊：星級最高的一把開戰先打一下 */
   for (let i = 0; i < 2; i++)
@@ -818,7 +875,13 @@ function simulate(FA, FB, seed) {
           w.seal -= SIM_DT;
           continue;
         }
-        w.tt += SIM_DT * wr2 * ice(w) * (w.cold ? shS : 1) * (night && w.kind === 'bow' ? 1 + a.F.sunmoon / 100 : 1);
+        w.tt +=
+          SIM_DT *
+          wr2 *
+          ice(w) *
+          (w.cold ? shS : 1) *
+          (night && w.kind === 'bow' ? 1 + a.F.sunmoon / 100 : 1) *
+          (w.sgL && a.F.sgLife >= 3 && a.hp < a.max * 0.3 ? 2 : 1);
         if (w.tt >= w.cd) {
           w.tt -= w.cd;
           /* 0.1.51 靜電場（敵人的）：機率觸電，這次落空、電荷 +1 */
@@ -839,6 +902,7 @@ function simulate(FA, FB, seed) {
           if (a.hp <= 0) break;
           if (miss) continue;
           fire(t, a, i, w);
+          if (w.sgS) relay(a, w);
           /* 0.1.50 戰舞：矛出手時弓充能、弓出手時矛充能 */
           if (a.F.link && w.kind)
             for (const x of a.w)

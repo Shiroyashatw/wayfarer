@@ -152,6 +152,13 @@ function botPower(F, P = BOT_P) {
     if (F.zapIgnite) dps *= 1.1;
   }
   if (F.static) dps *= 1 + (F.static / 100) * 1.2;
+  /* 0.1.52 印記：照有印記的武器佔幾成估（力量重擊、迅捷接力、幸運一擊）；守護、生命算進有效生命 */
+  const nW = Math.max(1, F.weapons.length),
+    sh = k => F.weapons.filter(w => w[k]).length / nW;
+  if (F.sgMight) dps *= 1 + sh('sgM') * (0.25 + (F.sgMight >= 2 ? 0.08 : 0) + (F.sgMight >= 3 ? 0.2 : 0));
+  if (F.sgSwift) dps *= 1 + sh('sgS') * (F.sgSwift >= 2 ? 0.3 : 0.17) * (F.sgSwift >= 3 ? 1.3 : 1);
+  if (F.sgLuck) dps *= (1 + sh('sgK') * 0.2) * (F.sgLuck >= 3 ? 1.15 : 1);
+  if (F.sgGuard >= 3) dps *= 1.12;
   /* 0.1.51 火法師：點燃（職業）、爆燃、流星火雨、焚盡、自焚、火之化身、引火、炎爆、熱浪、星星之火 */
   if (burnSrc || F.meteor || F.spark) {
     if (F.igniteAt) dps *= 1.12;
@@ -201,6 +208,9 @@ function botPower(F, P = BOT_P) {
   ehp += (F.regen || 0) * 9 + (F.startBlock || 0) + (F.thornsF || 0) * 6 + (F.critHeal || 0) * 4 + (F.thornsP || 0) * 8;
   /* 0.1.50 女武神降臨：多一條命（復活的生命）＋之後的加成；血獵的暴擊回血 */
   if (F.revive) ehp *= 1 + F.revive / 100 + 0.1;
+  /* 0.1.52 印記：守護 2 級（護盾被打破反彈）、生命 2、3 級（溢出變護盾、低血加速） */
+  if (F.sgGuard >= 2) ehp += 40;
+  if (F.sgLife >= 2) ehp *= F.sgLife >= 3 ? 1.15 : 1.05;
   /* 0.1.51 鳳凰涅槃（一次大回復）、灼命、火焰護體、避雷針 */
   if (F.phoenix) ehp *= 1.25;
   if (F.burnLeech) ehp *= 1.12;
@@ -451,6 +461,44 @@ function botPend(run, q, P) {
         : opts[fl(r01(run) * opts.length)];
   takePick(run, pick, true);
 }
+/* 0.1.52 印記：差一件就升級的印記多加分（評估時新道具沒有印記，用這個補） */
+function sgBias(run, sg) {
+  if (sg == null || run.mode !== 'sigil') return 1;
+  const n = sgCount(run.bag)[sg];
+  return n === 1 || n === 3 || n === 5 ? 1.25 : n >= 2 ? 1.1 : 1;
+}
+/* 0.1.52 流浪商隊：機器人跟商人交易（每回合一次）；有交易回傳 true */
+function botCaravan(run, q, P, cx) {
+  const v = run.van && !run.van.done && VANI[run.van.k];
+  if (!v || r01(run) > q) return false;
+  const ok = r => typeof r !== 'string',
+    its = [...run.bag.items, ...run.bench].filter(o => o && vanOK(o)),
+    val = o => botValue(run, o.id, o.t, P, cx).gain;
+  if (v.k === 'twin') return ok(vanDo(run));
+  if (v.k === 'gamble') return run.gold >= 9 && ok(vanDo(run));
+  if (v.k === 'blood') return run.hp > 25 && ok(vanDo(run, 'weapon'));
+  if (v.k === 'smith') {
+    const o = run.bag.items
+      .filter(o => o.t >= 2 && !(o.m && o.m2) && ITEMI[o.id].dmg)
+      .sort((a, b) => ITEMI[b.id].star * 10 + b.t - (ITEMI[a.id].star * 10 + a.t))[0];
+    return !!o && run.gold >= 7 && ok(vanDo(run, o.u));
+  }
+  /* 煉金、變形：拿最不值錢的（暫存區優先） */
+  const weak = its
+    .filter(o => ITEMI[o.id].star < 5 && o.t === 1)
+    .map(o => [o, val(o)])
+    .sort((a, b) => a[1] - b[1]);
+  if (v.k === 'morph') {
+    const w = weak[0];
+    return !!w && w[1] < P.gainMin && run.gold >= 5 && ok(vanDo(run, w[0].u));
+  }
+  if (v.k === 'alch')
+    for (let i = 0; i < weak.length; i++)
+      for (let j = i + 1; j < weak.length; j++)
+        if (ITEMI[weak[i][0].id].star === ITEMI[weak[j][0].id].star && weak[j][1] < P.gainMin * 2)
+          return ok(vanDo(run, [weak[i][0].u, weak[j][0].u]));
+  return false;
+}
 /* q：照評估做的機率（牌階高 q 高）；其他時候用簡單的舊規則（照主題、隨便買），低牌階才會笨一點 */
 function botAct(run, theme, q = 0.7, P = BOT_P) {
   const r = curRound(run);
@@ -476,6 +524,11 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
     floor = botFloor(run);
   const cx = {};
   botBump(cx);
+  /* 0.1.52 流浪商隊：先跟商人交易 */
+  if (botCaravan(run, q, P, cx)) {
+    botBump(cx);
+    for (const o of run.bench) if (o) botPlace(run, o, P, cx);
+  }
   for (let rolls = 0, guard = 0; guard < 12; guard++) {
     let best = null;
     run.shop.forEach((s, k) => {
@@ -484,7 +537,7 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
       if (price > run.gold - floor) return;
       const smart = r01(run) < q;
       let gain;
-      if (smart) gain = botValue(run, s.id, s.t || 1, P, cx).gain;
+      if (smart) gain = botValue(run, s.id, s.t || 1, P, cx).gain * sgBias(run, s.sg);
       else {
         const I = ITEMI[s.id];
         gain =

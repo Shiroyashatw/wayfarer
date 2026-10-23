@@ -46,17 +46,17 @@ description: 塞令老師的種子與快照對手：判斷要不要換快照版�
    ```js
    [VER, GVER, !!CLOUD.uid]   // 要是新的版本號、新的 GVER、true
    ```
-3. **背景跑**（直接 `await seedGhosts(160)` 要 80 秒以上，執行指令會逾時）：
+3. **背景跑**（直接 `await seedGhosts()` 要 2～3 分鐘，執行指令會逾時）：
    ```js
    window.__seed = { done: false, err: null, t0: Date.now() };
-   seedGhosts(160).then(() => (window.__seed.done = true)).catch(e => (window.__seed.err = String(e && (e.message || JSON.stringify(e)))));
+   seedGhosts().then(() => (window.__seed.done = true)).catch(e => (window.__seed.err = String(e && (e.message || JSON.stringify(e)))));
    ```
    之後每次最多等 40 秒查一次：
    ```js
    for (let i = 0; i < 8 && !__seed.done && !__seed.err; i++) await new Promise(r => setTimeout(r, 5000));
    JSON.stringify({ ...__seed, sec: ((Date.now() - __seed.t0) / 1000) | 0 })
    ```
-   主控台會印「種子對局 N/160」，用 `read_console_messages` 的 `pattern: '種子'` 看進度。
+   主控台會印「種子對局 N/300」，用 `read_console_messages` 的 `pattern: '種子'` 看進度。
 4. **確認**（數量與每個職業幾局）：
    ```js
    const { count } = await CLOUD.sb.from('runs').select('id', { count: 'exact', head: true }).eq('ver', GVER).eq('seed', true);
@@ -74,8 +74,8 @@ description: 塞令老師的種子與快照對手：判斷要不要換快照版�
 - 告訴使用者：上線的 commit、線上確認的版本、資料庫的種子數與職業分布。
 - 真人快照夠多以後，可以在 SQL Editor 跑 `delete from public.runs where seed;` 清掉種子（使用者決定，不要自己刪）。
 
-## 之後要改的（記在這裡）
+## 局數、職業、賽制（0.1.52 起）
 
-- **局數 160 → 300**：使用者 2026-10-24 決定賽制（0.1.52 起）做完後改成 300 局，讓對手變化更多；到時把這份 skill、CLAUDE.md、`seedGhosts` 預設一起改。
-- **職業輪流**：`seedGhosts` 的機器人是隨機選職業，分布會不平均；可以改成 13 個職業輪流。
-- **賽制**：賽制做完後快照要記那一局的賽制（地形、印記…），種子也要照賽制分布產生。
+- `seedGhosts()` 預設 **300 局**（0.1.51 以前 160），分數 700～2100 平均分布。
+- 機器人的職業 **13 個輪流**（`simLobby` 的 `opt.cls`），每個職業大約 23 局；確認時每個職業數量應該差不多。
+- 每一場機器人隨機抽一個**賽制**（`simLobby` 的 `rollMode`，跟玩家一樣的權重）；印記局的快照存了每件道具的印記（`packIt` 最後一格），戰鬥時照他那局的印記算。

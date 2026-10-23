@@ -15,6 +15,7 @@
   /* 戰鬥場景 */
   --arena-a:#dfe9f6; --arena-b:#f3ece0;
   --day:#ffd76a; --day-ink:#7a4a00; --night:#3a4680; --night-ink:#e4e9ff;
+  --sg0:#e06a3a; --sg1:#2f8be0; --sg2:#8a7d5c; --sg3:#2f9e44; --sg4:#c99a12;
   --fs-cap:11px; --fs-sm:12px; --fs-body:13px; --fs-btn:14px; --fs-title:16px; --fs-num:20px; --fs-hero:26px;
   --sp-1:4px; --sp-2:6px; --sp-3:8px; --sp-4:12px; --sp-5:16px;
   --r-sm:6px; --r-md:10px; --r-lg:14px;
@@ -33,6 +34,7 @@
   --s1b:#3e3a40; --s2b:#2c3e30; --s3b:#29374c; --s4b:#3a2e4c; --s5b:#4a3a1c;
   --arena-a:#2d3550; --arena-b:#2b2530;
   --day:#f5c95a; --day-ink:#4a2c00; --night:#2a3366; --night-ink:#d8defc;
+  --sg0:#ff8a5a; --sg1:#7ad3ff; --sg2:#d8cfb8; --sg3:#7bd36b; --sg4:#ffd76a;
   color-scheme:dark;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -551,3 +553,50 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .sp.avt canvas{filter:drop-shadow(0 0 6px #ff7a3a) drop-shadow(0 4px 2px #0003)}
 .sp.god canvas{filter:drop-shadow(0 0 6px #fff27a) drop-shadow(0 4px 2px #0003)}
 @media (prefers-reduced-motion:reduce){.bag .firec,.fx .fall{animation:none!important}}
+/* 0.1.52 賽制：開場畫面、準備畫面的賽制列（小標籤＋印記件數）、印記小標、商人 */
+.modeint{text-align:center;justify-items:center}
+.modeint img{width:48px;height:48px;image-rendering:pixelated;margin:var(--sp-2) auto 0}
+.mrules{text-align:left;margin:var(--sp-2) 0;padding-left:1.2em;font-size:var(--fs-body);line-height:1.5}
+.sgleg{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--sp-2);font-size:var(--fs-sm);margin-bottom:var(--sp-2)}
+.sgleg span{display:inline-flex;align-items:center;gap:var(--sp-1)}
+.sgleg .sgb{position:static}
+.mbar{display:flex;align-items:center;gap:var(--sp-2);margin:var(--sp-1) 0;flex-wrap:wrap}
+.mchip{display:inline-flex;align-items:center;gap:var(--sp-1);height:38px;padding:0 var(--sp-2);border:0;border-radius:999px;background:var(--accent-soft);color:var(--gold);font-size:var(--fs-sm)}
+.mchip img{width:20px;height:20px;image-rendering:pixelated}
+.sgrow{display:flex;gap:var(--sp-1);flex:1;min-width:0}
+.sgc{flex:1;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:2px;height:38px;padding:0 2px;border:0;border-radius:var(--r-sm);background:var(--fill);color:var(--dim);font-size:var(--fs-sm)}
+.sgc.on{background:var(--card);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--gold)}
+.sgc .sgb,.sgl .sgb,.sgleg .sgb,.rvit button .sgb{width:18px;height:18px;font-size:var(--fs-cap)}
+.sgc .sgb{position:static}
+.sgc b{font-family:var(--f-pix);font-weight:400}
+.sgc .pip{display:grid;gap:1px}
+.sgc .pip i{display:block;width:4px;height:4px;border-radius:50%;background:var(--line)}
+.sgc .pip i.on{background:var(--gold)}
+.sgb{position:absolute;right:2px;bottom:2px;display:grid;place-items:center;width:15px;height:15px;border-radius:4px;font-size:10px;font-style:normal;font-weight:700;line-height:1;color:#1d1b21;z-index:2;box-shadow:0 0 0 1px #0006}
+.sgb.sg0{background:var(--sg0)}.sgb.sg1{background:var(--sg1)}.sgb.sg2{background:var(--sg2)}.sgb.sg3{background:var(--sg3)}.sgb.sg4{background:var(--sg4)}
+.bag.mini .sgb{width:11px;height:11px;font-size:8px;right:1px;bottom:1px}
+.sc .sgb{right:4px;bottom:auto;top:4px}
+.sginfo{display:grid;gap:var(--sp-3);text-align:left;margin:var(--sp-2) 0}
+.sgi{display:flex;gap:var(--sp-2);align-items:flex-start}
+.sgi .sgb{position:static;width:22px;height:22px;font-size:var(--fs-sm);flex:none}
+.sgi b{display:flex;gap:var(--sp-2);align-items:baseline;font-size:var(--fs-btn)}
+.sgi b small{color:var(--dim);font-weight:400}
+.sgi p{margin:2px 0;font-size:var(--fs-sm)}
+.sgi p.on{color:var(--gold)}
+.sgl{display:flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-sm);color:var(--dim)}
+.sgl .sgb{position:static}
+.sgopts{display:grid;gap:var(--sp-2);margin-top:var(--sp-2)}
+.sgo{display:flex;align-items:center;gap:var(--sp-2);justify-content:flex-start;text-align:left}
+.sgo .sgb{position:static;width:24px;height:24px;font-size:var(--fs-btn)}
+.sgo span{display:grid}
+.sgo small{color:var(--dim);font-size:var(--fs-sm);font-weight:400}
+.van{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2);margin-bottom:var(--sp-2);border-radius:var(--r-md);background:var(--card);box-shadow:var(--shadow)}
+.van img{width:36px;height:36px;image-rendering:pixelated;flex:none}
+.van span{flex:1;min-width:0;display:grid}
+.van b{font-size:var(--fs-btn)}
+.van small{font-size:var(--fs-sm);color:var(--dim);line-height:1.3}
+.van .btn{flex:none;min-width:72px}
+.rvit button .sgb{position:static;margin-left:auto}
+/* 0.1.52 規範第 4 節的小按鈕、購買鈕（之前規範有寫、樣式沒做） */
+.btn.sm{min-height:38px;font-size:var(--fs-sm);padding:var(--sp-1) var(--sp-2)}
+.btn.buy{background:var(--accent-soft);color:var(--gold);box-shadow:inset 0 0 0 1.5px var(--gold)}

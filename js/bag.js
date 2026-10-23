@@ -223,6 +223,14 @@ function mergeAll(run, r) {
       .filter(q => q.f)
       .sort((x, y) => tfRank({ id: y.f, t: y.ft || 1 }) - tfRank({ id: x.f, t: x.ft || 1 }))[0];
     if (fu) (o.f = fu.f), (o.ft = fu.ft);
+    /* 0.1.52 印記：三件的印記不一樣，玩家三選一（run.sgq 排隊，畫面跳出來選）；機器人（auto）直接選背包裡最多的那個 */
+    const sgs = [...new Set(use.map(([, q]) => q.sg).filter(x => x != null))];
+    if (sgs.length > 1) {
+      if (run.auto) {
+        const n = sgCount(run.bag);
+        o.sg = sgs.sort((a, b) => n[b] - n[a])[0];
+      } else (run.sgq = run.sgq || []).push({ u: o.u, o: sgs });
+    }
     done.push(o);
   }
   done.fused = fuseAll(run);
@@ -346,6 +354,12 @@ function compileBag(bag, extra = {}) {
       static: 0,
       rod: 0,
       zapPct: 0,
+      /* 0.1.52 印記的等級（0～3） */
+      sgMight: 0,
+      sgSwift: 0,
+      sgGuard: 0,
+      sgLife: 0,
+      sgLuck: 0,
       /* 0.1.37 格子：每件道具佔哪幾格（敵人的陷阱放在格子上） */
       grid: { w: bag.w, h: bag.h, at: Object.fromEntries(bag.items.map(o => [o.u, cellsOf(o)])) },
       /* 0.1.40 角色加成的來源：{ 加成: [道具 u…] } */
@@ -462,6 +476,12 @@ function compileBag(bag, extra = {}) {
       (F.src.sisters = F.src.sisters || []).push(its.find(o => defsOf(o).some(d => d.sisters)).u);
     }
   }
+  /* 0.1.52 印記：背包裡每個印記幾件 → 等級；守護 1 級開戰護盾（每件 15）、生命 1 級吸血 */
+  const SGN = sgCount(bag),
+    SGL = SGN.map(sgLv);
+  [F.sgMight, F.sgSwift, F.sgGuard, F.sgLife, F.sgLuck] = SGL;
+  if (SGL[2]) F.startBlock += 15 * SGN[2];
+  if (SGL[3]) for (const q of bag.items) if (q.sg === 3) add(q, { ls: 5 });
   /* 0.1.7 開局職業：對有那個標籤的道具加成、角色加成 */
   const C = CLSI[bag.cls];
   if (C) {
@@ -575,7 +595,12 @@ function compileBag(bag, extra = {}) {
         pin: m.pin || 0,
         rend: m.rend || 0,
         /* 0.1.51 電荷 */
-        charge: m.charge || 0
+        charge: m.charge || 0,
+        /* 0.1.52 這件的印記（有到 1 級才算）：力量（重擊）、迅捷（接力）、生命（困獸）、幸運（幸運一擊） */
+        sgM: o.sg === 0 && SGL[0] ? 1 : 0,
+        sgS: o.sg === 1 && SGL[1] ? 1 : 0,
+        sgL: o.sg === 3 && SGL[3] ? 1 : 0,
+        sgK: o.sg === 4 && SGL[4] ? 1 : 0
       });
     }
   }
@@ -631,10 +656,22 @@ function bagMods(bag) {
 }
 /* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值, 終極藥劑的效果, 寒冰之心的生命, 封印過了幾回合]；
    後面是預設值的就不存。gp：0.1.35 開戰時的金幣（鈔能力、金錢標） */
-const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0];
+const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0];
 const packIt = o => {
   const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
-    t = [o.m2 || 0, o.f || 0, o.ft || 1, o.sc || 0, o.sm ? 1 : 0, o.ab || 0, o.ex || 0, o.hh || 0, o.rc || 0];
+    /* 0.1.52 最後一格是印記（+1，0 是沒有） */
+    t = [
+      o.m2 || 0,
+      o.f || 0,
+      o.ft || 1,
+      o.sc || 0,
+      o.sm ? 1 : 0,
+      o.ab || 0,
+      o.ex || 0,
+      o.hh || 0,
+      o.rc || 0,
+      o.sg != null ? o.sg + 1 : 0
+    ];
   while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
   return [...a, ...t];
 };
@@ -665,7 +702,8 @@ const unpackIt = (a, u) => ({
   ab: a[12] || null,
   ex: a[13] || null,
   hh: a[14] || 0,
-  rc: a[15] || 0
+  rc: a[15] || 0,
+  ...(a[16] ? { sg: a[16] - 1 } : {})
 });
 const unpackBag = p => ({
   w: p.w,
@@ -693,7 +731,8 @@ const unpackBag = p => ({
       ab: a[12] || null,
       ex: a[13] || null,
       hh: a[14] || 0,
-      rc: a[15] || 0
+      rc: a[15] || 0,
+      ...(a[16] ? { sg: a[16] - 1 } : {})
     }))
 });
 /* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */

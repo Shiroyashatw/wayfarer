@@ -236,9 +236,11 @@ const MOBS = {
 const runR = run => rng(h(run.seed, run.rc++, 77));
 const r01 = run => runR(run)();
 const pick = (run, a) => a[fl(r01(run) * a.length)];
-function newRunState(seed) {
+function newRunState(seed, mode = 'std') {
   return {
     seed,
+    /* 0.1.52 賽制 */
+    mode,
     rc: 0,
     ri: -1,
     hp: START_HP,
@@ -284,9 +286,35 @@ function rollClasses(run) {
   }
   return out;
 }
+/* 0.1.52 抽賽制（照權重） */
+function rollMode(rand) {
+  const tot = MODES.reduce((n, m) => n + m.w, 0);
+  let x = rand() * tot;
+  for (const m of MODES) if ((x -= m.w) < 0) return m.k;
+  return 'std';
+}
+/* 0.1.52 印記：還沒有印記的道具（起手道具、換賽制前拿到的）補一個；核心沒有印記 */
+function sgFix(run) {
+  if (run.mode !== 'sigil') return;
+  for (const o of [...run.bag.items, ...run.bench, run.hold])
+    if (o && o.sg == null && !ITEMI[o.id].core) o.sg = fl(r01(run) * SIGILS.length);
+}
+/* 0.1.52 背包裡每個印記幾件（只算背包，暫存區、核心不算） */
+const sgCount = bag => {
+  const n = SIGILS.map(() => 0);
+  for (const o of bag.items) if (o.sg != null && !ITEMI[o.id].core) n[o.sg]++;
+  return n;
+};
 /* 開新的一局；rivals 是 3 位對手（ghost.js 配好，或機器人） */
 function newRun(rivals) {
   const run = newRunState((Math.random() * 2 ** 31) | 0);
+  /* 0.1.52 賽制：開場公開（phase 'mode'）後才選職業；即時機器人跟你同一個賽制 */
+  run.mode = rollMode(() => r01(run));
+  for (const rv of rivals)
+    if (rv.live) {
+      rv.live.run.mode = run.mode;
+      sgFix(rv.live.run);
+    }
   /* 0.1.26 對手的生命在這局裡算（rv.hp），快照只提供每回合的背包 */
   for (const rv of rivals) rv.hp = START_HP;
   Object.assign(run, {
@@ -298,8 +326,8 @@ function newRun(rivals) {
     place: null
   });
   nextRound(run);
-  /* 1-1 開打前先選職業 */
-  run.phase = 'cls';
+  /* 1-1 開打前先看賽制、再選職業 */
+  run.phase = run.mode !== 'std' ? 'mode' : 'cls';
   run.clsOpts = rollClasses(run);
   run.clsRe = 1;
   return run;
@@ -434,15 +462,21 @@ function rollShop(run, lotto) {
       /* Ⅱ 階要池子還有 3 件 */
       t2 = run.ri > 0 && r01(run) * 100 < (BAGLV[run.lv].t2 || 0) && poolOf(id) - (used.get(id) || 0) >= 3;
     poolAdd(used, id, t2 ? 2 : 1);
-    return { id, t: t2 ? 2 : 1 };
+    /* 0.1.52 印記：商店的每一格帶一個隨機印記 */
+    return { id, t: t2 ? 2 : 1, ...(run.mode === 'sigil' ? { sg: fl(r01(run) * SIGILS.length) } : {}) };
   });
   /* 0.1.35 六合彩：價格打亂成 0 金～5★ 的價格（p） */
   if (lotto) for (const s of run.shop) s.p = fl(r01(run) * (5 * 3 ** (s.t - 1) + 1));
 }
 /* t：商店也可能直接賣 Ⅱ 階（後期才有），價錢 ×3；p：0.1.35 六合彩打亂過的價格 */
 const shopPrice = (run, id, t = 1, p) => (p != null ? p : priceOf(id) * 3 ** ((t || 1) - 1));
-const slotPrice = (run, s) => shopPrice(run, s.id, s.t, s.p);
-const newItem = (run, id, t = 1) => ({
+/* 0.1.52 狂風市集：價格 -1（最低 1 金；六合彩打亂成 0 金的不變） */
+const slotPrice = (run, s) => {
+  const p = shopPrice(run, s.id, s.t, s.p);
+  return run.mode === 'gale' && p > 0 ? Math.max(1, p - 1) : p;
+};
+/* sg：0.1.52 印記（沒給的話印記賽制隨機一個；核心沒有） */
+const newItem = (run, id, t = 1, sg) => ({
   u: 'i' + run.un++,
   id,
   t,
@@ -450,8 +484,21 @@ const newItem = (run, id, t = 1) => ({
   y: 0,
   r: 0,
   a: null,
-  m: ITEMI[id].star === 5 ? roll5(id, runR(run)) : null
+  m: ITEMI[id].star === 5 ? roll5(id, runR(run)) : null,
+  ...(run.mode === 'sigil' && !ITEMI[id].core ? { sg: sg ?? fl(r01(run) * SIGILS.length) } : {})
 });
+/* 0.1.52 買完：雙胞胎（送一件一樣的）、狂風市集（商店整排換新） */
+function afterBuy(run, s) {
+  if (run.twin) {
+    run.twin = 0;
+    const o = newItem(run, s.id, s.t || 1, s.sg),
+      fi = benchFree(run);
+    if (fi >= 0) run.bench[fi] = o;
+    else if (wouldMerge(run, s.id, s.t || 1)) run.bench.push(o);
+    else putItem(run, o);
+  }
+  if (run.mode === 'gale') rollShop(run);
+}
 const benchFree = run => run.bench.indexOf(null);
 /* 買：放進暫存區，湊滿 3 件就合成 */
 function buyItem(run, k) {
@@ -463,9 +510,10 @@ function buyItem(run, k) {
   if (fi < 0 && !wouldMerge(run, s.id, s.t || 1)) return '暫存區滿了，先把道具放進背包或賣掉';
   run.gold -= p;
   /* 0.1.5 暫存區滿了但買了就湊滿 3 件：先放在多出來的一格，合成後收回 */
-  if (fi < 0) run.bench.push(newItem(run, s.id, s.t || 1));
-  else run.bench[fi] = newItem(run, s.id, s.t || 1);
+  if (fi < 0) run.bench.push(newItem(run, s.id, s.t || 1, s.sg));
+  else run.bench[fi] = newItem(run, s.id, s.t || 1, s.sg);
   run.shop[k] = null;
+  afterBuy(run, s);
   const merged = mergeAll(run, runR(run));
   for (const o of run.bench.splice(BENCH_N)) if (o) run.bench[benchFree(run)] = o;
   kickback(run);
@@ -503,8 +551,9 @@ function buyToBag(run, k, x, y, r, swap) {
     run.bag.items = run.bag.items.filter(q => q !== swap);
     run.bench[benchFree(run)] = swap;
   }
-  run.bag.items.push({ ...newItem(run, s.id, s.t || 1), x, y, r });
+  run.bag.items.push({ ...newItem(run, s.id, s.t || 1, s.sg), x, y, r });
   run.shop[k] = null;
+  afterBuy(run, s);
   const merged = mergeAll(run, runR(run));
   kickback(run);
   return { merged };
@@ -551,10 +600,13 @@ function sellItem(run, u) {
 const freeRolls = run => coreProp(bagAll(run.bag), 'freeRoll') - (run.fr || 0);
 /* 0.1.35 豪賭：這回合還能刷新幾次（沒有上限回傳 Infinity；run.nr 是這回合刷新過的次數） */
 const rollsLeft = run => {
+  /* 0.1.52 狂風市集：不能刷新 */
+  if (run.mode === 'gale') return 0;
   const c = coreProp(bagAll(run.bag), 'rollCap');
   return c ? Math.max(0, c - (run.nr || 0)) : Infinity;
 };
 function rerollShop(run) {
+  if (run.mode === 'gale') return '狂風市集不能刷新：買一件，商店就會整排換新';
   if (rollsLeft(run) <= 0) return '這回合不能再刷新了';
   if (freeRolls(run) > 0) {
     run.fr = (run.fr || 0) + 1;
@@ -603,6 +655,12 @@ function nextRound(run) {
   run.pend = null;
   run.fr = 0;
   run.nr = 0;
+  /* 0.1.52 流浪商隊：每回合換一位商人（不跟上回合同一位）；雙胞胎只在那一回合有效 */
+  run.twin = 0;
+  if (run.mode === 'caravan') {
+    const c = VANS.filter(v => !run.van || v.k !== run.van.k);
+    run.van = { k: c[fl(r01(run) * c.length)].k, done: 0 };
+  }
   if (!r) return endRun(run, finalPlace(run));
   coreSync(run);
   sealTick(run);
@@ -811,6 +869,8 @@ function finishFight(run, fb) {
     run.ws++;
     run.lsk = 0;
     out.gold = winGold(r);
+    /* 0.1.52 印記：幸運 2 級，打贏 30% 多拿 2 金 */
+    if (luckWin(run)) (out.gold += 2), (out.luck = 1);
     /* 打贏對手：他扣跟你輸了會扣的一樣多（加上你背包的寵物）；結果視窗顯示他扣多少、是否淘汰 */
     if (opp.kind === 'pvp') {
       const rv = run.rivals[opp.rv];
@@ -1013,6 +1073,113 @@ function putItem(run, o) {
   else if (!run.hold) run.hold = o;
   else run.gold += sellOf(o.id, o.t);
 }
+/* 0.1.52 印記：幸運 2 級（4 件）以上，打贏 30% 多拿 2 金 */
+const luckWin = run => run.mode === 'sigil' && sgLv(sgCount(run.bag)[4]) >= 2 && r01(run) < 0.3;
+/* ================= 0.1.52 流浪商隊 ================= */
+/* 能被商人換掉的道具：商店買得到的（不是核心、不是核心送的） */
+const vanOK = o => o && ITEMI[o.id] && shopOK(ITEMI[o.id]);
+/* 道具的類型（變形師、血契用）：寵物、武器、盾、防具、藥水、飾品 */
+const itemCat = I =>
+  I.tags.includes('pet')
+    ? 'pet'
+    : I.dmg
+      ? 'weapon'
+      : I.block
+        ? 'shield'
+        : I.tags.includes('armor')
+          ? 'armor'
+          : I.tags.includes('potion')
+            ? 'potion'
+            : 'trinket';
+/* 一件道具在背包或暫存區：拿出來 */
+function takeOut(run, u) {
+  const o = run.bag.items.find(q => q.u === u);
+  if (o) {
+    run.bag.items = run.bag.items.filter(q => q !== o);
+    return o;
+  }
+  const i = run.bench.findIndex(q => q && q.u === u);
+  if (i < 0) return null;
+  const b = run.bench[i];
+  run.bench[i] = null;
+  return b;
+}
+const findU = (run, u) => run.bag.items.find(q => q.u === u) || run.bench.find(q => q && q.u === u);
+/* 商店現在最高能出到幾星 */
+const shopTop = run => {
+  const od = shopOdds(run);
+  for (let i = 4; i >= 0; i--) if (od[i] > 0) return i + 1;
+  return 1;
+};
+/* 隨機一件 star 星、符合 f 的商店道具（照池子） */
+const vanRoll = (run, star, f = () => true) => rollItem(run, false, poolUsed(run), it => it.star === star && f(it));
+/* 跟商人交易：a 是參數（煉金：[u, u]；鐵匠、變形：u；血契：'weapon'／'def'／'trinket'）；成功回傳 { got: 拿到的道具 }，失敗回傳原因 */
+function vanDo(run, a) {
+  const v = run.van && VANI[run.van.k];
+  if (!v || run.mode !== 'caravan') return '這回合沒有商人';
+  if (run.van.done) return '這位商人這回合已經交易過了';
+  if (v.k !== 'blood' && run.gold < v.c) return '金幣不夠';
+  let got = null;
+  if (v.k === 'alch') {
+    const [x, y] = (a || []).map(u => findU(run, u));
+    if (!vanOK(x) || !vanOK(y) || x === y) return '要選 2 件商店買得到的道具';
+    const st = ITEMI[x.id].star;
+    if (st !== ITEMI[y.id].star) return '2 件要同星級';
+    if (st >= 5) return '5★ 已經最高了';
+    takeOut(run, x.u);
+    takeOut(run, y.u);
+    got = newItem(run, vanRoll(run, st + 1));
+    putItem(run, got);
+  } else if (v.k === 'smith') {
+    const o = findU(run, a);
+    if (!o || ITEMI[o.id].core) return '要選背包或暫存區的道具';
+    if (o.t < 2) return '要 Ⅱ 階以上';
+    if (o.m && o.m2) return '已經有兩條詞綴了';
+    const m = roll5(o.id, runR(run));
+    if (!o.m) (o.m = m), (o.mv = 0);
+    else (o.m2 = m), (o.mv2 = 0);
+    got = o;
+  } else if (v.k === 'gamble') {
+    got = newItem(run, vanRoll(run, 1 + fl(r01(run) * 4)));
+    putItem(run, got);
+  } else if (v.k === 'morph') {
+    const o = findU(run, a);
+    if (!vanOK(o)) return '這件不能變形（核心送的道具不行）';
+    if (o.f) return '融合過的道具不能變形';
+    const I = ITEMI[o.id],
+      c = ITEMS.filter(it => it.star === I.star && shopOK(it) && it.id !== I.id && itemCat(it) === itemCat(I));
+    if (!c.length) return '沒有同類型的道具可以變';
+    const id = pick(run, c).id,
+      inBag = run.bag.items.includes(o);
+    o.id = id;
+    o.a = o.t > 1 ? affOf(id, runR(run)) : null;
+    o.m = ITEMI[id].star === 5 ? roll5(id, runR(run)) : null;
+    o.m2 = null;
+    o.sm = 0;
+    /* 形狀可能不一樣：原地放不下就收進暫存區 */
+    if (inBag && !canPlace({ ...run.bag, items: run.bag.items.filter(q => q !== o) }, o, o.x, o.y, o.r)) {
+      run.bag.items = run.bag.items.filter(q => q !== o);
+      putItem(run, o);
+    }
+    got = o;
+  } else if (v.k === 'twin') run.twin = 1;
+  else if (v.k === 'blood') {
+    if (run.hp <= v.c) return `生命要超過 ${v.c}`;
+    const f =
+      a === 'weapon'
+        ? it => !!it.dmg
+        : a === 'def'
+          ? it => !!it.block || it.tags.includes('armor')
+          : it => !it.dmg && !it.block && !it.tags.includes('armor');
+    run.hp -= v.c;
+    got = newItem(run, vanRoll(run, Math.min(5, shopTop(run) + 1), f));
+    putItem(run, got);
+  }
+  if (v.k !== 'blood') run.gold -= v.c;
+  run.van.done = 1;
+  mergeAll(run, runR(run));
+  return { got };
+}
 /* 0.1.37 煉成的一步：從還沒選過的效果抽 3 個（ex 是已經選的，n 是總共幾步） */
 function brewPend(run, ex, n = 3, mid) {
   const ks = Object.keys(BREW).filter(k => !ex.includes(k)),
@@ -1050,9 +1217,10 @@ function sealTick(run) {
 function bossCores(run) {
   const mc = mainCore(run),
     own = mc ? [mc.id, mc.sc] : [],
-    cs = ITEMS.filter(i => i.core === 1 && (!run.bag.cls || i.cls === run.bag.cls) && !own.includes(i.id)).map(
-      i => i.id
-    ),
+    ban = (MODEI[run.mode] || {}).ban || [],
+    cs = ITEMS.filter(
+      i => i.core === 1 && (!run.bag.cls || i.cls === run.bag.cls) && !own.includes(i.id) && !ban.some(k => i[k])
+    ).map(i => i.id),
     o = [];
   while (o.length < Math.min(3, cs.length)) {
     const c = pick(run, cs);
@@ -1136,10 +1304,13 @@ const THEMES = ['sword', 'bow', 'dagger', 'fire', 'pet', 'shield', 'mace', 'cold
 function mkBot(seed, i, rr, rating, opt = {}) {
   const s = h(seed, i, 31),
     rt = Math.max(600, (rating || 1000) + fl((rr() - 0.5) * 150));
-  const run = newRunState(s),
+  const run = newRunState(s, opt.mode || 'std'),
     opts = rollClasses(run),
-    cls = opts[fl(rr() * 3)];
+    /* 0.1.52 opt.cls：指定每個機器人的職業（種子輪流用） */
+    cls = (opt.cls && opt.cls[i]) || opts[fl(rr() * 3)];
   run.bag.cls = cls;
+  /* 0.1.52 機器人合成時的印記自動選（auto） */
+  run.auto = 1;
   giveStarter(run);
   return {
     run,
@@ -1164,7 +1335,7 @@ function botAfter(run, r, win, q, P) {
   if (win) {
     run.ws++;
     run.lsk = 0;
-    run.gold += winGold(r);
+    run.gold += winGold(r) + (luckWin(run) ? 2 : 0);
   } else {
     run.lsk++;
     run.ws = 0;
@@ -1197,7 +1368,9 @@ function botAfter(run, r, win, q, P) {
 }
 function simLobby(seed, rating, opt = {}) {
   const rr = rng(h(seed, 5)),
-    bots = [...Array(LOBBY_N).keys()].map(i => mkBot(seed, i, rr, rating, opt));
+    /* 0.1.52 一場的機器人同一個賽制（opt.mode 指定，不然照權重抽） */
+    mode = opt.mode || rollMode(rng(h(seed, 6))),
+    bots = [...Array(LOBBY_N).keys()].map(i => mkBot(seed, i, rr, rating, { ...opt, mode }));
   /* 0.1.36 池子：同一場的機器人共用（淘汰的不算） */
   for (const b of bots) b.run.lob = () => bots.filter(x => x !== b && !x.out).map(x => x.run);
   let order = 0;
