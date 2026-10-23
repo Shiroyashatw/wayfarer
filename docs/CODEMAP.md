@@ -72,6 +72,7 @@
 | 對手背包詳細、右鍵旋轉、百科（0.1.38） | `js/ui.js`、`css/style.css`、`tools/icon_sheets.py` | `rvDetHTML`、`showRivalBag(i, sel)`、`rotIt`、`pointermove` 的右鍵偵測、`contextmenu`；`codexHTML`、`CX_TABS`／`CX_AIL`／`CX_STAT`、動作 `cxTab`；`.rvit button`、`.rvdet`、`.cxtab`；圖示圖表新增「職業核心」組（tools/icon_sheets.py） |
 | 戰鬥紀錄對手背包詳細、道具觸發次數（0.1.40） | `js/sim.js`、`js/bag.js`、`js/run.js`、`js/ui.js` | `simulate` 的 `tr`／`trig`、`compileBag` 的 `F.src`（sim／bag）；`finishFight` 的 `run.trig`（run）；`lgBagHTML`、`showLog(id, hi, sel)`、`trigHTML`（ui） |
 | 說明文字的異常圖示（0.1.41） | `js/ui.js`、`css/style.css` | `dsc`、`KW_IC`／`KW_RE`（包在 `itemDesc`／`clsDesc`／`modTxt`／`brewTxt`／`mod5Txt` 外面）；`img.kw` |
+| 核心欄、商店機率（0.1.42） | `js/bag.js`、`js/run.js`、`js/bot.js`、`js/ui.js` | `bagAll`、`packIt`／`unpackIt`、`packBag` 的 `co`（bag）；`mainCore`、`coreSync`、`takePick` 的核心、`shopChance`（run）；`botValue0` 的核心（bot）；`coreFabHTML`、`coreDetHTML`、`oddsHTML`、動作 `coreSel`（ui） |
 | 點對手看上一回合的背包、重畫保留折疊（0.1.32） | `js/ui.js` | `showRivalBag`、`A.rvBag`、`rivalHTML` 的 `button.rv`；`render` 保留 `details[data-k]`（圖鑑 `codexHTML` 的 `cx_職業`） |
 | 戰報按鈕、拖曳中旋轉（0.1.29） | `js/ui.js` | `lastLogBtn`、`A.lastLog`；`dragMove`、`dragRot`（keydown／mousedown 右鍵／wheel）、`V.drag` 的 `rot`／`gi` |
 | 首頁排行榜、各職業勝率（0.1.29） | `js/ghost.js`、`js/ui.js`、`supabase/migrations/20261023000000_serling_leaderboard.sql` | `BOARD`、`ghostBoard`、`ghostEnd`（寫 `cls`／`rating_end`）（ghost）；`boardHTML`、`A.lb`、`V.lb`（ui）；RPC `leaderboard`、`class_stats` |
@@ -117,28 +118,28 @@
 ### js/items.js（2843 行）
 
 
-### js/bag.js（603 行）
+### js/bag.js（633 行）
 
-- **合成**（159），3 個宣告
-- **戰鬥數值**（214），7 個宣告
+- **合成**（161），3 個宣告
+- **戰鬥數值**（216），9 個宣告
 
 ### js/sim.js（686 行）
 
 
-### js/run.js（1296 行）
+### js/run.js（1332 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），9 個宣告
-- **0.1.36 池子**（309），34 個宣告
-- **對手**（605），16 個宣告
-- **戰鬥**（707），22 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1089），4 個宣告
-- **即時機器人（0.1.30）**（1223），5 個宣告
+- **0.1.36 池子**（309），35 個宣告
+- **對手**（620），16 個宣告
+- **戰鬥**（722），23 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1125），4 個宣告
+- **即時機器人（0.1.30）**（1259），5 個宣告
 
-### js/bot.js（476 行）
+### js/bot.js（473 行）
 
 - **戰力分數**（22），15 個宣告
-- **每回合**（314），4 個宣告
+- **每回合**（311），4 個宣告
 
 ### js/ghost.js（163 行）
 
@@ -154,22 +155,22 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（101），5 個宣告
 
-### js/news.js（271 行）
+### js/news.js（279 行）
 
 
-### js/ui.js（2128 行）
+### js/ui.js（2156 行）
 
 - **小工具**（6），12 個宣告
 - **牌階**（61），5 個宣告
 - **主題**（164），3 個宣告
 - **畫面切換**（180），2 個宣告
 - **首頁**（215），3 個宣告
-- **準備畫面**（307），25 個宣告
-- **結算、三選一、一局結束**（725），6 個宣告
-- **戰鬥播放**（781），20 個宣告
-- **圖鑑、說明、設定**（1226），6 個宣告
-- **動作**（1360），12 個宣告
-- **拖曳擺放**（1809），14 個宣告
+- **準備畫面**（307），28 個宣告
+- **結算、三選一、一局結束**（748），6 個宣告
+- **戰鬥播放**（804），20 個宣告
+- **圖鑑、說明、設定**（1249），6 個宣告
+- **動作**（1383），12 個宣告
+- **拖曳擺放**（1837），14 個宣告
 
 ### js/main.js（74 行）
 

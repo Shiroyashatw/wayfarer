@@ -546,7 +546,7 @@ function prepHTML(run) {
     ${rivalHTML(run)}
     ${tutHTML()}
     ${holdHTML(run)}</div>
-    <div class="pcol pb"><div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
+    <div class="pcol pb">${coreFabHTML(run)}<div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
@@ -568,6 +568,7 @@ function prepHTML(run) {
 /* 點道具：說明、加成、操作 */
 function detailHTML(run) {
   if (!V.sel) return '';
+  if (V.sel === 'core') return coreDetHTML(run);
   let o,
     where,
     k = -1;
@@ -597,7 +598,7 @@ function detailHTML(run) {
         ? (CLSI[run.bag.cls] || {}).n || '職業'
         : x.from === 'f'
           ? ITEMI[o.f].n
-          : fuName(run.bag.items.find(q => q.u === x.from) || { id: o.id });
+          : fuName(bagAll(run.bag).find(q => q.u === x.from) || { id: o.id });
     const t = (tot[n] = tot[n] || {});
     for (const k2 in x.m) t[k2] = (t[k2] || 0) + x.m[k2];
   }
@@ -611,7 +612,7 @@ function detailHTML(run) {
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
-  return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
+  return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0)} ${shapeOf(o.id).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div>${oddsHTML(run, o.id)}<button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
     <p>${dsc(itemDesc(o.id, o.t))}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
@@ -623,6 +624,28 @@ function detailHTML(run) {
         ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < slotPrice(run, o) ? 'disabled' : ''}>買 ${slotPrice(run, o)} 金</button>`
         : `${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o)} 金</button>`
     }</div></div>`;
+}
+/* 0.1.42 詳細的右上角：下次刷新商店出現這件的機率 */
+function oddsHTML(run, id) {
+  const p = shopChance(run, id);
+  if (p == null) return '';
+  const v = p * 100;
+  return `<span class="odds" title="下次刷新商店出現的機率"><small>刷新出現</small><b>${v >= 10 ? Math.round(v) : v >= 1 ? v.toFixed(1) : v > 0 ? '<1' : 0}%</b></span>`;
+}
+/* 0.1.42 核心欄：背包正上方靠右的膠囊按鈕（核心不佔格子、不蓋住背包），點了看核心效果 */
+function coreFabHTML(run) {
+  const c = run.bag.core;
+  if (!c) return '';
+  const nm = id => ITEMI[id].n.split('・').pop();
+  return `<button class="corefab${V.sel === 'core' ? ' sel' : ''}" data-act="coreSel" aria-label="職業核心"><img src="${itemIcon(c.id)}" alt="">${c.sc && ITEMI[c.sc] ? `<img src="${itemIcon(c.sc)}" alt="">` : ''}<span>核心：${nm(c.id)}${c.sc && ITEMI[c.sc] ? '＋' + nm(c.sc) : ''}</span><b>›</b></button>`;
+}
+function coreDetHTML(run) {
+  const c = run.bag.core;
+  if (!c) return '';
+  const one = (id, sub) =>
+    `<div class="cdet"><img src="${itemIcon(id)}" alt=""><div><b style="color:${STARC[5]}">${ITEMI[id].n}</b>${sub ? `<small>${sub}</small>` : ''}<p>${dsc(itemDesc(id))}</p></div></div>`;
+  return `<div class="det" id="det"><div class="dh"><img src="${itemIcon(c.id)}" alt=""><div><b style="color:${STARC[5]}">職業核心</b><small>不佔背包格子・整局有效</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
+    ${one(c.id, '2-5 首領')}${c.sc && ITEMI[c.sc] ? one(c.sc, '4-4 首領・融入') : '<p class="c-dim">4-4 首領會再給一個核心，融入這裡</p>'}${c.m ? mod5HTML(c.m) : ''}</div>`;
 }
 /* 0.1.40 上一場這件觸發了幾次（武器以外的道具：飾品、防具、盾、藥水；武器看戰鬥紀錄的傷害） */
 function trigHTML(run, o, where) {
@@ -1327,7 +1350,7 @@ function helpHTML() {
   <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×7，越大越貴：3×4 要 14 金，開局只有 ${START_GOLD} 金，要在買道具和存錢之間取捨），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉（電腦版拖曳中按 R、空白鍵、滑鼠右鍵或滾輪也能轉）；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
   <div class="card"><b>合成</b><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></div>
   <div class="card"><b>相鄰效果</b><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></div>
-  <div class="card"><b>職業核心</b><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 再掉一個專屬核心，選了直接融入第一個（兩個效果都有、不佔格子）。百科的「職業」分頁可以看全部。</p></div>
+  <div class="card"><b>職業核心</b><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 再掉一個專屬核心，選了直接融入第一個（兩個效果都有）。核心不佔背包格子，放在背包上方的「核心」按鈕，點了看效果。百科的「職業」分頁可以看全部。</p></div>
   <div class="card"><b>戰鬥</b><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></div>
   <div class="card"><b>異常狀態</b><p>燃燒、中毒、流血、劇毒每秒扣血（劇毒不會退、×2）；點燃讓燃燒越燒越多；破甲扣護甲；凍結讓一件道具 6 秒不能充能、冰緩讓它充能減半；暈眩不能動；虛弱傷害 -25%；致盲 30% 打不中；衰老不能暴擊；腐蝕不能獲得護盾（改成扣血）；混亂一半打到自己。</p></div>
   <div class="card"><b>陷阱</b><p>有些核心會在開戰時把陷阱放進敵人背包的格子（含空格），那格的道具每次出手都會觸發。戰鬥時有陷阱的道具右上角有紅點。</p></div>
@@ -1410,6 +1433,11 @@ const A = {
   },
   stats: () => showDlg('角色數值', statsHTML(S.run), []),
   log: d => showLog(d.k),
+  coreSel: () => {
+    V.sel = V.sel === 'core' ? null : 'core';
+    snd('tap');
+    render();
+  },
   cxTab: d => {
     V.cxTab = d.k;
     snd('tap');

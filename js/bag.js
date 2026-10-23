@@ -1,6 +1,8 @@
 /* 塞令老師 · 背包：格子、擺放、相鄰、合成，以及把背包算成戰鬥用的角色（compileBag） */
 'use strict';
 /* 背包裡的一件：{ u: 編號, id, t: 階, x, y, r: 旋轉, a: 升階詞綴 } */
+/* 0.1.42 職業核心不佔背包格子：放在 bag.core（第二個核心照舊融入它的 sc）；算效果時跟背包道具一起算 */
+const bagAll = bag => (bag.core ? [...bag.items, bag.core] : bag.items);
 const cellsOf = o => shapeOf(o.id, o.r, o.sm).map(([x, y]) => [o.x + x, o.y + y]);
 /* 格子上是哪一件（u），沒有回傳 null */
 function bagGrid(bag) {
@@ -168,14 +170,14 @@ function mergeNeed(its, id, t = merge2Of(its)) {
 /* 背包＋暫存區裡，同一種同一階的湊滿 3 件就合成（可能連鎖）；r 是亂數（詞綴） */
 function mergeAll(run, r) {
   const done = [],
-    early = coreProp(run.bag.items, 'early'),
+    early = coreProp(bagAll(run.bag), 'early'),
     /* 0.1.37 再生藥劑：生命藥水 Ⅱ 階就開詞綴 */
-    earlyPot = coreProp(run.bag.items, 'earlyPot');
+    earlyPot = coreProp(bagAll(run.bag), 'earlyPot');
   for (let guard = 0; guard < 20; guard++) {
     const all = [...run.bag.items.map(o => ['bag', o]), ...run.bench.filter(Boolean).map(o => ['bench', o])],
       key = {};
     for (const [w, o] of all) (key[o.id + '|' + o.t] = key[o.id + '|' + o.t] || []).push([w, o]);
-    const m2 = merge2Of(all.map(([, o]) => o)),
+    const m2 = merge2Of([...all.map(([, o]) => o), run.bag.core]),
       need = id => mergeNeed(null, id, m2),
       hit = Object.values(key).find(l => l.length >= need(l[0][1].id) && l[0][1].t < TIER_MAX);
     if (!hit) break;
@@ -214,7 +216,7 @@ function mergeAll(run, r) {
 /* ================= 戰鬥數值 ================= */
 /* 把背包算成戰鬥用的角色：hp、護甲、武器（含所有加成）、盾、藥水… */
 function compileBag(bag, extra = {}) {
-  const its = bag.items,
+  const its = bagAll(bag),
     F = {
       hp: BASE_HP,
       arm: 0,
@@ -301,7 +303,7 @@ function compileBag(bag, extra = {}) {
     RW = new Map();
   if (its.some(o => ITEMI[o.id].adj || ITEMI[o.id].row || ITEMI[o.id].tf)) {
     const g = bagGrid(bag);
-    for (const o of its) {
+    for (const o of bag.items) {
       const cs = cellsOf(o),
         nb = new Set();
       for (const [x, y] of cs)
@@ -318,8 +320,9 @@ function compileBag(bag, extra = {}) {
       RW.set(o.u, new Set(cs.map(p => p[1])));
     }
   }
-  const adjQ = (s, q) => NB.get(s.u).has(q.u),
-    rowQ = (s, q) => [...RW.get(s.u)].some(y => RW.get(q.u).has(y));
+  /* 0.1.42 核心欄的核心不在格子裡：不算相鄰、同一排 */
+  const adjQ = (s, q) => !!NB.get(s.u) && NB.get(s.u).has(q.u),
+    rowQ = (s, q) => !!RW.get(s.u) && !!RW.get(q.u) && [...RW.get(s.u)].some(y => RW.get(q.u).has(y));
   /* 0.1.33 鐵甲戰士：防具、盾的效果 ×defX */
   const defX = Math.max(1, coreProp(its, 'defX')),
     isDef = I => I.tags.includes('armor') || I.tags.includes('shield');
@@ -505,7 +508,7 @@ function coreFx(F, D, u) {
 }
 /* 給畫面用：每件道具目前吃到的加成（說明裡顯示「＋」） */
 function bagMods(bag) {
-  const its = bag.items,
+  const its = bagAll(bag),
     out = new Map(its.map(o => [o.u, []]));
   const tfm = tfOf(its),
     has = (o, tag) => tagsWith(o, tfm).includes(tag),
@@ -514,8 +517,8 @@ function bagMods(bag) {
   for (const s of its) {
     const S0 = ITEMI[s.id];
     for (const [w, test] of [
-      ['adj', q => adjacent(s, q)],
-      ['row', q => sameRow(s, q)],
+      ['adj', q => q !== bag.core && s !== bag.core && adjacent(s, q)],
+      ['row', q => q !== bag.core && s !== bag.core && sameRow(s, q)],
       ['all', () => true]
     ])
       for (const b0 of [...(S0[w] || []), ...(w === 'all' && s.sc && ITEMI[s.sc] ? ITEMI[s.sc].all || [] : [])]) {
@@ -543,18 +546,40 @@ function bagMods(bag) {
 /* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值, 終極藥劑的效果, 寒冰之心的生命, 封印過了幾回合]；
    後面是預設值的就不存。gp：0.1.35 開戰時的金幣（鈔能力、金錢標） */
 const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0];
+const packIt = o => {
+  const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
+    t = [o.m2 || 0, o.f || 0, o.ft || 1, o.sc || 0, o.sm ? 1 : 0, o.ab || 0, o.ex || 0, o.hh || 0, o.rc || 0];
+  while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
+  return [...a, ...t];
+};
+/* co：0.1.42 職業核心（不在背包格子裡） */
 const packBag = bag => ({
   w: bag.w,
   h: bag.h,
   cls: bag.cls || null,
   ...(bag.pay ? { pay: 1 } : {}),
   ...(bag.gp ? { gp: bag.gp } : {}),
-  it: bag.items.map(o => {
-    const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
-      t = [o.m2 || 0, o.f || 0, o.ft || 1, o.sc || 0, o.sm ? 1 : 0, o.ab || 0, o.ex || 0, o.hh || 0, o.rc || 0];
-    while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
-    return [...a, ...t];
-  })
+  ...(bag.core ? { co: packIt(bag.core) } : {}),
+  it: bag.items.map(packIt)
+});
+const unpackIt = (a, u) => ({
+  u,
+  id: a[0],
+  t: a[1],
+  x: a[2],
+  y: a[3],
+  r: a[4],
+  a: a[5] || null,
+  m: a[6] || null,
+  m2: a[7] || null,
+  f: a[8] || null,
+  ft: a[9] || 1,
+  sc: a[10] || null,
+  sm: a[11] || 0,
+  ab: a[12] || null,
+  ex: a[13] || null,
+  hh: a[14] || 0,
+  rc: a[15] || 0
 });
 const unpackBag = p => ({
   w: p.w,
@@ -562,6 +587,7 @@ const unpackBag = p => ({
   cls: p.cls || null,
   pay: p.pay || 0,
   gp: p.gp || 0,
+  core: p.co && ITEMI[p.co[0]] ? unpackIt(p.co, 'gc') : null,
   items: (p.it || [])
     .filter(a => ITEMI[a[0]])
     .map((a, i) => ({
@@ -586,7 +612,11 @@ const unpackBag = p => ({
 });
 /* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */
 function syncShrink(run) {
-  const t = (run.bag.items.flatMap(defsOf).find(d => d.shrink) || {}).shrink;
+  const t = (
+    bagAll(run.bag)
+      .flatMap(defsOf)
+      .find(d => d.shrink) || {}
+  ).shrink;
   for (const o of [...run.bag.items, ...run.bench]) {
     if (!o) continue;
     const want = t && ITEMI[o.id].tags.includes(t) && !ITEMI[o.id].core ? 1 : 0;

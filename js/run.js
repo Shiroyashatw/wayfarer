@@ -258,7 +258,7 @@ function newRunState(seed) {
 const bonusGold = run => {
   const st = (curRound(run) || { st: 1 }).st;
   let n = (CLSI[run.bag.cls] || {}).gold || 0;
-  for (const o of run.bag.items)
+  for (const o of bagAll(run.bag))
     for (const d of defsOf(o)) {
       if (d.gold) n += d.gold + (d === ITEMI[o.id] ? o.t - 1 : 0);
       if (d.goldSt) n += goldStOf(d.goldSt, st);
@@ -355,6 +355,20 @@ function clsShopTags(cls) {
   return [...new Set([...(C.m || []).map(b => b.tag), C.th].filter(t => t && t !== 'weapon'))];
 }
 const clsBoost = run => 1 + CLS_W * ((run.lv || 1) - 1);
+/* 0.1.42 下次刷新商店時這件至少出現一次的機率（0～1）：星級機率 × 這件在同星級的權重（池子剩幾件 × 職業偏好），5 格都算；
+   舊的商店會放回池子，所以不算自己的商店。不會出現在商店的（核心、送的道具）回傳 null */
+function shopChance(run, id) {
+  const I = ITEMI[id];
+  if (!I || !shopOK(I) || run.ri <= 0) return null;
+  const od = shopOdds(run),
+    used = poolUsed(run),
+    tags = clsShopTags(run.bag.cls),
+    cb = clsBoost(run),
+    w = it => Math.max(0, poolOf(it.id) - (used.get(it.id) || 0)) * (tags.some(t => it.tags.includes(t)) ? cb : 1),
+    tot = ITEMS.filter(it => it.star === I.star && shopOK(it)).reduce((n, it) => n + w(it), 0),
+    p = tot > 0 ? ((od[I.star - 1] || 0) / 100) * (w(I) / tot) : 0;
+  return 1 - (1 - p) ** SHOP_N;
+}
 /* 照權重抽：w(道具) ≤ 0 的不會抽到；全部是 0 回傳 null */
 function wpick(run, arr, w) {
   const ws = arr.map(w),
@@ -459,7 +473,7 @@ function buyItem(run, k) {
 }
 /* 0.1.35 回扣：每買 N 次送一次菁英三選一（mid：準備中途的三選一，選完回到準備；z：送的道具賣價 0） */
 function kickback(run) {
-  const n = coreProp(run.bag.items, 'kick');
+  const n = coreProp(bagAll(run.bag), 'kick');
   if (!n || run.pend) return;
   run.kb = (run.kb || 0) + 1;
   if (run.kb % n) return;
@@ -476,7 +490,7 @@ function kickback(run) {
 /* 買這件會不會馬上湊滿合成（3 件，二天一流 2 件；暫存區滿了也能買） */
 const wouldMerge = (run, id, t = 1) =>
   [...run.bag.items, ...run.bench].filter(o => o && o.id === id && o.t === t).length >=
-    mergeNeed([...run.bag.items, ...run.bench], id) - 1 && t < TIER_MAX;
+    mergeNeed([...run.bag.items, ...run.bench, run.bag.core], id) - 1 && t < TIER_MAX;
 /* 0.1.1 從商店直接拖進背包：買下並放在 (x, y)（放得下才會叫到這裡）；swap 是被擠出來要收進暫存區的道具 */
 function buyToBag(run, k, x, y, r, swap) {
   const s = run.shop[k];
@@ -534,10 +548,10 @@ function sellItem(run, u) {
   return v;
 }
 /* 0.1.33 投機商人：每回合免費刷新次數（run.fr 是這回合用掉的） */
-const freeRolls = run => coreProp(run.bag.items, 'freeRoll') - (run.fr || 0);
+const freeRolls = run => coreProp(bagAll(run.bag), 'freeRoll') - (run.fr || 0);
 /* 0.1.35 豪賭：這回合還能刷新幾次（沒有上限回傳 Infinity；run.nr 是這回合刷新過的次數） */
 const rollsLeft = run => {
-  const c = coreProp(run.bag.items, 'rollCap');
+  const c = coreProp(bagAll(run.bag), 'rollCap');
   return c ? Math.max(0, c - (run.nr || 0)) : Infinity;
 };
 function rerollShop(run) {
@@ -559,7 +573,7 @@ function rerollShop(run) {
 const lvOpen = run => !!BAGLV[run.lv + 1];
 /* 0.1.35 折價卷：背包升級打折 */
 const lvCost = run =>
-  BAGLV[run.lv + 1] ? Math.ceil(BAGLV[run.lv + 1].cost * (1 - coreProp(run.bag.items, 'lvOff') / 100)) : 0;
+  BAGLV[run.lv + 1] ? Math.ceil(BAGLV[run.lv + 1].cost * (1 - coreProp(bagAll(run.bag), 'lvOff') / 100)) : 0;
 function levelUp(run) {
   if (run.lv >= BAG_MAX) return '背包已經最大了';
   const c = lvCost(run);
@@ -590,6 +604,7 @@ function nextRound(run) {
   run.fr = 0;
   run.nr = 0;
   if (!r) return endRun(run, finalPlace(run));
+  coreSync(run);
   sealTick(run);
   if (run.ri === 0) {
     run.gold = START_GOLD;
@@ -597,7 +612,7 @@ function nextRound(run) {
   } else {
     run.gold += incomeOf(run);
     /* 0.1.35 六合彩：每回合第一輪的商店價格打亂、更常出高星 */
-    if (!run.lock) rollShop(run, !!coreProp(run.bag.items, 'lotto'));
+    if (!run.lock) rollShop(run, !!coreProp(bagAll(run.bag), 'lotto'));
   }
   run.lock = false;
   run.phase = 'prep';
@@ -723,7 +738,7 @@ let MOB_HP = 1,
 /* 0.1.33 賄賂：背包有這個核心、金幣超過 N 就付 N，這場（快照也一樣）整場封鎖敵人星級最高的武器 */
 /* 0.1.35 也記下開戰時的金幣（bag.gp：鈔能力的加成、金錢標能花的錢） */
 function payBribe(run) {
-  const b = coreProp(run.bag.items, 'bribe');
+  const b = coreProp(bagAll(run.bag), 'bribe');
   run.bag.pay = b && run.gold > b ? 1 : 0;
   if (run.bag.pay) run.gold -= b;
   run.bag.gp = run.gold;
@@ -958,7 +973,20 @@ function eliteOpts(run, a, b, win = true) {
 /* 三選一的獎勵放進暫存區 */
 /* 0.1.6 暫存區滿了：剛好湊滿 3 件就先放多出來的一格合成；不然玩家的話先寄放在 run.hold（下回合空出位置再領），不會卡住 */
 /* 0.1.29 專屬核心（背包或暫存區）；第二個核心（0.1.34 起是專屬核心，以前是副核心）直接融入它 */
-const mainCore = run => [...run.bag.items, ...run.bench].find(o => o && ITEMI[o.id].core === 1);
+const mainCore = run => run.bag.core || [...run.bag.items, ...run.bench].find(o => o && ITEMI[o.id].core === 1);
+/* 0.1.42 核心不佔格子：背包、暫存區、寄放裡的核心（舊存檔、舊快照）搬到 bag.core；多的第二個融入它 */
+function coreSync(run) {
+  const bag = run.bag;
+  for (const o of [...bag.items, ...run.bench, run.hold]) {
+    if (!o || !ITEMI[o.id].core) continue;
+    bag.items = bag.items.filter(q => q !== o);
+    const i = run.bench.indexOf(o);
+    if (i >= 0) run.bench[i] = null;
+    if (run.hold === o) run.hold = null;
+    if (!bag.core) bag.core = o;
+    else if (!bag.core.sc && o.id !== bag.core.id) bag.core.sc = o.id;
+  }
+}
 /* 0.1.33 保鏢：拿到時送 N 隻隨機 X★ 寵物（暫存區滿了就換成賣價）；0.1.35 第一桶金送錢（gain）、魔劍正宗送一件道具（give，暫存區滿了先寄放） */
 function giveGift(run, id) {
   const I = ITEMI[id],
@@ -1049,6 +1077,14 @@ function takePick(run, id, hold) {
     mk = () => Object.assign(newItem(run, id, t), P.z ? { z: 1 } : {});
   if (mc && mc.id !== id) {
     mc.sc = id;
+    run.pend = null;
+    giveGift(run, id);
+    syncShrink(run);
+    return '';
+  }
+  /* 0.1.42 第一個核心：直接放進核心欄，不佔背包、暫存區 */
+  if (ITEMI[id].core) {
+    run.bag.core = newItem(run, id);
     run.pend = null;
     giveGift(run, id);
     syncShrink(run);

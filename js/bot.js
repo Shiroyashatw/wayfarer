@@ -219,14 +219,11 @@ function botValue0(run, id, t, P, cx) {
     base = cx.base || (cx.base = botPowerOf(bag, P)),
     o = { u: '_new', id, t, x: 0, y: 0, r: 0, a: null };
   /* 0.1.29 第二個核心（0.1.34 起是專屬核心）：融入專屬核心，不佔格子 */
-  const mc = ITEMI[id].core && bag.items.find(q => ITEMI[q.id].core === 1 && q.id !== id);
-  if (mc) {
-    const nb = { ...bag, items: bag.items.map(q => (q === mc ? { ...q, sc: id } : q)) };
-    return { gain: botPowerOf(nb, P) / base - 1 + botEcon(run, ITEMI[id]), how: 'core' };
-  }
+  /* 0.1.42 核心在核心欄：第一個直接放進去，第二個融入 */
   if (ITEMI[id].core) {
-    const v = botValue1(run, id, t, P, cx, bag, base, o);
-    return { ...v, gain: v.gain + botEcon(run, ITEMI[id]) };
+    const mc = bag.core,
+      nb = { ...bag, core: mc ? (mc.id === id ? mc : { ...mc, sc: id }) : { ...o } };
+    return { gain: botPowerOf(nb, P) / base - 1 + botEcon(run, ITEMI[id]), how: 'core' };
   }
   return botValue1(run, id, t, P, cx, bag, base, o);
 }

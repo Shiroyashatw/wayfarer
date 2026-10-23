@@ -470,6 +470,20 @@ button.rv{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%}
 .rvit span.s1{--sb:var(--s1)}.rvit span.s2{--sb:var(--s2)}.rvit span.s3{--sb:var(--s3)}.rvit span.s4{--sb:var(--s4)}.rvit span.s5{--sb:var(--s5)}
 .rvit span{display:inline-flex;align-items:center;gap:2px;background:var(--card2);border-radius:var(--r-sm);padding:2px var(--sp-1) 2px 2px;font-size:var(--fs-sm);border:1.5px solid var(--sb,var(--line))}
 .rvit img{width:20px;height:20px;image-rendering:pixelated}
+/* 0.1.42 核心欄（背包右上角的懸浮按鈕）、核心詳細、詳細右上角的商店機率 */
+.corefab{justify-self:end;display:flex;align-items:center;gap:var(--sp-1);min-height:44px;max-width:100%;margin-bottom:var(--sp-2);padding:2px var(--sp-3) 2px var(--sp-1);border-radius:999px;background:var(--card);border:1.5px solid var(--s5);box-shadow:var(--shadow);font-size:var(--fs-sm);color:var(--ink)}
+.corefab img{width:26px;height:26px;image-rendering:pixelated;flex:none}
+.corefab span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.corefab b{color:var(--s5)}
+.corefab.sel{background:var(--fill-hi)}
+.cdet{display:flex;gap:var(--sp-2);align-items:flex-start;margin-top:var(--sp-2)}
+.cdet img{width:32px;height:32px;image-rendering:pixelated;flex:none}
+.cdet div{display:grid}
+.cdet small{font-size:var(--fs-cap);color:var(--dim)}
+.cdet p{margin:var(--sp-1) 0 0;font-size:var(--fs-sm)}
+.det .dh .odds{display:grid;justify-items:end;margin-left:auto;margin-right:var(--sp-2);line-height:1.1}
+.det .dh .odds small{font-size:var(--fs-cap);color:var(--dim)}
+.det .dh .odds b{font-size:var(--fs-sm);color:var(--gold)}
 /* 0.1.41 說明文字裡異常關鍵字前的小圖示 */
 img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;margin:0 1px 0 2px;image-rendering:pixelated}
 /* 0.1.38 百科的分頁 */
