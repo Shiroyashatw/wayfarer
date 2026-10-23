@@ -68,7 +68,10 @@ function botPower(F, P = BOT_P) {
   /* 0.1.50 撕裂（一層一共約扣 4 倍，比流血強）、每秒插幾支箭、矛／弓的數量（亞馬遜的連攜、戰舞） */
   const rendW = 2 * (F.rendX || 1);
   let arrowRate = 0,
-    rendSrc = 0;
+    rendSrc = 0,
+    /* 0.1.51 每秒幾個電荷、有沒有燃燒來源 */
+    chgRate = 0,
+    burnSrc = 0;
   const nS = F.weapons.filter(w => w.kind === 'spear').length,
     nB = F.weapons.filter(w => w.kind === 'bow').length;
   for (const w of F.weapons) {
@@ -79,6 +82,8 @@ function botPower(F, P = BOT_P) {
     if (w.snipe) hit *= 1 + 0.35 / w.snipe;
     arrowRate += ((w.stick || 0) * Math.max(1, w.shots || 1)) / Math.max(0.3, w.cd);
     if (w.rend || w.pin) rendSrc++;
+    chgRate += ((w.charge || 0) * (1 + (w.chainN || 0))) / Math.max(0.3, w.cd);
+    if (w.burn) burnSrc++;
     hit += ((w.rend || 0) + (w.pin ? PIN_REND / (PIN_MAX + 1) : 0)) * rendW * P.dotW;
     if (w.pin) hit *= 1.15;
     if (w.elem) hit = hit * 1.3 + 3 * P.dotW;
@@ -132,6 +137,34 @@ function botPower(F, P = BOT_P) {
   if (F.fury) dps *= 1 + (F.fury * 8) / 100;
   if (F.streak) dps *= 1 + (F.streak * 6) / 100;
   if (F.kite) dps *= 1 + ((F.dodge || 0) / 100) * (F.kite / 100) * 2;
+  /* 0.1.51 雷法師：放電（每秒幾次 × 傷害、暈眩、麻痺）、雷暴雲、超載、疾雷、雷神、雷鳴、電磁脈衝、雷火、靜電場 */
+  if (F.cloud) (dps += F.cloud / CLOUD_T), (chgRate += 1 / CLOUD_T);
+  const zapR = chgRate / (F.overload ? OVERLOAD_N : CHARGE_MAX);
+  if (zapR) {
+    const ov = F.overload ? OVERLOAD_MUL : 1;
+    dps += zapR * ZAP_DMG * ov * (1 + (F.zapPct || 0) / 100);
+    dps *= 1 + Math.min(0.6, zapR * ((F.overload ? OVERLOAD_STUN : ZAP_STUN) + ZAP_PARA * 0.04) * 0.6 * P.ctrlW);
+    if (F.palsy) dps *= 1.08;
+    if (F.thunderGod) dps *= 1.25;
+    if (F.zapSpd) dps *= 1 + (F.zapSpd * 3) / 100;
+    if (F.stunCharge) dps *= 1 + (F.stunCharge / 100) * Math.min(1, zapR * 2);
+    if (F.emp) dps *= 1 + Math.min(0.25, zapR * F.emp * 0.1);
+    if (F.zapIgnite) dps *= 1.1;
+  }
+  if (F.static) dps *= 1 + (F.static / 100) * 1.2;
+  /* 0.1.51 火法師：點燃（職業）、爆燃、流星火雨、焚盡、自焚、火之化身、引火、炎爆、熱浪、星星之火 */
+  if (burnSrc || F.meteor || F.spark) {
+    if (F.igniteAt) dps *= 1.12;
+    if (F.flash) dps *= 1.12;
+    if (F.burnout) dps *= 1.2;
+    if (F.selfBurn) dps *= 1.12;
+    if (F.avatar) dps *= 1.18;
+    if (F.combust) dps *= 1.12;
+    if (F.heat) dps *= 1.1;
+  }
+  if (F.meteor) dps += (F.meteor + METEOR_BURN * 2 * P.dotW) / METEOR_T;
+  if (F.igniteStart) dps *= 1.15;
+  if (F.spark) dps *= 1.2;
   for (const p of F.pots) if (p.bomb) dps += (p.v * p.n * p.bomb) / 100 / 15;
   if (F.petHunt) dps *= 1 + (F.petHunt * Math.min(5, ep)) / 100;
   dps *= 1 + (F.double || 0) / 100 + ((F.triple || 0) * 2) / 100;
@@ -168,6 +201,11 @@ function botPower(F, P = BOT_P) {
   ehp += (F.regen || 0) * 9 + (F.startBlock || 0) + (F.thornsF || 0) * 6 + (F.critHeal || 0) * 4 + (F.thornsP || 0) * 8;
   /* 0.1.50 女武神降臨：多一條命（復活的生命）＋之後的加成；血獵的暴擊回血 */
   if (F.revive) ehp *= 1 + F.revive / 100 + 0.1;
+  /* 0.1.51 鳳凰涅槃（一次大回復）、灼命、火焰護體、避雷針 */
+  if (F.phoenix) ehp *= 1.25;
+  if (F.burnLeech) ehp *= 1.12;
+  ehp += (F.thornsBurn || 0) * 6;
+  if (F.rod) ehp *= 1 + (F.rod / 100) * 0.3;
   if (F.huntHeal && rendSrc) ehp += F.huntHeal * 4;
   for (const p of F.pots) ehp += p.v * p.n + (p.ex ? p.ex.length * 25 * p.n : 0) + (F.potBuff ? F.potBuff[0] * p.n : 0);
   if (F.poisonLife) ehp *= 1.08;
@@ -201,7 +239,7 @@ function botPower(F, P = BOT_P) {
   }
   if (F.petDown) pre += (Math.min(PETDOWN_MAX, F.petDown) / 100) * 0.3 * Math.min(1, ep / 2);
   /* 0.1.37 陷阱：大約每個 1 格陷阱蓋到一件道具的機率一半，蓋到的話每次出手都觸發 */
-  const TW = { ignite: 0.05, bomb: 0.04, spore: 0.06, icicle: 0.07, snare: 0.07, net: 0.08, stake: 0.07 };
+  const TW = { ignite: 0.05, bomb: 0.04, spore: 0.06, icicle: 0.07, snare: 0.07, net: 0.08, stake: 0.07, shock: 0.08 };
   for (const t of F.traps || []) pre += (TW[t.k] || 0.04) * t.n * (t.sz > 1 ? 1.5 : 1);
   if (F.corrodeRe) pre += 0.12;
   /* 0.1.29 抗異常：照對手平均每種異常的強度（run.eres，跟 epet 一樣看上一回合其他人的背包）估價 */

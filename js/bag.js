@@ -321,6 +321,31 @@ function compileBag(bag, extra = {}) {
       sunmoon: 0,
       fury: 0,
       rendX: 0,
+      /* 0.1.51 火法師（點燃）、雷法師（電荷、放電、麻痺） */
+      igniteAt: 0,
+      spark: 0,
+      flash: 0,
+      meteor: 0,
+      burnout: 0,
+      selfBurn: 0,
+      avatar: 0,
+      igniteStart: 0,
+      combust: 0,
+      burnLeech: 0,
+      heat: 0,
+      thornsBurn: 0,
+      phoenix: 0,
+      palsy: 0,
+      overload: 0,
+      thunderGod: 0,
+      cloud: 0,
+      zapSpd: 0,
+      stunCharge: 0,
+      emp: 0,
+      zapIgnite: 0,
+      static: 0,
+      rod: 0,
+      zapPct: 0,
       /* 0.1.37 格子：每件道具佔哪幾格（敵人的陷阱放在格子上） */
       grid: { w: bag.w, h: bag.h, at: Object.fromEntries(bag.items.map(o => [o.u, cellsOf(o)])) },
       /* 0.1.40 角色加成的來源：{ 加成: [道具 u…] } */
@@ -529,7 +554,7 @@ function compileBag(bag, extra = {}) {
         pierce: Math.min(PIERCE_MAX, m.pierce || 0),
         chain: m.chain || 0,
         guard: m.guard || 0,
-        chainN: Math.min(CHAIN_MAX, m.chainN || 0),
+        chainN: Math.min(CHAIN_MAX, (m.chainN || 0) + (I.chainN || 0)),
         /* 0.1.35 雙手大師：每佔 1 格的連擊機率；金錢標：有錢時每次攻擊花 1 金、數值翻倍 */
         dbl: (m.cellDbl || 0) * shapeOf(o.id).length,
         coin: I.coin ? 1 : 0,
@@ -548,7 +573,9 @@ function compileBag(bag, extra = {}) {
         elem: m.elem ? 1 : 0,
         sure: m.sure ? 1 : 0,
         pin: m.pin || 0,
-        rend: m.rend || 0
+        rend: m.rend || 0,
+        /* 0.1.51 電荷 */
+        charge: m.charge || 0
       });
     }
   }

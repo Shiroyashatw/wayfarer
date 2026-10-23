@@ -25,7 +25,8 @@ function borrowIcon(id) {
 }
 function itemIcon(id) {
   if (ICU.has(id)) return ICU.get(id);
-  const own = artIconURL('it_' + id),
+  /* 0.1.51 重製過的核心（icx）用自己指定的圖示，不用舊的 it_c_ 圖 */
+  const own = ITEMI[id] && ITEMI[id].icx ? null : artIconURL('it_' + id),
     u = own || borrowIcon(id);
   if (!u) return iconURL('star');
   /* 0.1.29 有專屬圖示但大圖還沒載好：先借舊圖，不要記住（不然載好之後一直是舊圖） */
@@ -866,9 +867,9 @@ function renderBattle() {
     ob = fb.opp.bag;
   $('app').innerHTML = `<div class="bt">
     <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b></div>
-    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div>${smnHTML(0)}<i class="sunb" id="sun0" hidden></i></div>
+    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><i class="kline" id="kl0" hidden></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div>${smnHTML(0)}<i class="sunb" id="sun0" hidden></i></div>
     <div class="vs">VS</div>
-    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div>${smnHTML(1)}<i class="sunb" id="sun1" hidden></i></div>
+    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><i class="kline" id="kl1" hidden></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div>${smnHTML(1)}<i class="sunb" id="sun1" hidden></i></div>
     <div class="fx" id="fx"></div></div>
     <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
     <div class="blog" id="blog" aria-live="off"></div>
@@ -902,6 +903,14 @@ function bShow() {
     el.style.width = (hp / tot) * 100 + '%';
     $('bk' + i).style.width = (bk / tot) * 100 + '%';
     $('hpt' + i).innerHTML = `${hp}${bk > 0 ? `<b class="bkt">+${bk}</b>` : ''}`;
+    /* 0.1.51 焚盡：生命條上的斬殺線（燃燒層數 × N，生命低於這條線直接燒死） */
+    const kf = (i ? B.fb.me : B.fb.opp.F).burnout,
+      kl = $('kl' + i);
+    if (kl) {
+      const kv = kf && B.st ? B.st[i][0] * kf : 0;
+      kl.hidden = !(kv > 0);
+      if (kv > 0) kl.style.left = Math.min(100, (kv / tot) * 100) + '%';
+    }
   }
   $('btime').textContent = B.t.toFixed(1) + ' 秒' + (B.t >= FATIGUE_T ? '・疲勞' : '');
 }
@@ -994,7 +1003,10 @@ const STN = {
     /* 0.1.50 插箭、撕裂、插矛 */
     arrow: '插箭',
     rend: '撕裂',
-    pin: '插矛'
+    pin: '插矛',
+    /* 0.1.51 電荷、麻痺 */
+    chg: '電荷',
+    para: '麻痺'
   },
   /* 0.1.37 陷阱的名字 */
   TRAPN = {
@@ -1004,7 +1016,8 @@ const STN = {
     icicle: '冰錐',
     snare: '捕獸夾',
     net: '獵網',
-    stake: '尖樁'
+    stake: '尖樁',
+    shock: '電網'
   },
   /* 0.1.47 陷阱的圖示與顏色 */
   TRAPI = {
@@ -1014,7 +1027,8 @@ const STN = {
     icicle: ['it_c_cryo_2', '#8fd8ff'],
     snare: ['sk_trapshot', '#ff8a5a'],
     net: ['it_bugnet', '#ffe27a'],
-    stake: ['it_spikestud', '#ff5a7a']
+    stake: ['it_spikestud', '#ff5a7a'],
+    shock: ['asc_judge_c0', '#fff27a']
   },
   STI = [
     ['burn', 'ail_burn', 1],
@@ -1033,7 +1047,9 @@ const STN = {
     ['confuse', 'ail_shock', 0],
     ['arrow', 'sk_rainarrow', 1],
     ['rend', 'asc_valkyrie_c0', 1],
-    ['pin', 'sk_javelin', 1]
+    ['pin', 'sk_javelin', 1],
+    ['chg', 'sk_spark', 1],
+    ['para', 'asc_storm_b1', 1]
   ];
 function bSts() {
   if (!B.st) return;
@@ -1073,7 +1089,8 @@ const ELC = {
   chill: '#bfe9ff',
   corrode: '#d6e36b',
   age: '#c9b89a',
-  rend: '#ff3a5a'
+  rend: '#ff3a5a',
+  para: '#fff27a'
 };
 function bPop(side, txt, col, big) {
   const fx = $('fx');
@@ -1114,7 +1131,7 @@ function bLog(e, tg) {
     by = (s, u) => `${who(s)}${it(s, u) ? '的' + it(s, u) : ''}`;
   let t = '';
   if (e.k === 'hit' || e.k === 'crit')
-    t = `${by(e.s, e.u)}${e.ctr ? ' 反擊' : ''}${e.lk ? ' 連攜 ×2' : ''}${e.k === 'crit' ? ' 暴擊' : ''} → ${e.v}${e.ab ? `（擋 ${e.ab}）` : ''}`;
+    t = `${by(e.s, e.u)}${e.ch ? ' 彈射' : ''}${e.ctr ? ' 反擊' : ''}${e.lk ? ' 連攜 ×2' : ''}${e.k === 'crit' ? ' 暴擊' : ''} → ${e.v}${e.ab ? `（擋 ${e.ab}）` : ''}`;
   else if (e.k === 'miss') t = `${by(e.s, e.u)} ${e.parry ? '被招架' : '被閃開'}`;
   else if (e.k === 'block') t = `${by(e.s, e.u)} 格擋 +${e.v}`;
   else if (e.k === 'dot') t = `${who(tg)} ${STN[e.el === 'fire' ? 'burn' : e.el] || ''} -${e.v}`;
@@ -1131,7 +1148,7 @@ function bLog(e, tg) {
     t = `${who(1 - e.s)}的${it(1 - e.s, e.tu) || '道具'} 觸發${TRAPN[e.x] || '陷阱'}${e.v ? ` -${e.v}` : ''}${e.x === 'snare' ? '，這次出手落空' : ''}${e.brk ? '（捕獸夾壞了）' : ''}`;
   else if (e.k === 'weak') t = `${who(tg)} 虛弱 ${e.v} 秒`;
   else if (e.k === 'blind') t = `${who(tg)} 致盲 ${e.v} 秒`;
-  else if (e.k === 'thorns') t = `${who(e.s)} 反彈 ${e.v}`;
+  else if (e.k === 'thorns') t = `${who(e.s)} ${e.rod ? '避雷針電擊' : '反彈'} ${e.v}`;
   else if (e.k === 'fatigue') t = `${who(tg)} 疲勞 -${e.v}`;
   else if (e.k === 'cleanse') t = `${who(e.s)} 淨化了 ${e.v} 種異常`;
   else if (e.k === 'sealAll') t = `${by(e.s, e.u)} 封鎖了${who(1 - e.s)}所有武器 ${e.v} 秒`;
@@ -1144,6 +1161,19 @@ function bLog(e, tg) {
   else if (e.k === 'revive') t = `${who(e.s)} 女武神降臨！復活 ${e.v} 生命`;
   else if (e.k === 'summon') t = `${who(e.s)} 召喚${it(e.s, e.u) || '亞馬遜戰士'}`;
   else if (e.k === 'pinOut') t = `${who(e.s)} 拔出${who(tg)}身上的矛：撕裂`;
+  /* 0.1.51 火法師、雷法師 */ else if (e.k === 'zap') t = `${who(tg)} 電荷滿了：放電 -${e.v}${e.ov ? '（超載）' : ''}`;
+  else if (e.k === 'meteor') t = `${who(e.s)} 隕石落下 → ${who(tg)} -${e.v}`;
+  else if (e.k === 'bolt') t = `${who(e.s)} 落雷 → ${who(tg)} -${e.v}`;
+  else if (e.k === 'flash') t = `${who(tg)} 爆燃 -${e.v}`;
+  else if (e.k === 'combust') t = `${who(e.s)} 炎爆：引爆 ${e.n} 層燃燒 -${e.v}`;
+  else if (e.k === 'burnout') t = `${who(tg)} 被焚盡！`;
+  else if (e.k === 'phoenix') t = `${who(e.s)} 鳳凰涅槃：清掉異常`;
+  else if (e.k === 'avatar') t = `${who(e.s)} 化身火焰`;
+  else if (e.k === 'god') t = `${who(e.s)} 雷神降臨！`;
+  else if (e.k === 'palsy') t = `${who(tg)} 麻痺滿了：癱瘓 ${e.v} 秒`;
+  else if (e.k === 'static') t = `${who(1 - e.s)}的${it(1 - e.s, e.tu) || '道具'} 觸電，這次出手落空`;
+  else if (e.k === 'spark')
+    t = e.v > 1 || e.cells ? `${who(tg)}的背包著火（${e.cells ? e.cells.length : ''} 格）` : `${who(tg)} 身上冒出火苗`;
   else if (e.k === 'sun') t = `${who(e.s)} ${e.v ? '白天：矛傷害提升' : '夜晚：弓攻速提升'}`;
   if (!t) return;
   const d = document.createElement('p');
@@ -1268,6 +1298,36 @@ function bSun(e) {
   bAnim(el, 'swap');
   if (!first) bPop(e.s, e.v ? '白天' : '夜晚', e.v ? '#ffd76a' : '#a9b8ff');
 }
+/* 0.1.51 星星之火：對方背包著火的格子（一格一格擴散）；怪物沒有背包，在牠下面排一個火苗 */
+function bSpark(e) {
+  const side = 1 - e.s,
+    root = $('bb' + side);
+  if (root && e.cells) {
+    const cs = parseFloat(root.style.getPropertyValue('--cs')) || 24;
+    for (const [x, y] of e.cells) {
+      const m = document.createElement('i');
+      m.className = 'firec';
+      m.style.cssText = `left:${x * (cs + GAP)}px;top:${y * (cs + GAP)}px;width:${cs}px;height:${cs}px`;
+      root.appendChild(m);
+    }
+  } else if (!e.cells && $('trp' + side) && !$('trp' + side).querySelector('.firem')) {
+    const m = document.createElement('i');
+    m.className = 'trapm inrow firem';
+    m.style.cssText = '--tc:#ff7a3a';
+    m.innerHTML = `<img src="${artIconURL('sk_fire') || iconURL('star')}" alt="火苗">`;
+    $('trp' + side).appendChild(m);
+  }
+}
+/* 0.1.51 從天上落下的東西（隕石、落雷）：打在被打的那一邊 */
+function bFall(side, kind) {
+  const fx = $('fx');
+  if (!fx || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const f = document.createElement('i');
+  f.className = 'fall ' + kind;
+  f.style.left = (side ? 75 : 25) + '%';
+  fx.appendChild(f);
+  setTimeout(() => f.remove(), 450);
+}
 /* 0.1.47 陷阱觸發：那個陷阱的圖示閃一下、冒出一圈光 */
 function bTrapHit(e) {
   const side = 1 - e.s;
@@ -1303,11 +1363,13 @@ function bTick() {
     if (e.k === 'trapSet') bTrapSet(e, (B.trapN = (B.trapN || 0) + 1) - 1);
     if (e.k === 'trapHit') bTrapHit(e);
     if (e.k === 'sun') bSun(e);
+    if (e.k === 'spark') bSpark(e);
     if (k++ > 6) continue;
     if (e.k === 'hit' || e.k === 'crit') {
       bPop(
         tg,
-        (e.ctr ? '反擊 ' : '') +
+        (e.ch ? '彈射 ' : '') +
+          (e.ctr ? '反擊 ' : '') +
           (e.lk ? '連攜 ' : '') +
           (e.k === 'crit' ? '暴擊 ' : '') +
           e.v +
@@ -1381,6 +1443,41 @@ function bTick() {
       bPop(tg, '拔矛・撕裂', '#ff3a5a', 1);
       bBurst(tg, '#ff3a5a', 8);
     } else if (e.k === 'summon') bBurst(e.s, '#bfe9ff', 6, 1);
+    else if (e.k === 'zap') {
+      bPop(tg, `${e.ov ? '超載' : '放電'} ${e.v}`, '#fff27a', 1);
+      bBurst(tg, '#fff27a', 12);
+      bFall(tg, 'bolt');
+    } else if (e.k === 'bolt') {
+      bPop(tg, `落雷 ${e.v}`, '#fff27a');
+      bFall(tg, 'bolt');
+    } else if (e.k === 'meteor') {
+      bPop(tg, `隕石 ${e.v}`, '#ff9a5a', 1);
+      bFall(tg, 'meteor');
+      bBurst(tg, '#ff9a5a', 10);
+    } else if (e.k === 'flash') {
+      bPop(tg, `爆燃 ${e.v}`, '#ff7a3a', 1);
+      bBurst(tg, '#ff7a3a', 16);
+      bAnim(document.querySelector('.arena'), 'shake');
+    } else if (e.k === 'combust') {
+      bPop(tg, `炎爆 ${e.v}`, '#ff7a3a', 1);
+      bBurst(tg, '#ff7a3a', 12);
+    } else if (e.k === 'burnout') {
+      bPop(tg, '焚盡！', '#ff5a3a', 1);
+      bBurst(tg, '#ff5a3a', 18);
+    } else if (e.k === 'phoenix') {
+      bPop(e.s, '鳳凰涅槃', '#ffb15a', 1);
+      bBurst(e.s, '#ffb15a', 14, 1);
+    } else if (e.k === 'avatar') {
+      bPop(e.s, '火之化身', '#ff9a5a', 1);
+      $('sp' + e.s)?.classList.add('avt');
+    } else if (e.k === 'god') {
+      bPop(e.s, '雷神降臨！', '#fff27a', 1);
+      $('sp' + e.s)?.classList.add('god');
+    } else if (e.k === 'palsy') bPop(tg, '癱瘓', '#fff27a', 1);
+    else if (e.k === 'static') {
+      bPop(1 - e.s, '觸電', '#fff27a');
+      bFlash(1 - e.s, e.tu);
+    }
   }
   bShow();
   bSts();
@@ -1428,7 +1525,11 @@ const CX_TABS = [
 /* 異常狀態：[圖示, 名字, 說明] */
 const CX_AIL = () => [
   ['ail_burn', '燃燒', '每秒受「層數」傷害，之後少 1 層（N 層一共約 N×(N+1)/2）。'],
-  ['sk_fireburst', '點燃', `被點燃後整場有效、只有一層：燃燒不再每秒 -1，改成每秒 +1，而且燃燒傷害 ×${IGNITE_MUL}。`],
+  [
+    'sk_fireburst',
+    '點燃',
+    `被點燃後整場有效、只有一層：燃燒不再每秒 -1，改成每秒 +1，而且燃燒傷害 ×${IGNITE_MUL}。火法師讓敵人燃燒到 15 層時自動點燃。`
+  ],
   ['ail_poison', '中毒', `每秒受「層數」傷害，層數不會退。最多 ${POISON_MAX} 層（毒師讓敵人最多 24 層）。`],
   [
     'ail_dmark',
@@ -1446,6 +1547,12 @@ const CX_AIL = () => [
     '插箭',
     `弓箭手的弓、弩命中時插在敵人身上，整場不退（最多 ${ARROW_MAX} 支）；每支讓敵人受到弓箭手的攻擊傷害 +1%，爆裂箭、倒鉤箭、鷹眼狙擊也看箭的數量。`
   ],
+  [
+    'sk_spark',
+    '電荷',
+    `雷法師的雷命中（含彈射）讓敵人 +1 電荷，滿 ${CHARGE_MAX} 層放電：${ZAP_DMG} 傷害（固定）、麻痺 ${ZAP_PARA}，然後歸零。`
+  ],
+  ['asc_storm_b1', '麻痺', `每層攻速 -${PARA_SLOW}%（最多 ${PARA_MAX} 層），每秒少 1 層；吃暈眩抗性。`],
   [
     'sk_javelin',
     '插矛',

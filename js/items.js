@@ -1240,6 +1240,60 @@ const ITEMS = [
     ns: 1,
     ic: 'a:hunt_hawkeagle'
   },
+  /* 0.1.51 雷系道具（雷法師重製）：雷霆標槍（矛、雷）、雷光弓（弓、雷）、電容線圈（相鄰雷電荷 +1）、雷霆之心（放電傷害）、雷蝙蝠（寵物） */
+  {
+    id: 'thunderjav',
+    n: '雷霆標槍',
+    star: 2,
+    sh: 'v3',
+    tags: ['weapon', 'spear', 'light'],
+    cd: 1.3,
+    dmg: [3, 5],
+    on: { stun: [10, 0.4] },
+    chainN: 1,
+    ic: 'asc_storm_b3'
+  },
+  {
+    id: 'thunderbow',
+    n: '雷光弓',
+    star: 3,
+    sh: 'v3',
+    tags: ['weapon', 'bow', 'light'],
+    cd: 1.3,
+    dmg: [4, 7],
+    on: { stun: [15, 0.4] },
+    ic: 'sk_lightarrow'
+  },
+  {
+    id: 'teslacoil',
+    n: '電容線圈',
+    star: 2,
+    sh: 's1',
+    tags: ['trinket', 'light'],
+    adj: [{ tag: 'light', charge: 1 }],
+    ic: 'unit_tesla'
+  },
+  {
+    id: 'thunderheart',
+    n: '雷霆之心',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket', 'light'],
+    fx: { zapPct: 50 },
+    ic: 'tree_n040'
+  },
+  {
+    id: 'thunderbat',
+    n: '雷蝙蝠',
+    star: 4,
+    sh: 's1',
+    tags: ['pet', 'light'],
+    cd: 0.9,
+    dmg: [4, 6],
+    on: { stun: [10, 0.3] },
+    chainN: 1,
+    ic: 'a:m_thunderbat'
+  },
   {
     id: 'kingcrown',
     n: '王者之冠',
@@ -2043,7 +2097,9 @@ const CLASSES = [
     m: [
       { tag: 'fire', burn: 2, dmgPct: 10 },
       { tag: 'staff', dmgPct: 15 }
-    ]
+    ],
+    /* 0.1.51 職業特性：敵人燃燒到 15 層自動點燃 */
+    F: { igniteAt: 15 }
   },
   {
     id: 'cryo',
@@ -2063,7 +2119,8 @@ const CLASSES = [
     n: '雷法師',
     ic: 'sk_chainlight',
     th: 'light',
-    m: [{ tag: 'light', stunCh: 15, dmgPct: 35 }]
+    /* 0.1.51 職業特性：雷命中彈射 1 次（連鎖）、每一下（含彈射）讓敵人 +1 電荷，滿了放電 */
+    m: [{ tag: 'light', chainN: 1, charge: 1 }]
   },
   {
     id: 'venom',
@@ -2197,19 +2254,20 @@ const CORE_MAIN = {
     ['虛弱毒', { all: onP(P, { weakCh: 25 }) }],
     ['疾影', { all: onP(P, { spd: 30 }) }]
   ],
+  /* 0.1.51 火法師重製（點燃）：星星之火（會蔓延的火苗陷阱）、爆燃、流星火雨、焚盡（斬殺線）、自焚、火之化身、引火、炎爆、灼命、熱浪、火焰護體、鳳凰涅槃 */
   pyro: P => [
-    ['烈焰', { all: onP(P, { burn: 3 }) }],
-    ['焚身', { all: onP(P, { dmgPct: 10 }), pre: { burn: 6 } }],
-    ['炎爆', { all: onP(P, { dmgPct: 35 }) }],
-    ['灰燼', { all: onP(P, { burn: 1 }), fx: { execute: 50 } }],
-    ['火牆', { fx: { startBlock: 25, thornsF: 3 } }],
-    ['燎原', { all: onP(P, { burn: 1, per: 'fire' }) }],
-    ['鳳凰', { fx: { regen: 4, hp: 40 } }],
-    ['狂焰', { all: onP(P, { spd: 10 }), fx: { ramp: 10 } }],
-    ['火雨', { all: onP(P, { dmgPct: 10 }), fx: { double: 15 } }],
-    ['熔甲', { all: onP(P, { sunder: 2, burn: 1 }) }],
-    ['炙熱', { all: onP(P, { crit: 15 }), fx: { critMul: 40 } }],
-    ['火焰護體', { fx: { thornsF: 6, hp: 20 } }]
+    ['星星之火', { fx: { spark: 1 }, ic: 'sk_fire' }],
+    ['爆燃', { fx: { flash: 4 }, ic: 'sk_fireburst' }],
+    ['流星火雨', { fx: { meteor: 15 }, ic: 'msk_meteor' }],
+    ['焚盡', { fx: { burnout: 5 }, ic: 'sup_ln_hellfire' }],
+    ['自焚', { fx: { selfBurn: 100 }, ic: 'asc_s_flame' }],
+    ['火之化身', { fx: { avatar: 30 }, ic: 'sk_flamelance' }],
+    ['引火', { fx: { igniteStart: 1 }, pres: { burn: 5 }, ic: 'sup_sp_gfire' }],
+    ['炎爆', { fx: { combust: 2 }, ic: 'sup_sp_cvfire' }],
+    ['灼命', { fx: { burnLeech: 25 }, ic: 'sk_firetotem' }],
+    ['熱浪', { fx: { heat: 5 }, ic: 'sk_firewall' }],
+    ['火焰護體', { fx: { thornsBurn: 1, hp: 20 }, ic: 'it_fireorb' }],
+    ['鳳凰涅槃', { fx: { phoenix: 5 }, ic: 'sk_phoenix' }]
   ],
   /* 0.1.37 冰法重製：冰錐（陷阱）、碎冰（照敵人凍結／冰緩的道具數）、冰甲、暴風雪、寒冰之心（送會成長的道具） */
   cryo: P => [
@@ -2227,21 +2285,20 @@ const CORE_MAIN = {
     ['霜凍連擊', { all: onP(P, { dmgPct: 10 }), fx: { double: 18 } }],
     ['永凍', { all: onP(P, { weakCh: 20, freezeCh: 15, chillCh: 10 }) }]
   ],
+  /* 0.1.51 雷法師重製（連鎖 → 電荷 → 放電 → 麻痺）：連鎖閃電、癱瘓、超載、雷神降臨、雷暴雲、疾雷、雷鳴、電磁脈衝、雷火、靜電場、避雷針、電網陷阱 */
   storm: P => [
-    ['雷鳴', { all: onP(P, { stunCh: 15, dmgPct: 10 }) }],
-    ['落雷', { all: onP(P, { dmgPct: 35 }) }],
-    ['雷暴', { all: onP(P, { dmgPct: 10 }), fx: { double: 20 } }],
-    /* 0.1.33 背包裡每有 1 件雷，所有雷連鎖 +1（每次攻擊多打 1 下，多打的傷害 CHAIN_DMG%，最多 CHAIN_MAX） */
-    ['閃電鏈', { all: onP(P, { chainN: 1, per: 'light' }) }],
-    ['電光', { all: onP(P, { blindCh: 15 }), pre: { blind: 4 } }],
-    ['雷神', { all: onP(P, { crit: 20 }), fx: { critMul: 40 } }],
-    ['超載', { all: onP(P, { dmgPct: 10 }), fx: { ramp: 12 } }],
-    /* 0.1.33 開戰 5 秒內封鎖敵人所有武器 */
-    ['靜電場', { pre: { sealAll: 5 } }],
-    ['雷擊', { all: onP(P, { stunCh: 5 }), fx: { opener: 100 } }],
-    ['天譴', { all: onP(P, { dmgPct: 10 }), fx: { execute: 70 } }],
-    ['疾雷', { all: onP(P, { spd: 25 }) }],
-    ['電磁破甲', { all: onP(P, { sunder: 2, dmgPct: 10 }) }]
+    ['連鎖閃電', { all: [{ tag: 'light', chainN: 2 }], ic: 'asc_storm_b0' }],
+    ['癱瘓', { fx: { palsy: 1 }, ic: 'asc_storm_b1' }],
+    ['超載', { fx: { overload: 1 }, ic: 'asc_storm_b5' }],
+    ['雷神降臨', { fx: { thunderGod: 1 }, ic: 'asc_storm_c1' }],
+    ['雷暴雲', { fx: { cloud: 6 }, ic: 'asc_storm_b4' }],
+    ['疾雷', { fx: { zapSpd: 10 }, ic: 'asc_storm_b2' }],
+    ['雷鳴', { fx: { stunCharge: 20 }, ic: 'asc_storm_c0' }],
+    ['電磁脈衝', { fx: { emp: 2 }, ic: 'asc_judge_c0' }],
+    ['雷火', { all: [{ tag: 'light', burn: 1 }], fx: { zapIgnite: 1 }, ic: 'asc_talisman_b1' }],
+    ['靜電場', { fx: { static: 15 }, ic: 'sk_staticfield' }],
+    ['避雷針', { fx: { rod: 20, rStun: 50 }, ic: 'tree_s09' }],
+    ['電網陷阱', { traps: [{ k: 'shock', n: 3, sz: 2 }], ic: 'asc_judge_b3' }]
   ],
   /* 0.1.37 毒師重製：劇毒（新異常）、以毒為生、腐蝕、墮落蛇、致命毒素（時段）、毒囊（陷阱）、別西卜的封印 */
   venom: P => [
@@ -2361,7 +2418,9 @@ function genCores() {
         sh: ['s1', 'v2', 'h2'][k % 3],
         tags: ['core'],
         ic: C.ic,
-        ...d
+        ...d,
+        /* 0.1.51 重製過的核心自己指定圖示（icx：不用舊的 it_c_職業_編號 圖） */
+        ...(d.ic ? { icx: 1 } : {})
       })
     );
     CORE_SUB.forEach(([n, f], k) =>
@@ -2649,7 +2708,35 @@ const MODN = {
   huntHeal: v => `敵人撕裂中時暴擊回復 ${v}`,
   sunmoon: v => `每 ${SUN_T} 秒日夜交替（從白天開始）：白天矛傷害 +${pct(v)}，夜晚弓、弩攻速 +${pct(v)}`,
   fury: v => `每被攻擊打中一次，矛、弓、弩傷害 +${pct(v)}（最多 ${FURY_MAX} 層）`,
-  rendX: v => `造成的撕裂 ×${v}`
+  rendX: v => `造成的撕裂 ×${v}`,
+  /* 0.1.51 火法師（點燃）、雷法師（電荷、放電、麻痺） */
+  igniteAt: v => `敵人燃燒到 ${v} 層時自動點燃（燃燒不退反增、傷害 ×${IGNITE_MUL}）`,
+  spark: () =>
+    `開戰時在敵人背包隨機放 1 格火苗，每 ${SPARK_T} 秒往上下左右蔓延 1 格；著火格子上的道具每次出手，敵人燃燒 +${SPARK_BURN}`,
+  flash: v => `敵人被點燃的那一刻爆炸：燃燒層數 ×${v} 傷害（固定）；之後火的命中燃燒 +1`,
+  meteor: v =>
+    `每 ${METEOR_T} 秒落下一顆隕石：${v} 傷害（固定）、燃燒 +${METEOR_BURN}；敵人點燃後改成每 ${METEOR_FAST} 秒一顆`,
+  burnout: v => `敵人剩下的生命低於「燃燒層數 ×${v}」時直接燒死`,
+  selfBurn: v => `點燃中的敵人每次出手，受到燃燒層數 ${pct(v)} 的傷害（固定）`,
+  avatar: v => `敵人被點燃後化身火焰：所有武器攻速 +${pct(v)}，不是火的武器也命中燃燒 +2、傷害 +10%`,
+  igniteStart: () => '開戰時點燃敵人',
+  combust: v => `每 ${COMBUST_T} 秒引爆敵人身上的燃燒：每層 ${v} 傷害（固定，點燃中 ×${IGNITE_MUL}），層數不會減少`,
+  burnLeech: v => `敵人燃燒每秒造成的傷害，回復你 ${pct(v)}`,
+  heat: v => `敵人每 5 層燃燒，攻速 -${pct(v)}（最多 -60%）`,
+  thornsBurn: v => `被攻擊打中時讓攻擊者燃燒 ${v} 層`,
+  phoenix: v => `生命低於 30% 時清掉自己的異常、回復「敵人燃燒層數 ×${v}」（一次）`,
+  charge: v => `命中時讓敵人 +${v} 電荷（滿 ${CHARGE_MAX} 層放電：${ZAP_DMG} 傷害（固定）、麻痺 ${ZAP_PARA}）`,
+  palsy: () => `敵人麻痺滿 ${PARA_MAX} 層時暈眩 ${PALSY_STUN} 秒，然後麻痺清空`,
+  overload: () => `放電改成要 ${OVERLOAD_N} 層電荷，但傷害 ×${OVERLOAD_MUL}，而且暈眩 ${OVERLOAD_STUN} 秒`,
+  thunderGod: () => `放電 ${GOD_N} 次後化身雷神：所有武器攻速 +${GOD_SPD}%，命中的電荷 ×2`,
+  cloud: v => `每 ${CLOUD_T} 秒落雷打敵人一次：${v} 傷害（固定）、電荷 +1`,
+  zapSpd: v => `每次放電，所有武器攻速 +${pct(v)}（最多 5 層）`,
+  stunCharge: v => `每次暈眩敵人，你所有武器充能 +${pct(v)}`,
+  emp: v => `放電時封鎖敵人星級最高的武器 ${v} 秒`,
+  zapIgnite: () => '放電時點燃敵人',
+  static: v => `敵人每次出手 ${pct(v)} 機率觸電：那次出手落空、電荷 +1`,
+  rod: v => `被攻擊打中時 ${pct(v)} 機率電擊攻擊者：${ROD_DMG} 傷害（固定）、電荷 +1`,
+  zapPct: v => `放電傷害 +${pct(v)}`
 };
 /* 0.1.37 終極藥劑的效果（煉成三選一）：喝下時套用 */
 const BREW = {
@@ -2693,8 +2780,33 @@ const goldStOf = (G, st) => (G.filter(([s]) => st >= s).pop() || [0, 0])[1];
 const RES_MAX = 80,
   CLEANSE_T = 5,
   /* 0.1.33 閃電鏈的連鎖：最多多打 2 下、多打的那幾下傷害 50% */
-  CHAIN_MAX = 2,
+  CHAIN_MAX = 3,
   CHAIN_DMG = 50;
+/* 0.1.51 火法師：星星之火（每幾秒蔓延、著火道具出手的燃燒）、流星火雨（每幾秒、點燃後每幾秒、傷害、燃燒）、炎爆每幾秒；
+   雷法師：電荷上限、放電（傷害、麻痺、暈眩）、麻痺（最多、每層攻速 -%）、超載、雷神降臨、癱瘓、雷暴雲；陷阱電網（麻痺、電荷） */
+const SPARK_T = 2,
+  SPARK_BURN = 2,
+  METEOR_T = 3,
+  METEOR_FAST = 1,
+  METEOR_BURN = 4,
+  COMBUST_T = 6,
+  CHARGE_MAX = 7,
+  ZAP_DMG = 10,
+  ZAP_PARA = 2,
+  /* 平衡：一般放電不暈眩（暈眩讓雷法師平均名次 1.5），只有超載會 */
+  ZAP_STUN = 0,
+  PARA_MAX = 6,
+  PARA_SLOW = 4,
+  OVERLOAD_N = 10,
+  OVERLOAD_MUL = 3,
+  OVERLOAD_STUN = 1.2,
+  GOD_N = 3,
+  GOD_SPD = 40,
+  PALSY_STUN = 1.5,
+  CLOUD_T = 2,
+  SHOCK_PARA = 2,
+  SHOCK_CHG = 2,
+  ROD_DMG = 5;
 /* 0.1.50 插箭（最多幾支、爆裂箭幾秒後引爆與燃燒、箭雨每支傷害、多重射擊每支傷害）、連珠箭層數、
    插矛（最多幾把、每把攻速 -%、拔出的撕裂）、撕裂（每 0.5 秒扣層數、之後剩 3/4）、矛弓連攜與反擊的撕裂、
    日月輪轉每幾秒交替、浴血戰姬層數、女武神的加成 */
@@ -2896,7 +3008,9 @@ function itemDesc(id, t = 1) {
     /* 0.1.50 弓箭手、亞馬遜的陷阱 */
     snare: ['捕獸夾', `那次出手落空、敵人流血 ${SNARE_BLEED}（夾 ${SNARE_N} 次後壞掉）`],
     net: ['獵網', `敵人暈眩 ${NET_STUN} 秒`],
-    stake: ['尖樁', `敵人受 ${STAKE_DMG} 傷害（固定）、破甲 ${STAKE_SUNDER}、撕裂 ${STAKE_REND}`]
+    stake: ['尖樁', `敵人受 ${STAKE_DMG} 傷害（固定）、破甲 ${STAKE_SUNDER}、撕裂 ${STAKE_REND}`],
+    /* 0.1.51 雷法師的陷阱 */
+    shock: ['電網', `敵人麻痺 ${SHOCK_PARA}、電荷 +${SHOCK_CHG}`]
   };
   for (const tp of it.traps || [])
     out.push(
@@ -2924,6 +3038,7 @@ function itemDesc(id, t = 1) {
   if (it.hatch) out.push(`拿到後過 ${SEAL_RC} 回合變成「${ITEMI[it.hatch].n}」`);
   if (it.iceHp) out.push(`每場自己觸發一次凍結或冰緩，最大生命 +${it.iceHp}（一直累積）`);
   if (it.imm) out.push('免疫所有異常與封鎖');
+  if (it.chainN && it.dmg) out.push(MODN.chainN(it.chainN));
   if (it.stick) out.push(MODN.stick(it.stick) + '（再加上職業的插箭）');
   if (it.sisters)
     out.push(`背包裡矛和弓、弩一樣多（至少各 1 件）時，所有武器傷害 +${it.sisters[0]}%、攻速 +${it.sisters[1]}%`);

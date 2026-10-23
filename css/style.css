@@ -536,3 +536,18 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 /* 0.1.50 女武神降臨：復活後角色發金光 */
 .sp.valk canvas{filter:drop-shadow(0 0 6px var(--day)) drop-shadow(0 4px 2px #0003)}
 @media (prefers-reduced-motion:reduce){.smf,.smit,.sunb{animation:none!important}}
+/* 0.1.51 焚盡的斬殺線：生命條上一條亮橘色直線，生命低於這條線就會被燒死 */
+.hpb .kline{position:absolute;top:0;bottom:0;width:3px;margin-left:-1px;background:var(--day);box-shadow:0 0 0 1px #0008,0 0 6px var(--day);z-index:2;transition:left .2s ease-out}
+/* 0.1.51 星星之火：對方背包著火的格子 */
+.bag .firec{position:absolute;pointer-events:none;border-radius:var(--r-sm);background:radial-gradient(circle at 50% 75%,#ff9a3a99,#ff5a1a33 60%,transparent 75%);box-shadow:inset 0 0 0 1.5px #ff7a3a99;animation:firein .3s ease-out both,flick 1.2s ease-in-out .3s infinite alternate;z-index:3}
+@keyframes firein{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+@keyframes flick{from{filter:brightness(1)}to{filter:brightness(1.35)}}
+/* 0.1.51 從天上落下的隕石、落雷 */
+.fx .fall{position:absolute;top:0;width:10px;height:40px;margin-left:-5px;border-radius:5px;animation:fall .35s ease-in both;pointer-events:none}
+.fx .fall.meteor{background:linear-gradient(transparent,#ffb15a,#ff5a1a);width:14px;margin-left:-7px}
+.fx .fall.bolt{background:linear-gradient(transparent,#fff7b0,#fff27a);width:6px;margin-left:-3px}
+@keyframes fall{from{transform:translateY(-40px);opacity:0}60%{opacity:1}to{transform:translateY(90px);opacity:0}}
+/* 0.1.51 火之化身（橘光）、雷神降臨（黃光） */
+.sp.avt canvas{filter:drop-shadow(0 0 6px #ff7a3a) drop-shadow(0 4px 2px #0003)}
+.sp.god canvas{filter:drop-shadow(0 0 6px #fff27a) drop-shadow(0 4px 2px #0003)}
+@media (prefers-reduced-motion:reduce){.bag .firec,.fx .fall{animation:none!important}}
