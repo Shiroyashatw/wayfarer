@@ -38,7 +38,7 @@ description: 塞令老師的機器人（電腦對手）AI 與訓練。新增道�
    ```
    會印每一輪挑戰者 vs 目前的平均名次，最後印最好的參數並寫回 `js/bot.js` 的 `BOT_P`（只換數字，註解保留）。不想寫回就拿掉 `--write`。
 4. **檢查**：`node tools/pve_check.js 40 0.8`（PvE 勝率、對戰秒數）；職業名次在 Node 直接跑 `simLobby` 統計（見 CHANGELOG 0.1.20 的做法），或用 skill `balance` 在瀏覽器跑用 skill `balance` 跑 `sims('class')`、`sims('pve')`、`sims('fair')`。機器人變強以後，PvE（菁英、首領）勝率會變高、職業強弱可能換人，要一起看；公平性的對戰勝率約 50%（代打的也是同一個機器人腦）。
-5. **重傳種子**：機器人變了，舊的種子快照就跟新的規則不一樣，換 `GVER` 再 `seedGhosts(160)`（CLAUDE.md）。
+5. **重傳種子**：機器人變了，舊的種子快照就跟新的規則不一樣，換 `GVER` 再重傳種子（skill `ghost-seed`：先 push 上線，再在瀏覽器背景跑 `seedGhosts`、到資料庫確認）。
 6. 上版前用 `python3 tools/setver.py` 升版本號（`bot.js` 也在 `index.html` 裡，網址帶版本號）。
 
 ## 新機制（加了要改 `botPower`）

@@ -12,6 +12,7 @@
 - 說明文字：新增或修改道具、核心、職業、異常、機制後用 skill `item-text`：照規則改產生器（`items.js` 的 `MODN`／`PREN`／`itemDesc`）、百科（`ui.js` 的 `CX_AIL`／`CX_STAT`），跑 `node .claude/skills/item-text/audit.js` 沒有問題才交差。
 - 圖示：新增道具或借用圖示（`ic`）後用 skill `icon-check`：`python3 tools/icon_check.py` 產生 `docs/圖示對照.md`（名字 ↔ 圖示原本畫的東西），對不上就換圖示或改名字。
 - 機器人：新增道具、體系、機制或改經濟、戰鬥規則後用 skill `bot-ai`：確認 `js/bot.js` 的 `botPower` 有算到新東西，`node tools/bot_train.js --iters 30 --lobbies 40 --write` 重新訓練，再重傳種子。
+- 種子與快照：要上版而且改了道具、核心、職業、回合表、經濟或機器人時用 skill `ghost-seed`（判斷要不要換 `GVER`、push 上線後在瀏覽器重傳種子、到資料庫確認）。
 - 平衡：改道具、職業、核心、怪物、經濟或升階倍率後用 skill `balance`（核心統計：`node tools/core_stats.js 500 1300 --write`）：跑 `.claude/skills/balance/balance.js` 的 `coverage()`（各體系各星級、輔助、異常來源、職業、核心、圖示、說明文字）與 `sims()`（職業名次、PvE 勝率、公平性、局長、背包成長），沒有 ❌ 才交差。
 
 ## 專案結構
