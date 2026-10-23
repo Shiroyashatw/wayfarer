@@ -6,18 +6,18 @@
 /* 訓練出來的參數（tools/bot_train.js 會覆寫這一段） */
 let BOT_P = {
   gainMin: 0.01, // 一件道具至少要讓戰力提升這個比例才買
-  perGold: 0.009, // 每 1 金至少要換到多少戰力（比例）
-  reserve: 14, // 想留著吃利息的錢（後期才存）
+  perGold: 0.012, // 每 1 金至少要換到多少戰力（比例）
+  reserve: 23, // 想留著吃利息的錢（後期才存）
   reserveFrom: 7, // 第幾回合開始存利息
   rollGold: 2, // 錢多於這個、又沒東西好買就刷新
-  maxRolls: 6, // 一回合最多刷新幾次
-  lvFill: 0.777, // 背包塞到幾成滿就考慮升級
+  maxRolls: 7, // 一回合最多刷新幾次
+  lvFill: 0.97, // 背包塞到幾成滿就考慮升級
   lvKeep: 2, // 升級後至少留幾金
   sellMargin: 0, // 賣掉舊的換新的，戰力至少要多這個比例
-  mergeBonus: 0.091, // 湊合成的額外偏好（還沒湊滿也先收）
-  dotW: 1.057, // 燃燒、中毒、流血每層的價值（約幾秒）
-  ctrlW: 0.572, // 暈眩、凍結、虛弱、致盲的價值倍率
-  ehpW: 1.514
+  mergeBonus: 0.024, // 湊合成的額外偏好（還沒湊滿也先收）
+  dotW: 0.533, // 燃燒、中毒、流血每層的價值（約幾秒）
+  ctrlW: 0.919, // 暈眩、凍結、虛弱、致盲的價值倍率
+  ehpW: 1.477
 };
 /* ================= 戰力分數 ================= */
 /* 0.1.28 對手平均有幾隻寵物（反制寵物的道具照這個估價）；simLobby 每回合照其他機器人的背包設 run.epet */
@@ -135,6 +135,9 @@ function botPower(F, P = BOT_P) {
   for (const p of F.pots) ehp += p.v * p.n + (p.ex ? p.ex.length * 25 * p.n : 0) + (F.potBuff ? F.potBuff[0] * p.n : 0);
   if (F.poisonLife) ehp *= 1.08;
   if (F.immAll) ehp *= 1.15;
+  /* 0.1.43 受到的傷害 +%（詛咒面具這類缺點）、免疫一切的寵物（別西卜） */
+  if (F.take) ehp /= 1 + F.take / 100;
+  if (F.weapons.some(w => w.imm)) dps *= 1.08;
   else if (F.immFz) ehp *= 1.05;
   ehp += gd;
   /* 開戰效果：讓對手變弱（虛弱、凍結、致盲、封鎖、降階）≈ 自己變強；開戰的燃燒中毒流血算傷害 */
@@ -244,6 +247,13 @@ function botEcon(run, d) {
   if (d.eliteAll) v += 0.12 * left;
   if (d.gift) v += 0.15;
   if (d.brew) v += 0.2 * left;
+  /* 0.1.43 劍修大師的 Ⅱ 階戰利品、再生藥劑的提早詞綴、長柄大師少佔格子、賄賂（戰力只在付了錢才算得到）、豪賭的刷新上限 */
+  if (d.eliteT) v += 0.1 * left;
+  if (d.earlyPot) v += 0.03 * left;
+  if (d.shrink) v += 0.04 * run.bag.items.filter(o => ITEMI[o.id].tags.includes(d.shrink)).length;
+  if (d.bribe) v += run.gold > d.bribe ? 0.15 : 0.05;
+  if (d.rollCap) v -= 0.03 * left;
+  if (d.rich) v += Math.min(0.3, run.gold / 200);
   return v;
 }
 function botValue1(run, id, t, P, cx, bag, base, o) {
@@ -308,6 +318,17 @@ function botHold(run, P, cx = {}) {
   }
   run.bench[benchFree(run)] = o;
 }
+/* 0.1.43 照核心與道具要留著不花的錢：鈔能力（守住已經到的那一級）、金錢標（開戰每下花 1 金）、賄賂（要超過 5 金） */
+/* 鈔能力已經到的那一級是硬底線（掉級就少一截加成），其他是軟的（動到時門檻加倍） */
+const botFloor = run =>
+  coreProp(bagAll(run.bag), 'rich') ? Math.max(0, ...RICH.map(([n]) => n).filter(n => run.gold >= n)) : 0;
+function botKeep(run) {
+  const its = bagAll(run.bag);
+  let k = botFloor(run);
+  if (its.some(o => ITEMI[o.id].coin)) k = Math.max(k, 12);
+  if (coreProp(its, 'bribe')) k = Math.max(k, coreProp(its, 'bribe') + 1);
+  return k;
+}
 /* ================= 每回合 ================= */
 /* 三選一（菁英、首領、回扣）：照評估挑，pend.tier 是送的階 */
 /* 0.1.37 煉成的效果偏好（機器人照這個順序挑） */
@@ -344,9 +365,11 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
   const lv = BAGLV[run.lv + 1],
     cells = run.bag.items.reduce((n, o) => n + shapeOf(o.id).length, 0),
     fill = cells / (run.bag.w * run.bag.h);
-  if (lv && lvOpen(run) && run.gold >= lvCost(run) + P.lvKeep && fill >= P.lvFill) levelUp(run);
+  if (lv && lvOpen(run) && run.gold >= lvCost(run) + Math.max(P.lvKeep, botFloor(run)) && fill >= P.lvFill)
+    levelUp(run);
   /* 買：每輪挑「每金幣換到最多戰力」的一件，直到沒有值得買的；沒得買又有錢就刷新 */
-  const keep = run.ri >= P.reserveFrom ? P.reserve : 0;
+  const keep = Math.max(run.ri >= P.reserveFrom ? P.reserve : 0, botKeep(run)),
+    floor = botFloor(run);
   const cx = {};
   botBump(cx);
   for (let rolls = 0, guard = 0; guard < 12; guard++) {
@@ -354,7 +377,7 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
     run.shop.forEach((s, k) => {
       if (!s) return;
       const price = slotPrice(run, s);
-      if (price > run.gold) return;
+      if (price > run.gold - floor) return;
       const smart = r01(run) < q;
       let gain;
       if (smart) gain = botValue(run, s.id, s.t || 1, P, cx).gain;

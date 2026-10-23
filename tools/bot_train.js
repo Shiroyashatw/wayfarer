@@ -89,9 +89,13 @@ for (let it = 1; it <= ITERS; it++) {
 }
 console.log(`\n${((Date.now() - t0) / 1000).toFixed(0)} 秒；最好的參數：`);
 console.log(JSON.stringify(best, null, 2));
-const [x, y] = duel(best, G.BOT_P, LOBBIES, 777);
-console.log(`最好的 vs 一開始的：${x.toFixed(2)} vs ${y.toFixed(2)}`);
-if (WRITE) {
+/* 0.1.43 最後用比較多場（至少 120）驗證；沒有明顯比一開始的好就不寫回（0.1.35 訓練完反而變差，寫回後才發現） */
+const VAL = Math.max(LOBBIES, 120),
+  [x, y] = duel(best, G.BOT_P, VAL, 777),
+  won = x <= y - 0.05;
+console.log(`最好的 vs 一開始的（${VAL} 場）：${x.toFixed(2)} vs ${y.toFixed(2)}${won ? '' : '  → 沒有明顯比較好'}`);
+if (WRITE && !won) console.log('不寫回 js/bot.js（加 --force 強制寫回）');
+if (WRITE && (won || opt('force', false))) {
   const p = path.join(__dirname, '..', 'js', 'bot.js');
   let s = fs.readFileSync(p, 'utf8');
   const i = s.indexOf('let BOT_P = {'),

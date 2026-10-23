@@ -9,6 +9,7 @@
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。規則或數值改了要同步更新。
 - 介面：照 `docs/設計規範.md`（字級、顏色變數、間距、元件、資訊量規則）；改介面用 skill `ui-design`，改完在手機尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
 - 圖：道具圖示的 PixelLab 提示詞在 `docs/圖示提示詞.md`（只留還沒產的；做完的在 `docs/提示詞封存.md`），怪物在 `docs/怪物提示詞.md`，玩家選的頭像（4×4 大圖、每格 64×64）在 `docs/頭像圖表.md`；新增圖用 skill `pixel-art`。
+- 說明文字：新增或修改道具、核心、職業、異常、機制後用 skill `item-text`：照規則改產生器（`items.js` 的 `MODN`／`PREN`／`itemDesc`）、百科（`ui.js` 的 `CX_AIL`／`CX_STAT`），跑 `node .claude/skills/item-text/audit.js` 沒有問題才交差。
 - 圖示：新增道具或借用圖示（`ic`）後用 skill `icon-check`：`python3 tools/icon_check.py` 產生 `docs/圖示對照.md`（名字 ↔ 圖示原本畫的東西），對不上就換圖示或改名字。
 - 機器人：新增道具、體系、機制或改經濟、戰鬥規則後用 skill `bot-ai`：確認 `js/bot.js` 的 `botPower` 有算到新東西，`node tools/bot_train.js --iters 30 --lobbies 40 --write` 重新訓練，再重傳種子。
 - 平衡：改道具、職業、核心、怪物、經濟或升階倍率後用 skill `balance`：跑 `.claude/skills/balance/balance.js` 的 `coverage()`（各體系各星級、輔助、異常來源、職業、核心、圖示、說明文字）與 `sims()`（職業名次、PvE 勝率、公平性、局長、背包成長），沒有 ❌ 才交差。

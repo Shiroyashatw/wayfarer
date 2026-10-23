@@ -485,6 +485,8 @@ button.rv{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%}
 .det .dh .odds small{font-size:var(--fs-cap);color:var(--dim)}
 .det .dh .odds b{font-size:var(--fs-sm);color:var(--gold)}
 /* 0.1.41 說明文字裡異常關鍵字前的小圖示 */
+/* 0.1.44 降階：疊層箭頭圖示朝下 */
+.cx img.flip{transform:rotate(180deg)}
 img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;margin:0 1px 0 2px;image-rendering:pixelated}
 /* 0.1.38 百科的分頁 */
 .cxtab{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-1);margin:0 0 var(--sp-3)}

@@ -90,15 +90,18 @@ RICHN js/items.js:2637
 goldStOf js/items.js:2645
 RES_MAX js/items.js:2647
 PIERCE_MAX js/items.js:2653
-modTxt js/items.js:2655
-tagTxt js/items.js:2660
-PRE_T js/items.js:2663
-preKey js/items.js:2688
-preVal js/items.js:2689
-preTxt js/items.js:2698
-itemDesc js/items.js:2702
-tfTxt js/items.js:2832
-scaleMod js/items.js:2838
+JOIN_P js/items.js:2657
+headOf js/items.js:2668
+joinTxt js/items.js:2669
+modTxt js/items.js:2679
+tagTxt js/items.js:2685
+PRE_T js/items.js:2688
+preKey js/items.js:2713
+preVal js/items.js:2714
+preTxt js/items.js:2723
+itemDesc js/items.js:2727
+tfTxt js/items.js:2871
+scaleMod js/items.js:2877
 bagAll js/bag.js:5
 cellsOf js/bag.js:6
 bagGrid js/bag.js:8
@@ -108,30 +111,30 @@ rowsOf js/bag.js:35
 sameRow js/bag.js:36
 findSpot js/bag.js:39
 synergy js/bag.js:72
-tfRank js/bag.js:84
-canFuse js/bag.js:85
-tfOf js/bag.js:90
-fuseInto js/bag.js:103
-fuseAll js/bag.js:112
-AB_K js/bag.js:124
-absorbAll js/bag.js:125
-defsOf js/bag.js:148
-coreProp js/bag.js:150
-sellO js/bag.js:152
-fuName js/bag.js:154
-tagsWith js/bag.js:156
-merge2Of js/bag.js:163 [合成]
-mergeNeed js/bag.js:167 [合成]
-mergeAll js/bag.js:171 [合成]
-compileBag js/bag.js:218 [戰鬥數值]
-coreFx js/bag.js:503 [戰鬥數值]
-bagMods js/bag.js:510 [戰鬥數值]
-PACK_DEF js/bag.js:548 [戰鬥數值]
-packIt js/bag.js:549 [戰鬥數值]
-packBag js/bag.js:556 [戰鬥數值]
-unpackIt js/bag.js:565 [戰鬥數值]
-unpackBag js/bag.js:584 [戰鬥數值]
-syncShrink js/bag.js:614 [戰鬥數值]
+tfRank js/bag.js:86
+canFuse js/bag.js:87
+tfOf js/bag.js:92
+fuseInto js/bag.js:105
+fuseAll js/bag.js:114
+AB_K js/bag.js:126
+absorbAll js/bag.js:127
+defsOf js/bag.js:150
+coreProp js/bag.js:152
+sellO js/bag.js:154
+fuName js/bag.js:156
+tagsWith js/bag.js:158
+merge2Of js/bag.js:165 [合成]
+mergeNeed js/bag.js:169 [合成]
+mergeAll js/bag.js:173 [合成]
+compileBag js/bag.js:220 [戰鬥數值]
+coreFx js/bag.js:505 [戰鬥數值]
+bagMods js/bag.js:512 [戰鬥數值]
+PACK_DEF js/bag.js:550 [戰鬥數值]
+packIt js/bag.js:551 [戰鬥數值]
+packBag js/bag.js:558 [戰鬥數值]
+unpackIt js/bag.js:567 [戰鬥數值]
+unpackBag js/bag.js:586 [戰鬥數值]
+syncShrink js/bag.js:616 [戰鬥數值]
 SIM_DT js/sim.js:4
 WEAK_PCT js/sim.js:6
 simSide js/sim.js:26
@@ -243,20 +246,22 @@ BOT_ERES0 js/bot.js:26 [戰力分數]
 BOT_ERES js/bot.js:38 [戰力分數]
 botThreat js/bot.js:40 [戰力分數]
 botPower js/bot.js:63 [戰力分數]
-botPowerOf js/bot.js:187 [戰力分數]
-botTry js/bot.js:189 [戰力分數]
-botWeakest js/bot.js:196 [戰力分數]
-botBump js/bot.js:205 [戰力分數]
-botValue js/bot.js:210 [戰力分數]
-botValue0 js/bot.js:217 [戰力分數]
-botEcon js/bot.js:231 [戰力分數]
-botValue1 js/bot.js:249 [戰力分數]
-botPlace js/bot.js:278 [戰力分數]
-botHold js/bot.js:296 [戰力分數]
-BOT_BREW js/bot.js:314 [每回合]
-botPend js/bot.js:315 [每回合]
-botAct js/bot.js:334 [每回合]
-botActOld js/bot.js:431 [每回合]
+botPowerOf js/bot.js:190 [戰力分數]
+botTry js/bot.js:192 [戰力分數]
+botWeakest js/bot.js:199 [戰力分數]
+botBump js/bot.js:208 [戰力分數]
+botValue js/bot.js:213 [戰力分數]
+botValue0 js/bot.js:220 [戰力分數]
+botEcon js/bot.js:234 [戰力分數]
+botValue1 js/bot.js:259 [戰力分數]
+botPlace js/bot.js:288 [戰力分數]
+botHold js/bot.js:306 [戰力分數]
+botFloor js/bot.js:323 [戰力分數]
+botKeep js/bot.js:325 [戰力分數]
+BOT_BREW js/bot.js:335 [每回合]
+botPend js/bot.js:336 [每回合]
+botAct js/bot.js:355 [每回合]
+botActOld js/bot.js:454 [每回合]
 GHOST js/ghost.js:4
 ghostOK js/ghost.js:5
 ghostFail js/ghost.js:6
@@ -335,69 +340,72 @@ coreDetHTML js/ui.js:642 [準備畫面]
 trigHTML js/ui.js:651 [準備畫面]
 KW_IC js/ui.js:658 [準備畫面]
 KW_RE js/ui.js:676 [準備畫面]
-dsc js/ui.js:677 [準備畫面]
-abHTML js/ui.js:684 [準備畫面]
-mod5HTML js/ui.js:702 [準備畫面]
-revealHTML js/ui.js:708 [準備畫面]
-statsHTML js/ui.js:716 [準備畫面]
-resultHTML js/ui.js:749 [結算、三選一、一局結束]
-pickHTML js/ui.js:753 [結算、三選一、一局結束]
-clsHTML js/ui.js:772 [結算、三選一、一局結束]
-holdHTML js/ui.js:783 [結算、三選一、一局結束]
-rankMove js/ui.js:789 [結算、三選一、一局結束]
-endHTML js/ui.js:797 [結算、三選一、一局結束]
-beginFight js/ui.js:806 [戰鬥播放]
-leadIn js/ui.js:832 [戰鬥播放]
-resumeFight js/ui.js:837 [戰鬥播放]
-renderBattle js/ui.js:854 [戰鬥播放]
-bShow js/ui.js:875 [戰鬥播放]
-cdTimeline js/ui.js:891 [戰鬥播放]
-bCd js/ui.js:906 [戰鬥播放]
-STN js/ui.js:945 [戰鬥播放]
-bSts js/ui.js:982 [戰鬥播放]
-ELC js/ui.js:1003 [戰鬥播放]
-bPop js/ui.js:1021 [戰鬥播放]
-bNames js/ui.js:1034 [戰鬥播放]
-bLog js/ui.js:1048 [戰鬥播放]
-bAnim js/ui.js:1090 [戰鬥播放]
-bBurst js/ui.js:1096 [戰鬥播放]
-bSlash js/ui.js:1109 [戰鬥播放]
-bHit js/ui.js:1119 [戰鬥播放]
-bFlash js/ui.js:1126 [戰鬥播放]
-bTick js/ui.js:1134 [戰鬥播放]
-bEnd js/ui.js:1224 [戰鬥播放]
-CX_TABS js/ui.js:1251 [圖鑑、說明、設定]
-CX_AIL js/ui.js:1258 [圖鑑、說明、設定]
-CX_STAT js/ui.js:1281 [圖鑑、說明、設定]
-codexHTML js/ui.js:1303 [圖鑑、說明、設定]
-helpHTML js/ui.js:1344 [圖鑑、說明、設定]
-settingsHTML js/ui.js:1359 [圖鑑、說明、設定]
-audioOn js/ui.js:1384 [動作]
-A js/ui.js:1387 [動作]
-authDo js/ui.js:1681 [動作]
-showLog js/ui.js:1698 [動作]
-lgBagHTML js/ui.js:1744 [動作]
-showMatch js/ui.js:1754 [動作]
-showNews js/ui.js:1786 [動作]
-showDlg js/ui.js:1797 [動作]
-FUC js/ui.js:1816 [動作]
-fuColor js/ui.js:1828 [動作]
-fuCls js/ui.js:1835 [動作]
-fuSty js/ui.js:1836 [動作]
-fuseToast js/ui.js:1839 [拖曳擺放]
-fuseAt js/ui.js:1846 [拖曳擺放]
-placeFromBench js/ui.js:1853 [拖曳擺放]
-cellAt js/ui.js:1867 [拖曳擺放]
-inside js/ui.js:1876 [拖曳擺放]
-dragMove js/ui.js:1946 [拖曳擺放]
-rotIt js/ui.js:1982 [拖曳擺放]
-dragRot js/ui.js:1997 [拖曳擺放]
-wheelAt js/ui.js:2013 [拖曳擺放]
-drawGhost js/ui.js:2026 [拖曳擺放]
-autoFit js/ui.js:2038 [拖曳擺放]
-dropEnd js/ui.js:2046 [拖曳擺放]
-dropShop js/ui.js:2104 [拖曳擺放]
-fitZoom js/ui.js:2151 [拖曳擺放]
+ST_IC js/ui.js:678 [準備畫面]
+ST_RE js/ui.js:679 [準備畫面]
+kwImg js/ui.js:680 [準備畫面]
+dsc js/ui.js:684 [準備畫面]
+abHTML js/ui.js:690 [準備畫面]
+mod5HTML js/ui.js:708 [準備畫面]
+revealHTML js/ui.js:714 [準備畫面]
+statsHTML js/ui.js:722 [準備畫面]
+resultHTML js/ui.js:755 [結算、三選一、一局結束]
+pickHTML js/ui.js:759 [結算、三選一、一局結束]
+clsHTML js/ui.js:778 [結算、三選一、一局結束]
+holdHTML js/ui.js:789 [結算、三選一、一局結束]
+rankMove js/ui.js:795 [結算、三選一、一局結束]
+endHTML js/ui.js:803 [結算、三選一、一局結束]
+beginFight js/ui.js:812 [戰鬥播放]
+leadIn js/ui.js:838 [戰鬥播放]
+resumeFight js/ui.js:843 [戰鬥播放]
+renderBattle js/ui.js:860 [戰鬥播放]
+bShow js/ui.js:881 [戰鬥播放]
+cdTimeline js/ui.js:897 [戰鬥播放]
+bCd js/ui.js:912 [戰鬥播放]
+STN js/ui.js:951 [戰鬥播放]
+bSts js/ui.js:988 [戰鬥播放]
+ELC js/ui.js:1009 [戰鬥播放]
+bPop js/ui.js:1027 [戰鬥播放]
+bNames js/ui.js:1040 [戰鬥播放]
+bLog js/ui.js:1054 [戰鬥播放]
+bAnim js/ui.js:1096 [戰鬥播放]
+bBurst js/ui.js:1102 [戰鬥播放]
+bSlash js/ui.js:1115 [戰鬥播放]
+bHit js/ui.js:1125 [戰鬥播放]
+bFlash js/ui.js:1132 [戰鬥播放]
+bTick js/ui.js:1140 [戰鬥播放]
+bEnd js/ui.js:1230 [戰鬥播放]
+CX_TABS js/ui.js:1257 [圖鑑、說明、設定]
+CX_AIL js/ui.js:1264 [圖鑑、說明、設定]
+CX_STAT js/ui.js:1288 [圖鑑、說明、設定]
+codexHTML js/ui.js:1329 [圖鑑、說明、設定]
+helpHTML js/ui.js:1370 [圖鑑、說明、設定]
+settingsHTML js/ui.js:1385 [圖鑑、說明、設定]
+audioOn js/ui.js:1410 [動作]
+A js/ui.js:1413 [動作]
+authDo js/ui.js:1707 [動作]
+showLog js/ui.js:1724 [動作]
+lgBagHTML js/ui.js:1770 [動作]
+showMatch js/ui.js:1780 [動作]
+showNews js/ui.js:1812 [動作]
+showDlg js/ui.js:1823 [動作]
+FUC js/ui.js:1842 [動作]
+fuColor js/ui.js:1854 [動作]
+fuCls js/ui.js:1861 [動作]
+fuSty js/ui.js:1862 [動作]
+fuseToast js/ui.js:1865 [拖曳擺放]
+fuseAt js/ui.js:1872 [拖曳擺放]
+placeFromBench js/ui.js:1879 [拖曳擺放]
+cellAt js/ui.js:1893 [拖曳擺放]
+inside js/ui.js:1902 [拖曳擺放]
+dragMove js/ui.js:1972 [拖曳擺放]
+rotIt js/ui.js:2008 [拖曳擺放]
+dragRot js/ui.js:2023 [拖曳擺放]
+wheelAt js/ui.js:2039 [拖曳擺放]
+drawGhost js/ui.js:2052 [拖曳擺放]
+autoFit js/ui.js:2064 [拖曳擺放]
+dropEnd js/ui.js:2072 [拖曳擺放]
+dropShop js/ui.js:2130 [拖曳擺放]
+fitZoom js/ui.js:2177 [拖曳擺放]
 newGame js/main.js:4
 load js/main.js:22
 save js/main.js:30

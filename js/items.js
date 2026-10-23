@@ -2552,7 +2552,7 @@ const MODN = {
   ramp: v => `每 5 秒攻速 +${pct(v)}（最多 5 次）`,
   startBlock: v => `開戰時有 ${v} 護盾`,
   double: v => `${pct(v)} 機率連擊`,
-  thornsF: v => `被打中時反彈 ${v}`,
+  thornsF: v => `被攻擊打中時反彈 ${v}（固定傷害）`,
   critHeal: v => `暴擊時回復 ${v}`,
   /* 0.1.28 質變與反制寵物 */
   pierce: v => `無視 ${pct(Math.min(PIERCE_MAX, v))} 護甲與格擋`,
@@ -2599,11 +2599,11 @@ const MODN = {
   p2v: () => '敵人中毒滿層後，每 2 秒 +1 劇毒',
   poisonLife: () => '以毒為生：讓敵人中毒時自己也中毒，但自己身上的中毒改成回血',
   corrodeRe: v => `每 ${v} 秒讓敵人腐蝕 ${v} 秒`,
-  thornsP: v => `被打中時讓攻擊者中毒 ${v} 層`,
+  thornsP: v => `被攻擊打中時讓攻擊者中毒 ${v} 層`,
   immAll: () => '免疫所有異常狀態',
   immFz: () => '免疫凍結與冰緩',
-  shatterF: v => `敵人每有 1 件凍結中的道具，所有冰傷害 +${pct(v)}`,
-  shatterS: v => `敵人每有 1 件冰緩中的道具，所有冰攻速 +${pct(v)}`
+  shatterF: v => `所有冰：敵人每有 1 件凍結中的道具傷害 +${pct(v)}`,
+  shatterS: v => `每有 1 件冰緩中的道具攻速 +${pct(v)}`
 };
 /* 0.1.37 終極藥劑的效果（煉成三選一）：喝下時套用 */
 const BREW = {
@@ -2652,11 +2652,36 @@ const RES_MAX = 80,
 /* 0.1.28 上限：穿甲最多無視 80%、驅獸最多 -60% */
 const PIERCE_MAX = 80,
   PETDOWN_MAX = 60;
+/* 0.1.44 說明文字的寫法（skill item-text）：同樣的開頭只寫一次，「命中時凍結機率 +10%、命中時冰緩機率 +20%」→「命中時凍結機率 +10%、冰緩機率 +20%」。
+   開頭後面接空格、數字或「時」的不合併（「命中時 35% 機率…」那種句子各自完整） */
+const JOIN_P = [
+  '自己生命低於 50% 時',
+  '對生命低於 30% 的敵人',
+  '命中時讓敵人',
+  '開戰時讓敵人',
+  '開戰時敵人',
+  '開戰時',
+  '被攻擊打中時',
+  '命中時',
+  '命中'
+];
+const headOf = p => JOIN_P.find(x => p.startsWith(x) && !/^[\s\d時]/.test(p.slice(x.length)));
+function joinTxt(parts, sep = '、') {
+  const out = [];
+  for (const p of parts.filter(Boolean)) {
+    const last = out[out.length - 1],
+      h = headOf(p);
+    if (last && h && last.h === h) last.s += '、' + p.slice(h.length);
+    else out.push({ s: p, h });
+  }
+  return out.map(o => o.s).join(sep);
+}
 const modTxt = m =>
-  Object.entries(m)
-    .filter(([k]) => MODN[k])
-    .map(([k, v]) => MODN[k](v))
-    .join('、');
+  joinTxt(
+    Object.entries(m)
+      .filter(([k]) => MODN[k])
+      .map(([k, v]) => MODN[k](v))
+  );
 const tagTxt = t => (t === 'weapon' ? '武器' : t === '*' ? '道具' : TAGN[t] || t);
 /* 0.1.6 開戰前的特殊效果（越強越稀有）：seal 封鎖敵人隨機一把武器 N 秒（每升一階 +1 秒）、down 敵人隨機一把武器降 1 階（最低 Ⅰ 階） */
 /* 0.1.9 擴充成各種開戰效果（藥劑丟出去）：秒數類每升一階 +1 秒，層數類照升階倍率 */
@@ -2669,7 +2694,7 @@ const PRE_T = ['seal', 'weak', 'blind', 'frozen', 'sealAll', 'corrode', 'age', '
     /* 0.1.37 凍結改成單件道具 6 秒，開戰的「凍結」改成所有道具冰緩 */
     frozen: v => `開戰時敵人所有道具冰緩 ${v} 秒（充能減半）`,
     freezeN: v => `開戰時凍結敵人隨機 ${v} 把武器（6 秒不能充能）`,
-    selfV: (v, n) => `開戰時讓敵人 ${n || 1} 把武器自殘（那把出手時敵人自己 +${v} 劇毒）`,
+    selfV: (v, n) => `開戰時讓敵人隨機 ${n || 1} 把武器自殘（那把出手時敵人自己 +${v} 劇毒）`,
     venom: v => `開戰時讓敵人劇毒 ${v} 層`,
     corrode: v => `開戰時讓敵人腐蝕 ${v} 秒（不能獲得護盾，本來會獲得時扣 30 生命）`,
     age: v => `開戰時讓敵人衰老 ${v} 秒（不能暴擊）`,
@@ -2715,19 +2740,22 @@ function itemDesc(id, t = 1) {
     );
   }
   if (it.on) {
-    if (o.burn) out.push(`命中時讓敵人燃燒 ${o.burn} 層（每秒扣層數，每秒少 1 層）`);
-    if (o.poison) out.push(`命中時讓敵人中毒 ${o.poison} 層（每秒扣層數，不會退，最多 12 層）`);
-    if (o.freeze) out.push(`命中時 ${o.freeze[0]}% 機率凍結敵人一件道具 6 秒（不能充能）`);
-    if (o.stun) out.push(`命中時 ${o.stun[0]}% 機率暈眩敵人 ${o.stun[1]} 秒（不能動）`);
+    /* 0.1.44 命中效果合成一行「命中時：…」；括號說明異常規則（百科也有） */
+    const h = [];
+    if (o.burn) h.push(`燃燒 ${o.burn} 層（每秒扣層數、少 1 層）`);
+    if (o.poison) h.push(`中毒 ${o.poison} 層（每秒扣層數、不會退）`);
+    if (o.venom) h.push(`劇毒 ${o.venom} 層（不會退、每秒 ×2）`);
+    if (o.bleed) h.push(`流血 ${o.bleed} 層（每秒扣層數、然後減半）`);
+    if (o.sunder) h.push(`破甲 ${o.sunder}（敵人護甲 -${o.sunder}，會疊加）`);
+    if (o.freeze) h.push(`${o.freeze[0]}% 機率凍結敵人一件道具 6 秒（不能充能）`);
+    if (o.chill) h.push(`${o.chill}% 機率冰緩敵人一件道具 4 秒（充能減半）`);
+    if (o.stun) h.push(`${o.stun[0]}% 機率暈眩 ${o.stun[1]} 秒（不能動）`);
+    if (o.weak) h.push(`${o.weak}% 機率虛弱 3 秒（傷害 -25%）`);
+    if (o.blind) h.push(`${o.blind}% 機率致盲 2.5 秒（30% 打不中）`);
+    if (o.age) h.push(`衰老 ${o.age} 秒（不能暴擊）`);
+    if (o.corrode) h.push(`腐蝕 ${o.corrode} 秒（不能獲得護盾）`);
+    if (h.length) out.push(`命中時：${h.join('、')}`);
     if (o.ls) out.push(`吸血 ${o.ls}%`);
-    if (o.bleed) out.push(`命中時讓敵人流血 ${o.bleed} 層（每秒扣層數，然後減半）`);
-    if (o.sunder) out.push(`命中時讓敵人護甲 -${o.sunder}（會疊加）`);
-    if (o.weak) out.push(`命中時 ${o.weak}% 機率讓敵人虛弱 3 秒（敵人傷害 -25%）`);
-    if (o.venom) out.push(`命中時讓敵人劇毒 ${o.venom} 層（不會退，每秒扣層數 ×2）`);
-    if (o.chill) out.push(`命中時 ${o.chill}% 機率讓敵人一件道具冰緩 4 秒（充能減半）`);
-    if (o.age) out.push(`命中時讓敵人衰老 ${o.age} 秒（不能暴擊）`);
-    if (o.corrode) out.push(`命中時讓敵人腐蝕 ${o.corrode} 秒`);
-    if (o.blind) out.push(`命中時 ${o.blind}% 機率讓敵人致盲 2.5 秒（敵人 30% 打不中）`);
   }
   if (it.block)
     out.push(
@@ -2743,15 +2771,17 @@ function itemDesc(id, t = 1) {
     ['adj', '相鄰的'],
     ['row', '同一排的'],
     ['all', '所有']
-  ])
-    for (const b of it[w] || [])
-      out.push(`${n}${tagTxt(b.tag)}：${modTxt(scaleMod(b, t))}${b.per ? `（背包裡每有 1 件${tagTxt(b.per)}）` : ''}`);
+  ]) {
+    /* 0.1.44 同樣的加成給好幾種標籤：合成一行「所有弓、弩：傷害 +30%」 */
+    const g = new Map();
+    for (const b of it[w] || []) {
+      const txt = `${modTxt(scaleMod(b, t))}${b.per ? `（背包裡每有 1 件${tagTxt(b.per)}）` : ''}`;
+      g.set(txt, [...(g.get(txt) || []), tagTxt(b.tag)]);
+    }
+    for (const [txt, tags] of g) out.push(`${n}${tags.join('、')}：${txt}`);
+  }
   if (it.tf) out.push(tfTxt(it.tf, t));
-  /* 0.1.33 核心的特殊效果 */
-  for (const b of it.fxPer || [])
-    out.push(
-      `背包裡每有 1 件${tagTxt(b.tag)}：${modTxt(Object.fromEntries(Object.entries(b).filter(([k]) => k !== 'tag')))}`
-    );
+  /* 0.1.33 核心的特殊效果（fxPer 寫在角色加成後面：「護甲 +20、開戰時有 10 護盾；背包裡每有 1 件矛，開戰護盾再 +10」） */
   if (it.shrink) out.push(`所有${tagTxt(it.shrink)}武器少佔 1 格`);
   if (it.eliteAll)
     out.push(
@@ -2779,15 +2809,16 @@ function itemDesc(id, t = 1) {
   if (it.rollCap) out.push(`每回合最多只能刷新商店 ${it.rollCap} 次`);
   /* 0.1.37 異常重製的核心與道具 */
   for (const k in it.pres || {}) if (PREN[k]) out.push(PREN[k](it.pres[k], it.selfN));
+  /* 陷阱：[名字, 觸發時做什麼] */
   const TRN = {
-    ignite: '點燃（觸發時敵人被點燃：燃燒不退反增、傷害 ×1.5）',
-    bomb: `藥劑炸彈（觸發時敵人受 ${BOMB_DMG[0]}～${BOMB_DMG[1]} 傷害、流血 ${BOMB_BLEED}）`,
-    spore: '劇毒孢子（觸發時敵人中毒 +3、劇毒 +3）',
-    icicle: '冰錐（觸發時凍結觸發的那件道具）'
+    ignite: ['點燃陷阱', '敵人被點燃（燃燒不退反增、傷害 ×1.5）'],
+    bomb: ['藥劑炸彈', `敵人受 ${BOMB_DMG[0]}～${BOMB_DMG[1]} 傷害、流血 ${BOMB_BLEED}`],
+    spore: ['劇毒孢子', '敵人中毒 +3、劇毒 +3'],
+    icicle: ['冰錐', '凍結觸發的那件道具']
   };
-  for (const t of it.traps || [])
+  for (const tp of it.traps || [])
     out.push(
-      `開戰時在敵人背包隨機放 ${t.n} 個${t.sz > 1 ? ` ${t.sz} 格` : ''}${TRN[t.k]}，敵人那格的道具每次出手都會觸發（打怪時掛在怪物的武器上）`
+      `開戰時在敵人背包隨機放 ${tp.n} 個${tp.sz > 1 ? ` ${tp.sz} 格` : ''}${TRN[tp.k][0]}：那格的道具每次出手都觸發，${TRN[tp.k][1]}`
     );
   if (it.phase) {
     const f = x =>
@@ -2819,14 +2850,22 @@ function itemDesc(id, t = 1) {
     const f = fxT(it, t),
       rest = Object.fromEntries(Object.entries(f).filter(([k]) => MODN[k]));
     if (Object.keys(rest).length) out.push(modTxt(rest));
-    if (f.take) out.push(`受到的傷害 +${f.take}%`);
+    if (f.take) out.push(`受到的攻擊傷害 +${f.take}%`);
     if (f.potMul) out.push(`藥水回復 +${f.potMul}%${f.potUse ? `、多喝 ${f.potUse} 次` : ''}`);
     else if (f.potUse) out.push(`生命藥水多喝 ${f.potUse} 次`);
   }
+  for (const b of it.fxPer || [])
+    out.push(
+      `背包裡每有 1 件${tagTxt(b.tag)}，${Object.entries(b)
+        .filter(([k]) => k !== 'tag')
+        .map(([k, v]) => (k === 'startBlock' ? `開戰護盾再 +${v}` : MODN[k] ? MODN[k](v) : ''))
+        .filter(Boolean)
+        .join('、')}`
+    );
   if (it.rush) out.push(`開戰後 ${it.rush[1]} 秒內所有武器攻速 +${Math.round(it.rush[0] * TIERB[t])}%`);
   if (it.gold) out.push(`放在背包裡每回合 +${it.gold} 金（每升一階 +1）`);
   if (it.pre) out.push(preTxt(id, t));
-  return out.join('；');
+  return joinTxt(out, '；');
 }
 /* 0.1.28 融合的說明：放到○○上融合成「前綴・○○」 */
 function tfTxt(T, t = 1) {

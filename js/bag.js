@@ -74,7 +74,9 @@ function synergy(a, b) {
     tb = ITEMI[b.id].tags;
   return (
     [...(A.adj || []), ...(A.row || [])].filter(m => m.tag === '*' || tb.includes(m.tag)).length +
-    (A.tf && !ITEMI[b.id].tf && tb.includes(A.tf.tag) ? 2 : 0)
+    (A.tf && !ITEMI[b.id].tf && tb.includes(A.tf.tag) ? 2 : 0) +
+    /* 0.1.43 魔劍正宗：劍擺在旁邊會被吸收（機器人找位置時會貼過去） */
+    (A.absorb && tb.includes(A.absorb) && !ITEMI[b.id].absorb ? 3 : 0)
   );
 }
 /* 0.1.28 融合（質變）：質變輔助（tf）放到道具上、或貼在旁邊，就跟它融合成一件新道具「前綴・道具」（輔助消失、空出格子）：
