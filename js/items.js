@@ -1226,6 +1226,20 @@ const ITEMS = [
     ns: 1,
     ic: 'tree_n039'
   },
+  /* 0.1.50 弓箭手核心「神鷹」送的寵物：帶弓標籤（吃弓箭手的加成），每次命中插 2 支箭 */
+  {
+    id: 'skyhawk',
+    n: '神鷹',
+    star: 5,
+    sh: 'h2',
+    tags: ['pet', 'bow'],
+    cd: 0.9,
+    dmg: [5, 8],
+    on: { blind: 20 },
+    stick: 1,
+    ns: 1,
+    ic: 'a:hunt_hawkeagle'
+  },
   {
     id: 'kingcrown',
     n: '王者之冠',
@@ -1966,10 +1980,12 @@ const CLASSES = [
     n: '弓箭手',
     ic: 'sk_multishot',
     th: 'bow',
+    /* 0.1.50 職業特性：弓、弩命中插箭（敵人身上每支箭，受到你的攻擊傷害 +1%） */
     m: [
-      { tag: 'bow', dmgPct: 25, spd: 20 },
-      { tag: 'xbow', dmgPct: 25, spd: 20 }
-    ]
+      { tag: 'bow', dmgPct: 25, spd: 20, stick: 1 },
+      { tag: 'xbow', dmgPct: 25, spd: 20, stick: 1 }
+    ],
+    F: { arrowPct: 1 }
   },
   {
     id: 'swordsman',
@@ -2003,7 +2019,9 @@ const CLASSES = [
     th: 'spear',
     m: [
       { tag: 'spear', dmgPct: 40, spd: 15, crit: 10 },
-      { tag: 'bow', dmgPct: 40, spd: 15, crit: 10 }
+      { tag: 'bow', dmgPct: 40, spd: 15, crit: 10 },
+      /* 0.1.50 矛、弓、盾：盾格擋 +20% */
+      { tag: 'shield', blockPct: 20 }
     ],
     F: { arm: 5, hp: 20 }
   },
@@ -2105,21 +2123,20 @@ const CORE_P = {
 const onP = (P, m) => P.map(tag => ({ tag, ...m }));
 /* 專屬核心：[名字, 效果]；效果用 all（對標籤加成）、fx（角色身上，含 0.1.10 的新機制）、pre（開戰效果）、gold */
 const CORE_MAIN = {
+  /* 0.1.50 弓箭手重製（獵人、插箭）：插箭是職業特性，核心大多跟插箭連動 */
   archer: P => [
-    /* 0.1.33 開戰 6 秒內每一下都連擊（之前 15% 連擊） */
-    ['連珠箭', { all: onP(P, { spd: 25 }), fx: { openDbl: 6 } }],
-    ['穿雲箭', { all: onP(P, { dmgPct: 30, crit: 10 }) }],
-    /* 0.1.33 先充能 90% → 80%，星級最高的一把開戰先打一下 */
-    ['先手射擊', { all: onP(P, { dmgPct: 15 }), fx: { opener: 80, firstStrike: 1 } }],
-    ['狙擊', { all: onP(P, { crit: 15 }), fx: { execute: 60 } }],
-    ['火箭', { all: onP(P, { burn: 2, dmgPct: 10 }) }],
-    ['毒箭', { all: onP(P, { poison: 2, dmgPct: 10 }) }],
-    ['鷹眼', { all: onP(P, { crit: 20 }), fx: { critMul: 40 } }],
-    ['箭雨', { all: onP(P, { dmgPct: 8, per: 'bow' }) }],
-    ['游擊', { all: onP(P, { spd: 15 }), fx: { dodge: 15 } }],
-    ['閃光箭', { all: onP(P, { blindCh: 20, dmgPct: 10 }) }],
-    ['連射', { all: onP(P, { spd: 10 }), fx: { ramp: 8 } }],
-    ['獵人陷阱', { all: onP(P, { bleed: 1 }), pre: { bleed: 6 } }]
+    ['爆裂箭', { fx: { boom: 3 }, ic: 'sk_blastarrow' }],
+    ['多重射擊', { all: onP(P, { shots: 5 }), ic: 'sk_multishot' }],
+    ['箭雨', { fx: { rain: 4 }, ic: 'sk_rainarrow' }],
+    ['倒鉤箭', { fx: { arrowCap: 30, barb: 2 }, ic: 'sk_rotarrow' }],
+    ['鷹眼狙擊', { all: onP(P, { snipe: 3 }), fx: { critArrow: 3 }, ic: 'tree_n064' }],
+    ['神鷹', { give: 'skyhawk', ic: 'a:hunt_hawkeagle' }],
+    ['元素箭袋', { all: onP(P, { elem: 1 }), ic: 'sk_firearrow' }],
+    ['連珠箭', { all: onP(P, { spd: 10 }), fx: { streak: 4 }, ic: 'sk_lightarrow' }],
+    ['游擊', { all: onP(P, { spd: 10 }), fx: { dodge: 20, kite: 30 } }],
+    ['風之箭', { all: onP(P, { sure: 1, pierce: 50, dmgPct: 25 }), ic: 'sk_frostarrow' }],
+    ['捕獸夾', { all: onP(P, { bleed: 1 }), traps: [{ k: 'snare', n: 4, sz: 1 }], ic: 'sk_trapshot' }],
+    ['獵網', { traps: [{ k: 'net', n: 2, sz: 2 }], fx: { dodge: 8 }, ic: 'it_bugnet' }]
   ],
   /* 0.1.35 浪人（P 是劍、矛）：武士道只加劍；二天一流兩件就合成；招架是被打時的格擋機率；魔劍正宗送一把會吸收劍的 5★ 劍 */
   swordsman: P => [
@@ -2151,21 +2168,20 @@ const CORE_MAIN = {
     ['巨力', { all: [{ tag: 'twohand', dmgPct: 40 }] }],
     ['尖刺皮膚', { fx: { thornsF: 4, arm: 5 } }]
   ],
+  /* 0.1.50 亞馬遜重製（矛、弓、盾）：協同作戰（召喚戰士）、女武神降臨（復活）、撕裂（新異常）、矛弓連攜、戰舞、插矛、日月輪轉 */
   spearman: P => [
-    ['突刺', { all: onP(P, { dmgPct: 35 }) }],
-    /* 0.1.33 護甲 20、開戰護盾 10，背包裡每有 1 件矛再 +10 */
-    ['方陣', { fx: { arm: 20, startBlock: 10 }, fxPer: [{ tag: 'spear', startBlock: 10 }] }],
-    ['貫穿', { all: onP(P, { sunder: 5, crit: 10 }) }],
-    ['槍林', { all: onP(P, { spd: 25 }) }],
-    ['衝鋒', { all: onP(P, { dmgPct: 15 }), fx: { opener: 100 } }],
-    ['放血', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
-    ['反擊', { all: onP(P, { dmgPct: 10 }), fx: { thornsF: 5 } }],
-    ['致命一擊', { all: onP(P, { crit: 20 }), fx: { critMul: 40 } }],
-    ['連刺', { all: onP(P, { dmgPct: 10 }), fx: { double: 18 } }],
-    /* 0.1.33 雙手武器少佔 1 格（shrink） */
-    ['長柄大師', { all: [{ tag: 'twohand', dmgPct: 35, spd: 10 }], shrink: 'twohand' }],
-    ['戰意', { fx: { ramp: 8, hp: 30 } }],
-    ['處決', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60 } }]
+    ['協同作戰', { fx: { summon: 2 }, ic: 'asc_cls_amazon' }],
+    ['女武神降臨', { fx: { revive: 40 }, ic: 'asc_valkyrie_c1' }],
+    ['矛弓連攜', { fx: { link3: 3 }, ic: 'asc_valkyrie_b1' }],
+    ['戰舞', { fx: { link: 12 }, ic: 'asc_valkyrie_b5' }],
+    ['插矛', { all: [{ tag: 'spear', pin: 1, dmgPct: 10 }], ic: 'sk_javelin' }],
+    ['迴避反擊', { fx: { dodge: 15, counter: 100 }, ic: 'asc_valkyrie_b3' }],
+    ['叢林陷阱', { traps: [{ k: 'stake', n: 3, sz: 2 }], all: onP(P, { dmgPct: 10 }), ic: 'it_spikestud' }],
+    ['血獵', { fx: { huntCrit: 25, huntHeal: 6 }, all: onP(P, { rend: 1 }), ic: 'asc_valkyrie_c0' }],
+    ['日月輪轉', { fx: { sunmoon: 50 }, ic: 'asc_valkyrie_c2' }],
+    ['姊妹盟約', { sisters: [30, 15], ic: 'asc_valkyrie_e' }],
+    ['部落之盾', { all: [...onP(P, { guard: 35 }), { tag: 'shield', blockPct: 40 }], ic: 'asc_valkyrie_b2' }],
+    ['浴血戰姬', { fx: { fury: 3, rendX: 2 }, ic: 'sk_bloodhowl' }]
   ],
   assassin: P => [
     ['影襲', { all: onP(P, { crit: 15 }), fx: { opener: 100 } }],
@@ -2604,7 +2620,36 @@ const MODN = {
   immAll: () => '免疫所有異常狀態',
   immFz: () => '免疫凍結與冰緩',
   shatterF: v => `所有冰：敵人每有 1 件凍結中的道具傷害 +${pct(v)}`,
-  shatterS: v => `每有 1 件冰緩中的道具攻速 +${pct(v)}`
+  shatterS: v => `每有 1 件冰緩中的道具攻速 +${pct(v)}`,
+  /* 0.1.50 弓箭手（插箭）、亞馬遜（撕裂、召喚、復活）的新機制 */
+  stick: v => `命中時在敵人身上插 ${v} 支箭`,
+  shots: v => `每次攻擊射出 ${v} 支箭（每支 ${SHOT_DMG}% 傷害；命中效果只有第 1 支有，每支都會插箭）`,
+  snipe: v => `每第 ${v} 次攻擊必定暴擊、無視全部護甲與護盾`,
+  elem: () => '攻擊輪流附加：燃燒 2、50% 機率冰緩敵人一件道具、中毒 1',
+  sure: () => '不會被閃避、招架',
+  pin: v =>
+    `命中時插 ${v} 把矛在敵人身上（每把敵人攻速 -${PIN_SLOW}%，最多 ${PIN_MAX} 把；插滿後下一次命中全部拔出，撕裂 ${PIN_REND}）`,
+  rend: v => `命中撕裂 ${sg(v)}${v}`,
+  arrowPct: v => `敵人身上每支箭，受到你的攻擊傷害 +${pct(v)}（最多 ${ARROW_MAX} 支）`,
+  boom: v => `每支箭插上 ${BOOM_T} 秒後引爆：${v} 傷害（固定）、燃燒 +${BOOM_BURN}`,
+  rain: v => `開戰時射出「弓、弩數量 × ${v}」支箭插在敵人身上（每支 ${RAIN_DMG} 傷害）`,
+  arrowCap: v => `插箭上限 +${v}`,
+  barb: v => `每插一支箭，敵人流血 +${v}`,
+  critArrow: v => `敵人身上每支箭，暴擊傷害 +${pct(v)}`,
+  streak: v => `連續命中每次所有武器攻速 +${pct(v)}（最多 ${STREAK_MAX} 層，被閃開或招架就歸零）`,
+  kite: v => `閃避成功時所有武器充能 +${pct(v)}`,
+  summon: v => `開戰時召喚 ${v} 名亞馬遜戰士，各自隨機繼承你背包裡一把武器（傷害、加成都一樣，不會被攻擊）`,
+  revive: v =>
+    `第一次倒下時以 ${pct(v)} 生命復活、清掉身上的持續傷害，化身女武神：傷害 +${VALK_DMG}%、攻速 +${VALK_SPD}%、免疫暈眩、凍結與冰緩`,
+  link3: v =>
+    `矛攻擊 ${v} 次後，下一次弓、弩攻擊傷害 ×2；弓、弩攻擊 ${v} 次後，下一次矛攻擊傷害 ×2、撕裂 +${LINK_REND}`,
+  link: v => `矛出手時所有弓、弩充能 +${pct(v)}；弓、弩出手時所有矛充能 +${pct(v)}`,
+  counter: v => `閃開、招架攻擊或盾格擋時，最強的一把矛立刻反擊（${pct(v)} 傷害、撕裂 +${CTR_REND}）`,
+  huntCrit: v => `敵人撕裂中時暴擊率 +${pct(v)}`,
+  huntHeal: v => `敵人撕裂中時暴擊回復 ${v}`,
+  sunmoon: v => `每 ${SUN_T} 秒日夜交替（從白天開始）：白天矛傷害 +${pct(v)}，夜晚弓、弩攻速 +${pct(v)}`,
+  fury: v => `每被攻擊打中一次，矛、弓、弩傷害 +${pct(v)}（最多 ${FURY_MAX} 層）`,
+  rendX: v => `造成的撕裂 ×${v}`
 };
 /* 0.1.37 終極藥劑的效果（煉成三選一）：喝下時套用 */
 const BREW = {
@@ -2650,6 +2695,32 @@ const RES_MAX = 80,
   /* 0.1.33 閃電鏈的連鎖：最多多打 2 下、多打的那幾下傷害 50% */
   CHAIN_MAX = 2,
   CHAIN_DMG = 50;
+/* 0.1.50 插箭（最多幾支、爆裂箭幾秒後引爆與燃燒、箭雨每支傷害、多重射擊每支傷害）、連珠箭層數、
+   插矛（最多幾把、每把攻速 -%、拔出的撕裂）、撕裂（每 0.5 秒扣層數、之後剩 3/4）、矛弓連攜與反擊的撕裂、
+   日月輪轉每幾秒交替、浴血戰姬層數、女武神的加成 */
+const ARROW_MAX = 30,
+  BOOM_T = 4,
+  BOOM_BURN = 1,
+  RAIN_DMG = 4,
+  SHOT_DMG = 30,
+  STREAK_MAX = 15,
+  PIN_MAX = 3,
+  PIN_SLOW = 8,
+  PIN_REND = 8,
+  REND_KEEP = 0.75,
+  LINK_REND = 4,
+  CTR_REND = 3,
+  SUN_T = 5,
+  FURY_MAX = 20,
+  VALK_DMG = 40,
+  VALK_SPD = 30,
+  /* 陷阱：捕獸夾（流血、夾幾次壞掉）、獵網（暈眩秒數）、尖樁（固定傷害、破甲、撕裂） */
+  SNARE_BLEED = 3,
+  SNARE_N = 3,
+  NET_STUN = 0.5,
+  STAKE_DMG = 12,
+  STAKE_SUNDER = 2,
+  STAKE_REND = 3;
 /* 0.1.28 上限：穿甲最多無視 80%、驅獸最多 -60% */
 const PIERCE_MAX = 80,
   PETDOWN_MAX = 60;
@@ -2657,6 +2728,7 @@ const PIERCE_MAX = 80,
    開頭後面接空格、數字或「時」的不合併（「命中時 35% 機率…」那種句子各自完整） */
 const JOIN_P = [
   '自己生命低於 50% 時',
+  '敵人撕裂中時',
   '對生命低於 30% 的敵人',
   '命中時讓敵人',
   '開戰時讓敵人',
@@ -2790,7 +2862,10 @@ function itemDesc(id, t = 1) {
     );
   /* 0.1.35 浪人、商人的核心 */
   if (it.merge2) out.push(`${tagTxt(it.merge2)}只要 2 件一樣的就能合成升階（本來要 3 件）`);
-  if (it.give) out.push(`拿到時送${ITEMI[it.give].dmg ? '一把' : '一件'} ${ITEMI[it.give].star}★ ${ITEMI[it.give].n}`);
+  if (it.give)
+    out.push(
+      `拿到時送${ITEMI[it.give].tags.includes('pet') ? '一隻' : ITEMI[it.give].dmg ? '一把' : '一件'} ${ITEMI[it.give].star}★ ${ITEMI[it.give].n}`
+    );
   if (it.coin) out.push('開戰時身上有金幣：每次攻擊花 1 金，傷害、暴擊率、命中效果翻倍');
   if (it.absorb)
     out.push(
@@ -2817,7 +2892,11 @@ function itemDesc(id, t = 1) {
     ignite: ['點燃陷阱', '敵人被點燃（燃燒不退反增、傷害 ×1.5）'],
     bomb: ['藥劑炸彈', `敵人受 ${BOMB_DMG[0]}～${BOMB_DMG[1]} 傷害、流血 ${BOMB_BLEED}`],
     spore: ['劇毒孢子', '敵人中毒 +3、劇毒 +3'],
-    icicle: ['冰錐', '凍結觸發的那件道具']
+    icicle: ['冰錐', '凍結觸發的那件道具'],
+    /* 0.1.50 弓箭手、亞馬遜的陷阱 */
+    snare: ['捕獸夾', `那次出手落空、敵人流血 ${SNARE_BLEED}（夾 ${SNARE_N} 次後壞掉）`],
+    net: ['獵網', `敵人暈眩 ${NET_STUN} 秒`],
+    stake: ['尖樁', `敵人受 ${STAKE_DMG} 傷害（固定）、破甲 ${STAKE_SUNDER}、撕裂 ${STAKE_REND}`]
   };
   for (const tp of it.traps || [])
     out.push(
@@ -2845,6 +2924,9 @@ function itemDesc(id, t = 1) {
   if (it.hatch) out.push(`拿到後過 ${SEAL_RC} 回合變成「${ITEMI[it.hatch].n}」`);
   if (it.iceHp) out.push(`每場自己觸發一次凍結或冰緩，最大生命 +${it.iceHp}（一直累積）`);
   if (it.imm) out.push('免疫所有異常與封鎖');
+  if (it.stick) out.push(MODN.stick(it.stick) + '（再加上職業的插箭）');
+  if (it.sisters)
+    out.push(`背包裡矛和弓、弩一樣多（至少各 1 件）時，所有武器傷害 +${it.sisters[0]}%、攻速 +${it.sisters[1]}%`);
   if (it.defX) out.push(`所有防具、盾的效果 ×${it.defX}`);
   if (it.bribe) out.push(`開戰時金幣超過 ${it.bribe} 金就花 ${it.bribe} 金，整場封鎖敵人星級最高的武器`);
   if (it.gift) out.push(`拿到時送 ${it.gift[2]} 隻隨機 ${it.gift[0]}★ ${tagTxt(it.gift[1])}`);

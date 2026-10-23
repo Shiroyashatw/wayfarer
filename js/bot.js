@@ -65,10 +65,24 @@ function botPower(F, P = BOT_P) {
     gd = 0;
   const ep = BOT_EPET;
   const cm = (F.critMul || 160) / 100;
+  /* 0.1.50 撕裂（一層一共約扣 4 倍，比流血強）、每秒插幾支箭、矛／弓的數量（亞馬遜的連攜、戰舞） */
+  const rendW = 2 * (F.rendX || 1);
+  let arrowRate = 0,
+    rendSrc = 0;
+  const nS = F.weapons.filter(w => w.kind === 'spear').length,
+    nB = F.weapons.filter(w => w.kind === 'bow').length;
   for (const w of F.weapons) {
     const avg = (w.dmg[0] + w.dmg[1]) / 2,
       crit = Math.min(100, w.crit || 0) / 100;
-    let hit = avg * (1 + crit * (cm - 1));
+    /* 0.1.50 多重射擊：傷害是 N 支 × SHOT_DMG%，命中效果只有一次；狙擊：每第 N 次必暴擊 */
+    let hit = avg * (1 + crit * (cm - 1)) * (w.shots > 1 ? (w.shots * SHOT_DMG) / 100 : 1);
+    if (w.snipe) hit *= 1 + 0.35 / w.snipe;
+    arrowRate += ((w.stick || 0) * Math.max(1, w.shots || 1)) / Math.max(0.3, w.cd);
+    if (w.rend || w.pin) rendSrc++;
+    hit += ((w.rend || 0) + (w.pin ? PIN_REND / (PIN_MAX + 1) : 0)) * rendW * P.dotW;
+    if (w.pin) hit *= 1.15;
+    if (w.elem) hit = hit * 1.3 + 3 * P.dotW;
+    if (w.sure) hit *= 1.05;
     /* 0.1.37 劇毒不退、每秒 ×2；中毒上限高（毒師）多算一點 */
     hit +=
       ((w.burn || 0) +
@@ -98,6 +112,26 @@ function botPower(F, P = BOT_P) {
     if (w.guard) gd += ((hit * w.guard) / 100 / Math.max(0.3, w.cd)) * 9;
   }
   for (const s of F.shields) if (s.bash) dps += (s.block * s.bash) / 100 / Math.max(0.6, s.cd);
+  /* 0.1.50 協同作戰：多了 N 把平均的武器 */
+  if (F.summon && F.weapons.length) dps *= 1 + F.summon / Math.max(2, F.weapons.filter(w => !w.pet).length);
+  /* 0.1.50 插箭：一場平均插著幾支（上限）、每支傷害 +%、爆裂箭（固定傷害＋燃燒）、倒鉤（流血）、鷹眼（暴擊傷害）、箭雨（開戰的箭） */
+  const rainN = F.rain ? nB * F.rain : 0;
+  if (arrowRate || rainN) {
+    const avgA = Math.min(ARROW_MAX + (F.arrowCap || 0), rainN + arrowRate * 6);
+    dps *= 1 + ((F.arrowPct || 0) * avgA + (F.critArrow || 0) * avgA * 0.3) / 100;
+    dps += arrowRate * ((F.boom || 0) + (F.boom ? BOOM_BURN * 2 * P.dotW : 0)) * 0.75;
+    dps += arrowRate * (F.barb || 0) * 1.2 * P.dotW;
+    dps += (rainN * (RAIN_DMG + (F.boom || 0) + (F.barb || 0) * 0.7 * P.dotW)) / 6;
+  }
+  /* 0.1.50 亞馬遜：矛弓連攜（另一種的下一下 ×2）、戰舞（互相充能）、反擊、血獵、日月輪轉、浴血戰姬、連珠箭、游擊 */
+  if (F.link3 && nS && nB) dps *= 1.4;
+  if (F.link && nS && nB) dps *= 1 + (F.link / 100) * Math.min(nS, nB) * 1.2;
+  if (F.counter) dps *= 1 + (((F.dodge || 0) + (F.parry || 0)) / 100 + F.shields.length * 0.08) * (F.counter / 100);
+  if (F.huntCrit && rendSrc) dps *= 1 + (F.huntCrit / 100) * 1.2 * (cm - 1);
+  if (F.sunmoon) dps *= 1 + (F.sunmoon / 100) * 0.45;
+  if (F.fury) dps *= 1 + (F.fury * 8) / 100;
+  if (F.streak) dps *= 1 + (F.streak * 6) / 100;
+  if (F.kite) dps *= 1 + ((F.dodge || 0) / 100) * (F.kite / 100) * 2;
   for (const p of F.pots) if (p.bomb) dps += (p.v * p.n * p.bomb) / 100 / 15;
   if (F.petHunt) dps *= 1 + (F.petHunt * Math.min(5, ep)) / 100;
   dps *= 1 + (F.double || 0) / 100 + ((F.triple || 0) * 2) / 100;
@@ -132,6 +166,9 @@ function botPower(F, P = BOT_P) {
   for (const s of F.shields)
     ehp += (s.block / Math.max(0.6, s.cd)) * 9 + (s.heal / Math.max(0.6, s.cd)) * 9 + s.thorns * 3;
   ehp += (F.regen || 0) * 9 + (F.startBlock || 0) + (F.thornsF || 0) * 6 + (F.critHeal || 0) * 4 + (F.thornsP || 0) * 8;
+  /* 0.1.50 女武神降臨：多一條命（復活的生命）＋之後的加成；血獵的暴擊回血 */
+  if (F.revive) ehp *= 1 + F.revive / 100 + 0.1;
+  if (F.huntHeal && rendSrc) ehp += F.huntHeal * 4;
   for (const p of F.pots) ehp += p.v * p.n + (p.ex ? p.ex.length * 25 * p.n : 0) + (F.potBuff ? F.potBuff[0] * p.n : 0);
   if (F.poisonLife) ehp *= 1.08;
   if (F.immAll) ehp *= 1.15;
@@ -164,7 +201,7 @@ function botPower(F, P = BOT_P) {
   }
   if (F.petDown) pre += (Math.min(PETDOWN_MAX, F.petDown) / 100) * 0.3 * Math.min(1, ep / 2);
   /* 0.1.37 陷阱：大約每個 1 格陷阱蓋到一件道具的機率一半，蓋到的話每次出手都觸發 */
-  const TW = { ignite: 0.05, bomb: 0.04, spore: 0.06, icicle: 0.07 };
+  const TW = { ignite: 0.05, bomb: 0.04, spore: 0.06, icicle: 0.07, snare: 0.07, net: 0.08, stake: 0.07 };
   for (const t of F.traps || []) pre += (TW[t.k] || 0.04) * t.n * (t.sz > 1 ? 1.5 : 1);
   if (F.corrodeRe) pre += 0.12;
   /* 0.1.29 抗異常：照對手平均每種異常的強度（run.eres，跟 epet 一樣看上一回合其他人的背包）估價 */

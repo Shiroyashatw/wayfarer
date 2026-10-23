@@ -866,9 +866,9 @@ function renderBattle() {
     ob = fb.opp.bag;
   $('app').innerHTML = `<div class="bt">
     <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b></div>
-    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div></div>
+    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div>${smnHTML(0)}<i class="sunb" id="sun0" hidden></i></div>
     <div class="vs">VS</div>
-    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div></div>
+    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div>${smnHTML(1)}<i class="sunb" id="sun1" hidden></i></div>
     <div class="fx" id="fx"></div></div>
     <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
     <div class="blog" id="blog" aria-live="off"></div>
@@ -878,6 +878,18 @@ function renderBattle() {
   bShow();
   clearInterval(renderBattle.iv);
   renderBattle.iv = setInterval(bTick, 33);
+}
+/* 0.1.50 協同作戰召喚的亞馬遜戰士：角色兩旁的小人（拿矛的女騎士、拿弓的精靈弓手），頭上浮著繼承的武器（充能條、出手會閃） */
+function smnHTML(s) {
+  const l = B.fb.res.ev.filter(e => e.k === 'summon' && e.s === s);
+  if (!l.length) return '';
+  return `<div class="smn${s ? ' op' : ''}" id="smn${s}">${l
+    .map(e => {
+      const I = ITEMI[e.id],
+        bow = I && (I.tags.includes('bow') || I.tags.includes('xbow'));
+      return `<div class="smf k${e.v}" data-u="${e.u}"><div class="it smit" data-u="${e.u}"><img src="${itemIcon(e.id)}" alt="${I ? I.n : ''}"></div><i>${sprCv(bow ? 'a_av_elf' : 'a_av_knight', s ? 'flip' : '')}</i></div>`;
+    })
+    .join('')}</div>`;
 }
 function bShow() {
   for (let i = 0; i < 2; i++) {
@@ -913,7 +925,19 @@ function cdTimeline(ev) {
 function bCd() {
   if (!B.cdt) B.cdt = cdTimeline(B.fb.res.ev);
   for (let s = 0; s < 2; s++) {
-    const root = $('bb' + s);
+    const root = $('bb' + s),
+      sm = $('smn' + s);
+    /* 0.1.50 召喚的戰士的武器也有充能條 */
+    if (sm)
+      for (const [u, ts] of Object.entries(B.cdt.t[s])) {
+        const el = sm.querySelector(`.it[data-u="${u}"]`);
+        if (!el) continue;
+        let k = 0;
+        while (k < ts.length && ts[k] <= B.t) k++;
+        const a = k ? ts[k - 1] : 0,
+          b = ts[k];
+        el.style.setProperty('--cd', b == null ? 0 : Math.min(1, (B.t - a) / Math.max(0.05, b - a)).toFixed(3));
+      }
     if (!root) continue;
     for (const [u, ts] of Object.entries(B.cdt.t[s])) {
       const el = root.querySelector(`.it[data-u="${u}"]`);
@@ -966,16 +990,31 @@ const STN = {
     chill: '冰緩',
     confuse: '混亂',
     selfV: '自殘',
-    dmgDown: '傷害降低'
+    dmgDown: '傷害降低',
+    /* 0.1.50 插箭、撕裂、插矛 */
+    arrow: '插箭',
+    rend: '撕裂',
+    pin: '插矛'
   },
   /* 0.1.37 陷阱的名字 */
-  TRAPN = { ignite: '點燃', bomb: '藥劑炸彈', spore: '劇毒孢子', icicle: '冰錐' },
+  TRAPN = {
+    ignite: '點燃',
+    bomb: '藥劑炸彈',
+    spore: '劇毒孢子',
+    icicle: '冰錐',
+    snare: '捕獸夾',
+    net: '獵網',
+    stake: '尖樁'
+  },
   /* 0.1.47 陷阱的圖示與顏色 */
   TRAPI = {
     ignite: ['sk_fireburst', '#ff7a3a'],
     bomb: ['asc_alchemist_b0', '#ffb15a'],
     spore: ['it_c_venom_7', '#5fd38a'],
-    icicle: ['it_c_cryo_2', '#8fd8ff']
+    icicle: ['it_c_cryo_2', '#8fd8ff'],
+    snare: ['sk_trapshot', '#ff8a5a'],
+    net: ['it_bugnet', '#ffe27a'],
+    stake: ['it_spikestud', '#ff5a7a']
   },
   STI = [
     ['burn', 'ail_burn', 1],
@@ -991,7 +1030,10 @@ const STN = {
     ['corrode', 'asc_alchemist_c0', 0],
     ['age', 'ail_slow', 0],
     ['chill', 'sk_frostnova', 1],
-    ['confuse', 'ail_shock', 0]
+    ['confuse', 'ail_shock', 0],
+    ['arrow', 'sk_rainarrow', 1],
+    ['rend', 'asc_valkyrie_c0', 1],
+    ['pin', 'sk_javelin', 1]
   ];
 function bSts() {
   if (!B.st) return;
@@ -1030,7 +1072,8 @@ const ELC = {
   venom: '#5fd38a',
   chill: '#bfe9ff',
   corrode: '#d6e36b',
-  age: '#c9b89a'
+  age: '#c9b89a',
+  rend: '#ff3a5a'
 };
 function bPop(side, txt, col, big) {
   const fx = $('fx');
@@ -1051,6 +1094,9 @@ function bNames() {
       for (const o of its) nm[k][o.u] = fuName(o);
     };
   put(0, S.run.bag.items);
+  /* 0.1.50 召喚的戰士：「戰士（長槍）」 */
+  for (const e of B.fb.res.ev)
+    if (e.k === 'summon') nm[e.s][e.u] = `亞馬遜戰士（${ITEMI[e.id] ? ITEMI[e.id].n : '武器'}）`;
   const ob = B.fb.opp.bag;
   if (ob)
     put(
@@ -1068,7 +1114,7 @@ function bLog(e, tg) {
     by = (s, u) => `${who(s)}${it(s, u) ? '的' + it(s, u) : ''}`;
   let t = '';
   if (e.k === 'hit' || e.k === 'crit')
-    t = `${by(e.s, e.u)}${e.k === 'crit' ? ' 暴擊' : ''} → ${e.v}${e.ab ? `（擋 ${e.ab}）` : ''}`;
+    t = `${by(e.s, e.u)}${e.ctr ? ' 反擊' : ''}${e.lk ? ' 連攜 ×2' : ''}${e.k === 'crit' ? ' 暴擊' : ''} → ${e.v}${e.ab ? `（擋 ${e.ab}）` : ''}`;
   else if (e.k === 'miss') t = `${by(e.s, e.u)} ${e.parry ? '被招架' : '被閃開'}`;
   else if (e.k === 'block') t = `${by(e.s, e.u)} 格擋 +${e.v}`;
   else if (e.k === 'dot') t = `${who(tg)} ${STN[e.el === 'fire' ? 'burn' : e.el] || ''} -${e.v}`;
@@ -1082,7 +1128,7 @@ function bLog(e, tg) {
   else if (e.k === 'corrode') t = e.u ? `${who(tg)} 腐蝕中：護盾變成 -${e.v} 生命` : `${who(tg)} 腐蝕 ${e.v} 秒`;
   else if (e.k === 'trapSet') t = `${who(e.s)} 在${who(1 - e.s)}的背包放了${TRAPN[e.x] || '陷阱'}`;
   else if (e.k === 'trap')
-    t = `${who(1 - e.s)}的${it(1 - e.s, e.tu) || '道具'} 觸發${TRAPN[e.x] || '陷阱'}${e.v ? ` -${e.v}` : ''}`;
+    t = `${who(1 - e.s)}的${it(1 - e.s, e.tu) || '道具'} 觸發${TRAPN[e.x] || '陷阱'}${e.v ? ` -${e.v}` : ''}${e.x === 'snare' ? '，這次出手落空' : ''}${e.brk ? '（捕獸夾壞了）' : ''}`;
   else if (e.k === 'weak') t = `${who(tg)} 虛弱 ${e.v} 秒`;
   else if (e.k === 'blind') t = `${who(tg)} 致盲 ${e.v} 秒`;
   else if (e.k === 'thorns') t = `${who(e.s)} 反彈 ${e.v}`;
@@ -1093,6 +1139,12 @@ function bLog(e, tg) {
     t = `${by(e.s, e.u)} ${e.v >= MAX_T ? '關住' : '封鎖'}了${who(1 - e.s)}的${it(1 - e.s, e.tu) || '武器'}${e.v >= MAX_T ? '（整場）' : ` ${e.v} 秒`}`;
   else if (e.k === 'down') t = `${by(e.s, e.u)} 讓${who(1 - e.s)}的${it(1 - e.s, e.tu) || '武器'}降 1 階`;
   else if (e.k === 'throw') t = `${by(e.s, e.u)} 丟出藥劑：${STN[e.x] || ''} ${e.v}`;
+  /* 0.1.50 弓箭手、亞馬遜 */ else if (e.k === 'boom') t = `${who(tg)} 身上 ${e.n} 支箭引爆 -${e.v}`;
+  else if (e.k === 'rain') t = `${who(e.s)} 射出箭雨：${e.n} 支箭 -${e.v}`;
+  else if (e.k === 'revive') t = `${who(e.s)} 女武神降臨！復活 ${e.v} 生命`;
+  else if (e.k === 'summon') t = `${who(e.s)} 召喚${it(e.s, e.u) || '亞馬遜戰士'}`;
+  else if (e.k === 'pinOut') t = `${who(e.s)} 拔出${who(tg)}身上的矛：撕裂`;
+  else if (e.k === 'sun') t = `${who(e.s)} ${e.v ? '白天：矛傷害提升' : '夜晚：弓攻速提升'}`;
   if (!t) return;
   const d = document.createElement('p');
   d.className = e.s ? 'op' : 'me';
@@ -1131,7 +1183,9 @@ function bSlash(side, crit) {
   setTimeout(() => s.remove(), 300);
 }
 function bHit(e, tg) {
-  bAnim($('sp' + e.s), e.s ? 'atkL' : 'atkR');
+  /* 0.1.50 召喚的戰士出手：那個小人往前衝 */
+  const sm = e.u && String(e.u).startsWith('sm') && document.querySelector(`#smn${e.s} .smf[data-u="${e.u}"]`);
+  bAnim(sm || $('sp' + e.s), e.s ? 'atkL' : 'atkR');
   bAnim($('sp' + tg), 'hurt');
   if (e.el && e.el !== 'phys') bBurst(tg, ELC[e.el], e.k === 'crit' ? 10 : 5);
   else bSlash(tg, e.k === 'crit');
@@ -1139,7 +1193,7 @@ function bHit(e, tg) {
 }
 function bFlash(side, u) {
   if (!u) return;
-  const el = document.querySelector(`#bb${side} .it[data-u="${u}"]`);
+  const el = document.querySelector(`#bb${side} .it[data-u="${u}"], #smn${side} .it[data-u="${u}"]`);
   if (!el) return;
   el.classList.remove('act');
   void el.offsetWidth;
@@ -1202,6 +1256,18 @@ function bTrapSet(e, n) {
     ).onfinish = () => f.remove();
   }
 }
+/* 0.1.50 日月輪轉：角色左上角的小圓圖示（☀ 白天、☾ 夜晚）淡入淡出，換的時候跳一下字；場地背景不變 */
+function bSun(e) {
+  const el = $('sun' + e.s);
+  if (!el) return;
+  const first = el.hidden;
+  el.hidden = false;
+  el.className = 'sunb ' + (e.v ? 'day' : 'night');
+  el.textContent = e.v ? '☀' : '☾';
+  el.title = e.v ? '白天：矛傷害提升' : '夜晚：弓、弩攻速提升';
+  bAnim(el, 'swap');
+  if (!first) bPop(e.s, e.v ? '白天' : '夜晚', e.v ? '#ffd76a' : '#a9b8ff');
+}
 /* 0.1.47 陷阱觸發：那個陷阱的圖示閃一下、冒出一圈光 */
 function bTrapHit(e) {
   const side = 1 - e.s;
@@ -1236,11 +1302,16 @@ function bTick() {
     /* 0.1.47 陷阱的放置與觸發每一筆都要畫（不受一次最多 6 個特效的限制） */
     if (e.k === 'trapSet') bTrapSet(e, (B.trapN = (B.trapN || 0) + 1) - 1);
     if (e.k === 'trapHit') bTrapHit(e);
+    if (e.k === 'sun') bSun(e);
     if (k++ > 6) continue;
     if (e.k === 'hit' || e.k === 'crit') {
       bPop(
         tg,
-        (e.k === 'crit' ? '暴擊 ' : '') + e.v + (e.ab ? `（擋 ${e.ab}）` : ''),
+        (e.ctr ? '反擊 ' : '') +
+          (e.lk ? '連攜 ' : '') +
+          (e.k === 'crit' ? '暴擊 ' : '') +
+          e.v +
+          (e.ab ? `（擋 ${e.ab}）` : ''),
         ELC[e.el] || '#fff',
         e.k === 'crit'
       );
@@ -1295,7 +1366,21 @@ function bTick() {
     } else if (e.k === 'down') {
       bPop(tg, '降階！', '#ff8a8a', 1);
       bFlash(e.s, e.u);
-    }
+    } else if (e.k === 'boom') {
+      bPop(tg, `引爆 ${e.v}`, '#ff9a5a', 1);
+      bBurst(tg, '#ff9a5a', 10);
+    } else if (e.k === 'rain') {
+      bPop(tg, `箭雨 ${e.v}`, '#fff', 1);
+      bBurst(tg, '#d8d2c8', 12);
+    } else if (e.k === 'revive') {
+      bPop(e.s, '女武神降臨！', '#ffe9a0', 1);
+      bBurst(e.s, '#ffe9a0', 14, 1);
+      $('sp' + e.s)?.classList.remove('ko');
+      $('sp' + e.s)?.classList.add('valk');
+    } else if (e.k === 'pinOut') {
+      bPop(tg, '拔矛・撕裂', '#ff3a5a', 1);
+      bBurst(tg, '#ff3a5a', 8);
+    } else if (e.k === 'summon') bBurst(e.s, '#bfe9ff', 6, 1);
   }
   bShow();
   bSts();
@@ -1351,6 +1436,21 @@ const CX_AIL = () => [
     `每秒受「層數 ×${VENOM_MUL}」傷害，層數不會退。最多 ${VENOM_MAX} 層（毒師核心「劇毒」40 層）。`
   ],
   ['ail_bleed', '流血', '每秒受「層數」傷害，之後層數減半（N 層一共約 2N）。'],
+  [
+    'asc_valkyrie_c0',
+    '撕裂',
+    `比流血快：每 0.5 秒受「層數」傷害，之後層數剩 ${REND_KEEP * 100}%（N 層一共約 4N）。吃流血抗性。`
+  ],
+  [
+    'sk_rainarrow',
+    '插箭',
+    `弓箭手的弓、弩命中時插在敵人身上，整場不退（最多 ${ARROW_MAX} 支）；每支讓敵人受到弓箭手的攻擊傷害 +1%，爆裂箭、倒鉤箭、鷹眼狙擊也看箭的數量。`
+  ],
+  [
+    'sk_javelin',
+    '插矛',
+    `亞馬遜核心「插矛」：每把讓敵人攻速 -${PIN_SLOW}%（最多 ${PIN_MAX} 把）；插滿後下一次命中全部拔出，撕裂 ${PIN_REND}。`
+  ],
   ['ail_vul', '破甲', `扣敵人的護甲，整場不退、會疊加，最多 ${SUNDER_MAX}；護甲最低到 -10（受到的傷害最多 ×1.25）。`],
   ['ail_frozen', '凍結', `凍住敵人一件武器或盾 ${FREEZE_T} 秒，期間完全不能充能；凍結中的道具不能再被凍。`],
   ['sk_frostnova', '冰緩', `敵人一件武器或盾充能速度減半（命中觸發 ${CHILL_T} 秒）。`],

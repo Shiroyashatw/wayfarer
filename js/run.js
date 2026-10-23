@@ -764,7 +764,7 @@ function fightSum(run, fb) {
   let dealt = 0,
     taken = 0;
   for (const e of res.ev) {
-    if (!['hit', 'crit', 'dot', 'thorns', 'fatigue', 'trap', 'corrode'].includes(e.k)) continue;
+    if (!['hit', 'crit', 'dot', 'thorns', 'fatigue', 'trap', 'corrode', 'boom', 'rain'].includes(e.k)) continue;
     if (e.s === 0) {
       dealt += e.v;
       if (e.u && (e.k === 'hit' || e.k === 'crit')) by[e.u] = (by[e.u] || 0) + e.v;

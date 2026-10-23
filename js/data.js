@@ -147,5 +147,6 @@ const NAME_A = [
   ];
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
-const GVER = 's19';
-const VER = '0.1.49';
+/* 0.1.50 s20：弓箭手、亞馬遜核心重製（同一個核心編號換了效果）、機器人重新訓練 */
+const GVER = 's20';
+const VER = '0.1.50';

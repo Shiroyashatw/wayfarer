@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "wayfarer", "runtimeExecutable": "python3", "runtimeArgs": ["-m", "http.server", "8000"], "port": 8000 }
+    { "name": "wayfarer", "runtimeExecutable": "python3", "runtimeArgs": ["-m", "http.server", "8000"], "port": 8000 },
+    { "name": "wayfarer-8002", "runtimeExecutable": "python3", "runtimeArgs": ["-m", "http.server", "8002"], "port": 8002, "autoPort": false }
   ]
 }

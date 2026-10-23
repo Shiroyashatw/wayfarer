@@ -67,7 +67,22 @@ function simSide(F) {
     trig: {},
     buffT: 0,
     bDmg: 0,
-    bSpd: 0
+    bSpd: 0,
+    /* 0.1.50 身上被插的箭、要引爆的時間（爆裂箭）、撕裂（層）、被插的矛；連珠箭層數、浴血戰姬層數、
+       復活過了沒、女武神；矛弓連攜（矛、弓各出手幾次、下一下 ×2）；日月輪轉現在是不是白天 */
+    arrow: 0,
+    boomQ: [],
+    rend: 0,
+    pin: 0,
+    streak: 0,
+    furyN: 0,
+    rev: 0,
+    valk: 0,
+    cS: 0,
+    cB: 0,
+    bowX: 0,
+    spearX: 0,
+    sunP: 1
   };
 }
 /* 0.1.35 金錢標花 1 金那一下：傷害、暴擊率、命中效果、吸血都翻倍 */
@@ -132,7 +147,11 @@ function simulate(FA, FB, seed) {
         +(x.corrode > 0),
         +(x.age > 0),
         items(x).filter(o => o.ch > 0).length,
-        +(x.confuse > 0)
+        +(x.confuse > 0),
+        /* 0.1.50 插箭、撕裂、插矛 */
+        x.arrow,
+        Math.ceil(x.rend),
+        x.pin
       ]),
       /* 0.1.35 雙方的護盾（格擋量），戰鬥畫面的白色護盾條用 */
       bk: [Math.round(S[0].block), Math.round(S[1].block)],
@@ -141,7 +160,16 @@ function simulate(FA, FB, seed) {
   const hurt = (t, d, def, src, k, extra) => {
     def.hp -= d;
     log(t, src, k, Math.round(d), extra);
+    if (def.hp <= 0 && def.F.revive && !def.rev) revive(t, def);
   };
+  /* 0.1.50 女武神降臨：第一次倒下時復活、清掉持續傷害，之後傷害、攻速提升、免疫暈眩凍結冰緩 */
+  function revive(t, x) {
+    x.rev = x.valk = 1;
+    x.hp = (x.max * x.F.revive) / 100;
+    for (const k of ['burn', 'poison', 'venom', 'bleed', 'rend', 'ignite']) x[k] = 0;
+    log(t, S.indexOf(x), 'revive', Math.round(x.hp), { self: 1 });
+    tr(x, 'revive');
+  }
   /* 0.1.29 抗異常：k 是 d 身上的異常（burn、poison…），回傳抗完剩幾成；開戰免毒的秒數內不會中毒；
      0.1.37 賢者之石免疫所有異常、冰甲免疫凍結與冰緩 */
   const RK = {
@@ -150,6 +178,7 @@ function simulate(FA, FB, seed) {
     poison: 'rPoison',
     venom: 'rPoison',
     bleed: 'rBleed',
+    rend: 'rBleed',
     sunder: 'rSunder',
     frozen: 'rFreeze',
     chill: 'rFreeze',
@@ -164,6 +193,7 @@ function simulate(FA, FB, seed) {
     if ((k === 'frozen' || k === 'chill') && d.F.immFz) return tr(d, 'immFz'), 0;
     if ((k === 'poison' || k === 'venom') && t < (d.F.poisonImm || 0)) return tr(d, 'poisonImm'), 0;
     if (t < (d.F.immT || 0)) return 0;
+    if (d.valk && (k === 'stun' || k === 'frozen' || k === 'chill')) return 0;
     const v = Math.min(RES_MAX, d.F[RK[k]] || 0);
     if (v > 0) tr(d, RK[k]);
     return 1 - v / 100;
@@ -224,8 +254,11 @@ function simulate(FA, FB, seed) {
   /* 0.1.37 陷阱觸發：di 那邊的道具 u 出手時，蓋在它格子上的陷阱都觸發（每次都會） */
   const trapFire = (t, di, u) => {
     const d = S[di];
+    /* 0.1.50 捕獸夾：那次出手落空（回傳 true），夾幾次後壞掉 */
+    let cancel = false;
     for (const p of d.traps) {
       if (!p.us.has(u)) continue;
+      if (p.k === 'snare' && !(p.left > 0)) continue;
       const a = S[p.by];
       /* 0.1.47 每次觸發都記一筆（畫面讓那個陷阱閃一下）；i 是放陷阱時的編號 */
       log(t, p.by, 'trapHit', 0, { tu: u, x: p.k, ti: p.i });
@@ -245,21 +278,61 @@ function simulate(FA, FB, seed) {
           items(d).find(o => o.u === u),
           p.by
         );
+      else if (p.k === 'snare') {
+        p.left--;
+        cancel = true;
+        d.bleed += SNARE_BLEED * res(d, 'bleed', t);
+        log(t, p.by, 'trap', 0, { tu: u, x: 'snare', ...(p.left ? {} : { brk: 1 }) });
+      } else if (p.k === 'net') {
+        const v = Math.round(NET_STUN * res(d, 'stun', t) * 100) / 100;
+        log(t, p.by, 'trap', 0, { tu: u, x: 'net' });
+        if (v > 0) (d.stun = Math.max(d.stun, v)), log(t, p.by, 'stun', v, {});
+      } else if (p.k === 'stake') {
+        hurt(t, STAKE_DMG, d, p.by, 'trap', { tu: u, x: 'stake' });
+        d.sunder = Math.min(SUNDER_MAX, d.sunder + STAKE_SUNDER * res(d, 'sunder', t));
+        addRend(a, d, STAKE_REND, t);
+      }
     }
+    return cancel;
   };
+  /* 0.1.50 插箭（ai 插到 d 身上 n 支）：上限、爆裂箭排定引爆時間、倒鉤箭的流血 */
+  const stickArrows = (t, ai, d, n) => {
+    const a = S[ai];
+    if (!n) return;
+    d.arrow = Math.min(ARROW_MAX + (a.F.arrowCap || 0), d.arrow + n);
+    if (a.F.boom) for (let k = 0; k < n; k++) d.boomQ.push(t + BOOM_T);
+    if (a.F.barb) d.bleed += a.F.barb * n * res(d, 'bleed', t);
+  };
+  /* 0.1.50 撕裂：浴血戰姬 ×2 */
+  const addRend = (a, d, n, t) => {
+    if (n) d.rend += n * (a.F.rendX || 1) * res(d, 'rend', t);
+  };
+  const isDay = t => fl(t / SUN_T + 1e-6) % 2 === 0;
   /* mul：0.1.33 連鎖多打的那幾下傷害打折 */
-  const attack = (t, a, ai, w, mul = 1) => {
+  /* o：0.1.50 這一下的特殊效果（force 必定暴擊並無視護甲護盾、el3 元素箭袋輪到哪個、rend 多的撕裂、ctr 反擊、lk 連攜 ×2） */
+  const attack = (t, a, ai, w, mul = 1, o = {}) => {
     /* 0.1.37 混亂：一半機率打到自己 */
     const self = a.confuse > 0 && r() * 100 < CONFUSE,
-      d = self ? a : S[1 - ai];
-    if (!self && r() * 100 < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) {
+      d = self ? a : S[1 - ai],
+      di = S.indexOf(d);
+    /* 0.1.50 風之箭（sure）不會被閃避、招架；閃避成功：游擊充能、迴避反擊；沒打中連珠箭歸零 */
+    const rr = self || w.sure ? 100 : r() * 100;
+    if (rr < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) {
+      a.streak = 0;
       if (d.F.dodge) tr(d, 'dodge');
-      return log(t, ai, 'miss', 0, { u: w.u });
+      log(t, ai, 'miss', 0, { u: w.u });
+      if (rr < d.F.dodge) {
+        if (d.F.kite) for (const x of d.w) x.tt = Math.min(x.cd * 0.99, x.tt + (x.cd * d.F.kite) / 100);
+        counter(t, di);
+      }
+      return;
     }
     /* 0.1.35 招架：有機率格擋這一下（不受傷害）；第一次成功後護甲 +parryArm */
-    if (!self && d.F.parry && r() * 100 < d.F.parry) {
+    if (!self && !w.sure && d.F.parry && r() * 100 < d.F.parry) {
+      a.streak = 0;
       if (d.F.parryArm && !d.parried) (d.parried = 1), (d.parA += d.F.parryArm);
-      return log(t, ai, 'miss', 0, { u: w.u, parry: 1 });
+      log(t, ai, 'miss', 0, { u: w.u, parry: 1 });
+      return counter(t, di);
     }
     /* 0.1.35 金錢標：身上還有錢就花 1 金，這一下的數值翻倍 */
     if (w.coin && a.gold >= 1) {
@@ -270,9 +343,12 @@ function simulate(FA, FB, seed) {
     const ph = phaseOf(a.F, t);
     let v = (w.dmg[0] + r() * (w.dmg[1] - w.dmg[0])) * mul;
     /* 0.1.37 衰老：不能暴擊 */
-    const crit = !(a.age > 0) && r() * 100 < w.crit + ph.crit;
+    /* 0.1.50 狙擊（必定暴擊）、血獵（敵人撕裂中暴擊率提升）、鷹眼（敵人每支箭暴擊傷害提升） */
+    const cr = r() * 100,
+      crit = !(a.age > 0) && (o.force || cr < w.crit + ph.crit + (a.F.huntCrit && d.rend > 0 ? a.F.huntCrit : 0)),
+      cm = a.F.critMul + (a.F.critArrow || 0) * d.arrow;
     /* 0.1.29 厚皮：暴擊多出來的傷害減少 */
-    if (crit) v *= 1 + (a.F.critMul / 100 - 1) * (1 - Math.min(RES_MAX, d.F.critRes || 0) / 100);
+    if (crit) v *= 1 + (cm / 100 - 1) * (1 - Math.min(RES_MAX, d.F.critRes || 0) / 100);
     if (crit && d.F.critRes) tr(d, 'critRes');
     if (a.weak > 0) v *= 1 - WEAK_PCT / 100;
     /* 0.1.37 時段加成、萬能藥（喝藥水後幾秒）、腐蝕藥劑（整場傷害降低）、碎冰（敵人每件凍結中的道具） */
@@ -283,8 +359,13 @@ function simulate(FA, FB, seed) {
     /* 0.1.10 處決（敵人生命低於 30%）、背水（自己生命低於 50%） */
     if (a.F.execute && d.hp < d.max * 0.3) v *= 1 + a.F.execute / 100;
     if (a.F.rage && a.hp < a.max * 0.5) v *= 1 + a.F.rage / 100;
+    /* 0.1.50 插箭（敵人每支箭）、女武神、日月輪轉（白天矛）、浴血戰姬（被打中幾次） */
+    if (a.F.arrowPct && d.arrow) v *= 1 + (a.F.arrowPct * d.arrow) / 100;
+    if (a.valk) v *= 1 + VALK_DMG / 100;
+    if (a.F.sunmoon && w.kind === 'spear' && isDay(t)) v *= 1 + a.F.sunmoon / 100;
+    if (a.F.fury && w.kind && a.furyN) v *= 1 + (a.F.fury * a.furyN) / 100;
     /* 0.1.28 穿甲：無視一部分護甲，那部分傷害也不會被格擋吃掉 */
-    const pc = (w.pierce || 0) / 100;
+    const pc = o.force ? 1 : (w.pierce || 0) / 100;
     const arm = d.F.arm + d.parA - d.sunder;
     v *= 50 / (50 + Math.max(-10, arm * (arm > 0 ? 1 - pc : 1)));
     v *= 1 + d.F.take / 100;
@@ -295,8 +376,18 @@ function simulate(FA, FB, seed) {
       v -= ab;
     }
     v = Math.max(ab > 0 ? 0 : 1, v);
-    hurt(t, v, d, ai, crit ? 'crit' : 'hit', { u: w.u, ab: Math.round(ab), el: w.el, ...(self ? { self: 1 } : {}) });
+    hurt(t, v, d, ai, crit ? 'crit' : 'hit', {
+      u: w.u,
+      ab: Math.round(ab),
+      el: w.el,
+      ...(self ? { self: 1 } : {}),
+      ...(o.ctr ? { ctr: 1 } : {}),
+      ...(o.lk ? { lk: 1 } : {})
+    });
     a.dmgDone += v;
+    if (a.F.streak) a.streak = Math.min(STREAK_MAX, a.streak + 1);
+    if (!self && d.F.fury && v > 0) d.furyN = Math.min(FURY_MAX, d.furyN + 1);
+    if (crit && a.F.huntHeal && d.rend > 0 && a.hp > 0) heal(t, a, ai, a.F.huntHeal), tr(a, 'huntHeal');
     /* 0.1.28 守護（質變）：命中時獲得傷害一部分的格擋 */
     if (w.guard && v > 0) gainBlock(t, a, ai, (v * w.guard) / 100, w.u);
     /* 0.1.10 暴擊回血、被打中反彈 */
@@ -313,8 +404,24 @@ function simulate(FA, FB, seed) {
       const ls = (w.ls + a.F.ls) / 100;
       if (ls > 0 && v > 0) heal(t, a, ai, v * ls);
     }
-    const di = S.indexOf(d);
+    if (!self) stickArrows(t, ai, d, w.stick);
+    if (o.sub) return;
     if (w.burn) d.burn += w.burn * res(d, 'burn', t);
+    /* 0.1.50 插箭、撕裂、插矛（插滿後下一次命中拔出：撕裂）、元素箭袋（燃燒 → 冰緩 → 中毒） */
+    addRend(a, d, (w.rend || 0) + (o.rend || 0), t);
+    if (w.pin && !self) {
+      if (d.pin >= PIN_MAX) (d.pin = 0), addRend(a, d, PIN_REND, t), log(t, ai, 'pinOut', PIN_MAX, {});
+      else d.pin = Math.min(PIN_MAX, d.pin + w.pin);
+    }
+    if (o.el3 === 1) d.burn += 2 * res(d, 'burn', t);
+    else if (o.el3 === 2 && r() * 100 < 50)
+      chillIt(
+        t,
+        di,
+        rndIt(d, () => true),
+        ai
+      );
+    else if (o.el3 === 0) addPoison(a, d, 1, t);
     addPoison(a, d, w.poison, t);
     addVenom(a, d, w.venom || 0, t);
     if (w.bleed) d.bleed += w.bleed * res(d, 'bleed', t);
@@ -347,6 +454,50 @@ function simulate(FA, FB, seed) {
     if (w.age) ctl('age', 'age', w.age);
     if (w.corr) ctl('corrode', 'corrode', w.corr);
   };
+  /* 0.1.50 迴避反擊：閃避、招架、盾格擋時，最強的一把矛（沒有矛就最強的武器）立刻反擊（反擊不會再引發反擊） */
+  let inCtr = 0;
+  const wPow = w => (w.dmg[0] + w.dmg[1]) / w.cd;
+  const counter = (t, i) => {
+    const a = S[i];
+    if (!a.F.counter || inCtr || a.hp <= 0 || S[1 - i].hp <= 0) return;
+    const c = a.w.filter(w => !(w.seal > 0) && !w.pet).sort((x, y) => wPow(y) - wPow(x)),
+      w = c.find(x => x.kind === 'spear') || c[0];
+    if (!w) return;
+    inCtr = 1;
+    tr(a, 'counter');
+    attack(t, a, i, w, a.F.counter / 100, { rend: CTR_REND, ctr: 1 });
+    inCtr = 0;
+  };
+  /* 0.1.50 一把武器出手一次：狙擊（每第 N 次）、元素箭袋輪替、矛弓連攜（×2）、多重射擊（射 N 支） */
+  const fire = (t, a, ai, w, mul = 1) => {
+    const o = {};
+    w.k = (w.k || 0) + 1;
+    if (w.snipe && w.k % w.snipe === 0) o.force = 1;
+    if (w.elem) o.el3 = w.k % 3;
+    if (a.F.link3 && w.kind) {
+      if (w.kind === 'bow' && a.bowX) (a.bowX = 0), (mul *= 2), (o.lk = 1);
+      else if (w.kind === 'spear' && a.spearX) (a.spearX = 0), (mul *= 2), (o.lk = 1), (o.rend = LINK_REND);
+      if (w.kind === 'spear' && ++a.cS >= a.F.link3) (a.cS = 0), (a.bowX = 1);
+      if (w.kind === 'bow' && ++a.cB >= a.F.link3) (a.cB = 0), (a.spearX = 1);
+    }
+    const n = Math.max(1, w.shots || 1);
+    /* 多射的箭（第 2 支起）只有傷害與插箭，不重複命中效果 */
+    for (let c = 0; c < n && S[1 - ai].hp > 0; c++)
+      attack(t, a, ai, w, mul * (n > 1 ? SHOT_DMG / 100 : 1), c ? { ...o, sub: 1, el3: -1 } : o);
+  };
+  /* 0.1.50 協同作戰：開戰召喚亞馬遜戰士，各自隨機繼承一把武器（不是寵物；複製一份、u 是 sm0、sm1，不在背包格子上） */
+  for (let i = 0; i < 2; i++) {
+    const a = S[i],
+      c = a.w.filter(w => !w.pet),
+      pool = [...c];
+    for (let k = 0; k < (a.F.summon || 0) && c.length; k++) {
+      if (!pool.length) pool.push(...c);
+      const src = pool.splice(fl(r() * pool.length), 1)[0];
+      a.w.push({ ...src, u: 'sm' + k, src: src.u, i: a.w.length });
+      log(0, i, 'summon', k, { u: 'sm' + k, tu: src.u, id: src.id });
+      tr(a, 'summon');
+    }
+  }
   /* 0.1.28 反制寵物：驅獸（敵人寵物傷害 -%）、獵人（敵人每隻寵物，自己武器傷害 +%） */
   for (let i = 0; i < 2; i++) {
     const a = S[i],
@@ -433,10 +584,21 @@ function simulate(FA, FB, seed) {
           const key = new Set(cells.map(c => c + ''));
           for (const u in G.at) if (G.at[u].some(c => key.has(c + ''))) us.add(u);
         } else if (d.w.length) us.add(d.w[fl(r() * d.w.length)].u);
-        d.traps.push({ k: tp.k, by: i, us, i: d.traps.length });
+        d.traps.push({ k: tp.k, by: i, us, i: d.traps.length, ...(tp.k === 'snare' ? { left: SNARE_N } : {}) });
         log(0, i, 'trapSet', tp.sz || 1, { x: tp.k, cells, tus: [...us], ti: d.traps.length - 1 });
       }
     }
+  /* 0.1.50 箭雨：開戰射出「弓、弩數量 × N」支箭插在敵人身上；日月輪轉從白天開始 */
+  for (let i = 0; i < 2; i++) {
+    const a = S[i],
+      n = a.F.rain ? a.w.filter(w => w.kind === 'bow' && !w.src).length * a.F.rain : 0;
+    if (n) {
+      stickArrows(0, i, S[1 - i], n);
+      hurt(0, n * RAIN_DMG, S[1 - i], i, 'rain', { n });
+      tr(a, 'rain');
+    }
+    if (a.F.sunmoon) log(0, i, 'sun', 1, { self: 1 });
+  }
   /* 0.1.33 先手射擊：星級最高的一把開戰先打一下 */
   for (let i = 0; i < 2; i++)
     if (S[i].F.firstStrike) {
@@ -488,7 +650,8 @@ function simulate(FA, FB, seed) {
   /* 0.1.37 致命毒素：時段結束後衰老（整場） */
   const ageAt = S.map(x => Math.min(MAX_T + 1, ...(x.F.phase || []).filter(p => p.b.age).map(p => p.t)));
   let t = 0,
-    sec = 0;
+    sec = 0,
+    half = 0;
   while (t < MAX_T) {
     t += SIM_DT;
     for (let i = 0; i < 2; i++) {
@@ -516,7 +679,15 @@ function simulate(FA, FB, seed) {
           (a.F.rageSpd && a.hp < a.max * 0.5 ? 1 + a.F.rageSpd / 100 : 1) *
           Math.max(0.1, 1 + ph.spd / 100) *
           (a.buffT > t ? 1 + a.bSpd / 100 : 1),
-        shS = a.F.shatterS ? 1 + (a.F.shatterS * items(S[1 - i]).filter(o => o.ch > 0).length) / 100 : 1;
+        shS = a.F.shatterS ? 1 + (a.F.shatterS * items(S[1 - i]).filter(o => o.ch > 0).length) / 100 : 1,
+        /* 0.1.50 連珠箭、女武神、被插的矛（攻速 -）；日月輪轉：夜晚弓攻速 + */
+        wr2 =
+          wr *
+          (a.F.streak ? 1 + (a.F.streak * a.streak) / 100 : 1) *
+          (a.valk ? 1 + VALK_SPD / 100 : 1) *
+          Math.max(0.1, 1 - (a.pin * PIN_SLOW) / 100),
+        night = a.F.sunmoon && !isDay(t);
+      if (a.F.sunmoon && +!night !== a.sunP) (a.sunP = +!night), log(t, i, 'sun', a.sunP, { self: 1 });
       /* 0.1.37 凍結：充能 ×0；冰緩：×0.5 */
       const ice = o => (o.fz > 0 ? 0 : o.ch > 0 ? 0.5 : 1);
       for (const w of a.w) {
@@ -524,20 +695,26 @@ function simulate(FA, FB, seed) {
           w.seal -= SIM_DT;
           continue;
         }
-        w.tt += SIM_DT * wr * ice(w) * (w.cold ? shS : 1);
+        w.tt += SIM_DT * wr2 * ice(w) * (w.cold ? shS : 1) * (night && w.kind === 'bow' ? 1 + a.F.sunmoon / 100 : 1);
         if (w.tt >= w.cd) {
           w.tt -= w.cd;
-          /* 0.1.37 出手：先觸發蓋在它上面的陷阱、自殘的劇毒 */
-          trapFire(t, i, w.u);
+          /* 0.1.37 出手：先觸發蓋在它上面的陷阱、自殘的劇毒；0.1.50 被捕獸夾夾到這次落空 */
+          const miss = trapFire(t, i, w.u);
           if (w.selfV) addVenom(S[1 - i], a, w.selfV, t);
           if (a.hp <= 0) break;
-          attack(t, a, i, w);
+          if (miss) continue;
+          fire(t, a, i, w);
+          /* 0.1.50 戰舞：矛出手時弓充能、弓出手時矛充能 */
+          if (a.F.link && w.kind)
+            for (const x of a.w)
+              if (x.kind && x.kind !== w.kind && !(x.seal > 0))
+                x.tt = Math.min(x.cd * 0.99, x.tt + (x.cd * a.F.link) / 100);
           /* 0.1.10 連擊：有機率馬上再打一次；0.1.33 連珠箭：開戰 openDbl 秒內必定連擊；0.1.28 質變的連鎖（這一件自己的機率）；
              0.1.35 連鎖追擊（triple：再打兩下）、雙手大師（這一件自己的連擊機率 dbl） */
           const dc = (a.F.double || 0) + (w.dbl || 0);
           if (S[1 - i].hp > 0 && a.F.triple && r() * 100 < a.F.triple)
-            for (let c = 0; c < 2 && S[1 - i].hp > 0; c++) attack(t, a, i, w);
-          else if (S[1 - i].hp > 0 && ((a.F.openDbl && t <= a.F.openDbl) || (dc && r() * 100 < dc))) attack(t, a, i, w);
+            for (let c = 0; c < 2 && S[1 - i].hp > 0; c++) fire(t, a, i, w);
+          else if (S[1 - i].hp > 0 && ((a.F.openDbl && t <= a.F.openDbl) || (dc && r() * 100 < dc))) fire(t, a, i, w);
           /* 0.1.33 閃電鏈：連鎖 N（每次攻擊多打 N 下） */
           for (let c = 0; c < (w.chainN || 0) && S[1 - i].hp > 0; c++) attack(t, a, i, w, CHAIN_DMG / 100);
           if (w.chain && S[1 - i].hp > 0 && r() * 100 < w.chain) attack(t, a, i, w);
@@ -547,8 +724,8 @@ function simulate(FA, FB, seed) {
         s.tt += SIM_DT * rate * ice(s);
         if (s.tt >= s.cd) {
           s.tt -= s.cd;
-          trapFire(t, i, s.u);
-          if (gainBlock(t, a, i, s.block, s.u)) log(t, i, 'block', s.block, { u: s.u });
+          if (trapFire(t, i, s.u)) continue;
+          if (gainBlock(t, a, i, s.block, s.u)) log(t, i, 'block', s.block, { u: s.u }), counter(t, i);
           /* 0.1.28 尖刺（質變）：格擋時順便撞敵人（吃護甲） */
           if (s.bash) {
             const d = S[1 - i];
@@ -589,6 +766,28 @@ function simulate(FA, FB, seed) {
           if (p.ex) brewFx(t, a, i, p);
         }
     }
+    /* 0.1.50 爆裂箭：插上 BOOM_T 秒的箭引爆（固定傷害＋燃燒）；撕裂：每 0.5 秒扣層數、之後剩 3/4 */
+    for (let i = 0; i < 2; i++) {
+      const a = S[i],
+        o = S[1 - i];
+      let n = 0;
+      while (a.boomQ.length && a.boomQ[0] <= t + 1e-6) a.boomQ.shift(), n++;
+      if (n && a.hp > 0) {
+        hurt(t, n * o.F.boom, a, 1 - i, 'boom', { n, el: 'fire' });
+        a.burn += n * BOOM_BURN * res(a, 'burn', t);
+        tr(o, 'boom', n);
+      }
+    }
+    if (fl(t * 2 + 1e-6) > half) {
+      half = fl(t * 2 + 1e-6);
+      for (let i = 0; i < 2; i++) {
+        const a = S[i];
+        if (a.rend > 0) {
+          hurt(t, a.rend, a, 1 - i, 'dot', { el: 'rend' });
+          a.rend = fl(a.rend * REND_KEEP);
+        }
+      }
+    }
     /* 每秒：燃燒（每秒 -1 層；點燃時 +1 層、傷害 ×1.5）、中毒（不會退）、劇毒（不退，×2）、回復、疲勞 */
     if (fl(t + 1e-6) > sec) {
       sec = fl(t + 1e-6);
@@ -621,6 +820,7 @@ function simulate(FA, FB, seed) {
             'venom',
             'poison',
             'burn',
+            'rend',
             'bleed',
             'stun',
             'corrode',
@@ -654,7 +854,19 @@ function simulate(FA, FB, seed) {
       }
       if (B.regen) a.F = { ...a.F, regen: (a.F.regen || 0) + B.regen };
       if (B.cleanse)
-        for (const k2 of ['venom', 'poison', 'burn', 'bleed', 'stun', 'corrode', 'weak', 'age', 'blind', 'confuse'])
+        for (const k2 of [
+          'venom',
+          'poison',
+          'burn',
+          'bleed',
+          'rend',
+          'stun',
+          'corrode',
+          'weak',
+          'age',
+          'blind',
+          'confuse'
+        ])
           a[k2] = 0;
       if (B.poison) addPoison(a, d, B.poison, t);
       if (B.venom) addVenom(a, d, B.venom, t);

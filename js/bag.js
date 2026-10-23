@@ -302,6 +302,25 @@ function compileBag(bag, extra = {}) {
       traps: [],
       phase: [],
       potBuff: null,
+      /* 0.1.50 弓箭手（插箭、爆裂箭、箭雨、倒鉤、狙擊、連珠、游擊）、亞馬遜（召喚、復活、連攜、戰舞、反擊、血獵、日月、浴血） */
+      arrowPct: 0,
+      arrowCap: 0,
+      boom: 0,
+      rain: 0,
+      barb: 0,
+      critArrow: 0,
+      streak: 0,
+      kite: 0,
+      summon: 0,
+      revive: 0,
+      link3: 0,
+      link: 0,
+      counter: 0,
+      huntCrit: 0,
+      huntHeal: 0,
+      sunmoon: 0,
+      fury: 0,
+      rendX: 0,
       /* 0.1.37 格子：每件道具佔哪幾格（敵人的陷阱放在格子上） */
       grid: { w: bag.w, h: bag.h, at: Object.fromEntries(bag.items.map(o => [o.u, cellsOf(o)])) },
       /* 0.1.40 角色加成的來源：{ 加成: [道具 u…] } */
@@ -408,6 +427,16 @@ function compileBag(bag, extra = {}) {
         else add(s, { [x.k]: mm[1] });
       }
   }
+  /* 0.1.50 姊妹盟約：背包裡矛和弓、弩一樣多（至少各 1 件）時，所有武器傷害、攻速提升 */
+  const SI = its.map(o => defsOf(o).find(d => d.sisters)).find(Boolean);
+  if (SI) {
+    const ns = cnt('spear'),
+      nb = its.filter(o => has(o, 'bow') || has(o, 'xbow')).length;
+    if (ns && ns === nb) {
+      for (const q of its) if (has(q, 'weapon')) add(q, { dmgPct: SI.sisters[0], spd: SI.sisters[1] });
+      (F.src.sisters = F.src.sisters || []).push(its.find(o => defsOf(o).some(d => d.sisters)).u);
+    }
+  }
   /* 0.1.7 開局職業：對有那個標籤的道具加成、角色加成 */
   const C = CLSI[bag.cls];
   if (C) {
@@ -510,7 +539,16 @@ function compileBag(bag, extra = {}) {
         age: on.age || 0,
         corr: on.corrode || 0,
         cold: has(o, 'cold'),
-        imm: I.imm ? 1 : 0
+        imm: I.imm ? 1 : 0,
+        /* 0.1.50 矛／弓（亞馬遜的連攜、戰舞、日月、浴血看這個）、插箭、多重射擊、狙擊、元素箭袋、必中、插矛、撕裂 */
+        kind: has(o, 'spear') ? 'spear' : has(o, 'bow') || has(o, 'xbow') ? 'bow' : '',
+        stick: (m.stick || 0) + (I.stick || 0),
+        shots: m.shots || 0,
+        snipe: m.snipe || 0,
+        elem: m.elem ? 1 : 0,
+        sure: m.sure ? 1 : 0,
+        pin: m.pin || 0,
+        rend: m.rend || 0
       });
     }
   }
