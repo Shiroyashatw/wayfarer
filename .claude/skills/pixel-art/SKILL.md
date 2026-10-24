@@ -74,6 +74,17 @@ description: 新增或替換塞令老師的怪物、首領、老師頭像、道�
 - 原始 PNG 留在 `art/`，之後改圖重跑 `tools/art.py` 就好；`img/` 和 `js/art.js` 是自動產生的，不要手改。
 - 主角目前還是 16×16（裝備外觀疊圖在 `js/gear.js`），不要用 PixelLab 的圖替換主角。
 
+## 會動的頭像（0.1.62 起，遊戲只留會動的）
+
+PixelLab **Create animated object**：64×64、16 格、透明背景、面向右，Description＋Animation action。提示詞**照 `docs/頭像圖表.md` 最下面的「範本」寫**（以偶像歌手為基準：表情會變、整個身體在動、空著的手有動作、頭髮衣服會飄、特效是 three small … 不蓋住身體、特效顏色跟角色不同、收招有招牌表情，最後接防呆句），Style 參考用 `art/sheets/av_idol_atk.png`。
+
+使用者丟回 4×4 圖（256×256）：
+1. 每格放大加編號看一遍，挑播放的格子：去掉手上沒武器、跟第 1 格接不起來、收招後重複的站姿；記下揮出的 2～3 格。
+2. 原圖存 `art/sheets/av_檔名_atk.png` 和 `art/anim/av_檔名_atk.png`（art.py 不裁邊打包），第 1 格切成 `art/monsters/av_檔名.png`（站姿）。
+3. `js/data.js`：`AVATARS` 加 `['av_檔名', '名稱']`、`AVANIM` 加 `{ f: [播的格子], s: [揮出的格子] }`；跑 `python3 tools/art.py`。
+4. 截圖：設定的頭像選單、戰鬥中雙方（對手那邊會翻轉）。
+5. 在 `docs/頭像圖表.md` 記下挑了哪幾格、為什麼跳過。
+
 ## 玩家頭像（4×4 圖表，全身）
 
 提示詞在 `docs/頭像圖表.md`（照 `docs/圖示圖表.md` 的格式：圖表提示詞、格序對照表、單張補產提示詞）。使用者說「頭像圖表放好了」：讀 `art/sheets/sheet_avatar_1.png`（256×256），照對照表的格序切成 16 張 64×64（透明背景，切完去掉空白邊）存成 `art/monsters/av_*.png`，跑 `python3 tools/art.py`，把 `['檔名', '名稱']` 加進 `js/data.js` 的 `AVATARS`，在設定的頭像選單、首頁、準備畫面、戰鬥畫面截圖確認；做完把提示詞搬到 `docs/提示詞封存.md`、原圖搬到 `art/sheets/done/`。
