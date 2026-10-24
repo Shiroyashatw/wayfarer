@@ -31,7 +31,8 @@ async function ghostRivals(rating) {
         if (e2) throw e2;
         return runs.map(r => ({
           name: r.name || randName(),
-          av: AVATARS.some(a => a[0] === r.avatar) ? r.avatar : AVATARS[0][0],
+          /* 0.1.63 舊頭像（拿掉的靜態頭像）照名字平均換成現在的頭像，不要全部變成第一個 */
+          av: AVATARS.some(a => a[0] === r.avatar) ? r.avatar : avFallback(r.name || r.avatar),
           snaps: Object.fromEntries(sn.filter(s => s.run_id === r.id).map(s => [s.round, { hp: s.hp, bag: s.bag }]))
         }));
       })();

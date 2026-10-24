@@ -310,7 +310,7 @@ function boardHTML() {
           .slice(0, 10)
           .map(
             (x, i) =>
-              `<div class="lbr${i === me ? ' me' : ''}"><b class="no p${i + 1}">${i + 1}</b>${sprCv('a_' + (AVATARS.some(a => a[0] === x.avatar) ? x.avatar : AVATARS[0][0]))}<span><b>${esc(x.name || '無名')}</b><small>${rankName(rankOf(x.rating))}・${x.games} 場・第 1 名 ${x.wins}</small></span><b class="v">${x.rating}</b></div>`
+              `<div class="lbr${i === me ? ' me' : ''}"><b class="no p${i + 1}">${i + 1}</b>${sprCv('a_' + (AVATARS.some(a => a[0] === x.avatar) ? x.avatar : avFallback(x.name || x.avatar)))}<span><b>${esc(x.name || '無名')}</b><small>${rankName(rankOf(x.rating))}・${x.games} 場・第 1 名 ${x.wins}</small></span><b class="v">${x.rating}</b></div>`
           )
           .join('')}</div>` +
         (me < 0 || me >= 10

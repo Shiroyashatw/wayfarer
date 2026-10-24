@@ -23,39 +23,40 @@ rankOf js/data.js:84 [一局]
 rankName js/data.js:85 [一局]
 rankProg js/data.js:87 [一局]
 placed js/data.js:91 [一局]
-AVATARS js/data.js:93 [一局]
-AVANIM js/data.js:117 [一局]
-NAME_A js/data.js:124 [一局]
-randName js/data.js:160 [一局]
-MODES js/data.js:164 [一局]
-MODEI js/data.js:237 [一局]
-SG_AT js/data.js:239 [一局]
-SIGILS js/data.js:240 [一局]
-sgLv js/data.js:285 [一局]
-VANS js/data.js:287 [一局]
-VANI js/data.js:301 [一局]
-CURSE_P js/data.js:305 [一局]
-CURSES js/data.js:309 [一局]
-CURSEI js/data.js:316 [一局]
-BLESS js/data.js:318 [一局]
-cuV js/data.js:327 [一局]
-blV js/data.js:328 [一局]
-ASTROS js/data.js:330 [一局]
-ASTROI js/data.js:341 [一局]
-RELIC_AT js/data.js:343 [一局]
-RELICS js/data.js:344 [一局]
-RELICI js/data.js:354 [一局]
-POOLTH js/data.js:356 [一局]
-POOLTHI js/data.js:366 [一局]
-MODE_TH_BAN js/data.js:367 [一局]
-SYN_AT js/data.js:370 [一局]
-SYN_W js/data.js:371 [一局]
-SYN js/data.js:372 [一局]
-SYNI js/data.js:401 [一局]
-synLv js/data.js:402 [一局]
-LEGACY_RC js/data.js:404 [一局]
-GVER js/data.js:411 [一局]
-VER js/data.js:412 [一局]
+AVATARS js/data.js:94 [一局]
+avFallback js/data.js:106 [一局]
+AVANIM js/data.js:110 [一局]
+NAME_A js/data.js:122 [一局]
+randName js/data.js:158 [一局]
+MODES js/data.js:162 [一局]
+MODEI js/data.js:235 [一局]
+SG_AT js/data.js:237 [一局]
+SIGILS js/data.js:238 [一局]
+sgLv js/data.js:283 [一局]
+VANS js/data.js:285 [一局]
+VANI js/data.js:299 [一局]
+CURSE_P js/data.js:303 [一局]
+CURSES js/data.js:307 [一局]
+CURSEI js/data.js:314 [一局]
+BLESS js/data.js:316 [一局]
+cuV js/data.js:325 [一局]
+blV js/data.js:326 [一局]
+ASTROS js/data.js:328 [一局]
+ASTROI js/data.js:339 [一局]
+RELIC_AT js/data.js:341 [一局]
+RELICS js/data.js:342 [一局]
+RELICI js/data.js:352 [一局]
+POOLTH js/data.js:354 [一局]
+POOLTHI js/data.js:364 [一局]
+MODE_TH_BAN js/data.js:365 [一局]
+SYN_AT js/data.js:368 [一局]
+SYN_W js/data.js:369 [一局]
+SYN js/data.js:370 [一局]
+SYNI js/data.js:399 [一局]
+synLv js/data.js:400 [一局]
+LEGACY_RC js/data.js:402 [一局]
+GVER js/data.js:410 [一局]
+VER js/data.js:411 [一局]
 ICONS js/sprites.js:4
 ICOPAL js/sprites.js:7
 SPC js/sprites.js:8
@@ -72,7 +73,7 @@ PIX js/sprites.js:98 [程式像素圖（道具 ic: 'p:鍵'）]
 PIXC js/sprites.js:104 [程式像素圖（道具 ic: 'p:鍵'）]
 pixURL js/sprites.js:105 [程式像素圖（道具 ic: 'p:鍵'）]
 ART_SHEET js/art.js:3
-ART js/art.js:162
+ART js/art.js:164
 SH js/items.js:4
 TAGN js/items.js:152
 ITEMS js/items.js:182
@@ -353,14 +354,14 @@ GHOST js/ghost.js:4
 ghostOK js/ghost.js:5
 ghostFail js/ghost.js:6
 ghostRivals js/ghost.js:12
-ghostBegin js/ghost.js:48
-ghostSnap js/ghost.js:65
-ghostEnd js/ghost.js:81
-coreCols js/ghost.js:103
-coreStatsCloud js/ghost.js:109
-BOARD js/ghost.js:141 [排行榜（0.1.29）]
-ghostBoard js/ghost.js:142 [排行榜（0.1.29）]
-seedGhosts js/ghost.js:169 [開服種子資料（開發用）]
+ghostBegin js/ghost.js:49
+ghostSnap js/ghost.js:66
+ghostEnd js/ghost.js:82
+coreCols js/ghost.js:104
+coreStatsCloud js/ghost.js:110
+BOARD js/ghost.js:142 [排行榜（0.1.29）]
+ghostBoard js/ghost.js:143 [排行榜（0.1.29）]
+seedGhosts js/ghost.js:170 [開服種子資料（開發用）]
 AU js/audio.js:4 [audio]
 audioInit js/audio.js:5 [audio]
 tone js/audio.js:25 [audio]
