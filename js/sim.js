@@ -189,7 +189,7 @@ function simulate(FA, FB, seed) {
     if (def.hp <= 0 && (def.F.revive || def.F.ankh) && !def.rev) revive(t, def);
   };
   /* 0.1.50 女武神降臨：第一次倒下時復活、清掉持續傷害，之後傷害、攻速提升、免疫暈眩凍結冰緩 */
-  /* 0.1.58 法老王的遺物・安卡（ankh）：只復活，沒有女武神的加成 */
+  /* 0.1.59 法老王的遺物・安卡（ankh）：只復活，沒有女武神的加成 */
   function revive(t, x) {
     x.rev = 1;
     x.valk = x.F.revive ? 1 : 0;

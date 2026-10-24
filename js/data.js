@@ -148,7 +148,7 @@ const NAME_A = [
 const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[fl(r() * NAME_B.length)];
 /* 0.1.52 賽制：每局開場隨機一種（w 是權重），公開後才選職業。ban：這個賽制排除的核心效果（有這些欄位的核心不會出現在首領三選一）
    設計原則（企劃書）：改玩法節奏，不加數值；規則先公開再選職業；衝突的核心直接排除；隨機要好預測 */
-/* 0.1.58 新增詛咒寶藏、七十二變、星象輪轉、法老王的遺物、遺產市集（權重：標準 20、其他各 10） */
+/* 0.1.59 新增詛咒寶藏、七十二變、星象輪轉、法老王的遺物、遺產市集（權重：標準 20、其他各 10） */
 const MODES = [
   { k: 'std', n: '標準', w: 20, ic: 'cur_regal', d: ['沒有特殊規則'] },
   {
@@ -286,7 +286,7 @@ const VANS = [
   }
 ];
 const VANI = Object.fromEntries(VANS.map(v => [v.k, v]));
-/* 0.1.58 詛咒寶藏：w 是只能給武器（沉睡）；v 是每層的數值 */
+/* 0.1.59 詛咒寶藏：w 是只能給武器（沉睡）；v 是每層的數值 */
 const CURSE_P = 20,
   CURSE_MAX = 3;
 const CURSES = [
@@ -297,7 +297,7 @@ const CURSES = [
   { k: 'sleep', n: '沉睡', v: 3, w: 1, d: v => `這件開戰後 ${v} 秒才開始出手` }
 ];
 const CURSEI = Object.fromEntries(CURSES.map((c, i) => [c.k, i]));
-/* 0.1.58 星象輪轉：每個階段一條全場規則（astroF 套在雙方的戰鬥數值上；豐收月只影響金幣） */
+/* 0.1.59 星象輪轉：每個階段一條全場規則（astroF 套在雙方的戰鬥數值上；豐收月只影響金幣） */
 const ASTROS = [
   { k: 'fire', n: '火焰月', d: '所有燃燒 ×2' },
   { k: 'toxin', n: '毒霧月', d: '所有中毒、劇毒 ×2' },
@@ -310,7 +310,7 @@ const ASTROS = [
   { k: 'harvest', n: '豐收月', d: '打贏多拿 1 金' }
 ];
 const ASTROI = Object.fromEntries(ASTROS.map(a => [a.k, a]));
-/* 0.1.58 法老王的遺物：哪幾回合打完開寶庫；效果在 compileBag（金面具在 bonusGold） */
+/* 0.1.59 法老王的遺物：哪幾回合打完開寶庫；效果在 compileBag（金面具在 bonusGold） */
 const RELIC_AT = ['2-5', '4-4', '6-4'];
 const RELICS = [
   { k: 'scarab', n: '聖甲蟲護符', ic: 'gear_amulet_0', d: '最下面一排的道具攻速 +25%' },
@@ -323,7 +323,7 @@ const RELICS = [
   { k: 'sand', n: '沙之沙漏', ic: 'ail_slow', d: '開戰 8 秒後，所有武器攻速 +35%' }
 ];
 const RELICI = Object.fromEntries(RELICS.map(x => [x.k, x]));
-/* 0.1.58 遺產市集：遺產攤位放幾回合 */
+/* 0.1.59 遺產市集：遺產攤位放幾回合 */
 const LEGACY_RC = 2;
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
 /* 0.1.50 s20：弓箭手、亞馬遜核心重製（同一個核心編號換了效果）、機器人重新訓練 */
@@ -332,4 +332,4 @@ const LEGACY_RC = 2;
 /* 0.1.53 s23：馴獸師核心重製（同一個核心編號換了效果）、四兇、成長存進快照 */
 /* 0.1.57 s24：清掉 0.1.52～0.1.56 用 bug（狂風市集洗商店、回扣洗三選一）洗出來的快照 */
 const GVER = 's24';
-const VER = '0.1.58';
+const VER = '0.1.59';

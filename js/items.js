@@ -2584,7 +2584,7 @@ const sellOf = (id, t = 1) => Math.max(1, Math.ceil((ITEMI[id].star * 3 ** (t - 
 /* 形狀旋轉 r 次（90°），回傳從 0 開始的格子 */
 /* 0.1.20 形狀算過就記住（機器人評估時一回合要算上千次）；回傳的陣列大家共用，不要改它 */
 const SHC = new Map();
-/* sm：0.1.33 長柄大師讓雙手武器少佔 1 格（拿掉一格，剩下的還連在一起）；sh：0.1.58 七十二變換過的形狀（SH 的鍵） */
+/* sm：0.1.33 長柄大師讓雙手武器少佔 1 格（拿掉一格，剩下的還連在一起）；sh：0.1.59 七十二變換過的形狀（SH 的鍵） */
 function shapeOf(id, rot = 0, sm = 0, sh) {
   const key = id + '|' + (rot & 3) + (sm ? 's' : '') + (sh ? '|' + sh : '');
   let v = SHC.get(key);

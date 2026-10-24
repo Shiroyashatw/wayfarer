@@ -166,7 +166,7 @@ const defsOf = o => (o.sc && ITEMI[o.sc] ? [ITEMI[o.id], ITEMI[o.sc]] : [ITEMI[o
 const coreProp = (its, k) => Math.max(0, ...its.flatMap(o => defsOf(o).map(d => d[k] || 0)));
 /* 賣價：融合過的連輔助一起算；0.1.35 回扣送的（z）賣 0 金 */
 /* 0.1.54 狂風市集：這回合買的（o.bt 是買的回合）賣 0 金，不然買了馬上賣掉等於免費刷新商店 */
-/* 0.1.58 pp：買的時候付得比賣價少（六合彩打亂成 0 金、1 金的高星）就記下付了多少，賣價最多是那麼多，不然 0 金買、馬上賣掉白賺 */
+/* 0.1.59 pp：買的時候付得比賣價少（六合彩打亂成 0 金、1 金的高星）就記下付了多少，賣價最多是那麼多，不然 0 金買、馬上賣掉白賺 */
 const sellO = (o, run) =>
   o.z || (run && run.mode === 'gale' && o.bt === run.ri)
     ? 0
@@ -205,7 +205,7 @@ function mergeAll(run, r) {
     const use = hit.slice(0, need(hit[0][1].id)),
       keep = use.find(([w]) => w === 'bag') || use[0],
       o = keep[1],
-      /* 0.1.58 材料有便宜買來的（pp）：合成後的賣價最多是材料的賣價加起來 */
+      /* 0.1.59 材料有便宜買來的（pp）：合成後的賣價最多是材料的賣價加起來 */
       pp = use.some(([, q]) => q.pp != null) ? use.reduce((n, [, q]) => n + sellO(q), 0) : null;
     for (const [w, q] of use) {
       if (q === o) continue;
@@ -236,7 +236,7 @@ function mergeAll(run, r) {
     /* 0.1.53 馴獸師的成長：留三件裡最高的 */
     const gw = Math.max(0, ...use.map(([, q]) => q.gw || 0));
     if (gw) o.gw = gw;
-    /* 0.1.58 詛咒寶藏：材料裡有幾件被詛咒就疊幾層（最多 CURSE_MAX）；詛咒不一樣時留最多的那種 */
+    /* 0.1.59 詛咒寶藏：材料裡有幾件被詛咒就疊幾層（最多 CURSE_MAX）；詛咒不一樣時留最多的那種 */
     const cus = use.map(([, q]) => q.cu).filter(Boolean);
     if (cus.length) {
       const n = {};
@@ -347,7 +347,7 @@ function compileBag(bag, extra = {}) {
       kite: 0,
       summon: 0,
       revive: 0,
-      /* 0.1.58 法老王的遺物・安卡：倒下時復活的生命 % */
+      /* 0.1.59 法老王的遺物・安卡：倒下時復活的生命 % */
       ankh: 0,
       link3: 0,
       link: 0,
@@ -529,7 +529,7 @@ function compileBag(bag, extra = {}) {
   [F.sgMight, F.sgSwift, F.sgGuard, F.sgLife, F.sgLuck] = SGL;
   if (SGL[2]) F.startBlock += 15 * SGN[2];
   if (SGL[3]) for (const q of bag.items) if (q.sg === 3) add(q, { ls: 5 });
-  /* 0.1.58 詛咒寶藏：背包裡被詛咒的道具（o.cu = [詛咒, 層數]）；吸金在 bonusGold、沉睡在下面的武器 */
+  /* 0.1.59 詛咒寶藏：背包裡被詛咒的道具（o.cu = [詛咒, 層數]）；吸金在 bonusGold、沉睡在下面的武器 */
   for (const s of bag.items) {
     const c = s.cu && CURSES[s.cu[0]];
     if (!c) continue;
@@ -539,7 +539,7 @@ function compileBag(bag, extra = {}) {
     if (c.k === 'envy')
       for (const q of bag.items) if (q !== s && has(q, 'weapon') && rowQ(s, q)) add(q, { dmgPct: -v });
   }
-  /* 0.1.58 法老王的遺物（bag.rel）：看位置的（最上／最下排、角落、中間）、武器件數、復活、沙漏（時段加成）；金面具在 bonusGold */
+  /* 0.1.59 法老王的遺物（bag.rel）：看位置的（最上／最下排、角落、中間）、武器件數、復活、沙漏（時段加成）；金面具在 bonusGold */
   if (bag.rel && bag.rel.length) {
     const R = new Set(bag.rel),
       cs = o => cellsOf(o),
@@ -678,7 +678,7 @@ function compileBag(bag, extra = {}) {
         sgK: o.sg === 4 && SGL[4] ? 1 : 0,
         /* 0.1.53 召喚的戰狼（第幾隻、開戰封住到幾秒）、馴獸師的成長 */
         ...(o.vw ? { vw: o.vw, seal: o.vw * WOLF_T } : {}),
-        /* 0.1.58 詛咒・沉睡：開戰後幾秒才開始出手 */
+        /* 0.1.59 詛咒・沉睡：開戰後幾秒才開始出手 */
         ...(o.cu && CURSES[o.cu[0]] && CURSES[o.cu[0]].k === 'sleep' ? { seal: CURSES[o.cu[0]].v * o.cu[1] } : {}),
         gw: o.gw || 0,
         /* 0.1.53 四兇：吞噬（饕餮）、命中封鎖（窮奇）、隨機異常（混沌） */
@@ -705,7 +705,7 @@ function compileBag(bag, extra = {}) {
   if (F.armDmg && F.arm > 0) for (const w of F.weapons) w.dmg = w.dmg.map(v => v + F.arm);
   if (F.potMul || F.potUse) F.pots.forEach(p => ((p.v = Math.round(p.v * (1 + F.potMul / 100))), (p.n += F.potUse)));
   F.dodge = Math.min(40, F.dodge);
-  /* 0.1.58 詛咒・虛弱疊太多：生命至少 1 */
+  /* 0.1.59 詛咒・虛弱疊太多：生命至少 1 */
   F.hp = Math.max(1, F.hp);
   return F;
 }
@@ -771,7 +771,7 @@ const packIt = o => {
       o.rc || 0,
       o.sg != null ? o.sg + 1 : 0,
       o.gw || 0,
-      /* 0.1.58 七十二變的形狀、詛咒 [詛咒, 層數] */
+      /* 0.1.59 七十二變的形狀、詛咒 [詛咒, 層數] */
       o.sh || 0,
       o.cu || 0
     ];
@@ -786,7 +786,7 @@ const packBag = bag => ({
   ...(bag.pay ? { pay: 1 } : {}),
   ...(bag.gp ? { gp: bag.gp } : {}),
   ...(bag.core ? { co: packIt(bag.core) } : {}),
-  /* 0.1.58 法老王的遺物 */
+  /* 0.1.59 法老王的遺物 */
   ...(bag.rel && bag.rel.length ? { rel: [...bag.rel] } : {}),
   it: bag.items.map(packIt)
 });

@@ -312,13 +312,13 @@ const botBump = (cx, bagToo = true) => {
   cx.val.clear();
   if (bagToo) cx.base = cx.weak = null;
 };
-/* ex：0.1.58 這件身上的形狀（七十二變）、詛咒（{ sh, cu }），沒給就照這局的形狀表、沒有詛咒 */
+/* ex：0.1.59 這件身上的形狀（七十二變）、詛咒（{ sh, cu }），沒給就照這局的形狀表、沒有詛咒 */
 const botEx = o => (o && o.cu ? { sh: o.sh, cu: o.cu } : null);
 function botValue(run, id, t, P, cx = {}, ex = null) {
   const key = id + '|' + t + (ex && ex.cu ? '|c' + ex.cu.join('.') : '');
   if (cx.val && cx.val.has(key)) return cx.val.get(key);
   const v = botValue0(run, id, t, P, cx, ex);
-  /* 0.1.58 詛咒・吸金：每回合少的錢（戰力算不到） */
+  /* 0.1.59 詛咒・吸金：每回合少的錢（戰力算不到） */
   if (ex && ex.cu && CURSES[ex.cu[0]] && CURSES[ex.cu[0]].k === 'drain')
     v.gain -= 0.05 * ex.cu[1] * (Math.max(0, ROUNDS.length - run.ri) / ROUNDS.length);
   if (cx.val) cx.val.set(key, v);
@@ -534,14 +534,14 @@ function botCaravan(run, q, P, cx) {
           return ok(vanDo(run, [weak[i][0].u, weak[j][0].u]));
   return false;
 }
-/* 0.1.58 法老王的遺物：拿到這個遺物戰力多幾成（黃金面具算收入） */
+/* 0.1.59 法老王的遺物：拿到這個遺物戰力多幾成（黃金面具算收入） */
 function botRelic(run, k, P = BOT_P) {
   const bag = run.bag,
     base = botPowerOf(bag, P),
     left = Math.max(0, ROUNDS.length - run.ri) / ROUNDS.length;
   return botPowerOf({ ...bag, rel: [...(bag.rel || []), k] }, P) / base - 1 + (k === 'mask' ? 0.1 * left : 0);
 }
-/* 0.1.58 遺產市集：攤位上划算的就買（跟商店一樣看每金幣換到多少戰力） */
+/* 0.1.59 遺產市集：攤位上划算的就買（跟商店一樣看每金幣換到多少戰力） */
 function botLegacy(run, q, P, cx) {
   if (!run.leg || !run.leg.length || r01(run) > q) return false;
   let did = false;
@@ -594,7 +594,7 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
     botBump(cx);
     for (const o of run.bench) if (o) botPlace(run, o, P, cx);
   }
-  /* 0.1.58 遺產市集 */
+  /* 0.1.59 遺產市集 */
   botLegacy(run, q, P, cx);
   for (let rolls = 0, guard = 0; guard < 12; guard++) {
     let best = null;

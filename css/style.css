@@ -94,16 +94,16 @@ canvas.spr.flip{transform:scaleX(-1)}
 .logo .pl{font-size:48px;text-shadow:none}
 .ver{text-align:center;margin-top:var(--sp-4)}
 /* ---------- 準備畫面 ---------- */
-.prep{display:grid;gap:var(--sp-2)}
+.prep{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-2)}
 .top{display:flex;align-items:center;gap:var(--sp-2)}
-.top .me{display:flex;align-items:center;gap:var(--sp-2);flex:1;min-width:0}
+.top .me{display:flex;align-items:center;gap:var(--sp-2);flex:1;min-width:40px}
 .top .me canvas{width:36px;height:36px}
 .top .me span{display:grid;min-width:0}
 .top .me b{font-size:var(--fs-btn);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hpt{color:var(--hp);font-family:var(--f-pix);font-size:var(--fs-btn)}
-.rinfo{display:grid;text-align:right}
+.rinfo{display:grid;text-align:right;min-width:0;flex:0 1 auto}
 .gold{font-family:var(--f-pix);font-size:var(--fs-num);color:var(--gold);font-weight:400}
-.rinfo small{color:var(--dim)}
+.rinfo small{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gold .inc{font-size:var(--fs-sm);color:var(--good);margin-left:var(--sp-1)}
 .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-1)}
 /* 0.1.29 6 人一場：5 位對手一排，頭像在上、名字和生命在下 */
@@ -148,7 +148,7 @@ canvas.spr.flip{transform:scaleX(-1)}
 .bag .cell{position:absolute;width:var(--cs);height:var(--cs);border-radius:var(--r-sm);background:var(--cell);border:1.5px solid var(--cell-line)}
 .it{position:absolute;pointer-events:none}
 .it .c{position:absolute;width:var(--cs);height:var(--cs);border-radius:var(--r-sm);pointer-events:auto;background:var(--sc,var(--s1b));border:2px solid var(--sb,var(--s1));touch-action:none}
-.it img{position:absolute;left:50%;top:50%;width:min(calc(var(--cs) * .9),48px);transform:translate(-50%,-50%);image-rendering:pixelated;pointer-events:none;filter:drop-shadow(0 1px 0 #0004)}
+.it img{position:absolute;left:50%;top:50%;width:min(calc(var(--cs) * .9),var(--icmax,48px));transform:translate(-50%,-50%);image-rendering:pixelated;pointer-events:none;filter:drop-shadow(0 1px 0 #0004)}
 .it.s1,.bs.s1,.sc.s1,.pk.s1,.ghost.s1{--sc:var(--s1b);--sb:var(--s1)}
 .it.s2,.bs.s2,.sc.s2,.pk.s2,.ghost.s2{--sc:var(--s2b);--sb:var(--s2)}
 .it.s3,.bs.s3,.sc.s3,.pk.s3,.ghost.s3{--sc:var(--s3b);--sb:var(--s3)}
@@ -444,16 +444,6 @@ canvas.spr.flip{transform:scaleX(-1)}
 .pcol{display:contents}
 /* 0.1.25 電腦版：整個介面等比例放大（--z 由 fitZoom 依視窗大小算） */
 #app,#modal>*,#toast,.ghost{zoom:var(--z,1)}
-@media (min-width:1040px){
-  #app:has(>.prep){max-width:1000px;display:grid;align-content:center}
-  .prep{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"b a" "b c" "b d";grid-template-rows:auto auto 1fr;column-gap:var(--sp-5);align-items:start}
-  .pcol{display:grid;gap:var(--sp-2);align-content:start;min-width:0}
-  .pa{grid-area:a}.pb{grid-area:b;padding-top:var(--sp-3)}.pc{grid-area:c}
-  /* 詳情放在右欄下方；用絕對定位（容器是 grid 區塊 d），打開時版面不會跳 */
-  .prep{position:relative}
-  .prep>.det{position:absolute;grid-area:d;top:0;left:0;bottom:auto;transform:none;width:100%;box-shadow:0 0 0 1px var(--line)}
-  .prep .top{position:static;margin:0;padding:var(--sp-2) 0;box-shadow:none;background:none}
-}
 /* 0.1.29 首頁排行榜 */
 .lbt{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-bottom:var(--sp-2)}
 .lb{display:grid;gap:var(--sp-1)}
@@ -629,7 +619,7 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .cxr p{margin:0;padding:0 var(--sp-3) var(--sp-2);font-size:var(--fs-sm);color:var(--dim);line-height:1.5}
 .cxg summary small{white-space:normal}
 .htop{gap:var(--sp-2)}
-/* 0.1.58 詛咒寶藏的「咒」、星象的規則、法老王的遺物、遺產攤位 */
+/* 0.1.59 詛咒寶藏的「咒」、星象的規則、法老王的遺物、遺產攤位 */
 .cub{position:absolute;left:2px;bottom:2px;display:grid;place-items:center;width:15px;height:15px;border-radius:4px;font-size:10px;font-style:normal;font-weight:700;line-height:1;color:#fff;background:var(--curse);z-index:2;box-shadow:0 0 0 1px #0006}
 .bag.mini .cub{width:11px;height:11px;font-size:8px;left:1px;bottom:1px}
 .sc .cub{left:4px;bottom:auto;top:4px}
@@ -651,7 +641,7 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .leg{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-2)}
 .leg .lbl{font-size:var(--fs-cap);color:var(--dim);writing-mode:vertical-rl;letter-spacing:.2em;flex:none}
 .legs{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 4 * var(--sp-1)) / 5);gap:var(--sp-1);overflow-x:auto;flex:1;min-width:0;padding:2px}
-/* 0.1.58 開場賽制轉盤：一塊一個賽制（大小照機率），指針在上面 */
+/* 0.1.59 開場賽制轉盤：一塊一個賽制（大小照機率），指針在上面 */
 .wbtn{border:0;padding:0;background:none}
 .wheel{position:relative;width:220px;height:220px;margin:var(--sp-2) auto}
 .wdisk{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 4px var(--gold),0 6px 18px #0005;will-change:transform}
@@ -660,3 +650,67 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .mres{color:var(--gold);animation:mres .5s ease-out}
 @keyframes mres{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 .modeint .mrules{animation:mres .5s ease-out}
+/* ================= 0.1.58 電腦版（寬 1040 以上）=================
+   不再只是把手機版放大：寬螢幕多出來的空間拿來排版（設計規範第 6 節「電腦版」）。
+   --z 是放大倍數（基準 1280×780）、--vh 是放大後的視窗高度（fitZoom 算） */
+.hcol{display:contents}
+.detph{display:none}
+@media (min-width:1040px){
+  #app{max-width:1360px;padding:var(--sp-5)}
+  /* 準備：上方資訊欄整條；左＝回合、賽制、對手，中＝背包＋暫存（格子照那欄放大，cellSize），右＝商店、按鈕、道具說明（固定在這裡，不浮出來） */
+  .prep{grid-template-columns:340px minmax(0,1fr) 380px;grid-template-areas:"t t t" "a b c" "a b d";grid-template-rows:auto auto minmax(0,1fr);gap:var(--sp-4) var(--sp-5);min-height:calc(var(--vh,100vh) - 32px);align-items:start}
+  .prep>.top{grid-area:t;position:static;margin:0;padding:0 0 var(--sp-3);background:none;box-shadow:0 1px 0 var(--line)}
+  .prep>.top .me canvas{width:44px;height:44px}
+  .pcol{display:grid;gap:var(--sp-3);align-content:start;min-width:0}
+  .pa{grid-area:a}.pc{grid-area:c}
+  .pb{grid-area:b;align-self:stretch;align-content:center;justify-items:center;padding:var(--sp-3);border-radius:var(--r-lg);background:var(--card2);box-shadow:inset 0 0 0 1px var(--line)}
+  .pb .corefab{justify-self:center}
+  /* 道具圖示是 32px 像素圖：格子夠大時放到 2 倍（64） */
+  .pb .bag,.bbags .bag{--icmax:64px}
+  .pb .bs img{width:64%}
+  .pb .benchrow{width:100%;max-width:560px}
+  /* 對手：一人一列（頭像、名字、生命條），不用擠成一排 */
+  .pa .rivals,.pa .rivals.n5{grid-template-columns:1fr;gap:var(--sp-2)}
+  .pa .rivals .rv,.pa .rivals.n5 button.rv{flex-direction:row;gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);text-align:left;min-height:52px}
+  .pa .rivals .rv canvas{width:36px;height:36px}
+  .pa .rv b{font-size:var(--fs-body)}
+  .pa .rv small{font-size:var(--fs-sm)}
+  .pa .rv .hpb{height:6px;margin:2px 0}
+  .pa .rv .rvc{top:50%;right:var(--sp-3);transform:translateY(-50%);width:22px;height:22px}
+  .pa .rv span{padding-right:30px}
+  .pa .rb{padding:var(--sp-1) 0}
+  .pc .sc img{width:40px;height:40px}
+  .pc .acts .btn{min-height:52px}
+  .prep>.det,.prep>.detph{grid-area:d;position:static;transform:none;width:auto;max-height:100%;overflow:auto;box-shadow:0 0 0 1px var(--line);align-self:stretch}
+  .prep>.det{align-self:start}
+  .prep>.detph{display:grid;place-items:center;min-height:120px;border-radius:var(--r-lg);border:1.5px dashed var(--line);color:var(--faint);font-size:var(--fs-body)}
+  /* 戰鬥：左＝你的背包、中＝場地＋紀錄＋速度、右＝對手的背包（打野怪沒有背包：右邊放戰鬥紀錄） */
+  .bt{grid-template-columns:minmax(0,1fr) minmax(460px,600px) minmax(0,1fr);grid-template-areas:"top top top" "b0 arena b1" "b0 log b1" "b0 ctl b1";gap:var(--sp-4) var(--sp-5);min-height:calc(var(--vh,100vh) - 32px);align-content:center;align-items:start}
+  .bt.nob{grid-template-areas:"top top top" "b0 arena log" "b0 ctl log"}
+  .btop{grid-area:top}.arena{grid-area:arena;min-height:300px}.bctl{grid-area:ctl}
+  .blog{grid-area:log;height:200px}
+  .bt.nob .blog{height:auto;max-height:440px;align-self:stretch}
+  .fr canvas.spr.big{width:128px;height:128px}
+  .bbags .bag.mini .sgb{width:16px;height:16px;font-size:var(--fs-cap)}
+  .bbags{display:contents}
+  .bbags>div{align-self:center;padding:var(--sp-3)}
+  .bbags>div:first-child{grid-area:b0;justify-self:end}
+  .bbags>div:nth-child(2){grid-area:b1;justify-self:start}
+  /* 首頁：左＝角色、開始、最近的對局；右＝排行榜 */
+  .home.hm{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--sp-2) var(--sp-5);max-width:1040px;margin:0 auto;align-items:start}
+  .home.hm>.htop,.home.hm>.logo,.home.hm>.hfoot{grid-column:1/-1}
+  .home.hm .hcol{display:grid;gap:var(--sp-2);align-content:start;min-width:0}
+  .home.hm .hc2>h3:first-child{margin-top:0}
+  /* 其他頁：加寬到 960，清單排兩欄 */
+  .page{max-width:960px;margin:0 auto}
+  .page .cxsec>.cxl:not(:has(>.cxg)){grid-template-columns:1fr 1fr;align-items:start}
+  .page .cxg .cxl{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+  .page.help{columns:2;column-gap:var(--sp-4)}
+  .page.help>.ptop{column-span:all}
+  .page.help>.card{break-inside:avoid}
+  .avs{grid-template-columns:repeat(8,1fr)}
+}
+@media (min-width:1040px) and (max-width:1239px){
+  .prep{grid-template-columns:300px minmax(0,1fr) 340px}
+}
+

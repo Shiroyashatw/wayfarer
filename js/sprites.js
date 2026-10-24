@@ -12,7 +12,7 @@ const ARTIMG = {};
 function artSheet(s) {
   if (!ARTIMG[s]) {
     const im = new Image();
-    /* 0.1.58 只有畫面真的在等這張（want）才重畫：之前背景預載 146 張大圖每載好一張就整個重畫，
+    /* 0.1.59 只有畫面真的在等這張（want）才重畫：之前背景預載 146 張大圖每載好一張就整個重畫，
        開場半分鐘內重畫上百次，按鈕按下、放開之間畫面被換掉，點擊被吃掉（看起來像卡住） */
     im.onload = () => im.want && typeof artRepaint === 'function' && artRepaint();
     im.src = ART_SHEET[s];
