@@ -18,6 +18,8 @@ let BOT_P = {
   dotW: 0.5, // 燃燒、中毒、流血每層的價值（約幾秒）
   ctrlW: 1.084, // 暈眩、凍結、虛弱、致盲的價值倍率
   lowHp: 15, // 0.1.72 生命剩這麼少就不存利息錢
+  resW: 1, // 0.1.72 抗異常、抗暴擊（擋掉對手幾成傷害）的權重
+  nemW: 2, // 0.1.72 被同一個人打敗：評估對手時他的權重多幾倍（每輸一次 +nemW，慢慢淡掉）
   ehpW: 1.581 // 有效生命的指數（戰力 = 每秒傷害 × 有效生命^ehpW）
 };
 /* 0.1.72 職業挑選：每個職業在每個主題池、每個賽制的平均名次跟全體平均差多少（負的比較強），
@@ -41,7 +43,8 @@ function botSetCls(run, cls) {
 /* ================= 戰力分數 ================= */
 /* 0.1.28 對手平均有幾隻寵物（反制寵物的道具照這個估價）；simLobby 每回合照其他機器人的背包設 run.epet */
 let BOT_EPET = 1;
-/* 0.1.29 對手每種異常、回復、暴擊大約佔他強度的比例（0～0.3），抗異常的道具照這個估價；run.eres 沒有就用這組平均值 */
+/* 0.1.29 對手每種異常、回復、暴擊大約佔他強度的比例（0～0.6；0.1.72 從 0.3 放寬），抗異常的道具照這個估價；run.eres 沒有就用這組平均值。
+   0.1.72 arm：對手的護甲、護盾有多厚（穿甲、破甲照這個估價） */
 const BOT_ERES0 = {
   burn: 0.05,
   poison: 0.05,
@@ -52,12 +55,25 @@ const BOT_ERES0 = {
   weak: 0.02,
   blind: 0.02,
   heal: 0.04,
-  crit: 0.04
+  crit: 0.04,
+  arm: 0.1
 };
 let BOT_ERES = BOT_ERES0;
 /* 一個背包對別人的威脅：每種異常（以及吸血回復、暴擊）大約佔它強度的比例 */
 function botThreat(F) {
-  const o = { burn: 0, poison: 0, bleed: 0, sunder: 0, frozen: 0, stun: 0, weak: 0, blind: 0, heal: 0, crit: 0 };
+  const o = {
+    burn: 0,
+    poison: 0,
+    bleed: 0,
+    sunder: 0,
+    frozen: 0,
+    stun: 0,
+    weak: 0,
+    blind: 0,
+    heal: 0,
+    crit: 0,
+    arm: 0
+  };
   let tot = 0.01;
   for (const w of F.weapons) {
     const sp = 1 / Math.max(0.3, w.cd),
@@ -76,7 +92,13 @@ function botThreat(F) {
     o.crit += ((w.crit || 0) / 100) * avg * 0.6;
   }
   o.heal += (F.regen || 0) + F.pots.reduce((n, p) => n + (p.v * p.n) / 20, 0);
-  for (const k in o) o[k] = Math.min(0.3, o[k] / tot);
+  for (const k in o) o[k] = Math.min(0.6, o[k] / tot);
+  /* 護甲每 50 點、護盾每秒擋的量佔自己生命的比例 */
+  o.arm = Math.min(
+    0.6,
+    Math.max(0, F.arm || 0) / 50 +
+      (F.shields.reduce((n, x) => n + (x.block || 0) / Math.max(0.6, x.cd), 0) / Math.max(20, F.hp)) * 4
+  );
   return o;
 }
 function botPower(F, P = BOT_P) {
@@ -120,7 +142,8 @@ function botPower(F, P = BOT_P) {
         (w.bleed || 0) * 0.7 +
         (w.venom || 0) * 2.6) *
       P.dotW;
-    hit *= 1 + (w.sunder || 0) * 0.02;
+    /* 0.1.72 破甲、穿甲：對手越硬越值錢 */
+    hit *= 1 + (w.sunder || 0) * 0.02 * (1 + 2 * BOT_ERES.arm);
     const ctrl =
       /* 0.1.37 凍結：一件道具 6 秒不能充能；冰緩：一件 4 秒減半；衰老：命中就衰老幾秒 */
       ((w.stun ? w.stun[0] * w.stun[1] : 0) +
@@ -134,7 +157,10 @@ function botPower(F, P = BOT_P) {
     hit *= 1 + ctrl * 0.4 * P.ctrlW;
     hit *= 1 + (w.ls || 0) / 200;
     /* 0.1.28 質變：連鎖、穿甲、守護 */
-    hit *= (1 + (w.chain || 0) / 100) * (1 + (w.pierce || 0) * 0.004) * (1 + ((w.chainN || 0) * CHAIN_DMG) / 100);
+    hit *=
+      (1 + (w.chain || 0) / 100) *
+      (1 + (w.pierce || 0) * 0.004 * (1 + 2 * BOT_ERES.arm)) *
+      (1 + ((w.chainN || 0) * CHAIN_DMG) / 100);
     /* 0.1.35 雙手大師（這一件的連擊）、金錢標（開戰時的錢夠打大半場才算翻倍） */
     hit *= 1 + (w.dbl || 0) / 100;
     /* 0.1.62 機關城：每第 N 次多打 k 下；開戰幾秒後才啟動（雷電砲台、詛咒・沉睡的 seal） */
@@ -306,10 +332,12 @@ function botPower(F, P = BOT_P) {
   const TW = { ignite: 0.05, bomb: 0.04, spore: 0.06, icicle: 0.07, snare: 0.07, net: 0.08, stake: 0.07, shock: 0.08 };
   for (const t of F.traps || []) pre += (TW[t.k] || 0.04) * t.n * (t.sz > 1 ? 1.5 : 1);
   if (F.corrodeRe) pre += 0.12;
-  /* 0.1.29 抗異常：照對手平均每種異常的強度（run.eres，跟 epet 一樣看上一回合其他人的背包）估價 */
+  /* 0.1.29 抗異常：照對手平均每種異常的強度（run.eres，跟 epet 一樣看上一回合其他人的背包）估價。
+     0.1.72 改成「擋掉對手幾成傷害」：red 是對手少打的比例，等於有效生命 ÷ (1 - red)（跟生命一樣吃 ehpW 次方）；
+     減回復是對手少回的血，算進傷害。之前是加在 pre 上的小數字，對手 6 成傷害靠燃燒也只值 +15%，機器人不會去買反制 */
   const er = BOT_ERES,
     rv = k => Math.min(RES_MAX, F[k] || 0) / 100;
-  pre +=
+  const red =
     rv('rBurn') * er.burn +
     rv('rPoison') * er.poison +
     rv('rBleed') * er.bleed +
@@ -322,8 +350,9 @@ function botPower(F, P = BOT_P) {
     Math.min(1, (F.immT || 0) / 15) *
       (er.burn + er.poison + er.bleed + er.sunder + er.frozen + er.stun + er.weak + er.blind) +
     (F.cleanse || 0) * 0.04 * (er.burn + er.poison + er.bleed + er.frozen + er.stun + 0.5) +
-    rv('healCut') * er.heal +
     rv('critRes') * er.crit;
+  pre *= Math.pow(1 / (1 - Math.min(0.75, red * (P.resW ?? 1))), P.ehpW);
+  dps *= 1 + rv('healCut') * er.heal * 1.5;
   return Math.max(0.01, dps) * Math.pow(Math.max(1, ehp), P.ehpW) * pre;
 }
 const botPowerOf = (bag, P) => botPower(compileBag(bag), P);

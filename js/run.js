@@ -1217,7 +1217,8 @@ function finishFight(run, fb) {
     /* 打贏對手：他扣跟你輸了會扣的一樣多（加上你背包的寵物）；結果視窗顯示他扣多少、是否淘汰 */
     if (opp.kind === 'pvp') {
       const rv = run.rivals[opp.rv];
-      rv.lw = [r.id, false];
+      /* 0.1.72 第三欄：打敗他的人（'me' 是你、數字是第幾位對手），即時機器人照這個記仇 */
+      rv.lw = [r.id, false, 'me'];
       out.hit = tarHit(rivalBag(rv, r.id).bag, rv, rivalHp(rv), r.loss + petLoss(run.bag));
       rv.hp = rivalHp(rv) - out.hit;
       out.ko = rivalHp(rv) <= 0;
@@ -1293,8 +1294,8 @@ function rivalFights(run, fb) {
       const lr = q[res.win ? k + 1 : k];
       if (q[k].live) afterSim(q[k].live.run, res, 0);
       if (q[k + 1].live) afterSim(q[k + 1].live.run, res, 1);
-      q[k].lw = [r.id, res.win];
-      q[k + 1].lw = [r.id, !res.win];
+      q[k].lw = [r.id, res.win, run.rivals.indexOf(q[k + 1])];
+      q[k + 1].lw = [r.id, !res.win, run.rivals.indexOf(q[k])];
       lr.hp = rivalHp(lr) - tarHit((res.win ? b : a).bag, lr, rivalHp(lr), r.loss + petLoss((res.win ? a : b).bag));
     }
     if (n % 2) {
@@ -1302,7 +1303,7 @@ function rivalFights(run, fb) {
         a = rivalBag(lone, r.id),
         res = simulate(fightF(run, a.F, r.st), fb.me, h(run.seed, run.ri, 994));
       if (lone.live) afterSim(lone.live.run, res, 0);
-      lone.lw = [r.id, res.win];
+      lone.lw = [r.id, res.win, 'me'];
       if (!res.win) lone.hp = rivalHp(lone) - tarHit(a.bag, lone, rivalHp(lone), r.loss + petLoss(run.bag));
     }
     return;
@@ -2066,16 +2067,20 @@ function simLobby(seed, rating, opt = {}) {
     if (!alive.length || (alive.length === 1 && (opt.short || bots.length === 1))) break;
     const solo = alive.length === 1;
     /* 0.1.28 其他人平均幾隻寵物（機器人照這個決定要不要買反制寵物的道具） */
-    const pets = b => b.run.bag.items.filter(o => ITEMI[o.id].tags.includes('pet')).length,
-      tot = alive.reduce((n, b) => n + pets(b), 0);
-    for (const b of alive) b.run.epet = alive.length > 1 ? (tot - pets(b)) / (alive.length - 1) : 1;
-    /* 0.1.29 其他人的威脅（每種異常、回復、暴擊的比例），抗異常道具照這個估價 */
+    const pets = b => b.run.bag.items.filter(o => ITEMI[o.id].tags.includes('pet')).length;
+    /* 0.1.29 其他人的威脅（每種異常、回復、暴擊的比例），抗異常道具照這個估價；0.1.72 最近打敗自己的人權重加倍（記仇，跟即時機器人一樣） */
     const thr = new Map(alive.map(b => [b, botThreat(compileBag(b.run.bag))]));
     for (const b of alive) {
       const os = alive.filter(x => x !== b);
-      if (!os.length) continue;
+      if (!os.length) {
+        b.run.epet = 1;
+        continue;
+      }
+      const w = x => 1 + (b.P.nemW ?? BOT_P.nemW) * ((b.beat || {})[bots.indexOf(x)] || 0),
+        W = os.reduce((n, x) => n + w(x), 0);
+      b.run.epet = os.reduce((n, x) => n + pets(x) * w(x), 0) / W;
       b.run.eres = {};
-      for (const k in BOT_ERES0) b.run.eres[k] = os.reduce((n, x) => n + thr.get(x)[k], 0) / os.length;
+      for (const k in BOT_ERES0) b.run.eres[k] = os.reduce((n, x) => n + thr.get(x)[k] * w(x), 0) / W;
     }
     for (const b of alive) {
       nextRound(b.run);
@@ -2089,7 +2094,7 @@ function simLobby(seed, rating, opt = {}) {
       b.info.snaps[r.id] = { hp: b.run.hp, bag: solo ? { ...packBag(b.run.bag), ot: 1 } : packBag(b.run.bag) };
     alive.forEach((b, i) => {
       const run = b.run;
-      let F;
+      let F, o;
       if (solo && r.type === 'pvp') {
         if (rng(h(seed, k, 77))() < 0.5) {
           run.ws++;
@@ -2103,7 +2108,7 @@ function simLobby(seed, rating, opt = {}) {
       }
       if (r.type === 'pvp') {
         /* 輪流打其他還活著的機器人（打的是對方這回合的快照，只影響自己） */
-        const o = alive[(i + 1 + (k % (alive.length - 1))) % alive.length];
+        o = alive[(i + 1 + (k % (alive.length - 1))) % alive.length];
         F = compileBag(o.run.bag);
       } else F = mobOf(run, r).F;
       const res = simulate(
@@ -2115,6 +2120,7 @@ function simLobby(seed, rating, opt = {}) {
       /* 0.1.10 跟玩家一樣的經濟：打贏拿金幣、連勝連敗（之前沒算，機器人的背包比玩家窮、快照偏弱） */
       if (!res.win && !solo) run.hp -= tarHit(run.bag, run, run.hp, r.loss);
       botAfter(run, r, res.win, b.q, b.P);
+      botGrudge(b, !res.win && r.type === 'pvp' ? bots.indexOf(o) : null);
     });
     for (const b of alive) if (b.run.hp <= 0) b.out = ++order;
     /* 賽制：遺產市集分淘汰者的背包、法老王的遺物（生命低的先挑） */
@@ -2165,7 +2171,9 @@ function liveStep(run, r) {
   for (const rv of al) {
     const L = rv.live,
       br = L.run,
-      os = prev.filter(p => p.rv !== rv),
+      /* 0.1.72 記仇：最近打敗他的人權重加倍（L.beat：'me' 或對手的位置 → 輸了幾次，每回合淡掉） */
+      nem = p => 1 + BOT_P.nemW * ((L.beat || {})[p.rv ? run.rivals.indexOf(p.rv) : 'me'] || 0),
+      os = prev.filter(p => p.rv !== rv).map(p => ({ ...p, w: p.w * nem(p) })),
       W = os.reduce((n, p) => n + p.w, 0);
     /* 0.1.36 池子：這個機器人以外的人（你這局、其他即時機器人的那局、快照的這回合背包） */
     br.lob = () => [
@@ -2196,7 +2204,17 @@ function liveStep(run, r) {
 /* 這回合打完：即時機器人照這局的勝負（rv.lw = [回合, 贏了沒]）拿金幣、連勝連敗、菁英／首領三選一 */
 function liveAfter(run, r) {
   for (const rv of run.rivals)
-    if (rv.live && rv.lw && rv.lw[0] === r.id && rivalHp(rv) > 0) botAfter(rv.live.run, r, rv.lw[1], rv.live.q, BOT_P);
+    if (rv.live && rv.lw && rv.lw[0] === r.id && rivalHp(rv) > 0) {
+      botAfter(rv.live.run, r, rv.lw[1], rv.live.q, BOT_P);
+      botGrudge(rv.live, rv.lw[1] ? null : rv.lw[2]);
+    }
+}
+/* 0.1.72 記仇：每回合舊的仇淡掉 BOT_FADE，輸給誰那個人 +1（L.beat 存在存檔裡，鍵是 'me' 或對手的位置） */
+const BOT_FADE = 0.75;
+function botGrudge(L, by) {
+  const b = (L.beat = L.beat || {});
+  for (const k of Object.keys(b)) if ((b[k] *= BOT_FADE) < 0.05) delete b[k];
+  if (by != null && by !== -1) b[by] = (b[by] || 0) + 1;
 }
 /* 補位用的 n 位機器人對手（從一場機器人對局裡取） */
 function makeBots(n, rating) {
