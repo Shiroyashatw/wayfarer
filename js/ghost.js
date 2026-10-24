@@ -192,7 +192,7 @@ async function ghostBoard(force = false) {
 /* 0.1.71 種子全部是最高牌階的機器人（SEED_RATING：買法最準、每回合多拿的金幣最多），每種「賽制 × 主題」SEED_PER 場；
    配對時分數相近的不夠，就用 SEED_RATING 再找一次（ghostRivals），所以種子不用每個分數段都有。
    plan：直接指定要跑的場次 [[賽制, 主題, 分數]…]，不給就照上面排 */
-const SEED_RATING = 2100,
+const SEED_RATING = BOT_RATING,
   SEED_PER = 2;
 async function seedGhosts(n = 0, plan = null) {
   if (!CLOUD.sb || !CLOUD.uid) throw new Error('雲端還沒連線');

@@ -17,8 +17,27 @@ let BOT_P = {
   mergeBonus: 0.158, // 湊合成的額外偏好（還沒湊滿也先收）
   dotW: 0.5, // 燃燒、中毒、流血每層的價值（約幾秒）
   ctrlW: 1.084, // 暈眩、凍結、虛弱、致盲的價值倍率
-  ehpW: 1.581
+  lowHp: 15, // 0.1.72 生命剩這麼少就不存利息錢
+  ehpW: 1.581 // 有效生命的指數（戰力 = 每秒傷害 × 有效生命^ehpW）
 };
+/* 0.1.72 職業挑選：每個職業在每個主題池、每個賽制的平均名次跟全體平均差多少（負的比較強），
+   tools/bot_cls.js 用菁英機器人對局統計後寫回（--write 會覆寫這一段）。開局三選一挑「職業本身＋這個主題＋這個賽制」加起來最強的 */
+let BOT_CLS = {};
+function botClass(opts, mode, theme) {
+  const sc = c => {
+    const t = BOT_CLS[c];
+    if (!t) return 0;
+    return t[0] + ((t[1] || {})[theme] || 0) + ((t[2] || {})[mode] || 0);
+  };
+  return opts.map(c => [c, sc(c)]).sort((a, b) => a[1] - b[1])[0][0];
+}
+/* 換職業（還沒開始的一局）：清掉起手道具、換成新職業的 */
+function botSetCls(run, cls) {
+  run.bag.cls = cls;
+  run.bag.items = [];
+  run.bench = Array(BENCH_N).fill(null);
+  giveStarter(run);
+}
 /* ================= 戰力分數 ================= */
 /* 0.1.28 對手平均有幾隻寵物（反制寵物的道具照這個估價）；simLobby 每回合照其他機器人的背包設 run.epet */
 let BOT_EPET = 1;
@@ -251,6 +270,12 @@ function botPower(F, P = BOT_P) {
   if (F.immAll) ehp *= 1.15;
   /* 0.1.43 受到的傷害 +%（詛咒面具這類缺點）、免疫一切的寵物（別西卜） */
   if (F.take) ehp /= 1 + F.take / 100;
+  /* 0.1.72 塔羅牌陣的戰鬥牌（正義反彈、月亮幻影、太陽逆位減傷、審判逆位背水） */
+  if (F.tarRefl) dps *= 1 + F.tarRefl / 150;
+  if (F.tarCopy) dps *= 1 + F.tarCopy / 350;
+  if (F.tarMiss) ehp *= 1.04;
+  if (F.tarHi) ehp *= 1 + F.tarHi / 200;
+  if (F.tarLow) dps *= 1 + F.tarLow / 600;
   if (F.weapons.some(w => w.imm)) dps *= 1.08;
   else if (F.immFz) ehp *= 1.05;
   ehp += gd;
@@ -417,6 +442,85 @@ function botValue1(run, id, t, P, cx, bag, base, o) {
     best.gain = Math.max(best.gain, P.mergeBonus * 0.5);
   return best;
 }
+/* 0.1.72 擺位看戰力：列出 o 能放的位置（同一組格子只算一次），先照「加成條數、貼著幾件」排，
+   取前 BOT_SPOTS 個真的算戰力，挑最高的。共生森林（越擠越強）、棋盤（棋子走法）、黃道（星座）、機關（齒輪）這些
+   看位置的效果，findSpot 的標籤加成猜不到，要算過才知道 */
+const BOT_SPOTS = 16;
+function botBestSpot(bag, o, P) {
+  const I = ITEMI[o.id];
+  if (I.core && bag.items.some(q => q.u !== o.u && ITEMI[q.id].core === I.core)) return null;
+  const g = bagGrid(bag),
+    rest = bag.items.filter(q => q.u !== o.u),
+    rel = rest.map(q => [q, synergy(o, q) + synergy(q, o)]).filter(([, n]) => n > 0),
+    seen = new Set(),
+    cand = [];
+  for (let r = 0; r < 4; r++) {
+    const sh = shapeO(o, r);
+    for (let y = 0; y < bag.h; y++)
+      for (let x = 0; x < bag.w; x++) {
+        const cs = sh.map(([dx, dy]) => [x + dx, y + dy]);
+        if (cs.some(([cx, cy]) => cx >= bag.w || cy >= bag.h || (g[cy][cx] != null && g[cy][cx] !== o.u))) continue;
+        const key = cs
+          .map(c => c.join(','))
+          .sort()
+          .join(' ');
+        if (seen.has(key) && !I.hole && !I.pc) continue;
+        seen.add(key + (I.hole || I.pc ? '|' + r : ''));
+        const t = { ...o, x, y, r },
+          nb = new Set();
+        for (const [cx, cy] of cs)
+          for (const [ax, ay] of [
+            [cx + 1, cy],
+            [cx - 1, cy],
+            [cx, cy + 1],
+            [cx, cy - 1]
+          ]) {
+            const u = g[ay] && g[ay][ax];
+            if (u != null && u !== o.u) nb.add(u);
+          }
+        let sc = nb.size;
+        for (const [q, n] of rel) if (adjacent(t, q)) sc += n * 3;
+        cand.push({ x, y, r, sc });
+      }
+  }
+  if (!cand.length) return null;
+  if (cand.length === 1) return cand[0];
+  /* 同分的照位置散開取（不要全部擠在左上角） */
+  cand.sort((a, b) => b.sc - a.sc);
+  const pick =
+    cand.length <= BOT_SPOTS
+      ? cand
+      : [
+          ...cand.slice(0, BOT_SPOTS / 2),
+          ...cand.slice(BOT_SPOTS / 2).filter((c, i, a) => i % Math.ceil(a.length / (BOT_SPOTS / 2)) === 0)
+        ];
+  let best = null;
+  for (const c of pick) {
+    const pw = botPowerOf({ ...bag, items: [...rest, { ...o, x: c.x, y: c.y, r: c.r }] }, P);
+    if (!best || pw > best.pw) best = { ...c, pw };
+  }
+  return best;
+}
+/* 0.1.72 整理背包：每件（核心以外）拿起來找戰力最高的位置，比原本好就搬過去；搬了要再跑 mergeAll（融合、吸收照新位置） */
+function botRelayout(run, P) {
+  const bag = run.bag;
+  let base = botPowerOf(bag, P),
+    moved = false;
+  for (let pass = 0; pass < 2; pass++) {
+    let any = false;
+    for (const o of [...bag.items]) {
+      if (ITEMI[o.id].core || ITEMI[o.id].absorb) continue;
+      const sp = botBestSpot(bag, o, P);
+      if (!sp || sp.pw <= base * 1.003 || (sp.x === o.x && sp.y === o.y && sp.r === o.r)) continue;
+      Object.assign(o, { x: sp.x, y: sp.y, r: sp.r });
+      base = sp.pw;
+      any = moved = true;
+    }
+    if (!any) break;
+  }
+  if (moved) mergeAll(run, runR(run));
+  return moved;
+}
 /* 把道具 o（已經在暫存區）照評估的方式放進背包 */
 function botPlace(run, o, P, cx = {}) {
   const ev = botValue(run, o.id, o.t, P, cx, botEx(o));
@@ -424,7 +528,7 @@ function botPlace(run, o, P, cx = {}) {
   botBump(cx);
   if (ev.how === 'swap' && ev.sell) sellItem(run, ev.sell.u);
   if (ev.how === 'place' || ev.how === 'swap') {
-    const sp = findSpot(run.bag, o, true);
+    const sp = (!P.plain && botBestSpot(run.bag, o, P)) || findSpot(run.bag, o, true);
     if (!sp) return false;
     Object.assign(o, sp);
     const i = run.bench.indexOf(o);
@@ -623,14 +727,27 @@ const BOT_TAROT = {
   world: 4,
   world_r: 3
 };
-function botTarot(run, opts) {
+/* 0.1.72 戰鬥類的牌（compileBag 看 bag.tar 算得到的）直接比戰力：每多 10% 戰力約 +2.5 分；
+   經濟、構築類照靜態分數＋看背包、生命、錢的調整（一點隨機，不然大家都選一樣的） */
+function botTarot(run, opts, P = BOT_P) {
   const pets = run.bag.items.filter(o => ITEMI[o.id].tags.includes('pet')).length,
-    sc = k =>
-      (BOT_TAROT[k] || 0) +
-      (k === 'empress' && pets >= 2 ? 3 : 0) +
-      (k === 'hermit' && run.bag.items.length <= 5 ? 3 : 0) +
-      (k === 'devil' && run.hp < 12 ? -3 : 0) +
-      r01(run) * 1.5;
+    base = botPowerOf({ ...run.bag, tar: '', tarN: 0 }, P),
+    left = Math.max(0, ROUNDS.length - run.ri) / ROUNDS.length,
+    sc = k => {
+      const T = tarOf(k),
+        fight = T && TAROT_FIGHT.includes(T.e.c);
+      let v = (BOT_TAROT[k] || 0) * (fight ? 0.5 : 1);
+      if (fight) v += 25 * (botPowerOf({ ...run.bag, tar: k, tarN: 0 }, P) / base - 1);
+      if (k === 'empress' && pets >= 2) v += 2;
+      if (k === 'hermit' && run.bag.items.length <= 5) v += 2;
+      if (k === 'devil' && run.hp < 15) v -= 4;
+      if (k === 'death_r' && run.hp < 15) v += 3;
+      if (k === 'justice_r' && run.hp < 20) v += 2;
+      /* 前期經濟牌比較值錢、後期戰鬥牌比較值錢 */
+      if (T && T.e.c === 'eco') v += 2 * left - 0.5;
+      if (k === 'hanged' && run.ri > ROUNDS.length * 0.6) v -= 3;
+      return v + r01(run) * 0.5;
+    };
   return opts.map(k => [k, sc(k)]).sort((a, b) => b[1] - a[1])[0][0];
 }
 /* q：照評估做的機率（牌階高 q 高）；其他時候用簡單的舊規則（照主題、隨便買），低牌階才會笨一點 */
@@ -654,7 +771,8 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
   if (lv && lvOpen(run) && run.gold >= lvCost(run) + Math.max(P.lvKeep, botFloor(run)) && (fill >= P.lvFill || tooLong))
     levelUp(run);
   /* 買：每輪挑「每金幣換到最多戰力」的一件，直到沒有值得買的；沒得買又有錢就刷新 */
-  const keep = Math.max(run.ri >= P.reserveFrom ? P.reserve : 0, botKeep(run)),
+  /* 0.1.72 生命剩 P.lowHp 以下：不存利息錢，全部拿來變強（輸了就出局，存錢沒有用） */
+  const keep = Math.max(run.ri >= P.reserveFrom && run.hp > (P.lowHp || 0) ? P.reserve : 0, botKeep(run)),
     floor = botFloor(run);
   const cx = {};
   botBump(cx);
@@ -749,6 +867,8 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
     if (!pair && ITEMI[o.id].star < 3) sellItem(run, o.u);
   }
   mergeAll(run, runR(run));
+  /* 0.1.72 買完、擺完：整理一次位置（看位置的加成）；P.plain 是 0.1.71 的擺法（bot_train.js --vs-plain 比較用） */
+  if (!P.plain && r01(run) < q) botRelayout(run, P);
 }
 /* 舊的買法（0.1.0～0.1.19）：照主題標籤＋隨機買、能升背包就升、全部擺進背包。留著跟新的比較強度（simLobby 的 opt.old） */
 function botActOld(run, theme, q = 0.7) {

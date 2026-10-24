@@ -584,6 +584,12 @@ function joinRivals(run, rivals) {
   for (const rv of rivals) {
     rv.hp = START_HP;
     if (!rv.live) continue;
+    /* 0.1.72 賽制、主題確定了：還沒開始的即時機器人照這局重挑職業（三選一裡最強的） */
+    const L = rv.live;
+    if (L.opts && L.run.ri < 0) {
+      const c = botClass(L.opts, run.mode, run.theme);
+      if (c !== L.run.bag.cls) botSetCls(L.run, c), (L.theme = CLSI[c].th || L.theme);
+    }
     rv.live.run.mode = run.mode;
     modeShare(rv.live.run, run.share || {});
     modeFix(rv.live.run);
@@ -1953,11 +1959,17 @@ const THEMES = ['sword', 'bow', 'dagger', 'fire', 'pet', 'shield', 'mace', 'cold
 /* 一個機器人（第 i 個；rr 是這一場共用的亂數）：自己的一局、職業、主題、聰明程度 q、每回合多拿的金幣 gb */
 function mkBot(seed, i, rr, rating, opt = {}) {
   const s = h(seed, i, 31),
-    rt = Math.max(600, (rating || 1000) + fl((rr() - 0.5) * 150));
+    rt = Math.max(600, (rating || 1000) + fl((rr() - 0.5) * 150)),
+    /* 0.1.72 菁英（最高牌階）：每個決定都照評估做、每回合多拿的金幣最多 */
+    elite = opt.elite || (rating || 1000) >= BOT_RATING,
+    q = elite ? 1 : Math.max(0.3, Math.min(0.95, 0.6 + (rt - 1000) / 800));
   const run = newRunState(s, opt.mode || 'std'),
     opts = rollClasses(run),
-    /* 0.1.52 opt.cls：指定每個機器人的職業（種子輪流用） */
-    cls = (opt.cls && opt.cls[i]) || opts[fl(rr() * 3)];
+    pick = fl(rr() * 3),
+    /* 0.1.52 opt.cls：指定每個機器人的職業（種子輪流用）；0.1.72 聰明的照這個賽制＋主題挑最強的職業（BOT_CLS），opt.rcls[i] 隨便挑（比較用） */
+    cls =
+      (opt.cls && opt.cls[i]) ||
+      (rr() < q && !(opt.rcls && opt.rcls[i]) ? botClass(opts, opt.mode, opt.theme) : opts[pick]);
   run.bag.cls = cls;
   /* 0.1.52 機器人合成時的印記自動選（auto） */
   run.auto = 1;
@@ -1965,12 +1977,13 @@ function mkBot(seed, i, rr, rating, opt = {}) {
   return {
     run,
     theme: CLSI[cls].th || THEMES[fl(rr() * THEMES.length)],
-    q: Math.max(0.3, Math.min(0.95, 0.6 + (rt - 1000) / 800)),
+    q,
+    opts: opt.cls && opt.cls[i] ? null : opts,
     /* 0.1.20 機器人的腦（bot.js）：opt.P[i] 給訓練用（第 i 個機器人用哪組參數），opt.old[i] 用舊的買法比較 */
     P: (opt.P && opt.P[i]) || BOT_P,
     old: !!(opt.old && opt.old[i]),
     /* 0.1.6 牌階越高的機器人每回合多拿一點金幣（越往上越強）；鐵牌、銅牌少拿 */
-    gb: Math.max(-2, Math.min(5, fl((rt - 1000) / 200))),
+    gb: elite ? 5 : Math.max(-2, Math.min(5, fl((rt - 1000) / 200))),
     info: {
       name: randName(rng(h(s, 9))),
       av: AVATARS[(s >>> 3) % AVATARS.length][0],
@@ -2029,9 +2042,9 @@ function simLobby(seed, rating, opt = {}) {
   const rr = rng(h(seed, 5)),
     /* 0.1.52 一場的機器人同一個賽制（opt.mode 指定，不然照權重抽） */
     mode = opt.mode || rollMode(rng(h(seed, 6))),
-    bots = [...Array(LOBBY_N).keys()].map(i => mkBot(seed, i, rr, rating, { ...opt, mode }));
-  /* 0.1.62 一場同一個主題（opt.theme 指定，不然照種子抽） */
-  const theme = opt.theme || rollTheme(rng(h(seed, 10)), mode);
+    /* 0.1.62 一場同一個主題（opt.theme 指定，不然照種子抽）；0.1.72 先抽好，機器人照賽制＋主題挑職業 */
+    theme = opt.theme || rollTheme(rng(h(seed, 10)), mode),
+    bots = [...Array(LOBBY_N).keys()].map(i => mkBot(seed, i, rr, rating, { ...opt, mode, theme }));
   for (const b of bots) b.run.theme = theme;
   /* 0.1.69 種子快照記下賽制、主題（配對只配一樣的） */
   for (const b of bots) Object.assign(b.info, { mode, theme });
@@ -2122,12 +2135,13 @@ function simLobby(seed, rating, opt = {}) {
    買東西時看得到「大家上一回合的背包」（跟玩家看得到對手背包一樣，不偷看這回合），你的背包權重 LIVE_ME 倍，會針對你的陣容買反制。
    rv.live = { run: 他自己的一局, theme, q, gb }；快照照樣存進 rv.snaps，其他流程（對手互打、戰鬥紀錄）不用改 */
 const LIVE_ME = 2;
+/* 0.1.72 即時機器人一律是菁英（BOT_RATING），不管玩家的牌階：想挑戰的就是最強的機器人。rating 參數留著相容，不再使用 */
 function liveBots(n, rating, seed = (Math.random() * 2 ** 31) | 0) {
   if (n <= 0) return [];
   const rr = rng(h(seed, 5));
   return [...Array(n).keys()].map(i => {
-    const b = mkBot(seed, i, rr, rating);
-    return { ...b.info, live: { run: b.run, theme: b.theme, q: b.q, gb: b.gb } };
+    const b = mkBot(seed, i, rr, BOT_RATING, { elite: 1 });
+    return { ...b.info, live: { run: b.run, theme: b.theme, q: b.q, gb: b.gb, opts: b.opts } };
   });
 }
 /* 這回合開戰前：還活著的即時機器人推進到這回合（逛商店、擺背包），存這回合的快照。已經存過就不重算（重新整理不會變） */

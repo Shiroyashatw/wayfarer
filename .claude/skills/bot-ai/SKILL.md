@@ -5,7 +5,7 @@ description: 塞令老師的機器人（電腦對手）AI 與訓練。新增道�
 
 # 塞令老師 機器人 AI
 
-一場 6 人：對手最多 2 位是快照（真人優先，不夠用種子），其他都是**即時機器人**（`liveBots`，每回合跟你一起推進）。種子也是機器人打出來的（`simLobby`：6 個機器人用跟玩家一樣的規則打一整局，每回合存背包快照）。所以機器人笨，玩家就常拿第一。
+一場 6 人：對手最多 2 位是快照（真人優先，不夠用種子），其他都是**即時機器人**（`liveBots`，每回合跟你一起推進）。0.1.72 起即時機器人和種子**一律是菁英**（`BOT_RATING` 2100：`q = 1` 每個決定都照評估、每回合 +5 金），不跟著玩家的牌階變弱。種子也是機器人打出來的（`simLobby`：6 個機器人用跟玩家一樣的規則打一整局，每回合存背包快照）。所以機器人笨，玩家就常拿第一。
 
 ## 結構
 
@@ -15,6 +15,13 @@ description: 塞令老師的機器人（電腦對手）AI 與訓練。新增道�
   - `BOT_P`：習慣參數（多少戰力才買、存多少利息錢、什麼時候刷新、背包幾成滿就升、賣舊換新的門檻、合成偏好、持續傷害／控制／防禦的權重），**由訓練寫回**。
   - `botActOld`：0.1.19 以前的舊買法，留著比較用。
 - **即時機器人（0.1.31）**：玩家遇到的機器人對手是 `run.js` 的 `liveBots`，每回合 `startFight` 時 `liveStep` 推進（`botAct`），打完 `liveAfter`（`botAfter`）；估價看大家上一回合的背包（玩家權重 `LIVE_ME`），`run.epet`／`run.eres` 就是從這裡來的。開服種子和訓練仍然用 `simLobby`（6 個機器人互打），兩邊共用 `mkBot`、`botAfter`，改經濟或三選一時只要改 `botAfter`。
+- **0.1.72 加的聰明**：
+  - 挑職業 `botClass`：表 `BOT_CLS`（職業本身＋主題池＋賽制的平均名次偏差），`node tools/bot_cls.js --lobbies 1000 --write` 重新統計（菁英對局、職業隨機指定）。即時機器人在 `joinRivals` 知道賽制、主題後重挑（`botSetCls`）。新增職業、主題、賽制或大改平衡後要重跑。
+  - 擺位看戰力 `botBestSpot`（最多算 `BOT_SPOTS` 個位置）、每回合買完整理一次 `botRelayout`：森林、棋盤、黃道、機關這種看位置的效果靠這個。
+  - 塔羅 `botTarot`：戰鬥類的牌直接比戰力（`compileBag` 看 `bag.tar`），經濟、構築類照靜態分數＋看時機。
+  - `BOT_P.lowHp`：生命剩這麼少就不存利息錢。
+  - 比較：`--vs-rcls`（挑職業 vs 隨便挑）、`--vs-plain`（新擺位 vs 0.1.71 擺法，`P.plain`）。
+- **`tools/lobby_pool.js`**：平行跑 `simLobby`（子行程），`bot_train.js`、`bot_cls.js` 用；`--jobs N` 指定行程數（預設 CPU 數）。
 - **`tools/game_node.js`**：在 Node 載入遊戲的純邏輯（core、data、items、bag、sim、run、bot），訓練與大量模擬用。新增遊戲邏輯檔案時把檔名加進 `FILES`（照 `index.html` 的順序，`ui.js` 以後的不用）。
 - **`tools/bot_train.js`**：自我對打調 `BOT_P`。每輪把最好的參數隨機微調成挑戰者，2 對 2 打 N 場比平均名次，明顯比較好就換。`simLobby` 每場照權重抽賽制，所以訓練會涵蓋各賽制。
 - **賽制**：機器人跟賽制有關的決定（流浪商人 `botCaravan`、遺產 `botLegacy`、遺物 `botRelic`、道具身上的詛咒或形狀 `botEx`）；新增賽制照 skill `new-mode` 第 6 步。
@@ -33,7 +40,7 @@ description: 塞令老師的機器人（電腦對手）AI 與訓練。新增道�
    node tools/bot_train.js --vs-old
    ```
    現在的機器人平均名次要明顯低於舊買法（0.1.20 時 1.5 對 3.5）。
-3. **訓練**（背景跑；0.1.59 時一場約 3.8 秒，30 輪 × 40 場約 1 小時多）：
+3. **訓練**（背景跑；0.1.72 起平行跑，4 核約 2 秒一場，30 輪 × 40 場約 50 分鐘）：
    ```bash
    node tools/bot_train.js --iters 30 --lobbies 40 --write
    ```

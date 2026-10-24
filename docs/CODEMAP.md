@@ -25,6 +25,7 @@
 | 金幣旁的下回合預估收入（0.1.25） | `js/run.js`、`js/ui.js` | `incomeEst`（[輸, 贏]）、`incomeOf`、`winGold`（run）；`incTxt`、`.gold .inc`（ui） |
 | 電腦版寬版面（0.1.58；0.1.25 起放大）：準備三欄、戰鬥左右背包、首頁兩欄、百科／說明加寬 | `js/ui.js`、`css/style.css` | `fitZoom`（`--z`、`--vh`）、`DESK`、`deskW`、`cellSize(w, h)`、`V.z`（`cellAt`、拖曳影子換算縮放）；`.pcol`（`.pa`／`.pb`／`.pc`）、`.hcol`（`.hc1`／`.hc2`）、`.detph`、`.bt.nob`；CSS 最後的「電腦版」區塊 `@media (min-width:1040px)` |
 | 機器人 AI（0.1.20） | `js/bot.js`、`tools/game_node.js`、`tools/bot_train.js` | `botPower`（戰力分數）、`botValue`、`botPlace`、`botWeakest`、`botAct`、`BOT_P`、`botActOld`；`simLobby` 的 `opt.P`／`opt.old`（run） |
+| 機器人挑職業、擺位看戰力、整理背包、塔羅評估、低血不存錢（0.1.72） | `js/bot.js`、`js/run.js`、`tools/bot_cls.js`、`tools/lobby_pool.js`、`tools/bot_train.js` | `BOT_CLS`、`botClass`、`botSetCls`、`botBestSpot`／`BOT_SPOTS`、`botRelayout`、`botTarot`、`BOT_P.lowHp`、`P.plain`（bot）；`mkBot` 的 `opts`／`opt.rcls`、`joinRivals` 重挑職業（run）；平行對局 `lobby_pool`、`bot_train.js --jobs`／`--vs-rcls`／`--vs-plain` |
 | 戰鬥生命照階段放大（0.1.19） | `js/data.js`、`js/run.js` | `HP_ST`、`hpMul`（data）；`stageHp`、`MOB_HP`、`MOB_DMG`（run，`startFight`、`simLobby`、`resumeFight` 都套用） |
 | 更新紀錄（首頁左下，0.1.16） | `js/news.js`、`js/ui.js` | `NEWS`（給玩家看的每版功能變化，上新版時在最上面加一筆）；`showNews`、`A.news`、`S.newsSeen`（亮點） |
 | 即時戰鬥紀錄（0.1.13） | `js/ui.js` | `bLog`、`bNames`（`bTick` 每個事件呼叫）、`#blog` |
@@ -49,7 +50,7 @@
 | 戰鬥冷卻條、封鎖顯示 | `js/ui.js` | `cdTimeline`、`bCd`（`bTick` 每格呼叫） |
 | 開戰前特殊效果（封鎖、降階） | `js/items.js`、`js/bag.js`、`js/sim.js` | 道具的 `pre`、`preVal`、`preTxt`（items）；`compileBag` 的 `F.pre`（bag）；`simulate` 開頭（sim） |
 | 戰利品寄放（暫存區滿了） | `js/run.js`、`js/ui.js` | `takePick`（hold）、`claimHold`（run）；`botHold`（bot，0.1.27 機器人賣最沒用的一件騰位置）；`holdHTML`、`A.claim`、`A.sellHold`（ui） |
-| 機器人強度跟著牌階 | `js/run.js`、`js/ghost.js` | `simLobby` 的 `q`、`gb`；`seedGhosts`（700～2100） |
+| 機器人強度：即時機器人、種子一律菁英（0.1.72，`BOT_RATING`：q＝1、每回合 +5 金）；其他牌階照分數 | `js/data.js`、`js/run.js`、`js/ghost.js` | `BOT_RATING`（data）；`mkBot` 的 `elite`、`q`、`gb`、`liveBots`（run）；`SEED_RATING`、`seedGhosts`（ghost） |
 | 會動的頭像、頭像攻擊動畫（四大美女） | `js/data.js`、`js/ui.js`、`art/anim/` | `AVANIM`（播哪幾格）、`avCv`、`avFrame`、`avPlay`（`bHit` 出手時播）、`paintSprites` 畫第 1 格 |
 | 角色數值面板（點左上角頭像） | `js/ui.js` | `statsHTML`、`A.stats`（用 `compileBag` 算） |
 | 5★ 隨機詞綴、開獎畫面 | `js/items.js`、`js/run.js`、`js/ui.js` | `MOD5`、`roll5`、`mod5Q`、`mod5Txt`（items）；`newItem` 擲詞綴（run）；`compileBag`、`mergeAll` 留最好的（bag）；`mod5HTML`、`revealHTML`、`A.seen5`（ui） |
