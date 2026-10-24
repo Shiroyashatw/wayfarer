@@ -320,7 +320,9 @@ def slice_(png, name=None):
         sys.exit(f'docs/圖示圖表.md 裡沒有 {name}（先跑 build）')
     _, (w, h), files = sh[name]
     im = Image.open(png).convert('RGBA')
-    cw, ch = im.width / COLS, im.height / (h // CELL)
+    # 每格是正方形：PixelLab 有時候畫布給 256×256（多一排空的或多畫的），列數照圖的比例算，不照圖表的高度
+    cw = im.width / COLS
+    ch = im.height / max(1, round(im.height / cw))
     out = ROOT / 'art/icons'
     out.mkdir(parents=True, exist_ok=True)
     fixed, empty = [], []
