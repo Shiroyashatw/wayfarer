@@ -16,17 +16,26 @@ async function ghostRivals(rating, mode, theme) {
   if (ghostOK())
     try {
       const job = (async () => {
-        const { data: runs, error } = await CLOUD.sb.rpc('pick_rivals_mt', {
-          p_ver: GVER,
-          p_rating: rating,
-          p_n: GHOST_MAX,
-          p_mode: mode || 'std',
-          p_theme: theme || ''
-        });
+        const ask = rt =>
+          CLOUD.sb.rpc('pick_rivals_mt', {
+            p_ver: GVER,
+            p_rating: rt,
+            p_n: GHOST_MAX,
+            p_mode: mode || 'std',
+            p_theme: theme || ''
+          });
+        let { data: runs, error } = await ask(rating);
         if (error) {
           console.warn('快照配對失敗（資料庫還沒更新？），這局用機器人：', error.message);
           return [];
         }
+        /* 0.1.71 分數相近的不夠：補最高牌階的種子 */
+        if ((runs || []).length < GHOST_MAX && Math.abs(rating - SEED_RATING) > 300) {
+          const more = await ask(SEED_RATING);
+          if (!more.error)
+            runs = [...(runs || []), ...(more.data || []).filter(r => !(runs || []).some(x => x.id === r.id))];
+        }
+        runs = (runs || []).slice(0, GHOST_MAX);
         if (!runs || !runs.length) return [];
         const { data: sn, error: e2 } = await CLOUD.sb
           .from('snaps')
@@ -180,16 +189,22 @@ async function ghostBoard(force = false) {
 /* 在瀏覽器主控台執行 seedGhosts(160)：分數 700～2100 平均分布（每個牌階都有對手，越高越強），用目前的帳號產生 n 局機器人對局（4 個一場、真的互打），上傳成種子快照（runs.seed = true）。
    真人對局夠多以後可以在 SQL Editor 刪掉：delete from public.runs where seed; */
 /* 0.1.52 預設 300 局（對手變化多一點）；機器人的職業 13 個輪流（之前隨機，有的職業只有 2 局） */
-async function seedGhosts(n = 600, lo = 700, hi = 2100) {
+/* 0.1.71 種子全部是最高牌階的機器人（SEED_RATING：買法最準、每回合多拿的金幣最多），每種「賽制 × 主題」SEED_PER 場；
+   配對時分數相近的不夠，就用 SEED_RATING 再找一次（ghostRivals），所以種子不用每個分數段都有。
+   plan：直接指定要跑的場次 [[賽制, 主題, 分數]…]，不給就照上面排 */
+const SEED_RATING = 2100,
+  SEED_PER = 2;
+async function seedGhosts(n = 0, plan = null) {
   if (!CLOUD.sb || !CLOUD.uid) throw new Error('雲端還沒連線');
   const MTS = MODES.filter(m => m.w > 0).flatMap(m =>
     POOLTH.filter(T => !(MODE_TH_BAN[m.k] || []).includes(T.k)).map(T => [m.k, T.k])
   );
+  plan = plan || MTS.flatMap(mt => [...Array(SEED_PER)].map(() => [...mt, SEED_RATING]));
+  n = n || plan.length * LOBBY_N;
   let ok = 0;
-  for (let k = 0; ok < n; k++) {
-    /* 0.1.69 賽制 × 主題輪流（配對只配一樣的，每種組合都要有種子） */
-    const mt = MTS[k % MTS.length],
-      rating = lo + fl(Math.random() * (hi - lo)),
+  for (let k = 0; ok < n && k < plan.length; k++) {
+    const mt = plan[k],
+      rating = fl(mt[2]),
       bots = simLobby((Math.random() * 2 ** 31) | 0, rating, {
         cls: [...Array(LOBBY_N).keys()].map(i => CLASSES[(k * LOBBY_N + i) % CLASSES.length].id),
         mode: mt[0],

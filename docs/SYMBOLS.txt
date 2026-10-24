@@ -387,14 +387,15 @@ GHOST js/ghost.js:4
 ghostOK js/ghost.js:5
 ghostFail js/ghost.js:6
 ghostRivals js/ghost.js:14
-ghostBegin js/ghost.js:56
-ghostSnap js/ghost.js:79
-ghostEnd js/ghost.js:95
-coreCols js/ghost.js:117
-coreStatsCloud js/ghost.js:123
-BOARD js/ghost.js:155 [排行榜（0.1.29）]
-ghostBoard js/ghost.js:156 [排行榜（0.1.29）]
-seedGhosts js/ghost.js:183 [開服種子資料（開發用）]
+ghostBegin js/ghost.js:65
+ghostSnap js/ghost.js:88
+ghostEnd js/ghost.js:104
+coreCols js/ghost.js:126
+coreStatsCloud js/ghost.js:132
+BOARD js/ghost.js:164 [排行榜（0.1.29）]
+ghostBoard js/ghost.js:165 [排行榜（0.1.29）]
+SEED_RATING js/ghost.js:195 [開服種子資料（開發用）]
+seedGhosts js/ghost.js:197 [開服種子資料（開發用）]
 AU js/audio.js:4 [audio]
 audioInit js/audio.js:5 [audio]
 tone js/audio.js:25 [audio]
