@@ -474,13 +474,15 @@ const MODEH = {
       for (const rv of run.rivals)
         if (rivalHp(rv) <= 0 && !rv.gone) {
           rv.gone = 1;
-          const bag = rv.live ? rv.live.run.bag : unpackBag((rivalSnap(rv, r.id) || { bag: {} }).bag);
-          legacyDrop(
-            run,
-            bag,
-            [run, ...run.rivals.filter(x => x.live && rivalHp(x) > 0).map(x => x.live.run)].filter(x => x.hp > 0),
-            rv.name
-          );
+          const bag = rv.live ? rv.live.run.bag : unpackBag((rivalSnap(rv, r.id) || { bag: {} }).bag),
+            got = legacyDrop(
+              run,
+              bag,
+              [run, ...run.rivals.filter(x => x.live && rivalHp(x) > 0).map(x => x.live.run)].filter(x => x.hp > 0),
+              rv.name
+            );
+          /* 0.1.60 下一個準備畫面跳「遺產來囉」：誰淘汰了、你分到幾件 */
+          if (run.hp > 0) (run.legNew = run.legNew || []).push({ n: rv.name, av: rv.av, got });
         }
     },
     lobby: (bots, r) => {
@@ -1062,6 +1064,20 @@ function fightSum(run, fb) {
     d[1] = Math.max(d[1], o.t);
     d[2] += v;
   }
+  /* 0.1.60 對手那邊每件道具的傷害（對手有背包才有；怪物沒有）、你這場的背包（戰鬥紀錄左右對照） */
+  const ob = {};
+  if (opp.bag)
+    for (const e of res.ev) if (e.s === 1 && e.u && (e.k === 'hit' || e.k === 'crit')) ob[e.u] = (ob[e.u] || 0) + e.v;
+  const otop = opp.bag
+    ? Object.entries(ob)
+        .map(([u, v]) => {
+          const o = opp.bag.items.find(q => q.u === u);
+          return o ? [o.id, o.t, v] : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => b[2] - a[2])
+        .slice(0, 5)
+    : null;
   const top = Object.entries(by)
     .map(([u, v]) => {
       const o = run.bag.items.find(q => q.u === u);
@@ -1070,7 +1086,16 @@ function fightSum(run, fb) {
     .filter(Boolean)
     .sort((a, b) => b[2] - a[2])
     .slice(0, 5);
-  return { t: Math.round(res.t * 10) / 10, dealt, taken, top, spr: opp.spr, ob: opp.bag ? packBag(opp.bag) : null };
+  return {
+    t: Math.round(res.t * 10) / 10,
+    dealt,
+    taken,
+    top,
+    otop,
+    spr: opp.spr,
+    ob: opp.bag ? packBag(opp.bag) : null,
+    mb: packBag(run.bag)
+  };
 }
 /* 0.1.35／0.1.37 打完一場對那一局的影響（side 是那一局在這場的哪一邊）：金錢標花掉的金幣、寒冰之心長的生命；回傳花掉的金幣 */
 function afterSim(run, res, side) {
@@ -1212,7 +1237,7 @@ function endRun(run, place) {
     dmg: Object.values(run.dmg || {})
       .sort((a, b) => b[2] - a[2])
       .slice(0, 12),
-    log: (run.log || []).map(({ ob, ...l }) => l),
+    log: (run.log || []).map(({ ob, mb, ...l }) => l),
     /* 0.1.44 核心三選一紀錄 */
     cl: run.coreLog || []
   };
@@ -1537,15 +1562,19 @@ function relicPick(run, k) {
 }
 /* ================= 0.1.59 遺產市集 ================= */
 /* 淘汰的人的背包（核心以外）一件一件隨機分給 to（還活著的那幾局），放在遺產攤位 run.leg，LEGACY_RC 回合後消失（lx 是最後一回合；ex 是終極藥劑的效果，不要撞名） */
+/* 回傳 run 自己分到幾件 */
 function legacyDrop(run, bag, to, from) {
-  if (!to.length) return;
+  let got = 0;
+  if (!to.length) return got;
   for (const o of bag.items || []) {
     /* 只分商店買得到的（核心送的魔劍正宗、封印、遠古之器這種不分給別的職業） */
     if (!vanOK(o)) continue;
     const who = to[fl(r01(run) * to.length)],
       { u, x, y, r, ...e } = o;
     (who.leg = who.leg || []).push({ ...e, lx: who.ri + LEGACY_RC, from });
+    if (who === run) got++;
   }
+  return got;
 }
 /* 遺產的價格：半價＝它的賣價（Ⅱ 階、Ⅲ 階照階數算，融合的輔助也算）。
    0.1.59 跟賣價一樣，買了馬上賣掉不會賺（之前融合過的照本體半價賣，賣掉多拿輔助那份） */

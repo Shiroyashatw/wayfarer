@@ -659,7 +659,15 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   #app{max-width:1360px;padding:var(--sp-5)}
   /* 準備：上方資訊欄整條；左＝回合、賽制、對手，中＝背包＋暫存（格子照那欄放大，cellSize），右＝商店、按鈕、道具說明（固定在這裡，不浮出來） */
   .prep{grid-template-columns:340px minmax(0,1fr) 380px;grid-template-areas:"t t t" "a b c" "a b d";grid-template-rows:auto auto minmax(0,1fr);gap:var(--sp-4) var(--sp-5);min-height:calc(var(--vh,100vh) - 32px);align-items:start}
-  .prep>.top{grid-area:t;position:static;margin:0;padding:0 0 var(--sp-3);background:none;box-shadow:0 1px 0 var(--line)}
+  /* 0.1.60 往下捲時標題列固定在上面（背包大、說明長時頁面會捲） */
+  .prep>.top{grid-area:t;position:sticky;top:0;z-index:30;margin:calc(-1 * var(--sp-5)) 0 0;padding:var(--sp-3) 0;background:var(--bg-top,var(--bg));box-shadow:0 1px 0 var(--line)}
+  /* 0.1.60 核心放到標題列中間（手機還是在背包上面） */
+  .prep>.top .topcore{display:flex;flex:1;justify-content:center;min-width:0}
+  .prep>.top .topcore .corefab{margin:0;justify-self:auto}
+  .pb>.corefab{display:none}
+  /* 0.1.60 戰鬥紀錄：你和對手左右對照 */
+  .dlg2.lgw{width:min(920px,100%)}
+  .lgw .lgcols{grid-template-columns:1fr 1fr;gap:var(--sp-5)}
   .prep>.top .me canvas{width:44px;height:44px}
   .pcol{display:grid;gap:var(--sp-3);align-content:start;min-width:0}
   .pa{grid-area:a}.pc{grid-area:c}
@@ -714,3 +722,15 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .prep{grid-template-columns:300px minmax(0,1fr) 340px}
 }
 
+/* 0.1.60 戰鬥紀錄左右對照（手機上下排）、每秒傷害；藥水剩幾次、喝完變暗；遺產來囉；標題列的核心（只有電腦版顯示） */
+.topcore{display:none}
+.lgcols{display:grid;gap:var(--sp-3)}
+.lgs{display:grid;gap:var(--sp-2);align-content:start;min-width:0}
+.lgs .lgbag{justify-self:center}
+.lgb em{display:grid;justify-items:end;line-height:1.1}
+.lgb em small{font-family:var(--f-ui,inherit);font-size:var(--fs-cap);color:var(--dim)}
+.it .potn{position:absolute;right:1px;top:1px;z-index:2;min-width:14px;height:14px;padding:0 3px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-style:normal;line-height:1;color:#10240c;background:var(--good);box-shadow:0 0 0 1px #0006}
+.it.used{filter:grayscale(1) brightness(.45);transition:filter .3s}
+.it.used .potn{background:var(--faint);color:var(--bg)}
+.legnew{justify-items:center}
+.legnew .lgr{width:100%}

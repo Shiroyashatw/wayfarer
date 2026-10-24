@@ -205,7 +205,7 @@ function render() {
         prepHTML(run) +
         (run.phase === 'result' ? resultHTML(run) : '') +
         (run.phase === 'pick' ? pickHTML(run) : '') +
-        (run.phase === 'prep' ? revealHTML(run) + sgPickHTML(run) + relicHTML(run) : '') +
+        (run.phase === 'prep' ? revealHTML(run) + sgPickHTML(run) + relicHTML(run) + legNewHTML(run) : '') +
         (run.phase === 'mode' ? modeHTML(run) : '') +
         (run.phase === 'cls' ? clsHTML(run) : '');
   } else if (V.scr === 'codex') html = codexHTML();
@@ -575,7 +575,7 @@ function prepHTML(run) {
           : '對戰'
         : RTYPE[r.type];
   return `<div class="prep">
-    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
+    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="topcore">${coreFabHTML(run)}</div><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
     <div class="pcol pa">${roundBarHTML(run)}
     ${modeBarHTML(run)}
     ${rivalHTML(run)}
@@ -819,6 +819,13 @@ function relicHTML(run) {
   const q = run.relq;
   if (!q || run.pend || run.sgq?.length) return '';
   return `<div class="ovl"><div class="dlg2"><b>法老王的寶庫</b><p class="c-dim">遺物不佔格子、整局有效${q.took.length ? '；生命比你低的先挑了：' + q.took.map(([n, k]) => `${esc(n)}拿走${RELICI[k].n}`).join('、') : ''}</p><div class="relopts">${q.opts.map(k => relicLine(k, 1)).join('')}</div></div></div>`;
+}
+/* 0.1.60 遺產來囉：有人淘汰時（下一個準備畫面）跳一次：誰淘汰了、你分到幾件 */
+function legNewHTML(run) {
+  const L = run.legNew;
+  if (!L || !L.length || run.pend || run.relq || run.sgq?.length) return '';
+  const n = L.reduce((a, x) => a + x.got, 0);
+  return `<div class="ovl"><div class="dlg2 legnew"><b class="big">遺產來囉！</b>${L.map(x => `<div class="lgr l">${sprCv('a_' + (x.av || AVATARS[0][0]))}<span><b>${esc(x.n)}</b><small>淘汰了・你分到 ${x.got} 件</small></span></div>`).join('')}<p class="c-dim">${n ? `道具在商店上方的遺產攤位：半價、放 ${LEGACY_RC} 回合` : '這次沒有分到道具'}</p><button class="btn pri big" data-act="legOk">${n ? '去看看' : '知道了'}</button></div></div>`;
 }
 /* 0.1.59 遺產市集：商店上面的遺產攤位（點了看詳細、在詳細裡買） */
 function legHTML(run) {
@@ -1235,6 +1242,7 @@ function renderBattle() {
     <div class="bctl"><button class="btn" data-act="spd">×${S.speed || 1}</button><button class="btn" data-act="skip">跳過</button></div>
   </div>`;
   paintSprites();
+  bPots();
   bShow();
   clearInterval(renderBattle.iv);
   renderBattle.iv = setInterval(bTick, 33);
@@ -1589,6 +1597,27 @@ function bHit(e, tg) {
   else bSlash(tg, e.k === 'crit');
   if (e.k === 'crit') bAnim(document.querySelector('.arena'), 'shake');
 }
+/* 0.1.60 藥水：背包裡的藥水右上角顯示還能喝幾次，喝完整件變暗（重新整理接著播也算對：數已經播過的） */
+function bPots() {
+  [B.fb.me, B.fb.opp.F].forEach((F, side) => {
+    for (const p of (F && F.pots) || []) {
+      const el = document.querySelector(`#bb${side} .it[data-u="${p.u}"]`);
+      if (!el) continue;
+      const used = B.fb.res.ev.slice(0, B.i).filter(e => e.k === 'pot' && e.s === side && e.u === p.u).length,
+        left = Math.max(0, p.n - used);
+      el.insertAdjacentHTML('beforeend', `<b class="potn">${left}</b>`);
+      el.classList.toggle('used', left <= 0);
+    }
+  });
+}
+function bPot(e) {
+  const el = document.querySelector(`#bb${e.s} .it[data-u="${e.u}"]`),
+    n = el && el.querySelector('.potn');
+  if (!n) return;
+  const left = Math.max(0, +n.textContent - 1);
+  n.textContent = left;
+  if (left <= 0) el.classList.add('used');
+}
 function bFlash(side, u) {
   if (!u) return;
   const el = document.querySelector(`#bb${side} .it[data-u="${u}"], #smn${side} .it[data-u="${u}"]`);
@@ -1732,6 +1761,7 @@ function bTick() {
     if (e.k === 'trapHit') bTrapHit(e);
     if (e.k === 'sun') bSun(e);
     if (e.k === 'spark') bSpark(e);
+    if (e.k === 'pot') bPot(e);
     if (k++ > 6) continue;
     if (e.k === 'hit' || e.k === 'crit') {
       bPop(
@@ -2300,6 +2330,12 @@ const A = {
     save();
     render();
   },
+  legOk: () => {
+    S.run.legNew = null;
+    snd('tap');
+    save();
+    render();
+  },
   legSel: d => {
     V.sel = V.sel === 'leg' + d.k ? null : 'leg' + d.k;
     snd('tap');
@@ -2585,50 +2621,50 @@ function showLog(id, hi, sel) {
       `<button class="lgr ${l.win ? 'w' : 'l'}" data-lg="${l.id}">${sprCv(l.spr || 'a_' + S.av)}<span><b>${l.id}・${esc(l.opp)}</b><small>${RTYPE[l.type]}${l.t ? `・${l.t} 秒` : ''}</small></span><em>${l.win ? '勝' : `敗 -${l.loss}`}</em></button>`;
   let body;
   if (lg) {
-    const mx = Math.max(1, ...(lg.top || []).map(x => x[2]));
-    body = `<div class="lgd">${row(lg)}<div class="kv3"><span>造成<b>${lg.dealt ?? '—'}</b></span><span>受到<b>${lg.taken ?? '—'}</b></span><span>秒數<b>${lg.t ?? '—'}</b></span></div>${
-      (lg.top || []).length
-        ? `<h4>傷害最高</h4>${lg.top
-            .map(
-              ([iid, t, v]) =>
-                `<div class="lgb"><img src="${itemIcon(iid)}" alt=""><span><b>${ITEMI[iid] ? ITEMI[iid].n : iid}${tierTxt(t)}</b><i><i style="width:${Math.round((v / mx) * 100)}%"></i></i></span><em>${v}</em></div>`
-            )
-            .join('')}`
-        : ''
-    }${lg.ob ? lgBagHTML(unpackBag(lg.ob), sel) : ''}</div>`;
+    /* 0.1.60 左右對照：你（傷害最高＋每秒、你的背包）、對手（同上）；兩邊的長條用同一把尺 */
+    const mx = Math.max(1, ...[...(lg.top || []), ...(lg.otop || [])].map(x => x[2])),
+      side = (k, nm, top, pb, tot) =>
+        `<div class="lgs"><h4>${nm}<small class="c-dim">・造成 ${tot ?? '—'}</small></h4>${
+          (top || []).length
+            ? top
+                .map(
+                  ([iid, t, v]) =>
+                    `<div class="lgb"><img src="${itemIcon(iid)}" alt=""><span><b>${ITEMI[iid] ? ITEMI[iid].n : iid}${tierTxt(t)}</b><i><i style="width:${Math.round((v / mx) * 100)}%"></i></i></span><em>${v}<small>${lg.t ? `每秒 ${(v / lg.t).toFixed(1)}` : ''}</small></em></div>`
+                )
+                .join('')
+            : '<p class="c-dim">沒有紀錄</p>'
+        }${pb ? lgBagHTML(unpackBag(pb), k, sel) : ''}</div>`;
+    body = `<div class="lgd">${row(lg)}<div class="kv3"><span>造成<b>${lg.dealt ?? '—'}</b></span><span>受到<b>${lg.taken ?? '—'}</b></span><span>秒數<b>${lg.t ?? '—'}</b></span></div><div class="lgcols">${side('m', '你', lg.top, lg.mb, lg.dealt)}${lg.ob || lg.otop ? side('o', esc(lg.opp), lg.otop, lg.ob, lg.taken) : ''}</div></div>`;
   } else
     body = logs.length
       ? `<div class="lgl">${[...logs].reverse().map(row).join('')}</div>`
       : '<p class="c-dim">還沒有打過</p>';
-  m.innerHTML = `<div class="dlg2"><b>${lg ? '這場的紀錄' : '戰鬥紀錄'}</b>${body}<div class="btns col">${lg ? `<button class="btn" data-lgx="1">${H ? '回到這一局' : '所有紀錄'}</button>` : ''}<button class="btn" data-lgc="1">關閉</button></div></div>`;
+  m.innerHTML = `<div class="dlg2${lg ? ' lgw' : ''}"><b>${lg ? '這場的紀錄' : '戰鬥紀錄'}</b>${body}<div class="btns col">${lg ? `<button class="btn" data-lgx="1">${H ? '回到這一局' : '所有紀錄'}</button>` : ''}<button class="btn" data-lgc="1">關閉</button></div></div>`;
   m.hidden = false;
   paintSprites(m);
   if (sel) {
-    const el = m.querySelector(`#lgbag .it[data-u="${sel}"]`);
+    const [k, u] = sel.split(':'),
+      el = m.querySelector(`#lgbag${k} .it[data-u="${u}"]`);
     if (el) el.classList.add('sel');
   }
   m.onclick = ev => {
     const r = ev.target.closest('[data-lg]');
     if (r && !lg) return showLog(r.dataset.lg, hi);
-    const it = lg && ev.target.closest('[data-rvu], #lgbag .it[data-u]');
+    const it = lg && ev.target.closest('.lgbag .it[data-u]');
     if (it) {
       snd('tap');
-      const u = it.dataset.rvu || it.dataset.u;
+      const u = it.closest('.lgbag').dataset.k + ':' + it.dataset.u;
       return showLog(id, hi, u === sel ? null : u);
     }
     if (ev.target.closest('[data-lgx]')) return H ? showMatch(hi) : showLog();
     if (ev.target.closest('[data-lgc]') || ev.target === m) m.hidden = true;
   };
 }
-/* 戰鬥紀錄的對手背包：格子＋清單，點了看詳細（跟看對手背包同一套） */
-function lgBagHTML(bag, sel) {
-  const so = bag.items.find(o => o.u === sel);
-  return `<h4>對手的背包<small class="c-dim">・點道具看詳細</small></h4><div class="bagwrap">${bagHTML(bag, 24, { mini: 1, id: 'lgbag' })}</div>${so ? rvDetHTML(so) : ''}<div class="rvit">${bag.items
-    .map(
-      o =>
-        `<button class="s${ITEMI[o.id].star}${o.u === sel ? ' sel' : ''}" data-rvu="${o.u}"><img src="${itemIcon(o.id)}" alt="">${esc(fuName(o))}${tierTxt(o.t)}</button>`
-    )
-    .join('')}</div>`;
+/* 戰鬥紀錄的背包（k：m 你、o 對手）：格子，點道具看詳細（跟看對手背包同一套）；0.1.60 拿掉下面那排道具按鈕（點格子就看得到） */
+function lgBagHTML(bag, k, sel) {
+  const [sk, su] = (sel || '').split(':'),
+    so = sk === k && bag.items.find(o => o.u === su);
+  return `<div class="bagwrap lgbag" data-k="${k}">${bagHTML(bag, DESK() ? 30 : 24, { mini: 1, id: 'lgbag' + k })}</div><small class="c-dim">點道具看詳細</small>${so ? rvDetHTML(so) : ''}`;
 }
 /* 0.1.21 過去的對局（首頁「最近的對局」點進來）：名次、職業、最後的背包、整局每件道具的傷害、每一場（點了看詳細） */
 function showMatch(hi) {
