@@ -24,7 +24,167 @@ let BOT_P = {
 };
 /* 0.1.72 職業挑選：每個職業在每個主題池、每個賽制的平均名次跟全體平均差多少（負的比較強），
    tools/bot_cls.js 用菁英機器人對局統計後寫回（--write 會覆寫這一段）。開局三選一挑「職業本身＋這個主題＋這個賽制」加起來最強的 */
-let BOT_CLS = {};
+let BOT_CLS = {
+  archer: [
+    0.13,
+    { g: -0.23, m: 0.2, c: -0.03, z: -0.11, f: 0.18 },
+    {
+      legacy: 0.37,
+      caravan: -0.1,
+      curse: 0.03,
+      relic: -0.16,
+      dual: 0.11,
+      sigil: -0.02,
+      gale: 0.25,
+      astro: -0.02,
+      shape: -0.57,
+      tarot: 0.09
+    }
+  ],
+  swordsman: [
+    0.06,
+    { g: -0.26, m: 0.21, c: -0.18, z: 0.34, f: -0.06 },
+    { legacy: -0.17, caravan: -0.05, curse: 0.26, relic: -0.09, sigil: 0.07, gale: 0.25, astro: -0.2, tarot: -0.06 }
+  ],
+  berserker: [
+    0.99,
+    { g: 0.04, m: 0.12, c: -0.04, z: 0.08 },
+    {
+      legacy: 0.1,
+      caravan: 0.07,
+      curse: 0.1,
+      relic: 0.15,
+      sigil: 0.08,
+      gale: -0.12,
+      astro: 0.04,
+      shape: -0.1,
+      tarot: 0.03
+    }
+  ],
+  spearman: [
+    0.05,
+    { g: -0.5, m: 0.23, c: 0.04, z: 0.15, f: 0.03 },
+    {
+      legacy: 0.07,
+      caravan: -0.18,
+      curse: 0.23,
+      dual: 0.15,
+      sigil: -0.09,
+      gale: -0.06,
+      astro: 0.03,
+      shape: -0.27,
+      tarot: 0.11
+    }
+  ],
+  assassin: [
+    0,
+    { g: 0.07, m: -0.13, c: 0.22, z: -0.19, f: 0.05 },
+    {
+      legacy: 0.03,
+      caravan: -0.04,
+      curse: -0.08,
+      relic: -0.25,
+      dual: -0.23,
+      sigil: -0.09,
+      gale: 0.15,
+      astro: 0.07,
+      shape: 0.48,
+      tarot: -0.05
+    }
+  ],
+  pyro: [
+    -0.49,
+    { g: -0.28, m: 0.39, c: 0.15, z: -0.16, f: -0.35 },
+    { legacy: -0.26, curse: -0.18, relic: 0.08, dual: -0.06, sigil: 0.45, gale: -0.39, astro: -0.08, tarot: 0.31 }
+  ],
+  cryo: [
+    0,
+    { g: 0.49, m: 0.28, c: 0.02, z: -0.02, f: -0.78 },
+    {
+      legacy: -0.05,
+      caravan: 0.2,
+      relic: 0.05,
+      dual: 0.13,
+      sigil: -0.34,
+      gale: 0.17,
+      astro: 0.16,
+      shape: -0.24,
+      tarot: -0.05
+    }
+  ],
+  storm: [
+    -0.61,
+    { g: 0.15, m: -0.49, c: -0.06, z: -0.31, f: 0.74 },
+    {
+      legacy: 0.03,
+      caravan: -0.09,
+      curse: -0.03,
+      relic: 0.15,
+      sigil: 0.18,
+      gale: -0.05,
+      astro: -0.1,
+      shape: -0.14,
+      tarot: -0.18
+    }
+  ],
+  venom: [
+    -0.16,
+    { g: -0.03, m: -0.14, c: 0.19, z: -0.02 },
+    { legacy: -0.11, curse: -0.24, relic: 0.15, dual: 0.29, gale: -0.28, astro: 0.08, shape: 0.14, tarot: -0.06 }
+  ],
+  tamer: [
+    0.44,
+    { g: 0.33, m: -0.31, c: -0.41, z: 0.04, f: 0.57 },
+    { legacy: -0.05, curse: -0.09, relic: 0.08, sigil: -0.05, gale: 0.2, astro: -0.31, shape: 0.45, tarot: -0.08 }
+  ],
+  knight: [
+    -0.05,
+    { g: -0.09, m: 0.07, c: -0.1, z: 0.16, f: -0.03 },
+    {
+      legacy: 0.17,
+      caravan: -0.16,
+      curse: -0.27,
+      relic: 0.05,
+      dual: -0.09,
+      sigil: 0.39,
+      gale: -0.08,
+      astro: 0.09,
+      shape: 0.03,
+      tarot: -0.08
+    }
+  ],
+  alchemist: [
+    -0.6,
+    { m: -0.03, c: 0.13, f: -0.22 },
+    {
+      legacy: -0.22,
+      caravan: 0.22,
+      curse: 0.31,
+      relic: -0.13,
+      dual: -0.27,
+      sigil: -0.19,
+      gale: -0.28,
+      astro: 0.24,
+      tarot: -0.05
+    }
+  ],
+  merchant: [
+    0.21,
+    { g: 0.27, m: 0.08, c: 0.05, z: -0.06, f: -0.23 },
+    {
+      legacy: 0.13,
+      caravan: 0.14,
+      curse: -0.17,
+      relic: -0.03,
+      dual: -0.08,
+      sigil: -0.27,
+      gale: -0.2,
+      astro: 0.18,
+      shape: 0.24,
+      tarot: 0.07
+    }
+  ]
+};
 function botClass(opts, mode, theme) {
   const sc = c => {
     const t = BOT_CLS[c];
