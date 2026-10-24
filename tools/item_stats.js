@@ -15,19 +15,25 @@ const args = process.argv.slice(2),
   WRITE = args.includes('--write'),
   MIN = 30;
 const K = {};
-const k = id => (K[id] = K[id] || { offer: 0, buy: 0, hold: 0, place: [] });
+const k = id => (K[id] = K[id] || { offer: 0, buy: 0, hold: 0, place: [], mo: 0, mb: 0 });
+/* 主打這件的職業（道具的 for 是職業的主題，例如符文法珠 for staff）：那些機器人看到時買不買 */
+const mine = (run, id) => {
+  const f = G.ITEMI[id].for,
+    C = G.CLSI[run.bag.cls];
+  return !!f && !!C && (C.th === f || (C.m || []).some(b => b.tag === f));
+};
 /* 記錄商店出現、買走：包住 rollShop、buyItem（遊戲裡的呼叫會經過這兩個全域函式） */
 const rollShop0 = ctx.rollShop,
   buyItem0 = ctx.buyItem;
 ctx.rollShop = function (run, ...a) {
   const r = rollShop0.call(this, run, ...a);
-  for (const s of run.shop) if (s) k(s.id).offer++;
+  for (const s of run.shop) if (s) k(s.id).offer++, mine(run, s.id) && k(s.id).mo++;
   return r;
 };
 ctx.buyItem = function (run, i, ...a) {
   const s = run.shop[i],
     r = buyItem0.call(this, run, i, ...a);
-  if (s && typeof r !== 'string') k(s.id).buy++;
+  if (s && typeof r !== 'string') k(s.id).buy++, mine(run, s.id) && k(s.id).mb++;
   return r;
 };
 const avg = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
@@ -61,7 +67,7 @@ const CAT = it =>
             ? '藥水'
             : '飾品';
 const rows = G.ITEMS.filter(it => G.shopOK(it)).map(it => {
-  const x = K[it.id] || { offer: 0, buy: 0, hold: 0, place: [] };
+  const x = K[it.id] || { offer: 0, buy: 0, hold: 0, place: [], mo: 0, mb: 0 };
   return {
     id: it.id,
     n: it.n,
@@ -70,7 +76,8 @@ const rows = G.ITEMS.filter(it => G.shopOK(it)).map(it => {
     offer: x.offer,
     rate: x.offer ? x.buy / x.offer : 0,
     hold: x.hold / bots,
-    place: avg(x.place)
+    place: avg(x.place),
+    mrate: x.mo >= 10 ? x.mb / x.mo : null
   };
 });
 /* 同星級同類別比：購買率低於那組中位數一半的標「冷門」 */
@@ -89,15 +96,15 @@ for (const r of rows) {
 }
 const pct = v => (v * 100).toFixed(1) + '%';
 let out = `# 道具統計\n\n機器人對局 ${N} 場（${bots} 個機器人、分數 ${RT}、每場隨機賽制），${new Date().toISOString().slice(0, 10)}。\n`;
-out += `購買率＝商店出現時被買走的比例；持有＝最後背包裡有它的比例；名次＝有它的平均名次（3.5 是平均，越小越好）；冷門／熱門跟同星級、同類別的中位數比。\n\n`;
+out += `對口職業購買率＝主打這件的職業（道具的 for）看到時買走的比例；購買率＝商店出現時被買走的比例；持有＝最後背包裡有它的比例；名次＝有它的平均名次（3.5 是平均，越小越好）；冷門／熱門跟同星級、同類別的中位數比。\n\n`;
 for (let st = 1; st <= 5; st++) {
-  out += `## ${st}★\n\n| 道具 | 類別 | 出現 | 購買率 | 持有 | 名次 | |\n| --- | --- | --- | --- | --- | --- | --- |\n`;
+  out += `## ${st}★\n\n| 道具 | 類別 | 出現 | 購買率 | 對口職業購買率 | 持有 | 名次 | |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n`;
   for (const r of rows.filter(r => r.star === st).sort((a, b) => a.cat.localeCompare(b.cat) || b.rate - a.rate))
-    out += `| ${r.n} | ${r.cat} | ${r.offer} | ${pct(r.rate)} | ${pct(r.hold)} | ${isNaN(r.place) ? '—' : r.place.toFixed(2)} | ${r.flag} |\n`;
+    out += `| ${r.n} | ${r.cat} | ${r.offer} | ${pct(r.rate)} | ${r.mrate == null ? '' : pct(r.mrate)} | ${pct(r.hold)} | ${isNaN(r.place) ? '—' : r.place.toFixed(2)} | ${r.flag} |\n`;
   out += '\n';
 }
 const cold = rows.filter(r => r.flag === '冷門').sort((a, b) => a.rate - b.rate);
-out += `## 冷門（購買率不到同組中位數一半）\n\n${cold.map(r => `- ${r.star}★ ${r.n}（${r.cat}）：購買率 ${pct(r.rate)}、持有 ${pct(r.hold)}`).join('\n') || '沒有'}\n`;
+out += `## 冷門（購買率不到同組中位數一半）\n\n${cold.map(r => `- ${r.star}★ ${r.n}（${r.cat}）：購買率 ${pct(r.rate)}${r.mrate == null ? '' : `（對口職業 ${pct(r.mrate)}）`}、持有 ${pct(r.hold)}`).join('\n') || '沒有'}\n`;
 if (WRITE) {
   fs.writeFileSync(path.join(__dirname, '..', 'docs', '道具統計.md'), out);
   console.log('寫到 docs/道具統計.md');
