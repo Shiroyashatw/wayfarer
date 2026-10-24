@@ -26,7 +26,8 @@ function borrowIcon(id) {
 function itemIcon(id) {
   if (ICU.has(id)) return ICU.get(id);
   /* 0.1.51 重製過的核心（icx）用自己指定的圖示，不用舊的 it_c_ 圖 */
-  const own = ITEMI[id] && ITEMI[id].icx ? null : artIconURL('it_' + id),
+  /* 0.1.70 重做的核心圖示（it_核心代號_n）優先 */
+  const own = artIconURL('it_' + id + '_n') || (ITEMI[id] && ITEMI[id].icx ? null : artIconURL('it_' + id)),
     u = own || borrowIcon(id);
   if (!u) return iconURL('star');
   /* 0.1.29 有專屬圖示但大圖還沒載好：先借舊圖，不要記住（不然載好之後一直是舊圖） */
@@ -1198,22 +1199,29 @@ function trigHTML(run, o, where) {
   return `<p class="${n ? 'c-good' : 'c-dim'}">上一場（${run.log[run.log.length - 1].id}）觸發 ${n} 次</p>`;
 }
 /* 0.1.41 說明文字裡的異常、護盾前面加上對應的小圖示（長的先比，劇毒不會被當成中毒） */
+/* 0.1.70 重做的異常圖示：有新圖（ail_n_*）用新的，沒有照舊 */
+const icN = (n, old) => (typeof ART !== 'undefined' && ART[n] ? n : old);
+/* 0.1.70 賽制、主題、職業的圖示有新圖就換 */
+for (const m of MODES) m.ic = icN('mode_' + m.k, m.ic);
+for (const T of POOLTH) T.ic = icN('th_' + T.k, T.ic);
+/* 0.1.70 職業圖示（cls_代號）；核心的預設圖示在 items.js 載入時就拿了，不受影響 */
+for (const c of CLASSES) c.ic = icN('cls_' + c.id, c.ic);
 const KW_IC = [
   ['劇毒', 'ail_dmark'],
   ['中毒', 'ail_poison'],
   ['點燃', 'sk_fireburst'],
-  ['燃燒', 'ail_burn'],
+  ['燃燒', icN('ail_n_burn', 'ail_burn')],
   ['流血', 'ail_bleed'],
   ['破甲', 'ail_vul'],
   ['凍結', 'ail_frozen'],
   ['冰緩', 'sk_frostnova'],
   ['暈眩', 'ail_stun'],
-  ['虛弱', 'ail_curse'],
-  ['致盲', 'ail_mark'],
+  ['虛弱', icN('ail_n_weak', 'ail_curse')],
+  ['致盲', icN('ail_n_blind', 'ail_mark')],
   ['衰老', 'ail_slow'],
-  ['腐蝕', 'asc_alchemist_c0'],
+  ['腐蝕', icN('ail_n_corrode', 'asc_alchemist_c0')],
   ['混亂', 'ail_shock'],
-  ['封鎖', 'ail_guard'],
+  ['封鎖', icN('ail_n_seal', 'ail_guard')],
   ['護盾', 'ail_shield']
 ];
 const KW_RE = new RegExp(KW_IC.map(k => k[0]).join('|'), 'g');
@@ -1590,23 +1598,23 @@ const STN = {
     shock: ['asc_judge_c0', '#fff27a']
   },
   STI = [
-    ['burn', 'ail_burn', 1],
+    ['burn', icN('ail_n_burn', 'ail_burn'), 1],
     ['poison', 'ail_poison', 1],
     ['bleed', 'ail_bleed', 1],
     ['sunder', 'ail_vul', 1],
     ['frozen', 'ail_frozen', 0],
     ['stun', 'ail_stun', 0],
-    ['weak', 'ail_curse', 0],
-    ['blind', 'ail_mark', 0],
+    ['weak', icN('ail_n_weak', 'ail_curse'), 0],
+    ['blind', icN('ail_n_blind', 'ail_mark'), 0],
     ['venom', 'ail_dmark', 1],
     ['ignite', 'sk_fireburst', 0],
-    ['corrode', 'asc_alchemist_c0', 0],
+    ['corrode', icN('ail_n_corrode', 'asc_alchemist_c0'), 0],
     ['age', 'ail_slow', 0],
     ['chill', 'sk_frostnova', 1],
     ['confuse', 'ail_shock', 0],
-    ['arrow', 'sk_rainarrow', 1],
+    ['arrow', icN('ail_n_arrow', 'sk_rainarrow'), 1],
     ['rend', 'asc_valkyrie_c0', 1],
-    ['pin', 'sk_javelin', 1],
+    ['pin', icN('ail_n_pin', 'sk_javelin'), 1],
     ['chg', 'sk_spark', 1],
     ['para', 'asc_storm_b1', 1]
   ];
@@ -2135,7 +2143,7 @@ const CX_TABS = [
 ];
 /* 異常狀態：[圖示, 名字, 說明] */
 const CX_AIL = () => [
-  ['ail_burn', '燃燒', '每秒受「層數」傷害，之後少 1 層（N 層一共約 N×(N+1)/2）。'],
+  [icN('ail_n_burn', 'ail_burn'), '燃燒', '每秒受「層數」傷害，之後少 1 層（N 層一共約 N×(N+1)/2）。'],
   [
     'sk_fireburst',
     '點燃',
@@ -2154,7 +2162,7 @@ const CX_AIL = () => [
     `比流血快：每 0.5 秒受「層數」傷害，之後層數剩 ${REND_KEEP * 100}%（N 層一共約 4N）。吃流血抗性。`
   ],
   [
-    'sk_rainarrow',
+    icN('ail_n_arrow', 'sk_rainarrow'),
     '插箭',
     `弓箭手的弓、弩命中時插在敵人身上，整場不退（最多 ${ARROW_MAX} 支）；每支讓敵人受到弓箭手的攻擊傷害 +1%，爆裂箭、倒鉤箭、鷹眼狙擊也看箭的數量。`
   ],
@@ -2165,7 +2173,7 @@ const CX_AIL = () => [
   ],
   ['asc_storm_b1', '麻痺', `每層攻速 -${PARA_SLOW}%（最多 ${PARA_MAX} 層），每秒少 1 層；吃暈眩抗性。`],
   [
-    'sk_javelin',
+    icN('ail_n_pin', 'sk_javelin'),
     '插矛',
     `亞馬遜核心「插矛」：每把讓敵人攻速 -${PIN_SLOW}%（最多 ${PIN_MAX} 把）；插滿後下一次命中全部拔出，撕裂 ${PIN_REND}。`
   ],
@@ -2173,12 +2181,16 @@ const CX_AIL = () => [
   ['ail_frozen', '凍結', `凍住敵人一件武器或盾 ${FREEZE_T} 秒，期間完全不能充能；凍結中的道具不能再被凍。`],
   ['sk_frostnova', '冰緩', `敵人一件武器或盾充能速度減半（命中觸發 ${CHILL_T} 秒）。`],
   ['ail_stun', '暈眩', '整個人不能動：武器、盾不能充能，也不能喝藥水。'],
-  ['ail_curse', '虛弱', `造成的傷害 -${WEAK_PCT}%（${WEAK_T} 秒）。`],
-  ['ail_mark', '致盲', `攻擊多 ${BLIND_MISS}% 打不中（${BLIND_T} 秒）。`],
+  [icN('ail_n_weak', 'ail_curse'), '虛弱', `造成的傷害 -${WEAK_PCT}%（${WEAK_T} 秒）。`],
+  [icN('ail_n_blind', 'ail_mark'), '致盲', `攻擊多 ${BLIND_MISS}% 打不中（${BLIND_T} 秒）。`],
   ['ail_slow', '衰老', '不能暴擊。'],
-  ['asc_alchemist_c0', '腐蝕', `不能獲得護盾；本來會獲得護盾時（盾格擋、喝藥水的護盾…）改成扣 ${CORRODE_HP} 生命。`],
+  [
+    icN('ail_n_corrode', 'asc_alchemist_c0'),
+    '腐蝕',
+    `不能獲得護盾；本來會獲得護盾時（盾格擋、喝藥水的護盾…）改成扣 ${CORRODE_HP} 生命。`
+  ],
   ['ail_shock', '混亂', `武器出手時 ${CONFUSE}% 機率打到自己。`],
-  ['ail_guard', '封鎖', '開戰時被封鎖的武器幾秒內不能充能（整場的叫「關住」）。'],
+  [icN('ail_n_seal', 'ail_guard'), '封鎖', '開戰時被封鎖的武器幾秒內不能充能（整場的叫「關住」）。'],
   ['ail_stacks', '降階', '開戰時把敵人一把 Ⅱ 階以上的武器降 1 階（傷害變成三分之一）。', 'flip']
 ];
 /* 屬性與機制：[名字, 說明] */

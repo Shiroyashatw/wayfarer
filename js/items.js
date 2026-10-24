@@ -3371,8 +3371,9 @@ const THEME_ITEMS = [
     ic
   }))
 ];
-/* 兩個新主題的職業武器線：8 類（弓、劍、矛、斧、匕首、法杖、寵物、盾）× 1～5★，每個星級 6 把帶一個元素（元素每星級各一次），
-   數值照舊武器同星同類的水準；棋盤王國的武器每被一個棋子影響變強（pcHit），黃道的武器每開一個羈絆門檻變強（synPer） */
+/* 主題的職業武器線：8 類（弓、劍、矛、斧、匕首、法杖、寵物、盾）× 1～5★，數值照舊武器同星同類的水準。
+   兩個新主題每個星級 6 把帶一個元素（元素每星級各一次）：棋盤王國的武器每被一個棋子影響變強（pcHit），黃道的武器每開一個羈絆門檻變強（synPer）；
+   0.1.69 舊的三個主題補缺的、補到每個星級 8 把，帶各自的機制 */
 function genThemeW() {
   const C = {
       bow: {
@@ -3487,53 +3488,118 @@ function genThemeW() {
     /* 寵物的名字（照主題、星級） */
     PET = {
       c: ['棋盤小馬', '象牙戰馬', '黑檀獵鷹', '王庭獅鷲', '棋聖巨龍'],
-      z: ['星砂小羊', '星辰靈貓', '星座天鵝', '星宮天馬', '黃道神龍']
+      z: ['星砂小羊', '星辰靈貓', '星座天鵝', '星宮天馬', '黃道神龍'],
+      g: ['石像小獸', '岩甲蜥', '山丘巨熊', '泰坦石像', '巨神魔像'],
+      f: ['苔蘚小兔', '藤蔓狐', '古木鹿', '森靈貓頭鷹', '世界樹守衛'],
+      m: ['發條小鼠', '齒輪鳥', '蒸汽蜘蛛', '精工機械豹', '機神龍']
     },
+    /* 每個主題：名字的星級字、主題機制（x：這件的額外欄位）、形狀（sh：沒寫照 C） */
     TH = {
-      c: { w: ['木棋', '象牙', '黑檀', '王庭', '棋聖'], k: 'pcHit' },
-      z: { w: ['星砂', '星辰', '星座', '星宮', '黃道'], k: 'synPer' }
+      c: {
+        w: ['木棋', '象牙', '黑檀', '王庭', '棋聖'],
+        x: (k, st) => ({ pcHit: k === 'shield' ? { blockPct: 8 + 2 * st } : { dmgPct: 8 + 2 * st } })
+      },
+      z: {
+        w: ['星砂', '星辰', '星座', '星宮', '黃道'],
+        x: (k, st) => ({ synPer: k === 'shield' ? { blockPct: 8 + 2 * st } : { dmgPct: 2 + st } })
+      },
+      /* 0.1.69 舊的三個主題也只賣主題專屬武器：缺的星級、類別用這個補（巨人國大形狀＋每格傷害、森林每件相鄰、機關城每第 N 次多打） */
+      g: {
+        w: ['粗石', '巨岩', '山嶽', '泰坦', '巨神'],
+        x: (k, st) => ({ self: k === 'shield' ? { blockPct: 10 + 3 * st } : { cellPct: 4 } }),
+        sh: {
+          bow: ['v3', 'v4', 'v4', 'l5', 'l5'],
+          sword: ['v3', 'big', 'l4', 'l5', 'l5'],
+          spear: ['v3', 'v4', 'v4', 'v5', 'v5'],
+          axe: ['l3', 'sq', 't5', 't5', 'p5'],
+          dagger: ['h2', 'l3', 'l3', 'sq', 'sq'],
+          staff: ['v3', 'v4', 't5', 't5', 't5'],
+          pet: ['h2', 'sq', 'sq', 'p5', 'p5'],
+          shield: ['sq', 'h4', 'sq', 'h4', 'big']
+        }
+      },
+      f: {
+        w: ['嫩枝', '藤蔓', '古木', '森靈', '世界樹'],
+        x: (k, st) => ({ perAdj: k === 'shield' ? { blockPct: 6 + 2 * st } : { dmgPct: 3 + st } })
+      },
+      m: {
+        w: ['齒輪', '發條', '蒸汽', '精工', '機神'],
+        x: (k, st) => (k === 'shield' ? { self: { spd: 10 + 3 * st } } : { nth: st % 2 ? [3, 1] : [4, 2] })
+      }
     },
     ks = Object.keys(C),
+    GR = {
+      bow: ['bow', 'xbow'],
+      sword: ['sword'],
+      spear: ['spear'],
+      axe: ['axe', 'mace'],
+      dagger: ['dagger'],
+      staff: ['staff'],
+      pet: ['pet'],
+      shield: ['shield']
+    },
     /* 圖示：借同類同元素的舊武器（沒有就借同類的） */
     icOf = (tags, el) => {
       const ok = it => !it.th && it.ic && tags.every(t => it.tags.includes(t));
       const a = ITEMS.find(it => ok(it) && (!el || it.tags.includes(el))) || ITEMS.find(ok);
       return a ? a.ic : 'gear_weapon_0';
     },
+    mk = (th, st, k, el) => {
+      const c = C[k],
+        s = st - 1,
+        sh = (TH[th].sh || {})[k] ? TH[th].sh[k][s] : c.sh[s],
+        it = {
+          id: `${th}${st}${el || 'x'}${k}`,
+          n: k === 'pet' ? (el ? EN[el] : '') + PET[th][s] : (el ? EN[el] : '') + TH[th].w[s] + c.n,
+          star: st,
+          th,
+          sh,
+          tags: [
+            ...(k === 'shield' ? [] : ['weapon']),
+            ...c.t,
+            ...(el ? [el] : []),
+            ...(SH[sh].length >= 4 && k !== 'shield' && k !== 'pet' ? ['twohand'] : [])
+          ],
+          cd: c.cd[s],
+          ic: icOf(c.t, el)
+        };
+      if (c.b) it.block = c.b[s];
+      else {
+        it.dmg = c.d[s];
+        if (el) it.on = ON[el](st);
+        if (k === 'dagger') it.crit = 10;
+      }
+      return Object.assign(it, TH[th].x(k, st));
+    },
     out = [];
   for (const th of ['c', 'z'])
     for (let st = 1; st <= 5; st++)
       ks.forEach((k, i) => {
-        const c = C[k],
-          j = (i + st + (th === 'z' ? 3 : 0)) % ks.length,
-          el = j < E.length ? E[j] : null,
-          s = st - 1,
-          pre = (el ? EN[el] : '') + TH[th].w[s],
-          it = {
-            id: `${th}${st}${el || 'x'}${k}`,
-            n: k === 'pet' ? (el ? EN[el] : '') + PET[th][s] : pre + c.n,
-            star: st,
-            th,
-            sh: c.sh[s],
-            tags: [
-              ...(k === 'shield' ? [] : ['weapon']),
-              ...c.t,
-              ...(el ? [el] : []),
-              ...(c.sh[s] === 'sq' && k !== 'shield' && k !== 'pet' ? ['twohand'] : [])
-            ],
-            cd: c.cd[s],
-            ic: icOf(c.t, el)
-          };
-        if (c.b) it.block = c.b[s];
-        else {
-          it.dmg = c.d[s];
-          if (el) it.on = ON[el](st);
-          if (k === 'dagger') it.crit = 10;
-        }
-        it[TH[th].k] =
-          k === 'shield' ? { blockPct: 8 + 2 * st } : th === 'c' ? { dmgPct: 8 + 2 * st } : { dmgPct: 2 + st };
-        out.push(it);
+        const j = (i + st + (th === 'z' ? 3 : 0)) % ks.length;
+        out.push(mk(th, st, k, j < E.length ? E[j] : null));
       });
+  /* 舊的三個主題：先補缺的（每個星級每類職業、每個元素都要有），再補到每個星級 8 把（跟新主題一樣多） */
+  for (const th of ['g', 'f', 'm'])
+    for (let st = 1; st <= 5; st++) {
+      const have = () => [...ITEMS, ...out].filter(it => it.th === th && it.star === st && (it.dmg || it.block)),
+        has = tags => have().some(it => tags.some(t => it.tags.includes(t))),
+        put = (k, el) => {
+          const it = mk(th, st, k, el);
+          if (![...ITEMS, ...out].some(o => o.id === it.id)) out.push(it);
+        },
+        mc = ks.filter(k => !has(GR[k])),
+        me = E.filter(e => !has([e]));
+      let r = st;
+      while (mc.length || me.length) {
+        const k = mc.shift() || ks.filter(x => x !== 'shield')[r++ % (ks.length - 1)];
+        put(k, me.shift() || null);
+      }
+      for (let g = 0; have().length < 8 && g < 30; g++) {
+        const cnt = k => have().filter(it => GR[k].some(t => it.tags.includes(t))).length,
+          k = [...ks].sort((a, b) => cnt(a) - cnt(b) || ks.indexOf(a) - ks.indexOf(b))[0];
+        put(k, E[(st + g) % E.length]);
+      }
+    }
   return out;
 }
 ITEMS.push(...THEME_ITEMS, ...genThemeW());
@@ -3556,6 +3622,9 @@ const POOLS = {
 };
 const ITEM_TH = {};
 for (const k in POOLS) for (const id of POOLS[k].split(' ')) ITEM_TH[id] = k;
+/* 0.1.69 主題池的武器全部是主題專屬的：舊武器（POOLS 裡分給 g／f／m 的）退出商店（x：不在任何池），
+   只當起手道具、核心送的、舊快照用；那三個主題缺的武器由 genThemeW 補 */
+for (const id in ITEM_TH) if (ITEM_TH[id] !== 'b' && ITEMI[id] && (ITEMI[id].dmg || ITEMI[id].block)) ITEM_TH[id] = 'x';
 const thOf = it => it.th || ITEM_TH[it.id] || 'fgm';
 /* 這件在主題 th 的局裡會不會出現（th 沒給＝不分主題，例如舊存檔） */
 const thOK = (th, it) => !th || thOf(it) === 'b' || thOf(it).includes(th);

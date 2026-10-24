@@ -28,7 +28,13 @@ SHEETS = ROOT / 'art/sheets'  # PixelLab 產的圖表原圖放這裡（檔名 sh
 ARCH = ROOT / 'docs/提示詞封存.md'  # 已經接進遊戲的提示詞（要重產時再拿出來）
 MON = ROOT / 'docs/怪物提示詞.md'
 ICONS = ROOT / 'art/icons'
-done = lambda f: (ICONS / f'{f}.png').exists()
+# 重產清單（0.1.69）：已經有圖、但畫錯要重產的檔名（一行一個）；排圖表時當成還沒有圖，切好新圖就從清單拿掉。
+# 舊圖在新圖切好之前照常用
+REDO = ICONS / 'redo.txt'
+redo_set = lambda: set(REDO.read_text(encoding='utf-8').split()) if REDO.exists() else set()
+# 備選格（0.1.70，檔名@2）：不滿一張的圖表用同一批道具的第二、三版補滿 8×8（格子太少時 PixelLab 會把圖示畫大），
+# 切圖時存到 art/sheets/alt/，不算缺圖
+done = lambda f: '@' in f or ((ICONS / f'{f}.png').exists() and f not in redo_set())
 COLS, CELL = 8, 32
 TAIL = re.compile(r',?\s*(bold simple|readable at small size|centered, readable|no text).*$')
 HEAD = re.compile(r'^(game skill icon of|game icon of|single item icon of)\s+(an? )?')
@@ -99,7 +105,7 @@ def group_of(f, kind, p):
         return 'tree'
     if f.startswith('asc_'):
         return 'asc'
-    if re.match(r'(ail|cur|msk|mat)_', f):
+    if re.match(r'(ail|cur|msk|mat|mode|th|cls)_', f):
         return 'ui'
     if f.startswith('sk_'):
         if kind == '光環':
@@ -149,7 +155,8 @@ def sheets(per, words, fresh=False):
             if all(done(f) for f in files) or (SHEETS / 'done' / f'{name}.png').exists():
                 continue
             # 沒滿、原圖也還沒放進 art/sheets/ 的圖表拆掉重排（零星十幾個的合併成一張，少產幾次）
-            if len(files) < per and not (SHEETS / f'{name}.png').exists():
+            # 0.1.70 備選格（@）不算：真正的道具不滿一張就拆掉重排
+            if len([f for f in files if '@' not in f]) < per and not (SHEETS / f'{name}.png').exists():
                 continue
             items = [(f, info.get(f, ('', '', ''))[0], '', group_of(f, *info[f][1:]) if f in info else 'ui') for f in files]
             kept.append((name, name.split('_')[1], items, pr))
@@ -172,10 +179,10 @@ def sheets(per, words, fresh=False):
         items = [(f, n, d, g) for g in gs for f, n, d in bucket[g]]
         for i in range(0, len(items), per):
             out.append([sg, items[i : i + per]])
-    # 剩下不到 8 個的零頭，塞進前面還有空格的圖表（少產一張）
+    # 不滿一張的圖表互相合併（0.1.70 起不分大小：道具、核心、介面圖示可以排在同一張，少產幾次）
     for k in range(len(out) - 1, -1, -1):
         sg, items = out[k]
-        if len(items) >= COLS:
+        if len(items) >= per:
             continue
         for j, (sg2, it2) in enumerate(out):
             if j != k and len(it2) + len(items) <= per:
@@ -189,7 +196,19 @@ def sheets(per, words, fresh=False):
             items.append(ui.pop(0))
     for i in range(0, len(ui), per):
         out.append(['ui', ui[i : i + per]])
-    return kept + [(new_name(sg), sg, items, None) for sg, items in out]
+    def pad(items):
+        if len(items) >= per:
+            return items
+        base, k = list(items), 2
+        while len(items) < per:
+            for f, n, d, g in base:
+                if len(items) >= per:
+                    break
+                items.append((f'{f}@{k}', f'{n}（備選 {k}）', d, g))
+            k += 1
+        return items
+
+    return kept + [(new_name(sg), sg, pad(items), None) for sg, items in out]
 
 
 def prompt_of(items):
@@ -280,7 +299,7 @@ def read_doc():
     t = DOC.read_text(encoding='utf-8')
     out = {}
     for m in re.finditer(r'### `(sheet_[\w]+)`（[^，]+，(\d+) 個，(\d+)×(\d+)）\n\n```\n([^\n]*)\n```\n\n\| 格[^\n]*\n\| ---[^\n]*\n((?:\|[^\n]*\n?)*)', t):
-        files = re.findall(r'^\| \d+-\d+ \| `([\w-]+)` \|', m.group(6), re.M)
+        files = re.findall(r'^\| \d+-\d+ \| `([\w@-]+)` \|', m.group(6), re.M)
         out[m.group(1)] = (m.group(5), (int(m.group(3)), int(m.group(4))), files)
     return out
 
@@ -337,7 +356,19 @@ def slice_(png, name=None):
         if sum(1 for a in cell.getchannel('A').getdata() if a > 40) < 15:
             empty.append(f)
             continue
+        if '@' in f:
+            (SHEETS / 'alt').mkdir(parents=True, exist_ok=True)
+            cell.save(SHEETS / 'alt' / f"{f.replace('@', '_v')}.png")
+            continue
         cell.save(out / f'{f}.png')
+    # 重產清單：切好的拿掉
+    rs = redo_set()
+    if rs & set(files):
+        left = sorted(rs - set(files))
+        if left:
+            REDO.write_text('\n'.join(left) + '\n', encoding='utf-8')
+        else:
+            REDO.unlink()
     print(f'{name}：切成 {len(files)} 張 → art/icons/（原圖 {im.width}×{im.height}）')
     if fixed:
         print('  這幾格有實心背景，已經自動去背（請再看一下）：' + '、'.join(fixed))
