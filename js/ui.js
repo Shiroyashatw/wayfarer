@@ -64,9 +64,14 @@ const sgBadge = sg => (sg == null || !SIGILS[sg] ? '' : `<i class="sgb sg${sg}">
 /* 0.1.59 詛咒寶藏：格子左下角的「咒」 */
 const cuBadge = cu => (!cu || !CURSES[cu[0]] ? '' : `<i class="cub" aria-label="詛咒">咒</i>`);
 /* 道具詳細的詛咒那一行（層數 × 每層數值） */
-const cuLineHTML = cu => {
-  const c = cu && CURSES[cu[0]];
-  return c ? `<p class="cul">${cuBadge(cu)}詛咒・${c.n}${cu[1] > 1 ? ` ×${cu[1]}` : ''}：${c.d(c.v * cu[1])}</p>` : '';
+/* 0.1.60 祝福（綠）＋詛咒（紫）各一行；數值是這件實際的（層數、星級都算進去） */
+const cuLineHTML = o => {
+  const b = o.bl && BLESS[o.bl[0]],
+    c = o.cu && CURSES[o.cu[0]];
+  return (
+    (b ? `<p class="bll">✦ 祝福・${b.n}${o.bl[1] > 1 ? ` ×${o.bl[1]}` : ''}：${b.d(blV(o))}</p>` : '') +
+    (c ? `<p class="cul">${cuBadge(o.cu)}詛咒・${c.n}${o.cu[1] > 1 ? ` ×${o.cu[1]}` : ''}：${c.d(cuV(o))}</p>` : '')
+  );
 };
 /* ================= 牌階 ================= */
 /* 0.1.6 牌階的像素圖示（16×16，程式畫）：盾牌底；金牌起上面兩根尖角、鑽石起中間寶石、大師起兩邊翅膀、菁英加皇冠；
@@ -365,7 +370,7 @@ function rvDetHTML(o) {
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
-  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeO(o).length} 格</small></div></div><p>${dsc(itemDesc(o.id, o.t))}</p>${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
+  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeO(o).length} 格</small></div></div><p>${dsc(itemDesc(o.id, o.t))}</p>${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
 }
 /* 0.1.32 點對手：看他上一回合的背包（準備時看上一回合；打完結算時看剛打完的這回合，你已經看過了）。不給看這回合的，跟機器人一樣；
    0.1.38 點清單或背包裡的道具看詳細（sel 是選中的道具） */
@@ -615,7 +620,7 @@ function detailHTML(run) {
     k = +V.sel.slice(4);
     const s = run.shop[k];
     if (!s) return '';
-    o = { id: s.id, t: s.t || 1, p: s.p, sg: s.sg, sh: s.sh, cu: s.cu };
+    o = { id: s.id, t: s.t || 1, p: s.p, sg: s.sg, sh: s.sh, cu: s.cu, bl: s.bl };
     where = 'shop';
   } else if (V.sel.startsWith('leg')) {
     /* 0.1.59 遺產攤位：保留階數、詞綴 */
@@ -658,7 +663,7 @@ function detailHTML(run) {
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
   return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0, o.sm, o.sh)} ${shapeO(o).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div>${oddsHTML(run, o.id)}<button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p>${dsc(itemDesc(o.id, o.t))}</p>${sgLineHTML(run, o.sg)}${cuLineHTML(o.cu)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+    <p>${dsc(itemDesc(o.id, o.t))}</p>${sgLineHTML(run, o.sg)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
       .filter(([, m]) => modTxt(m))
@@ -769,7 +774,7 @@ const MODEUI = {
   caravan: { panel: run => vanHTML(run) },
   curse: {
     info: () =>
-      `<div class="astl">${CURSES.map(c => `<p><b>${c.n}</b>：${c.d(c.v)}${c.w ? '（只會在武器上）' : ''}</p>`).join('')}</div>`
+      `<div class="astl"><b class="c-good">祝福（不分星級）</b>${BLESS.map(b => `<p><b>${b.n}</b>：${b.d(b.v)}${b.w ? '（只會在武器上）' : b.a ? '（武器或盾）' : ''}</p>`).join('')}<b class="cul">詛咒（下面是 1 倍，2★ ×1.5、3★ ×2、4★ ×2.5、5★ ×3）</b>${CURSES.map(c => `<p><b>${c.n}</b>：${c.d(c.v)}${c.w ? '（只會在武器上）' : ''}</p>`).join('')}</div>`
   },
   astro: {
     intro: run => astroListHTML(run, 1, 2),

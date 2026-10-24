@@ -313,14 +313,14 @@ const botBump = (cx, bagToo = true) => {
   if (bagToo) cx.base = cx.weak = null;
 };
 /* ex：0.1.59 這件身上的形狀（七十二變）、詛咒（{ sh, cu }），沒給就照這局的形狀表、沒有詛咒 */
-const botEx = o => (o && o.cu ? { sh: o.sh, cu: o.cu } : null);
+const botEx = o => (o && (o.cu || o.bl) ? { sh: o.sh, cu: o.cu, bl: o.bl } : null);
 function botValue(run, id, t, P, cx = {}, ex = null) {
-  const key = id + '|' + t + (ex && ex.cu ? '|c' + ex.cu.join('.') : '');
+  const key = id + '|' + t + (ex && ex.cu ? '|c' + ex.cu.join('.') : '') + (ex && ex.bl ? '|b' + ex.bl.join('.') : '');
   if (cx.val && cx.val.has(key)) return cx.val.get(key);
   const v = botValue0(run, id, t, P, cx, ex);
   /* 0.1.59 詛咒・吸金：每回合少的錢（戰力算不到） */
   if (ex && ex.cu && CURSES[ex.cu[0]] && CURSES[ex.cu[0]].k === 'drain')
-    v.gain -= 0.05 * ex.cu[1] * (Math.max(0, ROUNDS.length - run.ri) / ROUNDS.length);
+    v.gain -= 0.05 * cuV({ id, cu: ex.cu }) * (Math.max(0, ROUNDS.length - run.ri) / ROUNDS.length);
   if (cx.val) cx.val.set(key, v);
   return v;
 }
@@ -336,7 +336,8 @@ function botValue0(run, id, t, P, cx, ex) {
       r: 0,
       a: null,
       sh: (ex && ex.sh) || shmOf(run, id),
-      ...(ex && ex.cu ? { cu: ex.cu } : {})
+      ...(ex && ex.cu ? { cu: ex.cu } : {}),
+      ...(ex && ex.bl ? { bl: ex.bl } : {})
     };
   /* 0.1.29 第二個核心（0.1.34 起是專屬核心）：融入專屬核心，不佔格子 */
   /* 0.1.42 核心在核心欄：第一個直接放進去，第二個融入 */
@@ -548,7 +549,11 @@ function botLegacy(run, q, P, cx) {
   for (let g = 0; g < 6; g++) {
     const floor = botFloor(run),
       best = run.leg
-        .map((e, k) => [k, legPrice(run, e), botValue(run, e.id, e.t || 1, P, cx, { sh: e.sh, cu: e.cu }).gain])
+        .map((e, k) => [
+          k,
+          legPrice(run, e),
+          botValue(run, e.id, e.t || 1, P, cx, { sh: e.sh, cu: e.cu, bl: e.bl }).gain
+        ])
         .filter(([, p, v]) => p <= run.gold - floor && v >= Math.max(P.gainMin, p * P.perGold))
         .sort((a, b) => b[2] / Math.max(0.5, b[1]) - a[2] / Math.max(0.5, a[1]))[0];
     if (!best || benchFree(run) < 0) break;

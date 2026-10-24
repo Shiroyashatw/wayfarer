@@ -266,8 +266,7 @@ const bonusGold = run => {
       if (d.goldSt) n += goldStOf(d.goldSt, st);
     }
   /* 0.1.59 詛咒・吸金、遺物・黃金面具 */
-  for (const o of run.bag.items)
-    if (o.cu && CURSES[o.cu[0]] && CURSES[o.cu[0]].k === 'drain') n -= CURSES[o.cu[0]].v * o.cu[1];
+  for (const o of run.bag.items) if (o.cu && CURSES[o.cu[0]] && CURSES[o.cu[0]].k === 'drain') n -= cuV(o);
   if ((run.bag.rel || []).includes('mask')) n += 2;
   return n;
 };
@@ -429,17 +428,22 @@ const MODEH = {
     }
   },
   curse: {
-    /* CURSE_P% 換成高一星的同一格（池子照樣算），帶一個詛咒 */
+    /* CURSE_P% 換成高一星的同一格（池子照樣算），帶一個祝福＋一個詛咒 */
     slot: (run, s, used) => {
       if (run.ri <= 0 || ITEMI[s.id].star >= 5 || r01(run) * 100 >= CURSE_P) return;
       const up = rollItem(run, false, used, it => it.star === ITEMI[s.id].star + 1);
       if (up && ITEMI[up].star === ITEMI[s.id].star + 1) {
         s.id = up;
         s.cu = curseRoll(run, up);
+        s.bl = blessRoll(run, up);
       }
     },
-    item: (run, o, from) => from && from.cu && (o.cu = [...from.cu]),
-    price: (run, s, p) => (s.cu ? Math.max(1, Math.ceil(p / 2)) : p)
+    item: (run, o, from) => {
+      if (from && from.cu) o.cu = [...from.cu];
+      if (from && from.bl) o.bl = [...from.bl];
+    },
+    /* 價格照星級固定（Ⅱ 階 ×3）；買得比賣價便宜的，賣價最多是付的錢（shopItem 的 pp） */
+    price: (run, s, p) => (s.cu ? CURSE_PRICE[ITEMI[s.id].star] * 3 ** ((s.t || 1) - 1) : p)
   },
   shape: {
     share: rand => ({ shm: rollShm(rand) }),
@@ -674,6 +678,12 @@ function rollShop(run, lotto) {
 function curseRoll(run, id) {
   const I = ITEMI[id],
     c = CURSES.map((c, i) => [c, i]).filter(([c]) => !c.w || (I.dmg && !I.block));
+  return [c[fl(r01(run) * c.length)][1], 1];
+}
+/* 0.1.60 祝福：武器才有的（傷害、暴擊、吸血）、有冷卻的才有的（攻速） */
+function blessRoll(run, id) {
+  const I = ITEMI[id],
+    c = BLESS.map((b, i) => [b, i]).filter(([b]) => (!b.w || (I.dmg && !I.block)) && (!b.a || I.dmg || I.block));
   return [c[fl(r01(run) * c.length)][1], 1];
 }
 /* t：商店也可能直接賣 Ⅱ 階（後期才有），價錢 ×3；p：0.1.35 六合彩打亂過的價格 */

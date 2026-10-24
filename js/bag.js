@@ -239,12 +239,14 @@ function mergeAll(run, r) {
     const gw = Math.max(0, ...use.map(([, q]) => q.gw || 0));
     if (gw) o.gw = gw;
     /* 0.1.59 詛咒寶藏：材料裡有幾件被詛咒就疊幾層（最多 CURSE_MAX）；詛咒不一樣時留最多的那種 */
-    const cus = use.map(([, q]) => q.cu).filter(Boolean);
-    if (cus.length) {
+    /* 0.1.60 祝福也一樣疊 */
+    for (const f of ['cu', 'bl']) {
+      const cus = use.map(([, q]) => q[f]).filter(Boolean);
+      if (!cus.length) continue;
       const n = {};
       for (const c of cus) n[c[0]] = (n[c[0]] || 0) + c[1];
       const k = +Object.keys(n).sort((a, b) => n[b] - n[a])[0];
-      o.cu = [
+      o[f] = [
         k,
         Math.min(
           CURSE_MAX,
@@ -424,7 +426,7 @@ function compileBag(bag, extra = {}) {
   /* 0.1.20 相鄰與同一排先用格子表算好（原本每一對都重算一次格子，機器人評估時太慢） */
   const NB = new Map(),
     RW = new Map();
-  if (its.some(o => ITEMI[o.id].adj || ITEMI[o.id].row || ITEMI[o.id].tf || o.cu)) {
+  if (its.some(o => ITEMI[o.id].adj || ITEMI[o.id].row || ITEMI[o.id].tf || o.cu || o.bl)) {
     const g = bagGrid(bag);
     for (const o of bag.items) {
       const cs = cellsOf(o),
@@ -533,9 +535,20 @@ function compileBag(bag, extra = {}) {
   if (SGL[3]) for (const q of bag.items) if (q.sg === 3) add(q, { ls: 5 });
   /* 0.1.59 詛咒寶藏：背包裡被詛咒的道具（o.cu = [詛咒, 層數]）；吸金在 bonusGold、沉睡在下面的武器 */
   for (const s of bag.items) {
+    /* 0.1.60 祝福 */
+    const b = s.bl && BLESS[s.bl[0]];
+    if (b) {
+      const v = blV(s);
+      if (b.k === 'sharp') add(s, { dmgPct: v });
+      if (b.k === 'quick') add(s, { spd: v });
+      if (b.k === 'keen') add(s, { crit: v });
+      if (b.k === 'leech') add(s, { ls: v });
+      if (b.k === 'stout') F.hp += v;
+      if (b.k === 'rally') for (const q of bag.items) if (q !== s && adjQ(s, q)) add(q, { spd: v });
+    }
     const c = s.cu && CURSES[s.cu[0]];
     if (!c) continue;
-    const v = c.v * s.cu[1];
+    const v = cuV(s);
     if (c.k === 'rust') for (const q of bag.items) if (q !== s && adjQ(s, q)) add(q, { spd: -v });
     if (c.k === 'frail') F.hp -= v;
     if (c.k === 'envy')
@@ -681,7 +694,7 @@ function compileBag(bag, extra = {}) {
         /* 0.1.53 召喚的戰狼（第幾隻、開戰封住到幾秒）、馴獸師的成長 */
         ...(o.vw ? { vw: o.vw, seal: o.vw * WOLF_T } : {}),
         /* 0.1.59 詛咒・沉睡：開戰後幾秒才開始出手 */
-        ...(o.cu && CURSES[o.cu[0]] && CURSES[o.cu[0]].k === 'sleep' ? { seal: CURSES[o.cu[0]].v * o.cu[1] } : {}),
+        ...(o.cu && CURSES[o.cu[0]] && CURSES[o.cu[0]].k === 'sleep' ? { seal: cuV(o) } : {}),
         gw: o.gw || 0,
         /* 0.1.53 四兇：吞噬（饕餮）、命中封鎖（窮奇）、隨機異常（混沌） */
         gorge: I.gorge || 0,
@@ -757,7 +770,7 @@ function bagMods(bag) {
 }
 /* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值, 終極藥劑的效果, 寒冰之心的生命, 封印過了幾回合]；
    後面是預設值的就不存。gp：0.1.35 開戰時的金幣（鈔能力、金錢標） */
-const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const packIt = o => {
   const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
     /* 0.1.52 最後一格是印記（+1，0 是沒有） */
@@ -775,7 +788,9 @@ const packIt = o => {
       o.gw || 0,
       /* 0.1.59 七十二變的形狀、詛咒 [詛咒, 層數] */
       o.sh || 0,
-      o.cu || 0
+      o.cu || 0,
+      /* 0.1.60 祝福 [祝福, 層數] */
+      o.bl || 0
     ];
   while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
   return [...a, ...t];
@@ -813,7 +828,8 @@ const unpackIt = (a, u) => ({
   ...(a[16] ? { sg: a[16] - 1 } : {}),
   ...(a[17] ? { gw: a[17] } : {}),
   ...(a[18] && SH[a[18]] ? { sh: a[18] } : {}),
-  ...(a[19] && CURSES[a[19][0]] ? { cu: [a[19][0], a[19][1] || 1] } : {})
+  ...(a[19] && CURSES[a[19][0]] ? { cu: [a[19][0], a[19][1] || 1] } : {}),
+  ...(a[20] && BLESS[a[20][0]] ? { bl: [a[20][0], a[20][1] || 1] } : {})
 });
 const unpackBag = p => ({
   w: p.w,
