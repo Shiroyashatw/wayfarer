@@ -589,7 +589,7 @@ function prepHTML(run) {
           : `<div class="bs emp" data-bi="${i}"></div>`
       )
       .join('')}</div></div></div>
-    <div class="pcol pc">${vanHTML(run)}${legHTML(run)}<div class="shop" id="shop">${run.shop
+    <div class="pcol pc">${modeUI(run).panel ? modeUI(run).panel(run) : ''}<div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
           ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${sgBadge(s.sg)}${cuBadge(s.cu)}${shapeMini(s.id, 0, 0, s.sh)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金</b></button>`
@@ -597,7 +597,7 @@ function prepHTML(run) {
       )
       .join('')}</div>
     <div class="acts">${
-      run.mode === 'gale'
+      modeH(run).reroll
         ? '<button class="btn" disabled>不能刷新<small class="bnote">買一件就換新</small></button>'
         : `<button class="btn" data-act="reroll" ${(run.gold < REROLL && freeRolls(run) <= 0) || rollsLeft(run) <= 0 ? 'disabled' : ''}>刷新<small class="bnote">${rollsLeft(run) <= 0 ? '用完了' : freeRolls(run) > 0 ? '免費' : REROLL + ' 金'}</small></button>`
     }<button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvCost(run) ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvCost(run) + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div></div>
@@ -740,31 +740,64 @@ function modeHTML(run) {
   const M = MODEI[run.mode];
   if (!run.mseen)
     return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制</small><button class="wbtn" data-act="wheelSkip" aria-label="直接看結果">${wheelHTML(run)}</button><b class="c-dim">轉盤轉動中…</b><small class="c-dim">點轉盤直接看結果</small></div></div>`;
-  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制</small>${wheelHTML(run)}<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${run.mode === 'sigil' ? `<div class="sgleg">${SIGILS.map((g, i) => `<span>${sgBadge(i)}${g.n}</span>`).join('')}</div>` : ''}${run.mode === 'astro' ? astroListHTML(run, 1, 2) : ''}<button class="btn pri big" data-act="modeOk">選職業</button></div></div>`;
+  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制</small>${wheelHTML(run)}<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}<button class="btn pri big" data-act="modeOk">選職業</button></div></div>`;
 }
 /* 準備畫面上方：賽制小標籤＋印記的件數（點了看規則） */
 function modeBarHTML(run) {
   const M = MODEI[run.mode];
   /* 0.1.59 轉盤還沒停：不要先洩漏結果 */
   if (!M || run.mode === 'std' || (run.phase === 'mode' && !run.mseen)) return '';
-  let x = '';
-  if (run.mode === 'sigil') {
-    const n = sgCount(run.bag);
-    x = `<div class="sgrow">${SIGILS.map((g, i) => {
-      const lv = sgLv(n[i]);
-      return `<button class="sgc${lv ? ' on' : ''}" data-act="sgInfo" aria-label="${g.n} ${n[i]} 件">${sgBadge(i)}<b>${n[i]}</b><span class="pip">${SG_AT.map(a => `<i${n[i] >= a ? ' class="on"' : ''}></i>`).join('')}</span></button>`;
-    }).join('')}</div>`;
-  }
-  /* 0.1.59 星象：這個階段的規則（下一個在規則說明裡）；遺物：拿到的小圖示 */
-  if (run.mode === 'astro') {
-    const r = curRound(run),
-      a = r && ASTROI[astroAt(run, r.st)];
-    if (a) x = `<button class="mchip astro" data-act="modeInfo"><b>${a.n}</b><small>${a.d}</small></button>`;
-  }
-  if (run.mode === 'relic' && (run.bag.rel || []).length)
-    x = `<div class="relrow">${run.bag.rel.map(k => `<button class="relc" data-act="modeInfo" aria-label="${RELICI[k].n}"><img src="${artIconURL(RELICI[k].ic) || iconURL('star')}" alt=""></button>`).join('')}</div>`;
+  const x = modeUI(run).bar ? modeUI(run).bar(run) : '';
   return `<div class="mbar"><button class="mchip" data-act="modeInfo"><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b>${M.n}</b></button>${x}</div>`;
 }
+/* ================= 0.1.59 賽制的畫面 =================
+   每個賽制一份（沒寫的就沒有）：intro 開場轉盤停下後規則下面多的、bar 準備畫面上方賽制標籤旁邊的、
+   info 點賽制標籤看規則時多的、panel 商店上面的一列（流浪商人、遺產攤位）。規則文字本身在 data.js 的 MODES */
+const MODEUI = {
+  sigil: {
+    intro: () => `<div class="sgleg">${SIGILS.map((g, i) => `<span>${sgBadge(i)}${g.n}</span>`).join('')}</div>`,
+    /* 每個印記幾件（點了看規則） */
+    bar: run => {
+      const n = sgCount(run.bag);
+      return `<div class="sgrow">${SIGILS.map((g, i) => {
+        const lv = sgLv(n[i]);
+        return `<button class="sgc${lv ? ' on' : ''}" data-act="sgInfo" aria-label="${g.n} ${n[i]} 件">${sgBadge(i)}<b>${n[i]}</b><span class="pip">${SG_AT.map(a => `<i${n[i] >= a ? ' class="on"' : ''}></i>`).join('')}</span></button>`;
+      }).join('')}</div>`;
+    },
+    info: run => sgInfoHTML(run)
+  },
+  caravan: { panel: run => vanHTML(run) },
+  curse: {
+    info: () =>
+      `<div class="astl">${CURSES.map(c => `<p><b>${c.n}</b>：${c.d(c.v)}${c.w ? '（只會在武器上）' : ''}</p>`).join('')}</div>`
+  },
+  astro: {
+    intro: run => astroListHTML(run, 1, 2),
+    /* 這個階段的規則（下一個在規則說明裡） */
+    bar: run => {
+      const r = curRound(run),
+        a = r && ASTROI[astroAt(run, r.st)];
+      return a ? `<button class="mchip astro" data-act="modeInfo"><b>${a.n}</b><small>${a.d}</small></button>` : '';
+    },
+    info: run => {
+      const st = curRound(run) ? curRound(run).st : 1;
+      return astroListHTML(run, st, Math.min(ROUNDS[ROUNDS.length - 1].st, st + 1));
+    }
+  },
+  relic: {
+    /* 拿到的遺物小圖示 */
+    bar: run =>
+      (run.bag.rel || []).length
+        ? `<div class="relrow">${run.bag.rel.map(k => `<button class="relc" data-act="modeInfo" aria-label="${RELICI[k].n}"><img src="${artIconURL(RELICI[k].ic) || iconURL('star')}" alt=""></button>`).join('')}</div>`
+        : '',
+    info: run =>
+      (run.bag.rel || []).length
+        ? `<div class="relopts">${run.bag.rel.map(k => relicLine(k)).join('')}</div>`
+        : '<p class="c-dim">還沒有遺物</p>'
+  },
+  legacy: { panel: run => legHTML(run) }
+};
+const modeUI = run => (run && MODEUI[run.mode]) || {};
 /* 0.1.59 星象輪轉：第 a～b 階段的規則（這個階段亮起來） */
 function astroListHTML(run, a, b) {
   const r = curRound(run),
@@ -789,7 +822,7 @@ function relicHTML(run) {
 }
 /* 0.1.59 遺產市集：商店上面的遺產攤位（點了看詳細、在詳細裡買） */
 function legHTML(run) {
-  if (run.mode !== 'legacy' || !run.leg || !run.leg.length) return '';
+  if (!run.leg || !run.leg.length) return '';
   return `<div class="leg"><span class="lbl">遺產</span><div class="legs">${run.leg
     .map(
       (e, k) =>
@@ -829,7 +862,7 @@ function sgPickHTML(run) {
 }
 /* 流浪商隊：商店上面的商人（一行：圖示、名字、做什麼、交易鈕） */
 function vanHTML(run) {
-  const v = run.mode === 'caravan' && run.van && VANI[run.van.k];
+  const v = run.van && VANI[run.van.k];
   if (!v) return '';
   const cost = v.k === 'blood' ? `${v.c} 生命` : v.c ? `${v.c} 金` : '免費',
     bad = v.k === 'blood' ? run.hp <= v.c : run.gold < v.c,
@@ -2252,23 +2285,10 @@ const A = {
   modeInfo: () => {
     const run = S.run,
       M = MODEI[run.mode],
-      last = ROUNDS[ROUNDS.length - 1].st,
-      r = curRound(run),
-      st = r ? r.st : 1;
-    /* 0.1.59 星象：這個和下一個階段；詛咒：每種詛咒；遺物：拿到的 */
-    const ex =
-      run.mode === 'astro'
-        ? astroListHTML(run, st, Math.min(last, st + 1))
-        : run.mode === 'curse'
-          ? `<div class="astl">${CURSES.map(c => `<p><b>${c.n}</b>：${c.d(c.v)}${c.w ? '（只會在武器上）' : ''}</p>`).join('')}</div>`
-          : run.mode === 'relic'
-            ? (run.bag.rel || []).length
-              ? `<div class="relopts">${run.bag.rel.map(k => relicLine(k)).join('')}</div>`
-              : '<p class="c-dim">還沒有遺物</p>'
-            : '';
+      U = modeUI(run);
     showDlg(
       `本局賽制：${M.n}`,
-      `<ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${run.mode === 'sigil' ? sgInfoHTML(run) : ''}${ex}`,
+      `<ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${U.info ? U.info(run) : ''}`,
       []
     );
   },

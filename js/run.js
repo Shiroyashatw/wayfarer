@@ -297,12 +297,6 @@ function rollMode(rand) {
   for (const m of MODES) if ((x -= m.w) < 0) return m.k;
   return 'std';
 }
-/* 0.1.52 印記：還沒有印記的道具（起手道具、換賽制前拿到的）補一個；核心沒有印記 */
-function sgFix(run) {
-  if (run.mode !== 'sigil') return;
-  for (const o of [...run.bag.items, ...run.bench, run.hold])
-    if (o && o.sg == null && !ITEMI[o.id].core) o.sg = fl(r01(run) * SIGILS.length);
-}
 /* ================= 0.1.59 七十二變、星象輪轉 ================= */
 /* 七十二變：這局每件道具換成哪個形狀（run.shm：道具 → SH 的鍵）。同一場大家一樣（即時機器人、機器人對局共用一份）；
    形狀是道具本身的總表打亂後重新發：1★ 只拿 3 格以內、放得進 3×3 的。核心、核心送的、魔劍正宗這種看形狀的不換 */
@@ -363,13 +357,148 @@ function astroF(F, k) {
   return G;
 }
 /* 戰鬥用的數值：階段生命倍率＋星象（run 是這場用哪一局的規則；機器人對局大家共用同一份） */
-const fightF = (run, F, st, mob) => astroF(stageHp(F, st, mob), astroAt(run, st));
-/* 賽制開場後補上：印記、七十二變的形狀（起手道具、換賽制前拿到的） */
-function modeFix(run) {
-  sgFix(run);
-  if (run.mode !== 'shape' || !run.shm) return;
-  for (const o of [...run.bag.items, ...run.bench, run.hold]) if (o && run.shm[o.id]) o.sh = run.shm[o.id];
+const fightF = (run, F, st, mob) => {
+  const G = stageHp(F, st, mob),
+    H = modeH(run);
+  return H.fight ? H.fight(run, G, st) : G;
+};
+/* 設定這局的賽制（玩家那局）：一場共用的資料（形狀表、星象）也給即時機器人；測試可以直接指定賽制 */
+function setMode(run, m) {
+  run.mode = m;
+  modeShare(
+    run,
+    modeShareOf(m, () => r01(run))
+  );
+  for (const rv of run.rivals || [])
+    if (rv.live) {
+      rv.live.run.mode = m;
+      modeShare(rv.live.run, run.share);
+      modeFix(rv.live.run);
+    }
 }
+/* 一場共用的資料（MODEH 的 share）：放進 run（欄位照掛勾回傳的名字，例如 shm、astro），換賽制時清掉舊的 */
+const modeShareOf = (m, rand) => ((MODEH[m] || {}).share ? MODEH[m].share(rand) : {});
+function modeShare(run, sh) {
+  for (const k of Object.keys(run.share || {})) delete run[k];
+  run.share = sh;
+  Object.assign(run, sh);
+}
+/* 賽制開場後補上：已經拿到的道具（起手道具、換賽制前拿到的）補上印記、七十二變的形狀 */
+function modeFix(run) {
+  const f = modeH(run).fix;
+  if (f) for (const o of [...run.bag.items, ...run.bench, run.hold]) if (o && !ITEMI[o.id].core) f(run, o);
+}
+/* ================= 0.1.59 賽制的掛勾 =================
+   每個賽制一份（沒寫的掛勾就是不影響），程式其他地方只透過 modeH(run) 問，不要再寫 run.mode === '…'。
+   新增賽制照 skill new-mode：data.js 的 MODES 加規則文字，這裡加掛勾，ui.js 的 MODEUI 加畫面，跑 node tools/check.js。
+     share(rand)            一場共用的資料（玩家那局抽一次，即時機器人、機器人對局共用），回傳 { 欄位: 值 }；salt 是機器人對局的亂數種子
+     fix(run, o)            開場後已經拿到的道具（起手道具）補上這個賽制的標記
+     slot(run, s, used)     商店的一格抽完後（可以換道具、加標記；used 是池子）
+     item(run, o, from)     新的一件道具（商店買的 from 是那一格，其他是 null）
+     price(run, s, p)       商店那一格的價格
+     sell(run, o, v)        賣價（v 是原本的賣價）
+     bought(run, s, o)      買完一件
+     reroll                 不能刷新：寫原因
+     round(run)             每回合開始（nextRound：收入、商店之前）
+     fought(run, r)         玩家那局打完一回合（對手也打完、淘汰也算完）
+     lobby(bots, r, rr)     機器人對局（simLobby）打完一回合；bots 是還在場上和這回合淘汰的
+     luck(run)              打贏時多拿 2 金的機率判定（會用掉亂數）
+     winBonus(run, r)       打贏多拿的金幣（固定的，收入預估也算）
+     fight(run, F, st)      戰鬥數值（雙方、怪物都套，回傳複本）
+   排除的核心寫在 MODES 的 ban（data.js） */
+const MODEH = {
+  gale: {
+    price: (run, s, p) => (p > 0 ? Math.max(1, p - 1) : p),
+    /* 0.1.54 這回合買的賣 0 金，不然買了馬上賣掉等於免費刷新商店 */
+    sell: (run, o, v) => (o.bt === run.ri ? 0 : v),
+    bought: run => rollShop(run),
+    reroll: '狂風市集不能刷新：買一件，商店就會整排換新'
+  },
+  sigil: {
+    fix: (run, o) => o.sg == null && (o.sg = fl(r01(run) * SIGILS.length)),
+    slot: (run, s) => (s.sg = fl(r01(run) * SIGILS.length)),
+    item: (run, o, from) => (o.sg = from && from.sg != null ? from.sg : fl(r01(run) * SIGILS.length)),
+    /* 幸運 2 級：打贏 30% 多拿 2 金 */
+    luck: run => sgLv(sgCount(run.bag)[4]) >= 2 && r01(run) < 0.3
+  },
+  caravan: {
+    /* 每回合換一位商人（不跟上回合同一位）；雙胞胎只在那一回合有效 */
+    round: run => {
+      const c = VANS.filter(v => !run.van || v.k !== run.van.k);
+      run.van = { k: c[fl(r01(run) * c.length)].k, done: 0 };
+    }
+  },
+  curse: {
+    /* CURSE_P% 換成高一星的同一格（池子照樣算），帶一個詛咒 */
+    slot: (run, s, used) => {
+      if (run.ri <= 0 || ITEMI[s.id].star >= 5 || r01(run) * 100 >= CURSE_P) return;
+      const up = rollItem(run, false, used, it => it.star === ITEMI[s.id].star + 1);
+      if (up && ITEMI[up].star === ITEMI[s.id].star + 1) {
+        s.id = up;
+        s.cu = curseRoll(run, up);
+      }
+    },
+    item: (run, o, from) => from && from.cu && (o.cu = [...from.cu]),
+    price: (run, s, p) => (s.cu ? Math.max(1, Math.ceil(p / 2)) : p)
+  },
+  shape: {
+    share: rand => ({ shm: rollShm(rand) }),
+    salt: 8,
+    /* 形狀表還沒抽（機器人對局先建好每一局才抽）就先不換，之後 modeFix 補 */
+    fix: (run, o) => shmOf(run, o.id) && (o.sh = run.shm[o.id]),
+    slot: (run, s) => shmOf(run, s.id) && (s.sh = run.shm[s.id]),
+    item: (run, o) => shmOf(run, o.id) && (o.sh = run.shm[o.id])
+  },
+  astro: {
+    share: rand => ({ astro: rollAstro(rand) }),
+    salt: 9,
+    winBonus: (run, r) => (astroAt(run, r.st) === 'harvest' ? 1 : 0),
+    fight: (run, F, st) => astroF(F, astroAt(run, st))
+  },
+  relic: {
+    /* 剛打完的是開寶庫的回合就開（只有玩家那局，機器人在 relicOpen 裡一起挑） */
+    round: run => {
+      if (run.rivals && ROUNDS[run.ri - 1] && RELIC_AT.includes(ROUNDS[run.ri - 1].id)) relicOpen(run);
+    },
+    lobby: (bots, r, rr) => {
+      const live = bots.filter(b => !b.out);
+      if (!RELIC_AT.includes(r.id) || !live.length) return;
+      const opts = relicOpts(rr, live.length + 1);
+      for (const b of [...live].sort((a, c) => a.run.hp - c.run.hp)) relicTake(b.run, opts, b.q, b.P);
+    }
+  },
+  legacy: {
+    round: run => run.leg && (run.leg = run.leg.filter(e => e.lx >= run.ri)),
+    /* 這回合淘汰的對手：背包分給還活著的人 */
+    fought: (run, r) => {
+      for (const rv of run.rivals)
+        if (rivalHp(rv) <= 0 && !rv.gone) {
+          rv.gone = 1;
+          const bag = rv.live ? rv.live.run.bag : unpackBag((rivalSnap(rv, r.id) || { bag: {} }).bag);
+          legacyDrop(
+            run,
+            bag,
+            [run, ...run.rivals.filter(x => x.live && rivalHp(x) > 0).map(x => x.live.run)].filter(x => x.hp > 0),
+            rv.name
+          );
+        }
+    },
+    lobby: (bots, r) => {
+      const live = bots.filter(b => !b.out);
+      for (const b of bots)
+        if (b.out && !b.gone) {
+          b.gone = 1;
+          legacyDrop(
+            b.run,
+            b.run.bag,
+            live.map(x => x.run),
+            b.info.name
+          );
+        }
+    }
+  }
+};
+const modeH = run => (run && MODEH[run.mode]) || {};
 /* 0.1.52 背包裡每個印記幾件（只算背包，暫存區、核心不算） */
 const sgCount = bag => {
   const n = SIGILS.map(() => 0);
@@ -380,15 +509,11 @@ const sgCount = bag => {
 function newRun(rivals) {
   const run = newRunState((Math.random() * 2 ** 31) | 0);
   /* 0.1.52 賽制：開場公開（phase 'mode'）後才選職業；即時機器人跟你同一個賽制 */
-  run.mode = rollMode(() => r01(run));
-  /* 0.1.59 七十二變的形狀表、星象的順序：大家共用 */
-  if (run.mode === 'shape') run.shm = rollShm(() => r01(run));
-  if (run.mode === 'astro') run.astro = rollAstro(() => r01(run));
-  for (const rv of rivals)
-    if (rv.live) {
-      Object.assign(rv.live.run, { mode: run.mode, shm: run.shm, astro: run.astro });
-      modeFix(rv.live.run);
-    }
+  run.rivals = rivals;
+  setMode(
+    run,
+    rollMode(() => r01(run))
+  );
   /* 0.1.26 對手的生命在這局裡算（rv.hp），快照只提供每回合的背包 */
   for (const rv of rivals) rv.hp = START_HP;
   Object.assign(run, {
@@ -533,25 +658,12 @@ function rollShop(run, lotto) {
           : rollItem(run, lotto, used),
       /* Ⅱ 階要池子還有 3 件 */
       t2 = run.ri > 0 && r01(run) * 100 < (BAGLV[run.lv].t2 || 0) && poolOf(id) - (used.get(id) || 0) >= 3;
-    /* 0.1.59 詛咒寶藏：CURSE_P% 換成高一星的同一格（池子照樣算），帶一個詛咒 */
-    let cid = id,
-      cu = null;
-    if (run.mode === 'curse' && run.ri > 0 && ITEMI[id].star < 5 && r01(run) * 100 < CURSE_P) {
-      const up = rollItem(run, false, used, it => it.star === ITEMI[id].star + 1);
-      if (up && ITEMI[up].star === ITEMI[id].star + 1) {
-        cid = up;
-        cu = curseRoll(run, up);
-      }
-    }
-    poolAdd(used, cid, t2 ? 2 : 1);
-    /* 0.1.52 印記：商店的每一格帶一個隨機印記 */
-    return {
-      id: cid,
-      t: t2 ? 2 : 1,
-      ...(run.mode === 'sigil' ? { sg: fl(r01(run) * SIGILS.length) } : {}),
-      ...(cu ? { cu } : {}),
-      ...(shmOf(run, cid) ? { sh: shmOf(run, cid) } : {})
-    };
+    /* 賽制：詛咒寶藏換成高一星、印記、七十二變的形狀 */
+    const s = { id, t: t2 ? 2 : 1 },
+      H = modeH(run);
+    if (H.slot) H.slot(run, s, used);
+    poolAdd(used, s.id, s.t);
+    return s;
   });
   /* 0.1.35 六合彩：價格打亂成 0 金～5★ 的價格（p） */
   if (lotto) for (const s of run.shop) s.p = fl(r01(run) * (5 * 3 ** (s.t - 1) + 1));
@@ -566,35 +678,45 @@ function curseRoll(run, id) {
 const shopPrice = (run, id, t = 1, p) => (p != null ? p : priceOf(id) * 3 ** ((t || 1) - 1));
 /* 0.1.52 狂風市集：價格 -1（最低 1 金；六合彩打亂成 0 金的不變） */
 const slotPrice = (run, s) => {
-  const p = shopPrice(run, s.id, s.t, s.p);
-  /* 0.1.59 詛咒寶藏：半價 */
-  if (s.cu) return Math.max(1, Math.ceil(p / 2));
-  return run.mode === 'gale' && p > 0 ? Math.max(1, p - 1) : p;
+  const p = shopPrice(run, s.id, s.t, s.p),
+    H = modeH(run);
+  return H.price ? H.price(run, s, p) : p;
 };
-/* sg：0.1.52 印記（沒給的話印記賽制隨機一個；核心沒有） */
-const newItem = (run, id, t = 1, sg) => ({
-  u: 'i' + run.un++,
-  id,
-  t,
-  x: 0,
-  y: 0,
-  r: 0,
-  a: null,
-  m: ITEMI[id].star === 5 ? roll5(id, runR(run)) : null,
-  ...(run.mode === 'sigil' && !ITEMI[id].core ? { sg: sg ?? fl(r01(run) * SIGILS.length) } : {}),
-  ...(shmOf(run, id) ? { sh: shmOf(run, id) } : {})
-});
+/* from：商店的那一格（印記、詛咒跟著道具走；賽制的 item 掛勾處理，核心不套） */
+function newItem(run, id, t = 1, from = null) {
+  const o = {
+      u: 'i' + run.un++,
+      id,
+      t,
+      x: 0,
+      y: 0,
+      r: 0,
+      a: null,
+      m: ITEMI[id].star === 5 ? roll5(id, runR(run)) : null
+    },
+    H = modeH(run);
+  if (H.item && !ITEMI[id].core) H.item(run, o, from);
+  return o;
+}
 /* 0.1.52 買完：雙胞胎（送一件一樣的）、狂風市集（商店整排換新） */
 function afterBuy(run, s, o) {
   /* 0.1.54 記下這件是哪一回合買的（bt）：狂風市集這回合賣 0 金、回扣這回合買了又賣掉的不算 */
   if (o) o.bt = run.ri;
   if (run.twin) {
     run.twin = 0;
-    putItem(run, newItem(run, s.id, s.t || 1, s.sg));
+    putItem(run, newItem(run, s.id, s.t || 1, s));
   }
-  if (run.mode === 'gale') rollShop(run);
+  if (modeH(run).bought) modeH(run).bought(run, s, o);
 }
 const benchFree = run => run.bench.indexOf(null);
+/* 從商店買到的一件（付了 p 金）：拖進背包、點了買都走這裡。
+   0.1.59 之前拖進背包的另外寫一份，詛咒寶藏的詛咒、六合彩的賣價上限都沒帶到（拖的就能買到沒詛咒的半價高星） */
+function shopItem(run, s, p) {
+  const o = newItem(run, s.id, s.t || 1, s);
+  /* 付得比賣價少（六合彩打亂成 0 金…）：記下來，賣價最多這麼多 */
+  if (p < sellO(o, run)) o.pp = p;
+  return o;
+}
 /* 買：放進暫存區，湊滿 3 件就合成 */
 function buyItem(run, k) {
   const s = run.shop[k];
@@ -605,11 +727,7 @@ function buyItem(run, k) {
   if (fi < 0 && !wouldMerge(run, s.id, s.t || 1)) return '暫存區滿了，先把道具放進背包或賣掉';
   run.gold -= p;
   /* 0.1.5 暫存區滿了但買了就湊滿 3 件：先放在多出來的一格，合成後收回 */
-  const it = newItem(run, s.id, s.t || 1, s.sg);
-  /* 0.1.59 詛咒寶藏的詛咒跟著道具走 */
-  if (s.cu) it.cu = [...s.cu];
-  /* 0.1.59 付得比賣價少：記下來，賣價最多這麼多 */
-  if (p < sellO(it, run)) it.pp = p;
+  const it = shopItem(run, s, p);
   if (fi < 0) run.bench.push(it);
   else run.bench[fi] = it;
   run.shop[k] = null;
@@ -655,7 +773,7 @@ function buyToBag(run, k, x, y, r, swap) {
     run.bag.items = run.bag.items.filter(q => q !== swap);
     run.bench[benchFree(run)] = swap;
   }
-  run.bag.items.push({ ...newItem(run, s.id, s.t || 1, s.sg), x, y, r });
+  run.bag.items.push(Object.assign(shopItem(run, s, p), { x, y, r }));
   run.shop[k] = null;
   afterBuy(run, s, run.bag.items[run.bag.items.length - 1]);
   const merged = mergeAll(run, runR(run));
@@ -707,12 +825,12 @@ const freeRolls = run => coreProp(bagAll(run.bag), 'freeRoll') - (run.fr || 0);
 /* 0.1.35 豪賭：這回合還能刷新幾次（沒有上限回傳 Infinity；run.nr 是這回合刷新過的次數） */
 const rollsLeft = run => {
   /* 0.1.52 狂風市集：不能刷新 */
-  if (run.mode === 'gale') return 0;
+  if (modeH(run).reroll) return 0;
   const c = coreProp(bagAll(run.bag), 'rollCap');
   return c ? Math.max(0, c - (run.nr || 0)) : Infinity;
 };
 function rerollShop(run) {
-  if (run.mode === 'gale') return '狂風市集不能刷新：買一件，商店就會整排換新';
+  if (modeH(run).reroll) return modeH(run).reroll;
   if (rollsLeft(run) <= 0) return '這回合不能再刷新了';
   if (freeRolls(run) > 0) {
     run.fr = (run.fr || 0) + 1;
@@ -746,7 +864,7 @@ function levelUp(run) {
 const incomeOf = (run, gold = run.gold, streak = Math.max(run.ws, run.lsk)) =>
   Math.max(0, BASE_INCOME + Math.min(INTEREST_MAX, fl(gold / 10)) + streakBonus(streak) + bonusGold(run));
 /* 打贏的金幣：PvE +2、其他 +1；0.1.59 星象・豐收月 +1 */
-const winGold = (r, run) => (r.type === 'pve' ? 2 : 1) + (astroAt(run, r.st) === 'harvest' ? 1 : 0);
+const winGold = (r, run) => (r.type === 'pve' ? 2 : 1) + (modeH(run).winBonus ? modeH(run).winBonus(run, r) : 0);
 /* 下回合預估拿到的金幣 [輸, 贏]（贏的含打贏獎勵，獎勵也算進利息）；沒有下一回合回傳 null */
 function incomeEst(run) {
   const r = curRound(run);
@@ -763,15 +881,9 @@ function nextRound(run) {
   run.nr = 0;
   /* 0.1.52 流浪商隊：每回合換一位商人（不跟上回合同一位）；雙胞胎只在那一回合有效 */
   run.twin = 0;
-  if (run.mode === 'caravan') {
-    const c = VANS.filter(v => !run.van || v.k !== run.van.k);
-    run.van = { k: c[fl(r01(run) * c.length)].k, done: 0 };
-  }
   if (!r) return endRun(run, finalPlace(run));
-  /* 0.1.59 遺產市集：過期的拿掉；法老王的遺物：剛打完的是開寶庫的回合就開（只有玩家那局，機器人在 relicOpen 裡一起挑） */
-  if (run.leg) run.leg = run.leg.filter(e => e.lx >= run.ri);
-  if (run.mode === 'relic' && run.rivals && ROUNDS[run.ri - 1] && RELIC_AT.includes(ROUNDS[run.ri - 1].id))
-    relicOpen(run);
+  /* 賽制：流浪商隊換商人、遺產過期、法老王開寶庫 */
+  if (modeH(run).round) modeH(run).round(run);
   coreSync(run);
   sealTick(run);
   petEvolve(run);
@@ -1028,19 +1140,8 @@ function finishFight(run, fb) {
   }
   rivalFights(run, fb);
   liveAfter(run, r);
-  /* 0.1.59 遺產市集：這回合淘汰的對手，背包分給還活著的人 */
-  if (run.mode === 'legacy')
-    for (const rv of run.rivals)
-      if (rivalHp(rv) <= 0 && !rv.gone) {
-        rv.gone = 1;
-        const bag = rv.live ? rv.live.run.bag : unpackBag((rivalSnap(rv, r.id) || { bag: {} }).bag);
-        legacyDrop(
-          run,
-          bag,
-          [run, ...run.rivals.filter(x => x.live && rivalHp(x) > 0).map(x => x.live.run)].filter(x => x.hp > 0),
-          rv.name
-        );
-      }
+  /* 賽制：遺產市集分淘汰者的背包 */
+  if (modeH(run).fought) modeH(run).fought(run, r);
   if (run.hp <= 0) {
     /* 0.1.27 同回合倒下的對手：扣完剩得比你多（負得少）的排你前面；大家一起倒下時你最多第 2 */
     const al = aliveRivals(run).length,
@@ -1260,7 +1361,7 @@ function petEvolve(run) {
   mergeAll(run, runR(run));
 }
 /* 0.1.52 印記：幸運 2 級（4 件）以上，打贏 30% 多拿 2 金 */
-const luckWin = run => run.mode === 'sigil' && sgLv(sgCount(run.bag)[4]) >= 2 && r01(run) < 0.3;
+const luckWin = run => !!modeH(run).luck && modeH(run).luck(run);
 /* ================= 0.1.52 流浪商隊 ================= */
 /* 能被商人換掉的道具：商店買得到的（不是核心、不是核心送的） */
 const vanOK = o => o && ITEMI[o.id] && shopOK(ITEMI[o.id]);
@@ -1302,7 +1403,7 @@ const vanRoll = (run, star, f = () => true) => rollItem(run, false, poolUsed(run
 /* 跟商人交易：a 是參數（煉金：[u, u]；鐵匠、變形：u；血契：'weapon'／'def'／'trinket'）；成功回傳 { got: 拿到的道具 }，失敗回傳原因 */
 function vanDo(run, a) {
   const v = run.van && VANI[run.van.k];
-  if (!v || run.mode !== 'caravan') return '這回合沒有商人';
+  if (!v) return '這回合沒有商人';
   if (run.van.done) return '這位商人這回合已經交易過了';
   if (v.k !== 'blood' && run.gold < v.c) return '金幣不夠';
   /* 0.1.54 拿到的道具要有地方放（暫存區或寄放），不然會被默默換成金幣 */
@@ -1667,11 +1768,11 @@ function simLobby(seed, rating, opt = {}) {
     /* 0.1.52 一場的機器人同一個賽制（opt.mode 指定，不然照權重抽） */
     mode = opt.mode || rollMode(rng(h(seed, 6))),
     bots = [...Array(LOBBY_N).keys()].map(i => mkBot(seed, i, rr, rating, { ...opt, mode }));
-  /* 0.1.59 七十二變的形狀表、星象的順序：一場共用一份 */
-  const shm = mode === 'shape' ? rollShm(rng(h(seed, 8))) : undefined,
-    astro = mode === 'astro' ? rollAstro(rng(h(seed, 9))) : undefined;
+  /* 0.1.59 一場共用的資料（七十二變的形狀表、星象的順序） */
+  const H = MODEH[mode] || {},
+    share = modeShareOf(mode, rng(h(seed, H.salt || 8)));
   for (const b of bots) {
-    Object.assign(b.run, { shm, astro });
+    modeShare(b.run, share);
     modeFix(b.run);
   }
   /* 0.1.36 池子：同一場的機器人共用（淘汰的不算） */
@@ -1736,21 +1837,8 @@ function simLobby(seed, rating, opt = {}) {
       botAfter(run, r, res.win, b.q, b.P);
     });
     for (const b of alive) if (b.run.hp <= 0) b.out = ++order;
-    /* 0.1.59 遺產市集：這回合淘汰的背包分給還活著的；法老王的遺物：生命低的先挑 */
-    const live = bots.filter(b => !b.out);
-    if (mode === 'legacy')
-      for (const b of alive)
-        if (b.out)
-          legacyDrop(
-            b.run,
-            b.run.bag,
-            live.map(x => x.run),
-            b.info.name
-          );
-    if (mode === 'relic' && RELIC_AT.includes(r.id) && live.length) {
-      const opts = relicOpts(rr, live.length + 1);
-      for (const b of [...live].sort((a, c) => a.run.hp - c.run.hp)) relicTake(b.run, opts, b.q, b.P);
-    }
+    /* 賽制：遺產市集分淘汰者的背包、法老王的遺物（生命低的先挑） */
+    if (H.lobby) H.lobby(bots, r, rr);
   }
   /* 名次：越晚淘汰越前面；活到最後的照剩下生命 */
   const rk = [...bots].sort((a, b) => (b.out || 99) - (a.out || 99) || b.run.hp - a.run.hp);

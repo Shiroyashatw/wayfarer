@@ -498,7 +498,7 @@ function botPend(run, q, P) {
 }
 /* 0.1.52 印記：差一件就升級的印記多加分（評估時新道具沒有印記，用這個補） */
 function sgBias(run, sg) {
-  if (sg == null || run.mode !== 'sigil') return 1;
+  if (sg == null) return 1;
   const n = sgCount(run.bag)[sg];
   return n === 1 || n === 3 || n === 5 ? 1.25 : n >= 2 ? 1.1 : 1;
 }

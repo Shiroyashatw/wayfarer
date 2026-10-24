@@ -15,6 +15,7 @@ description: 塞令老師的平衡與內容覆蓋檢查。新增或修改道具�
 
 ## 步驟
 
+0. **先跑固定檢查**：`node tools/check.js`（買賣價差、NaN、格子、快照；沒有 ❌ 再往下）。
 1. **開本機遊戲**（`.claude/launch.json` 的 `wayfarer`），網址用 `http://localhost:8000/?p=2&v=任意字`（`v` 換一個值可以避開快取；**改了 JS 但版本號沒變，瀏覽器會用舊檔**）。
 2. **載入檢查腳本**（javascript_exec）：
    ```js

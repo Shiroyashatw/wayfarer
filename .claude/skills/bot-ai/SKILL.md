@@ -5,7 +5,7 @@ description: 塞令老師的機器人（電腦對手）AI 與訓練。新增道�
 
 # 塞令老師 機器人 AI
 
-對手大多是「機器人對局」產生的快照（`run.js` 的 `simLobby`：4 個機器人用跟玩家一樣的規則打一整局，每回合存背包快照，上傳成種子）。機器人笨，快照就弱，玩家就常拿第一。
+一場 6 人：對手最多 2 位是快照（真人優先，不夠用種子），其他都是**即時機器人**（`liveBots`，每回合跟你一起推進）。種子也是機器人打出來的（`simLobby`：6 個機器人用跟玩家一樣的規則打一整局，每回合存背包快照）。所以機器人笨，玩家就常拿第一。
 
 ## 結構
 
@@ -16,7 +16,8 @@ description: 塞令老師的機器人（電腦對手）AI 與訓練。新增道�
   - `botActOld`：0.1.19 以前的舊買法，留著比較用。
 - **即時機器人（0.1.31）**：玩家遇到的機器人對手是 `run.js` 的 `liveBots`，每回合 `startFight` 時 `liveStep` 推進（`botAct`），打完 `liveAfter`（`botAfter`）；估價看大家上一回合的背包（玩家權重 `LIVE_ME`），`run.epet`／`run.eres` 就是從這裡來的。開服種子和訓練仍然用 `simLobby`（6 個機器人互打），兩邊共用 `mkBot`、`botAfter`，改經濟或三選一時只要改 `botAfter`。
 - **`tools/game_node.js`**：在 Node 載入遊戲的純邏輯（core、data、items、bag、sim、run、bot），訓練與大量模擬用。新增遊戲邏輯檔案時把檔名加進 `FILES`（照 `index.html` 的順序，`ui.js` 以後的不用）。
-- **`tools/bot_train.js`**：自我對打調 `BOT_P`。每輪把最好的參數隨機微調成挑戰者，2 對 2 打 N 場比平均名次，明顯比較好就換。
+- **`tools/bot_train.js`**：自我對打調 `BOT_P`。每輪把最好的參數隨機微調成挑戰者，2 對 2 打 N 場比平均名次，明顯比較好就換。`simLobby` 每場照權重抽賽制，所以訓練會涵蓋各賽制。
+- **賽制**：機器人跟賽制有關的決定（流浪商人 `botCaravan`、遺產 `botLegacy`、遺物 `botRelic`、道具身上的詛咒或形狀 `botEx`）；新增賽制照 skill `new-mode` 第 6 步。
 
 ## 什麼時候要重新訓練
 
@@ -32,12 +33,12 @@ description: 塞令老師的機器人（電腦對手）AI 與訓練。新增道�
    node tools/bot_train.js --vs-old
    ```
    現在的機器人平均名次要明顯低於舊買法（0.1.20 時 1.5 對 3.5）。
-3. **訓練**（背景跑，約 0.4 秒一場；30 輪 × 40 場約 8 分鐘）：
+3. **訓練**（背景跑；0.1.59 時一場約 3.8 秒，30 輪 × 40 場約 1 小時多）：
    ```bash
    node tools/bot_train.js --iters 30 --lobbies 40 --write
    ```
    會印每一輪挑戰者 vs 目前的平均名次，最後印最好的參數並寫回 `js/bot.js` 的 `BOT_P`（只換數字，註解保留）。不想寫回就拿掉 `--write`。
-4. **檢查**：`node tools/pve_check.js 40 0.8`（PvE 勝率、對戰秒數）；職業名次在 Node 直接跑 `simLobby` 統計（見 CHANGELOG 0.1.20 的做法），或用 skill `balance` 在瀏覽器跑用 skill `balance` 跑 `sims('class')`、`sims('pve')`、`sims('fair')`。機器人變強以後，PvE（菁英、首領）勝率會變高、職業強弱可能換人，要一起看；公平性的對戰勝率約 50%（代打的也是同一個機器人腦）。
+4. **檢查**：`node tools/check.js`（不變量，沒有 ❌）、`node tools/pve_check.js 40 0.8`（PvE 勝率、對戰秒數）；職業名次在 Node 直接跑 `simLobby` 統計（見 CHANGELOG 0.1.20 的做法），或用 skill `balance` 在瀏覽器跑用 skill `balance` 跑 `sims('class')`、`sims('pve')`、`sims('fair')`。機器人變強以後，PvE（菁英、首領）勝率會變高、職業強弱可能換人，要一起看；公平性的對戰勝率約 50%（代打的也是同一個機器人腦）。
 5. **重傳種子**：機器人變了，舊的種子快照就跟新的規則不一樣，換 `GVER` 再重傳種子（skill `ghost-seed`：先 push 上線，再在瀏覽器背景跑 `seedGhosts`、到資料庫確認）。
 6. 上版前用 `python3 tools/setver.py` 升版本號（`bot.js` 也在 `index.html` 裡，網址帶版本號）。
 

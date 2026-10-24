@@ -13,6 +13,8 @@
 - 圖示：新增道具或借用圖示（`ic`）後用 skill `icon-check`：`python3 tools/icon_check.py` 產生 `docs/圖示對照.md`（名字 ↔ 圖示原本畫的東西），對不上就換圖示或改名字。
 - 機器人：新增道具、體系、機制或改經濟、戰鬥規則後用 skill `bot-ai`：確認 `js/bot.js` 的 `botPower` 有算到新東西，`node tools/bot_train.js --iters 30 --lobbies 40 --write` 重新訓練，再重傳種子。
 - 種子與快照：要上版而且改了道具、核心、職業、回合表、經濟或機器人時用 skill `ghost-seed`（判斷要不要換 `GVER`、push 上線後在瀏覽器重傳種子、到資料庫確認）。
+- 檢查：改了遊戲邏輯（道具、核心、賽制、經濟、戰鬥、商店、合成、快照格式）都跑 `node tools/check.js`（整局模擬＋不變量：買了馬上賣不會賺、沒有 NaN、格子不重疊、快照還原一樣），沒有 ❌ 才交差；重構前後用 `--golden` 比對結果要一模一樣。
+- 賽制：新增或修改賽制用 skill `new-mode`。賽制的差別只透過 `run.js` 的 `MODEH`（規則掛勾）和 `ui.js` 的 `MODEUI`（畫面），不要再寫 `run.mode === '…'`。
 - 平衡：改道具、職業、核心、怪物、經濟或升階倍率後用 skill `balance`（核心統計：`node tools/core_stats.js 500 1300 --write`）：跑 `.claude/skills/balance/balance.js` 的 `coverage()`（各體系各星級、輔助、異常來源、職業、核心、圖示、說明文字）與 `sims()`（職業名次、PvE 勝率、公平性、局長、背包成長），沒有 ❌ 才交差。
 
 ## 專案結構
@@ -37,7 +39,7 @@
 | `js/items.js` | 道具 `ITEMS`（形狀、星級、標籤、效果、相鄰加成）、職業核心、升階、詞綴、說明文字 |
 | `js/bag.js` | 背包格子、擺放、相鄰、合成 `mergeAll`、把背包算成戰鬥數值 `compileBag`、快照格式 |
 | `js/sim.js` | 自動戰鬥模擬 `simulate`（純計算、固定亂數、輸出事件時間軸） |
-| `js/run.js` | 一局流程：回合、商店、經濟、野怪與首領 `MOBS`、開戰與結算、名次、機器人對局 `simLobby`／`makeBots` |
+| `js/run.js` | 一局流程：回合、商店、經濟、野怪與首領 `MOBS`、開戰與結算、名次、賽制掛勾 `MODEH`、機器人對局 `simLobby`／`makeBots` |
 | `js/bot.js` | 機器人的腦：戰力分數 `botPower`、每回合的決定 `botAct`（買、擺、賣、合成、升背包、刷新、三選一）、訓練出來的參數 `BOT_P`、舊買法 `botActOld`（skill `bot-ai`） |
 | `js/ghost.js` | 快照對戰：Supabase `runs`／`snaps` 存取、配對 `ghostRivals`（不夠就機器人補位） |
 | `js/audio.js` | Web Audio 合成音樂與音效 |
@@ -51,6 +53,7 @@
 | `tools/icon_sheets.py` | 圖示圖表：從 `docs/圖示提示詞.md` 組出 `docs/圖示圖表.md`（8×8 一張 64 個），圖表原圖放 `art/sheets/`，`process` 全部切成 `art/icons/` 的單張、跑 `art.py` 打包，最後 `archive`（有圖的提示詞搬到 `docs/提示詞封存.md`；切過的圖表整張移除、原圖搬到 `art/sheets/done/`）；圖表編號固定 |
 | `tools/game_node.js` | 在 Node 載入遊戲純邏輯（core～bot），給訓練與大量模擬用 |
 | `tools/bot_train.js` | 機器人訓練：自我對打調 `BOT_P`，`--vs-old` 跟舊買法比，`--write` 寫回 `js/bot.js`（skill `bot-ai`） |
+| `tools/check.js` | 固定檢查：每個賽制整局跑（機器人代打）＋不變量；`--modes`、`--games`、`--golden`（重構前後比對）；有 ❌ 時結束碼 1 |
 | `tools/pve_check.js` | Node 版 PvE 勝率與對戰秒數：`node tools/pve_check.js 局數 q [MOB_HP] [MOB_DMG]` |
 | `tools/icon_check.py` | 圖示對照：每件道具的圖示原本畫的是什麼（讀 `docs/提示詞封存.md` 等提示詞），輸出 `docs/圖示對照.md` 與候選圖示；加關鍵字只列相關的（skill `icon-check`） |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（檔案照 `index.html` 的順序），並檢查 CODEMAP 裡失效的名稱 |

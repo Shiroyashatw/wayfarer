@@ -167,10 +167,12 @@ const coreProp = (its, k) => Math.max(0, ...its.flatMap(o => defsOf(o).map(d => 
 /* 賣價：融合過的連輔助一起算；0.1.35 回扣送的（z）賣 0 金 */
 /* 0.1.54 狂風市集：這回合買的（o.bt 是買的回合）賣 0 金，不然買了馬上賣掉等於免費刷新商店 */
 /* 0.1.59 pp：買的時候付得比賣價少（六合彩打亂成 0 金、1 金的高星）就記下付了多少，賣價最多是那麼多，不然 0 金買、馬上賣掉白賺 */
-const sellO = (o, run) =>
-  o.z || (run && run.mode === 'gale' && o.bt === run.ri)
-    ? 0
-    : Math.min(o.pp ?? Infinity, sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0));
+function sellO(o, run) {
+  if (o.z) return 0;
+  const v = Math.min(o.pp ?? Infinity, sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0)),
+    H = run ? modeH(run) : {};
+  return H.sell ? H.sell(run, o, v) : v;
+}
 /* 融合過的名字 */
 const fuName = o => (o.f && ITEMI[o.f] ? ITEMI[o.f].tf.n + '・' : '') + ITEMI[o.id].n;
 /* 質變後的標籤（原本的＋質變多的） */
