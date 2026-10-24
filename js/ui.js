@@ -44,13 +44,15 @@ function paintSprites(root = document) {
     x.clearRect(0, 0, cv.width, cv.height);
     x.drawImage(sp, 0, 0);
   });
-  root.querySelectorAll('canvas[data-anim]').forEach(cv => cv.playing || avFrame(cv, 1));
+  root.querySelectorAll('canvas[data-anim]').forEach(cv => cv.playing || avFrame(cv, avIdle(cv.dataset.anim)));
 }
 /* 0.1.62 會動的頭像（AVANIM）：戰鬥中用整格 64×64 的動畫圖，平常停在第 1 格，武器出手時播一次攻擊 */
 const avCv = (av, cls = '') =>
   AVANIM[av]
     ? `<canvas class="spr anim ${cls}" data-anim="${av}" width="64" height="64"></canvas>`
     : sprCv('a_' + av, cls);
+/* 0.1.68 站姿是哪一格（AVANIM 的 i，沒寫就是第 1 格） */
+const avIdle = av => (AVANIM[av] && AVANIM[av].i) || 1;
 function avFrame(cv, k) {
   const a = artImg(cv.dataset.anim + '_atk');
   if (!a || !a.im.complete || !a.im.naturalWidth) return;
@@ -68,7 +70,7 @@ function avPlay(sp) {
   const step = () => {
     if (i >= A.f.length) {
       cv.playing = 0;
-      return avFrame(cv, 1);
+      return avFrame(cv, avIdle(cv.dataset.anim));
     }
     const k = A.f[i++];
     avFrame(cv, k);
