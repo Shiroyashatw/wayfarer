@@ -248,4 +248,4 @@ const VANI = Object.fromEntries(VANS.map(v => [v.k, v]));
 /* 0.1.52 s22：賽制（印記存在快照裡）、種子 300 局 */
 /* 0.1.53 s23：馴獸師核心重製（同一個核心編號換了效果）、四兇、成長存進快照 */
 const GVER = 's23';
-const VER = '0.1.55';
+const VER = '0.1.56';

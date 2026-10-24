@@ -96,5 +96,6 @@ const SFX = {
   nope: () => tone(180, 0.12, 'square', 0.06)
 };
 function sfx(n) {
-  if (AU.ctx && S.sfx) SFX[n]();
+  /* 0.1.56 沒有這個音效就不播（之前叫到不存在的音效會丟錯，後面的存檔、重畫都沒做：流浪商人、獻祭按了沒反應） */
+  if (AU.ctx && S.sfx && SFX[n]) SFX[n]();
 }

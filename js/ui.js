@@ -703,7 +703,7 @@ function vanGo(arg) {
   const run = S.run,
     r = vanDo(run, arg);
   if (typeof r === 'string') return toast(r);
-  snd('buy');
+  snd('coin');
   toast(r.got ? `拿到 ${ITEMI[r.got.id].n}${tierTxt(r.got.t)}` : '雙胞胎：這回合下一件買的道具送一件一樣的');
   save();
   render();
@@ -777,7 +777,7 @@ function sacPick(sel = []) {
             () => {
               const r = sacrifice(run, sel);
               if (typeof r === 'string') return toast(r);
-              snd('buy');
+              snd('coin');
               toast(
                 r.length
                   ? `召喚了 ${r.map(id => ITEMI[id].n).join('、')}！`
