@@ -19,7 +19,7 @@
 | 野怪、菁英、首領 | `js/run.js` | `MOBS`（照回合編號）、`mobOf`（沒指定的菁英從 `ELITE_POOL` 挑、照階段放大）、`eliteStars`（戰利品星級）、`mkF`／`mkW` |
 | 開戰、結算、獎勵三選一、名次 | `js/run.js` | `startFight`、`opponentOf`、`finishFight`、`takePick`、`endRun`、`finalPlace`、對手 `rivalAlive`／`aliveRivals` |
 | 機器人對手（4 個一場真的互打） | `js/run.js` | `simLobby`（名次、每回合快照）、`makeBots`、`botAct`（`q` 越高買法越聰明）、`THEMES`；第 1 名對局之後的回合沿用最後快照 `rivalSnap`；隨機名字 `randName`（data.js） |
-| 快照對戰（Supabase） | `js/ghost.js`、`supabase/migrations/20261022000000_serling_ghosts.sql` | `ghostRivals`（配對＋機器人補位）、`ghostBegin`、`ghostSnap`、`ghostEnd`、`GHOST.off`、開服種子 `seedGhosts`；資料表 `runs`（`seed` 欄位）／`snaps`、RPC `pick_rivals`（真人優先） |
+| 快照對戰（Supabase） | `js/ghost.js`、`supabase/migrations/20261022000000_serling_ghosts.sql` | `ghostRivals`（配對＋機器人補位）、`ghostBegin`、`ghostSnap`、`ghostEnd`、`GHOST.off`、開服種子 `seedGhosts`；資料表 `runs`（`seed` 欄位）／`snaps`、RPC `pick_rivals_mt`（0.1.69 同賽制＋主題）（真人優先） |
 | 首頁、圖鑑、說明、設定 | `js/ui.js` | `render`、`homeHTML`、`codexHTML`、`helpHTML`、`settingsHTML`、`go` |
 | 準備畫面（回合列、背包、暫存區、商店、道具說明） | `js/ui.js` | `prepHTML`、`roundBarHTML`、`bagHTML`、`rivalHTML`、`detailHTML`、`tutHTML`、`cellSize` |
 | 金幣旁的下回合預估收入（0.1.25） | `js/run.js`、`js/ui.js` | `incomeEst`（[輸, 贏]）、`incomeOf`、`winGold`（run）；`incTxt`、`.gold .inc`（ui） |
@@ -83,6 +83,8 @@
 | 道具池：基本池＋主題池（0.1.62） | `js/items.js`、`js/data.js`、`js/run.js`、`js/ui.js`、`tools/pools.js` | `POOLS`／`ITEM_TH`／`thOf`／`thOK`、道具的 `th`（items）；`POOLTH`／`POOLTHI`／`MODE_TH_BAN`（data）；`poolOK`、`rollTheme`、`setTheme`、`simLobby` 的 theme（run）；`wheelEnd2`、`modeBarHTML` 的道具池標籤、動作 `thInfo`、`thName`（ui）；`docs/道具池.md` |
 | 主題道具的機制（0.1.62） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js` | 新形狀與凹口 `SHHOLE`／`holeOf`；`compileBag` 的 `self`、`perAdj`、`perAdjF`、`hole`、`gear`、`chainAdj`、`nth`、`wake`；`sim` 出手後的 `nth`／`gear`／`drv`；`botPower` 的 `HIT`；`findSpot` 的凹口 |
 | 賽制框架（0.1.60：每個賽制一份掛勾，新增賽制用 skill `new-mode`） | `js/run.js`、`js/ui.js` | `MODEH`／`modeH`（share、fix、slot、item、price、sell、bought、reroll、round、fought、lobby、luck、winBonus、fight）、`setMode`、`modeShareOf`／`modeShare`、`modeFix`、`shopItem`（run）；`MODEUI`／`modeUI`（intro、bar、info、panel）（ui） |
+| 雙修、塔羅牌陣（0.1.69：別的職業的核心四選一＋刷新；22 張大牌正逆位、四選一、經濟與戰鬥效果、獻祭、命運之輪四選一） | `js/data.js`、`js/run.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js` | `TAROT`／`tarOf`／`TAROT_AT`、`DUAL_N`（data）；`MODEH.dual.core2`、`bossCores`、`rerollCores`、`MODEH.tarot`、`tarotTick`／`tarotPick`／`tarotRound`／`tarotFx`／`tarotShop`／`tarotWheel`／`tarHit`／`tarotSac`、`rerollNo`、`buyNo`／`sellNo`（run）；`tarotF`、`synView`、`packBag` 的 `tar`／`tn`／`hx`（bag）；`tarCopy`／`tarMiss`／`tarRefl`／`tarHi`／`tarLow`（sim）；`botTarot`（bot）；`tarotHTML`、`MODEUI.tarot`、動作 `tarotPick`／`tarotSac`／`pickRe`（ui） |
+| 棋盤王國、黃道十二宮（0.1.69：棋子走法、棋盤武器、星座算系、羈絆 8／10 件、星座武器、主題武器產生器） | `js/items.js`、`js/bag.js`、`js/data.js`、`js/ui.js` | `THEME_ITEMS`、`PC_DIR`／`PC_TXT`、`ZOD_ADJ`、`genThemeW`、`itemDesc` 的 `pc`／`pcHit`／`synPer`／`zod`（items）；`pcTargets`、`synCount` 的星座、`synMax`、`compileBag` 的棋子與 `synPer`、`bagMods` 的 `pc`（bag）；`POOLTH`、`SYN_AT`／`synLv(n, mx)`（data）；`synInfoHTML`、`CX_STAT`（ui） |
 | 統計（0.1.61，skill `stats`） | `tools/stats.js`、`tools/core_stats.js` | 道具購買率／對口職業購買率／持有／名次、冷門熱門、職業 × 賽制名次；`--jobs` 平行、`--save`／`--diff`；真人資料的 SQL 在 skill |
 | 固定檢查（0.1.60） | `tools/check.js` | 整局模擬＋不變量（買賣價差、NaN、格子、快照還原、星象 × 怪物、七十二變 1★）、`--golden` 重構比對 |
 | 賽制（0.1.59：詛咒寶藏、七十二變、星象輪轉、法老王的遺物、遺產市集） | `js/data.js`、`js/run.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`js/items.js`、`css/style.css` | `CURSES`／`CURSE_P`、`ASTROS`、`RELICS`／`RELIC_AT`、`LEGACY_RC`（data）；`curseRoll`、`rollShm`／`shmOf`／`modeFix`、`rollAstro`／`astroAt`／`astroF`／`fightF`、`relicOpts`／`relicTake`／`relicOpen`／`relicPick`、`legacyDrop`／`legPrice`／`legacyBuy`（run）；`shapeO`（items）；`compileBag` 的詛咒與遺物、`mergeAll` 的詛咒疊加、`packIt` 的 `sh`／`cu`、`packBag` 的 `rel`（bag）；安卡 `F.ankh`（sim）；`botEx`、`botRelic`、`botLegacy`（bot）；`cuBadge`、`cuLineHTML`、`astroListHTML`、`relicLine`、`relicHTML`、`legHTML`、動作 `relicPick`／`legSel`／`legBuy`（ui）；`.cub`、`.astl`、`.relo`、`.leg`（css） |
@@ -120,9 +122,9 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（419 行）
+### js/data.js（684 行）
 
-- **一局**（5），50 個宣告
+- **一局**（5），55 個宣告
 
 ### js/sprites.js（139 行）
 
@@ -131,42 +133,44 @@
 ### js/art.js（1666 行）
 
 
-### js/items.js（4374 行）
+### js/items.js（4716 行）
+
+- **0.1.69 棋盤王國（c）、黃道十二宮（z）**（3218），70 個宣告
+
+### js/bag.js（1173 行）
+
+- **0.1.62 系別羈絆**（204），4 個宣告
+- **合成**（307），3 個宣告
+- **戰鬥數值**（400），10 個宣告
+
+### js/sim.js（1314 行）
 
 
-### js/bag.js（956 行）
-
-- **0.1.62 系別羈絆**（204），1 個宣告
-- **合成**（223），3 個宣告
-- **戰鬥數值**（309），9 個宣告
-
-### js/sim.js（1276 行）
-
-
-### js/run.js（1987 行）
+### js/run.js（2193 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），8 個宣告
-- **0.1.59 七十二變、星象輪轉**（299），7 個宣告
-- **0.1.62 道具池的主題**（378），11 個宣告
-- **0.1.36 池子**（560），40 個宣告
-- **對手**（931），16 個宣告
-- **戰鬥**（1033），23 個宣告
-- **0.1.52 流浪商隊**（1419），7 個宣告
-- **0.1.59 法老王的遺物**（1547），4 個宣告
-- **0.1.59 遺產市集**（1592），8 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1752），4 個宣告
-- **即時機器人（0.1.30）**（1914），5 個宣告
+- **0.1.59 七十二變、星象輪轉**（301），7 個宣告
+- **0.1.62 道具池的主題**（380），12 個宣告
+- **0.1.36 池子**（595），43 個宣告
+- **對手**（983），16 個宣告
+- **戰鬥**（1086），23 個宣告
+- **0.1.52 流浪商隊**（1484），7 個宣告
+- **0.1.59 法老王的遺物**（1612），4 個宣告
+- **0.1.69 塔羅牌陣**（1657），11 個宣告
+- **0.1.59 遺產市集**（1776），9 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1948），4 個宣告
+- **即時機器人（0.1.30）**（2120），5 個宣告
 
-### js/bot.js（739 行）
+### js/bot.js（796 行）
 
 - **戰力分數**（22），19 個宣告
-- **每回合**（490），8 個宣告
+- **每回合**（490），10 個宣告
 
-### js/ghost.js（215 行）
+### js/ghost.js（237 行）
 
-- **排行榜（0.1.29）**（139），2 個宣告
-- **開服種子資料（開發用）**（166），1 個宣告
+- **排行榜（0.1.29）**（152），2 個宣告
+- **開服種子資料（開發用）**（179），1 個宣告
 
 ### js/audio.js（102 行）
 
@@ -177,24 +181,24 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（443 行）
+### js/news.js（453 行）
 
 
-### js/ui.js（3245 行）
+### js/ui.js（3338 行）
 
 - **小工具**（6），19 個宣告
 - **牌階**（111），5 個宣告
 - **主題**（214），4 個宣告
 - **畫面切換**（233），2 個宣告
-- **首頁**（273），3 個宣告
-- **準備畫面**（365），19 個宣告
-- **0.1.52 賽制**（716），18 個宣告
-- **0.1.62 系別羈絆**（928），28 個宣告
-- **結算、三選一、一局結束**（1250），6 個宣告
-- **戰鬥播放**（1306），28 個宣告
-- **圖鑑、說明、設定**（2078），10 個宣告
-- **動作**（2324），12 個宣告
-- **拖曳擺放**（2924），14 個宣告
+- **首頁**（275），3 個宣告
+- **準備畫面**（368），19 個宣告
+- **0.1.52 賽制**（720），22 個宣告
+- **0.1.62 系別羈絆**（964），28 個宣告
+- **結算、三選一、一局結束**（1298），6 個宣告
+- **戰鬥播放**（1356），28 個宣告
+- **圖鑑、說明、設定**（2128），10 個宣告
+- **動作**（2386），12 個宣告
+- **拖曳擺放**（3014），14 個宣告
 
 ### js/main.js（74 行）
 

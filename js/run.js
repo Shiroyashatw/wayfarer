@@ -268,6 +268,8 @@ const bonusGold = run => {
   /* 0.1.59 詛咒・吸金、遺物・黃金面具 */
   for (const o of run.bag.items) if (o.cu && CURSES[o.cu[0]] && CURSES[o.cu[0]].k === 'drain') n -= cuV(o);
   if ((run.bag.rel || []).includes('mask')) n += 2;
+  /* 0.1.69 塔羅・皇帝逆位 */
+  if (run.bag.tar === 'emperor_r') n += 2;
   return n;
 };
 /* 0.1.8 選完職業送的起手道具：放進暫存區，回傳道具代號 */
@@ -298,9 +300,9 @@ function rollMode(rand) {
 }
 /* ================= 0.1.59 七十二變、星象輪轉 ================= */
 /* 七十二變：這局每件道具換成哪個形狀（run.shm：道具 → SH 的鍵）。同一場大家一樣（即時機器人、機器人對局共用一份）；
-   形狀是道具本身的總表打亂後重新發：1★ 只拿 3 格以內、放得進 3×3 的。核心、核心送的、魔劍正宗這種看形狀的不換 */
+   形狀是道具本身的總表打亂後重新發：1★ 只拿 3 格以內、放得進 3×3 的。核心、核心送的、魔劍正宗這種看形狀的不換；0.1.69 棋子一定是 1 格 */
 function rollShm(rand) {
-  const ids = ITEMS.filter(it => shopOK(it) && !it.absorb && !it.hatch).map(it => it.id),
+  const ids = ITEMS.filter(it => shopOK(it) && !it.absorb && !it.hatch && !it.pc).map(it => it.id),
     bag = ids.map(id => ITEMI[id].sh),
     small = k => SH[k].length <= 3 && Math.max(...SH[k].flat()) < 3,
     out = {},
@@ -410,13 +412,16 @@ function modeFix(run) {
      price(run, s, p)       商店那一格的價格
      sell(run, o, v)        賣價（v 是原本的賣價）
      bought(run, s, o)      買完一件
-     reroll                 不能刷新：寫原因
+     reroll                 不能刷新：寫原因（0.1.69 也可以是函式 run => 原因或空）
+     shop(run, used)        整排商店抽完（多一格、保底某種道具）
+     buy(run)／sellNo(run)  不能買、不能賣：回傳原因
      round(run)             每回合開始（nextRound：收入、商店之前）
      fought(run, r)         玩家那局打完一回合（對手也打完、淘汰也算完）
      lobby(bots, r, rr)     機器人對局（simLobby）打完一回合；bots 是還在場上和這回合淘汰的
      luck(run)              打贏時多拿 2 金的機率判定（會用掉亂數）
      winBonus(run, r)       打贏多拿的金幣（固定的，收入預估也算）
      fight(run, F, st)      戰鬥數值（雙方、怪物都套，回傳複本）
+     core2                  第二個核心（4-4 首領）的選法：{ n: 幾選一, re: 可以刷新幾次, other: 1 是別的職業的核心 }
    排除的核心寫在 MODES 的 ban（data.js） */
 const MODEH = {
   gale: {
@@ -424,7 +429,8 @@ const MODEH = {
     /* 0.1.54 這回合買的賣 0 金，不然買了馬上賣掉等於免費刷新商店 */
     sell: (run, o, v) => (o.bt === run.ri ? 0 : v),
     bought: run => rollShop(run),
-    reroll: '狂風市集不能刷新：買一件，商店就會整排換新'
+    reroll: '狂風市集不能刷新：買一件，商店就會整排換新',
+    rerollNote: '買一件就換新'
   },
   sigil: {
     fix: (run, o) => o.sg == null && (o.sg = fl(r01(run) * SIGILS.length)),
@@ -484,6 +490,24 @@ const MODEH = {
       for (const b of [...live].sort((a, c) => a.run.hp - c.run.hp)) relicTake(b.run, opts, b.q, b.P);
     }
   },
+  dual: { core2: { n: DUAL_N, re: DUAL_RE, other: 1 } },
+  tarot: {
+    round: run => tarotRound(run),
+    price: (run, s, p) => {
+      const k = run.bag.tar;
+      if (p <= 0) return p;
+      if (k === 'hanged_r') return Math.max(1, p - 1);
+      if (k === 'priestess_r' && !run.tarBuy) return 1;
+      return p;
+    },
+    bought: run => (run.tarBuy = 1),
+    reroll: run => (run.bag.tar === 'wheel_r' ? '命運之輪（逆位）：這兩個階段不能刷新商店' : ''),
+    rerollNote: '命運之輪',
+    shop: (run, used) => tarotShop(run, used),
+    buy: run => (run.bag.tar === 'hanged' ? '倒吊人：這兩個階段不能買' : ''),
+    sellNo: run => (run.bag.tar === 'hanged_r' ? '倒吊人（逆位）：這兩個階段不能賣' : ''),
+    winBonus: run => (run.bag.tar === 'sun' ? 2 : 0)
+  },
   legacy: {
     round: run => run.leg && (run.leg = run.leg.filter(e => e.lx >= run.ri)),
     /* 這回合淘汰的對手：背包分給還活著的人 */
@@ -524,8 +548,9 @@ const sgCount = bag => {
   for (const o of bag.items) if (o.sg != null && !ITEMI[o.id].core) n[o.sg]++;
   return n;
 };
-/* 開新的一局；rivals 是 3 位對手（ghost.js 配好，或機器人） */
-function newRun(rivals) {
+/* 開新的一局；rivals 是對手（ghost.js 配好，或機器人）。
+   0.1.69 先抽好賽制、主題再配對手（快照只配同一個賽制＋主題）：newRun() 不帶對手，配好再 joinRivals */
+function newRun(rivals = []) {
   const run = newRunState((Math.random() * 2 ** 31) | 0);
   /* 0.1.52 賽制：開場公開（phase 'mode'）後才選職業；即時機器人跟你同一個賽制 */
   run.rivals = rivals;
@@ -538,10 +563,8 @@ function newRun(rivals) {
     run,
     rollTheme(() => r01(run), run.mode)
   );
-  /* 0.1.26 對手的生命在這局裡算（rv.hp），快照只提供每回合的背包 */
-  for (const rv of rivals) rv.hp = START_HP;
+  joinRivals(run, rivals);
   Object.assign(run, {
-    rivals,
     rp: 0,
     log: [],
     phase: 'prep',
@@ -554,6 +577,18 @@ function newRun(rivals) {
   run.clsOpts = rollClasses(run);
   run.clsRe = 1;
   return run;
+}
+/* 對手加進這局：生命在這局裡算（0.1.26，rv.hp，快照只提供每回合的背包）；即時機器人跟你同一個賽制、主題 */
+function joinRivals(run, rivals) {
+  run.rivals = rivals;
+  for (const rv of rivals) {
+    rv.hp = START_HP;
+    if (!rv.live) continue;
+    rv.live.run.mode = run.mode;
+    modeShare(rv.live.run, run.share || {});
+    modeFix(rv.live.run);
+    rv.live.run.theme = run.theme;
+  }
 }
 const curRound = run => ROUNDS[run.ri];
 /* 商店的一格：照背包等級的機率抽星級；lotto：0.1.35 六合彩的那一輪更常出高星 */
@@ -689,8 +724,10 @@ function rollShop(run, lotto) {
     poolAdd(used, s.id, s.t);
     return s;
   });
+  /* 0.1.69 賽制：整排商店抽完（塔羅的多一格、保底） */
+  if (modeH(run).shop && run.ri > 0) modeH(run).shop(run, used);
   /* 0.1.35 六合彩：價格打亂成 0 金～5★ 的價格（p） */
-  if (lotto) for (const s of run.shop) s.p = fl(r01(run) * (5 * 3 ** (s.t - 1) + 1));
+  if (lotto) for (const s of run.shop) if (s) s.p = fl(r01(run) * (5 * 3 ** (s.t - 1) + 1));
 }
 /* 0.1.59 詛咒寶藏：隨機一個詛咒（沉睡只給武器） */
 function curseRoll(run, id) {
@@ -748,9 +785,12 @@ function shopItem(run, s, p) {
   return o;
 }
 /* 買：放進暫存區，湊滿 3 件就合成 */
+const buyNo = run => (modeH(run).buy ? modeH(run).buy(run) : '');
+const sellNo = run => (modeH(run).sellNo ? modeH(run).sellNo(run) : '');
 function buyItem(run, k) {
   const s = run.shop[k];
   if (!s) return '這格已經買了';
+  if (buyNo(run)) return buyNo(run);
   const p = slotPrice(run, s);
   if (run.gold < p) return '金幣不夠';
   const fi = benchFree(run);
@@ -790,11 +830,13 @@ function kickback(run) {
 /* 買這件會不會馬上湊滿合成（3 件，二天一流 2 件；暫存區滿了也能買） */
 const wouldMerge = (run, id, t = 1) =>
   [...run.bag.items, ...run.bench].filter(o => o && o.id === id && o.t === t).length >=
-    mergeNeed([...run.bag.items, ...run.bench, run.bag.core], id) - 1 && t < TIER_MAX;
+    mergeNeed([...run.bag.items, ...run.bench, run.bag.core], id, run.bag.tar === 'magician' ? '*' : undefined) - 1 &&
+  t < TIER_MAX;
 /* 0.1.1 從商店直接拖進背包：買下並放在 (x, y)（放得下才會叫到這裡）；swap 是被擠出來要收進暫存區的道具 */
 function buyToBag(run, k, x, y, r, swap) {
   const s = run.shop[k];
   if (!s) return '這格已經買了';
+  if (buyNo(run)) return buyNo(run);
   const p = slotPrice(run, s);
   if (run.gold < p) return '金幣不夠';
   if (swap && benchFree(run) < 0) return '暫存區滿了，換不下來';
@@ -836,6 +878,7 @@ function swapPlan(run, o, tx, ty, from) {
   return null;
 }
 function sellItem(run, u) {
+  if (sellNo(run)) return 0;
   let o = run.bag.items.find(q => q.u === u);
   if (o) run.bag.items = run.bag.items.filter(q => q !== o);
   else {
@@ -847,20 +890,27 @@ function sellItem(run, u) {
   const v = sellO(o, run);
   run.gold += v;
   if (o.bt === run.ri && run.kb > 0) run.kb--;
+  /* 0.1.69 塔羅・審判：記下賣掉過星級最高的（商店道具才記） */
+  if (vanOK(o) && (!run.soldB || ITEMI[o.id].star >= ITEMI[run.soldB].star)) run.soldB = o.id;
   syncShrink(run);
   return v;
 }
 /* 0.1.33 投機商人：每回合免費刷新次數（run.fr 是這回合用掉的） */
-const freeRolls = run => coreProp(bagAll(run.bag), 'freeRoll') - (run.fr || 0);
+/* 0.1.69 塔羅・命運之輪：每回合多 2 次 */
+const freeRolls = run => coreProp(bagAll(run.bag), 'freeRoll') + (run.bag.tar === 'wheel' ? 2 : 0) - (run.fr || 0);
 /* 0.1.35 豪賭：這回合還能刷新幾次（沒有上限回傳 Infinity；run.nr 是這回合刷新過的次數） */
+/* 0.1.52 狂風市集：不能刷新（原因）；0.1.69 塔羅・命運之輪逆位（函式） */
+const rerollNo = run => {
+  const x = modeH(run).reroll;
+  return typeof x === 'function' ? x(run) : x || '';
+};
 const rollsLeft = run => {
-  /* 0.1.52 狂風市集：不能刷新 */
-  if (modeH(run).reroll) return 0;
+  if (rerollNo(run)) return 0;
   const c = coreProp(bagAll(run.bag), 'rollCap');
   return c ? Math.max(0, c - (run.nr || 0)) : Infinity;
 };
 function rerollShop(run) {
-  if (modeH(run).reroll) return modeH(run).reroll;
+  if (rerollNo(run)) return rerollNo(run);
   if (rollsLeft(run) <= 0) return '這回合不能再刷新了';
   if (freeRolls(run) > 0) {
     run.fr = (run.fr || 0) + 1;
@@ -891,8 +941,10 @@ function levelUp(run) {
   return '';
 }
 /* 0.1.25 每回合收入：基礎＋利息＋連勝連敗＋額外金幣（nextRound 與準備畫面的預估共用） */
+/* 0.1.69 塔羅・倒吊人：收入 ×2 */
 const incomeOf = (run, gold = run.gold, streak = Math.max(run.ws, run.lsk)) =>
-  Math.max(0, BASE_INCOME + Math.min(INTEREST_MAX, fl(gold / 10)) + streakBonus(streak) + bonusGold(run));
+  Math.max(0, BASE_INCOME + Math.min(INTEREST_MAX, fl(gold / 10)) + streakBonus(streak) + bonusGold(run)) *
+  (run.bag.tar === 'hanged' ? 2 : 1);
 /* 打贏的金幣：PvE +2、其他 +1；0.1.59 星象・豐收月 +1 */
 const winGold = (r, run) => (r.type === 'pve' ? 2 : 1) + (modeH(run).winBonus ? modeH(run).winBonus(run, r) : 0);
 /* 下回合預估拿到的金幣 [輸, 贏]（贏的含打贏獎勵，獎勵也算進利息）；沒有下一回合回傳 null */
@@ -1015,7 +1067,8 @@ function mobOf(run, r) {
 const eliteStars = st => (st <= 2 ? [2, 3] : st <= 4 ? [3, 4] : st <= 6 ? [4, 5] : [5, 5]);
 /* 0.1.29 第 7 階段起商店更常出高星：每過一階段把 1～2★ 的機率挪 8% 給 4～5★（最多 32%） */
 function shopOdds(run) {
-  const od = [...BAGLV[run.lv].odds],
+  /* 0.1.69 塔羅・星星：跟背包高一級一樣 */
+  const od = [...BAGLV[Math.min(BAG_MAX, run.lv + (run.bag.tar === 'star' ? 1 : 0))].odds],
     r = curRound(run),
     sh = Math.min(32, Math.max(0, ((r ? r.st : 1) - 6) * 8));
   if (!sh) return od;
@@ -1059,6 +1112,9 @@ function startFight(run) {
   const r = curRound(run);
   /* 0.1.59 寶庫還沒挑（機器人代打、測試）：拿第一個 */
   if (run.relq) relicPick(run, run.relq.opts[0]);
+  /* 0.1.69 塔羅還沒抽、還沒選（機器人代打、測試）：補抽、照機器人的評估選 */
+  if (run.mode === 'tarot') tarotTick(run);
+  if (run.tarq) tarotPick(run, botTarot(run, run.tarq.opts));
   payBribe(run);
   if (typeof ghostSnap === 'function') ghostSnap(run, r.id);
   /* 0.1.30 即時機器人先推進到這回合（看的是你上一回合的背包），再記下你這回合的背包給下回合用 */
@@ -1156,14 +1212,14 @@ function finishFight(run, fb) {
     if (opp.kind === 'pvp') {
       const rv = run.rivals[opp.rv];
       rv.lw = [r.id, false];
-      out.hit = r.loss + petLoss(run.bag);
+      out.hit = tarHit(rivalBag(rv, r.id).bag, rv, rivalHp(rv), r.loss + petLoss(run.bag));
       rv.hp = rivalHp(rv) - out.hit;
       out.ko = rivalHp(rv) <= 0;
     }
   } else {
     run.lsk++;
     run.ws = 0;
-    out.loss = r.loss + (opp.kind === 'pvp' ? petLoss(opp.bag) : 0);
+    out.loss = tarHit(run.bag, run, run.hp, r.loss + (opp.kind === 'pvp' ? petLoss(opp.bag) : 0));
     run.hp -= out.loss;
     if (opp.kind === 'pvp') run.rivals[opp.rv].lw = [r.id, true];
   }
@@ -1185,13 +1241,22 @@ function finishFight(run, fb) {
   if (r.type === 'boss') {
     /* 0.1.10 2-5 抽自己職業的專屬核心；0.1.34 4-4 不再是副核心，改成第二個專屬核心（融入第一個，不佔格子） */
     const mc = mainCore(run),
+      C2 = mc && modeH(run).core2,
       o = bossCores(run);
     run.pend = {
       kind: 'pick',
-      t: r.st > 2 && mc ? '首領掉落了第二個專屬核心：選一個融入你的核心' : '首領掉落了專屬核心：選一個',
-      opts: o
+      t: C2
+        ? '雙修：選一個別的職業的核心'
+        : r.st > 2 && mc
+          ? '首領掉落了第二個專屬核心：選一個融入你的核心'
+          : '首領掉落了專屬核心：選一個',
+      opts: o,
+      ...(C2 && C2.re ? { re: C2.re } : {})
     };
   }
+  /* 0.1.69 塔羅・命運之輪逆位：每回合打完道具四選一（菁英、首領已經有三選一的回合不給） */
+  if (!run.pend && run.bag.tar === 'wheel_r' && run.hp > 0)
+    run.pend = { kind: 'pick', t: '命運之輪：選一件道具', opts: tarotWheel(run) };
   rivalFights(run, fb);
   liveAfter(run, r);
   /* 賽制：遺產市集分淘汰者的背包 */
@@ -1224,7 +1289,7 @@ function rivalFights(run, fb) {
       if (q[k + 1].live) afterSim(q[k + 1].live.run, res, 1);
       q[k].lw = [r.id, res.win];
       q[k + 1].lw = [r.id, !res.win];
-      lr.hp = rivalHp(lr) - r.loss - petLoss((res.win ? a : b).bag);
+      lr.hp = rivalHp(lr) - tarHit((res.win ? b : a).bag, lr, rivalHp(lr), r.loss + petLoss((res.win ? a : b).bag));
     }
     if (n % 2) {
       const lone = q[n - 1],
@@ -1232,7 +1297,7 @@ function rivalFights(run, fb) {
         res = simulate(fightF(run, a.F, r.st), fb.me, h(run.seed, run.ri, 994));
       if (lone.live) afterSim(lone.live.run, res, 0);
       lone.lw = [r.id, res.win];
-      if (!res.win) lone.hp = rivalHp(lone) - r.loss - petLoss(run.bag);
+      if (!res.win) lone.hp = rivalHp(lone) - tarHit(a.bag, lone, rivalHp(lone), r.loss + petLoss(run.bag));
     }
     return;
   }
@@ -1240,7 +1305,7 @@ function rivalFights(run, fb) {
     const res = simulate(fightF(run, rivalBag(rv, r.id).F, r.st), opp.F, h(run.seed, run.ri, 993 + j));
     if (rv.live) afterSim(rv.live.run, res, 0);
     rv.lw = [r.id, res.win];
-    if (!res.win) rv.hp = rivalHp(rv) - r.loss;
+    if (!res.win) rv.hp = rivalHp(rv) - tarHit(rivalBag(rv, r.id).bag, rv, rivalHp(rv), r.loss);
   });
 }
 /* 打到最後一回合：比剩下的生命 */
@@ -1589,6 +1654,125 @@ function relicPick(run, k) {
   run.relq = null;
   return '';
 }
+/* ================= 0.1.69 塔羅牌陣 ================= */
+/* run.tarot：抽過的牌（'fool'／'fool_r'），最後一張是現在生效的（也放在 run.bag.tar，戰鬥、快照看這個）；
+   run.tarq：玩家還沒選的四選一；run.tarFx：這回合開始的效果已經做過了（回合數） */
+const tarNeed = run => TAROT_AT.filter(st => st <= ((curRound(run) || {}).st || 1)).length;
+function tarotOpts(run) {
+  const seen = (run.tarot || []).map(k => k.replace(/_r$/, '')),
+    c = TAROT.filter(T => !seen.includes(T.k));
+  let o = [];
+  for (let g = 0; g < 20; g++) {
+    const pool = [...c];
+    o = [];
+    while (o.length < TAROT_N && pool.length)
+      o.push(pool.splice(fl(r01(run) * pool.length), 1)[0].k + (r01(run) < 0.5 ? '_r' : ''));
+    const f = o.map(k => TAROT_FIGHT.includes(tarOf(k).e.c));
+    if (f.some(Boolean) && f.some(x => !x)) break;
+  }
+  return o;
+}
+/* 該抽了就抽：玩家等畫面選（tarq），機器人直接選 */
+function tarotTick(run) {
+  run.tarot = run.tarot || [];
+  if (run.tarot.length >= tarNeed(run) || run.tarq) return;
+  const opts = tarotOpts(run);
+  if (!opts.length) return;
+  if (run.rivals) run.tarq = { opts };
+  else tarotPick(run, botTarot(run, opts));
+}
+function tarotPick(run, k) {
+  if (run.tarq && !run.tarq.opts.includes(k)) return '這張不能選';
+  run.tarot = [...(run.tarot || []), k];
+  run.tarq = null;
+  run.bag.tar = k;
+  run.bag.tarN = 0;
+  tarotFx(run);
+  return '';
+}
+/* 每回合開始的效果（選牌那回合選完馬上做一次） */
+function tarotFx(run) {
+  if (run.tarFx === run.ri || run.ri <= 0) return;
+  run.tarFx = run.ri;
+  run.tarBuy = 0;
+  run.tarSac = 0;
+  const k = run.bag.tar;
+  if (k === 'devil' && run.hp > 1) (run.hp = Math.max(1, run.hp - 2)), (run.gold += 5);
+  if (k === 'fool_r') {
+    const c = run.bag.items.filter(o => vanOK(o) && ITEMI[o.id].star <= 4),
+      fi = benchFree(run);
+    if (c.length && fi >= 0) {
+      const o = c[fl(r01(run) * c.length)];
+      run.bench[fi] = Object.assign(newItem(run, o.id, o.t), { z: 1 });
+      mergeAll(run, runR(run));
+    }
+  }
+}
+function tarotRound(run) {
+  const was = run.bag.tar;
+  /* 新的階段要抽新牌：舊的那張到這裡結束 */
+  if ((run.tarot || []).length < tarNeed(run)) (run.bag.tar = null), (run.bag.tarN = 0);
+  tarotTick(run);
+  if (run.bag.tar && run.bag.tar === was) run.bag.tarN = (run.bag.tarN || 0) + 1;
+  if (run.bag.tar) tarotFx(run);
+}
+/* 商店：愚者多一格（星級隨機）、教皇保底職業武器／背包裡有的、審判保底賣掉過最高星的 */
+function tarotShop(run, used) {
+  const k = run.bag.tar,
+    put = id => {
+      if (!id || run.shop.some(s => s && s.id === id)) return;
+      run.shop[fl(r01(run) * run.shop.length)] = { id, t: 1 };
+      poolAdd(used, id, 1);
+    };
+  if (k === 'fool') {
+    const st = 1 + fl(r01(run) * 5),
+      id = rollItem(run, false, used, it => it.star === st);
+    if (id) run.shop.push({ id, t: 1 }), poolAdd(used, id, 1);
+  }
+  if (k === 'hierophant') {
+    const tags = clsWeaponTags(run.bag.cls),
+      isW = it => it.dmg && tags.some(t => it.tags.includes(t));
+    if (!run.shop.some(s => s && isW(ITEMI[s.id]))) put(rollItem(run, false, used, isW));
+  }
+  if (k === 'hierophant_r') {
+    const own = [
+      ...new Set([...run.bag.items, ...run.bench].filter(o => o && vanOK(o) && poolOK(run, ITEMI[o.id])).map(o => o.id))
+    ];
+    if (own.length && !run.shop.some(s => s && own.includes(s.id))) put(own[fl(r01(run) * own.length)]);
+  }
+  if (k === 'judgement' && run.soldB && poolOK(run, ITEMI[run.soldB])) put(run.soldB);
+}
+/* 命運之輪逆位：四件，星級照商店機率 */
+function tarotWheel(run) {
+  const used = poolUsed(run),
+    o = [];
+  for (let g = 0; o.length < 4 && g < 12; g++) {
+    const id = rollItem(run, false, used);
+    if (id && !o.includes(id)) o.push(id), poolAdd(used, id, 1);
+  }
+  return o;
+}
+/* 輸了扣的生命：正義逆位減半；死神逆位第一次淘汰留 1 生命（who.tdx 記用過了） */
+function tarHit(bag, who, hp, loss) {
+  if (bag && bag.tar === 'justice_r') loss = Math.ceil(loss / 2);
+  if (bag && bag.tar === 'death_r' && hp > 1 && hp - loss <= 0 && !who.tdx) (who.tdx = 1), (loss = hp - 1);
+  return loss;
+}
+/* 死神正位：獻祭一件，換永久生命（bag.hpx，快照也算） */
+const tarSacHp = o => ITEMI[o.id].star * (o.t || 1) * 15;
+function tarotSac(run, u) {
+  if (run.bag.tar !== 'death') return '現在不是死神';
+  if (run.tarSac) return '這回合已經獻祭過了';
+  const o = [...run.bag.items, ...run.bench].find(q => q && q.u === u);
+  if (!o || ITEMI[o.id].core) return '這件不能獻祭';
+  run.bag.items = run.bag.items.filter(q => q !== o);
+  const i = run.bench.indexOf(o);
+  if (i >= 0) run.bench[i] = null;
+  run.bag.hpx = (run.bag.hpx || 0) + tarSacHp(o);
+  run.tarSac = 1;
+  syncShrink(run);
+  return '';
+}
 /* ================= 0.1.59 遺產市集 ================= */
 /* 淘汰的人的背包（核心以外）一件一件隨機分給 to（還活著的那幾局），放在遺產攤位 run.leg，LEGACY_RC 回合後消失（lx 是最後一回合；ex 是終極藥劑的效果，不要撞名） */
 /* 回傳 run 自己分到幾件 */
@@ -1662,20 +1846,32 @@ function sealTick(run) {
     } else (o.id = old), (o.rc = SEAL_RC - 1), osh && (o.sh = osh);
   }
 }
-/* 首領的核心三選一：自己職業的專屬核心，排除已經有的（第一個和融入的） */
-function bossCores(run) {
+/* 首領的核心三選一：自己職業的專屬核心，排除已經有的（第一個和融入的）。
+   0.1.69 雙修（core2）：第二個核心是別的職業的，四選一；not 是刷新時不要再出現的 */
+function bossCores(run, not = []) {
   const mc = mainCore(run),
+    C2 = mc && modeH(run).core2,
     own = mc ? [mc.id, mc.sc] : [],
     ban = (MODEI[run.mode] || {}).ban || [],
-    cs = ITEMS.filter(
-      i => i.core === 1 && (!run.bag.cls || i.cls === run.bag.cls) && !own.includes(i.id) && !ban.some(k => i[k])
-    ).map(i => i.id),
+    clsOK = i => !run.bag.cls || (C2 && C2.other ? i.cls !== run.bag.cls : i.cls === run.bag.cls);
+  let cs = ITEMS.filter(i => i.core === 1 && clsOK(i) && !own.includes(i.id) && !ban.some(k => i[k])).map(i => i.id);
+  const fresh = cs.filter(id => !not.includes(id)),
+    n = C2 ? C2.n : 3,
     o = [];
-  while (o.length < Math.min(3, cs.length)) {
+  if (fresh.length >= n) cs = fresh;
+  while (o.length < Math.min(n, cs.length)) {
     const c = pick(run, cs);
     if (!o.includes(c)) o.push(c);
   }
   return o;
+}
+/* 0.1.69 雙修：刷新核心選項（pend.re 次），盡量不跟這次的重複 */
+function rerollCores(run) {
+  const P = run.pend;
+  if (!P || !(P.re > 0)) return '不能刷新了';
+  P.re--;
+  P.opts = bossCores(run, P.opts);
+  return '';
 }
 /* 0.1.35 三選一的階（pend.tier，劍修大師 Ⅱ 階）、回扣送的賣價 0（pend.z） */
 function takePick(run, id, hold) {
@@ -1795,6 +1991,14 @@ function botAfter(run, r, win, q, P) {
     run.lsk++;
     run.ws = 0;
   }
+  /* 0.1.69 塔羅・命運之輪逆位：照評估挑 */
+  if (run.bag.tar === 'wheel_r' && r.type !== 'elite' && r.type !== 'boss') {
+    const opts = tarotWheel(run);
+    if (opts.length) {
+      run.pend = { kind: 'pick', opts };
+      takePick(run, opts.map(id => [id, botValue(run, id, 1, P, {}).gain]).sort((x, y) => y[1] - x[1])[0][0], true);
+    }
+  }
   if (r.type !== 'elite' && r.type !== 'boss') return;
   const [a, c] = eliteStars(r.st);
   /* 打完馬上拿（nextRound 會清掉 pend，留到下回合就拿不到了）；暫存區滿了先寄放，下回合 botAct 處理。
@@ -1829,6 +2033,8 @@ function simLobby(seed, rating, opt = {}) {
   /* 0.1.62 一場同一個主題（opt.theme 指定，不然照種子抽） */
   const theme = opt.theme || rollTheme(rng(h(seed, 10)), mode);
   for (const b of bots) b.run.theme = theme;
+  /* 0.1.69 種子快照記下賽制、主題（配對只配一樣的） */
+  for (const b of bots) Object.assign(b.info, { mode, theme });
   /* 0.1.59 一場共用的資料（七十二變的形狀表、星象的順序） */
   const H = MODEH[mode] || {},
     share = modeShareOf(mode, rng(h(seed, H.salt || 8)));
@@ -1894,7 +2100,7 @@ function simLobby(seed, rating, opt = {}) {
       );
       afterSim(run, res, 0);
       /* 0.1.10 跟玩家一樣的經濟：打贏拿金幣、連勝連敗（之前沒算，機器人的背包比玩家窮、快照偏弱） */
-      if (!res.win && !solo) run.hp -= r.loss;
+      if (!res.win && !solo) run.hp -= tarHit(run.bag, run, run.hp, r.loss);
       botAfter(run, r, res.win, b.q, b.P);
     });
     for (const b of alive) if (b.run.hp <= 0) b.out = ++order;

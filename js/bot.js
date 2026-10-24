@@ -576,6 +576,63 @@ function botLegacy(run, q, P, cx) {
   }
   return did;
 }
+/* 0.1.69 塔羅牌陣：四選一（靜態分數＋看背包的調整＋一點隨機，不然大家都選一樣的） */
+const BOT_TAROT = {
+  fool: 2,
+  fool_r: 3,
+  magician: 4,
+  magician_r: 3,
+  priestess: 4,
+  priestess_r: 2,
+  empress: 1,
+  empress_r: 2,
+  emperor: 3,
+  emperor_r: 3,
+  hierophant: 2,
+  hierophant_r: 3,
+  lovers: 3,
+  lovers_r: 3,
+  chariot: 3,
+  chariot_r: 2,
+  strength: 4,
+  strength_r: 2,
+  hermit: 0,
+  hermit_r: 3,
+  wheel: 3,
+  wheel_r: 3,
+  justice: 2,
+  justice_r: 3,
+  hanged: 1,
+  hanged_r: 2,
+  death: 0,
+  death_r: 3,
+  temperance: 2,
+  temperance_r: 3,
+  devil: 2,
+  devil_r: 1,
+  tower: 3,
+  tower_r: 1,
+  star: 3,
+  star_r: 2,
+  moon: 3,
+  moon_r: 1,
+  sun: 2,
+  sun_r: 2,
+  judgement: 1,
+  judgement_r: 2,
+  world: 4,
+  world_r: 3
+};
+function botTarot(run, opts) {
+  const pets = run.bag.items.filter(o => ITEMI[o.id].tags.includes('pet')).length,
+    sc = k =>
+      (BOT_TAROT[k] || 0) +
+      (k === 'empress' && pets >= 2 ? 3 : 0) +
+      (k === 'hermit' && run.bag.items.length <= 5 ? 3 : 0) +
+      (k === 'devil' && run.hp < 12 ? -3 : 0) +
+      r01(run) * 1.5;
+  return opts.map(k => [k, sc(k)]).sort((a, b) => b[1] - a[1])[0][0];
+}
 /* q：照評估做的機率（牌階高 q 高）；其他時候用簡單的舊規則（照主題、隨便買），低牌階才會笨一點 */
 function botAct(run, theme, q = 0.7, P = BOT_P) {
   const r = curRound(run);

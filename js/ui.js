@@ -245,7 +245,9 @@ function render() {
         prepHTML(run) +
         (run.phase === 'result' ? resultHTML(run) : '') +
         (run.phase === 'pick' ? pickHTML(run) : '') +
-        (run.phase === 'prep' ? revealHTML(run) + sgPickHTML(run) + relicHTML(run) + legNewHTML(run) : '') +
+        (run.phase === 'prep'
+          ? revealHTML(run) + sgPickHTML(run) + relicHTML(run) + tarotHTML(run) + legNewHTML(run)
+          : '') +
         (run.phase === 'mode' ? modeHTML(run) : '') +
         (run.phase === 'cls' ? clsHTML(run) : '');
   } else if (V.scr === 'codex') html = codexHTML();
@@ -353,8 +355,9 @@ async function startRun() {
   audioOn();
   $('app').innerHTML =
     `<div class="home"><div class="logo"><b>配對中…</b><small>尋找牌階相近的對手</small></div></div>`;
-  const rivals = await ghostRivals(S.rating);
-  S.run = newRun(rivals);
+  /* 0.1.69 先抽賽制、主題，再配同一個賽制＋主題的快照對手 */
+  S.run = newRun();
+  joinRivals(S.run, await ghostRivals(S.rating, S.run.mode, S.run.theme));
   S.run.ver = VER;
   V.scr = 'run';
   V.sel = null;
@@ -638,8 +641,8 @@ function prepHTML(run) {
       )
       .join('')}</div>
     <div class="acts">${
-      modeH(run).reroll
-        ? '<button class="btn" disabled>不能刷新<small class="bnote">買一件就換新</small></button>'
+      rerollNo(run)
+        ? `<button class="btn" disabled>不能刷新<small class="bnote">${modeH(run).rerollNote || ''}</small></button>`
         : `<button class="btn" data-act="reroll" ${(run.gold < REROLL && freeRolls(run) <= 0) || rollsLeft(run) <= 0 ? 'disabled' : ''}>刷新<small class="bnote">${rollsLeft(run) <= 0 ? '用完了' : freeRolls(run) > 0 ? '免費' : REROLL + ' 金'}</small></button>`
     }<button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvCost(run) ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvCost(run) + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div></div>
     ${detailHTML(run) || '<div class="detph">點道具看說明</div>'}
@@ -678,7 +681,8 @@ function detailHTML(run) {
     tot = {};
   /* 0.1.28 目前加成照來源分行（誰給的一看就知道） */
   for (const x of mods) {
-    if (x.w === 'tf') continue;
+    /* 0.1.69 只畫線的（m 是空的）不列 */
+    if (x.w === 'tf' || !Object.keys(x.m).length) continue;
     const n =
       x.from === 'cls'
         ? (CLSI[run.bag.cls] || {}).n || '職業'
@@ -710,7 +714,7 @@ function detailHTML(run) {
         ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < slotPrice(run, o) ? 'disabled' : ''}>買 ${slotPrice(run, o)} 金</button>`
         : where === 'leg'
           ? `<button class="btn pri" data-act="legBuy" data-k="${k}" ${run.gold < legPrice(run, o) ? 'disabled' : ''}>買 ${legPrice(run, o)} 金</button><small class="c-dim">${esc(o.from || '')}的遺產・還剩 ${o.lx - run.ri + 1} 回合</small>`
-          : `${I.sacrifice ? '<button class="btn buy" data-act="sacr">獻祭寵物</button>' : ''}${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o, run)} 金</button>`
+          : `${I.sacrifice ? '<button class="btn buy" data-act="sacr">獻祭寵物</button>' : ''}${run.bag.tar === 'death' && !I.core && !run.tarSac ? `<button class="btn buy" data-act="tarotSac">獻祭 +${tarSacHp(o)} 生命</button>` : ''}${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o, run)} 金</button>`
     }</div></div>`;
 }
 /* ================= 0.1.52 賽制 ================= */
@@ -718,9 +722,10 @@ function detailHTML(run) {
 /* 0.1.59 轉盤：每個賽制一塊（大小照出現機率），指針在正上方；轉完（run.mseen）才顯示規則、開放選職業 */
 const WHEEL_T = 3.6;
 function wheelSlices() {
-  const tot = MODES.reduce((n, m) => n + m.w, 0);
+  const ms = MODES.filter(m => m.w > 0),
+    tot = ms.reduce((n, m) => n + m.w, 0);
   let a = 0;
-  return MODES.map(m => {
+  return ms.map(m => {
     const s = { k: m.k, a, b: a + (360 * m.w) / tot };
     a = s.b;
     return s;
@@ -732,12 +737,13 @@ function wheelEnd(run) {
     j = ((h(run.seed, 404) % 1000) / 1000 - 0.5) * 0.6;
   return 360 * 5 + 360 - ((s.a + s.b) / 2 + j * (s.b - s.a));
 }
-/* 0.1.62 內圈：道具池的主題（三塊一樣大），反方向轉，停在這局的主題 */
+/* 0.1.62 內圈：道具池的主題（每塊一樣大），反方向轉，停在這局的主題 */
 function wheelEnd2(run) {
   const i = POOLTH.findIndex(x => x.k === run.theme);
   if (i < 0) return 0;
   const j = ((h(run.seed, 405) % 1000) / 1000 - 0.5) * 0.6;
-  return -(360 * 4 + i * 120 + 60 + j * 120);
+  const A = 360 / POOLTH.length;
+  return -(360 * 4 + i * A + A / 2 + j * A);
 }
 /* 0.1.65 轉盤的底色：相鄰兩塊（含頭尾接起來那塊）不同色，每塊結尾畫一條金色分隔線（g 度；內圈半徑小，線要寬一點） */
 function wheelGrad(sl, cols, g) {
@@ -754,7 +760,7 @@ function wheelHTML(run, step = 0) {
     grad = wheelGrad(sl, ['--card2', '--fill', '--fill-hi'], 1.2),
     end = wheelEnd(run),
     grad2 = wheelGrad(
-      POOLTH.map((x, i) => ({ a: i * 120, b: (i + 1) * 120 })),
+      POOLTH.map((x, i) => ({ a: (i * 360) / POOLTH.length, b: ((i + 1) * 360) / POOLTH.length })),
       ['--accent-soft', '--card2', '--fill-hi'],
       2.5
     );
@@ -767,7 +773,7 @@ function wheelHTML(run, step = 0) {
     run.theme
       ? `<div class="wdisk in" id="wdisk2" style="background:conic-gradient(${grad2});transform:rotate(${run.mseen ? wheelEnd2(run) : 0}deg)">${POOLTH.map(
           (x, i) => {
-            const m = i * 120 + 60;
+            const m = ((i + 0.5) * 360) / POOLTH.length;
             return `<img src="${artIconURL(x.ic) || iconURL('star')}" alt="" style="transform:rotate(${m}deg) translateY(-30px) rotate(${-m}deg)">`;
           }
         ).join('')}</div>`
@@ -883,8 +889,38 @@ const MODEUI = {
         ? `<div class="relopts">${run.bag.rel.map(k => relicLine(k)).join('')}</div>`
         : '<p class="c-dim">還沒有遺物</p>'
   },
-  legacy: { panel: run => legHTML(run) }
+  legacy: { panel: run => legHTML(run) },
+  tarot: {
+    /* 現在生效的牌（點了看抽過的牌） */
+    bar: run =>
+      run.bag.tar
+        ? `<button class="mchip" data-act="modeInfo" aria-label="塔羅牌：${tarotName(run.bag.tar)}"><span class="tno sm${tarOf(run.bag.tar).r ? ' rv' : ''}">${TAROTI[tarOf(run.bag.tar).T.k]}</span><b>${tarotName(run.bag.tar)}</b></button>`
+        : '',
+    info: run =>
+      (run.tarot || []).length
+        ? `<div class="astl">${run.tarot.map((k, i) => `<p class="${i === run.tarot.length - 1 ? 'on' : 'c-dim'}">第 ${TAROT_AT[i]}～${TAROT_AT[i] + 1} 階段・${tarotLine(k)}</p>`).join('')}</div>`
+        : '<p class="c-dim">還沒有抽牌</p>'
+  }
 };
+/* 0.1.69 塔羅牌陣：一張牌的名字（正逆位）、效果 */
+const tarotName = k => {
+  const x = tarOf(k);
+  return `${x.T.n}${x.r ? '（逆位）' : ''}`;
+};
+const tarotLine = k => `<b>${tarotName(k)}</b>：${tarOf(k).e.d}`;
+const TAROT_CN = { fight: '戰鬥', syn: '羈絆', life: '生存', pet: '寵物', eco: '經濟', build: '構築' };
+/* 四選一：每張一個按鈕（號碼、名字、正逆位、類型、效果） */
+function tarotHTML(run) {
+  const q = run.tarq;
+  if (!q || run.pend || run.relq || run.sgq?.length) return '';
+  const st = TAROT_AT[(run.tarot || []).length] || 1;
+  return `<div class="ovl"><div class="dlg2"><b>塔羅牌陣：選一張</b><p class="c-dim">生效第 ${st}～${st + 1} 階段；選過的牌不會再出現</p><div class="picks">${q.opts
+    .map(k => {
+      const x = tarOf(k);
+      return `<button class="pk tarot${x.r ? ' rv' : ''}" data-act="tarotPick" data-k="${k}"><span class="tno">${TAROTI[x.T.k]}</span><span><b>${tarotName(k)}・${TAROT_CN[x.e.c]}</b><small>${x.e.d}</small></span></button>`;
+    })
+    .join('')}</div></div></div>`;
+}
 const modeUI = run => (run && MODEUI[run.mode]) || {};
 /* 0.1.59 星象輪轉：第 a～b 階段的規則（這個階段亮起來） */
 function astroListHTML(run, a, b) {
@@ -952,30 +988,42 @@ function synIc(x) {
 }
 /* 準備畫面：0.1.66 一條「羈絆」按鈕，後面只放湊成的系（圖示＋件數，件數多的在前，框色＝級數）；點了看全部 */
 function synHTML(run) {
-  const n = synCount(run.bag),
-    on = SYN.map((x, i) => [x, n[i]])
-      .filter(([, c]) => synLv(c))
+  const V = synView(run.bag),
+    n = V.n,
+    on = SYN.map((x, i) => [x, n[i], V.lv[i]])
+      .filter(([, , l]) => l)
       .sort((a, b) => b[1] - a[1]);
   if (!n.some(c => c > 0)) return '';
   return `<button class="synbar" data-act="synInfo" aria-label="系別羈絆"><b>羈絆</b><span class="syl">${
     on.length
       ? on
-          .map(([x, c]) => `<span class="syi l${synLv(c)}" title="${synName(x)} ${c} 件">${synIc(x)}<b>${c}</b></span>`)
+          .map(
+            ([x, c, l]) =>
+              `<span class="syi l${Math.min(3, l)}" title="${synName(x)} ${c} 件">${synIc(x)}<b>${c}</b></span>`
+          )
           .join('')
       : '<small class="c-dim">還沒湊成（同一系 2 件）</small>'
   }</span><em>›</em></button>`;
 }
 /* 羈絆說明：0.1.66 湊成的在上（件數多的在前）、有件數還沒湊成的在下、0 件的收成一行 */
 function synInfoHTML(run) {
-  const n = synCount(run.bag),
-    l = SYN.map((x, i) => [x, n[i]])
+  const V = synView(run.bag),
+    n = V.n,
+    /* 0.1.69 黃道十二宮的局（或背包裡有星座）才顯示 8、10 件 */
+    mx = run.theme === 'z' ? SYN_AT.length : V.mx,
+    l = SYN.map((x, i) => [x, n[i], V.lv[i]])
       .filter(([, c]) => c > 0)
-      .sort((a, b) => synLv(b[1]) - synLv(a[1]) || b[1] - a[1]),
+      .sort((a, b) => b[2] - a[2] || b[1] - a[1]),
     none = SYN.filter((x, i) => !n[i]);
-  return `<p class="c-dim">背包裡同一系湊 2／4／6 件，效果累加。一件道具可以算好幾系；系別飾品算 1 件、寫著「算 2 件」的算 2 件。</p><div class="sginfo">${l
+  return `<p class="c-dim">背包裡同一系湊 ${SYN_AT.slice(0, mx).join('／')} 件，效果累加。一件道具可以算好幾系；系別飾品算 1 件、寫著「算 2 件」的算 2 件。${mx > 3 ? '8、10 件要背包裡有星座才有效。' : ''}</p><div class="sginfo">${l
     .map(
-      ([x, c]) =>
-        `<div class="sgi syn${synLv(c) ? ' on' : ''}">${synIc(x)}<div><b>${synName(x)}<small>背包裡 ${c} 件${synLv(c) ? `・${synLv(c)} 級` : ''}</small></b>${x.L.map((L, k) => `<p class="${c >= SYN_AT[k] ? 'on' : 'c-dim'}">${SYN_AT[k]} 件：${dsc(synTxt(x, L))}</p>`).join('')}</div></div>`
+      ([x, c, lv]) =>
+        `<div class="sgi syn${lv ? ' on' : ''}">${synIc(x)}<div><b>${synName(x)}<small>背包裡 ${c} 件${lv ? `・${lv} 級` : ''}</small></b>${x.L.slice(
+          0,
+          mx
+        )
+          .map((L, k) => `<p class="${k < lv ? 'on' : 'c-dim'}">${SYN_AT[k]} 件：${dsc(synTxt(x, L))}</p>`)
+          .join('')}</div></div>`
     )
     .join('')}</div>${none.length ? `<p class="c-dim">還沒有：${none.map(synName).join('、')}</p>` : ''}`;
 }
@@ -1268,7 +1316,9 @@ function pickHTML(run) {
       id =>
         `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${t > 1 ? tierBadge(t) : ''}${ITEMI[id].core ? '' : shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}${t > 1 ? tierTxt(t) : ''}</b><small>${dsc(itemDesc(id, t))}</small></span></button>`
     )
-    .join('')}</div></div></div>`;
+    .join(
+      ''
+    )}</div>${p.re != null ? `<button class="btn" data-act="pickRe" ${p.re > 0 ? '' : 'disabled'}>${p.re > 0 ? `刷新<small class="bnote">剩 ${p.re} 次</small>` : '刷新用完了'}</button>` : ''}</div></div>`;
 }
 /* 0.1.7 開局職業三選一（可以刷新一次） */
 function clsHTML(run) {
@@ -2172,7 +2222,19 @@ const CX_STAT = () => [
   ['陷阱', '開戰時放進敵人背包的格子（含空格），那格的道具每次出手都會觸發；打怪時掛在怪物的武器上。'],
   ['疲勞', `開戰 ${FATIGUE_T} 秒後雙方每秒受到越來越高的固定傷害，一定分出勝負。`],
   ['升階', '3 件相同、同階的道具自動合成高一階（最多 Ⅲ 階），數值大幅提升，還會多一條詞綴。'],
-  ['池子', '一場裡每件道具大家共用數量（越稀有越少），別人收走的就比較難刷到。']
+  ['池子', '一場裡每件道具大家共用數量（越稀有越少），別人收走的就比較難刷到。'],
+  [
+    '棋子',
+    '棋盤王國的 1 格飾品，照西洋棋的走法加成遠處的道具：兵（正上方）、騎士（日字形 8 格，不會被擋）、主教（4 條斜線）、城堡（上下左右）、皇后（8 個方向）、國王（周圍 8 格）。直線、斜線每個方向只影響碰到的第一件道具。選棋子時，被影響的道具會亮起來。'
+  ],
+  [
+    '星座',
+    `黃道十二宮的 1 格飾品：本身算 1 件它那一系，相鄰最多 ${ZOD_ADJ} 件道具（每升一階多 1 件）也算那一系，湊系別羈絆用。背包裡有星座時，羈絆多開 8 件、10 件兩個門檻。`
+  ],
+  [
+    '塔羅牌',
+    '塔羅牌陣賽制：第 1、3、5 階段開頭四選一，每張生效兩個階段；正位、逆位效果不同。戰鬥類的牌記在快照裡，快照對手也有效。'
+  ]
 ];
 /* 0.1.55 百科改版：上面搜尋欄（名字、標籤、說明都搜，四個分頁一起找），每一項是可以展開的一列；道具照星級分組、可以收合。
    搜尋在畫面上直接篩（cxFilter），不重畫，輸入框不會跳掉 */
@@ -2451,11 +2513,31 @@ const A = {
     const run = S.run;
     V.sel = null;
     if (run.hold) return snd('nope'), toast('先領取或賣掉寄放的戰利品');
-    if (run.relq) return snd('nope'), render();
+    if (run.relq || run.tarq) return snd('nope'), render();
     if (!run.bag.items.some(o => ITEMI[o.id].dmg)) return toast('背包裡還沒有武器或寵物，打不贏的！');
     beginFight();
   },
   sacr: () => sacPick(),
+  /* 0.1.69 塔羅牌陣 */
+  tarotPick: d => {
+    const e = tarotPick(S.run, d.k);
+    if (e) return snd('nope'), toast(e);
+    snd('level');
+    toast(`塔羅牌：${tarotName(d.k)}`);
+    save();
+    render();
+  },
+  tarotSac: () => {
+    const run = S.run,
+      o = [...run.bag.items, ...run.bench].find(q => q && q.u === V.sel),
+      e = o ? tarotSac(run, o.u) : '先選一件道具';
+    if (e) return snd('nope'), toast(e);
+    snd('level');
+    toast(`獻祭了${ITEMI[o.id].n}：生命 +${tarSacHp(o)}`);
+    V.sel = null;
+    save();
+    render();
+  },
   /* 0.1.52 賽制 */
   wheelSkip: () => wheelDone(S.run),
   modeOk: () => {
@@ -2595,6 +2677,13 @@ const A = {
     save();
     render();
   },
+  pickRe: () => {
+    const e = rerollCores(S.run);
+    if (e) return snd('nope'), toast(e);
+    snd('tap');
+    save();
+    render();
+  },
   pick: d => {
     const run = S.run,
       mid = run.pend && run.pend.mid,
@@ -2648,6 +2737,7 @@ const A = {
     placeFromBench(run, i, sp.x, sp.y, sp.r);
   },
   sell: () => {
+    if (sellNo(S.run)) return snd('nope'), toast(sellNo(S.run));
     const v = sellItem(S.run, V.sel);
     if (!v) return;
     snd('coin');
@@ -3167,9 +3257,12 @@ function dropEnd(ev) {
     }
     snd('select');
   } else if (inside($('shop'), ev.clientX, ev.clientY)) {
-    const v = sellItem(run, d.o.u);
-    snd('coin');
-    toast(`賣了 ${v} 金`);
+    if (sellNo(run)) snd('nope'), toast(sellNo(run));
+    else {
+      const v = sellItem(run, d.o.u);
+      snd('coin');
+      toast(`賣了 ${v} 金`);
+    }
   } else if (d.from === 'bag' && inside($('bench'), ev.clientX, ev.clientY) && benchFree(run) >= 0) {
     run.bag.items = run.bag.items.filter(q => q !== d.o);
     run.bench[benchFree(run)] = d.o;

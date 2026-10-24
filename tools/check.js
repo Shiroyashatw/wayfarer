@@ -12,9 +12,11 @@
      5. 怪物 × 星象每條規則：數值都是有限的
      6. 七十二變：1★ 的形狀放得進 3×3、最多 3 格
      7. 整局不丟錯（丟錯會印出堆疊）
+     9. 0.1.69 塔羅牌陣：44 種牌每種強制整局生效跑一局（上面 1～7 照樣檢查）
      8. 0.1.62 道具池：商店只出這局的主題池＋基本池；每個主題、每類職業武器 1～5★ 都要有；基本池沒有武器（每局輪流三個主題） */
 'use strict';
 const G = require('./game_node');
+require('vm').runInContext('var __tarotOpts = tarotOpts, __botTarot = botTarot;', G.__ctx);
 const arg = k => {
   const i = process.argv.indexOf('--' + k);
   return i < 0 ? null : process.argv[i + 1] || true;
@@ -141,25 +143,25 @@ function checkBag(m, run) {
   const nk = nanOf(a);
   if (nk) flag(m, '戰鬥數值有 NaN', nk);
 }
-function playMode(m) {
-  for (let g = 0; g < N; g++) {
+function playMode(m, games = N, tag = m) {
+  for (let g = 0; g < games; g++) {
     const run = newGame(m, g),
       th = G.CLSI[run.bag.cls].th || 'sword';
     if (m === 'shape')
       for (const it of G.ITEMS.filter(i => i.star === 1 && run.shm[i.id])) {
         const sh = G.SH[run.shm[it.id]];
         checks++;
-        if (sh.length > 3 || Math.max(...sh.flat()) > 2) flag(m, '1★ 形狀太大', it.id);
+        if (sh.length > 3 || Math.max(...sh.flat()) > 2) flag(tag, '1★ 形狀太大', it.id);
       }
     try {
       for (let k = 0; run.phase !== 'end' && k < 80; k++) {
         if (run.relq) G.relicPick(run, run.relq.opts[0]);
-        tryBuySell(m, run);
-        checkPool(m, run);
+        tryBuySell(tag, run);
+        checkPool(tag, run);
         G.botAct(run, th, 0.9, G.BOT_P);
-        checkBag(m, run);
+        checkBag(tag, run);
         checks++;
-        if (G.incomeOf(run) < 0) flag(m, '收入是負的', G.incomeOf(run));
+        if (G.incomeOf(run) < 0) flag(tag, '收入是負的', G.incomeOf(run));
         const fb = G.startFight(run);
         if (!fb) {
           G.endRun(run, 1);
@@ -167,7 +169,7 @@ function playMode(m) {
         }
         checks++;
         if (!isFinite(fb.res.t) || !isFinite(fb.res.end[0]) || !isFinite(fb.res.end[1]))
-          flag(m, '戰鬥結果不是有限的數', { t: fb.res.t, end: fb.res.end });
+          flag(tag, '戰鬥結果不是有限的數', { t: fb.res.t, end: fb.res.end });
         G.finishFight(run, fb);
         if (run.phase === 'end') break;
         if (run.pend) G.takePick(run, run.pend.opts[0], true);
@@ -175,9 +177,19 @@ function playMode(m) {
         G.nextRound(run);
       }
     } catch (e) {
-      flag(m, '丟錯', e.stack.split('\n').slice(0, 4).join(' | '));
+      flag(tag, '丟錯', e.stack.split('\n').slice(0, 4).join(' | '));
     }
   }
+}
+/* 0.1.69 塔羅：每張牌（正逆位）強制整局生效各跑一局 */
+function checkTarot() {
+  const vm = require('vm'),
+    keys = G.TAROT.flatMap(T => [T.k, T.k + '_r']);
+  for (const k of keys) {
+    vm.runInContext(`tarotOpts = () => [${JSON.stringify(k)}]; botTarot = (run, o) => o[0];`, G.__ctx);
+    playMode('tarot', 1, 'tarot:' + k);
+  }
+  vm.runInContext('tarotOpts = __tarotOpts; botTarot = __botTarot;', G.__ctx);
 }
 /* 怪物 × 星象 */
 function checkAstro() {
@@ -227,6 +239,7 @@ if (arg('golden')) golden();
 else {
   const t0 = Date.now();
   for (const m of MODES) playMode(m);
+  if (MODES.includes('tarot')) checkTarot();
   if (MODES.includes('astro')) checkAstro();
   checkThemes();
   const n = Object.values(bad).reduce((a, x) => a + Object.values(x).reduce((p, q) => p + q, 0), 0);

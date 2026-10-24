@@ -167,7 +167,8 @@ const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[f
    設計原則（企劃書）：改玩法節奏，不加數值；規則先公開再選職業；衝突的核心直接排除；隨機要好預測 */
 /* 0.1.59 新增詛咒寶藏、七十二變、星象輪轉、法老王的遺物、遺產市集（權重：標準 20、其他各 10）；0.1.60 標準降到 5（約 6%） */
 const MODES = [
-  { k: 'std', n: '標準', w: 5, ic: 'cur_regal', d: ['沒有特殊規則'] },
+  /* 0.1.69 標準不上轉盤（w 0），留著給測試、舊快照用 */
+  { k: 'std', n: '標準', w: 0, ic: 'cur_regal', d: ['沒有特殊規則'] },
   {
     k: 'gale',
     n: '狂風市集',
@@ -237,8 +238,166 @@ const MODES = [
     w: 10,
     ic: 'sk_ancestral',
     d: ['有人淘汰時，他背包的道具分給還活著的人', '分到的道具放在商店上方的遺產攤位：半價、保留階數', '遺產只放 2 回合']
+  },
+  {
+    k: 'dual',
+    n: '雙修',
+    w: 10,
+    ic: 'tree_n115',
+    d: ['第二個核心（4-4 首領）不是自己職業的：隨機 4 個別的職業的核心，四選一', '可以刷新 2 次']
+  },
+  {
+    k: 'tarot',
+    n: '塔羅牌陣',
+    w: 10,
+    ic: 'tree_n118',
+    d: [
+      '第 1、3、5 階段開頭，從 4 張塔羅牌選 1 張，生效兩個階段',
+      '每張牌是正位或逆位，效果不同；選過的牌不會再出現',
+      '4 張裡至少 1 張戰鬥效果、1 張不是'
+    ]
   }
 ];
+/* 0.1.69 塔羅牌陣：第幾階段開頭抽（每張管到下一次抽之前）、幾選一；
+   TAROT 每張牌的正位 u、逆位 v：c 是類型（fight 戰鬥、syn 羈絆、life 生存、pet 寵物算戰鬥；eco 經濟、build 構築不算），d 是說明 */
+const TAROT_AT = [1, 3, 5],
+  TAROT_N = 4,
+  TAROT_FIGHT = ['fight', 'syn', 'life', 'pet'];
+const TAROT = [
+  {
+    k: 'fool',
+    n: '愚者',
+    u: { c: 'eco', d: '商店多 1 格，星級完全隨機（1～5★）' },
+    v: { c: 'build', d: '每回合開始，複製背包裡隨機 1 件 4★ 以下的道具（複製品賣 0 金）' }
+  },
+  { k: 'magician', n: '魔術師', u: { c: 'build', d: '合成只要 2 件' }, v: { c: 'fight', d: '開戰時所有武器充能 50%' } },
+  {
+    k: 'priestess',
+    n: '女祭司',
+    u: { c: 'build', d: '合成直接升兩階（最多到 Ⅲ 階）' },
+    v: { c: 'eco', d: '每回合第一次購買只要 1 金（賣價最多是付的錢）' }
+  },
+  {
+    k: 'empress',
+    n: '女皇',
+    u: { c: 'pet', d: '寵物傷害 +10%，這張牌期間每打一回合再 +5%' },
+    v: { c: 'life', d: '每秒回復、藥水回復 +50%' }
+  },
+  { k: 'emperor', n: '皇帝', u: { c: 'fight', d: '背包裡最大的一把武器傷害 ×2' }, v: { c: 'eco', d: '每回合 +2 金' } },
+  {
+    k: 'hierophant',
+    n: '教皇',
+    u: { c: 'build', d: '商店每次至少 1 格是你職業的武器' },
+    v: { c: 'build', d: '商店每次至少 1 格是背包裡已經有的道具' }
+  },
+  {
+    k: 'lovers',
+    n: '戀人',
+    u: { c: 'fight', d: '最強的兩把武器互相帶動：一把出手，另一把充能 +50%' },
+    v: { c: 'fight', d: '最強的兩把武器傷害 ×1.6、攻速 -20%' }
+  },
+  {
+    k: 'chariot',
+    n: '戰車',
+    u: { c: 'fight', d: '開戰前 4 秒攻速 +60%' },
+    v: { c: 'fight', d: '開戰前 3 秒武器不出手，之後攻速 +35%' }
+  },
+  {
+    k: 'strength',
+    n: '力量',
+    u: { c: 'syn', d: '羈絆門檻 -1 件（1／3／5 件就開）' },
+    v: { c: 'syn', d: '只有件數最多的那一系羈絆有效，效果 ×2' }
+  },
+  {
+    k: 'hermit',
+    n: '隱者',
+    u: { c: 'fight', d: '背包 5 件以下時，武器傷害 +50%' },
+    v: { c: 'fight', d: '背包每有 1 件道具，武器傷害 +4%' }
+  },
+  {
+    k: 'wheel',
+    n: '命運之輪',
+    u: { c: 'eco', d: '每回合免費刷新 2 次' },
+    v: { c: 'build', d: '每回合打完，道具四選一；但不能刷新商店' }
+  },
+  {
+    k: 'justice',
+    n: '正義',
+    u: { c: 'fight', d: '受到的攻擊傷害反彈 15%' },
+    v: { c: 'life', d: '輸了扣的生命減半' }
+  },
+  {
+    k: 'hanged',
+    n: '倒吊人',
+    u: { c: 'eco', d: '不能買，每回合收入 ×2' },
+    v: { c: 'eco', d: '不能賣，商店價格 -1 金（最低 1 金）' }
+  },
+  {
+    k: 'death',
+    n: '死神',
+    u: { c: 'build', d: '每回合可以獻祭 1 件道具，換永久生命（星級 × 階數 × 15）' },
+    v: { c: 'life', d: '第一次被淘汰時留 1 生命' }
+  },
+  {
+    k: 'temperance',
+    n: '節制',
+    u: { c: 'life', d: '每秒回復最大生命的 2%' },
+    v: { c: 'fight', d: '武器攻速 -20%、傷害 +40%' }
+  },
+  {
+    k: 'devil',
+    n: '惡魔',
+    u: { c: 'eco', d: '每回合扣 2 生命，換 5 金（生命最少剩 1）' },
+    v: { c: 'fight', d: '吸血 +10%，但每秒回復、藥水回復沒有效果' }
+  },
+  {
+    k: 'tower',
+    n: '高塔',
+    u: { c: 'fight', d: '開戰時封鎖敵人最強的一把武器 4 秒' },
+    v: { c: 'fight', d: '自己最強的一把武器整場不出手，其他武器傷害 +30%' }
+  },
+  {
+    k: 'star',
+    n: '星星',
+    u: { c: 'eco', d: '商店出高星的機率跟背包高一級一樣' },
+    v: { c: 'build', d: '合成出來的道具開一條隨機詞綴' }
+  },
+  {
+    k: 'moon',
+    n: '月亮',
+    u: { c: 'fight', d: '開戰時複製敵人最強的一把武器（幻影，傷害 50%）' },
+    v: { c: 'fight', d: '敵人的第一次攻擊打到幻影（不受傷）' }
+  },
+  {
+    k: 'sun',
+    n: '太陽',
+    u: { c: 'eco', d: '打贏多拿 2 金' },
+    v: { c: 'life', d: '生命比對手高時，受到的傷害 -20%' }
+  },
+  {
+    k: 'judgement',
+    n: '審判',
+    u: { c: 'build', d: '商店固定出現一格你賣掉過最高星的道具' },
+    v: { c: 'fight', d: '生命低於 30% 時，武器傷害 +40%' }
+  },
+  {
+    k: 'world',
+    n: '世界',
+    u: { c: 'syn', d: '每一系羈絆都多算 2 件（至少要有 1 件）' },
+    v: { c: 'syn', d: '每開一個羈絆門檻，武器傷害 +8%、攻速 +5%' }
+  }
+];
+const TAROTI = Object.fromEntries(TAROT.map((x, i) => [x.k, i]));
+/* 牌的代號：'fool'（正位）、'fool_r'（逆位） → [牌, 正逆位的效果] */
+const tarOf = key => {
+  if (!key) return null;
+  const r = key.endsWith('_r'),
+    T = TAROT[TAROTI[r ? key.slice(0, -2) : key]];
+  return T ? { T, r, e: r ? T.v : T.u } : null;
+};
+/* 0.1.69 雙修：第二個核心幾選一、可以刷新幾次 */
+const DUAL_N = 4,
+  DUAL_RE = 2;
 const MODEI = Object.fromEntries(MODES.map(m => [m.k, m]));
 /* 0.1.52 印記：湊到 SG_AT 件分別是 1／2／3 級；c 是顏色、s 是格子上的一個字 */
 const SG_AT = [2, 4, 6];
@@ -357,7 +516,7 @@ const RELICS = [
   { k: 'sand', n: '沙之沙漏', ic: 'ail_slow', d: '開戰 8 秒後，所有武器攻速 +35%' }
 ];
 const RELICI = Object.fromEntries(RELICS.map(x => [x.k, x]));
-/* 0.1.62 道具池的主題（開場內圈轉盤，三選一、機率一樣）；MODE_TH_BAN：賽制 × 主題衝突的不會一起抽到 */
+/* 0.1.62 道具池的主題（開場內圈轉盤，機率一樣；0.1.69 五個）；MODE_TH_BAN：賽制 × 主題衝突的不會一起抽到 */
 const POOLTH = [
   {
     k: 'g',
@@ -366,45 +525,150 @@ const POOLTH = [
     d: ['這局的道具又大又重、形狀特別', 'U 形、環形、H 形、C 形中間空出來的格子是凹口，放進去的道具有加成']
   },
   { k: 'f', n: '共生森林', ic: 'unit_guardtotem', d: ['這局的道具看旁邊有幾件道具：越擠越強'] },
-  { k: 'm', n: '機關城', ic: 'sup_sp_auto', d: ['這局的道具有觸發條件：每第 N 次出手多打、齒輪充能、連鎖帶動'] }
+  { k: 'm', n: '機關城', ic: 'sup_sp_auto', d: ['這局的道具有觸發條件：每第 N 次出手多打、齒輪充能、連鎖帶動'] },
+  {
+    k: 'c',
+    n: '棋盤王國',
+    ic: 'it_kingcrown',
+    d: [
+      '棋子（1 格）照西洋棋的走法加成遠處的道具：每個方向只影響碰到的第一件',
+      '這局的武器每被一個棋子影響，再變強一點'
+    ]
+  },
+  {
+    k: 'z',
+    n: '黃道十二宮',
+    ic: 'asc_s_stars',
+    d: [
+      '星座：旁邊最多 2 件道具也算它那一系，湊羈絆用',
+      '背包裡有星座時，羈絆多開 8 件、10 件兩個門檻',
+      '這局的武器每開一個羈絆門檻，再變強一點'
+    ]
+  }
 ];
 const POOLTHI = Object.fromEntries(POOLTH.map(x => [x.k, x]));
 const MODE_TH_BAN = { shape: ['g'] };
 /* 0.1.62 系別羈絆：背包裡同一系（g 裡任一個標籤）湊 SYN_AT 件分別是 1／2／3 級，效果累加（3 級＝L[0]＋L[1]＋L[2]）；
    m 給那一系的道具（跟飾品加成一樣算進道具身上）、F 給角色。系別飾品（for）算 1 件、重做的羈絆飾品（syn）照寫的件數算 */
-const SYN_AT = [2, 4, 6];
-const SYN_W = [{ m: { spd: 8 } }, { m: { dmgPct: 15 } }, { m: { crit: 15, dmgPct: 15 } }];
+/* 0.1.69 黃道十二宮：背包裡有星座時多開 8、10 件兩個門檻（L[3]、L[4]） */
+const SYN_AT = [2, 4, 6, 8, 10];
+const SYN_W = [
+  { m: { spd: 8 } },
+  { m: { dmgPct: 15 } },
+  { m: { crit: 15, dmgPct: 15 } },
+  { m: { spd: 15, dmgPct: 20 } },
+  { m: { crit: 20, dmgPct: 40 } }
+];
 const SYN = [
-  { k: 'fire', g: ['fire'], L: [{ m: { burn: 1 } }, { F: { combust: 1 } }, { m: { burn: 2 }, F: { combust: 1 } }] },
+  {
+    k: 'fire',
+    g: ['fire'],
+    L: [
+      { m: { burn: 1 } },
+      { F: { combust: 1 } },
+      { m: { burn: 2 }, F: { combust: 1 } },
+      { m: { burn: 3 }, F: { combust: 2 } },
+      { m: { burn: 3 }, F: { combust: 3 } }
+    ]
+  },
   {
     k: 'cold',
     g: ['cold'],
-    L: [{ m: { freezeCh: 5 } }, { F: { shatterF: 8 } }, { m: { freezeCh: 10 }, F: { shatterF: 8 } }]
+    L: [
+      { m: { freezeCh: 5 } },
+      { F: { shatterF: 8 } },
+      { m: { freezeCh: 10 }, F: { shatterF: 8 } },
+      { m: { freezeCh: 10 }, F: { shatterF: 10 } },
+      { F: { shatterS: 15, shatterF: 15 } }
+    ]
   },
   {
     k: 'light',
     g: ['light'],
-    L: [{ m: { chainN: 1 } }, { m: { charge: 1 } }, { m: { chainN: 1 }, F: { zapPct: 50 } }]
+    L: [
+      { m: { chainN: 1 } },
+      { m: { charge: 1 } },
+      { m: { chainN: 1 }, F: { zapPct: 50 } },
+      { m: { charge: 1 }, F: { zapPct: 50 } },
+      { F: { zapPct: 100 } }
+    ]
   },
   {
     k: 'poison',
     g: ['poison'],
-    L: [{ m: { poison: 1 } }, { F: { p2v: 1 } }, { m: { poison: 2 }, F: { corrodeRe: 5 } }]
+    L: [
+      { m: { poison: 1 } },
+      { F: { p2v: 1 } },
+      { m: { poison: 2 }, F: { corrodeRe: 5 } },
+      { m: { poison: 3 }, F: { p2v: 1 } },
+      { m: { poison: 2, venom: 1 } }
+    ]
   },
-  { k: 'holy', g: ['holy'], L: [{ F: { regen: 1 } }, { F: { startBlock: 30 } }, { F: { cleanse: 1 } }] },
-  { k: 'dark', g: ['dark'], L: [{ m: { ls: 3 } }, { F: { execute: 20 } }, { m: { ls: 3 }, F: { execute: 30 } }] },
+  {
+    k: 'holy',
+    g: ['holy'],
+    L: [
+      { F: { regen: 1 } },
+      { F: { startBlock: 30 } },
+      { F: { cleanse: 1 } },
+      { F: { regen: 4, startBlock: 50 } },
+      { F: { ankh: 30, cleanse: 1 } }
+    ]
+  },
+  {
+    k: 'dark',
+    g: ['dark'],
+    L: [
+      { m: { ls: 3 } },
+      { F: { execute: 20 } },
+      { m: { ls: 3 }, F: { execute: 30 } },
+      { m: { ls: 5 }, F: { execute: 20 } },
+      { m: { crit: 15 }, F: { execute: 40 } }
+    ]
+  },
   { k: 'sword', g: ['sword'], L: SYN_W },
   { k: 'axe', g: ['axe', 'mace'], L: SYN_W },
   { k: 'bow', g: ['bow', 'xbow'], L: SYN_W },
   { k: 'spear', g: ['spear'], L: SYN_W },
   { k: 'dagger', g: ['dagger'], L: SYN_W },
   { k: 'staff', g: ['staff'], L: SYN_W },
-  { k: 'shield', g: ['shield'], L: [{ F: { startBlock: 20 } }, { m: { blockPct: 25 } }, { F: { thornsF: 5 } }] },
-  { k: 'pet', g: ['pet'], L: [{ m: { dmgPct: 12 } }, { m: { spd: 15 } }, { F: { petGuard: 25 } }] },
-  { k: 'potion', g: ['potion'], L: [{ F: { potMul: 20 } }, { F: { potUse: 1 } }, { F: { potMul: 30 } }] }
+  {
+    k: 'shield',
+    g: ['shield'],
+    L: [
+      { F: { startBlock: 20 } },
+      { m: { blockPct: 25 } },
+      { F: { thornsF: 5 } },
+      { m: { blockPct: 50 }, F: { startBlock: 40 } },
+      { F: { thornsF: 15, startBlock: 60 } }
+    ]
+  },
+  {
+    k: 'pet',
+    g: ['pet'],
+    L: [
+      { m: { dmgPct: 12 } },
+      { m: { spd: 15 } },
+      { F: { petGuard: 25 } },
+      { m: { dmgPct: 25, spd: 15 } },
+      { m: { dmgPct: 25 }, F: { petGuard: 25 } }
+    ]
+  },
+  {
+    k: 'potion',
+    g: ['potion'],
+    L: [
+      { F: { potMul: 20 } },
+      { F: { potUse: 1 } },
+      { F: { potMul: 30 } },
+      { F: { potMul: 40 } },
+      { F: { potUse: 1, potMul: 40 } }
+    ]
+  }
 ];
 const SYNI = Object.fromEntries(SYN.map((x, i) => [x.k, i]));
-const synLv = n => SYN_AT.filter(x => n >= x).length;
+/* mx：最多開到幾級（平常 3；背包裡有星座 5，synMax） */
+const synLv = (n, mx = 3) => SYN_AT.slice(0, mx).filter(x => n >= x).length;
 /* 0.1.59 遺產市集：遺產攤位放幾回合 */
 const LEGACY_RC = 2;
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
@@ -414,5 +678,6 @@ const LEGACY_RC = 2;
 /* 0.1.53 s23：馴獸師核心重製（同一個核心編號換了效果）、四兇、成長存進快照 */
 /* 0.1.57 s24：清掉 0.1.52～0.1.56 用 bug（狂風市集洗商店、回扣洗三選一）洗出來的快照 */
 /* 0.1.62 s25：道具池（武器分主題）、88 件新道具、飾品重做、系別羈絆 */
-const GVER = 's25';
-const VER = '0.1.68';
+/* 0.1.69 s26：新主題棋盤王國、黃道十二宮（98 件新道具）、塔羅牌存在快照裡 */
+const GVER = 's26';
+const VER = '0.1.69';

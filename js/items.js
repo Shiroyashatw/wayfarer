@@ -2494,7 +2494,8 @@ const ITEMS = [
     nth: [3, 2],
     ic: 'sk_ballista'
   },
-  { id: 'mgear', n: '齒輪', star: 1, th: 'm', sh: 's1', tags: ['trinket'], gear: 20, ic: 'sup_sp_auto' },
+  /* 0.1.69 齒輪的充能照階數：Ⅰ 12%、Ⅱ 20%、Ⅲ 30%（之前固定 20%，升階沒有變強） */
+  { id: 'mgear', n: '齒輪', star: 1, th: 'm', sh: 's1', tags: ['trinket'], gear: [12, 20, 30], ic: 'sup_sp_auto' },
   { id: 'mkey', n: '發條鑰匙', star: 2, th: 'm', sh: 's1', tags: ['trinket'], fx: { opener: 30 }, ic: 'sup_sp_cd' },
   {
     id: 'mtrapbox',
@@ -3214,14 +3215,340 @@ const ITEMS = [
     ic: 'gear_weapon_9'
   }
 ];
+/* ================= 0.1.69 棋盤王國（c）、黃道十二宮（z） ================= */
+/* 棋子（pc）：1 格的飾品，照西洋棋的走法影響別的道具；ray 是方向（每個方向只影響碰到的第一件），jump 是跳到的格子（不會被擋）。
+   被棋子影響的道具拿到 m（照棋子的階數變強）；棋盤王國的武器（pcHit）每被 1 個棋子影響再加成 */
+const PC_DIR = {
+  pawn: { ray: [[0, -1]] },
+  knight: {
+    jump: [
+      [1, 2],
+      [2, 1],
+      [2, -1],
+      [1, -2],
+      [-1, -2],
+      [-2, -1],
+      [-2, 1],
+      [-1, 2]
+    ]
+  },
+  bishop: {
+    ray: [
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1]
+    ]
+  },
+  rook: {
+    ray: [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1]
+    ]
+  },
+  queen: {
+    ray: [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1]
+    ]
+  },
+  king: {
+    jump: [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1]
+    ]
+  }
+};
+/* 棋子的走法說明（說明文字、百科用） */
+const PC_TXT = {
+  pawn: '正上方碰到的第一件道具',
+  knight: '日字形跳到的 8 格上的道具（不會被擋）',
+  bishop: '4 條斜線上各自碰到的第一件道具',
+  rook: '上下左右各自碰到的第一件道具',
+  queen: '8 個方向各自碰到的第一件道具',
+  king: '周圍 8 格的道具'
+};
+/* 星座（zod）：旁邊最多 ZOD_ADJ 件道具也算那一系（每升一階多 1 件）；背包裡有星座時，羈絆多開 8、10 件兩個門檻 */
+const ZOD_ADJ = 2;
+const THEME_ITEMS = [
+  {
+    id: 'cpawn',
+    n: '兵',
+    star: 1,
+    th: 'c',
+    sh: 's1',
+    tags: ['trinket'],
+    pc: { k: 'pawn', m: { dmgPct: 25 } },
+    ic: 'asc_s_fist'
+  },
+  {
+    id: 'cknight',
+    n: '騎士',
+    star: 2,
+    th: 'c',
+    sh: 's1',
+    tags: ['trinket'],
+    pc: { k: 'knight', m: { dmgPct: 12 } },
+    ic: 'horseface'
+  },
+  {
+    id: 'cbishop',
+    n: '主教',
+    star: 3,
+    th: 'c',
+    sh: 's1',
+    tags: ['trinket'],
+    pc: { k: 'bishop', m: { spd: 15, crit: 8 } },
+    ic: 'asc_s_book'
+  },
+  {
+    id: 'crook',
+    n: '城堡',
+    star: 3,
+    th: 'c',
+    sh: 's1',
+    tags: ['trinket'],
+    pc: { k: 'rook', m: { dmgPct: 20 } },
+    ic: 'sk_phalanx'
+  },
+  {
+    id: 'cking',
+    n: '國王',
+    star: 4,
+    th: 'c',
+    sh: 's1',
+    tags: ['trinket'],
+    pc: { k: 'king', m: { dmgPct: 12, spd: 8 } },
+    fx: { hp: 40 },
+    ic: 'it_kingcrown'
+  },
+  {
+    id: 'cqueen',
+    n: '皇后',
+    star: 5,
+    th: 'c',
+    sh: 's1',
+    tags: ['trinket'],
+    pc: { k: 'queen', m: { dmgPct: 18, spd: 10 } },
+    ic: 'it_gcrown'
+  },
+  ...[
+    ['zaries', '牡羊座', 3, 'fire', 'it_gram'],
+    ['ztaurus', '金牛座', 2, 'axe', 'z_ox'],
+    ['zgemini', '雙子座', 3, 'light', 'tree_n115'],
+    ['zcancer', '巨蟹座', 3, 'cold', 'm_coconutcrab'],
+    ['zleo', '獅子座', 3, 'holy', 'lion'],
+    ['zvirgo', '處女座', 2, 'potion', 'asc_s_feather'],
+    ['zlibra', '天秤座', 2, 'shield', 'asc_s_anvil'],
+    ['zscorpio', '天蠍座', 3, 'poison', 'asc_s_drop'],
+    ['zsagitt', '射手座', 2, 'bow', 'it_c_archer_0'],
+    ['zcapri', '摩羯座', 2, 'spear', 'z_goat'],
+    ['zaquar', '水瓶座', 2, 'staff', 'asc_s_eye'],
+    ['zpisces', '雙魚座', 3, 'dark', 'm_flyfish']
+  ].map(([id, n, star, zod, ic]) => ({
+    id,
+    n,
+    star,
+    th: 'z',
+    sh: 's1',
+    tags: ['trinket'],
+    zod,
+    fx: { hp: 10 * star },
+    ic
+  }))
+];
+/* 兩個新主題的職業武器線：8 類（弓、劍、矛、斧、匕首、法杖、寵物、盾）× 1～5★，每個星級 6 把帶一個元素（元素每星級各一次），
+   數值照舊武器同星同類的水準；棋盤王國的武器每被一個棋子影響變強（pcHit），黃道的武器每開一個羈絆門檻變強（synPer） */
+function genThemeW() {
+  const C = {
+      bow: {
+        t: ['bow'],
+        n: '弓',
+        sh: ['v3', 'v3', 'v3', 'v3', 'v3'],
+        cd: [1.6, 1.6, 1.5, 1.5, 1.4],
+        d: [
+          [3, 5],
+          [4, 7],
+          [5, 8],
+          [7, 11],
+          [11, 16]
+        ]
+      },
+      sword: {
+        t: ['sword'],
+        n: '劍',
+        sh: ['v2', 'v2', 'v3', 'v3', 'v3'],
+        cd: [1.3, 1.3, 1.4, 1.4, 1.4],
+        d: [
+          [2, 4],
+          [4, 6],
+          [6, 9],
+          [9, 14],
+          [14, 20]
+        ]
+      },
+      spear: {
+        t: ['spear'],
+        n: '長槍',
+        sh: ['v3', 'v3', 'v3', 'v3', 'v3'],
+        cd: [1.6, 1.5, 1.5, 1.5, 1.5],
+        d: [
+          [2, 4],
+          [3, 6],
+          [5, 8],
+          [7, 11],
+          [13, 19]
+        ]
+      },
+      axe: {
+        t: ['axe'],
+        n: '戰斧',
+        sh: ['v2', 'l3', 'sq', 'l3', 'sq'],
+        cd: [1.8, 2, 2.1, 1.9, 2.2],
+        d: [
+          [3, 5],
+          [5, 8],
+          [8, 12],
+          [11, 16],
+          [20, 28]
+        ]
+      },
+      dagger: {
+        t: ['dagger'],
+        n: '匕首',
+        sh: ['s1', 's1', 's1', 's1', 's1'],
+        cd: [1, 0.9, 0.9, 0.8, 0.7],
+        d: [
+          [1, 3],
+          [1, 3],
+          [2, 4],
+          [3, 6],
+          [5, 8]
+        ]
+      },
+      staff: {
+        t: ['staff'],
+        n: '法杖',
+        sh: ['v2', 'v3', 'v3', 'v3', 'v3'],
+        cd: [1.6, 1.7, 1.6, 1.7, 1.7],
+        d: [
+          [1, 3],
+          [3, 5],
+          [4, 7],
+          [7, 11],
+          [10, 15]
+        ]
+      },
+      pet: {
+        t: ['pet'],
+        n: '',
+        sh: ['s1', 's1', 's1', 'h2', 'sq'],
+        cd: [1.3, 1.4, 1.3, 1.2, 1.3],
+        d: [
+          [1, 2],
+          [1, 3],
+          [3, 5],
+          [5, 8],
+          [9, 13]
+        ]
+      },
+      shield: {
+        t: ['shield'],
+        n: '盾',
+        sh: ['sq', 'sq', 'sq', 'sq', 'sq'],
+        cd: [3, 3, 2.8, 2.5, 2.2],
+        b: [6, 10, 14, 18, 28]
+      }
+    },
+    E = ['fire', 'cold', 'light', 'poison', 'holy', 'dark'],
+    EN = { fire: '烈焰', cold: '寒霜', light: '雷霆', poison: '劇毒', holy: '聖光', dark: '暗影' },
+    ON = {
+      fire: st => ({ burn: st }),
+      cold: st => ({ freeze: [4 + 2 * st, 0.8] }),
+      light: st => ({ stun: [6 + 2 * st, 0.4] }),
+      poison: st => ({ poison: st }),
+      holy: st => ({ blind: 8 + 2 * st }),
+      dark: st => ({ ls: 2 + st })
+    },
+    /* 寵物的名字（照主題、星級） */
+    PET = {
+      c: ['棋盤小馬', '象牙戰馬', '黑檀獵鷹', '王庭獅鷲', '棋聖巨龍'],
+      z: ['星砂小羊', '星辰靈貓', '星座天鵝', '星宮天馬', '黃道神龍']
+    },
+    TH = {
+      c: { w: ['木棋', '象牙', '黑檀', '王庭', '棋聖'], k: 'pcHit' },
+      z: { w: ['星砂', '星辰', '星座', '星宮', '黃道'], k: 'synPer' }
+    },
+    ks = Object.keys(C),
+    /* 圖示：借同類同元素的舊武器（沒有就借同類的） */
+    icOf = (tags, el) => {
+      const ok = it => !it.th && it.ic && tags.every(t => it.tags.includes(t));
+      const a = ITEMS.find(it => ok(it) && (!el || it.tags.includes(el))) || ITEMS.find(ok);
+      return a ? a.ic : 'gear_weapon_0';
+    },
+    out = [];
+  for (const th of ['c', 'z'])
+    for (let st = 1; st <= 5; st++)
+      ks.forEach((k, i) => {
+        const c = C[k],
+          j = (i + st + (th === 'z' ? 3 : 0)) % ks.length,
+          el = j < E.length ? E[j] : null,
+          s = st - 1,
+          pre = (el ? EN[el] : '') + TH[th].w[s],
+          it = {
+            id: `${th}${st}${el || 'x'}${k}`,
+            n: k === 'pet' ? (el ? EN[el] : '') + PET[th][s] : pre + c.n,
+            star: st,
+            th,
+            sh: c.sh[s],
+            tags: [
+              ...(k === 'shield' ? [] : ['weapon']),
+              ...c.t,
+              ...(el ? [el] : []),
+              ...(c.sh[s] === 'sq' && k !== 'shield' && k !== 'pet' ? ['twohand'] : [])
+            ],
+            cd: c.cd[s],
+            ic: icOf(c.t, el)
+          };
+        if (c.b) it.block = c.b[s];
+        else {
+          it.dmg = c.d[s];
+          if (el) it.on = ON[el](st);
+          if (k === 'dagger') it.crit = 10;
+        }
+        it[TH[th].k] =
+          k === 'shield' ? { blockPct: 8 + 2 * st } : th === 'c' ? { dmgPct: 8 + 2 * st } : { dmgPct: 2 + st };
+        out.push(it);
+      });
+  return out;
+}
+ITEMS.push(...THEME_ITEMS, ...genThemeW());
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
-/* 0.1.62 道具池：每件道具在哪幾個池（b 基本池＝每局都有；g 巨人國、f 共生森林、m 機關城＝主題池，開場內圈轉一個）。
+/* 0.1.62 道具池：每件道具在哪幾個池（b 基本池＝每局都有；g 巨人國、f 共生森林、m 機關城、c 棋盤王國、z 黃道十二宮＝主題池，開場內圈轉一個）。
    主題專屬的新道具寫在道具的 th；這張表是舊道具的分配（tools/pools.js 產生：照標籤、形狀排每個主題的合適度，從最不合的拿掉，
    拿掉後每個主題、每類職業武器的 1～5★ 都還要有）。沒寫到的道具三個主題都有 */
 const POOLS = {
   b: 'beastbell bigpotion boots bugnet bugspray cape cleansebell cursedbandage elixir fireproof gasmask handwarmer herb hunterbadge ironhelm ironskin leatherarmor leathercap lightningrod phoenixdown potion purse rivetvest sunglasses thickhide tourniquet whetstone',
   fg: 'holycollar holymirror holyoil holysigil iceheart',
-  fm: 'acidflask arcaneink assassinmark axestone beasttotem bersmask bloodrune bone cloak clover crest darkorb echostone emberstone firebottle fireflower fireorb forgehammer frenzywhistle frostflower frostgem frostrune fuse giantbelt giantblood grimoire grip hawkeye hexdoll holyflower hourglass kingcrown piercerune prism puppetstring quiver shadowflower sheath shieldrack spearrest spellbook spikestud stormcore stormfeather sunderstone thornvine thunderflower thunderstone toxinvial vampfang venomflower venomgland venomking warbanner wardrum warpaint weaponrack whetwheel',
+  /* 0.1.69 原本 f、m 共用的飾品分一半給棋盤王國（c）、黃道十二宮（z）：每件還是兩個主題 */
+  fc: 'acidflask beasttotem cloak echostone fireorb frostgem giantblood hexdoll piercerune shadowflower spellbook sunderstone toxinvial venomking weaponrack',
+  fz: 'assassinmark bloodrune crest firebottle frenzywhistle fuse grip hourglass puppetstring shieldrack stormcore thunderflower venomflower wardrum',
+  mc: 'axestone bone darkorb fireflower frostflower giantbelt hawkeye kingcrown quiver spearrest stormfeather thunderstone venomgland warpaint',
+  mz: 'arcaneink bersmask clover emberstone forgehammer frostrune grimoire holyflower prism sheath spikestud thornvine vampfang warbanner whetwheel',
   gm: 'necroessence necrotome',
   f: 'acolytewand assassinblade bear bleedoil blindpowder coindart dragonlance frostaxe frostbow frostbrew hawk holymace holysword holywand holywater huntbow icecrystal longbow poisonbrew qilin ragepotion shadowclaw shadowstaff sparkrod sunbow thunderbat thunderbow thunderjav towershield treefrog venomsac venomspear viper waraxe weakbrew wolf woodsword',
   g: 'aegis anvil archstaff babydragon bloodsword cauldron chainmail club dragonmail dragonslayer emberwand flail greataxe greatsword halberd handaxe heavyxbow icefang icestaff lavaheart mithril needle paladinshield pickaxe pike powder skeleton slime spikedmail stormhammer thornshield thunderhammer vampbat venomknife woodshield worldhammer',
@@ -3983,6 +4310,8 @@ const MODN = {
   static: v => `敵人每次出手 ${pct(v)} 機率觸電：那次出手落空、電荷 +1`,
   rod: v => `被攻擊打中時 ${pct(v)} 機率電擊攻擊者：${ROD_DMG} 傷害（固定）、電荷 +1`,
   zapPct: v => `放電傷害 +${pct(v)}`,
+  /* 0.1.69 聖羈絆 10 件（跟法老王的安卡一樣） */
+  ankh: v => `每場第一次倒下時以 ${pct(v)} 生命復活`,
   /* 0.1.53 馴獸師 */
   petGrow: v => `寵物每打贏一場，那隻永久傷害 +${v}%（最多 +${v * 10}%，合成時留最高的）`,
   petNoThorns: () => '寵物的攻擊不會觸發對手的反彈',
@@ -4236,12 +4565,23 @@ function itemDesc(id, t = 1) {
   /* 0.1.62 主題池的專屬道具 */
   if (it.self) out.push(`這件：${modTxt(scaleMod(it.self, t))}`);
   if (it.perAdj) out.push(`每有 1 件相鄰的道具，這件${modTxt(scaleMod(it.perAdj, t))}`);
-  if (it.perAdjF) out.push(`每有 1 件相鄰的道具，${modTxt(it.perAdjF)}`);
+  if (it.perAdjF) out.push(`每有 1 件相鄰的道具，${modTxt(scaleMod(it.perAdjF, t))}`);
   if (it.hole) out.push(`凹口（形狀中間空著的格子）放的道具：${modTxt(scaleMod(it.hole, t))}`);
   if (it.nth) out.push(`每第 ${it.nth[0]} 次出手，多打 ${it.nth[1]} 下`);
   if (it.wake) out.push(`開戰 ${it.wake} 秒後才開始出手`);
-  if (it.gear) out.push(`相鄰的武器出手時，其他相鄰的武器充能 +${it.gear}%`);
+  if (it.gear) out.push(`相鄰的武器出手時，其他相鄰的武器充能 +${gearV(it, t)}%`);
   if (it.chainAdj) out.push('相鄰的武器出手時，帶動另一件相鄰的武器出手（每件每秒最多一次）');
+  /* 0.1.69 棋盤王國、黃道十二宮 */
+  if (it.pc) out.push(`棋子：${PC_TXT[it.pc.k]}${modTxt(scaleMod(it.pc.m, t))}`);
+  if (it.pcHit) out.push(`每被 1 個棋子影響，這件${modTxt(scaleMod(it.pcHit, t))}`);
+  if (it.synPer) out.push(`背包每開一個羈絆門檻，這件${modTxt(scaleMod(it.synPer, t))}`);
+  if (it.zod) {
+    const x = SYN[SYNI[it.zod]],
+      nm = x.g.map(g => TAGN[g]).join('、');
+    out.push(
+      `星座：本身算 1 件${nm}，相鄰最多 ${ZOD_ADJ + t - 1} 件道具也算${nm}（湊系別羈絆；背包裡有星座時羈絆多開 8、10 件）`
+    );
+  }
   /* 0.1.33 核心的特殊效果（fxPer 寫在角色加成後面：「護甲 +20、開戰時有 10 護盾；背包裡每有 1 件矛，開戰護盾再 +10」） */
   if (it.shrink) out.push(`所有${tagTxt(it.shrink)}武器少佔 1 格`);
   if (it.eliteAll)
@@ -4366,6 +4706,8 @@ function tfTxt(T, t = 1) {
   return `放到${tagTxt(T.tag)}上（或貼在旁邊）融合成「${T.n}・${tagTxt(T.tag)}」，這件會消失、空出格子：${add ? `變成${add}系（吃${add}的加成）、` : ''}${m}（一件只能融合一次）`;
 }
 /* 加成照階數放大（per、tag 不動） */
+/* 0.1.69 齒輪的充能 %：寫陣列的照階數拿，不然照百分比的升階倍率 */
+const gearV = (it, t = 1) => (Array.isArray(it.gear) ? it.gear[t - 1] : Math.round(it.gear * TIERB[t]));
 function scaleMod(b, t) {
   const o = {};
   for (const k in b) o[k] = k === 'tag' || k === 'per' ? b[k] : Math.round(b[k] * TIERB[t]);

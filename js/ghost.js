@@ -8,18 +8,25 @@ function ghostFail(e) {
   GHOST.why = (e && e.message) || String(e);
   console.warn('快照對戰停用：', GHOST.why);
 }
-/* 開局：配對手（最多等 4 秒，不行就全部機器人） */
-async function ghostRivals(rating) {
+/* 開局：配對手（最多等 4 秒，不行就全部機器人）。
+   0.1.69 只配同一個賽制＋主題的快照（不然會打到別的規則、別的道具池錄下來的背包）；
+   資料庫還沒跑 20261025000000_serling_mode_theme.sql 時 RPC 會失敗：這局全部機器人，快照照樣存 */
+async function ghostRivals(rating, mode, theme) {
   let got = [];
   if (ghostOK())
     try {
       const job = (async () => {
-        const { data: runs, error } = await CLOUD.sb.rpc('pick_rivals', {
+        const { data: runs, error } = await CLOUD.sb.rpc('pick_rivals_mt', {
           p_ver: GVER,
           p_rating: rating,
-          p_n: GHOST_MAX
+          p_n: GHOST_MAX,
+          p_mode: mode || 'std',
+          p_theme: theme || ''
         });
-        if (error) throw error;
+        if (error) {
+          console.warn('快照配對失敗（資料庫還沒更新？），這局用機器人：', error.message);
+          return [];
+        }
         if (!runs || !runs.length) return [];
         const { data: sn, error: e2 } = await CLOUD.sb
           .from('snaps')
@@ -58,6 +65,12 @@ async function ghostBegin(run) {
     run.rid = data.id;
     run.sn = 0;
     save();
+    /* 0.1.69 賽制、主題（配對用；欄位還沒加時失敗也不影響） */
+    CLOUD.sb
+      .from('runs')
+      .update({ mode: run.mode || 'std', theme: run.theme || '' })
+      .eq('id', run.rid)
+      .then(() => {});
   } catch (e) {
     ghostFail(e);
   }
@@ -167,13 +180,20 @@ async function ghostBoard(force = false) {
 /* 在瀏覽器主控台執行 seedGhosts(160)：分數 700～2100 平均分布（每個牌階都有對手，越高越強），用目前的帳號產生 n 局機器人對局（4 個一場、真的互打），上傳成種子快照（runs.seed = true）。
    真人對局夠多以後可以在 SQL Editor 刪掉：delete from public.runs where seed; */
 /* 0.1.52 預設 300 局（對手變化多一點）；機器人的職業 13 個輪流（之前隨機，有的職業只有 2 局） */
-async function seedGhosts(n = 300, lo = 700, hi = 2100) {
+async function seedGhosts(n = 600, lo = 700, hi = 2100) {
   if (!CLOUD.sb || !CLOUD.uid) throw new Error('雲端還沒連線');
+  const MTS = MODES.filter(m => m.w > 0).flatMap(m =>
+    POOLTH.filter(T => !(MODE_TH_BAN[m.k] || []).includes(T.k)).map(T => [m.k, T.k])
+  );
   let ok = 0;
   for (let k = 0; ok < n; k++) {
-    const rating = lo + fl(Math.random() * (hi - lo)),
+    /* 0.1.69 賽制 × 主題輪流（配對只配一樣的，每種組合都要有種子） */
+    const mt = MTS[k % MTS.length],
+      rating = lo + fl(Math.random() * (hi - lo)),
       bots = simLobby((Math.random() * 2 ** 31) | 0, rating, {
-        cls: [...Array(LOBBY_N).keys()].map(i => CLASSES[(k * LOBBY_N + i) % CLASSES.length].id)
+        cls: [...Array(LOBBY_N).keys()].map(i => CLASSES[(k * LOBBY_N + i) % CLASSES.length].id),
+        mode: mt[0],
+        theme: mt[1]
       });
     for (const b of bots) {
       if (ok >= n) break;
@@ -200,6 +220,8 @@ async function seedGhosts(n = 300, lo = 700, hi = 2100) {
         .from('snaps')
         .insert(ids.map(id => ({ run_id: data.id, round: id, hp: b.snaps[id].hp, bag: b.snaps[id].bag })));
       if (e2) throw e2;
+      /* 0.1.69 賽制、主題（配對用） */
+      await CLOUD.sb.from('runs').update({ mode: b.mode, theme: b.theme }).eq('id', data.id);
       /* 0.1.45 核心統計（欄位還沒加時失敗也沒關係） */
       if (b.stat)
         await CLOUD.sb

@@ -105,7 +105,9 @@ function simSide(F) {
     /* 0.1.53 馴獸師：撲殺過了沒、狂暴層數、馴獸鞭計時 */
     pnc: 0,
     frz: 0,
-    wpT: 0
+    wpT: 0,
+    /* 0.1.69 塔羅・月亮逆位：還能閃開幾次敵人的攻擊 */
+    tmiss: F.tarMiss || 0
   };
 }
 /* 0.1.35 金錢標花 1 金那一下：傷害、暴擊率、命中效果、吸血都翻倍 */
@@ -142,6 +144,30 @@ function simulate(FA, FB, seed) {
   const r = rng(seed),
     S = [simSide(FA), simSide(FB)],
     ev = [];
+  /* 0.1.69 塔羅・月亮：開戰時複製敵人最強的一把武器（幻影，傷害 tarCopy%，不在格子上） */
+  for (let i = 0; i < 2; i++) {
+    const P = S[i].F.tarCopy,
+      src =
+        P &&
+        [...S[1 - i].w]
+          .filter(w => !w.vw)
+          .sort((x, y) => (y.dmg[0] + y.dmg[1]) / y.cd - (x.dmg[0] + x.dmg[1]) / x.cd)[0];
+    if (src)
+      S[i].w.push({
+        ...src,
+        ...(src.freeze ? { freeze: [...src.freeze] } : {}),
+        ...(src.stun ? { stun: [...src.stun] } : {}),
+        u: 'tm' + i,
+        i: S[i].w.length,
+        dmg: src.dmg.map(v => Math.max(1, Math.round((v * P) / 100))),
+        seal: 0,
+        gear: undefined,
+        drv: undefined,
+        fz: 0,
+        ch: 0,
+        tt: 0
+      });
+  }
   const items = x => [...x.w, ...x.s];
   /* 0.1.40 記一次觸發：x 那邊給了加成 k 的道具都 +n */
   const tr = (x, k, n = 1) => {
@@ -427,6 +453,12 @@ function simulate(FA, FB, seed) {
       di = S.indexOf(d);
     /* 0.1.50 風之箭（sure）不會被閃避、招架；閃避成功：游擊充能、迴避反擊；沒打中連珠箭歸零 */
     const rr = self || w.sure ? 100 : r() * 100;
+    /* 0.1.69 塔羅・月亮逆位：敵人的第一次攻擊打到幻影 */
+    if (!self && d.tmiss > 0) {
+      d.tmiss--;
+      log(t, ai, 'miss', 0, { u: w.u });
+      return;
+    }
     if (rr < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) {
       a.streak = 0;
       if (d.F.dodge) tr(d, 'dodge');
@@ -469,6 +501,9 @@ function simulate(FA, FB, seed) {
     /* 0.1.10 處決（敵人生命低於 30%）、背水（自己生命低於 50%） */
     if (a.F.execute && d.hp < d.max * 0.3) v *= 1 + a.F.execute / 100;
     if (a.F.rage && a.hp < a.max * 0.5) v *= 1 + a.F.rage / 100;
+    /* 0.1.69 塔羅：審判逆位（自己生命低於 30%）、太陽逆位（生命比對手高時受到的傷害減少） */
+    if (a.F.tarLow && a.hp < a.max * 0.3) v *= 1 + a.F.tarLow / 100;
+    if (!self && d.F.tarHi && d.hp > a.hp) v *= 1 - d.F.tarHi / 100;
     /* 0.1.50 插箭（敵人每支箭）、女武神、日月輪轉（白天矛）、浴血戰姬（被打中幾次） */
     if (a.F.arrowPct && d.arrow) v *= 1 + (a.F.arrowPct * d.arrow) / 100;
     if (a.valk) v *= 1 + VALK_DMG / 100;
@@ -536,6 +571,8 @@ function simulate(FA, FB, seed) {
     }
     if (!self) {
       if (d.F.thornsF && v > 0 && !noTh) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {}), tr(d, 'thornsF');
+      /* 0.1.69 塔羅・正義：受到的傷害反彈一部分 */
+      if (d.F.tarRefl && v > 0 && !noTh) hurt(t, Math.max(1, (v * d.F.tarRefl) / 100), a, 1 - ai, 'thorns', {});
       /* 0.1.37 毒刺皮膚：被打中時讓攻擊者中毒 */
       if (d.F.thornsP && v > 0) addPoison(d, a, d.F.thornsP, t);
       /* 0.1.51 火焰護體（攻擊者燃燒）、避雷針（機率電擊攻擊者） */
@@ -748,8 +785,9 @@ function simulate(FA, FB, seed) {
       } else if (p.k === 'lockBest') {
         const w = [...d.w].filter(w => !w.imm).sort((x, y) => petRank(y) - petRank(x))[0];
         if (w) {
-          w.seal = MAX_T;
-          log(0, i, 'seal', MAX_T, { u: p.u, tu: w.u });
+          /* 0.1.69 塔羅・高塔：只封鎖 v 秒（賄賂是整場） */
+          w.seal = p.v || MAX_T;
+          log(0, i, 'seal', w.seal, { u: p.u, tu: w.u });
         }
       }
     }
