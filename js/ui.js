@@ -737,14 +737,26 @@ function wheelEnd2(run) {
   const j = ((h(run.seed, 405) % 1000) / 1000 - 0.5) * 0.6;
   return -(360 * 4 + i * 120 + 60 + j * 120);
 }
-function wheelHTML(run) {
+/* 0.1.65 轉盤的底色：相鄰兩塊（含頭尾接起來那塊）不同色，每塊結尾畫一條金色分隔線（g 度；內圈半徑小，線要寬一點） */
+function wheelGrad(sl, cols, g) {
+  return sl
+    .map((s, i) => {
+      /* 兩色輪流；塊數是單數時最後一塊用第三色（不然頭尾同色、看不出分界） */
+      const c = `var(${cols[sl.length % 2 && i === sl.length - 1 ? 2 : i % 2]})`;
+      return `${c} ${s.a}deg ${s.b - g}deg,var(--gold) ${s.b - g}deg ${s.b}deg`;
+    })
+    .join(',');
+}
+function wheelHTML(run, step = 0) {
   const sl = wheelSlices(),
-    grad = sl.map((s, i) => `var(${i % 2 ? '--fill' : '--card2'}) ${s.a}deg ${s.b}deg`).join(','),
+    grad = wheelGrad(sl, ['--card2', '--fill', '--fill-hi'], 1.2),
     end = wheelEnd(run),
-    grad2 = POOLTH.map((x, i) => `var(${i % 2 ? '--card' : '--accent-soft'}) ${i * 120}deg ${(i + 1) * 120}deg`).join(
-      ','
+    grad2 = wheelGrad(
+      POOLTH.map((x, i) => ({ a: i * 120, b: (i + 1) * 120 })),
+      ['--accent-soft', '--card2', '--fill-hi'],
+      2.5
     );
-  return `<div class="wheel"><i class="wpin"></i><div class="wdisk" id="wdisk" style="background:conic-gradient(${grad});transform:rotate(${run.mseen ? end : 0}deg)">${sl
+  return `<div class="wheel${step ? ' s' + step : ''}"><i class="wpin"></i><div class="wdisk" id="wdisk" style="background:conic-gradient(${grad});transform:rotate(${run.mseen ? end : 0}deg)">${sl
     .map(s => {
       const m = (s.a + s.b) / 2;
       return `<img src="${artIconURL(MODEI[s.k].ic) || iconURL('star')}" alt="" style="transform:rotate(${m}deg) translateY(-82px) rotate(${-m}deg)">`;
@@ -800,8 +812,15 @@ function modeHTML(run) {
   const M = MODEI[run.mode];
   if (!run.mseen)
     return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">外圈賽制・內圈道具池</small><button class="wbtn" data-act="wheelSkip" aria-label="直接看結果">${wheelHTML(run)}</button><b class="c-dim">轉盤轉動中…</b><small class="c-dim">點轉盤直接看結果</small></div></div>`;
+  /* 0.1.65 分兩步：先看賽制（內圈變暗），按「看道具池」再看道具池（外圈變暗），一次只講一件事、對話框不會太長 */
   const T = POOLTHI[run.theme];
-  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">外圈賽制・內圈道具池</small>${wheelHTML(run)}<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}${T ? `<b class="mres thres">道具池：${T.n}</b><ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}<button class="btn pri big" data-act="modeOk">選職業</button></div></div>`;
+  if (T && !run.mstep)
+    return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制（外圈）</small>${wheelHTML(run, 1)}<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}<button class="btn pri big" data-act="modeOk">看道具池</button></div></div>`;
+  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">${T ? `本局道具池（內圈）・賽制：${M.n}` : '本局賽制'}</small>${wheelHTML(run, T ? 2 : 1)}${
+    T
+      ? `<b class="big mres">${T.n}</b><ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}</ul>`
+      : `<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}`
+  }<button class="btn pri big" data-act="modeOk">選職業</button></div></div>`;
 }
 /* 準備畫面上方：賽制小標籤＋印記的件數（點了看規則） */
 function modeBarHTML(run) {
@@ -2412,6 +2431,12 @@ const A = {
   wheelSkip: () => wheelDone(S.run),
   modeOk: () => {
     if (!S.run.mseen) return wheelDone(S.run);
+    if (POOLTHI[S.run.theme] && !S.run.mstep) {
+      S.run.mstep = 1;
+      snd('tap');
+      save();
+      return render();
+    }
     S.run.phase = 'cls';
     snd('tap');
     save();

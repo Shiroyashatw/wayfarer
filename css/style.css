@@ -746,5 +746,11 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .thlist img{width:24px;height:24px;image-rendering:pixelated}
 .wdisk.in{inset:55px;box-shadow:0 0 0 3px var(--gold),0 3px 10px #0006}
 .wdisk.in img{width:26px;height:26px;margin:-13px 0 0 -13px}
+/* 0.1.65 開場分兩步：看賽制時內圈變暗、看道具池時外圈變暗 */
+.wdisk{transition:filter .25s ease-out}
+.wheel.s1 .wdisk.in,.wheel.s2 .wdisk:not(.in){filter:brightness(.55) saturate(.6)}
+.wheel.s2 .wdisk:not(.in) img{opacity:.6}
+/* 對話框太長時在框裡捲（電腦版放大後也不會超出畫面） */
+.ovl .dlg2{max-height:calc(var(--vh,100vh) - 32px);overflow:auto}
 .thres{margin-top:var(--sp-2)}
 .thlist .s1{--sb:var(--s1)}.thlist .s2{--sb:var(--s2)}.thlist .s3{--sb:var(--s3)}.thlist .s4{--sb:var(--s4)}.thlist .s5{--sb:var(--s5)}
