@@ -406,7 +406,8 @@ canvas.spr.flip{transform:scaleX(-1)}
 #modal{z-index:50}
 
 /* 0.1.13 即時戰鬥紀錄 */
-.blog{height:132px;overflow:hidden;display:flex;flex-direction:column;gap:1px;padding:var(--sp-2) var(--sp-3);background:var(--card);border-radius:var(--r-md);border:1px solid var(--line);mask-image:linear-gradient(#000 70%,transparent)}
+/* 0.1.54 戰鬥紀錄可以捲（之前 overflow:hidden 只看得到最新幾行） */
+.blog{height:132px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:1px;padding:var(--sp-2) var(--sp-3);background:var(--card);border-radius:var(--r-md);border:1px solid var(--line);mask-image:linear-gradient(#000 88%,transparent)}
 .blog p{margin:0;font-size:var(--fs-sm);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .blog p i{font-style:normal;font-family:var(--f-pix);color:var(--faint);margin-right:var(--sp-2);font-size:var(--fs-cap)}
 .blog p.me{color:var(--good)}

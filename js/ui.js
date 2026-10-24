@@ -631,7 +631,7 @@ function detailHTML(run) {
     <div class="btns">${
       where === 'shop'
         ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < slotPrice(run, o) ? 'disabled' : ''}>買 ${slotPrice(run, o)} 金</button>`
-        : `${I.sacrifice ? '<button class="btn buy" data-act="sacr">獻祭寵物</button>' : ''}${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o)} 金</button>`
+        : `${I.sacrifice ? '<button class="btn buy" data-act="sacr">獻祭寵物</button>' : ''}${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o, run)} 金</button>`
     }</div></div>`;
 }
 /* ================= 0.1.52 賽制 ================= */
@@ -670,6 +670,8 @@ function sgLineHTML(run, sg) {
 }
 /* 合成時印記不一樣：選要保留哪個 */
 function sgPickHTML(run) {
+  /* 0.1.54 那件已經被合成吃掉（連鎖合成）就跳過 */
+  while (run.sgq && run.sgq.length && !findU(run, run.sgq[0].u)) run.sgq.shift();
   const q = run.sgq && run.sgq[0];
   if (!q) return '';
   const o = run.bag.items.find(x => x.u === q.u) || run.bench.find(x => x && x.u === q.u);
@@ -708,14 +710,18 @@ function vanPick(sel = []) {
     ok =
       v.k === 'alch'
         ? o =>
-            vanOK(o) && ITEMI[o.id].star < 5 && (!sel.length || ITEMI[o.id].star === ITEMI[findU(run, sel[0]).id].star)
+            vanOK(o) &&
+            o.t === 1 &&
+            !o.f &&
+            ITEMI[o.id].star < 5 &&
+            (!sel.length || ITEMI[o.id].star === ITEMI[findU(run, sel[0]).id].star)
         : v.k === 'smith'
           ? o => !ITEMI[o.id].core && o.t >= 2 && !(o.m && o.m2)
           : o => vanOK(o) && !o.f,
     c = its.filter(ok),
     hint =
       v.k === 'alch'
-        ? `選 2 件同星級的道具（已選 ${sel.length}／2）`
+        ? `選 2 件同星級、Ⅰ 階的道具（已選 ${sel.length}／2）`
         : v.k === 'smith'
           ? '選一件 Ⅱ 階以上的道具（開一條隨機詞綴）'
           : '選一件道具（變成同星級、同類型的另一件）';
@@ -935,7 +941,7 @@ function pickHTML(run) {
   return `<div class="ovl"><div class="dlg2"><b>${p.t}</b><div class="picks">${p.opts
     .map(
       id =>
-        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${t > 1 ? tierBadge(t) : ''}${shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}${t > 1 ? tierTxt(t) : ''}</b><small>${dsc(itemDesc(id, t))}</small></span></button>`
+        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${t > 1 ? tierBadge(t) : ''}${ITEMI[id].core ? '' : shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}${t > 1 ? tierTxt(t) : ''}</b><small>${dsc(itemDesc(id, t))}</small></span></button>`
     )
     .join('')}</div></div></div>`;
 }
@@ -1267,7 +1273,7 @@ function bPop(side, txt, col, big) {
   fx.appendChild(s);
   setTimeout(() => s.remove(), 900);
 }
-/* 0.1.13 即時戰鬥紀錄：每個事件一行（新的在上面，留最後 30 行）：誰的哪件道具、做了什麼 */
+/* 0.1.13 即時戰鬥紀錄：每個事件一行（新的在上面，0.1.54 起留最後 200 行、可以捲）：誰的哪件道具、做了什麼 */
 function bNames() {
   const nm = [{}, {}],
     put = (k, its) => {
@@ -1351,7 +1357,8 @@ function bLog(e, tg) {
   d.className = e.s ? 'op' : 'me';
   d.innerHTML = `<i>${e.t.toFixed(1)}</i>${t}`;
   box.prepend(d);
-  while (box.childElementCount > 30) box.lastElementChild.remove();
+  /* 0.1.54 可以往下捲看舊的：留 200 行 */
+  while (box.childElementCount > 200) box.lastElementChild.remove();
 }
 /* 0.1.12 戰鬥特效：攻擊方往前衝、被打的閃白抖動、暴擊整個場地震、元素粒子、補血往上飄、格擋光圈、倒下 */
 function bAnim(el, cls) {
@@ -2094,7 +2101,7 @@ const A = {
   sellHold: () => {
     const run = S.run;
     if (!run.hold) return;
-    const v = sellOf(run.hold.id, run.hold.t);
+    const v = sellO(run.hold, run);
     run.gold += v;
     run.hold = null;
     snd('coin');

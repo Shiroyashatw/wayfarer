@@ -497,7 +497,8 @@ function simulate(FA, FB, seed) {
       d.block -= ab;
       v -= ab;
       /* 0.1.52 印記守護 2 級：護盾被打破時反彈 */
-      if (d.F.sgGuard >= 2 && d.block <= 0.5 && !self) hurt(t, 20, a, di, 'thorns', { sg: 1 });
+      if (d.F.sgGuard >= 2 && d.block <= 0.5 && !self && !(w.pet && a.F.petNoThorns))
+        hurt(t, 20, a, di, 'thorns', { sg: 1 });
     }
     v = Math.max(ab > 0 ? 0 : 1, v);
     hurt(t, v, d, ai, crit ? 'crit' : 'hit', {
@@ -537,7 +538,7 @@ function simulate(FA, FB, seed) {
       if (d.F.thornsP && v > 0) addPoison(d, a, d.F.thornsP, t);
       /* 0.1.51 火焰護體（攻擊者燃燒）、避雷針（機率電擊攻擊者） */
       if (d.F.thornsBurn && v > 0) a.burn += d.F.thornsBurn * res(a, 'burn', t);
-      if (d.F.rod && v > 0 && r() * 100 < d.F.rod) {
+      if (d.F.rod && v > 0 && !noTh && r() * 100 < d.F.rod) {
         hurt(t, ROD_DMG, a, 1 - ai, 'thorns', { rod: 1 });
         addCharge(t, 1 - ai, a, 1);
         tr(d, 'rod');
@@ -694,7 +695,7 @@ function simulate(FA, FB, seed) {
   for (let i = 0; i < 2; i++) {
     const a = S[i],
       d = S[1 - i],
-      n = Math.min(5, d.w.filter(w => w.pet).length);
+      n = Math.min(5, d.w.filter(w => w.pet && !w.vw).length);
     if (a.F.petDown && n) tr(a, 'petDown', n);
     if (a.F.petHunt && n) tr(a, 'petHunt', n);
     if (a.F.petDown)
@@ -1001,8 +1002,11 @@ function simulate(FA, FB, seed) {
           p.n--;
           trapFire(t, i, p.u);
           tr(a, 'potMul');
-          const pv = healOf(a, p.v);
+          const pv = healOf(a, p.v),
+            over = a.hp + pv - a.max;
           a.hp = Math.min(a.max, a.hp + pv);
+          /* 0.1.54 印記生命 2 級：藥水溢出的回復也變護盾 */
+          if (a.F.sgLife >= 2 && over > 0.5) gainBlock(t, a, i, over, p.u);
           log(t, i, 'pot', Math.round(pv), { self: 1, u: p.u });
           /* 0.1.28 爆裂（質變）：喝藥水時炸敵人 */
           if (p.bomb) hurt(t, (p.v * p.bomb) / 100, S[1 - i], i, 'hit', { u: p.u, ab: 0, el: 'fire' });

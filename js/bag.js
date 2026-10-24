@@ -165,7 +165,11 @@ const defsOf = o => (o.sc && ITEMI[o.sc] ? [ITEMI[o.id], ITEMI[o.sc]] : [ITEMI[o
 /* 背包裡某個核心效果的最大值（例如 freeRoll、bribe、defX），融入的也算 */
 const coreProp = (its, k) => Math.max(0, ...its.flatMap(o => defsOf(o).map(d => d[k] || 0)));
 /* 賣價：融合過的連輔助一起算；0.1.35 回扣送的（z）賣 0 金 */
-const sellO = o => (o.z ? 0 : sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0));
+/* 0.1.54 狂風市集：這回合買的（o.bt 是買的回合）賣 0 金，不然買了馬上賣掉等於免費刷新商店 */
+const sellO = (o, run) =>
+  o.z || (run && run.mode === 'gale' && o.bt === run.ri)
+    ? 0
+    : sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0);
 /* 融合過的名字 */
 const fuName = o => (o.f && ITEMI[o.f] ? ITEMI[o.f].tf.n + '・' : '') + ITEMI[o.id].n;
 /* 質變後的標籤（原本的＋質變多的） */
@@ -204,6 +208,7 @@ function mergeAll(run, r) {
       if (q === o) continue;
       if (w === 'bag') run.bag.items = run.bag.items.filter(x => x !== q);
       else run.bench[run.bench.indexOf(q)] = null;
+      if (run.sgq) run.sgq = run.sgq.filter(x => x.u !== q.u);
     }
     o.t++;
     o.a = affOf(o.id, r);
@@ -426,7 +431,7 @@ function compileBag(bag, extra = {}) {
   const tfm = tfOf(its, adjQ),
     TG = new Map(its.map(o => [o.u, tagsWith(o, tfm)])),
     has = (o, tag) => TG.get(o.u).includes(tag),
-    cnt = tag => its.filter(o => has(o, tag)).length;
+    cnt = tag => its.filter(o => !o.vw && has(o, tag)).length;
   for (const [u, s] of tfm) add({ u }, scaleMod(ITEMI[s.id].tf.m, s.t));
   /* 0.1.35 鈔能力：照開戰時的金幣，所有武器加成、開戰護盾與封鎖 */
   const RB = coreProp(its, 'rich') ? richOf(bag.gp || 0) : null;
@@ -796,7 +801,7 @@ function syncShrink(run) {
       run.bag.items = run.bag.items.filter(q => q !== o);
       const fi = run.bench.indexOf(null);
       if (fi >= 0) run.bench[fi] = o;
-      else run.gold += sellO(o);
+      else run.gold += sellO(o, run);
     }
   }
 }

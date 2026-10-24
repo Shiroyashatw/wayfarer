@@ -430,10 +430,8 @@ function rollItem(run, lotto, used = poolUsed(run), filt = () => true) {
     );
     if (it) return it.id;
   }
-  return pick(
-    run,
-    ITEMS.filter(it => it.star === 1 && shopOK(it) && filt(it))
-  ).id;
+  const c = ITEMS.filter(it => it.star === 1 && shopOK(it) && filt(it));
+  return c.length ? pick(run, c).id : null;
 }
 /* 0.1.35 六合彩：1～2★ 的機率挪六成給 3～5★（2：4：4） */
 function lottoOdds(od) {
@@ -488,14 +486,12 @@ const newItem = (run, id, t = 1, sg) => ({
   ...(run.mode === 'sigil' && !ITEMI[id].core ? { sg: sg ?? fl(r01(run) * SIGILS.length) } : {})
 });
 /* 0.1.52 買完：雙胞胎（送一件一樣的）、狂風市集（商店整排換新） */
-function afterBuy(run, s) {
+function afterBuy(run, s, o) {
+  /* 0.1.54 記下這件是哪一回合買的（bt）：狂風市集這回合賣 0 金、回扣這回合買了又賣掉的不算 */
+  if (o) o.bt = run.ri;
   if (run.twin) {
     run.twin = 0;
-    const o = newItem(run, s.id, s.t || 1, s.sg),
-      fi = benchFree(run);
-    if (fi >= 0) run.bench[fi] = o;
-    else if (wouldMerge(run, s.id, s.t || 1)) run.bench.push(o);
-    else putItem(run, o);
+    putItem(run, newItem(run, s.id, s.t || 1, s.sg));
   }
   if (run.mode === 'gale') rollShop(run);
 }
@@ -513,11 +509,15 @@ function buyItem(run, k) {
   if (fi < 0) run.bench.push(newItem(run, s.id, s.t || 1, s.sg));
   else run.bench[fi] = newItem(run, s.id, s.t || 1, s.sg);
   run.shop[k] = null;
-  afterBuy(run, s);
+  afterBuy(run, s, fi < 0 ? run.bench[run.bench.length - 1] : run.bench[fi]);
   const merged = mergeAll(run, runR(run));
-  for (const o of run.bench.splice(BENCH_N)) if (o) run.bench[benchFree(run)] = o;
+  benchTrim(run);
   kickback(run);
   return { merged };
+}
+/* 0.1.54 暫存區多出來的格子（滿了還買來合成）收回：放回空格，沒空格就寄放（再不行換成金幣） */
+function benchTrim(run) {
+  for (const o of run.bench.splice(BENCH_N)) if (o) putItem(run, o);
 }
 /* 0.1.35 回扣：每買 N 次送一次菁英三選一（mid：準備中途的三選一，選完回到準備；z：送的道具賣價 0） */
 function kickback(run) {
@@ -553,8 +553,9 @@ function buyToBag(run, k, x, y, r, swap) {
   }
   run.bag.items.push({ ...newItem(run, s.id, s.t || 1, s.sg), x, y, r });
   run.shop[k] = null;
-  afterBuy(run, s);
+  afterBuy(run, s, run.bag.items[run.bag.items.length - 1]);
   const merged = mergeAll(run, runR(run));
+  benchTrim(run);
   kickback(run);
   return { merged };
 }
@@ -591,8 +592,9 @@ function sellItem(run, u) {
     o = run.bench[i];
     run.bench[i] = null;
   }
-  const v = sellO(o);
+  const v = sellO(o, run);
   run.gold += v;
+  if (o.bt === run.ri && run.kb > 0) run.kb--;
   syncShrink(run);
   return v;
 }
@@ -1083,6 +1085,7 @@ function petWin(run, r) {
   const cap = coreProp(bagAll(run.bag), 'capture');
   if (!cap || (r.type !== 'pve' && r.type !== 'elite') || r01(run) * 100 >= cap) return null;
   const id = vanRoll(run, shopTop(run), it => it.tags.includes('pet'));
+  if (!id) return null;
   putItem(run, newItem(run, id));
   mergeAll(run, runR(run));
   return id;
@@ -1095,6 +1098,10 @@ function sacrifice(run, us) {
   if (!v) return '沒有遠古之器';
   const ps = us.map(u => findU(run, u)).filter(sacOK);
   if (!ps.length) return '要選寵物';
+  /* 0.1.54 湊滿要召喚四兇時要有地方放（選的寵物有在暫存區就會空出來） */
+  const gain = ps.reduce((n, o) => n + ITEMI[o.id].star * 3 ** (o.t - 1), 0);
+  if ((v.sv || 0) + gain >= VESSEL_N && benchFree(run) < 0 && run.hold && !ps.some(o => run.bench.includes(o)))
+    return '暫存區和寄放都滿了，先騰出一格再召喚';
   for (const o of ps) {
     takeOut(run, o.u);
     v.sv = (v.sv || 0) + ITEMI[o.id].star * 3 ** (o.t - 1);
@@ -1122,8 +1129,12 @@ function petEvolve(run) {
     o.ev = 0;
     o.t++;
     o.a = affOf(o.id, runR(run));
-    if (o.t === TIER_MAX && !o.m) (o.m = roll5(o.id, runR(run))), (o.mv = 0);
+    if (o.t === TIER_MAX) {
+      if (!o.m) (o.m = roll5(o.id, runR(run))), (o.mv = 0);
+      else if (!o.m2) (o.m2 = roll5(o.id, runR(run))), (o.mv2 = 0);
+    }
   }
+  mergeAll(run, runR(run));
 }
 /* 0.1.52 印記：幸運 2 級（4 件）以上，打贏 30% 多拿 2 金 */
 const luckWin = run => run.mode === 'sigil' && sgLv(sgCount(run.bag)[4]) >= 2 && r01(run) < 0.3;
@@ -1171,16 +1182,22 @@ function vanDo(run, a) {
   if (!v || run.mode !== 'caravan') return '這回合沒有商人';
   if (run.van.done) return '這位商人這回合已經交易過了';
   if (v.k !== 'blood' && run.gold < v.c) return '金幣不夠';
+  /* 0.1.54 拿到的道具要有地方放（暫存區或寄放），不然會被默默換成金幣 */
+  const full = () => benchFree(run) < 0 && !!run.hold;
   let got = null;
   if (v.k === 'alch') {
     const [x, y] = (a || []).map(u => findU(run, u));
     if (!vanOK(x) || !vanOK(y) || x === y) return '要選 2 件商店買得到的道具';
+    if (x.t > 1 || y.t > 1 || x.f || y.f) return '只能用 Ⅰ 階、沒融合過的道具';
     const st = ITEMI[x.id].star;
     if (st !== ITEMI[y.id].star) return '2 件要同星級';
     if (st >= 5) return '5★ 已經最高了';
+    if (full() && !run.bench.includes(x) && !run.bench.includes(y)) return '暫存區和寄放都滿了，先騰出一格';
+    const id = vanRoll(run, st + 1);
+    if (!id) return '商店已經沒有高一星的道具了';
     takeOut(run, x.u);
     takeOut(run, y.u);
-    got = newItem(run, vanRoll(run, st + 1));
+    got = newItem(run, id);
     putItem(run, got);
   } else if (v.k === 'smith') {
     const o = findU(run, a);
@@ -1192,7 +1209,10 @@ function vanDo(run, a) {
     else (o.m2 = m), (o.mv2 = 0);
     got = o;
   } else if (v.k === 'gamble') {
-    got = newItem(run, vanRoll(run, 1 + fl(r01(run) * 4)));
+    if (full()) return '暫存區和寄放都滿了，先騰出一格';
+    const id = vanRoll(run, 1 + fl(r01(run) * 4));
+    if (!id) return '商店已經沒有道具了';
+    got = newItem(run, id);
     putItem(run, got);
   } else if (v.k === 'morph') {
     const o = findU(run, a);
@@ -1203,10 +1223,16 @@ function vanDo(run, a) {
     if (!c.length) return '沒有同類型的道具可以變';
     const id = pick(run, c).id,
       inBag = run.bag.items.includes(o);
+    if (inBag && full()) {
+      const t = { ...o, id };
+      if (!canPlace({ ...run.bag, items: run.bag.items.filter(q => q !== o) }, t, o.x, o.y, o.r))
+        return '變形後的形狀放不下，暫存區和寄放也滿了';
+    }
     o.id = id;
     o.a = o.t > 1 ? affOf(id, runR(run)) : null;
-    o.m = ITEMI[id].star === 5 ? roll5(id, runR(run)) : null;
-    o.m2 = null;
+    /* 0.1.54 詞綴數量保留（Ⅲ 階、鐵匠開的、5★ 的），照新道具重抽 */
+    if (o.m || ITEMI[id].star === 5) (o.m = roll5(id, runR(run))), (o.mv = 0);
+    if (o.m2) (o.m2 = roll5(id, runR(run))), (o.mv2 = 0);
     o.sm = 0;
     /* 形狀可能不一樣：原地放不下就收進暫存區 */
     if (inBag && !canPlace({ ...run.bag, items: run.bag.items.filter(q => q !== o) }, o, o.x, o.y, o.r)) {
@@ -1217,14 +1243,19 @@ function vanDo(run, a) {
   } else if (v.k === 'twin') run.twin = 1;
   else if (v.k === 'blood') {
     if (run.hp <= v.c) return `生命要超過 ${v.c}`;
+    if (full()) return '暫存區和寄放都滿了，先騰出一格';
+    /* 0.1.54 照道具類型篩（武器不含寵物；防具含盾；飾品含藥水） */
     const f =
       a === 'weapon'
-        ? it => !!it.dmg
+        ? it => itemCat(it) === 'weapon'
         : a === 'def'
-          ? it => !!it.block || it.tags.includes('armor')
-          : it => !it.dmg && !it.block && !it.tags.includes('armor');
+          ? it => itemCat(it) === 'shield' || itemCat(it) === 'armor'
+          : it => itemCat(it) === 'trinket' || itemCat(it) === 'potion';
+    const st = Math.min(5, shopTop(run) + 1),
+      id = vanRoll(run, st, f) || vanRoll(run, Math.max(1, st - 1), f);
+    if (!id) return '商店已經沒有這一類的道具了';
     run.hp -= v.c;
-    got = newItem(run, vanRoll(run, Math.min(5, shopTop(run) + 1), f));
+    got = newItem(run, id);
     putItem(run, got);
   }
   if (v.k !== 'blood') run.gold -= v.c;
@@ -1318,6 +1349,11 @@ function takePick(run, id, hold) {
   const fi = benchFree(run);
   if (fi < 0 && !wouldMerge(run, id, t)) {
     if (!hold) return '暫存區滿了，先騰出一格';
+    /* 0.1.54 寄放已經有東西：玩家要先處理；機器人把舊的賣掉（之前會直接蓋掉、道具消失） */
+    if (run.hold) {
+      if (!run.auto) return '暫存區和寄放都滿了，先領取或賣掉寄放的道具';
+      run.gold += sellO(run.hold, run);
+    }
     run.hold = mk();
     run.pend = null;
     giveGift(run, id);
