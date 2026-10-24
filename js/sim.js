@@ -186,14 +186,16 @@ function simulate(FA, FB, seed) {
   const hurt = (t, d, def, src, k, extra) => {
     def.hp -= d;
     log(t, src, k, Math.round(d), extra);
-    if (def.hp <= 0 && def.F.revive && !def.rev) revive(t, def);
+    if (def.hp <= 0 && (def.F.revive || def.F.ankh) && !def.rev) revive(t, def);
   };
   /* 0.1.50 女武神降臨：第一次倒下時復活、清掉持續傷害，之後傷害、攻速提升、免疫暈眩凍結冰緩 */
+  /* 0.1.58 法老王的遺物・安卡（ankh）：只復活，沒有女武神的加成 */
   function revive(t, x) {
-    x.rev = x.valk = 1;
-    x.hp = (x.max * x.F.revive) / 100;
+    x.rev = 1;
+    x.valk = x.F.revive ? 1 : 0;
+    x.hp = (x.max * (x.F.revive || x.F.ankh)) / 100;
     for (const k of ['burn', 'poison', 'venom', 'bleed', 'rend', 'ignite']) x[k] = 0;
-    log(t, S.indexOf(x), 'revive', Math.round(x.hp), { self: 1 });
+    log(t, S.indexOf(x), 'revive', Math.round(x.hp), { self: 1, ...(x.valk ? {} : { ankh: 1 }) });
     tr(x, 'revive');
   }
   /* 0.1.29 抗異常：k 是 d 身上的異常（burn、poison…），回傳抗完剩幾成；開戰免毒的秒數內不會中毒；

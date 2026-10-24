@@ -2584,13 +2584,15 @@ const sellOf = (id, t = 1) => Math.max(1, Math.ceil((ITEMI[id].star * 3 ** (t - 
 /* 形狀旋轉 r 次（90°），回傳從 0 開始的格子 */
 /* 0.1.20 形狀算過就記住（機器人評估時一回合要算上千次）；回傳的陣列大家共用，不要改它 */
 const SHC = new Map();
-/* sm：0.1.33 長柄大師讓雙手武器少佔 1 格（拿掉一格，剩下的還連在一起） */
-function shapeOf(id, rot = 0, sm = 0) {
-  const key = id + '|' + (rot & 3) + (sm ? 's' : '');
+/* sm：0.1.33 長柄大師讓雙手武器少佔 1 格（拿掉一格，剩下的還連在一起）；sh：0.1.58 七十二變換過的形狀（SH 的鍵） */
+function shapeOf(id, rot = 0, sm = 0, sh) {
+  const key = id + '|' + (rot & 3) + (sm ? 's' : '') + (sh ? '|' + sh : '');
   let v = SHC.get(key);
-  if (!v) SHC.set(key, (v = shapeRaw(id, rot, sm)));
+  if (!v) SHC.set(key, (v = shapeRaw(id, rot, sm, sh)));
   return v;
 }
+/* 一件道具（背包、暫存區、商店的一格）的形狀；r 沒給就用它自己的旋轉 */
+const shapeO = (o, r = o.r || 0) => shapeOf(o.id, r, o.sm, o.sh);
 function shrinkShape(c) {
   if (c.length < 2) return c;
   const linked = a => {
@@ -2609,8 +2611,8 @@ function shrinkShape(c) {
   }
   return c.slice(0, -1);
 }
-function shapeRaw(id, rot, sm) {
-  let c = SH[ITEMI[id].sh].map(p => [...p]);
+function shapeRaw(id, rot, sm, sh) {
+  let c = SH[(sh && SH[sh] && sh) || ITEMI[id].sh].map(p => [...p]);
   if (sm) c = shrinkShape(c);
   for (let i = 0; i < (rot & 3); i++) c = c.map(([x, y]) => [-y, x]);
   const mx = Math.min(...c.map(p => p[0])),

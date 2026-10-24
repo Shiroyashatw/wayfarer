@@ -16,6 +16,7 @@
   --arena-a:#dfe9f6; --arena-b:#f3ece0;
   --day:#ffd76a; --day-ink:#7a4a00; --night:#3a4680; --night-ink:#e4e9ff;
   --sg0:#e06a3a; --sg1:#2f8be0; --sg2:#8a7d5c; --sg3:#2f9e44; --sg4:#c99a12;
+  --curse:#8a3fc4;
   --fs-cap:11px; --fs-sm:12px; --fs-body:13px; --fs-btn:14px; --fs-title:16px; --fs-num:20px; --fs-hero:26px;
   --sp-1:4px; --sp-2:6px; --sp-3:8px; --sp-4:12px; --sp-5:16px;
   --r-sm:6px; --r-md:10px; --r-lg:14px;
@@ -35,6 +36,7 @@
   --arena-a:#2d3550; --arena-b:#2b2530;
   --day:#f5c95a; --day-ink:#4a2c00; --night:#2a3366; --night-ink:#d8defc;
   --sg0:#ff8a5a; --sg1:#7ad3ff; --sg2:#d8cfb8; --sg3:#7bd36b; --sg4:#ffd76a;
+  --curse:#b77cf0;
   color-scheme:dark;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -627,3 +629,25 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .cxr p{margin:0;padding:0 var(--sp-3) var(--sp-2);font-size:var(--fs-sm);color:var(--dim);line-height:1.5}
 .cxg summary small{white-space:normal}
 .htop{gap:var(--sp-2)}
+/* 0.1.58 詛咒寶藏的「咒」、星象的規則、法老王的遺物、遺產攤位 */
+.cub{position:absolute;left:2px;bottom:2px;display:grid;place-items:center;width:15px;height:15px;border-radius:4px;font-size:10px;font-style:normal;font-weight:700;line-height:1;color:#fff;background:var(--curse);z-index:2;box-shadow:0 0 0 1px #0006}
+.bag.mini .cub{width:11px;height:11px;font-size:8px;left:1px;bottom:1px}
+.sc .cub{left:4px;bottom:auto;top:4px}
+.cul{display:flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-sm);color:var(--curse)}
+.cul .cub{position:static;width:18px;height:18px;font-size:var(--fs-cap);flex:none}
+.mchip.astro{flex:1 1 0;min-width:0;height:auto;min-height:38px;padding:var(--sp-1) var(--sp-2);border-radius:var(--r-md);text-align:left;background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.mchip.astro b{flex:none}
+.mchip.astro small{min-width:0;color:var(--dim);font-size:var(--fs-cap);line-height:1.25}
+.astl{display:grid;gap:var(--sp-1);text-align:left;margin:var(--sp-2) 0;font-size:var(--fs-sm)}
+.astl p.on{color:var(--gold)}
+.relrow{display:flex;gap:var(--sp-1);flex-wrap:wrap}
+.relc{width:38px;height:38px;display:grid;place-items:center;border:0;border-radius:var(--r-md);background:var(--card);box-shadow:var(--shadow)}
+.relc img,.relo img{width:28px;height:28px;image-rendering:pixelated}
+.relopts{display:grid;gap:var(--sp-2);margin-top:var(--sp-2)}
+.relo{display:flex;align-items:center;gap:var(--sp-2);justify-content:flex-start;text-align:left;padding:var(--sp-2)}
+.relo img{width:32px;height:32px;flex:none}
+.relo span{display:grid;min-width:0}
+.relo small{font-size:var(--fs-sm);color:var(--dim);line-height:1.3}
+.leg{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-2)}
+.leg .lbl{font-size:var(--fs-cap);color:var(--dim);writing-mode:vertical-rl;letter-spacing:.2em;flex:none}
+.legs{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 4 * var(--sp-1)) / 5);gap:var(--sp-1);overflow-x:auto;flex:1;min-width:0;padding:2px}

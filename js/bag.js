@@ -3,7 +3,7 @@
 /* 背包裡的一件：{ u: 編號, id, t: 階, x, y, r: 旋轉, a: 升階詞綴 } */
 /* 0.1.42 職業核心不佔背包格子：放在 bag.core（第二個核心照舊融入它的 sc）；算效果時跟背包道具一起算 */
 const bagAll = bag => (bag.core ? [...bag.items, bag.core] : bag.items);
-const cellsOf = o => shapeOf(o.id, o.r, o.sm).map(([x, y]) => [o.x + x, o.y + y]);
+const cellsOf = o => shapeO(o).map(([x, y]) => [o.x + x, o.y + y]);
 /* 格子上是哪一件（u），沒有回傳 null */
 function bagGrid(bag) {
   const g = Array.from({ length: bag.h }, () => Array(bag.w).fill(null));
@@ -13,7 +13,7 @@ function bagGrid(bag) {
 /* 能不能把 o 放在 (x, y)、旋轉 r（忽略自己） */
 function canPlace(bag, o, x, y, r) {
   const g = bagGrid(bag);
-  for (const [dx, dy] of shapeOf(o.id, r, o.sm)) {
+  for (const [dx, dy] of shapeO(o, r)) {
     const cx = x + dx,
       cy = y + dy;
     if (cx < 0 || cy < 0 || cx >= bag.w || cy >= bag.h) return false;
@@ -45,7 +45,7 @@ function findSpot(bag, o, prefer = true) {
       : [];
   let best = null;
   for (let r = 0; r < 4; r++) {
-    const sh = shapeOf(o.id, r, o.sm);
+    const sh = shapeO(o, r);
     for (let y = 0; y < bag.h; y++)
       for (let x = 0; x < bag.w; x++) {
         let ok = true;
@@ -232,6 +232,20 @@ function mergeAll(run, r) {
     /* 0.1.53 馴獸師的成長：留三件裡最高的 */
     const gw = Math.max(0, ...use.map(([, q]) => q.gw || 0));
     if (gw) o.gw = gw;
+    /* 0.1.58 詛咒寶藏：材料裡有幾件被詛咒就疊幾層（最多 CURSE_MAX）；詛咒不一樣時留最多的那種 */
+    const cus = use.map(([, q]) => q.cu).filter(Boolean);
+    if (cus.length) {
+      const n = {};
+      for (const c of cus) n[c[0]] = (n[c[0]] || 0) + c[1];
+      const k = +Object.keys(n).sort((a, b) => n[b] - n[a])[0];
+      o.cu = [
+        k,
+        Math.min(
+          CURSE_MAX,
+          cus.reduce((a, c) => a + c[1], 0)
+        )
+      ];
+    }
     const sgs = [...new Set(use.map(([, q]) => q.sg).filter(x => x != null))];
     if (sgs.length > 1) {
       if (run.auto) {
@@ -329,6 +343,8 @@ function compileBag(bag, extra = {}) {
       kite: 0,
       summon: 0,
       revive: 0,
+      /* 0.1.58 法老王的遺物・安卡：倒下時復活的生命 % */
+      ankh: 0,
       link3: 0,
       link: 0,
       counter: 0,
@@ -402,7 +418,7 @@ function compileBag(bag, extra = {}) {
   /* 0.1.20 相鄰與同一排先用格子表算好（原本每一對都重算一次格子，機器人評估時太慢） */
   const NB = new Map(),
     RW = new Map();
-  if (its.some(o => ITEMI[o.id].adj || ITEMI[o.id].row || ITEMI[o.id].tf)) {
+  if (its.some(o => ITEMI[o.id].adj || ITEMI[o.id].row || ITEMI[o.id].tf || o.cu)) {
     const g = bagGrid(bag);
     for (const o of bag.items) {
       const cs = cellsOf(o),
@@ -509,6 +525,34 @@ function compileBag(bag, extra = {}) {
   [F.sgMight, F.sgSwift, F.sgGuard, F.sgLife, F.sgLuck] = SGL;
   if (SGL[2]) F.startBlock += 15 * SGN[2];
   if (SGL[3]) for (const q of bag.items) if (q.sg === 3) add(q, { ls: 5 });
+  /* 0.1.58 詛咒寶藏：背包裡被詛咒的道具（o.cu = [詛咒, 層數]）；吸金在 bonusGold、沉睡在下面的武器 */
+  for (const s of bag.items) {
+    const c = s.cu && CURSES[s.cu[0]];
+    if (!c) continue;
+    const v = c.v * s.cu[1];
+    if (c.k === 'rust') for (const q of bag.items) if (q !== s && adjQ(s, q)) add(q, { spd: -v });
+    if (c.k === 'frail') F.hp -= v;
+    if (c.k === 'envy')
+      for (const q of bag.items) if (q !== s && has(q, 'weapon') && rowQ(s, q)) add(q, { dmgPct: -v });
+  }
+  /* 0.1.58 法老王的遺物（bag.rel）：看位置的（最上／最下排、角落、中間）、武器件數、復活、沙漏（時段加成）；金面具在 bonusGold */
+  if (bag.rel && bag.rel.length) {
+    const R = new Set(bag.rel),
+      cs = o => cellsOf(o),
+      ws = bag.items.filter(o => ITEMI[o.id].dmg);
+    for (const o of bag.items) {
+      const c = cs(o);
+      if (R.has('scarab') && c.some(p => p[1] === bag.h - 1)) add(o, { spd: 25 });
+      if (R.has('horus') && c.some(p => p[1] === 0)) add(o, { crit: 20 });
+      if (R.has('feather') && c.some(([x, y]) => (x === 0 || x === bag.w - 1) && (y === 0 || y === bag.h - 1)))
+        add(o, { dmgPct: 35 });
+      if (R.has('pyramid') && c.every(([x, y]) => x > 0 && y > 0 && x < bag.w - 1 && y < bag.h - 1))
+        add(o, { spd: 20, dmgPct: 20 });
+    }
+    if (R.has('scepter') && ws.length <= 3) for (const o of ws) add(o, { dmgPct: 40 });
+    if (R.has('ankh')) F.ankh = Math.max(F.ankh || 0, 30);
+    if (R.has('sand')) F.phase.push({ t: 8, a: {}, b: { spd: 35 } });
+  }
   /* 0.1.7 開局職業：對有那個標籤的道具加成、角色加成 */
   const C = CLSI[bag.cls];
   if (C) {
@@ -529,7 +573,7 @@ function compileBag(bag, extra = {}) {
     if (I.regen) (F.src.regen = F.src.regen || []).push(o.u);
     if (m.thornsF) F.thornsF += m.thornsF;
     /* 0.1.29 照格數：巨化的生命 */
-    if (m.cellHp) F.hp += m.cellHp * shapeOf(o.id).length;
+    if (m.cellHp) F.hp += m.cellHp * shapeO(o).length;
     if (I.rush) {
       F.rushP = Math.max(F.rushP, Math.round(I.rush[0] * TIERB[o.t]));
       F.rushT += I.rush[1];
@@ -571,7 +615,7 @@ function compileBag(bag, extra = {}) {
         for (const k in o.ab.F || {}) F[k] = (F[k] || 0) + o.ab.F[k];
       }
       const on = onT(I, o.t),
-        mul = 1 + ((m.dmgPct || 0) + (m.cellPct || 0) * shapeOf(o.id).length) / 100,
+        mul = 1 + ((m.dmgPct || 0) + (m.cellPct || 0) * shapeO(o).length) / 100,
         /* 0.1.35 魔劍正宗吸收的數值（o.ab）當成這把的基礎數值 */
         ab = o.ab || {};
       for (const k of AB_K) if (ab[k]) on[k] = (on[k] || 0) + ab[k];
@@ -603,7 +647,7 @@ function compileBag(bag, extra = {}) {
         guard: m.guard || 0,
         chainN: Math.min(CHAIN_MAX, (m.chainN || 0) + (I.chainN || 0)),
         /* 0.1.35 雙手大師：每佔 1 格的連擊機率；金錢標：有錢時每次攻擊花 1 金、數值翻倍 */
-        dbl: (m.cellDbl || 0) * shapeOf(o.id).length,
+        dbl: (m.cellDbl || 0) * shapeO(o).length,
         coin: I.coin ? 1 : 0,
         /* 0.1.37 冰緩機率、劇毒層、命中衰老／腐蝕秒數、冰系（碎冰）、免疫異常與封鎖（別西卜） */
         chill: (on.chill || 0) + (m.chillCh || 0),
@@ -630,6 +674,8 @@ function compileBag(bag, extra = {}) {
         sgK: o.sg === 4 && SGL[4] ? 1 : 0,
         /* 0.1.53 召喚的戰狼（第幾隻、開戰封住到幾秒）、馴獸師的成長 */
         ...(o.vw ? { vw: o.vw, seal: o.vw * WOLF_T } : {}),
+        /* 0.1.58 詛咒・沉睡：開戰後幾秒才開始出手 */
+        ...(o.cu && CURSES[o.cu[0]] && CURSES[o.cu[0]].k === 'sleep' ? { seal: CURSES[o.cu[0]].v * o.cu[1] } : {}),
         gw: o.gw || 0,
         /* 0.1.53 四兇：吞噬（饕餮）、命中封鎖（窮奇）、隨機異常（混沌） */
         gorge: I.gorge || 0,
@@ -703,7 +749,7 @@ function bagMods(bag) {
 }
 /* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值, 終極藥劑的效果, 寒冰之心的生命, 封印過了幾回合]；
    後面是預設值的就不存。gp：0.1.35 開戰時的金幣（鈔能力、金錢標） */
-const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0];
+const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const packIt = o => {
   const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
     /* 0.1.52 最後一格是印記（+1，0 是沒有） */
@@ -718,7 +764,10 @@ const packIt = o => {
       o.hh || 0,
       o.rc || 0,
       o.sg != null ? o.sg + 1 : 0,
-      o.gw || 0
+      o.gw || 0,
+      /* 0.1.58 七十二變的形狀、詛咒 [詛咒, 層數] */
+      o.sh || 0,
+      o.cu || 0
     ];
   while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
   return [...a, ...t];
@@ -731,6 +780,8 @@ const packBag = bag => ({
   ...(bag.pay ? { pay: 1 } : {}),
   ...(bag.gp ? { gp: bag.gp } : {}),
   ...(bag.core ? { co: packIt(bag.core) } : {}),
+  /* 0.1.58 法老王的遺物 */
+  ...(bag.rel && bag.rel.length ? { rel: [...bag.rel] } : {}),
   it: bag.items.map(packIt)
 });
 const unpackIt = (a, u) => ({
@@ -752,7 +803,9 @@ const unpackIt = (a, u) => ({
   hh: a[14] || 0,
   rc: a[15] || 0,
   ...(a[16] ? { sg: a[16] - 1 } : {}),
-  ...(a[17] ? { gw: a[17] } : {})
+  ...(a[17] ? { gw: a[17] } : {}),
+  ...(a[18] && SH[a[18]] ? { sh: a[18] } : {}),
+  ...(a[19] && CURSES[a[19][0]] ? { cu: [a[19][0], a[19][1] || 1] } : {})
 });
 const unpackBag = p => ({
   w: p.w,
@@ -761,29 +814,8 @@ const unpackBag = p => ({
   pay: p.pay || 0,
   gp: p.gp || 0,
   core: p.co && ITEMI[p.co[0]] ? unpackIt(p.co, 'gc') : null,
-  items: (p.it || [])
-    .filter(a => ITEMI[a[0]])
-    .map((a, i) => ({
-      u: 'g' + i,
-      id: a[0],
-      t: a[1],
-      x: a[2],
-      y: a[3],
-      r: a[4],
-      a: a[5] || null,
-      m: a[6] || null,
-      m2: a[7] || null,
-      f: a[8] || null,
-      ft: a[9] || 1,
-      sc: a[10] || null,
-      sm: a[11] || 0,
-      ab: a[12] || null,
-      ex: a[13] || null,
-      hh: a[14] || 0,
-      rc: a[15] || 0,
-      ...(a[16] ? { sg: a[16] - 1 } : {}),
-      ...(a[17] ? { gw: a[17] } : {})
-    }))
+  rel: (p.rel || []).filter(k => RELICI[k]),
+  items: (p.it || []).filter(a => ITEMI[a[0]]).map((a, i) => unpackIt(a, 'g' + i))
 });
 /* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */
 function syncShrink(run) {

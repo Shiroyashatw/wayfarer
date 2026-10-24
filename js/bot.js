@@ -312,17 +312,32 @@ const botBump = (cx, bagToo = true) => {
   cx.val.clear();
   if (bagToo) cx.base = cx.weak = null;
 };
-function botValue(run, id, t, P, cx = {}) {
-  const key = id + '|' + t;
+/* ex：0.1.58 這件身上的形狀（七十二變）、詛咒（{ sh, cu }），沒給就照這局的形狀表、沒有詛咒 */
+const botEx = o => (o && o.cu ? { sh: o.sh, cu: o.cu } : null);
+function botValue(run, id, t, P, cx = {}, ex = null) {
+  const key = id + '|' + t + (ex && ex.cu ? '|c' + ex.cu.join('.') : '');
   if (cx.val && cx.val.has(key)) return cx.val.get(key);
-  const v = botValue0(run, id, t, P, cx);
+  const v = botValue0(run, id, t, P, cx, ex);
+  /* 0.1.58 詛咒・吸金：每回合少的錢（戰力算不到） */
+  if (ex && ex.cu && CURSES[ex.cu[0]] && CURSES[ex.cu[0]].k === 'drain')
+    v.gain -= 0.05 * ex.cu[1] * (Math.max(0, ROUNDS.length - run.ri) / ROUNDS.length);
   if (cx.val) cx.val.set(key, v);
   return v;
 }
-function botValue0(run, id, t, P, cx) {
+function botValue0(run, id, t, P, cx, ex) {
   const bag = run.bag,
     base = cx.base || (cx.base = botPowerOf(bag, P)),
-    o = { u: '_new', id, t, x: 0, y: 0, r: 0, a: null };
+    o = {
+      u: '_new',
+      id,
+      t,
+      x: 0,
+      y: 0,
+      r: 0,
+      a: null,
+      sh: (ex && ex.sh) || shmOf(run, id),
+      ...(ex && ex.cu ? { cu: ex.cu } : {})
+    };
   /* 0.1.29 第二個核心（0.1.34 起是專屬核心）：融入專屬核心，不佔格子 */
   /* 0.1.42 核心在核心欄：第一個直接放進去，第二個融入 */
   if (ITEMI[id].core) {
@@ -391,7 +406,7 @@ function botValue1(run, id, t, P, cx, bag, base, o) {
 }
 /* 把道具 o（已經在暫存區）照評估的方式放進背包 */
 function botPlace(run, o, P, cx = {}) {
-  const ev = botValue(run, o.id, o.t, P, cx);
+  const ev = botValue(run, o.id, o.t, P, cx, botEx(o));
   if (ev.how !== 'place' && ev.how !== 'swap') return false;
   botBump(cx);
   if (ev.how === 'swap' && ev.sell) sellItem(run, ev.sell.u);
@@ -519,6 +534,31 @@ function botCaravan(run, q, P, cx) {
           return ok(vanDo(run, [weak[i][0].u, weak[j][0].u]));
   return false;
 }
+/* 0.1.58 法老王的遺物：拿到這個遺物戰力多幾成（黃金面具算收入） */
+function botRelic(run, k, P = BOT_P) {
+  const bag = run.bag,
+    base = botPowerOf(bag, P),
+    left = Math.max(0, ROUNDS.length - run.ri) / ROUNDS.length;
+  return botPowerOf({ ...bag, rel: [...(bag.rel || []), k] }, P) / base - 1 + (k === 'mask' ? 0.1 * left : 0);
+}
+/* 0.1.58 遺產市集：攤位上划算的就買（跟商店一樣看每金幣換到多少戰力） */
+function botLegacy(run, q, P, cx) {
+  if (!run.leg || !run.leg.length || r01(run) > q) return false;
+  let did = false;
+  for (let g = 0; g < 6; g++) {
+    const floor = botFloor(run),
+      best = run.leg
+        .map((e, k) => [k, legPrice(run, e), botValue(run, e.id, e.t || 1, P, cx, { sh: e.sh, cu: e.cu }).gain])
+        .filter(([, p, v]) => p <= run.gold - floor && v >= Math.max(P.gainMin, p * P.perGold))
+        .sort((a, b) => b[2] / Math.max(0.5, b[1]) - a[2] / Math.max(0.5, a[1]))[0];
+    if (!best || benchFree(run) < 0) break;
+    if (typeof legacyBuy(run, best[0]) === 'string') break;
+    did = true;
+    botBump(cx);
+    for (const o of run.bench) if (o) botPlace(run, o, P, cx);
+  }
+  return did;
+}
 /* q：照評估做的機率（牌階高 q 高）；其他時候用簡單的舊規則（照主題、隨便買），低牌階才會笨一點 */
 function botAct(run, theme, q = 0.7, P = BOT_P) {
   const r = curRound(run);
@@ -531,11 +571,11 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
   run.bag.gp = run.gold;
   /* 升背包：背包快滿、錢夠而且升完還留一點 */
   const lv = BAGLV[run.lv + 1],
-    cells = run.bag.items.reduce((n, o) => n + shapeOf(o.id).length, 0),
+    cells = run.bag.items.reduce((n, o) => n + shapeO(o).length, 0),
     fill = cells / (run.bag.w * run.bag.h);
   /* 0.1.46 暫存區有背包放不下的長條（吸收型的道具）：錢夠就先升背包 */
   const tooLong = run.bench.some(
-    o => o && ITEMI[o.id].absorb && Math.max(...shapeOf(o.id).flat()) + 1 > Math.max(run.bag.w, run.bag.h)
+    o => o && ITEMI[o.id].absorb && Math.max(...shapeO(o).flat()) + 1 > Math.max(run.bag.w, run.bag.h)
   );
   if (lv && lvOpen(run) && run.gold >= lvCost(run) + Math.max(P.lvKeep, botFloor(run)) && (fill >= P.lvFill || tooLong))
     levelUp(run);
@@ -554,6 +594,8 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
     botBump(cx);
     for (const o of run.bench) if (o) botPlace(run, o, P, cx);
   }
+  /* 0.1.58 遺產市集 */
+  botLegacy(run, q, P, cx);
   for (let rolls = 0, guard = 0; guard < 12; guard++) {
     let best = null;
     run.shop.forEach((s, k) => {
@@ -562,7 +604,7 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
       if (price > run.gold - floor) return;
       const smart = r01(run) < q;
       let gain;
-      if (smart) gain = botValue(run, s.id, s.t || 1, P, cx).gain * sgBias(run, s.sg);
+      if (smart) gain = botValue(run, s.id, s.t || 1, P, cx, botEx(s)).gain * sgBias(run, s.sg);
       else {
         const I = ITEMI[s.id];
         gain =
@@ -666,7 +708,7 @@ function botActOld(run, theme, q = 0.7) {
   /* 暫存區的擺進背包（大的先），放不下的賣掉 */
   run.bench
     .filter(Boolean)
-    .sort((a, b) => shapeOf(b.id).length - shapeOf(a.id).length)
+    .sort((a, b) => shapeO(b).length - shapeO(a).length)
     .forEach(o => {
       const sp = findSpot(run.bag, o, r01(run) < q);
       if (!sp) return;
