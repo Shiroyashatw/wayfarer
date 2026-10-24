@@ -1,6 +1,6 @@
 /* 機器人訓練：自我對打調 js/bot.js 的 BOT_P（skill bot-ai）。
    做法：每一輪把目前最好的參數隨機微調一組「挑戰者」，跟最好的各 2 個放進同一場（位置輪流換），
-   打 N 場比平均名次；挑戰者明顯比較好（平均名次低 0.08 以上）就換成它。
+   打 N 場比平均名次；挑戰者明顯比較好（平均名次低 0.08 以上）再打 N 場確認，兩批平均低 0.06 以上就換成它（--seed 換一組亂數）。
    用法：
      node tools/bot_train.js                      預設 30 輪、每輪 40 場，只印結果
      node tools/bot_train.js --iters 60 --lobbies 60 --write   跑完把最好的參數寫回 js/bot.js
@@ -23,7 +23,9 @@ const ITERS = opt('iters', 30),
   LOBBIES = opt('lobbies', 40),
   WRITE = !!opt('write', false),
   RATING = opt('rating', G.BOT_RATING),
-  JOBS = opt('jobs', require('os').cpus().length);
+  JOBS = opt('jobs', require('os').cpus().length),
+  /* 0.1.72 換一組亂數（挑戰者、場次都不一樣），重跑時不會跟上次一模一樣 */
+  SEED = opt('seed', 0);
 const PL = pool(JOBS);
 
 /* 每個參數的範圍與微調幅度 */
@@ -110,9 +112,15 @@ async function duel(A, B, n, seed0, mode) {
   console.log('起點', JSON.stringify(best));
   const t0 = Date.now();
   for (let it = 1; it <= ITERS; it++) {
-    const cand = mutate(best, 1000 + it * 31),
-      [a, b] = await duel(cand, best, LOBBIES, 90000 + it * 1009);
-    const better = a <= b - 0.08;
+    const cand = mutate(best, 1000 + it * 31 + SEED),
+      [a, b] = await duel(cand, best, LOBBIES, 90000 + it * 1009 + SEED);
+    let better = a <= b - 0.08;
+    /* 0.1.72 贏了再用另一批場次確認（0.1.60、0.1.72 都是 40 場被運氣騙，換了一堆最後驗證反而比較差）：兩批平均還是好 0.06 以上才換 */
+    if (better) {
+      const [c, d] = await duel(cand, best, LOBBIES, 190000 + it * 1013 + SEED);
+      better = (a + c) / 2 <= (b + d) / 2 - 0.06;
+      console.log(`  確認：挑戰者 ${c.toFixed(2)} vs 目前 ${d.toFixed(2)}`);
+    }
     console.log(`第 ${it} 輪：挑戰者 ${a.toFixed(2)} vs 目前 ${b.toFixed(2)}${better ? '  → 換成挑戰者' : ''}`);
     if (better) best = cand;
   }

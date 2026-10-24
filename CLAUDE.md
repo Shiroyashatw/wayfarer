@@ -54,7 +54,9 @@
 | `tools/pixellab_batch.py` | PixelLab API 批次產圖：讀 `docs/怪物提示詞.md`／`docs/圖示提示詞.md` 的提示詞，輸出到 `art/new/`（不進 git）；金鑰用環境變數 `PIXELLAB_API_KEY`，不要寫進專案 |
 | `tools/icon_sheets.py` | 圖示圖表：從 `docs/圖示提示詞.md` 組出 `docs/圖示圖表.md`（8×8 一張 64 個），圖表原圖放 `art/sheets/`，`process` 全部切成 `art/icons/` 的單張、跑 `art.py` 打包，最後 `archive`（有圖的提示詞搬到 `docs/提示詞封存.md`；切過的圖表整張移除、原圖搬到 `art/sheets/done/`）；圖表編號固定 |
 | `tools/game_node.js` | 在 Node 載入遊戲純邏輯（core～bot），給訓練與大量模擬用 |
-| `tools/bot_train.js` | 機器人訓練：自我對打調 `BOT_P`，`--vs-old` 跟舊買法比，`--write` 寫回 `js/bot.js`（skill `bot-ai`） |
+| `tools/bot_train.js` | 機器人訓練：自我對打調 `BOT_P`，`--vs-old` 跟舊買法比，`--write` 寫回 `js/bot.js`；`--vs-rcls`／`--vs-plain` 比挑職業、擺位，`--jobs` 平行（skill `bot-ai`） |
+| `tools/bot_cls.js` | 機器人挑職業的表 `BOT_CLS`：菁英對局統計職業 × 主題 × 賽制的名次，`--write` 寫回 `js/bot.js`；改了職業、主題、賽制或大改平衡後重跑（skill `bot-ai`） |
+| `tools/lobby_pool.js` | 平行跑機器人對局（子行程），`bot_train.js`、`bot_cls.js` 用 |
 | `tools/check.js` | 固定檢查：每個賽制整局跑（機器人代打）＋不變量；`--modes`、`--games`、`--golden`（重構前後比對）；有 ❌ 時結束碼 1 |
 | `tools/pools.js` | 道具池：檢查每個主題、每類職業武器 1～5★ 都有、武器只屬於一個主題、基本池沒有武器；`--write` 寫 `docs/道具池.md`（分配表在 `items.js` 的 `POOLS`、新道具的 `th`） |
 | `tools/stats.js` | 統計（skill `stats`）：機器人對局裡每件商店道具的購買率、對口職業購買率、持有率、名次，冷門／熱門道具，職業 × 賽制的名次；`--jobs` 平行、`--mode`、`--item`、`--save`／`--diff`（改數值前後比較）、`--write` 寫到 `docs/道具統計.md` |

@@ -25,7 +25,7 @@
 | 金幣旁的下回合預估收入（0.1.25） | `js/run.js`、`js/ui.js` | `incomeEst`（[輸, 贏]）、`incomeOf`、`winGold`（run）；`incTxt`、`.gold .inc`（ui） |
 | 電腦版寬版面（0.1.58；0.1.25 起放大）：準備三欄、戰鬥左右背包、首頁兩欄、百科／說明加寬 | `js/ui.js`、`css/style.css` | `fitZoom`（`--z`、`--vh`）、`DESK`、`deskW`、`cellSize(w, h)`、`V.z`（`cellAt`、拖曳影子換算縮放）；`.pcol`（`.pa`／`.pb`／`.pc`）、`.hcol`（`.hc1`／`.hc2`）、`.detph`、`.bt.nob`；CSS 最後的「電腦版」區塊 `@media (min-width:1040px)` |
 | 機器人 AI（0.1.20） | `js/bot.js`、`tools/game_node.js`、`tools/bot_train.js` | `botPower`（戰力分數）、`botValue`、`botPlace`、`botWeakest`、`botAct`、`BOT_P`、`botActOld`；`simLobby` 的 `opt.P`／`opt.old`（run） |
-| 機器人挑職業、擺位看戰力、整理背包、塔羅評估、低血不存錢（0.1.72） | `js/bot.js`、`js/run.js`、`tools/bot_cls.js`、`tools/lobby_pool.js`、`tools/bot_train.js` | `BOT_CLS`、`botClass`、`botSetCls`、`botBestSpot`／`BOT_SPOTS`、`botRelayout`、`botTarot`、`BOT_P.lowHp`、`P.plain`（bot）；`mkBot` 的 `opts`／`opt.rcls`、`joinRivals` 重挑職業（run）；平行對局 `lobby_pool`、`bot_train.js --jobs`／`--vs-rcls`／`--vs-plain` |
+| 機器人挑職業、擺位看戰力、整理背包、塔羅評估、低血不存錢（0.1.72） | `js/bot.js`、`js/run.js`、`tools/bot_cls.js`、`tools/lobby_pool.js`、`tools/bot_train.js` | `BOT_CLS`、`botClass`、`botSetCls`、`botBestSpot`／`BOT_SPOTS`、`botRelayout`、`botTarot`、`BOT_P.lowHp`、`P.plain`（bot）；`mkBot` 的 `opts`／`opt.rcls`、`joinRivals` 重挑職業（run）；平行對局 `tools/lobby_pool.js`、`bot_train.js --jobs`／`--vs-rcls`／`--vs-plain` |
 | 戰鬥生命照階段放大（0.1.19） | `js/data.js`、`js/run.js` | `HP_ST`、`hpMul`（data）；`stageHp`、`MOB_HP`、`MOB_DMG`（run，`startFight`、`simLobby`、`resumeFight` 都套用） |
 | 更新紀錄（首頁左下，0.1.16） | `js/news.js`、`js/ui.js` | `NEWS`（給玩家看的每版功能變化，上新版時在最上面加一筆）；`showNews`、`A.news`、`S.newsSeen`（亮點） |
 | 即時戰鬥紀錄（0.1.13） | `js/ui.js` | `bLog`、`bNames`（`bTick` 每個事件呼叫）、`#blog` |
@@ -123,7 +123,7 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（685 行）
+### js/data.js（688 行）
 
 - **一局**（5），55 個宣告
 
@@ -147,26 +147,26 @@
 ### js/sim.js（1314 行）
 
 
-### js/run.js（2193 行）
+### js/run.js（2225 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），8 個宣告
 - **0.1.59 七十二變、星象輪轉**（301），7 個宣告
 - **0.1.62 道具池的主題**（380），12 個宣告
-- **0.1.36 池子**（595），43 個宣告
-- **對手**（983），16 個宣告
-- **戰鬥**（1086），23 個宣告
-- **0.1.52 流浪商隊**（1484），7 個宣告
-- **0.1.59 法老王的遺物**（1612），4 個宣告
-- **0.1.69 塔羅牌陣**（1657），11 個宣告
-- **0.1.59 遺產市集**（1776），9 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1948），4 個宣告
-- **即時機器人（0.1.30）**（2120），5 個宣告
+- **0.1.36 池子**（601），43 個宣告
+- **對手**（989），16 個宣告
+- **戰鬥**（1092），23 個宣告
+- **0.1.52 流浪商隊**（1491），7 個宣告
+- **0.1.59 法老王的遺物**（1619），4 個宣告
+- **0.1.69 塔羅牌陣**（1664），11 個宣告
+- **0.1.59 遺產市集**（1783），9 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1955），4 個宣告
+- **即時機器人（0.1.30）**（2139），7 個宣告
 
-### js/bot.js（796 行）
+### js/bot.js（1105 行）
 
-- **戰力分數**（22），19 個宣告
-- **每回合**（490），10 個宣告
+- **戰力分數**（203），22 個宣告
+- **每回合**（783），10 個宣告
 
 ### js/ghost.js（252 行）
 
@@ -182,7 +182,7 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（461 行）
+### js/news.js（469 行）
 
 
 ### js/ui.js（3350 行）
