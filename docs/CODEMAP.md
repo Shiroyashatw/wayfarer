@@ -80,6 +80,7 @@
 | 火法師、雷法師重製（0.1.51：自動點燃、星星之火、爆燃、流星火雨、焚盡斬殺線、自焚、火之化身、炎爆、灼命、熱浪、鳳凰涅槃；連鎖、電荷、放電、麻痺、癱瘓、超載、雷神降臨、雷暴雲、疾雷、雷鳴、電磁脈衝、雷火、靜電場、避雷針、電網陷阱；新雷系道具；核心自訂圖示 icx） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`css/style.css` | `CORE_MAIN.pyro`／`storm`、`thunderjav`／`thunderbow`／`teslacoil`／`thunderheart`／`thunderbat`、常數 `CHARGE_MAX`／`ZAP_*`／`PARA_*`／`METEOR_*`／`SPARK_*` 等、`genCores` 的 `icx`（items）；`compileBag` 的新角色鍵、武器 `charge`（bag）；`simulate` 的 `igniteIt`、`stunIt`、`addPara`、`addCharge`、`zap`、定時效果（流星、雷暴雲、炎爆、焚盡、鳳凰、星星之火蔓延）、事件 `zap`／`meteor`／`bolt`／`flash`／`combust`／`burnout`／`phoenix`／`avatar`／`god`／`palsy`／`static`／`spark`（sim）；`botPower` 的電荷、點燃（bot）；`itemIcon` 的 `icx`、`bSpark`、`bFall`、斬殺線 `kl0`／`kl1`、`STI` 的電荷／麻痺（ui）；`.kline`、`.firec`、`.fall`、`.sp.avt`／`.sp.god`（css） |
 | 賽制（0.1.52：開場隨機、狂風市集、印記、流浪商隊、種子 300 局職業輪流） | `js/data.js`、`js/run.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`js/ghost.js`、`css/style.css` | `MODES`／`MODEI`、`SIGILS`／`SG_AT`／`sgLv`、`VANS`／`VANI`（data）；`rollMode`、`newRun` 的 `phase: 'mode'`、`sgFix`、`sgCount`、`slotPrice`（狂風 -1）、`afterBuy`（雙胞胎、狂風換新）、`rerollShop`／`rollsLeft`、`bossCores` 的 `ban`、`luckWin`、流浪商隊 `vanDo`／`vanOK`／`itemCat`／`takeOut`／`findU`／`shopTop`／`vanRoll`、`mkBot` 的 `opt.mode`／`opt.cls`、`simLobby` 的賽制（run）；`mergeAll` 的印記三選一 `run.sgq`、`packIt`／`unpackIt` 的印記、`compileBag` 的 `sgMight`… 與武器的 `sgM`／`sgS`／`sgL`／`sgK`（bag）；`heal` 溢出變護盾、`gainBlock` 的盾擊、`fire` 的重擊、`relay`、幸運一擊、開戰擲骰（sim）；`botPower` 的印記、`sgBias`、`botCaravan`（bot）；`modeHTML`、`modeBarHTML`、`sgInfoHTML`、`sgLineHTML`、`sgPickHTML`、`vanHTML`、`vanGo`、`vanPick`、`sgBadge`、動作 `modeOk`／`modeInfo`／`sgInfo`／`sgPick`／`van`（ui）；`seedGhosts` 300 局、職業輪流（ghost）；`.mbar`、`.mchip`、`.sgrow`／`.sgc`、`.sgb.sg0`～`.sg4`、`.van`、`.btn.sm`／`.btn.buy`（css） |
 | 馴獸師重製（0.1.53：成長、寵物不吃反彈、捕獲、進化、獸群召喚、獸群首領、巨獸化、群狼戰術、護主、撲殺、狂暴、馴獸鞭、共生、四兇召來／遠古之器、反制寵物調整） | `js/items.js`、`js/bag.js`、`js/run.js`、`js/sim.js`、`js/bot.js`、`js/ui.js` | `CORE_MAIN.tamer`、`vessel`／`taotie`／`qiongqi`／`taowu`／`hundun`、`WOLF_T`／`FRENZY_MAX`／`VESSEL_N`／`GORGE_MAX`／`PERILS`（items）；`compileBag` 的看不見的戰狼 `vw`、成長 `gw`、巨獸化、首領、`dr`，`packIt` 的 `gw`、`mergeAll` 留最高成長（bag）；`petWin`（成長、捕獲）、`petEvolve`、`sacrifice`／`sacOK`（run）；`attack` 的護主 `inGd`、`noTh`、共生、狂暴、四兇的吞噬／命中封鎖／混沌，計時的撲殺、馴獸鞭、戰狼加入（sim）；`botPower` 的四兇與馴獸師、`botEcon` 的捕獲／進化、獻祭（bot）；`sacPick`、動作 `sacr`、結算的捕獲、戰鬥事件 `wolf`／`pounce`／`whip`／`petGuard`（ui） |
+| 音效開關、百科搜尋與收合清單（0.1.55） | `js/ui.js`、`css/style.css` | `sfxBtn`、動作 `sfxTog`；`codexHTML`、`cxRow`、`cxFilter`、`plain`、動作 `cxClear`／`cxTab`、`V.cxQ`、`input` 事件的 `#cxq`；`.sfxb`、`.cxsearch`、`.cxr`、`.cxg`、`.cxsec` |
 | 點對手看上一回合的背包、重畫保留折疊（0.1.32） | `js/ui.js` | `showRivalBag`、`A.rvBag`、`rivalHTML` 的 `button.rv`；`render` 保留 `details[data-k]`（圖鑑 `codexHTML` 的 `cx_職業`） |
 | 戰報按鈕、拖曳中旋轉（0.1.29） | `js/ui.js` | `lastLogBtn`、`A.lastLog`；`dragMove`、`dragRot`（keydown／mousedown 右鍵／wheel）、`V.drag` 的 `rot`／`gi` |
 | 首頁排行榜、各職業勝率（0.1.29） | `js/ghost.js`、`js/ui.js`、`supabase/migrations/20261023000000_serling_leaderboard.sql` | `BOARD`、`ghostBoard`、`ghostEnd`（寫 `cls`／`rating_end`）（ghost）；`boardHTML`、`A.lb`、`V.lb`（ui）；RPC `leaderboard`、`class_stats` |
@@ -163,23 +164,23 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（350 行）
+### js/news.js（354 行）
 
 
-### js/ui.js（2747 行）
+### js/ui.js（2823 行）
 
 - **小工具**（6），13 個宣告
 - **牌階**（64），5 個宣告
-- **主題**（167），3 個宣告
-- **畫面切換**（183），2 個宣告
-- **首頁**（219），3 個宣告
-- **準備畫面**（311），17 個宣告
-- **0.1.52 賽制**（637），23 個宣告
-- **結算、三選一、一局結束**（925），6 個宣告
-- **戰鬥播放**（981），26 個宣告
-- **圖鑑、說明、設定**（1715），6 個宣告
-- **動作**（1897），12 個宣告
-- **拖曳擺放**（2428），14 個宣告
+- **主題**（167），4 個宣告
+- **畫面切換**（186），2 個宣告
+- **首頁**（224），3 個宣告
+- **準備畫面**（316），17 個宣告
+- **0.1.52 賽制**（642），23 個宣告
+- **結算、三選一、一局結束**（930），6 個宣告
+- **戰鬥播放**（986），26 個宣告
+- **圖鑑、說明、設定**（1720），9 個宣告
+- **動作**（1956），12 個宣告
+- **拖曳擺放**（2504），14 個宣告
 
 ### js/main.js（74 行）
 

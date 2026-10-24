@@ -180,6 +180,9 @@ const themeBtn = () => {
   const d = document.documentElement.dataset.theme === 'dark';
   return `<button class="iconbtn" data-act="themeTog" aria-label="${d ? '切到淺色' : '切到深色'}">${d ? '☀' : '☾'}</button>`;
 };
+/* 0.1.55 音效開關（上方資訊欄、首頁、戰鬥畫面都有，一鍵開關） */
+const sfxBtn = () =>
+  `<button class="iconbtn sfxb" data-act="sfxTog" aria-label="${S.sfx ? '關掉音效' : '打開音效'}" aria-pressed="${!!S.sfx}">${S.sfx ? '🔊' : '🔇'}</button>`;
 /* ================= 畫面切換 ================= */
 function render() {
   if (!S) return;
@@ -210,6 +213,8 @@ function render() {
     if (d) d.open = true;
   }
   paintSprites(app);
+  /* 0.1.55 百科：重畫後照搜尋欄再篩一次 */
+  if (V.scr === 'codex') cxFilter();
 }
 const go = scr => {
   V.scr = scr;
@@ -220,7 +225,7 @@ const go = scr => {
 function homeHTML() {
   const run = S.run;
   return `<div class="home">
-    <div class="htop">${themeBtn()}</div>
+    <div class="htop">${sfxBtn()}${themeBtn()}</div>
     <div class="logo"><b>塞令老師</b><small>背包自動對戰</small></div>
     <div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b>${rankHTML()}<div class="kv3"><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span><span>第 1 名<b>${(S.hist || []).filter(x => x.place === 1).length}</b></span></div></div></div>
     <button class="btn pri big" data-act="play">${run ? `繼續對局（${curRound(run) ? curRound(run).id : ''}）` : '開始對戰'}</button>
@@ -545,7 +550,7 @@ function prepHTML(run) {
     nr = r.type === 'pvp' ? nextRival(run) : -1,
     oppTxt = r.type === 'pvp' ? (nr >= 0 ? `對戰 ${esc(run.rivals[nr].name)}` : '對戰') : RTYPE[r.type];
   return `<div class="prep">
-    <div class="pcol pa"><div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${themeBtn()}</div>
+    <div class="pcol pa"><div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
     ${roundBarHTML(run)}
     ${modeBarHTML(run)}
     ${rivalHTML(run)}
@@ -1035,7 +1040,7 @@ function renderBattle() {
     cs = Math.min(30, fl(cellSize(run.bag.w) * 0.6)),
     ob = fb.opp.bag;
   $('app').innerHTML = `<div class="bt">
-    <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b></div>
+    <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b>${sfxBtn()}</div>
     <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><i class="kline" id="kl0" hidden></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div>${smnHTML(0)}<i class="sunb" id="sun0" hidden></i></div>
     <div class="vs">VS</div>
     <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><i class="kline" id="kl1" hidden></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div>${smnHTML(1)}<i class="sunb" id="sun1" hidden></i></div>
@@ -1811,46 +1816,100 @@ const CX_STAT = () => [
   ['升階', '3 件相同、同階的道具自動合成高一階（最多 Ⅲ 階），數值大幅提升，還會多一條詞綴。'],
   ['池子', '一場裡每件道具大家共用數量（越稀有越少），別人收走的就比較難刷到。']
 ];
+/* 0.1.55 百科改版：上面搜尋欄（名字、標籤、說明都搜，四個分頁一起找），每一項是可以展開的一列；道具照星級分組、可以收合。
+   搜尋在畫面上直接篩（cxFilter），不重畫，輸入框不會跳掉 */
+const plain = h => String(h).replace(/<[^>]*>/g, '');
+function cxRow(key, ic, name, sub, body, cls = '') {
+  const q = (name + ' ' + plain(sub) + ' ' + plain(body)).toLowerCase();
+  return `<details class="cxr${cls}" data-k="${key}" data-q="${esc(q)}"><summary>${ic ? `<img src="${ic}" alt="">` : ''}<span><b>${name}</b>${sub ? `<small>${sub}</small>` : ''}</span></summary><p>${body}</p></details>`;
+}
 function codexHTML() {
   const tab = V.cxTab || 'item',
     nav = `<div class="cxtab">${CX_TABS.map(([k, n]) => `<button aria-pressed="${tab === k}" data-act="cxTab" data-k="${k}">${n}</button>`).join('')}</div>`,
-    top = `<div class="page"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>百科</b><small>${tab === 'item' ? `${ITEMS.filter(i => !i.core).length} 種道具・拿過的會亮起來` : ''}</small></div>${nav}`;
-  if (tab === 'ail')
-    return `${top}<p class="sub">戰鬥中角色身上和道具上的狀態。抗性可以減少層數或秒數。</p><div class="codex">${CX_AIL()
-      .map(
-        ([ic, n, d, f]) =>
-          `<div class="cx"><img${f ? ' class="flip"' : ''} src="${artIconURL(ic) || iconURL('star')}" alt=""><div><b>${n}</b><p>${d}</p></div></div>`
-      )
-      .join('')}</div></div>`;
-  if (tab === 'stat')
-    return `${top}<p class="sub">道具說明裡常見的數值與機制。</p><div class="codex">${CX_STAT()
-      .map(([n, d]) => `<div class="cx"><div><b>${n}</b><p>${d}</p></div></div>`)
-      .join('')}</div></div>`;
-  if (tab === 'cls')
-    return `${top}<h3>職業核心（2-5 首領掉專屬核心，4-4 首領再掉一個專屬核心融入第一個，都從你的職業池三選一）</h3>${CLASSES.map(
+    tags = i =>
+      i.tags
+        .filter(t => t !== 'weapon')
+        .map(t => TAGN[t])
+        .join('・'),
+    items = [1, 2, 3, 4, 5]
+      .map(st => {
+        const l = ITEMS.filter(i => i.star === st && !i.core),
+          seen = l.filter(i => S.seen[i.id]).length;
+        return `<details class="more cxg" data-k="cxst${st}"><summary><span style="color:${STARC[st]}">${stars(st)}</span><small>${l.length} 種・拿過 ${seen}</small></summary><div class="cxl">${l
+          .map(i =>
+            cxRow(
+              'cxi_' + i.id,
+              itemIcon(i.id),
+              i.n,
+              `${tags(i)}・${shapeOf(i.id).length} 格`,
+              dsc(itemDesc(i.id)),
+              ` s${st}${S.seen[i.id] ? '' : ' unseen'}`
+            )
+          )
+          .join('')}</div></details>`;
+      })
+      .join(''),
+    cls = CLASSES.map(
       C =>
-        `<details class="more" data-k="cx_${C.id}"><summary>${C.n}<small>${dsc(clsDesc(C.id))}</small></summary><div class="cores">${ITEMS.filter(
+        `<details class="more cxg" data-k="cx_${C.id}"><summary>${C.n}<small>${dsc(clsDesc(C.id))}</small></summary><div class="cxl">${ITEMS.filter(
           i => i.cls === C.id && i.core === 1
         )
-          .map(i => `<p><b>${i.n.split('・')[1]}</b>　${dsc(itemDesc(i.id))}</p>`)
-          .join('')}</div></details>`
-    ).join('')}</div>`;
-  return `${top}${[1, 2, 3, 4, 5]
-    .map(
-      st =>
-        `<h3 style="color:${STARC[st]}">${stars(st)}</h3><div class="codex">${ITEMS.filter(
-          i => i.star === st && !i.core
-        )
-          .map(
-            i =>
-              `<div class="cx s${st}${S.seen[i.id] ? '' : ' unseen'}"><img src="${itemIcon(i.id)}" alt=""><div><b>${i.n}</b><small>${i.tags
-                .filter(t => t !== 'weapon')
-                .map(t => TAGN[t])
-                .join('・')}・${shapeOf(i.id).length} 格</small><p>${dsc(itemDesc(i.id))}</p></div></div>`
+          .map(i =>
+            cxRow('cxc_' + i.id, itemIcon(i.id), i.n.split('・')[1], C.n + '・專屬核心', dsc(itemDesc(i.id)), ' s5')
           )
-          .join('')}</div>`
-    )
-    .join('')}</div>`;
+          .join('')}</div></details>`
+    ).join(''),
+    ail = CX_AIL()
+      .map(([ic, n, d, f]) => cxRow('cxa_' + n, artIconURL(ic) || iconURL('star'), n, '', d, f ? ' flip' : ''))
+      .join(''),
+    stat = CX_STAT()
+      .map(([n, d]) => cxRow('cxs_' + n, '', n, '', d))
+      .join(''),
+    sec = (k, sub, body) =>
+      `<section class="cxsec" data-tab="${k}"><p class="sub">${sub}</p><div class="cxl">${body}</div></section>`;
+  return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>百科</b><small>${ITEMS.filter(i => !i.core).length} 種道具・拿過的會亮起來</small></div>
+    <div class="cxsearch"><input class="inp" id="cxq" type="search" placeholder="搜尋道具、核心、異常、機制…" value="${esc(V.cxQ || '')}" autocomplete="off"><button class="iconbtn" data-act="cxClear" aria-label="清除搜尋">✕</button></div>
+    ${nav}<p class="sub cxcount" id="cxcount" hidden></p>
+    ${sec('item', '點星級展開，點道具看說明。', items)}
+    ${sec('cls', '2-5 首領掉專屬核心，4-4 首領再掉一個融入第一個，都從你的職業池三選一。點職業展開。', cls)}
+    ${sec('ail', '戰鬥中角色身上和道具上的狀態。抗性可以減少層數或秒數。', ail)}
+    ${sec('stat', '道具說明裡常見的數值與機制。', stat)}
+    <p class="empty" id="cxnone" hidden>找不到符合的項目，換個關鍵字試試（例如「流血」「盾」「5★」）</p></div>`;
+}
+/* 百科的篩選：沒有關鍵字只顯示目前分頁；有關鍵字時四個分頁一起找，沒有符合的分組收起來、有的自動展開 */
+function cxFilter() {
+  const root = $('app'),
+    q = (V.cxQ || '').trim().toLowerCase(),
+    tab = V.cxTab || 'item';
+  if (!root || !root.querySelector('#cxq')) return;
+  let n = 0;
+  for (const sec of root.querySelectorAll('.cxsec')) {
+    if (!q) {
+      sec.hidden = sec.dataset.tab !== tab;
+      for (const r of sec.querySelectorAll('.cxr, .cxg')) r.hidden = false;
+      continue;
+    }
+    let any = 0;
+    for (const r of sec.querySelectorAll('.cxr')) {
+      const ok = r.dataset.q.includes(q);
+      r.hidden = !ok;
+      if (ok) any++;
+    }
+    for (const g of sec.querySelectorAll('.cxg')) {
+      const has =
+        g.querySelector('.cxr:not([hidden])') || g.querySelector('summary').textContent.toLowerCase().includes(q);
+      g.hidden = !has;
+      if (has) g.open = true;
+    }
+    sec.hidden = !any && !sec.querySelector('.cxg:not([hidden])');
+    n += any;
+  }
+  const c = $('cxcount'),
+    none = $('cxnone');
+  c.hidden = !q;
+  c.textContent = q ? `搜尋「${V.cxQ.trim()}」：${n} 筆` : '';
+  none.hidden = !q || n > 0;
+  root.querySelector('.cxtab').classList.toggle('off', !!q);
 }
 function helpHTML() {
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
@@ -1952,8 +2011,15 @@ const A = {
     snd('tap');
     render();
   },
+  cxClear: () => {
+    V.cxQ = '';
+    const i = $('cxq');
+    if (i) (i.value = ''), i.focus();
+    cxFilter();
+  },
   cxTab: d => {
     V.cxTab = d.k;
+    V.cxQ = '';
     snd('tap');
     render();
     scrollTo(0, 0);
@@ -2203,6 +2269,15 @@ const A = {
     save();
     render();
   },
+  /* 戰鬥中只換按鈕，不重畫（重畫會清掉陷阱、火苗等特效） */
+  sfxTog: () => {
+    S.sfx = !S.sfx;
+    save();
+    if (S.sfx) snd('tap');
+    if (V.scr === 'run' && S.run && S.run.phase === 'battle')
+      document.querySelectorAll('.sfxb').forEach(b => (b.outerHTML = sfxBtn()));
+    else render();
+  },
   themeTog: () => {
     S.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     S.themeSet = true;
@@ -2280,6 +2355,7 @@ async function authDo(f, only) {
 }
 /* 帳密輸入時記下來（重畫後還在） */
 document.addEventListener('input', ev => {
+  if (ev.target.id === 'cxq') (V.cxQ = ev.target.value), cxFilter();
   if (ev.target.id === 'authEmail') V.authEm = ev.target.value;
   if (ev.target.id === 'authPw') V.authPw = ev.target.value;
 });
