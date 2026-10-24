@@ -23,7 +23,7 @@
 | 首頁、圖鑑、說明、設定 | `js/ui.js` | `render`、`homeHTML`、`codexHTML`、`helpHTML`、`settingsHTML`、`go` |
 | 準備畫面（回合列、背包、暫存區、商店、道具說明） | `js/ui.js` | `prepHTML`、`roundBarHTML`、`bagHTML`、`rivalHTML`、`detailHTML`、`tutHTML`、`cellSize` |
 | 金幣旁的下回合預估收入（0.1.25） | `js/run.js`、`js/ui.js` | `incomeEst`（[輸, 贏]）、`incomeOf`、`winGold`（run）；`incTxt`、`.gold .inc`（ui） |
-| 電腦版放大與兩欄準備畫面（0.1.25） | `js/ui.js`、`css/style.css` | `fitZoom`、`V.z`（`cellAt`、拖曳影子換算縮放）；CSS 變數 `--z`、`.pcol`（`.pa`／`.pb`／`.pc`）、`@media (min-width:1040px)` |
+| 電腦版寬版面（0.1.58；0.1.25 起放大）：準備三欄、戰鬥左右背包、首頁兩欄、百科／說明加寬 | `js/ui.js`、`css/style.css` | `fitZoom`（`--z`、`--vh`）、`DESK`、`deskW`、`cellSize(w, h)`、`V.z`（`cellAt`、拖曳影子換算縮放）；`.pcol`（`.pa`／`.pb`／`.pc`）、`.hcol`（`.hc1`／`.hc2`）、`.detph`、`.bt.nob`；CSS 最後的「電腦版」區塊 `@media (min-width:1040px)` |
 | 機器人 AI（0.1.20） | `js/bot.js`、`tools/game_node.js`、`tools/bot_train.js` | `botPower`（戰力分數）、`botValue`、`botPlace`、`botWeakest`、`botAct`、`BOT_P`、`botActOld`；`simLobby` 的 `opt.P`／`opt.old`（run） |
 | 戰鬥生命照階段放大（0.1.19） | `js/data.js`、`js/run.js` | `HP_ST`、`hpMul`（data）；`stageHp`、`MOB_HP`、`MOB_DMG`（run，`startFight`、`simLobby`、`resumeFight` 都套用） |
 | 更新紀錄（首頁左下，0.1.16） | `js/news.js`、`js/ui.js` | `NEWS`（給玩家看的每版功能變化，上新版時在最上面加一筆）；`showNews`、`A.news`、`S.newsSeen`（亮點） |
@@ -112,7 +112,7 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（252 行）
+### js/data.js（253 行）
 
 - **一局**（5），28 個宣告
 
@@ -155,7 +155,7 @@
 - **排行榜（0.1.29）**（138），2 個宣告
 - **開服種子資料（開發用）**（165），1 個宣告
 
-### js/audio.js（101 行）
+### js/audio.js（102 行）
 
 - **audio**（3），6 個宣告
 
@@ -164,23 +164,23 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（354 行）
+### js/news.js（365 行）
 
 
-### js/ui.js（2823 行）
+### js/ui.js（2854 行）
 
 - **小工具**（6），13 個宣告
 - **牌階**（64），5 個宣告
 - **主題**（167），4 個宣告
 - **畫面切換**（186），2 個宣告
 - **首頁**（224），3 個宣告
-- **準備畫面**（316），17 個宣告
-- **0.1.52 賽制**（642），23 個宣告
-- **結算、三選一、一局結束**（930），6 個宣告
-- **戰鬥播放**（986），26 個宣告
-- **圖鑑、說明、設定**（1720），9 個宣告
-- **動作**（1956），12 個宣告
-- **拖曳擺放**（2504），14 個宣告
+- **準備畫面**（316），19 個宣告
+- **0.1.52 賽制**（657），23 個宣告
+- **結算、三選一、一局結束**（945），6 個宣告
+- **戰鬥播放**（1001），26 個宣告
+- **圖鑑、說明、設定**（1749），9 個宣告
+- **動作**（1985），12 個宣告
+- **拖曳擺放**（2533），14 個宣告
 
 ### js/main.js（74 行）
 

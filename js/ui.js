@@ -224,13 +224,12 @@ const go = scr => {
 /* ================= 首頁 ================= */
 function homeHTML() {
   const run = S.run;
-  return `<div class="home">
+  return `<div class="home hm">
     <div class="htop">${sfxBtn()}${themeBtn()}</div>
     <div class="logo"><b>塞令老師</b><small>背包自動對戰</small></div>
-    <div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b>${rankHTML()}<div class="kv3"><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span><span>第 1 名<b>${(S.hist || []).filter(x => x.place === 1).length}</b></span></div></div></div>
+    <div class="hcol hc1"><div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b>${rankHTML()}<div class="kv3"><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span><span>第 1 名<b>${(S.hist || []).filter(x => x.place === 1).length}</b></span></div></div></div>
     <button class="btn pri big" data-act="play">${run ? `繼續對局（${curRound(run) ? curRound(run).id : ''}）` : '開始對戰'}</button>
     <div class="g3"><button class="btn" data-act="go" data-k="help">怎麼玩</button><button class="btn" data-act="go" data-k="codex">百科</button><button class="btn" data-act="go" data-k="settings">設定</button></div>
-    ${boardHTML()}
     ${
       (S.hist || []).length
         ? `<h3>最近的對局</h3><div class="hist">${S.hist
@@ -241,7 +240,8 @@ function homeHTML() {
             )
             .join('')}</div>`
         : ''
-    }
+    }</div>
+    <div class="hcol hc2">${boardHTML()}</div>
     <div class="hfoot"><button class="btn news" data-act="news">更新紀錄${S.newsSeen !== NEWS[0].v ? '<i class="dot" aria-label="有新的更新"></i>' : ''}</button><p class="sub">塞令老師 v${VER}・${esc(typeof CLOUD !== 'undefined' ? CLOUD.status : '')}</p></div>
   </div>`;
 }
@@ -315,8 +315,18 @@ async function startRun() {
 }
 /* ================= 準備畫面 ================= */
 const GAP = 4;
-const cellSize = w =>
-  Math.max(30, Math.min(w <= 3 ? 64 : 52, fl((Math.min(innerWidth, 480) - 32 - (w - 1) * GAP) / w)));
+/* 0.1.58 電腦版（寬 1040 以上）：背包在中間那欄，照那欄的寬和視窗的高放大（跟 CSS 的三欄寬度一致） */
+const DESK = () => innerWidth >= 1040;
+const deskW = () => Math.min(innerWidth / V.z, 1360) - 32;
+function cellSize(w, h = w) {
+  if (DESK()) {
+    const side = innerWidth < 1240 ? 300 + 340 : 340 + 380,
+      cw = deskW() - side - 48 - 24,
+      ch = innerHeight / V.z - 190;
+    return Math.max(30, Math.min(w <= 3 ? 104 : 84, fl((cw - (w - 1) * GAP) / w), fl((ch - (h - 1) * GAP) / h)));
+  }
+  return Math.max(30, Math.min(w <= 3 ? 64 : 52, fl((Math.min(innerWidth, 480) - 32 - (w - 1) * GAP) / w)));
+}
 /* 0.1.36 對手的職業小圖示（右上角）：你選完職業後才顯示 */
 function rvClsIc(run, rv) {
   const C = run.bag.cls && CLSI[rivalCls(rv)];
@@ -544,14 +554,19 @@ function incTxt(run) {
 function prepHTML(run) {
   const r = curRound(run),
     bag = run.bag,
-    cs = cellSize(bag.w),
+    cs = cellSize(bag.w, bag.h),
     mods = bagMods(bag),
     lvNext = run.lv < BAG_MAX ? BAGLV[run.lv + 1] : null,
     nr = r.type === 'pvp' ? nextRival(run) : -1,
-    oppTxt = r.type === 'pvp' ? (nr >= 0 ? `對戰 ${esc(run.rivals[nr].name)}` : '對戰') : RTYPE[r.type];
+    oppTxt =
+      r.type === 'pvp'
+        ? nr >= 0
+          ? `對戰 ${esc(String(run.rivals[nr].name).split('的').pop())}`
+          : '對戰'
+        : RTYPE[r.type];
   return `<div class="prep">
-    <div class="pcol pa"><div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
-    ${roundBarHTML(run)}
+    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
+    <div class="pcol pa">${roundBarHTML(run)}
     ${modeBarHTML(run)}
     ${rivalHTML(run)}
     ${tutHTML()}
@@ -576,7 +591,7 @@ function prepHTML(run) {
         ? '<button class="btn" disabled>不能刷新<small class="bnote">買一件就換新</small></button>'
         : `<button class="btn" data-act="reroll" ${(run.gold < REROLL && freeRolls(run) <= 0) || rollsLeft(run) <= 0 ? 'disabled' : ''}>刷新<small class="bnote">${rollsLeft(run) <= 0 ? '用完了' : freeRolls(run) > 0 ? '免費' : REROLL + ' 金'}</small></button>`
     }<button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvCost(run) ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvCost(run) + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div></div>
-    ${detailHTML(run)}
+    ${detailHTML(run) || '<div class="detph">點道具看說明</div>'}
   </div>`;
 }
 /* 點道具：說明、加成、操作 */
@@ -1037,15 +1052,29 @@ function renderBattle() {
   if (!B) resumeFight();
   const { fb } = B,
     run = S.run,
-    cs = Math.min(30, fl(cellSize(run.bag.w) * 0.6)),
-    ob = fb.opp.bag;
-  $('app').innerHTML = `<div class="bt">
+    ob = fb.opp.bag,
+    /* 0.1.58 電腦版：兩邊的背包在左右兩欄，格子放大（兩個背包同一個大小） */
+    dw =
+      DESK() &&
+      Math.min(
+        64,
+        ...[run.bag, ob]
+          .filter(Boolean)
+          .map(b =>
+            Math.min(
+              fl(((deskW() - 640) / 2 - 24 - (b.w - 1) * 3) / b.w),
+              fl((innerHeight / V.z - 140 - (b.h - 1) * 3) / b.h)
+            )
+          )
+      ),
+    cs = dw ? Math.max(24, dw) : Math.min(30, fl(cellSize(run.bag.w) * 0.6));
+  $('app').innerHTML = `<div class="bt${ob ? '' : ' nob'}">
     <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b>${sfxBtn()}</div>
     <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><i class="kline" id="kl0" hidden></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div>${smnHTML(0)}<i class="sunb" id="sun0" hidden></i></div>
     <div class="vs">VS</div>
     <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><i class="kline" id="kl1" hidden></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div>${smnHTML(1)}<i class="sunb" id="sun1" hidden></i></div>
     <div class="fx" id="fx"></div></div>
-    <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
+    <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, dw ? cs : Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
     <div class="blog" id="blog" aria-live="off"></div>
     <div class="bctl"><button class="btn" data-act="spd">×${S.speed || 1}</button><button class="btn" data-act="skip">跳過</button></div>
   </div>`;
@@ -1912,7 +1941,7 @@ function cxFilter() {
   root.querySelector('.cxtab').classList.toggle('off', !!q);
 }
 function helpHTML() {
-  return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
+  return `<div class="page help"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
   <div class="card"><b>一局</b><p>4 位玩家一場，每人 ${START_HP} 點生命。每回合在商店買道具、擺進背包，然後自動戰鬥。輸了扣生命，歸零就淘汰；最後活下來的是第 1 名。戰鬥中角色的生命會跟著階段變多（第 1 階段 ×1.5、第 2 階段 ×2.6、第 3 階段 ×3.6…），後期一場大約打 8～10 秒，持續傷害、回復、慢速重武器才有發揮空間。</p></div>
   <div class="card"><b>職業</b><p>每局開打前三選一（可以刷新一次），整局都有效：例如弓箭手讓弓、弩傷害 +20%、攻速 +15%。照職業去買武器和輔助道具（箭袋、劍帶、法術卷軸、火藥地雷、獸牙項鍊…），輔助道具要擺在武器旁邊或同一排才有用，背包空間要取捨。點左上角頭像可以看職業與數值。</p></div>
   <div class="card"><b>賽制</b><p>每局開場隨機一種（公開後才選職業）：${MODES.map(m => `<b>${m.n}</b>（${m.d.join('；')}）`).join('、')}。賽制的標籤在準備畫面上方，點了看規則。</p></div>
@@ -2815,8 +2844,10 @@ window.addEventListener('resize', () => {
   if (!B && !V.drag && !typing()) render();
 });
 /* 0.1.25 電腦版放大：寬 1040 以上（跟 CSS 的兩欄版面同一個寬度）整個介面等比例放大（CSS 變數 --z，給 #app、對話框、影子的 zoom 用），手機維持 1 */
+/* 0.1.58 電腦版改成寬版面（三欄），放大的基準改成 1280×780（寬螢幕多出來的空間給版面，不是全部拿去放大）；--vh 是放大後的視窗高度 */
 function fitZoom() {
-  V.z = innerWidth >= 1040 ? Math.max(1, Math.min(1.6, innerWidth / 1040, innerHeight / 660)) : 1;
+  V.z = innerWidth >= 1040 ? Math.max(1, Math.min(1.5, innerWidth / 1280, innerHeight / 780)) : 1;
   document.documentElement.style.setProperty('--z', V.z);
+  document.documentElement.style.setProperty('--vh', innerHeight / V.z + 'px');
 }
 fitZoom();
