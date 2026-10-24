@@ -12,7 +12,9 @@ const ARTIMG = {};
 function artSheet(s) {
   if (!ARTIMG[s]) {
     const im = new Image();
-    im.onload = () => typeof artRepaint === 'function' && artRepaint();
+    /* 0.1.58 只有畫面真的在等這張（want）才重畫：之前背景預載 146 張大圖每載好一張就整個重畫，
+       開場半分鐘內重畫上百次，按鈕按下、放開之間畫面被換掉，點擊被吃掉（看起來像卡住） */
+    im.onload = () => im.want && typeof artRepaint === 'function' && artRepaint();
     im.src = ART_SHEET[s];
     ARTIMG[s] = im;
   }
@@ -21,7 +23,10 @@ function artSheet(s) {
 /* 回傳 { im: 大圖, r: [x, y, 寬, 高] } */
 function artImg(k) {
   const a = typeof ART !== 'undefined' && ART[k];
-  return a ? { im: artSheet(a[0]), r: a.slice(1) } : null;
+  if (!a) return null;
+  const im = artSheet(a[0]);
+  if (!im.complete) im.want = 1;
+  return { im, r: a.slice(1) };
 }
 /* 開場 5 秒後在背景陸續把其他大圖也載好，怪物的圖開打時才不會空白一下 */
 setTimeout(() => {

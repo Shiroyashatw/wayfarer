@@ -338,26 +338,28 @@ const astroAt = (run, st) => (run && run.mode === 'astro' && run.astro && run.as
 /* 把這個階段的規則套在一邊的戰鬥數值上（複本，不改原本的；雙方、怪物都套） */
 function astroF(F, k) {
   if (!k || k === 'harvest') return F;
-  const w = F.weapons.map(x => ({ ...x, freeze: [...x.freeze], stun: [...x.stun] })),
+  /* 怪物的數值不一定每個欄位都有：沒有的當 0，不要乘出 NaN */
+  const w = F.weapons.map(x => ({ ...x, ...(x.freeze ? { freeze: [...x.freeze] } : {}) })),
     s = F.shields.map(x => ({ ...x })),
-    G = { ...F, weapons: w, shields: s };
-  if (k === 'fire') for (const x of w) x.burn *= 2;
-  if (k === 'toxin') for (const x of w) (x.poison *= 2), (x.venom *= 2);
-  if (k === 'frost') for (const x of w) (x.freeze[0] *= 1.5), (x.chill *= 1.5);
+    G = { ...F, weapons: w, shields: s },
+    mul = (o, key, v) => o[key] && (o[key] = o[key] * v);
+  if (k === 'fire') for (const x of w) mul(x, 'burn', 2);
+  if (k === 'toxin') for (const x of w) mul(x, 'poison', 2), mul(x, 'venom', 2);
+  if (k === 'frost') for (const x of w) mul(x, 'chill', 1.5), x.freeze && mul(x.freeze, 0, 1.5);
   if (k === 'blood') {
-    for (const x of w) x.ls *= 2;
-    G.ls *= 2;
+    for (const x of w) mul(x, 'ls', 2);
+    mul(G, 'ls', 2);
   }
   if (k === 'mirror') {
-    for (const x of s) x.thorns *= 2;
-    G.thornsF *= 2;
+    for (const x of s) mul(x, 'thorns', 2);
+    mul(G, 'thornsF', 2);
   }
   if (k === 'wind') for (const x of [...w, ...s]) x.cd = Math.max(0.4, x.cd * 0.8);
   if (k === 'iron') {
-    G.arm *= 2;
-    for (const x of s) x.block = Math.round(x.block * 1.5);
+    mul(G, 'arm', 2);
+    for (const x of s) x.block = Math.round((x.block || 0) * 1.5);
   }
-  if (k === 'fury') for (const x of w) x.crit += 15;
+  if (k === 'fury') for (const x of w) x.crit = (x.crit || 0) + 15;
   return G;
 }
 /* 戰鬥用的數值：階段生命倍率＋星象（run 是這場用哪一局的規則；機器人對局大家共用同一份） */
@@ -398,8 +400,8 @@ function newRun(rivals) {
     place: null
   });
   nextRound(run);
-  /* 1-1 開打前先看賽制、再選職業 */
-  run.phase = run.mode !== 'std' ? 'mode' : 'cls';
+  /* 1-1 開打前先看賽制、再選職業；0.1.58 標準也轉轉盤（每局開場都有一次揭曉） */
+  run.phase = 'mode';
   run.clsOpts = rollClasses(run);
   run.clsRe = 1;
   return run;
@@ -606,6 +608,8 @@ function buyItem(run, k) {
   const it = newItem(run, s.id, s.t || 1, s.sg);
   /* 0.1.58 詛咒寶藏的詛咒跟著道具走 */
   if (s.cu) it.cu = [...s.cu];
+  /* 0.1.58 付得比賣價少：記下來，賣價最多這麼多 */
+  if (p < sellO(it, run)) it.pp = p;
   if (fi < 0) run.bench.push(it);
   else run.bench[fi] = it;
   run.shop[k] = null;
@@ -1435,14 +1439,16 @@ function relicPick(run, k) {
 function legacyDrop(run, bag, to, from) {
   if (!to.length) return;
   for (const o of bag.items || []) {
-    if (!ITEMI[o.id] || ITEMI[o.id].core) continue;
+    /* 只分商店買得到的（核心送的魔劍正宗、封印、遠古之器這種不分給別的職業） */
+    if (!vanOK(o)) continue;
     const who = to[fl(r01(run) * to.length)],
       { u, x, y, r, ...e } = o;
     (who.leg = who.leg || []).push({ ...e, lx: who.ri + LEGACY_RC, from });
   }
 }
-/* 遺產的價格：半價（Ⅱ 階、Ⅲ 階照階數算） */
-const legPrice = (run, e) => Math.max(1, Math.ceil(shopPrice(run, e.id, e.t || 1) / 2));
+/* 遺產的價格：半價＝它的賣價（Ⅱ 階、Ⅲ 階照階數算，融合的輔助也算）。
+   0.1.58 跟賣價一樣，買了馬上賣掉不會賺（之前融合過的照本體半價賣，賣掉多拿輔助那份） */
+const legPrice = (run, e) => Math.max(1, sellO({ ...e, z: 0 }));
 /* 買遺產：放進暫存區（保留階數、詞綴、印記、詛咒、形狀），湊滿就合成 */
 function legacyBuy(run, k) {
   const e = run.leg && run.leg[k];

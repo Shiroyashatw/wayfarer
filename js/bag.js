@@ -166,10 +166,11 @@ const defsOf = o => (o.sc && ITEMI[o.sc] ? [ITEMI[o.id], ITEMI[o.sc]] : [ITEMI[o
 const coreProp = (its, k) => Math.max(0, ...its.flatMap(o => defsOf(o).map(d => d[k] || 0)));
 /* 賣價：融合過的連輔助一起算；0.1.35 回扣送的（z）賣 0 金 */
 /* 0.1.54 狂風市集：這回合買的（o.bt 是買的回合）賣 0 金，不然買了馬上賣掉等於免費刷新商店 */
+/* 0.1.58 pp：買的時候付得比賣價少（六合彩打亂成 0 金、1 金的高星）就記下付了多少，賣價最多是那麼多，不然 0 金買、馬上賣掉白賺 */
 const sellO = (o, run) =>
   o.z || (run && run.mode === 'gale' && o.bt === run.ri)
     ? 0
-    : sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0);
+    : Math.min(o.pp ?? Infinity, sellOf(o.id, o.t) + (o.f && ITEMI[o.f] ? sellOf(o.f, o.ft || 1) : 0));
 /* 融合過的名字 */
 const fuName = o => (o.f && ITEMI[o.f] ? ITEMI[o.f].tf.n + '・' : '') + ITEMI[o.id].n;
 /* 質變後的標籤（原本的＋質變多的） */
@@ -203,7 +204,9 @@ function mergeAll(run, r) {
     if (!hit) break;
     const use = hit.slice(0, need(hit[0][1].id)),
       keep = use.find(([w]) => w === 'bag') || use[0],
-      o = keep[1];
+      o = keep[1],
+      /* 0.1.58 材料有便宜買來的（pp）：合成後的賣價最多是材料的賣價加起來 */
+      pp = use.some(([, q]) => q.pp != null) ? use.reduce((n, [, q]) => n + sellO(q), 0) : null;
     for (const [w, q] of use) {
       if (q === o) continue;
       if (w === 'bag') run.bag.items = run.bag.items.filter(x => x !== q);
@@ -211,6 +214,7 @@ function mergeAll(run, r) {
       if (run.sgq) run.sgq = run.sgq.filter(x => x.u !== q.u);
     }
     o.t++;
+    if (pp != null) o.pp = pp;
     o.a = affOf(o.id, r);
     /* 5★ 合成：留三件裡開得最好的那條詞綴 */
     const ms = use.map(([, q]) => q.m).filter(Boolean);
@@ -701,6 +705,8 @@ function compileBag(bag, extra = {}) {
   if (F.armDmg && F.arm > 0) for (const w of F.weapons) w.dmg = w.dmg.map(v => v + F.arm);
   if (F.potMul || F.potUse) F.pots.forEach(p => ((p.v = Math.round(p.v * (1 + F.potMul / 100))), (p.n += F.potUse)));
   F.dodge = Math.min(40, F.dodge);
+  /* 0.1.58 詛咒・虛弱疊太多：生命至少 1 */
+  F.hp = Math.max(1, F.hp);
   return F;
 }
 /* 0.1.37 核心的開戰效果：多個開戰效果（pres）、陷阱（traps）、時段加成（phase）、萬能藥（potBuff） */

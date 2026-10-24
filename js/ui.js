@@ -220,6 +220,8 @@ function render() {
     if (d) d.open = true;
   }
   paintSprites(app);
+  /* 0.1.58 開場賽制轉盤 */
+  if (V.scr === 'run' && run && run.phase === 'mode') wheelGo(run);
   /* 0.1.55 百科：重畫後照搜尋欄再篩一次 */
   if (V.scr === 'codex') cxFilter();
 }
@@ -657,14 +659,79 @@ function detailHTML(run) {
 }
 /* ================= 0.1.52 賽制 ================= */
 /* 開場：本局賽制（看完才選職業） */
+/* 0.1.58 轉盤：每個賽制一塊（大小照出現機率），指針在正上方；轉完（run.mseen）才顯示規則、開放選職業 */
+const WHEEL_T = 3.6;
+function wheelSlices() {
+  const tot = MODES.reduce((n, m) => n + m.w, 0);
+  let a = 0;
+  return MODES.map(m => {
+    const s = { k: m.k, a, b: a + (360 * m.w) / tot };
+    a = s.b;
+    return s;
+  });
+}
+/* 停下來的角度：目標那塊轉到指針底下，先多轉 5 圈；落點在那塊中間 60% 裡（每局固定，重畫不會跳） */
+function wheelEnd(run) {
+  const s = wheelSlices().find(x => x.k === run.mode),
+    j = ((h(run.seed, 404) % 1000) / 1000 - 0.5) * 0.6;
+  return 360 * 5 + 360 - ((s.a + s.b) / 2 + j * (s.b - s.a));
+}
+function wheelHTML(run) {
+  const sl = wheelSlices(),
+    grad = sl.map((s, i) => `var(${i % 2 ? '--fill' : '--card2'}) ${s.a}deg ${s.b}deg`).join(','),
+    end = wheelEnd(run);
+  return `<div class="wheel"><i class="wpin"></i><div class="wdisk" id="wdisk" style="background:conic-gradient(${grad});transform:rotate(${run.mseen ? end : 0}deg)">${sl
+    .map(s => {
+      const m = (s.a + s.b) / 2;
+      return `<img src="${artIconURL(MODEI[s.k].ic) || iconURL('star')}" alt="" style="transform:rotate(${m}deg) translateY(-82px) rotate(${-m}deg)">`;
+    })
+    .join('')}</div></div>`;
+}
+/* 轉：照時間算角度（重畫也接得上），每過一塊響一聲；點轉盤直接停 */
+function wheelGo(run) {
+  if (run.mseen) return;
+  if (!V.spin || V.spin.seed !== run.seed) {
+    const fast = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    V.spin = { seed: run.seed, t0: performance.now(), T: fast ? 0.01 : WHEEL_T, last: -1 };
+    snd('select');
+    requestAnimationFrame(wheelTick);
+  }
+}
+function wheelTick() {
+  const run = S.run,
+    sp = V.spin;
+  if (!run || !sp || run.mseen || sp.seed !== run.seed) return;
+  const t = Math.min(1, (performance.now() - sp.t0) / 1000 / sp.T),
+    e = 1 - Math.pow(1 - t, 3.2),
+    ang = wheelEnd(run) * e,
+    d = $('wdisk');
+  if (d) d.style.transform = `rotate(${ang}deg)`;
+  /* 指針底下換了一塊：滴答 */
+  const at = (((360 - (ang % 360)) % 360) + 360) % 360,
+    i = wheelSlices().findIndex(s => at >= s.a && at < s.b);
+  if (i !== sp.last && t < 1) (sp.last = i), snd('tap');
+  if (t < 1) return requestAnimationFrame(wheelTick);
+  wheelDone(run);
+}
+function wheelDone(run) {
+  if (run.mseen) return;
+  run.mseen = 1;
+  V.spin = null;
+  snd('level');
+  save();
+  render();
+}
 function modeHTML(run) {
   const M = MODEI[run.mode];
-  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制</small><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b class="big">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${run.mode === 'sigil' ? `<div class="sgleg">${SIGILS.map((g, i) => `<span>${sgBadge(i)}${g.n}</span>`).join('')}</div>` : ''}${run.mode === 'astro' ? astroListHTML(run, 1, 2) : ''}<button class="btn pri big" data-act="modeOk">選職業</button></div></div>`;
+  if (!run.mseen)
+    return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制</small><button class="wbtn" data-act="wheelSkip" aria-label="直接看結果">${wheelHTML(run)}</button><b class="c-dim">轉盤轉動中…</b><small class="c-dim">點轉盤直接看結果</small></div></div>`;
+  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制</small>${wheelHTML(run)}<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${run.mode === 'sigil' ? `<div class="sgleg">${SIGILS.map((g, i) => `<span>${sgBadge(i)}${g.n}</span>`).join('')}</div>` : ''}${run.mode === 'astro' ? astroListHTML(run, 1, 2) : ''}<button class="btn pri big" data-act="modeOk">選職業</button></div></div>`;
 }
 /* 準備畫面上方：賽制小標籤＋印記的件數（點了看規則） */
 function modeBarHTML(run) {
   const M = MODEI[run.mode];
-  if (!M || run.mode === 'std') return '';
+  /* 0.1.58 轉盤還沒停：不要先洩漏結果 */
+  if (!M || run.mode === 'std' || (run.phase === 'mode' && !run.mseen)) return '';
   let x = '';
   if (run.mode === 'sigil') {
     const n = sgCount(run.bag);
@@ -2145,7 +2212,9 @@ const A = {
   },
   sacr: () => sacPick(),
   /* 0.1.52 賽制 */
+  wheelSkip: () => wheelDone(S.run),
   modeOk: () => {
+    if (!S.run.mseen) return wheelDone(S.run);
     S.run.phase = 'cls';
     snd('tap');
     save();
