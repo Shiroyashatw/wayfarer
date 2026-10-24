@@ -54,6 +54,7 @@
 | `tools/game_node.js` | 在 Node 載入遊戲純邏輯（core～bot），給訓練與大量模擬用 |
 | `tools/bot_train.js` | 機器人訓練：自我對打調 `BOT_P`，`--vs-old` 跟舊買法比，`--write` 寫回 `js/bot.js`（skill `bot-ai`） |
 | `tools/check.js` | 固定檢查：每個賽制整局跑（機器人代打）＋不變量；`--modes`、`--games`、`--golden`（重構前後比對）；有 ❌ 時結束碼 1 |
+| `tools/item_stats.js` | 道具統計：機器人對局裡每件商店道具的出現次數、購買率、持有率、平均名次，標出同星級同類別的冷門道具；`node tools/item_stats.js 場數 分數 --write` 寫到 `docs/道具統計.md` |
 | `tools/pve_check.js` | Node 版 PvE 勝率與對戰秒數：`node tools/pve_check.js 局數 q [MOB_HP] [MOB_DMG]` |
 | `tools/icon_check.py` | 圖示對照：每件道具的圖示原本畫的是什麼（讀 `docs/提示詞封存.md` 等提示詞），輸出 `docs/圖示對照.md` 與候選圖示；加關鍵字只列相關的（skill `icon-check`） |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（檔案照 `index.html` 的順序），並檢查 CODEMAP 裡失效的名稱 |
