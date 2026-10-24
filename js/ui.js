@@ -928,9 +928,20 @@ const synName = x => x.g.map(t => TAGN[t]).join('');
 /* 一級的效果文字：給那一系的（「火：命中燃燒 +1」）＋角色的 */
 const synTxt = (x, L) =>
   [L.m ? `${synName(x)}：${modTxt(L.m)}` : '', L.F ? modTxt(L.F) : ''].filter(Boolean).join('；');
-/* 0.1.66 羈絆的代表圖示：那一系星級最低的第一件道具（只記道具 id，圖示晚載好也拿得到） */
+/* 0.1.66 羈絆的代表圖示：那一系星級最低的道具（只記道具 id，圖示晚載好也拿得到）；
+   0.1.67 元素系改用異常／技能圖示（不然毒系的代表是「毒牙」匕首，跟匕首系分不出來） */
+const SYN_ICN = {
+  fire: 'ail_burn',
+  cold: 'ail_frozen',
+  light: 'sk_spark',
+  poison: 'ail_poison',
+  holy: 'sk_heal',
+  dark: 'sk_shadowbolt'
+};
 const SYN_IC = {};
 function synIc(x) {
+  const u = SYN_ICN[x.k] && artIconURL(SYN_ICN[x.k]);
+  if (u) return `<img src="${u}" alt="${synName(x)}">`;
   if (!(x.k in SYN_IC)) {
     const it = ITEMS.filter(i => !i.core && i.tags.some(t => x.g.includes(t))).sort((a, b) => a.star - b.star)[0];
     SYN_IC[x.k] = it ? it.id : null;
