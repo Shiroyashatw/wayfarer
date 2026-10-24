@@ -44,6 +44,37 @@ function paintSprites(root = document) {
     x.clearRect(0, 0, cv.width, cv.height);
     x.drawImage(sp, 0, 0);
   });
+  root.querySelectorAll('canvas[data-anim]').forEach(cv => cv.playing || avFrame(cv, 1));
+}
+/* 0.1.62 會動的頭像（AVANIM）：戰鬥中用整格 64×64 的動畫圖，平常停在第 1 格，武器出手時播一次攻擊 */
+const avCv = (av, cls = '') =>
+  AVANIM[av]
+    ? `<canvas class="spr anim ${cls}" data-anim="${av}" width="64" height="64"></canvas>`
+    : sprCv('a_' + av, cls);
+function avFrame(cv, k) {
+  const a = artImg(cv.dataset.anim + '_atk');
+  if (!a || !a.im.complete || !a.im.naturalWidth) return;
+  const x = cv.getContext('2d');
+  x.imageSmoothingEnabled = false;
+  x.clearRect(0, 0, 64, 64);
+  x.drawImage(a.im, a.r[0] + ((k - 1) % 4) * 64, a.r[1] + fl((k - 1) / 4) * 64, 64, 64, 0, 0, 64, 64);
+}
+function avPlay(sp) {
+  const cv = sp && sp.querySelector('canvas[data-anim]');
+  if (!cv || cv.playing) return;
+  const A = AVANIM[cv.dataset.anim];
+  cv.playing = 1;
+  let i = 0;
+  const step = () => {
+    if (i >= A.f.length) {
+      cv.playing = 0;
+      return avFrame(cv, 1);
+    }
+    const k = A.f[i++];
+    avFrame(cv, k);
+    setTimeout(step, (A.s.includes(k) ? 55 : i <= 3 ? 90 : 75) / (S.speed || 1));
+  };
+  step();
 }
 /* 大圖載好時重畫（sprites.js 呼叫）；拖曳中、戰鬥中不重畫整頁 */
 /* 正在輸入框裡打字 */
@@ -1296,9 +1327,9 @@ function renderBattle() {
     cs = dw ? Math.max(24, dw) : Math.min(30, fl(cellSize(run.bag.w) * 0.6));
   $('app').innerHTML = `<div class="bt${ob ? '' : ' nob'}">
     <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b>${sfxBtn()}</div>
-    <div class="arena"><div class="fr"><i class="sp" id="sp0">${sprCv('a_' + S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><i class="kline" id="kl0" hidden></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div>${smnHTML(0)}<i class="sunb" id="sun0" hidden></i></div>
+    <div class="arena"><div class="fr"><i class="sp" id="sp0">${avCv(S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><i class="kline" id="kl0" hidden></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div>${smnHTML(0)}<i class="sunb" id="sun0" hidden></i></div>
     <div class="vs">VS</div>
-    <div class="fr"><i class="sp" id="sp1">${sprCv(fb.opp.spr, fb.opp.kind === 'pvp' ? 'big flip' : 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><i class="kline" id="kl1" hidden></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div>${smnHTML(1)}<i class="sunb" id="sun1" hidden></i></div>
+    <div class="fr"><i class="sp" id="sp1">${fb.opp.kind === 'pvp' ? avCv(fb.opp.spr.slice(2), 'big flip') : sprCv(fb.opp.spr, 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><i class="kline" id="kl1" hidden></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div>${smnHTML(1)}<i class="sunb" id="sun1" hidden></i></div>
     <div class="fx" id="fx"></div></div>
     <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, dw ? cs : Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
     <div class="blog" id="blog" aria-live="off"></div>
@@ -1655,6 +1686,7 @@ function bHit(e, tg) {
   /* 0.1.50 召喚的戰士出手：那個小人往前衝 */
   const sm = e.u && String(e.u).startsWith('sm') && document.querySelector(`#smn${e.s} .smf[data-u="${e.u}"]`);
   bAnim(sm || $('sp' + e.s), e.s ? 'atkL' : 'atkR');
+  if (!sm) avPlay($('sp' + e.s));
   bAnim($('sp' + tg), 'hurt');
   if (e.el && e.el !== 'phys') bBurst(tg, ELC[e.el], e.k === 'crit' ? 10 : 5);
   else bSlash(tg, e.k === 'crit');
