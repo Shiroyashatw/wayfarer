@@ -928,27 +928,43 @@ const synName = x => x.g.map(t => TAGN[t]).join('');
 /* 一級的效果文字：給那一系的（「火：命中燃燒 +1」）＋角色的 */
 const synTxt = (x, L) =>
   [L.m ? `${synName(x)}：${modTxt(L.m)}` : '', L.F ? modTxt(L.F) : ''].filter(Boolean).join('；');
-/* 準備畫面：有 1 件以上的系（件數多的在前），三個門檻點；點了看全部 */
+/* 0.1.66 羈絆的代表圖示：那一系星級最低的第一件道具（只記道具 id，圖示晚載好也拿得到） */
+const SYN_IC = {};
+function synIc(x) {
+  if (!(x.k in SYN_IC)) {
+    const it = ITEMS.filter(i => !i.core && i.tags.some(t => x.g.includes(t))).sort((a, b) => a.star - b.star)[0];
+    SYN_IC[x.k] = it ? it.id : null;
+  }
+  return SYN_IC[x.k] ? `<img src="${itemIcon(SYN_IC[x.k])}" alt="${synName(x)}">` : `<i class="syb">${synName(x)}</i>`;
+}
+/* 準備畫面：0.1.66 一條「羈絆」按鈕，後面只放湊成的系（圖示＋件數，件數多的在前，框色＝級數）；點了看全部 */
 function synHTML(run) {
+  const n = synCount(run.bag),
+    on = SYN.map((x, i) => [x, n[i]])
+      .filter(([, c]) => synLv(c))
+      .sort((a, b) => b[1] - a[1]);
+  if (!n.some(c => c > 0)) return '';
+  return `<button class="synbar" data-act="synInfo" aria-label="系別羈絆"><b>羈絆</b><span class="syl">${
+    on.length
+      ? on
+          .map(([x, c]) => `<span class="syi l${synLv(c)}" title="${synName(x)} ${c} 件">${synIc(x)}<b>${c}</b></span>`)
+          .join('')
+      : '<small class="c-dim">還沒湊成（同一系 2 件）</small>'
+  }</span><em>›</em></button>`;
+}
+/* 羈絆說明：0.1.66 湊成的在上（件數多的在前）、有件數還沒湊成的在下、0 件的收成一行 */
+function synInfoHTML(run) {
   const n = synCount(run.bag),
     l = SYN.map((x, i) => [x, n[i]])
       .filter(([, c]) => c > 0)
-      .sort((a, b) => b[1] - a[1]);
-  if (!l.length) return '';
-  return `<div class="sgrow synrow">${l
-    .map(([x, c]) => {
-      const lv = synLv(c);
-      return `<button class="sgc syc${lv ? ' on' : ''}" data-act="synInfo" aria-label="${synName(x)} ${c} 件"><i class="syb">${synName(x)}</i><b>${c}</b><span class="pip">${SYN_AT.map(a => `<i${c >= a ? ' class="on"' : ''}></i>`).join('')}</span></button>`;
-    })
-    .join('')}</div>`;
-}
-/* 羈絆說明：每一系、每一級（有到的亮起來） */
-function synInfoHTML(run) {
-  const n = synCount(run.bag);
-  return `<p class="c-dim">背包裡同一系湊 2／4／6 件，效果累加。一件道具可以算好幾系；系別飾品算 1 件、寫著「算 2 件」的算 2 件。</p><div class="sginfo">${SYN.map(
-    (x, i) =>
-      `<div class="sgi"><i class="syb">${synName(x)}</i><div><b>${synName(x)}<small>背包裡 ${n[i]} 件</small></b>${x.L.map((L, k) => `<p class="${n[i] >= SYN_AT[k] ? 'on' : 'c-dim'}">${SYN_AT[k]} 件：${dsc(synTxt(x, L))}</p>`).join('')}</div></div>`
-  ).join('')}</div>`;
+      .sort((a, b) => synLv(b[1]) - synLv(a[1]) || b[1] - a[1]),
+    none = SYN.filter((x, i) => !n[i]);
+  return `<p class="c-dim">背包裡同一系湊 2／4／6 件，效果累加。一件道具可以算好幾系；系別飾品算 1 件、寫著「算 2 件」的算 2 件。</p><div class="sginfo">${l
+    .map(
+      ([x, c]) =>
+        `<div class="sgi syn${synLv(c) ? ' on' : ''}">${synIc(x)}<div><b>${synName(x)}<small>背包裡 ${c} 件${synLv(c) ? `・${synLv(c)} 級` : ''}</small></b>${x.L.map((L, k) => `<p class="${c >= SYN_AT[k] ? 'on' : 'c-dim'}">${SYN_AT[k]} 件：${dsc(synTxt(x, L))}</p>`).join('')}</div></div>`
+    )
+    .join('')}</div>${none.length ? `<p class="c-dim">還沒有：${none.map(synName).join('、')}</p>` : ''}`;
 }
 /* 印記規則：五個印記、每一級（有到的亮起來） */
 function sgInfoHTML(run) {
