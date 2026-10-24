@@ -170,7 +170,7 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（386 行）
+### js/news.js（390 行）
 
 
 ### js/ui.js（3038 行）

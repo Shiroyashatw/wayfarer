@@ -1,5 +1,12 @@
 # 更新紀錄
 
+## v0.1.60
+- **整理：賽制改成掛勾框架**：原本 36 處 `run.mode === '…'` 散在 `run.js`、`ui.js`、`bot.js`、`bag.js`，收成每個賽制一份規則掛勾 `MODEH`（`run.js`：share、fix、slot、item、price、sell、bought、reroll、round、fought、lobby、luck、winBonus、fight）和畫面 `MODEUI`（`ui.js`：intro、bar、info、panel）；`setMode` 設定賽制與一場共用的資料（`modeShareOf`／`modeShare`）。重構前後用固定種子比對 9 個賽制的機器人對局與玩家那局，結果一模一樣
+- **修正：從商店拖進背包買的道具不帶詛咒**（詛咒寶藏）、也沒算六合彩的賣價上限：拖的和點了買原本是兩份程式，現在都走 `shopItem`
+- **固定檢查 `tools/check.js`**：每個賽制整局跑（機器人代打）＋每回合檢查買了馬上賣不會賺、沒有 NaN、格子不重疊不出界、快照還原一樣、星象 × 怪物、七十二變 1★ 形狀、不丟錯；`--golden` 給重構前後比對。CLAUDE.md 規定改遊戲邏輯都要跑
+- **新 skill `new-mode`**（新增賽制的完整清單與常見漏洞）；`bot-ai` 更新過時的說明（對手組成、對局速度約 3.8 秒一場）、`balance` 第一步先跑檢查
+- 機器人重新訓練（30 輪 × 40 場）：最後驗證沒有比原本好（3.64 對 3.36），參數不變；`GVER` 不換、不用重傳種子
+
 ## v0.1.59
 - **五個新賽制**（`MODES`；權重改成標準 20、其他八個各 10）：
   - **詛咒寶藏**（`curse`）：商店每格 20%（`CURSE_P`）換成高一星的道具、半價（`slotPrice`），帶一個詛咒 `o.cu = [詛咒, 層數]`（`CURSES`：吸金 -1 金／回合、鏽蝕 相鄰攻速 -10%、虛弱 生命 -20、嫉妒 同排其他武器傷害 -10%、沉睡 這件開戰後 3 秒才出手，只給武器）；合成時材料有幾件被詛咒就疊幾層（最多 3，`mergeAll`）。效果在 `compileBag`，吸金在 `bonusGold`；格子左下角紫色「咒」（`cuBadge`、`cuLineHTML`）
