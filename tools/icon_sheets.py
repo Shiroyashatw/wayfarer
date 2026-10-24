@@ -15,6 +15,7 @@
 - 圖表編號是固定的：已經在 docs/圖示圖表.md 的圖表，內容與提示詞不會因為 build 改變（產到一半的不會對不上）；
   新的提示詞才會排進新的圖表，編號接在後面。切過的圖表（原圖搬到 art/sheets/done/）會從圖示圖表移除，
   裡面沒畫出來的格子回到待排，跟其他新提示詞一起排進新的圖表。
+  沒滿而且原圖還沒放進 art/sheets/ 的圖表，build 時會拆掉、跟新提示詞合併重排（編號接在後面）。
   要整個重排用 build --fresh（只排還沒有圖的）。
 - 分組：裝備、攻擊技能、元素法術、混沌與黑暗法術、增益／治療／召喚／戰場單位、光環、輔助寶石、族裔輔助、天賦樹、昇華；同組依序填滿一張再開下一張。
 """
@@ -146,6 +147,9 @@ def sheets(per, words, fresh=False):
         for name, (pr, _, files) in read_doc().items():
             # 全部有圖、或原圖已經切過（在 done/）的不留；沒畫出來的格子回到待排，排進新的圖表
             if all(done(f) for f in files) or (SHEETS / 'done' / f'{name}.png').exists():
+                continue
+            # 沒滿、原圖也還沒放進 art/sheets/ 的圖表拆掉重排（零星十幾個的合併成一張，少產幾次）
+            if len(files) < per and not (SHEETS / f'{name}.png').exists():
                 continue
             items = [(f, info.get(f, ('', '', ''))[0], '', group_of(f, *info[f][1:]) if f in info else 'ui') for f in files]
             kept.append((name, name.split('_')[1], items, pr))
