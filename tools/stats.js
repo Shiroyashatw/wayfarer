@@ -4,7 +4,7 @@
    用法：
      node tools/stats.js                      120 場、分數 1300、4 個行程平行跑，印報告
      node tools/stats.js 240 --jobs 4 --write 寫到 docs/道具統計.md
-     node tools/stats.js --mode curse         只跑某個賽制（預設每場照權重抽）
+     node tools/stats.js --mode curse         只跑某個賽制（預設每場照權重抽）；--theme g 只跑某個道具池（g 巨人國、f 共生森林、m 機關城）
      node tools/stats.js --item prism,anvil   只印這幾件（代號或名字）
      node tools/stats.js --save 前.json       存原始數字；改完數值後 --diff 前.json 看每件購買率變多少
    一場約 4 秒（4 核心平行約 1 秒）。同一組種子（--seed）每次結果一樣，改數值前後比較才公平。 */
@@ -21,6 +21,7 @@ const args = process.argv.slice(2),
   RT = +opt('rating', 1300),
   JOBS = Math.max(1, +opt('jobs', 4)),
   MODE = opt('mode', null),
+  THEME = opt('theme', null),
   SEED = +opt('seed', 515100),
   MIN = 30;
 
@@ -30,6 +31,7 @@ function work(a, b) {
     ctx = G.__ctx,
     K = {},
     CM = {},
+    CT = {},
     k = id => (K[id] = K[id] || { offer: 0, buy: 0, hold: 0, ps: 0, pn: 0, mo: 0, mb: 0 });
   /* 主打這件的職業（道具的 for 是職業的主題或加成標籤，例如符文法珠 for staff） */
   const mine = (run, id) => {
@@ -55,15 +57,19 @@ function work(a, b) {
   for (let g = a; g < b; g++) {
     const seed = SEED + g * 7919,
       mode = MODE || G.rollMode(G.rng(G.h(seed, 6))),
-      L = G.simLobby(seed, RT, { short: 1, mode });
+      theme = THEME || G.rollTheme(G.rng(G.h(seed, 10)), mode),
+      L = G.simLobby(seed, RT, { short: 1, mode, theme });
     for (const x of L) {
       const ids = Object.keys(x.snaps);
       if (!ids.length) continue;
       bots++;
       const c = (x.stat && x.stat.cls) || 'none',
-        cm = (CM[c + '|' + mode] = CM[c + '|' + mode] || [0, 0]);
+        cm = (CM[c + '|' + mode] = CM[c + '|' + mode] || [0, 0]),
+        ct = (CT[c + '|' + theme] = CT[c + '|' + theme] || [0, 0]);
       cm[0] += x.place;
       cm[1]++;
+      ct[0] += x.place;
+      ct[1]++;
       for (const id of new Set(x.snaps[ids[ids.length - 1]].bag.it.map(q => q[0]))) {
         k(id).hold++;
         k(id).ps += x.place;
@@ -71,7 +77,7 @@ function work(a, b) {
       }
     }
   }
-  return { K, CM, bots, n: b - a };
+  return { K, CM, CT, bots, n: b - a };
 }
 if (process.env.STATS_WORKER) {
   const [a, b] = process.env.STATS_WORKER.split(':').map(Number);
@@ -96,13 +102,18 @@ async function main() {
             })
         )
     );
-  const R = { K: {}, CM: {}, bots: 0, n: 0, rating: RT, mode: MODE, seed: SEED };
+  const R = { K: {}, CM: {}, CT: {}, bots: 0, n: 0, rating: RT, mode: MODE, theme: THEME, seed: SEED };
   for (const p of parts) {
     R.bots += p.bots;
     R.n += p.n;
     for (const id in p.K) {
       const x = (R.K[id] = R.K[id] || { offer: 0, buy: 0, hold: 0, ps: 0, pn: 0, mo: 0, mb: 0 });
       for (const f in x) x[f] += p.K[id][f];
+    }
+    for (const key in p.CT) {
+      const x = (R.CT[key] = R.CT[key] || [0, 0]);
+      x[0] += p.CT[key][0];
+      x[1] += p.CT[key][1];
     }
     for (const key in p.CM) {
       const x = (R.CM[key] = R.CM[key] || [0, 0]);
@@ -199,6 +210,16 @@ function report(G, R, D) {
     };
   out += `## 職業 × 賽制（平均名次，3.5 是平均；樣本不到 6 不顯示）\n\n| 職業 | 全部 | ${modes.map(m => (G.MODEI[m] || { n: m }).n).join(' | ')} |\n| --- | --- |${modes.map(() => ' --- |').join('')}\n`;
   for (const c of cls) out += `| ${G.CLSI[c].n} | ${tot(c)} | ${modes.map(m => cell(c, m)).join(' | ')} |\n`;
+  /* 0.1.62 職業 × 道具池的主題 */
+  const ths = G.POOLTH.filter(T => Object.keys(R.CT || {}).some(k => k.endsWith('|' + T.k))),
+    cellT = (c, t) => {
+      const v = (R.CT || {})[c + '|' + t];
+      return v && v[1] >= 6 ? `${(v[0] / v[1]).toFixed(2)}（${v[1]}）` : '';
+    };
+  if (ths.length) {
+    out += `\n## 職業 × 道具池（平均名次，3.5 是平均）\n\n| 職業 | ${ths.map(T => T.n).join(' | ')} |\n| --- |${ths.map(() => ' --- |').join('')}\n`;
+    for (const c of cls) out += `| ${G.CLSI[c].n} | ${ths.map(T => cellT(c, T.k)).join(' | ')} |\n`;
+  }
   return out;
 }
 main().catch(e => {

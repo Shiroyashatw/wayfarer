@@ -72,6 +72,8 @@ function botPower(F, P = BOT_P) {
     /* 0.1.51 每秒幾個電荷、有沒有燃燒來源 */
     chgRate = 0,
     burnSrc = 0;
+  /* 每把武器一下的期望傷害（齒輪、連鎖機關用） */
+  const HIT = new Map();
   const nS = F.weapons.filter(w => w.kind === 'spear').length,
     nB = F.weapons.filter(w => w.kind === 'bow').length;
   for (const w of F.weapons) {
@@ -116,10 +118,19 @@ function botPower(F, P = BOT_P) {
     hit *= (1 + (w.chain || 0) / 100) * (1 + (w.pierce || 0) * 0.004) * (1 + ((w.chainN || 0) * CHAIN_DMG) / 100);
     /* 0.1.35 雙手大師（這一件的連擊）、金錢標（開戰時的錢夠打大半場才算翻倍） */
     hit *= 1 + (w.dbl || 0) / 100;
+    /* 0.1.62 機關城：每第 N 次多打 k 下；開戰幾秒後才啟動（雷電砲台、詛咒・沉睡的 seal） */
+    if (w.nth) hit *= 1 + w.nth[1] / w.nth[0];
+    if (w.seal && !w.vw) hit *= Math.max(0.4, 1 - w.seal / 20);
+    HIT.set(w.u, hit);
     if (w.coin) hit *= 1 + Math.min(1, (F.gold || 0) / 15);
     /* 0.1.53 召喚的戰狼開戰後才陸續加入，算一半 */
     dps += (hit / Math.max(0.3, w.cd)) * (w.vw ? 0.5 : 1);
     if (w.guard) gd += ((hit * w.guard) / 100 / Math.max(0.3, w.cd)) * 9;
+  }
+  /* 0.1.62 齒輪（出手時其他相鄰武器充能 p%）、連鎖機關（每秒最多帶動一件相鄰的武器出手） */
+  for (const w of F.weapons) {
+    if (w.gear) for (const u of w.gear.us) dps += ((HIT.get(u) || 0) * w.gear.p) / 100 / Math.max(0.3, w.cd);
+    if (w.drv && w.drv.length) dps += (HIT.get(w.drv[0]) || 0) / Math.max(1, w.cd);
   }
   for (const s of F.shields) if (s.bash) dps += (s.block * s.bash) / 100 / Math.max(0.6, s.cd);
   /* 0.1.50 協同作戰：多了 N 把平均的武器 */
@@ -178,7 +189,8 @@ function botPower(F, P = BOT_P) {
     if (F.burnout) dps *= 1.2;
     if (F.selfBurn) dps *= 1.12;
     if (F.avatar) dps *= 1.18;
-    if (F.combust) dps *= 1.12;
+    /* 0.1.62 引爆照層數算（羈絆、煉獄之火會疊） */
+    if (F.combust) dps *= 1 + 0.08 * Math.min(3, F.combust);
     if (F.heat) dps *= 1.1;
   }
   if (F.meteor) dps += (F.meteor + METEOR_BURN * 2 * P.dotW) / METEOR_T;

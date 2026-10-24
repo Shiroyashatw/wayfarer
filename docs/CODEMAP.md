@@ -78,6 +78,9 @@
 | 核心統計進資料庫（0.1.45） | `js/ghost.js`、`supabase/migrations/20261024000000_serling_core_stats.sql` | `ghostEnd` 的核心欄位、`coreCols`、`seedGhosts` 的核心、`coreStatsCloud`；RPC `core_stats`／`core_combo_stats` |
 | 弓箭手、亞馬遜重製（0.1.50：插箭、爆裂箭、箭雨、多重射擊、狙擊、元素箭袋、連珠箭、游擊、風之箭、捕獸夾／獵網／尖樁陷阱、撕裂、插矛、協同作戰召喚、女武神復活、矛弓連攜、戰舞、反擊、血獵、日月輪轉、姊妹盟約、浴血戰姬） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`css/style.css` | `CORE_MAIN.archer`／`spearman`、`skyhawk`、常數 `ARROW_MAX` 等、`MODN` 的新鍵、`TRN`（items）；`compileBag` 的新角色鍵、武器的 `kind`／`stick`／`shots`／`snipe`／`elem`／`sure`／`pin`／`rend`、姊妹盟約 `sisters`（bag）；`simulate` 的 `stickArrows`、`addRend`、`fire`、`counter`、`revive`、`isDay`、召喚 `sm0`／`sm1`、陷阱 `snare`／`net`／`stake`、事件 `boom`／`rain`／`revive`／`summon`／`sun`／`pinOut`（sim）；`botPower` 的插箭、撕裂、召喚（bot）；`smnHTML`、`bSun`、`STI` 的插箭／撕裂／插矛、`CX_AIL`（ui）；`.smn`／`.smf`／`.smit`、`.sunb`、`--day`／`--night`（css） |
 | 火法師、雷法師重製（0.1.51：自動點燃、星星之火、爆燃、流星火雨、焚盡斬殺線、自焚、火之化身、炎爆、灼命、熱浪、鳳凰涅槃；連鎖、電荷、放電、麻痺、癱瘓、超載、雷神降臨、雷暴雲、疾雷、雷鳴、電磁脈衝、雷火、靜電場、避雷針、電網陷阱；新雷系道具；核心自訂圖示 icx） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`css/style.css` | `CORE_MAIN.pyro`／`storm`、`thunderjav`／`thunderbow`／`teslacoil`／`thunderheart`／`thunderbat`、常數 `CHARGE_MAX`／`ZAP_*`／`PARA_*`／`METEOR_*`／`SPARK_*` 等、`genCores` 的 `icx`（items）；`compileBag` 的新角色鍵、武器 `charge`（bag）；`simulate` 的 `igniteIt`、`stunIt`、`addPara`、`addCharge`、`zap`、定時效果（流星、雷暴雲、炎爆、焚盡、鳳凰、星星之火蔓延）、事件 `zap`／`meteor`／`bolt`／`flash`／`combust`／`burnout`／`phoenix`／`avatar`／`god`／`palsy`／`static`／`spark`（sim）；`botPower` 的電荷、點燃（bot）；`itemIcon` 的 `icx`、`bSpark`、`bFall`、斬殺線 `kl0`／`kl1`、`STI` 的電荷／麻痺（ui）；`.kline`、`.firec`、`.fall`、`.sp.avt`／`.sp.god`（css） |
+| 系別羈絆（0.1.62） | `js/data.js`、`js/bag.js`、`js/ui.js` | `SYN`／`SYN_AT`／`SYNI`／`synLv`（data）；`synCount`、`compileBag` 的羈絆（bag）；`synName`、`synTxt`、`synHTML`、`synInfoHTML`、動作 `synInfo`（ui）；道具的 `syn`／`for` |
+| 道具池：基本池＋主題池（0.1.62） | `js/items.js`、`js/data.js`、`js/run.js`、`js/ui.js`、`tools/pools.js` | `POOLS`／`ITEM_TH`／`thOf`／`thOK`、道具的 `th`（items）；`POOLTH`／`POOLTHI`／`MODE_TH_BAN`（data）；`poolOK`、`rollTheme`、`setTheme`、`simLobby` 的 theme（run）；`wheelEnd2`、`modeBarHTML` 的道具池標籤、動作 `thInfo`、`thName`（ui）；`docs/道具池.md` |
+| 主題道具的機制（0.1.62） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js` | 新形狀與凹口 `SHHOLE`／`holeOf`；`compileBag` 的 `self`、`perAdj`、`perAdjF`、`hole`、`gear`、`chainAdj`、`nth`、`wake`；`sim` 出手後的 `nth`／`gear`／`drv`；`botPower` 的 `HIT`；`findSpot` 的凹口 |
 | 賽制框架（0.1.60：每個賽制一份掛勾，新增賽制用 skill `new-mode`） | `js/run.js`、`js/ui.js` | `MODEH`／`modeH`（share、fix、slot、item、price、sell、bought、reroll、round、fought、lobby、luck、winBonus、fight）、`setMode`、`modeShareOf`／`modeShare`、`modeFix`、`shopItem`（run）；`MODEUI`／`modeUI`（intro、bar、info、panel）（ui） |
 | 統計（0.1.61，skill `stats`） | `tools/stats.js`、`tools/core_stats.js` | 道具購買率／對口職業購買率／持有／名次、冷門熱門、職業 × 賽制名次；`--jobs` 平行、`--save`／`--diff`；真人資料的 SQL 在 skill |
 | 固定檢查（0.1.60） | `tools/check.js` | 整局模擬＋不變量（買賣價差、NaN、格子、快照還原、星象 × 怪物、七十二變 1★）、`--golden` 重構比對 |
@@ -116,9 +119,9 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（353 行）
+### js/data.js（401 行）
 
-- **一局**（5），40 個宣告
+- **一局**（5），48 個宣告
 
 ### js/sprites.js（139 行）
 
@@ -127,35 +130,37 @@
 ### js/art.js（1528 行）
 
 
-### js/items.js（3190 行）
+### js/items.js（4374 行）
 
 
-### js/bag.js（864 行）
+### js/bag.js（956 行）
 
-- **合成**（184），3 個宣告
-- **戰鬥數值**（270），9 個宣告
+- **0.1.62 系別羈絆**（204），1 個宣告
+- **合成**（223），3 個宣告
+- **戰鬥數值**（309），9 個宣告
 
-### js/sim.js（1260 行）
+### js/sim.js（1276 行）
 
 
-### js/run.js（1965 行）
+### js/run.js（1987 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），8 個宣告
-- **0.1.59 七十二變、星象輪轉**（299），15 個宣告
-- **0.1.36 池子**（542），40 個宣告
-- **對手**（913），16 個宣告
-- **戰鬥**（1015），23 個宣告
-- **0.1.52 流浪商隊**（1400），7 個宣告
-- **0.1.59 法老王的遺物**（1528），4 個宣告
-- **0.1.59 遺產市集**（1573），8 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1733），4 個宣告
-- **即時機器人（0.1.30）**（1892），5 個宣告
+- **0.1.59 七十二變、星象輪轉**（299），7 個宣告
+- **0.1.62 道具池的主題**（378），11 個宣告
+- **0.1.36 池子**（560），40 個宣告
+- **對手**（931），16 個宣告
+- **戰鬥**（1033），23 個宣告
+- **0.1.52 流浪商隊**（1419），7 個宣告
+- **0.1.59 法老王的遺物**（1547），4 個宣告
+- **0.1.59 遺產市集**（1592），8 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1752），4 個宣告
+- **即時機器人（0.1.30）**（1914），5 個宣告
 
-### js/bot.js（727 行）
+### js/bot.js（739 行）
 
 - **戰力分數**（22），19 個宣告
-- **每回合**（478），8 個宣告
+- **每回合**（490），8 個宣告
 
 ### js/ghost.js（214 行）
 
@@ -171,23 +176,24 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（404 行）
+### js/news.js（415 行）
 
 
-### js/ui.js（3079 行）
+### js/ui.js（3159 行）
 
 - **小工具**（6），15 個宣告
-- **牌階**（76），5 個宣告
-- **主題**（179），4 個宣告
-- **畫面切換**（198），2 個宣告
-- **首頁**（238），3 個宣告
-- **準備畫面**（330），19 個宣告
-- **0.1.52 賽制**（680），37 個宣告
-- **結算、三選一、一局結束**（1113），6 個宣告
-- **戰鬥播放**（1169），28 個宣告
-- **圖鑑、說明、設定**（1940），9 個宣告
-- **動作**（2176），12 個宣告
-- **拖曳擺放**（2758），14 個宣告
+- **牌階**（78），5 個宣告
+- **主題**（181），4 個宣告
+- **畫面切換**（200），2 個宣告
+- **首頁**（240），3 個宣告
+- **準備畫面**（332），19 個宣告
+- **0.1.52 賽制**（683），17 個宣告
+- **0.1.62 系別羈絆**（876），25 個宣告
+- **結算、三選一、一局結束**（1171），6 個宣告
+- **戰鬥播放**（1227），28 個宣告
+- **圖鑑、說明、設定**（1998），10 個宣告
+- **動作**（2244），12 個宣告
+- **拖曳擺放**（2838），14 個宣告
 
 ### js/main.js（74 行）
 

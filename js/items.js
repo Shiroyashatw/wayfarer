@@ -78,6 +78,67 @@ const SH = {
     [0, 2],
     [1, 1]
   ],
+  /* 0.1.62 巨人國的大形狀：U 形、環形、H 形、C 形有凹口（SHHOLE），L 五格、T 五格、P 五格、橫四格 */
+  u5: [
+    [0, 0],
+    [2, 0],
+    [0, 1],
+    [1, 1],
+    [2, 1]
+  ],
+  o8: [
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [0, 1],
+    [2, 1],
+    [0, 2],
+    [1, 2],
+    [2, 2]
+  ],
+  h7: [
+    [0, 0],
+    [2, 0],
+    [0, 1],
+    [1, 1],
+    [2, 1],
+    [0, 2],
+    [2, 2]
+  ],
+  c5: [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+    [0, 2],
+    [1, 2]
+  ],
+  l5: [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [0, 3],
+    [1, 3]
+  ],
+  t5: [
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [1, 1],
+    [1, 2]
+  ],
+  p5: [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [0, 2]
+  ],
+  h4: [
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [3, 0]
+  ],
   /* 0.1.35 直五格（魔劍正宗） */
   v5: [
     [0, 0],
@@ -936,7 +997,9 @@ const ITEMS = [
     star: 3,
     sh: 's1',
     tags: ['trinket'],
-    adj: [{ tag: 'weapon', crit: 15 }],
+    /* 0.1.62 重做：暴擊傷害＋相鄰暴擊率 */
+    fx: { critMul: 30 },
+    adj: [{ tag: 'weapon', crit: 10 }],
     ic: 'cur_prism'
   },
   {
@@ -1002,7 +1065,8 @@ const ITEMS = [
     sh: 'sq',
     tags: ['trinket'],
     for: 'mace',
-    adj: [{ tag: 'weapon', dmgPct: 30, spd: -10 }],
+    /* 0.1.62 重做：拿掉攻速 -10%，傷害加成提高 */
+    adj: [{ tag: 'weapon', dmgPct: 45 }],
     ic: 'sup_sp_heavy'
   },
   {
@@ -1373,10 +1437,11 @@ const ITEMS = [
     id: 'whetwheel',
     n: '流血寶石',
     star: 3,
-    sh: 'z4',
+    /* 0.1.62 重做：Z 四格 → 橫兩格、流血 +2 */
+    sh: 'h2',
     tags: ['trinket'],
     for: 'sword',
-    adj: [{ tag: 'weapon', bleed: 1 }],
+    adj: [{ tag: 'weapon', bleed: 2 }],
     ic: 'sup_sp_bleed'
   },
   {
@@ -1395,7 +1460,9 @@ const ITEMS = [
     star: 3,
     sh: 's1',
     tags: ['trinket', 'dark'],
-    adj: [{ tag: 'weapon', weakCh: 15 }],
+    /* 0.1.62 重做：算 2 件暗、相鄰吸血 */
+    syn: { dark: 2 },
+    adj: [{ tag: 'weapon', ls: 5 }],
     ic: 'a:m_paperdoll'
   },
   {
@@ -1404,7 +1471,9 @@ const ITEMS = [
     star: 3,
     sh: 's1',
     tags: ['trinket', 'holy'],
-    adj: [{ tag: 'weapon', blindCh: 12 }],
+    /* 0.1.62 重做：算 2 件聖、反彈 */
+    syn: { holy: 2 },
+    fx: { thornsF: 3 },
     ic: 'gear_offhand_12'
   },
   {
@@ -1420,10 +1489,11 @@ const ITEMS = [
     id: 'grimoire',
     n: '符文法珠',
     star: 4,
-    sh: 'x5',
+    /* 0.1.62 重做：十字五格 → 直兩格，算 2 件法杖、法杖攻速 */
+    sh: 'v2',
     tags: ['trinket'],
-    for: 'staff',
-    all: [{ tag: 'staff', dmgPct: 25 }],
+    syn: { staff: 2 },
+    all: [{ tag: 'staff', spd: 15 }],
     ic: 'gear_offhand_4'
   },
   /* ---------- 0.1.14 補輔助道具（平衡檢查：斧、雙手、暗、聖沒有，槍、火、冰、雷、毒只有 1 件） ---------- */
@@ -1482,10 +1552,11 @@ const ITEMS = [
     id: 'necrotome',
     n: '生死簿',
     star: 4,
-    sh: 'sq',
     tags: ['trinket', 'dark'],
-    for: 'dark',
-    all: [{ tag: 'dark', dmgPct: 20, ls: 5 }],
+    /* 0.1.62 重做：算 2 件暗＋低血加成（之前全暗系 +20%、購買率 0%） */
+    sh: 'v2',
+    syn: { dark: 2 },
+    fx: { execute: 25 },
     ic: 'ail_doom'
   },
   {
@@ -1535,8 +1606,9 @@ const ITEMS = [
     star: 4,
     sh: 'sq',
     tags: ['trinket'],
-    for: 'fire',
-    all: [{ tag: 'fire', dmgPct: 20 }],
+    /* 0.1.62 重做：算 2 件火、引爆燃燒 */
+    syn: { fire: 2 },
+    fx: { combust: 2 },
     ic: 'sk_inferno'
   },
   {
@@ -1555,8 +1627,9 @@ const ITEMS = [
     star: 4,
     sh: 'sq',
     tags: ['trinket'],
-    for: 'cold',
-    all: [{ tag: 'cold', dmgPct: 20 }],
+    /* 0.1.62 重做：算 2 件冰、免疫凍結冰緩、護甲 */
+    syn: { cold: 2 },
+    fx: { immFz: 1, arm: 6 },
     ic: 'sk_iceshield'
   },
   {
@@ -2084,9 +2157,1081 @@ const ITEMS = [
     tags: ['trinket', 'tf'],
     tf: { tag: 'weapon', n: '巨化', m: { cellPct: 6, cellHp: 10 } },
     ic: 'sk_earthquake'
+  },
+  /* ================= 0.1.62 主題池的專屬道具（th：只在那個主題出現） ================= */
+  /* ---------- 巨人國：又大又重、形狀特別；hole 是凹口裡那件道具吃到的加成 ---------- */
+  {
+    id: 'gtrunk',
+    n: '巨木棒',
+    star: 1,
+    th: 'g',
+    sh: 'big',
+    tags: ['weapon', 'mace', 'twohand'],
+    cd: 1.9,
+    dmg: [5, 8],
+    on: { stun: [15, 0.5] },
+    ic: 'sk_staffstrike'
+  },
+  {
+    id: 'gram',
+    n: '攻城槌',
+    star: 2,
+    th: 'g',
+    sh: 'c5',
+    tags: ['weapon', 'mace', 'twohand'],
+    cd: 2,
+    dmg: [8, 12],
+    on: { sunder: 2 },
+    hole: { tag: '*', spd: 20 },
+    ic: 'sk_bash'
+  },
+  {
+    id: 'gaxe',
+    n: '巨人戰斧',
+    star: 3,
+    th: 'g',
+    sh: 't5',
+    tags: ['weapon', 'axe', 'twohand'],
+    cd: 2.2,
+    dmg: [14, 20],
+    on: { bleed: 2, sunder: 1 },
+    ic: 'sk_execute'
+  },
+  {
+    id: 'gbow',
+    n: '巨人長弓',
+    star: 3,
+    th: 'g',
+    sh: 'l5',
+    tags: ['weapon', 'bow', 'twohand'],
+    cd: 1.6,
+    dmg: [9, 14],
+    crit: 10,
+    ic: 'gear_weapon_24'
+  },
+  {
+    id: 'gpike',
+    n: '泰坦長槍',
+    star: 4,
+    th: 'g',
+    sh: 'v5',
+    tags: ['weapon', 'spear', 'twohand'],
+    cd: 1.7,
+    dmg: [15, 22],
+    crit: 10,
+    on: { bleed: 2 },
+    ic: 'sk_skypierce'
+  },
+  {
+    id: 'gmount',
+    n: '山嶽之鎚',
+    star: 5,
+    th: 'g',
+    sh: 'x5',
+    tags: ['weapon', 'mace', 'twohand'],
+    cd: 2.4,
+    dmg: [30, 42],
+    on: { stun: [30, 1], sunder: 3 },
+    ic: 'sk_bonecrush'
+  },
+  {
+    id: 'gcrown',
+    n: '巨人王冠',
+    star: 3,
+    th: 'g',
+    sh: 'u5',
+    tags: ['trinket'],
+    hp: 20,
+    hole: { tag: '*', dmgPct: 90 },
+    ic: 'sk_pride'
+  },
+  {
+    id: 'gheart',
+    n: '巨人之心',
+    star: 3,
+    th: 'g',
+    sh: 'h7',
+    tags: ['trinket'],
+    hp: 100,
+    hole: { tag: '*', crit: 25 },
+    ic: 'gear_amulet_9'
+  },
+  {
+    id: 'gbanner',
+    n: '圍城旗',
+    star: 4,
+    th: 'g',
+    sh: 'o8',
+    tags: ['trinket'],
+    hole: { tag: '*', spd: 80, dmgPct: 40 },
+    all: [{ tag: 'weapon', spd: 5 }],
+    ic: 'sk_inspire'
+  },
+  {
+    id: 'gwall',
+    n: '城牆',
+    star: 2,
+    th: 'g',
+    sh: 'h4',
+    tags: ['shield'],
+    cd: 2.6,
+    block: 14,
+    thorns: 3,
+    ic: 'sup_ln_iron'
+  },
+  { id: 'gflask', n: '巨人藥瓶', star: 3, th: 'g', sh: 'sq', tags: ['potion'], pot: [40, 90, 1], ic: 'gear_belt_6' },
+  { id: 'garmor', n: '巨人鎧', star: 4, th: 'g', sh: 'p5', tags: ['armor'], hp: 100, arm: 8, ic: 'gear_helm_6' },
+  /* ---------- 共生森林：看旁邊有幾件道具（perAdj 給這件、perAdjF 給角色，每有 1 件相鄰的道具算一次） ---------- */
+  {
+    id: 'fvine',
+    n: '藤鞭',
+    star: 1,
+    th: 'f',
+    sh: 's1',
+    tags: ['weapon', 'poison'],
+    cd: 1.2,
+    dmg: [1, 2],
+    on: { poison: 1 },
+    perAdj: { spd: 6 },
+    ic: 'sk_chainslash'
+  },
+  {
+    id: 'fpollen',
+    n: '花粉法杖',
+    star: 2,
+    th: 'f',
+    sh: 'v2',
+    tags: ['weapon', 'staff', 'holy'],
+    cd: 1.5,
+    dmg: [2, 4],
+    on: { blind: 10 },
+    perAdj: { dmgPct: 8 },
+    ic: 'sk_staffspin'
+  },
+  {
+    id: 'fthorn',
+    n: '荊棘之矛',
+    star: 3,
+    th: 'f',
+    sh: 'v3',
+    tags: ['weapon', 'spear', 'poison'],
+    cd: 1.5,
+    dmg: [4, 7],
+    on: { poison: 2 },
+    perAdj: { poison: 1 },
+    ic: 'sk_bonespear'
+  },
+  {
+    id: 'fbow',
+    n: '古樹長弓',
+    star: 4,
+    th: 'f',
+    sh: 'v3',
+    tags: ['weapon', 'bow'],
+    cd: 1.4,
+    dmg: [6, 9],
+    crit: 5,
+    perAdj: { dmgPct: 10 },
+    ic: 'gear_weapon_25'
+  },
+  {
+    id: 'fygg',
+    n: '世界樹之杖',
+    star: 5,
+    th: 'f',
+    sh: 'v3',
+    tags: ['weapon', 'staff', 'cold'],
+    cd: 1.6,
+    dmg: [10, 14],
+    on: { freeze: [20, 1] },
+    perAdj: { dmgPct: 12 },
+    adj: [{ tag: '*', spd: 8 }],
+    ic: 'sk_sweepstaff'
+  },
+  {
+    id: 'fshroom',
+    n: '蘑菇精',
+    star: 2,
+    th: 'f',
+    sh: 's1',
+    tags: ['weapon', 'pet', 'poison'],
+    cd: 1.4,
+    dmg: [1, 3],
+    on: { poison: 1 },
+    perAdj: { poison: 1 },
+    ic: 'sk_poisontrap'
+  },
+  {
+    id: 'fent',
+    n: '樹人',
+    star: 3,
+    th: 'f',
+    sh: 'sq',
+    tags: ['weapon', 'pet'],
+    cd: 2,
+    dmg: [6, 9],
+    perAdjF: { hp: 20 },
+    ic: 'unit_guardtotem'
+  },
+  { id: 'fmoss', n: '共生苔', star: 2, th: 'f', sh: 's1', tags: ['trinket'], perAdjF: { regen: 1 }, ic: 'gear_ring_8' },
+  {
+    id: 'fheart',
+    n: '森林之心',
+    star: 3,
+    th: 'f',
+    sh: 's1',
+    tags: ['trinket'],
+    adj: [{ tag: '*', spd: 10, dmgPct: 10 }],
+    ic: 'gear_amulet_4'
+  },
+  {
+    id: 'fthrone',
+    n: '藤蔓王座',
+    star: 4,
+    th: 'f',
+    sh: 'sq',
+    tags: ['trinket'],
+    adj: [{ tag: 'weapon', dmgPct: 20 }],
+    perAdjF: { hp: 15 },
+    ic: 'unit_crytotem'
+  },
+  {
+    id: 'farmor',
+    n: '荊棘鎧',
+    star: 3,
+    th: 'f',
+    sh: 'v2',
+    tags: ['armor'],
+    hp: 40,
+    perAdjF: { thornsF: 2 },
+    ic: 'gear_chest_7'
+  },
+  {
+    id: 'fpouch',
+    n: '花粉囊',
+    star: 2,
+    th: 'f',
+    sh: 's1',
+    tags: ['potion'],
+    pot: [50, 25, 2],
+    perAdjF: { regen: 1 },
+    ic: 'gear_amulet_5'
+  },
+  /* ---------- 機關城：觸發條件、互相帶動（nth：每第 N 次出手多打幾下；gear：齒輪；chainAdj：連鎖機關；wake：開戰幾秒後才啟動） ---------- */
+  {
+    id: 'mspring',
+    n: '彈簧刀',
+    star: 1,
+    th: 'm',
+    sh: 's1',
+    tags: ['weapon', 'dagger'],
+    cd: 1,
+    dmg: [1, 3],
+    nth: [3, 1],
+    ic: 'gear_weapon_17'
+  },
+  {
+    id: 'mclock',
+    n: '發條弩',
+    star: 2,
+    th: 'm',
+    sh: 'h2',
+    tags: ['weapon', 'xbow'],
+    cd: 1.2,
+    dmg: [2, 4],
+    nth: [4, 2],
+    ic: 'sk_double'
+  },
+  {
+    id: 'msteam',
+    n: '蒸汽重鎚',
+    star: 3,
+    th: 'm',
+    sh: 'sq',
+    tags: ['weapon', 'mace'],
+    cd: 2.6,
+    dmg: [12, 18],
+    on: { stun: [20, 0.6] },
+    nth: [3, 1],
+    ic: 'sk_reckless'
+  },
+  {
+    id: 'mknives',
+    n: '機關飛刀',
+    star: 3,
+    th: 'm',
+    sh: 'h2',
+    tags: ['weapon', 'dagger', 'light'],
+    cd: 0.8,
+    dmg: [2, 4],
+    on: { stun: [8, 0.3] },
+    nth: [5, 2],
+    ic: 'sk_fanblade'
+  },
+  {
+    id: 'mtesla',
+    n: '雷電砲台',
+    star: 4,
+    th: 'm',
+    sh: 'sq',
+    tags: ['weapon', 'light'],
+    cd: 0.7,
+    dmg: [5, 8],
+    on: { stun: [10, 0.3] },
+    wake: 4,
+    ic: 'unit_tesla'
+  },
+  {
+    id: 'mcannon',
+    n: '連發加農',
+    star: 5,
+    th: 'm',
+    sh: 'sq',
+    tags: ['weapon', 'xbow', 'fire'],
+    cd: 1.6,
+    dmg: [16, 24],
+    on: { burn: 3 },
+    nth: [3, 2],
+    ic: 'sk_ballista'
+  },
+  { id: 'mgear', n: '齒輪', star: 1, th: 'm', sh: 's1', tags: ['trinket'], gear: 20, ic: 'sup_sp_auto' },
+  { id: 'mkey', n: '發條鑰匙', star: 2, th: 'm', sh: 's1', tags: ['trinket'], fx: { opener: 30 }, ic: 'sup_sp_cd' },
+  {
+    id: 'mtrapbox',
+    n: '陷阱工具箱',
+    star: 2,
+    th: 'm',
+    sh: 'sq',
+    tags: ['trinket'],
+    traps: [{ k: 'snare', n: 1, sz: 1 }],
+    ic: 'sup_sp_trap'
+  },
+  { id: 'mchain', n: '連鎖機關', star: 3, th: 'm', sh: 'h2', tags: ['trinket'], chainAdj: 1, ic: 'sup_sp_chain' },
+  {
+    id: 'mheart',
+    n: '機械心臟',
+    star: 5,
+    th: 'm',
+    sh: 'sq',
+    tags: ['trinket'],
+    fx: { ramp: 8 },
+    gear: 15,
+    ic: 'sup_sp_combo'
+  },
+  {
+    id: 'marmor',
+    n: '鋼鐵護甲',
+    star: 3,
+    th: 'm',
+    sh: 'sq',
+    tags: ['armor'],
+    hp: 50,
+    arm: 5,
+    fx: { thornsF: 3 },
+    ic: 'gear_boots_7'
+  },
+  {
+    id: 'mshield',
+    n: '機關盾',
+    star: 4,
+    th: 'm',
+    sh: 'sq',
+    tags: ['shield'],
+    cd: 2.2,
+    block: 18,
+    thorns: 4,
+    ic: 'sk_determination'
+  },
+  /* ---------- 0.1.62 主題的武器線（tools/pools.js 算出每個主題缺的職業武器 × 星級，一件補一個類別＋一個元素）：
+     巨人國又大又重、每佔 1 格傷害 +4%（C 形、U 形有凹口）；共生森林每有 1 件相鄰的道具變強；機關城每第 N 次出手多打、盾格擋時反擊 ---------- */
+  {
+    id: 'g1icesword',
+    n: '寒霜巨劍',
+    star: 1,
+    th: 'g',
+    sh: 'big',
+    tags: ['weapon', 'sword', 'cold', 'twohand'],
+    cd: 1.5,
+    dmg: [3, 5],
+    on: { freeze: [15, 0.8] },
+    crit: 7,
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_16'
+  },
+  {
+    id: 'g1holybow',
+    n: '聖光巨弓',
+    star: 1,
+    th: 'g',
+    sh: 'v3',
+    tags: ['weapon', 'bow', 'holy'],
+    cd: 1.6,
+    dmg: [4, 5],
+    on: { blind: 10 },
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_3'
+  },
+  {
+    id: 'g1thunderspear',
+    n: '雷鳴巨槍',
+    star: 1,
+    th: 'g',
+    sh: 'v3',
+    tags: ['weapon', 'spear', 'light'],
+    cd: 1.7,
+    dmg: [4, 6],
+    on: { stun: [10, 0.4] },
+    self: { cellPct: 4 },
+    ic: 'asc_storm_b3'
+  },
+  {
+    id: 'g2firebow',
+    n: '烈焰巨弓',
+    star: 2,
+    th: 'g',
+    sh: 'v4',
+    tags: ['weapon', 'bow', 'fire', 'twohand'],
+    cd: 1.6,
+    dmg: [5, 8],
+    on: { burn: 2 },
+    self: { cellPct: 4 },
+    ic: 'sk_firearrow'
+  },
+  {
+    id: 'g2holyaxe',
+    n: '聖光巨斧',
+    star: 2,
+    th: 'g',
+    sh: 'c5',
+    tags: ['weapon', 'axe', 'holy', 'twohand'],
+    cd: 2.2,
+    dmg: [8, 11],
+    on: { blind: 12 },
+    hole: { tag: '*', spd: 16 },
+    self: { cellPct: 4 },
+    ic: 'sk_titanfall'
+  },
+  {
+    id: 'g2thundermace',
+    n: '雷鳴巨鎚',
+    star: 2,
+    th: 'g',
+    sh: 'c5',
+    tags: ['weapon', 'mace', 'light', 'twohand'],
+    cd: 2.2,
+    dmg: [8, 11],
+    on: { stun: [12, 0.4] },
+    hole: { tag: '*', spd: 16 },
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_23'
+  },
+  {
+    id: 'g3icedagger',
+    n: '寒霜大砍刀',
+    star: 3,
+    th: 'g',
+    sh: 'l3',
+    tags: ['weapon', 'dagger', 'cold'],
+    cd: 1,
+    dmg: [5, 7],
+    on: { freeze: [30, 1] },
+    crit: 11,
+    self: { cellPct: 4 },
+    ic: 'sk_iceshatter'
+  },
+  {
+    id: 'g3venomstaff',
+    n: '劇毒石杖',
+    star: 3,
+    th: 'g',
+    sh: 't5',
+    tags: ['weapon', 'staff', 'poison', 'twohand'],
+    cd: 1.8,
+    dmg: [9, 13],
+    on: { poison: 2 },
+    self: { cellPct: 4 },
+    ic: 'sk_blight'
+  },
+  {
+    id: 'g3fireaxe',
+    n: '烈焰巨斧',
+    star: 3,
+    th: 'g',
+    sh: 't5',
+    tags: ['weapon', 'axe', 'fire', 'twohand'],
+    cd: 2.2,
+    dmg: [11, 16],
+    on: { burn: 2, stun: [24, 0.5] },
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_8'
+  },
+  {
+    id: 'g3holymace',
+    n: '聖光巨鎚',
+    star: 3,
+    th: 'g',
+    sh: 't5',
+    tags: ['weapon', 'mace', 'holy', 'twohand'],
+    cd: 2.2,
+    dmg: [11, 16],
+    on: { blind: 15, stun: [24, 0.5] },
+    self: { cellPct: 4 },
+    ic: 'sk_titanfall'
+  },
+  {
+    id: 'g4shadowstaff',
+    n: '暗影石杖',
+    star: 4,
+    th: 'g',
+    sh: 't5',
+    tags: ['weapon', 'staff', 'dark', 'twohand'],
+    cd: 1.8,
+    dmg: [13, 20],
+    on: { ls: 15, weak: 18 },
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_4'
+  },
+  {
+    id: 'g4venommace',
+    n: '劇毒巨鎚',
+    star: 4,
+    th: 'g',
+    sh: 'p5',
+    tags: ['weapon', 'mace', 'poison', 'twohand'],
+    cd: 2.2,
+    dmg: [16, 25],
+    on: { poison: 3, stun: [27, 0.5] },
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_8'
+  },
+  {
+    id: 'g5shadowsword',
+    n: '暗影巨劍',
+    star: 5,
+    th: 'g',
+    sh: 'l5',
+    tags: ['weapon', 'sword', 'dark', 'twohand'],
+    cd: 1.5,
+    dmg: [17, 26],
+    on: { ls: 18, weak: 20 },
+    crit: 15,
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_0'
+  },
+  {
+    id: 'g5venomdagger',
+    n: '劇毒大砍刀',
+    star: 5,
+    th: 'g',
+    sh: 'sq',
+    tags: ['weapon', 'dagger', 'poison', 'twohand'],
+    cd: 1,
+    dmg: [11, 17],
+    on: { poison: 4 },
+    crit: 15,
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_28'
+  },
+  {
+    id: 'g5thunderpet',
+    n: '雷鳴石像',
+    star: 5,
+    th: 'g',
+    sh: 'p5',
+    tags: ['weapon', 'pet', 'light'],
+    cd: 1.6,
+    dmg: [18, 27],
+    on: { stun: [22, 0.6] },
+    self: { cellPct: 4 },
+    ic: 'a:m_thunderbat'
+  },
+  {
+    id: 'g5bow',
+    n: '泰坦巨弓',
+    star: 5,
+    th: 'g',
+    sh: 'l5',
+    tags: ['weapon', 'bow', 'twohand'],
+    cd: 1.6,
+    dmg: [18, 27],
+    on: { sunder: 3 },
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_3'
+  },
+  {
+    id: 'g5spear',
+    n: '山丘巨槍',
+    star: 5,
+    th: 'g',
+    sh: 'v5',
+    tags: ['weapon', 'spear', 'twohand'],
+    cd: 1.7,
+    dmg: [19, 29],
+    on: { sunder: 3 },
+    self: { cellPct: 4 },
+    ic: 'gear_weapon_9'
+  },
+  {
+    id: 'f1icedagger',
+    n: '寒霜荊刺',
+    star: 1,
+    th: 'f',
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'cold'],
+    cd: 0.9,
+    dmg: [1, 2],
+    on: { freeze: [15, 0.8] },
+    crit: 7,
+    perAdj: { dmgPct: 8 },
+    ic: 'sk_iceshatter'
+  },
+  {
+    id: 'f1shield',
+    n: '翠綠樹皮盾',
+    star: 1,
+    th: 'f',
+    sh: 'sq',
+    tags: ['shield'],
+    cd: 3,
+    block: 6,
+    perAdj: { blockPct: 10 },
+    ic: 'gear_offhand_2'
+  },
+  {
+    id: 'f1shadowspear',
+    n: '暗影荊矛',
+    star: 1,
+    th: 'f',
+    sh: 'v3',
+    tags: ['weapon', 'spear', 'dark'],
+    cd: 1.5,
+    dmg: [2, 3],
+    on: { ls: 8, weak: 10 },
+    perAdj: { ls: 3 },
+    ic: 'gear_weapon_9'
+  },
+  {
+    id: 'f1firestaff',
+    n: '烈焰花杖',
+    star: 1,
+    th: 'f',
+    sh: 'v2',
+    tags: ['weapon', 'staff', 'fire'],
+    cd: 1.6,
+    dmg: [2, 4],
+    on: { burn: 1 },
+    perAdj: { burn: 1 },
+    ic: 'sk_fire'
+  },
+  {
+    id: 'f2icesword',
+    n: '寒霜藤劍',
+    star: 2,
+    th: 'f',
+    sh: 'v2',
+    tags: ['weapon', 'sword', 'cold'],
+    cd: 1.3,
+    dmg: [3, 4],
+    on: { freeze: [25, 1] },
+    crit: 9,
+    perAdj: { dmgPct: 8 },
+    ic: 'gear_weapon_16'
+  },
+  {
+    id: 'f2shadowdagger',
+    n: '暗影荊刺',
+    star: 2,
+    th: 'f',
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'dark'],
+    cd: 0.9,
+    dmg: [2, 3],
+    on: { ls: 10, weak: 12 },
+    crit: 9,
+    perAdj: { ls: 3 },
+    ic: 'sk_malice'
+  },
+  {
+    id: 'f2shield',
+    n: '古木樹皮盾',
+    star: 2,
+    th: 'f',
+    sh: 'sq',
+    tags: ['shield'],
+    cd: 3,
+    block: 10,
+    perAdj: { blockPct: 12 },
+    ic: 'gear_offhand_2'
+  },
+  {
+    id: 'f2firestaff',
+    n: '赤花法杖',
+    star: 2,
+    th: 'f',
+    sh: 'v3',
+    tags: ['weapon', 'staff', 'fire'],
+    cd: 1.6,
+    dmg: [4, 6],
+    on: { burn: 2 },
+    perAdj: { burn: 1 },
+    ic: 'sk_fire'
+  },
+  {
+    id: 'f3firesword',
+    n: '烈焰藤劍',
+    star: 3,
+    th: 'f',
+    sh: 'v3',
+    tags: ['weapon', 'sword', 'fire'],
+    cd: 1.3,
+    dmg: [4, 7],
+    on: { burn: 2 },
+    crit: 11,
+    perAdj: { burn: 1 },
+    ic: 'gear_weapon_16'
+  },
+  {
+    id: 'f4shadowdagger',
+    n: '夜影荊刺',
+    star: 4,
+    th: 'f',
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'dark'],
+    cd: 0.9,
+    dmg: [4, 8],
+    on: { ls: 15, weak: 18 },
+    crit: 13,
+    perAdj: { ls: 3 },
+    ic: 'sk_malice'
+  },
+  {
+    id: 'f4firestaff',
+    n: '焰心花杖',
+    star: 4,
+    th: 'f',
+    sh: 'v3',
+    tags: ['weapon', 'staff', 'fire'],
+    cd: 1.6,
+    dmg: [9, 13],
+    on: { burn: 3 },
+    perAdj: { burn: 1 },
+    ic: 'sk_fire'
+  },
+  {
+    id: 'f4shield',
+    n: '苔石樹皮盾',
+    star: 4,
+    th: 'f',
+    sh: 'sq',
+    tags: ['shield'],
+    cd: 2.5,
+    block: 18,
+    perAdj: { blockPct: 16 },
+    ic: 'gear_offhand_2'
+  },
+  {
+    id: 'f5venomsword',
+    n: '劇毒藤劍',
+    star: 5,
+    th: 'f',
+    sh: 'v3',
+    tags: ['weapon', 'sword', 'poison'],
+    cd: 1.3,
+    dmg: [11, 17],
+    on: { poison: 4 },
+    crit: 15,
+    perAdj: { poison: 1 },
+    ic: 'gear_weapon_16'
+  },
+  {
+    id: 'f5mace',
+    n: '苔石樹鎚',
+    star: 5,
+    th: 'f',
+    sh: 'sq',
+    tags: ['weapon', 'mace'],
+    cd: 1.9,
+    dmg: [18, 26],
+    perAdj: { dmgPct: 16 },
+    ic: 'gear_weapon_8'
+  },
+  {
+    id: 'f5shield',
+    n: '花樹皮盾',
+    star: 5,
+    th: 'f',
+    sh: 'sq',
+    tags: ['shield'],
+    cd: 2.2,
+    block: 28,
+    perAdj: { blockPct: 18 },
+    ic: 'gear_offhand_2'
+  },
+  {
+    id: 'm1venomsword',
+    n: '劇毒機關劍',
+    star: 1,
+    th: 'm',
+    sh: 'v2',
+    tags: ['weapon', 'sword', 'poison'],
+    cd: 1.2,
+    dmg: [2, 3],
+    on: { poison: 1 },
+    crit: 7,
+    nth: [3, 1],
+    ic: 'gear_weapon_16'
+  },
+  {
+    id: 'm1firepet',
+    n: '烈焰機械犬',
+    star: 1,
+    th: 'm',
+    sh: 's1',
+    tags: ['weapon', 'pet', 'fire'],
+    cd: 1.3,
+    dmg: [2, 3],
+    on: { burn: 1 },
+    nth: [3, 1],
+    ic: 'a:z_dragon'
+  },
+  {
+    id: 'm1holyaxe',
+    n: '聖光鏈鋸斧',
+    star: 1,
+    th: 'm',
+    sh: 'v2',
+    tags: ['weapon', 'axe', 'holy'],
+    cd: 1.7,
+    dmg: [3, 4],
+    on: { blind: 10 },
+    nth: [3, 1],
+    ic: 'sk_titanfall'
+  },
+  {
+    id: 'm1shield',
+    n: '蒸汽齒輪盾',
+    star: 1,
+    th: 'm',
+    sh: 'sq',
+    tags: ['shield'],
+    cd: 3,
+    block: 6,
+    self: { bash: 40 },
+    ic: 'gear_offhand_2'
+  },
+  {
+    id: 'm1thunderdagger',
+    n: '雷鳴彈刃',
+    star: 1,
+    th: 'm',
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'light'],
+    cd: 0.8,
+    dmg: [1, 2],
+    on: { stun: [10, 0.4] },
+    crit: 7,
+    nth: [3, 1],
+    ic: 'sk_arc'
+  },
+  {
+    id: 'm2icepet',
+    n: '寒霜機械犬',
+    star: 2,
+    th: 'm',
+    sh: 's1',
+    tags: ['weapon', 'pet', 'cold'],
+    cd: 1.3,
+    dmg: [3, 4],
+    on: { freeze: [25, 1] },
+    nth: [4, 2],
+    ic: 'a:m_thunderbat'
+  },
+  {
+    id: 'm2venomaxe',
+    n: '劇毒鏈鋸斧',
+    star: 2,
+    th: 'm',
+    sh: 'l3',
+    tags: ['weapon', 'axe', 'poison'],
+    cd: 1.7,
+    dmg: [4, 7],
+    on: { poison: 1 },
+    nth: [4, 2],
+    ic: 'gear_weapon_8'
+  },
+  {
+    id: 'm2holyspear',
+    n: '聖光鑽槍',
+    star: 2,
+    th: 'm',
+    sh: 'v3',
+    tags: ['weapon', 'spear', 'holy'],
+    cd: 1.4,
+    dmg: [3, 6],
+    on: { blind: 12 },
+    nth: [4, 2],
+    ic: 'gear_weapon_9'
+  },
+  {
+    id: 'm3icesword',
+    n: '寒霜機關劍',
+    star: 3,
+    th: 'm',
+    sh: 'v3',
+    tags: ['weapon', 'sword', 'cold'],
+    cd: 1.2,
+    dmg: [4, 7],
+    on: { freeze: [30, 1] },
+    crit: 11,
+    nth: [3, 1],
+    ic: 'gear_weapon_16'
+  },
+  {
+    id: 'm3pet',
+    n: '齒輪機械犬',
+    star: 3,
+    th: 'm',
+    sh: 'h2',
+    tags: ['weapon', 'pet'],
+    cd: 1.3,
+    dmg: [4, 8],
+    nth: [3, 1],
+    ic: 'a:m_thunderbat'
+  },
+  {
+    id: 'm3shield',
+    n: '精工齒輪盾',
+    star: 3,
+    th: 'm',
+    sh: 'sq',
+    tags: ['shield'],
+    cd: 2.6,
+    block: 15,
+    self: { bash: 60 },
+    ic: 'gear_offhand_2'
+  },
+  {
+    id: 'm3holydagger',
+    n: '聖光彈刃',
+    star: 3,
+    th: 'm',
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'holy'],
+    cd: 0.8,
+    dmg: [3, 4],
+    on: { blind: 15 },
+    crit: 11,
+    nth: [3, 1],
+    ic: 'gear_weapon_13'
+  },
+  {
+    id: 'm4venomdagger',
+    n: '劇毒彈刃',
+    star: 4,
+    th: 'm',
+    sh: 's1',
+    tags: ['weapon', 'dagger', 'poison'],
+    cd: 0.8,
+    dmg: [4, 7],
+    on: { poison: 3 },
+    crit: 13,
+    nth: [4, 2],
+    ic: 'gear_weapon_28'
+  },
+  {
+    id: 'm4pet',
+    n: '蒸汽機械犬',
+    star: 4,
+    th: 'm',
+    sh: 'h2',
+    tags: ['weapon', 'pet'],
+    cd: 1.3,
+    dmg: [8, 12],
+    nth: [4, 2],
+    ic: 'a:m_thunderbat'
+  },
+  {
+    id: 'm4holyaxe',
+    n: '聖光齒輪斧',
+    star: 4,
+    th: 'm',
+    sh: 'sq',
+    tags: ['weapon', 'axe', 'holy'],
+    cd: 1.7,
+    dmg: [9, 13],
+    on: { blind: 18 },
+    nth: [4, 2],
+    ic: 'sk_titanfall'
+  },
+  {
+    id: 'm4spear',
+    n: '精工鑽槍',
+    star: 4,
+    th: 'm',
+    sh: 'v3',
+    tags: ['weapon', 'spear'],
+    cd: 1.4,
+    dmg: [9, 12],
+    nth: [4, 2],
+    ic: 'gear_weapon_9'
+  },
+  {
+    id: 'm5icedagger',
+    n: '寒霜彈刃',
+    star: 5,
+    th: 'm',
+    sh: 'h2',
+    tags: ['weapon', 'dagger', 'cold'],
+    cd: 0.8,
+    dmg: [7, 10],
+    on: { freeze: [40, 1.2] },
+    crit: 15,
+    nth: [3, 2],
+    ic: 'sk_iceshatter'
+  },
+  {
+    id: 'm5shield',
+    n: '發條齒輪盾',
+    star: 5,
+    th: 'm',
+    sh: 'sq',
+    tags: ['shield'],
+    cd: 2.2,
+    block: 28,
+    self: { bash: 80 },
+    ic: 'gear_offhand_2'
+  },
+  {
+    id: 'm5spear',
+    n: '蒸汽鑽槍',
+    star: 5,
+    th: 'm',
+    sh: 'v3',
+    tags: ['weapon', 'spear'],
+    cd: 1.4,
+    dmg: [12, 20],
+    nth: [3, 2],
+    ic: 'gear_weapon_9'
   }
 ];
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
+/* 0.1.62 道具池：每件道具在哪幾個池（b 基本池＝每局都有；g 巨人國、f 共生森林、m 機關城＝主題池，開場內圈轉一個）。
+   主題專屬的新道具寫在道具的 th；這張表是舊道具的分配（tools/pools.js 產生：照標籤、形狀排每個主題的合適度，從最不合的拿掉，
+   拿掉後每個主題、每類職業武器的 1～5★ 都還要有）。沒寫到的道具三個主題都有 */
+const POOLS = {
+  b: 'beastbell bigpotion boots bugnet bugspray cape cleansebell cursedbandage elixir fireproof gasmask handwarmer herb hunterbadge ironhelm ironskin leatherarmor leathercap lightningrod phoenixdown potion purse rivetvest sunglasses thickhide tourniquet whetstone',
+  fg: 'holycollar holymirror holyoil holysigil iceheart',
+  fm: 'acidflask arcaneink assassinmark axestone beasttotem bersmask bloodrune bone cloak clover crest darkorb echostone emberstone firebottle fireflower fireorb forgehammer frenzywhistle frostflower frostgem frostrune fuse giantbelt giantblood grimoire grip hawkeye hexdoll holyflower hourglass kingcrown piercerune prism puppetstring quiver shadowflower sheath shieldrack spearrest spellbook spikestud stormcore stormfeather sunderstone thornvine thunderflower thunderstone toxinvial vampfang venomflower venomgland venomking warbanner wardrum warpaint weaponrack whetwheel',
+  gm: 'necroessence necrotome',
+  f: 'acolytewand assassinblade bear bleedoil blindpowder coindart dragonlance frostaxe frostbow frostbrew hawk holymace holysword holywand holywater huntbow icecrystal longbow poisonbrew qilin ragepotion shadowclaw shadowstaff sparkrod sunbow thunderbat thunderbow thunderjav towershield treefrog venomsac venomspear viper waraxe weakbrew wolf woodsword',
+  g: 'aegis anvil archstaff babydragon bloodsword cauldron chainmail club dragonmail dragonslayer emberwand flail greataxe greatsword halberd handaxe heavyxbow icefang icestaff lavaheart mithril needle paladinshield pickaxe pike powder skeleton slime spikedmail stormhammer thornshield thunderhammer vampbat venomknife woodshield worldhammer',
+  m: 'crystalstaff demonaxe dragonblood excalibur firecat firestaff flamesword frostwand handxbow huntxbow ironshield ironsword katana knife nightscythe phoenixbow plaguestaff repeater rotstaff scythe shadowdirk shadowknife skythunder sparkdagger spear stormxbow teslacoil thunderheart twinblades woodspear'
+};
+const ITEM_TH = {};
+for (const k in POOLS) for (const id of POOLS[k].split(' ')) ITEM_TH[id] = k;
+const thOf = it => it.th || ITEM_TH[it.id] || 'fgm';
+/* 這件在主題 th 的局裡會不會出現（th 沒給＝不分主題，例如舊存檔） */
+const thOK = (th, it) => !th || thOf(it) === 'b' || thOf(it).includes(th);
 /* 商店、戰利品、送的寵物會出的道具：不是職業核心、也不是核心送的專屬道具（ns） */
 const shopOK = it => !it.core && !it.ns;
 /* 0.1.7 開局職業：1-1 開打前三選一（可以刷新一次），整局都有效。
@@ -2619,6 +3764,27 @@ function shapeRaw(id, rot, sm, sh) {
     my = Math.min(...c.map(p => p[1]));
   return c.map(([x, y]) => [x - mx, y - my]);
 }
+/* 0.1.62 巨人國：形狀的凹口（形狀的方框裡空著、被包住的格子），放在那格的道具吃這件的 hole 加成；跟著旋轉 */
+const SHHOLE = {
+  u5: [[1, 0]],
+  o8: [[1, 1]],
+  h7: [
+    [1, 0],
+    [1, 2]
+  ],
+  c5: [[1, 1]]
+};
+function holeOf(o) {
+  const k = o.sh || ITEMI[o.id].sh,
+    hs = SHHOLE[k];
+  if (!hs || o.sm) return [];
+  let c = SH[k].map(p => [...p]),
+    hh = hs.map(p => [...p]);
+  for (let i = 0; i < ((o.r || 0) & 3); i++) (c = c.map(([x, y]) => [-y, x])), (hh = hh.map(([x, y]) => [-y, x]));
+  const mx = Math.min(...c.map(p => p[0])),
+    my = Math.min(...c.map(p => p[1]));
+  return hh.map(([x, y]) => [o.x + x - mx, o.y + y - my]);
+}
 /* 升階時隨機多一條小詞綴（保留一點刷寶感） */
 const AFFX = [
   { k: 'dmgPct', v: 15, n: '傷害 +15%', w: 1 },
@@ -2701,6 +3867,9 @@ const MODN = {
   throwPct: v => `丟出的藥劑效果 ${sg(v)}${pct(v)}`,
   opener: v => `開戰時武器先充能 ${pct(v)}`,
   execute: v => `對生命低於 30% 的敵人傷害 +${pct(v)}`,
+  /* 0.1.62 羈絆用 */
+  potMul: v => `藥水回復 +${pct(v)}`,
+  potUse: v => `每瓶藥水多喝 ${v} 次`,
   rage: v => `自己生命低於 50% 時傷害 +${pct(v)}`,
   ramp: v => `每 5 秒攻速 +${pct(v)}（最多 5 次）`,
   startBlock: v => `開戰時有 ${v} 護盾`,
@@ -3064,6 +4233,15 @@ function itemDesc(id, t = 1) {
     for (const [txt, tags] of g) out.push(`${n}${tags.join('、')}：${txt}`);
   }
   if (it.tf) out.push(tfTxt(it.tf, t));
+  /* 0.1.62 主題池的專屬道具 */
+  if (it.self) out.push(`這件：${modTxt(scaleMod(it.self, t))}`);
+  if (it.perAdj) out.push(`每有 1 件相鄰的道具，這件${modTxt(scaleMod(it.perAdj, t))}`);
+  if (it.perAdjF) out.push(`每有 1 件相鄰的道具，${modTxt(it.perAdjF)}`);
+  if (it.hole) out.push(`凹口（形狀中間空著的格子）放的道具：${modTxt(scaleMod(it.hole, t))}`);
+  if (it.nth) out.push(`每第 ${it.nth[0]} 次出手，多打 ${it.nth[1]} 下`);
+  if (it.wake) out.push(`開戰 ${it.wake} 秒後才開始出手`);
+  if (it.gear) out.push(`相鄰的武器出手時，其他相鄰的武器充能 +${it.gear}%`);
+  if (it.chainAdj) out.push('相鄰的武器出手時，帶動另一件相鄰的武器出手（每件每秒最多一次）');
   /* 0.1.33 核心的特殊效果（fxPer 寫在角色加成後面：「護甲 +20、開戰時有 10 護盾；背包裡每有 1 件矛，開戰護盾再 +10」） */
   if (it.shrink) out.push(`所有${tagTxt(it.shrink)}武器少佔 1 格`);
   if (it.eliteAll)
@@ -3156,11 +4334,17 @@ function itemDesc(id, t = 1) {
   if (it.freeRoll) out.push(`每回合可以免費刷新商店 ${it.freeRoll} 次`);
   if (it.fx) {
     const f = fxT(it, t),
-      rest = Object.fromEntries(Object.entries(f).filter(([k]) => MODN[k]));
+      rest = Object.fromEntries(Object.entries(f).filter(([k]) => MODN[k] && k !== 'potMul' && k !== 'potUse'));
     if (Object.keys(rest).length) out.push(modTxt(rest));
     if (f.take) out.push(`受到的攻擊傷害 +${f.take}%`);
     if (f.potMul) out.push(`藥水回復 +${f.potMul}%${f.potUse ? `、多喝 ${f.potUse} 次` : ''}`);
     else if (f.potUse) out.push(`生命藥水多喝 ${f.potUse} 次`);
+  }
+  /* 0.1.62 系別羈絆：這件算幾件哪一系 */
+  const sy = it.syn ? Object.entries(it.syn) : it.for && it.tags.includes('trinket') ? [[it.for, 1]] : [];
+  for (const [k, n] of sy) {
+    const x = SYN.find(x => x.k === k || x.g.includes(k));
+    if (x) out.push(`系別羈絆：算 ${n} 件${x.g.map(t => TAGN[t]).join('、')}`);
   }
   for (const b of it.fxPer || [])
     out.push(

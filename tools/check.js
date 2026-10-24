@@ -11,7 +11,8 @@
      4. 快照打包 → JSON → 還原，戰力一樣
      5. 怪物 × 星象每條規則：數值都是有限的
      6. 七十二變：1★ 的形狀放得進 3×3、最多 3 格
-     7. 整局不丟錯（丟錯會印出堆疊） */
+     7. 整局不丟錯（丟錯會印出堆疊）
+     8. 0.1.62 道具池：商店只出這局的主題池＋基本池；每個主題、每類職業武器 1～5★ 都要有；基本池沒有武器（每局輪流三個主題） */
 'use strict';
 const G = require('./game_node');
 const arg = k => {
@@ -45,6 +46,10 @@ function nanOf(F) {
 function newGame(m, g) {
   const run = G.newRun(G.liveBots(G.LOBBY_N - 1, 1000, g * 97 + 5));
   G.setMode(run, m);
+  /* 0.1.62 道具池的主題：每局輪流（跟賽制衝突的跳過） */
+  const ths = G.POOLTH.map(x => x.k).filter(k => !(G.MODE_TH_BAN[m] || []).includes(k));
+  G.setTheme(run, ths[g % ths.length]);
+  G.rollShop(run);
   run.bag.cls = run.clsOpts[g % 3];
   run.phase = 'prep';
   run.mseen = 1;
@@ -55,6 +60,44 @@ function newGame(m, g) {
 /* 複製這一局（不含對手），拿來試買試賣 */
 const clone = run =>
   JSON.parse(JSON.stringify({ ...run, rivals: [], lob: undefined }, (k, v) => (k === 'live' ? undefined : v)));
+/* 0.1.62 商店只能出這局的主題池＋基本池 */
+function checkPool(m, run) {
+  for (const s of run.shop) {
+    checks++;
+    if (s && !G.thOK(run.theme, G.ITEMI[s.id])) flag(m, `商店出現別的主題的道具`, { theme: run.theme, id: s.id });
+  }
+}
+/* 0.1.62 每個主題、每類職業武器的 1～5★ 都要有（不然抽到那個主題的職業會斷線）；基本池不能有武器 */
+function checkThemes() {
+  const W = G.ITEMS.filter(i => G.shopOK(i) && (i.dmg || i.block)),
+    groups = {
+      弓弩: ['bow', 'xbow'],
+      劍: ['sword'],
+      矛: ['spear'],
+      斧鎚: ['axe', 'mace'],
+      匕首: ['dagger'],
+      火: ['fire'],
+      冰: ['cold'],
+      雷: ['light'],
+      毒: ['poison'],
+      聖: ['holy'],
+      暗: ['dark'],
+      法杖: ['staff'],
+      寵物: ['pet'],
+      盾: ['shield']
+    };
+  for (const T of G.POOLTH)
+    for (const [g, tg] of Object.entries(groups))
+      for (let st = 1; st <= 5; st++) {
+        checks++;
+        if (!W.some(i => i.star === st && tg.some(t => i.tags.includes(t)) && G.thOK(T.k, i)))
+          flag('pool', `${T.n}缺 ${st}★ ${g}`, '');
+      }
+  for (const i of W) {
+    checks++;
+    if (G.thOf(i) === 'b') flag('pool', '基本池裡有武器', i.id);
+  }
+}
 function tryBuySell(m, run) {
   for (let k = 0; k < run.shop.length; k++) {
     if (!run.shop[k]) continue;
@@ -112,6 +155,7 @@ function playMode(m) {
       for (let k = 0; run.phase !== 'end' && k < 80; k++) {
         if (run.relq) G.relicPick(run, run.relq.opts[0]);
         tryBuySell(m, run);
+        checkPool(m, run);
         G.botAct(run, th, 0.9, G.BOT_P);
         checkBag(m, run);
         checks++;
@@ -184,6 +228,7 @@ else {
   const t0 = Date.now();
   for (const m of MODES) playMode(m);
   if (MODES.includes('astro')) checkAstro();
+  checkThemes();
   const n = Object.values(bad).reduce((a, x) => a + Object.values(x).reduce((p, q) => p + q, 0), 0);
   console.log(
     n

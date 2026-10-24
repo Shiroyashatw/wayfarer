@@ -54,6 +54,8 @@ function artRepaint() {
     ICU.clear();
     if (!V.drag && !B && !typing() && !V.authBusy) render();
     else paintSprites();
+    /* 0.1.62 對話框不會跟著重畫：裡面標了 data-iid 的道具圖重新換一次（打開時大圖還沒載好的是星星） */
+    for (const im of document.querySelectorAll('#modal img[data-iid]')) im.src = itemIcon(im.dataset.iid);
   }, 80);
 }
 const stars = n => '★'.repeat(n);
@@ -583,6 +585,7 @@ function prepHTML(run) {
     <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="topcore">${coreFabHTML(run)}</div><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
     <div class="pcol pa">${roundBarHTML(run)}
     ${modeBarHTML(run)}
+    ${synHTML(run)}
     ${rivalHTML(run)}
     ${tutHTML()}
     ${holdHTML(run)}</div>
@@ -696,16 +699,35 @@ function wheelEnd(run) {
     j = ((h(run.seed, 404) % 1000) / 1000 - 0.5) * 0.6;
   return 360 * 5 + 360 - ((s.a + s.b) / 2 + j * (s.b - s.a));
 }
+/* 0.1.62 內圈：道具池的主題（三塊一樣大），反方向轉，停在這局的主題 */
+function wheelEnd2(run) {
+  const i = POOLTH.findIndex(x => x.k === run.theme);
+  if (i < 0) return 0;
+  const j = ((h(run.seed, 405) % 1000) / 1000 - 0.5) * 0.6;
+  return -(360 * 4 + i * 120 + 60 + j * 120);
+}
 function wheelHTML(run) {
   const sl = wheelSlices(),
     grad = sl.map((s, i) => `var(${i % 2 ? '--fill' : '--card2'}) ${s.a}deg ${s.b}deg`).join(','),
-    end = wheelEnd(run);
+    end = wheelEnd(run),
+    grad2 = POOLTH.map((x, i) => `var(${i % 2 ? '--card' : '--accent-soft'}) ${i * 120}deg ${(i + 1) * 120}deg`).join(
+      ','
+    );
   return `<div class="wheel"><i class="wpin"></i><div class="wdisk" id="wdisk" style="background:conic-gradient(${grad});transform:rotate(${run.mseen ? end : 0}deg)">${sl
     .map(s => {
       const m = (s.a + s.b) / 2;
       return `<img src="${artIconURL(MODEI[s.k].ic) || iconURL('star')}" alt="" style="transform:rotate(${m}deg) translateY(-82px) rotate(${-m}deg)">`;
     })
-    .join('')}</div></div>`;
+    .join('')}</div>${
+    run.theme
+      ? `<div class="wdisk in" id="wdisk2" style="background:conic-gradient(${grad2});transform:rotate(${run.mseen ? wheelEnd2(run) : 0}deg)">${POOLTH.map(
+          (x, i) => {
+            const m = i * 120 + 60;
+            return `<img src="${artIconURL(x.ic) || iconURL('star')}" alt="" style="transform:rotate(${m}deg) translateY(-30px) rotate(${-m}deg)">`;
+          }
+        ).join('')}</div>`
+      : ''
+  }</div>`;
 }
 /* 轉：照時間算角度（重畫也接得上），每過一塊響一聲；點轉盤直接停 */
 function wheelGo(run) {
@@ -724,8 +746,10 @@ function wheelTick() {
   const t = Math.min(1, (performance.now() - sp.t0) / 1000 / sp.T),
     e = 1 - Math.pow(1 - t, 3.2),
     ang = wheelEnd(run) * e,
-    d = $('wdisk');
+    d = $('wdisk'),
+    d2 = $('wdisk2');
   if (d) d.style.transform = `rotate(${ang}deg)`;
+  if (d2) d2.style.transform = `rotate(${wheelEnd2(run) * e}deg)`;
   /* 指針底下換了一塊：滴答 */
   const at = (((360 - (ang % 360)) % 360) + 360) % 360,
     i = wheelSlices().findIndex(s => at >= s.a && at < s.b);
@@ -744,16 +768,23 @@ function wheelDone(run) {
 function modeHTML(run) {
   const M = MODEI[run.mode];
   if (!run.mseen)
-    return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制</small><button class="wbtn" data-act="wheelSkip" aria-label="直接看結果">${wheelHTML(run)}</button><b class="c-dim">轉盤轉動中…</b><small class="c-dim">點轉盤直接看結果</small></div></div>`;
-  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制</small>${wheelHTML(run)}<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}<button class="btn pri big" data-act="modeOk">選職業</button></div></div>`;
+    return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">外圈賽制・內圈道具池</small><button class="wbtn" data-act="wheelSkip" aria-label="直接看結果">${wheelHTML(run)}</button><b class="c-dim">轉盤轉動中…</b><small class="c-dim">點轉盤直接看結果</small></div></div>`;
+  const T = POOLTHI[run.theme];
+  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">外圈賽制・內圈道具池</small>${wheelHTML(run)}<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}${T ? `<b class="mres thres">道具池：${T.n}</b><ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}<button class="btn pri big" data-act="modeOk">選職業</button></div></div>`;
 }
 /* 準備畫面上方：賽制小標籤＋印記的件數（點了看規則） */
 function modeBarHTML(run) {
-  const M = MODEI[run.mode];
+  const M = MODEI[run.mode],
+    T = POOLTHI[run.theme];
   /* 0.1.59 轉盤還沒停：不要先洩漏結果 */
-  if (!M || run.mode === 'std' || (run.phase === 'mode' && !run.mseen)) return '';
-  const x = modeUI(run).bar ? modeUI(run).bar(run) : '';
-  return `<div class="mbar"><button class="mchip" data-act="modeInfo"><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b>${M.n}</b></button>${x}</div>`;
+  if (!M || (run.phase === 'mode' && !run.mseen)) return '';
+  const x = run.mode !== 'std' && modeUI(run).bar ? modeUI(run).bar(run) : '',
+    /* 0.1.62 道具池的主題（點了看規則和專屬道具） */
+    tc = T
+      ? `<button class="mchip thc" data-act="thInfo"><img src="${artIconURL(T.ic) || iconURL('star')}" alt=""><b>${T.n}</b></button>`
+      : '';
+  if (run.mode === 'std' && !tc) return '';
+  return `<div class="mbar">${run.mode !== 'std' ? `<button class="mchip" data-act="modeInfo"><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b>${M.n}</b></button>` : ''}${tc}${x}</div>`;
 }
 /* ================= 0.1.59 賽制的畫面 =================
    每個賽制一份（沒寫的就沒有）：intro 開場轉盤停下後規則下面多的、bar 準備畫面上方賽制標籤旁邊的、
@@ -841,6 +872,33 @@ function legHTML(run) {
         `<button class="sc s${ITEMI[e.id].star}${V.sel === 'leg' + k ? ' sel' : ''}" data-act="legSel" data-k="${k}"><img src="${itemIcon(e.id)}" alt="">${tierBadge(e.t || 1)}${sgBadge(e.sg)}${cuBadge(e.cu)}<span>${ITEMI[e.id].n}</span><b class="${run.gold < legPrice(run, e) ? 'c-bad' : 'c-gold'}">${legPrice(run, e)} 金</b></button>`
     )
     .join('')}</div></div>`;
+}
+/* ================= 0.1.62 系別羈絆 ================= */
+const synName = x => x.g.map(t => TAGN[t]).join('');
+/* 一級的效果文字：給那一系的（「火：命中燃燒 +1」）＋角色的 */
+const synTxt = (x, L) =>
+  [L.m ? `${synName(x)}：${modTxt(L.m)}` : '', L.F ? modTxt(L.F) : ''].filter(Boolean).join('；');
+/* 準備畫面：有 1 件以上的系（件數多的在前），三個門檻點；點了看全部 */
+function synHTML(run) {
+  const n = synCount(run.bag),
+    l = SYN.map((x, i) => [x, n[i]])
+      .filter(([, c]) => c > 0)
+      .sort((a, b) => b[1] - a[1]);
+  if (!l.length) return '';
+  return `<div class="sgrow synrow">${l
+    .map(([x, c]) => {
+      const lv = synLv(c);
+      return `<button class="sgc syc${lv ? ' on' : ''}" data-act="synInfo" aria-label="${synName(x)} ${c} 件"><i class="syb">${synName(x)}</i><b>${c}</b><span class="pip">${SYN_AT.map(a => `<i${c >= a ? ' class="on"' : ''}></i>`).join('')}</span></button>`;
+    })
+    .join('')}</div>`;
+}
+/* 羈絆說明：每一系、每一級（有到的亮起來） */
+function synInfoHTML(run) {
+  const n = synCount(run.bag);
+  return `<p class="c-dim">背包裡同一系湊 2／4／6 件，效果累加。一件道具可以算好幾系；系別飾品算 1 件、寫著「算 2 件」的算 2 件。</p><div class="sginfo">${SYN.map(
+    (x, i) =>
+      `<div class="sgi"><i class="syb">${synName(x)}</i><div><b>${synName(x)}<small>背包裡 ${n[i]} 件</small></b>${x.L.map((L, k) => `<p class="${n[i] >= SYN_AT[k] ? 'on' : 'c-dim'}">${SYN_AT[k]} 件：${dsc(synTxt(x, L))}</p>`).join('')}</div></div>`
+  ).join('')}</div>`;
 }
 /* 印記規則：五個印記、每一級（有到的亮起來） */
 function sgInfoHTML(run) {
@@ -2039,6 +2097,16 @@ const CX_STAT = () => [
 /* 0.1.55 百科改版：上面搜尋欄（名字、標籤、說明都搜，四個分頁一起找），每一項是可以展開的一列；道具照星級分組、可以收合。
    搜尋在畫面上直接篩（cxFilter），不重畫，輸入框不會跳掉 */
 const plain = h => String(h).replace(/<[^>]*>/g, '');
+/* 0.1.62 道具在哪個道具池（百科的第二行；搜尋也找得到「巨人國」） */
+const thName = i => {
+  if (!shopOK(i)) return '核心送的';
+  const t = thOf(i);
+  return t === 'b'
+    ? '基本池'
+    : POOLTH.filter(x => t.includes(x.k))
+        .map(x => x.n)
+        .join('、');
+};
 function cxRow(key, ic, name, sub, body, cls = '') {
   const q = (name + ' ' + plain(sub) + ' ' + plain(body)).toLowerCase();
   return `<details class="cxr${cls}" data-k="${key}" data-q="${esc(q)}"><summary>${ic ? `<img src="${ic}" alt="">` : ''}<span><b>${name}</b>${sub ? `<small>${sub}</small>` : ''}</span></summary><p>${body}</p></details>`;
@@ -2061,7 +2129,7 @@ function codexHTML() {
               'cxi_' + i.id,
               itemIcon(i.id),
               i.n,
-              `${tags(i)}・${shapeOf(i.id).length} 格`,
+              `${tags(i)}・${shapeOf(i.id).length} 格・${thName(i)}`,
               dsc(itemDesc(i.id)),
               ` s${st}${S.seen[i.id] ? '' : ' unseen'}`
             )
@@ -2357,6 +2425,18 @@ const A = {
     render();
   },
   sgInfo: () => showDlg('印記', sgInfoHTML(S.run), []),
+  synInfo: () => showDlg('系別羈絆', synInfoHTML(S.run), []),
+  /* 0.1.62 道具池：規則＋這個主題專屬的道具（點了看說明） */
+  thInfo: () => {
+    const T = POOLTHI[S.run.theme];
+    if (!T) return;
+    const own = ITEMS.filter(i => i.th === T.k).sort((a, b) => a.star - b.star);
+    showDlg(
+      `道具池：${T.n}`,
+      `<ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}<li>商店只出基本池（功能、反制道具）和這個主題的道具</li></ul><h4>專屬道具（${own.length} 件）</h4><div class="thlist">${own.map(i => `<span class="s${i.star}" title="${esc(i.n)}"><img src="${itemIcon(i.id)}" data-iid="${i.id}" alt="">${esc(i.n)}</span>`).join('')}</div>`,
+      []
+    );
+  },
   sgPick: d => {
     const run = S.run,
       q = run.sgq && run.sgq.shift(),

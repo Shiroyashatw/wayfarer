@@ -375,6 +375,19 @@ function setMode(run, m) {
       modeFix(rv.live.run);
     }
 }
+/* ================= 0.1.62 道具池的主題 ================= */
+/* 這局商店、戰利品、商人會出的：商店道具（shopOK）而且在這局的主題池或基本池（thOK） */
+const poolOK = (run, it) => shopOK(it) && thOK(run && run.theme, it);
+/* 抽主題（機率一樣；跟賽制衝突的不抽，MODE_TH_BAN） */
+function rollTheme(rand, mode) {
+  const c = POOLTH.filter(x => !(MODE_TH_BAN[mode] || []).includes(x.k));
+  return c[fl(rand() * c.length)].k;
+}
+/* 設定這局的主題（玩家那局）；即時機器人跟你同一個主題 */
+function setTheme(run, th) {
+  run.theme = th;
+  for (const rv of run.rivals || []) if (rv.live) rv.live.run.theme = th;
+}
 /* 一場共用的資料（MODEH 的 share）：放進 run（欄位照掛勾回傳的名字，例如 shm、astro），換賽制時清掉舊的 */
 const modeShareOf = (m, rand) => ((MODEH[m] || {}).share ? MODEH[m].share(rand) : {});
 function modeShare(run, sh) {
@@ -520,6 +533,11 @@ function newRun(rivals) {
     run,
     rollMode(() => r01(run))
   );
+  /* 0.1.62 內圈：道具池的主題 */
+  setTheme(
+    run,
+    rollTheme(() => r01(run), run.mode)
+  );
   /* 0.1.26 對手的生命在這局裡算（rv.hp），快照只提供每回合的背包 */
   for (const rv of rivals) rv.hp = START_HP;
   Object.assign(run, {
@@ -592,13 +610,13 @@ const clsBoost = run => 1 + CLS_W * ((run.lv || 1) - 1);
    舊的商店會放回池子，所以不算自己的商店。不會出現在商店的（核心、送的道具）回傳 null */
 function shopChance(run, id) {
   const I = ITEMI[id];
-  if (!I || !shopOK(I) || run.ri <= 0) return null;
+  if (!I || !poolOK(run, I) || run.ri <= 0) return null;
   const od = shopOdds(run),
     used = poolUsed(run),
     tags = clsShopTags(run.bag.cls),
     cb = clsBoost(run),
     w = it => Math.max(0, poolOf(it.id) - (used.get(it.id) || 0)) * (tags.some(t => it.tags.includes(t)) ? cb : 1),
-    tot = ITEMS.filter(it => it.star === I.star && shopOK(it)).reduce((n, it) => n + w(it), 0),
+    tot = ITEMS.filter(it => it.star === I.star && poolOK(run, it)).reduce((n, it) => n + w(it), 0),
     p = tot > 0 ? ((od[I.star - 1] || 0) / 100) * (w(I) / tot) : 0;
   return 1 - (1 - p) ** SHOP_N;
 }
@@ -630,12 +648,12 @@ function rollItem(run, lotto, used = poolUsed(run), filt = () => true) {
   for (const s of [st, ...[5, 4, 3, 2, 1].filter(v => v !== st)]) {
     const it = wpick(
       run,
-      ITEMS.filter(it => it.star === s && shopOK(it) && filt(it)),
+      ITEMS.filter(it => it.star === s && poolOK(run, it) && filt(it)),
       w
     );
     if (it) return it.id;
   }
-  const c = ITEMS.filter(it => it.star === 1 && shopOK(it) && filt(it));
+  const c = ITEMS.filter(it => it.star === 1 && poolOK(run, it) && filt(it));
   return c.length ? pick(run, c).id : null;
 }
 /* 0.1.35 六合彩：1～2★ 的機率挪六成給 3～5★（2：4：4） */
@@ -658,7 +676,7 @@ function rollShop(run, lotto) {
         run.ri === 0
           ? wpick(
               run,
-              ITEMS.filter(i => i.star === 1 && shopOK(i) && (k >= 2 || i.dmg)),
+              ITEMS.filter(i => i.star === 1 && poolOK(run, i) && (k >= 2 || i.dmg)),
               i => Math.max(0.01, poolOf(i.id) - (used.get(i.id) || 0))
             ).id
           : rollItem(run, lotto, used),
@@ -1025,8 +1043,9 @@ function stageHp(F, st, mob) {
     weapons: F.weapons.map(w => ({ ...w, dmg: w.dmg.map(v => Math.max(1, Math.round(v * d))) }))
   };
 }
-let MOB_HP = 1,
-  MOB_DMG = 1.5;
+/* 0.1.62 系別羈絆讓大家變強（首領 2-5 勝率 87% → 100%），怪物生命 ×1.25、傷害倍率 1.5 → 1.7 拉回原本的難度 */
+let MOB_HP = 1.25,
+  MOB_DMG = 1.7;
 /* 開戰：存快照（給別人當對手）、算好整場（固定亂數） */
 /* 0.1.33 賄賂：背包有這個核心、金幣超過 N 就付 N，這場（快照也一樣）整場封鎖敵人星級最高的武器 */
 /* 0.1.35 也記下開戰時的金幣（bag.gp：鈔能力的加成、金錢標能花的錢） */
@@ -1276,7 +1295,7 @@ function eliteOpts(run, a, b, win = true) {
     all = win && mc && (defsOf(mc).find(d => d.eliteAll) || {}).eliteAll;
   if (all) {
     const ts = [all].flat(),
-      isA = i => shopOK(i) && i.dmg && ts.some(t => i.tags.includes(t));
+      isA = i => poolOK(run, i) && i.dmg && ts.some(t => i.tags.includes(t));
     let wp = ITEMS.filter(i => isA(i) && i.star >= a && i.star <= b);
     if (wp.length < 3) wp = ITEMS.filter(i => isA(i) && i.star <= b);
     const o = [];
@@ -1286,11 +1305,11 @@ function eliteOpts(run, a, b, win = true) {
     }
     return o;
   }
-  const pool = ITEMS.filter(i => shopOK(i) && i.star >= a && i.star <= b),
+  const pool = ITEMS.filter(i => poolOK(run, i) && i.star >= a && i.star <= b),
     tags = clsWeaponTags(run.bag.cls),
     isW = i => i.dmg && tags.some(t => i.tags.includes(t));
   let wp = pool.filter(isW);
-  if (!wp.length) wp = ITEMS.filter(i => shopOK(i) && i.star <= b && isW(i));
+  if (!wp.length) wp = ITEMS.filter(i => poolOK(run, i) && i.star <= b && isW(i));
   const o = [0, 1].map(() => pick(run, pool).id);
   if (wp.length) o.splice(fl(runR(run)() * 3), 0, pick(run, wp).id);
   else o.push(pick(run, pool).id);
@@ -1322,7 +1341,7 @@ function giveGift(run, id) {
   /* 0.1.37 煉成：接著三次三選一藥劑效果 */
   if (I.brew) run.pend = brewPend(run, [], I.brew, run.pend && run.pend.mid);
   if (!G) return;
-  const pool = ITEMS.filter(i => shopOK(i) && i.star === G[0] && i.tags.includes(G[1]));
+  const pool = ITEMS.filter(i => poolOK(run, i) && i.star === G[0] && i.tags.includes(G[1]));
   for (let k = 0; k < G[2] && pool.length; k++) {
     const o = newItem(run, pick(run, pool).id),
       f2 = benchFree(run);
@@ -1478,7 +1497,7 @@ function vanDo(run, a) {
     if (!vanOK(o)) return '這件不能變形（核心送的道具不行）';
     if (o.f) return '融合過的道具不能變形';
     const I = ITEMI[o.id],
-      c = ITEMS.filter(it => it.star === I.star && shopOK(it) && it.id !== I.id && itemCat(it) === itemCat(I));
+      c = ITEMS.filter(it => it.star === I.star && poolOK(run, it) && it.id !== I.id && itemCat(it) === itemCat(I));
     if (!c.length) return '沒有同類型的道具可以變';
     const id = pick(run, c).id,
       inBag = run.bag.items.includes(o);
@@ -1807,6 +1826,9 @@ function simLobby(seed, rating, opt = {}) {
     /* 0.1.52 一場的機器人同一個賽制（opt.mode 指定，不然照權重抽） */
     mode = opt.mode || rollMode(rng(h(seed, 6))),
     bots = [...Array(LOBBY_N).keys()].map(i => mkBot(seed, i, rr, rating, { ...opt, mode }));
+  /* 0.1.62 一場同一個主題（opt.theme 指定，不然照種子抽） */
+  const theme = opt.theme || rollTheme(rng(h(seed, 10)), mode);
+  for (const b of bots) b.run.theme = theme;
   /* 0.1.59 一場共用的資料（七十二變的形狀表、星象的順序） */
   const H = MODEH[mode] || {},
     share = modeShareOf(mode, rng(h(seed, H.salt || 8)));

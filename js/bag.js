@@ -40,6 +40,12 @@ function findSpot(bag, o, prefer = true) {
   const I = ITEMI[o.id];
   if (I.core && bag.items.some(q => q.u !== o.u && ITEMI[q.id].core === I.core)) return null;
   const g = bagGrid(bag),
+    /* 0.1.62 背包裡別人的凹口（空著的才算） */
+    holes = bag.items
+      .filter(q => q.u !== o.u && ITEMI[q.id].hole)
+      .flatMap(q => holeOf(q))
+      .filter(([x, y]) => g[y] && g[y][x] == null)
+      .map(([x, y]) => x + ',' + y),
     rel = prefer
       ? bag.items.map(q => [q, q.u !== o.u ? synergy(o, q) + synergy(q, o) : 0]).filter(([, n]) => n > 0)
       : [];
@@ -62,6 +68,20 @@ function findSpot(bag, o, prefer = true) {
         if (rel.length) {
           const t = { ...o, x, y, r };
           for (const [q, n] of rel) if (adjacent(t, q)) sc += n;
+        }
+        /* 0.1.62 巨人國的凹口：有凹口的道具想包住一件武器，武器想塞進別人的凹口 */
+        if (prefer && (I.hole || holes.length)) {
+          const t = { ...o, x, y, r };
+          if (I.hole)
+            for (const [hx, hy] of holeOf(t)) {
+              const u = g[hy] && g[hy][hx];
+              const q = u != null && bag.items.find(z => z.u === u);
+              if (q && ITEMI[q.id].dmg) sc += 3;
+            }
+          if (I.dmg) {
+            const cs = new Set(shapeO(o, r).map(([dx, dy]) => x + dx + ',' + (y + dy)));
+            for (const hc of holes) if (cs.has(hc)) sc += 3;
+          }
         }
         if (!best || sc > best.sc) best = { x, y, r, sc };
       }
@@ -180,6 +200,25 @@ function tagsWith(o, tfm) {
   const s = tfm.get(o.u),
     I = ITEMI[o.id];
   return s && ITEMI[s.id].tf.add ? [...ITEMI[s.id].tf.add, ...I.tags] : I.tags;
+}
+/* ================= 0.1.62 系別羈絆 ================= */
+/* 每一系幾件（只算背包，核心不算）：有那一系的標籤（質變後的）算 1；系別飾品（for）沒有那個標籤也算 1；
+   重做的羈絆飾品（syn: { 系: 件數 }）照寫的件數算（取代原本的 1）。tg 是一件道具的標籤（compileBag 傳質變後的） */
+function synCount(bag, tg) {
+  if (!tg) {
+    const tfm = tfOf(bag.items);
+    tg = o => tagsWith(o, tfm);
+  }
+  const n = SYN.map(() => 0);
+  for (const o of bag.items) {
+    const I = ITEMI[o.id];
+    if (!I || I.core) continue;
+    const ts = tg(o),
+      hit = SYN.map(x => x.g.some(t => ts.includes(t)) || (!!I.for && x.g.includes(I.for)));
+    for (const k in I.syn || {}) if (SYNI[k] != null) (n[SYNI[k]] += I.syn[k]), (hit[SYNI[k]] = false);
+    hit.forEach((h, i) => h && n[i]++);
+  }
+  return n;
 }
 /* ================= 合成 ================= */
 /* 0.1.35 合成要幾件：二天一流（merge2）讓那個標籤的道具 2 件就合成 */
@@ -426,7 +465,8 @@ function compileBag(bag, extra = {}) {
   /* 0.1.20 相鄰與同一排先用格子表算好（原本每一對都重算一次格子，機器人評估時太慢） */
   const NB = new Map(),
     RW = new Map();
-  if (its.some(o => ITEMI[o.id].adj || ITEMI[o.id].row || ITEMI[o.id].tf || o.cu || o.bl)) {
+  const NBQ = I => I.adj || I.row || I.tf || I.perAdj || I.perAdjF || I.hole || I.gear || I.chainAdj;
+  if (its.some(o => NBQ(ITEMI[o.id]) || o.cu || o.bl)) {
     const g = bagGrid(bag);
     for (const o of bag.items) {
       const cs = cellsOf(o),
@@ -533,6 +573,50 @@ function compileBag(bag, extra = {}) {
   [F.sgMight, F.sgSwift, F.sgGuard, F.sgLife, F.sgLuck] = SGL;
   if (SGL[2]) F.startBlock += 15 * SGN[2];
   if (SGL[3]) for (const q of bag.items) if (q.sg === 3) add(q, { ls: 5 });
+  /* 0.1.62 主題道具：self（這件自己）、perAdj／perAdjF（每有 1 件相鄰道具）、hole（巨人國：凹口裡的道具）、
+     gear（機關城齒輪：相鄰武器出手時其他相鄰武器充能）、chainAdj（連鎖機關：相鄰武器出手時帶動另一件相鄰武器） */
+  const GEAR = new Map(),
+    DRV = new Map();
+  let GR = null;
+  for (const o of bag.items) {
+    const I = ITEMI[o.id];
+    if (I.self) add(o, scaleMod(I.self, o.t));
+    const nn = NB.get(o.u) ? NB.get(o.u).size : 0;
+    if (I.perAdj && nn) add(o, scaleMod(I.perAdj, o.t), nn);
+    if (I.perAdjF && nn) for (const k in I.perAdjF) F[k] = (F[k] || 0) + I.perAdjF[k] * nn;
+    if (I.hole) {
+      GR = GR || bagGrid(bag);
+      for (const [x, y] of holeOf(o)) {
+        const u = GR[y] && GR[y][x];
+        const q = u != null && bag.items.find(z => z.u === u);
+        if (q && q !== o) add(q, scaleMod(I.hole, o.t));
+      }
+    }
+    if (I.gear || I.chainAdj) {
+      const ws = bag.items.filter(q => q !== o && ITEMI[q.id].dmg && adjQ(o, q)).map(q => q.u);
+      for (const u of ws) {
+        const others = ws.filter(v => v !== u);
+        if (!others.length) continue;
+        if (I.gear) {
+          const g = GEAR.get(u) || { us: [], p: 0 };
+          g.us = [...new Set([...g.us, ...others])];
+          g.p += I.gear;
+          GEAR.set(u, g);
+        }
+        if (I.chainAdj) DRV.set(u, [...new Set([...(DRV.get(u) || []), ...others])]);
+      }
+    }
+  }
+  /* 0.1.62 系別羈絆：湊 2／4／6 件，效果累加；m 給那一系的道具、F 給角色 */
+  const SYNN = synCount(bag, o => TG.get(o.u));
+  F.syn = SYNN.map(synLv);
+  SYN.forEach((x, i) => {
+    for (let l = 0; l < F.syn[i]; l++) {
+      const L = x.L[l];
+      if (L.m) for (const q of bag.items) if (x.g.some(t => has(q, t))) add(q, L.m);
+      for (const k in L.F || {}) F[k] = (F[k] || 0) + L.F[k];
+    }
+  });
   /* 0.1.59 詛咒寶藏：背包裡被詛咒的道具（o.cu = [詛咒, 層數]）；吸金在 bonusGold、沉睡在下面的武器 */
   for (const s of bag.items) {
     /* 0.1.60 祝福 */
@@ -693,8 +777,16 @@ function compileBag(bag, extra = {}) {
         sgK: o.sg === 4 && SGL[4] ? 1 : 0,
         /* 0.1.53 召喚的戰狼（第幾隻、開戰封住到幾秒）、馴獸師的成長 */
         ...(o.vw ? { vw: o.vw, seal: o.vw * WOLF_T } : {}),
-        /* 0.1.59 詛咒・沉睡：開戰後幾秒才開始出手 */
-        ...(o.cu && CURSES[o.cu[0]] && CURSES[o.cu[0]].k === 'sleep' ? { seal: cuV(o) } : {}),
+        /* 0.1.59 詛咒・沉睡：開戰後幾秒才開始出手；0.1.62 雷電砲台（wake）也一樣 */
+        ...(o.cu && CURSES[o.cu[0]] && CURSES[o.cu[0]].k === 'sleep'
+          ? { seal: cuV(o) }
+          : I.wake
+            ? { seal: I.wake }
+            : {}),
+        /* 0.1.62 機關城：每第 N 次出手多打幾下、齒輪、連鎖機關 */
+        ...(I.nth ? { nth: I.nth } : {}),
+        ...(GEAR.get(o.u) ? { gear: GEAR.get(o.u) } : {}),
+        ...(DRV.get(o.u) ? { drv: DRV.get(o.u) } : {}),
         gw: o.gw || 0,
         /* 0.1.53 四兇：吞噬（饕餮）、命中封鎖（窮奇）、隨機異常（混沌） */
         gorge: I.gorge || 0,

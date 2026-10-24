@@ -56,6 +56,10 @@ description: 塞令老師新增或修改「賽制」（每局開場轉盤抽到�
 8. **重構時**：先 `node tools/check.js --golden > 前.txt`，改完再跑一次比對，一模一樣才代表規則沒被改到。
 9. **文件**：企劃書「賽制」那節、`CHANGELOG.md`、`js/news.js`、`docs/CODEMAP.md` 的賽制那列；版本用 `python3 tools/setver.py`。換不換 `GVER` 看 skill `ghost-seed`（只是多存欄位、舊快照讀得到就不用換）。
 
+## 道具池（主題）也要想
+
+開場內圈還會抽一個道具池（`POOLTH`：巨人國、共生森林、機關城）。新賽制如果跟某個主題衝突（例如七十二變會把巨人國的大形狀洗掉），加進 `data.js` 的 `MODE_TH_BAN`。賽制會從商店挑道具的（像詛咒寶藏換高一星），一律用 `rollItem` 或 `poolOK(run, it)`，不要直接用 `shopOK`，不然會出現別的主題的道具（`node tools/check.js` 會抓）。
+
 ## 常見漏洞（上線前想一遍）
 
 - **買賣價差**：任何「比原價便宜」的取得方式（半價、0 金、送的），賣掉會不會賺？（狂風市集、六合彩都出過事）。統一走 `shopItem`（記 `o.pp`）或讓價格等於賣價（遺產 `legPrice`）。

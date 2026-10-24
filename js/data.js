@@ -340,6 +340,54 @@ const RELICS = [
   { k: 'sand', n: '沙之沙漏', ic: 'ail_slow', d: '開戰 8 秒後，所有武器攻速 +35%' }
 ];
 const RELICI = Object.fromEntries(RELICS.map(x => [x.k, x]));
+/* 0.1.62 道具池的主題（開場內圈轉盤，三選一、機率一樣）；MODE_TH_BAN：賽制 × 主題衝突的不會一起抽到 */
+const POOLTH = [
+  {
+    k: 'g',
+    n: '巨人國',
+    ic: 'sk_bonecrush',
+    d: ['這局的道具又大又重、形狀特別', 'U 形、環形、H 形、C 形中間空出來的格子是凹口，放進去的道具有加成']
+  },
+  { k: 'f', n: '共生森林', ic: 'unit_guardtotem', d: ['這局的道具看旁邊有幾件道具：越擠越強'] },
+  { k: 'm', n: '機關城', ic: 'sup_sp_auto', d: ['這局的道具有觸發條件：每第 N 次出手多打、齒輪充能、連鎖帶動'] }
+];
+const POOLTHI = Object.fromEntries(POOLTH.map(x => [x.k, x]));
+const MODE_TH_BAN = { shape: ['g'] };
+/* 0.1.62 系別羈絆：背包裡同一系（g 裡任一個標籤）湊 SYN_AT 件分別是 1／2／3 級，效果累加（3 級＝L[0]＋L[1]＋L[2]）；
+   m 給那一系的道具（跟飾品加成一樣算進道具身上）、F 給角色。系別飾品（for）算 1 件、重做的羈絆飾品（syn）照寫的件數算 */
+const SYN_AT = [2, 4, 6];
+const SYN_W = [{ m: { spd: 8 } }, { m: { dmgPct: 15 } }, { m: { crit: 15, dmgPct: 15 } }];
+const SYN = [
+  { k: 'fire', g: ['fire'], L: [{ m: { burn: 1 } }, { F: { combust: 1 } }, { m: { burn: 2 }, F: { combust: 1 } }] },
+  {
+    k: 'cold',
+    g: ['cold'],
+    L: [{ m: { freezeCh: 5 } }, { F: { shatterF: 8 } }, { m: { freezeCh: 10 }, F: { shatterF: 8 } }]
+  },
+  {
+    k: 'light',
+    g: ['light'],
+    L: [{ m: { chainN: 1 } }, { m: { charge: 1 } }, { m: { chainN: 1 }, F: { zapPct: 50 } }]
+  },
+  {
+    k: 'poison',
+    g: ['poison'],
+    L: [{ m: { poison: 1 } }, { F: { p2v: 1 } }, { m: { poison: 2 }, F: { corrodeRe: 5 } }]
+  },
+  { k: 'holy', g: ['holy'], L: [{ F: { regen: 1 } }, { F: { startBlock: 30 } }, { F: { cleanse: 1 } }] },
+  { k: 'dark', g: ['dark'], L: [{ m: { ls: 3 } }, { F: { execute: 20 } }, { m: { ls: 3 }, F: { execute: 30 } }] },
+  { k: 'sword', g: ['sword'], L: SYN_W },
+  { k: 'axe', g: ['axe', 'mace'], L: SYN_W },
+  { k: 'bow', g: ['bow', 'xbow'], L: SYN_W },
+  { k: 'spear', g: ['spear'], L: SYN_W },
+  { k: 'dagger', g: ['dagger'], L: SYN_W },
+  { k: 'staff', g: ['staff'], L: SYN_W },
+  { k: 'shield', g: ['shield'], L: [{ F: { startBlock: 20 } }, { m: { blockPct: 25 } }, { F: { thornsF: 5 } }] },
+  { k: 'pet', g: ['pet'], L: [{ m: { dmgPct: 12 } }, { m: { spd: 15 } }, { F: { petGuard: 25 } }] },
+  { k: 'potion', g: ['potion'], L: [{ F: { potMul: 20 } }, { F: { potUse: 1 } }, { F: { potMul: 30 } }] }
+];
+const SYNI = Object.fromEntries(SYN.map((x, i) => [x.k, i]));
+const synLv = n => SYN_AT.filter(x => n >= x).length;
 /* 0.1.59 遺產市集：遺產攤位放幾回合 */
 const LEGACY_RC = 2;
 /* 快照版本：回合表或道具改到舊快照不能用時才改（跟遊戲版本分開，小改版不用重產種子） */
@@ -349,4 +397,4 @@ const LEGACY_RC = 2;
 /* 0.1.53 s23：馴獸師核心重製（同一個核心編號換了效果）、四兇、成長存進快照 */
 /* 0.1.57 s24：清掉 0.1.52～0.1.56 用 bug（狂風市集洗商店、回扣洗三選一）洗出來的快照 */
 const GVER = 's24';
-const VER = '0.1.61';
+const VER = '0.1.62';

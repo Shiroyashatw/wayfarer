@@ -21,6 +21,7 @@ description: 塞令老師的數據分析：道具的選取率（購買率、持�
 node tools/stats.js                        # 120 場、分數 1300、4 個行程平行（約 2 分鐘），印報告
 node tools/stats.js 240 --write            # 寫到 docs/道具統計.md（給使用者看的完整表）
 node tools/stats.js --mode curse           # 只跑某個賽制（賽制代號見 data.js 的 MODES）
+node tools/stats.js --theme g              # 只跑某個道具池（g 巨人國、f 共生森林、m 機關城，見 POOLTH）
 node tools/stats.js --item anvil,符文法珠  # 只印這幾件（代號或名字）
 node tools/stats.js --save 前.json         # 存原始數字
 node tools/stats.js --diff 前.json         # 跟前一次比，多一欄「變化」（購買率差幾個百分點）
@@ -28,7 +29,7 @@ node tools/stats.js --diff 前.json         # 跟前一次比，多一欄「變�
 
 - 同一組種子（`--seed`，預設固定）每次結果一樣，**改數值前後要用同樣的場數、分數、賽制比**。
 - 欄位：出現（商店出現次數，每次刷新都算）、購買率、對口職業（道具 `for` 對到職業主題或加成標籤的機器人）、持有（最後背包有它）、名次（有它的平均名次，3.5 是平均）、冷門／熱門（同星級同類別中位數的一半以下／1.6 倍以上）。
-- 報告最後有**職業 × 賽制**的平均名次表（樣本不到 6 不顯示）。
+- 報告最後有**職業 × 賽制**、**職業 × 道具池**的平均名次表（樣本不到 6 不顯示）。每格只有幾十個樣本，差 0.5 以上才算明顯。
 
 ### 怎麼解讀
 

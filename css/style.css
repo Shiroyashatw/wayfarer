@@ -735,3 +735,16 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .legnew{justify-items:center}
 .legnew .lgr{width:100%}
 .bll{font-size:var(--fs-sm);color:var(--good)}
+/* 0.1.62 系別羈絆：跟印記同一套（.sgrow／.sgc），左邊是系的名字 */
+.syb{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 4px;border-radius:5px;font-size:var(--fs-cap);font-style:normal;font-weight:700;color:var(--ink);background:var(--fill-hi);flex:none}
+.syc.on .syb{background:var(--accent);color:var(--on-accent)}
+.synrow{margin-top:calc(-1 * var(--sp-1))}
+/* 0.1.62 道具池：主題標籤、專屬道具清單 */
+.mchip.thc{background:var(--card);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--accent-soft)}
+.thlist{display:flex;flex-wrap:wrap;gap:var(--sp-1);text-align:left}
+.thlist span{display:inline-flex;align-items:center;gap:4px;padding:2px var(--sp-2) 2px 2px;border-radius:var(--r-md);background:var(--card2);font-size:var(--fs-sm);border:1.5px solid var(--sb,var(--line))}
+.thlist img{width:24px;height:24px;image-rendering:pixelated}
+.wdisk.in{inset:55px;box-shadow:0 0 0 3px var(--gold),0 3px 10px #0006}
+.wdisk.in img{width:26px;height:26px;margin:-13px 0 0 -13px}
+.thres{margin-top:var(--sp-2)}
+.thlist .s1{--sb:var(--s1)}.thlist .s2{--sb:var(--s2)}.thlist .s3{--sb:var(--s3)}.thlist .s4{--sb:var(--s4)}.thlist .s5{--sb:var(--s5)}

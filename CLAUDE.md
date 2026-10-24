@@ -15,6 +15,7 @@
 - 種子與快照：要上版而且改了道具、核心、職業、回合表、經濟或機器人時用 skill `ghost-seed`（判斷要不要換 `GVER`、push 上線後在瀏覽器重傳種子、到資料庫確認）。
 - 檢查：改了遊戲邏輯（道具、核心、賽制、經濟、戰鬥、商店、合成、快照格式）都跑 `node tools/check.js`（整局模擬＋不變量：買了馬上賣不會賺、沒有 NaN、格子不重疊、快照還原一樣），沒有 ❌ 才交差；重構前後用 `--golden` 比對結果要一模一樣。
 - 賽制：新增或修改賽制用 skill `new-mode`。賽制的差別只透過 `run.js` 的 `MODEH`（規則掛勾）和 `ui.js` 的 `MODEUI`（畫面），不要再寫 `run.mode === '…'`。
+- 道具池：新增道具要決定它在哪個池（主題專屬寫 `th: 'g'／'f'／'m'`，舊道具改 `items.js` 的 `POOLS`；基本池 `b` 只放功能、反制道具，武器每件只屬於一個主題），改完跑 `node tools/pools.js --write`。
 - 數據：問選取率、冷門道具、職業或賽制強弱、改數值前後有沒有變好，用 skill `stats`（`node tools/stats.js`；真人資料用 Supabase 的 SQL，樣本少要講）。
 - 平衡：改道具、職業、核心、怪物、經濟或升階倍率後用 skill `balance`（核心統計：`node tools/core_stats.js 500 1300 --write`）：跑 `.claude/skills/balance/balance.js` 的 `coverage()`（各體系各星級、輔助、異常來源、職業、核心、圖示、說明文字）與 `sims()`（職業名次、PvE 勝率、公平性、局長、背包成長），沒有 ❌ 才交差。
 
@@ -55,6 +56,7 @@
 | `tools/game_node.js` | 在 Node 載入遊戲純邏輯（core～bot），給訓練與大量模擬用 |
 | `tools/bot_train.js` | 機器人訓練：自我對打調 `BOT_P`，`--vs-old` 跟舊買法比，`--write` 寫回 `js/bot.js`（skill `bot-ai`） |
 | `tools/check.js` | 固定檢查：每個賽制整局跑（機器人代打）＋不變量；`--modes`、`--games`、`--golden`（重構前後比對）；有 ❌ 時結束碼 1 |
+| `tools/pools.js` | 道具池：檢查每個主題、每類職業武器 1～5★ 都有、武器只屬於一個主題、基本池沒有武器；`--write` 寫 `docs/道具池.md`（分配表在 `items.js` 的 `POOLS`、新道具的 `th`） |
 | `tools/stats.js` | 統計（skill `stats`）：機器人對局裡每件商店道具的購買率、對口職業購買率、持有率、名次，冷門／熱門道具，職業 × 賽制的名次；`--jobs` 平行、`--mode`、`--item`、`--save`／`--diff`（改數值前後比較）、`--write` 寫到 `docs/道具統計.md` |
 | `tools/pve_check.js` | Node 版 PvE 勝率與對戰秒數：`node tools/pve_check.js 局數 q [MOB_HP] [MOB_DMG]` |
 | `tools/icon_check.py` | 圖示對照：每件道具的圖示原本畫的是什麼（讀 `docs/提示詞封存.md` 等提示詞），輸出 `docs/圖示對照.md` 與候選圖示；加關鍵字只列相關的（skill `icon-check`） |

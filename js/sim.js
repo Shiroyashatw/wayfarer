@@ -954,6 +954,22 @@ function simulate(FA, FB, seed) {
           if (miss) continue;
           fire(t, a, i, w);
           if (w.sgS) relay(a, w);
+          /* 0.1.62 機關城：每第 N 次出手多打幾下（nth = [N, 幾下]）、齒輪（相鄰的武器充能）、連鎖機關（帶動一件相鄰的武器，每秒一次） */
+          w.nk = (w.nk || 0) + 1;
+          if (w.nth && w.nk % w.nth[0] === 0)
+            for (let c = 0; c < w.nth[1] && S[1 - i].hp > 0; c++) fire(t, a, i, w, 1), tr(a, 'nth');
+          if (w.gear)
+            for (const x of a.w)
+              if (w.gear.us.includes(x.u) && !(x.seal > 0))
+                x.tt = Math.min(x.cd * 0.99, x.tt + (x.cd * w.gear.p) / 100);
+          if (w.drv && t >= (w.drvT || 0) && S[1 - i].hp > 0) {
+            const x = a.w.find(z => w.drv.includes(z.u) && !(z.seal > 0) && !(z.fz > 0));
+            if (x) {
+              w.drvT = t + 1;
+              fire(t, a, i, x);
+              tr(a, 'drv');
+            }
+          }
           /* 0.1.53 群狼戰術：寵物出手時其他寵物充能 */
           if (a.F.pack && w.pet)
             for (const x of a.w)
