@@ -1414,19 +1414,15 @@ function giveGift(run, id) {
   if (I.brew) run.pend = brewPend(run, [], I.brew, run.pend && run.pend.mid);
   if (!G) return;
   const pool = ITEMS.filter(i => poolOK(run, i) && i.star === G[0] && i.tags.includes(G[1]));
-  for (let k = 0; k < G[2] && pool.length; k++) {
-    const o = newItem(run, pick(run, pool).id),
-      f2 = benchFree(run);
-    if (f2 >= 0) run.bench[f2] = o;
-    else run.gold += sellOf(o.id, o.t);
-  }
+  /* 0.1.74 跟其他送的道具一樣：暫存區滿了先寄放 */
+  for (let k = 0; k < G[2] && pool.length; k++) putItem(run, newItem(run, pick(run, pool).id));
 }
 /* 送的道具放進暫存區；滿了先寄放，寄放也有了就換成賣價 */
 function putItem(run, o) {
   const f2 = benchFree(run);
   if (f2 >= 0) run.bench[f2] = o;
   else if (!run.hold) run.hold = o;
-  else run.gold += sellOf(o.id, o.t);
+  /* 複製品（z）賣 0 金 */ else if (!o.z) run.gold += sellOf(o.id, o.t);
 }
 /* 0.1.53 馴獸師打贏一場：背包裡的寵物成長 +1 層（最多 10）；捕獲（野怪、菁英，機率拿一隻寵物）。回傳捕獲到的道具代號 */
 function petWin(run, r) {
@@ -1706,11 +1702,11 @@ function tarotFx(run) {
   const k = run.bag.tar;
   if (k === 'devil' && run.hp > 1) (run.hp = Math.max(1, run.hp - 2)), (run.gold += 5);
   if (k === 'fool_r') {
-    const c = run.bag.items.filter(o => vanOK(o) && ITEMI[o.id].star <= 4),
-      fi = benchFree(run);
-    if (c.length && fi >= 0) {
+    /* 0.1.74 暫存區滿了跟三選一一樣先寄放（之前滿了就沒有複製） */
+    const c = run.bag.items.filter(o => vanOK(o) && ITEMI[o.id].star <= 4);
+    if (c.length) {
       const o = c[fl(r01(run) * c.length)];
-      run.bench[fi] = Object.assign(newItem(run, o.id, o.t), { z: 1 });
+      putItem(run, Object.assign(newItem(run, o.id, o.t), { z: 1 }));
       mergeAll(run, runR(run));
     }
   }

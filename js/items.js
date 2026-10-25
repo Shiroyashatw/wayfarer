@@ -4699,7 +4699,7 @@ function itemDesc(id, t = 1) {
   if (it.self) out.push(`這件：${modTxt(scaleMod(it.self, t))}`);
   if (it.perAdj) out.push(`每有 1 件相鄰的道具，這件${modTxt(scaleMod(it.perAdj, t))}`);
   if (it.perAdjF) out.push(`每有 1 件相鄰的道具，${modTxt(scaleMod(it.perAdjF, t))}`);
-  if (it.hole) out.push(`凹口（形狀中間空著的格子）放的道具：${modTxt(scaleMod(it.hole, t))}`);
+  if (it.hole) out.push(`放在凹口的道具：${modTxt(scaleMod(it.hole, t))}`);
   if (it.nth) out.push(`每第 ${it.nth[0]} 次出手，多打 ${it.nth[1]} 下`);
   if (it.wake) out.push(`開戰 ${it.wake} 秒後才開始出手`);
   if (it.gear) out.push(`相鄰的武器出手時，其他相鄰的武器充能 +${gearV(it, t)}%`);
@@ -4711,9 +4711,8 @@ function itemDesc(id, t = 1) {
   if (it.zod) {
     const x = SYN[SYNI[it.zod]],
       nm = x.g.map(g => TAGN[g]).join('、');
-    out.push(
-      `星座：本身算 1 件${nm}，相鄰最多 ${ZOD_ADJ + t - 1} 件道具也算${nm}（湊系別羈絆；背包裡有星座時羈絆多開 8、10 件）`
-    );
+    /* 0.1.74 寫短：同一系只說一次，羈絆多開門檻的規則放百科（CX_STAT 的星座） */
+    out.push(`${nm}系星座：本身和相鄰最多 ${ZOD_ADJ + t - 1} 件道具都算${nm}系`);
   }
   /* 0.1.33 核心的特殊效果（fxPer 寫在角色加成後面：「護甲 +20、開戰時有 10 護盾；背包裡每有 1 件矛，開戰護盾再 +10」） */
   if (it.shrink) out.push(`所有${tagTxt(it.shrink)}武器少佔 1 格`);
@@ -4740,7 +4739,7 @@ function itemDesc(id, t = 1) {
         .map(([st, g]) => `、第 ${st} 階段起 +${g} 金`)
         .join('')}`
     );
-  if (it.rich) out.push(`開戰時身上的金幣越多加成越高（同一種取最高的）：${RICHN.join('；')}`);
+  if (it.rich) out.push(`開戰時身上的金幣越多越強（到哪一級就用那一級）：${RICHN.join('；')}`);
   if (it.lotto) out.push('每回合第一次的商店價格打亂（0 金到 5★ 的價格都有可能），而且更常出高星級');
   if (it.early) out.push('合成到 Ⅱ 階就開一條隨機詞綴（本來要 Ⅲ 階）');
   if (it.lvOff) out.push(`背包升級費用 -${it.lvOff}%`);
@@ -4817,7 +4816,7 @@ function itemDesc(id, t = 1) {
   const sy = it.syn ? Object.entries(it.syn) : it.for && it.tags.includes('trinket') ? [[it.for, 1]] : [];
   for (const [k, n] of sy) {
     const x = SYN.find(x => x.k === k || x.g.includes(k));
-    if (x) out.push(`系別羈絆：算 ${n} 件${x.g.map(t => TAGN[t]).join('、')}`);
+    if (x) out.push(`羈絆算 ${n} 件${x.g.map(t => TAGN[t]).join('、')}`);
   }
   for (const b of it.fxPer || [])
     out.push(
@@ -4836,7 +4835,8 @@ function itemDesc(id, t = 1) {
 function tfTxt(T, t = 1) {
   const m = modTxt(scaleMod(T.m, t)),
     add = (T.add || []).map(x => TAGN[x]).join('、');
-  return `放到${tagTxt(T.tag)}上（或貼在旁邊）融合成「${T.n}・${tagTxt(T.tag)}」，這件會消失、空出格子：${add ? `變成${add}系（吃${add}的加成）、` : ''}${m}（一件只能融合一次）`;
+  /* 0.1.74 寫短：融合怎麼運作（這件消失、空出格子、一件只能融合一次）寫在百科的「融合」 */
+  return `貼在${tagTxt(T.tag)}旁邊融合成「${T.n}・${tagTxt(T.tag)}」：${add ? `變成${add}系、` : ''}${m}`;
 }
 /* 加成照階數放大（per、tag 不動） */
 /* 0.1.69 齒輪的充能 %：寫陣列的照階數拿，不然照百分比的升階倍率 */

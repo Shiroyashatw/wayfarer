@@ -737,6 +737,9 @@ function compileBag(bag, extra = {}) {
     SV = synView(bag, o => TG.get(o.u)),
     synMul = SV.mul;
   F.syn = SV.lv;
+  /* 0.1.74 每一系湊了幾件、最多開到幾級（機器人估「差幾件到下一個門檻」用） */
+  F.synN = SV.n.slice(0, SYN.length);
+  F.synMx = SV.mx;
   SYN.forEach((x, i) => {
     for (let l = 0; l < F.syn[i]; l++) {
       const L = x.L[l];

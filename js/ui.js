@@ -275,7 +275,8 @@ const go = scr => {
 };
 /* ================= 首頁 ================= */
 function homeHTML() {
-  const run = S.run;
+  /* 0.1.74 打完的那局（phase end）不算進行中：首頁直接是「開始對戰」 */
+  const run = S.run && S.run.phase !== 'end' ? S.run : null;
   return `<div class="home hm">
     <div class="htop">${sfxBtn()}${themeBtn()}</div>
     <div class="logo"><b>塞令老師</b><small>背包自動對戰</small></div>
@@ -1368,7 +1369,7 @@ function endHTML(run) {
   return `<div class="home"><div class="logo"><b class="pl p${run.place}">第 ${run.place} 名</b><small>${run.place === 1 ? '你是第一名！' : run.place === 2 ? '差一點點' : '下次再來'}</small></div>
     <div class="card endrk">${rankHTML(1)}${rankMove(run)}<small class="c-dim">打到 ${curRound(run) ? curRound(run).id : '最後'}</small></div>
     <h3>最後的背包</h3><div class="bagwrap">${bagHTML(run.bag, cs, { mini: 1, id: 'endbag' })}</div>
-    <button class="btn pri big" data-act="again">再來一局</button><button class="btn" data-act="home">回首頁</button></div>`;
+    <button class="btn pri big" data-act="again">再來一局</button><button class="btn" data-act="endHome">結束戰鬥回首頁</button></div>`;
 }
 /* ================= 戰鬥播放 ================= */
 /* 開戰：算好整場（固定亂數），照時間軸播 */
@@ -2259,6 +2260,11 @@ const CX_STAT = () => [
   ['越戰越快', '每 5 秒攻速提高，最多 5 次。'],
   ['抗性', `受到某種異常的層數或秒數減少，最多 -${RES_MAX}%；淨化每 ${CLEANSE_T} 秒清掉身上最嚴重的異常。`],
   ['陷阱', '開戰時放進敵人背包的格子（含空格），那格的道具每次出手都會觸發；打怪時掛在怪物的武器上。'],
+  ['凹口', '巨人國的 U 形、環形、H 形、C 形武器中間空出來的格子；放進凹口的道具吃那把武器寫的加成。'],
+  [
+    '融合',
+    '融合輔助放到道具上或貼在旁邊，就跟它合成一件「前綴・道具」：多了標籤（變成某系、吃那一系的加成）和效果，輔助消失、空出格子。一件道具只能融合一次。'
+  ],
   ['疲勞', `開戰 ${FATIGUE_T} 秒後雙方每秒受到越來越高的固定傷害，一定分出勝負。`],
   ['升階', '3 件相同、同階的道具自動合成高一階（最多 Ⅲ 階），數值大幅提升，還會多一條詞綴。'],
   ['池子', '一場裡每件道具大家共用數量（越稀有越少），別人收走的就比較難刷到。'],
@@ -2429,8 +2435,15 @@ function audioOn() {
 const A = {
   go: d => go(d.k),
   home: () => go('home'),
+  /* 0.1.74 打完一局回首頁：這局直接結束（不再留著「繼續對局」） */
+  endHome: () => {
+    S.run = null;
+    save();
+    go('home');
+  },
   play: () => {
     audioOn();
+    if (S.run && S.run.phase === 'end') S.run = null;
     if (S.run) {
       V.scr = 'run';
       render();
@@ -2923,13 +2936,14 @@ function showLog(id, hi, sel) {
   if (lg) {
     /* 0.1.60 左右對照：你（傷害最高＋每秒、你的背包）、對手（同上）；兩邊的長條用同一把尺 */
     const mx = Math.max(1, ...[...(lg.top || []), ...(lg.otop || [])].map(x => x[2])),
+      /* 0.1.74 每秒傷害：不到 1 秒就結束的（開戰全部武器先充能、一下打死）用 1 秒算，不然會顯示每秒上千 */
       side = (k, nm, top, pb, tot) =>
         `<div class="lgs"><h4>${nm}<small class="c-dim">・造成 ${tot ?? '—'}</small></h4>${
           (top || []).length
             ? top
                 .map(
                   ([iid, t, v]) =>
-                    `<div class="lgb"><img src="${itemIcon(iid)}" alt=""><span><b>${ITEMI[iid] ? ITEMI[iid].n : iid}${tierTxt(t)}</b><i><i style="width:${Math.round((v / mx) * 100)}%"></i></i></span><em>${v}<small>${lg.t ? `每秒 ${(v / lg.t).toFixed(1)}` : ''}</small></em></div>`
+                    `<div class="lgb"><img src="${itemIcon(iid)}" alt=""><span><b>${ITEMI[iid] ? ITEMI[iid].n : iid}${tierTxt(t)}</b><i><i style="width:${Math.round((v / mx) * 100)}%"></i></i></span><em>${v}<small>${lg.t ? `每秒 ${(v / Math.max(1, lg.t)).toFixed(1)}` : ''}</small></em></div>`
                 )
                 .join('')
             : '<p class="c-dim">沒有紀錄</p>'
