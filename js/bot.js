@@ -25,7 +25,11 @@ let BOT_P = {
   ehpW: 1.581 // 有效生命的指數（戰力 = 每秒傷害 × 有效生命^ehpW）
 };
 /* 0.1.79 每個道具池自己的參數（跟 BOT_P 不一樣的才寫）：node tools/bot_train.js --theme 代號 --write 訓練寫回這一段 */
-let BOT_PT = { f: { posEval: 1 }, c: { posEval: 1 } };
+let BOT_PT = {
+  f: { gainMin: 0.047, ctrlW: 1.013, resW: 1.207, posEval: 1, synW: 0.008 },
+  c: { gainMin: 0.047, lowHp: 16, posEval: 1 },
+  z: { gainMin: 0.047, reserve: 31, ctrlW: 1.013, lowHp: 16, resW: 1.207, synW: 0.008, ehpW: 1.6 }
+};
 /* 這局用的參數：BOT_P 加上這個道具池的；P.pt 是訓練中的完整參數（不再疊） */
 const BOT_PTC = new WeakMap();
 function botPT(run, P) {

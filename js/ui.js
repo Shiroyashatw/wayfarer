@@ -631,18 +631,41 @@ function shapeMini(id, r = 0, sm = 0, sh = shmOf(S.run, id)) {
     .map(([x, y]) => `<i style="grid-area:${y + 1}/${x + 1}"></i>`)
     .join('')}</i>`;
 }
-/* 0.1.1 回合列：這一階段每一輪的事件（過去的變暗、這一輪亮起來），右邊是下一階段的開頭 */
-function roundBarHTML(run) {
+/* 0.1.79 階段：一個回合一個圓圈、用線連起來（紅＝對戰、紫＝野怪菁英首領）；打過的顯示勝敗（贏亮、輸暗），
+   這回合放大、下面寫回合名；最右邊虛線圈是下一階段。點打過的看那場的戰鬥紀錄 */
+function stageHTML(run) {
   const r = curRound(run),
     st = ROUNDS.filter(q => q.st === r.st),
-    nx = ROUNDS.find(q => q.st === r.st + 1);
-  return `<div class="rbar" aria-label="回合">${st
-    .map(q => {
+    nx = ROUNDS.find(q => q.st === r.st + 1),
+    kind = q => (q.type === 'pvp' ? 'pvp' : 'pve'),
+    node = q => {
       const k = ROUNDS.indexOf(q),
-        lg = run.log.find(l => l.id === q.id);
-      return `<span class="rb t-${q.type}${k === run.ri ? ' on' : k < run.ri ? ' past' : ''}${lg ? (lg.win ? ' w' : ' l') : ''}"${lg ? ` data-act="log" data-k="${q.id}"` : ''}><b>${q.id}</b><small>${RSHORT[q.type]}</small></span>`;
-    })
-    .join('')}${nx ? `<span class="rb nx"><b>${nx.id}</b><small>下一階段</small></span>` : ''}</div>`;
+        lg = run.log.find(l => l.id === q.id),
+        on = k === run.ri;
+      return `<span class="sn ${kind(q)} t-${q.type}${on ? ' on' : ''}${lg ? (lg.win ? ' w' : ' l') : ''}"${lg ? ` data-act="log" data-k="${q.id}"` : ''} aria-label="${q.id} ${RSHORT[q.type]}${lg ? (lg.win ? ' 勝' : ' 敗') : ''}"><i>${lg ? (lg.win ? '✓' : '✕') : q.type === 'boss' ? '★' : q.type === 'elite' ? '◆' : ''}</i>${on ? `<b>${q.id}・${RSHORT[q.type]}</b>` : ''}</span>`;
+    };
+  return `<div class="stg" aria-label="這個階段的回合">${st.map((q, i) => (i ? `<i class="sl ${kind(q)}"></i>` : '') + node(q)).join('')}${
+    nx ? `<i class="sl nx"></i><span class="sn nx" aria-label="下一階段 ${nx.id}"><i></i><b>${nx.id}</b></span>` : ''
+  }</div>`;
+}
+/* 0.1.79 本局規則：一顆按鈕（賽制、道具池的圖示），點開看兩者的規則；常變的（塔羅、星象、印記件數）留在旁邊 */
+function rulesBarHTML(run) {
+  const M = MODEI[run.mode],
+    T = POOLTHI[run.theme];
+  if (!M || (run.phase === 'mode' && !run.mseen)) return '';
+  const x = run.mode !== 'std' && modeUI(run).bar ? modeUI(run).bar(run) : '';
+  return `<div class="mbar"><button class="mchip rules" data-act="rulesInfo" aria-label="本局規則：${M.n}${T ? '、' + T.n : ''}"><img src="${artIconURL(M.ic) || iconURL('star')}" alt="">${T ? `<img src="${artIconURL(T.ic) || iconURL('star')}" alt="">` : ''}<b>本局規則</b></button>${x}</div>`;
+}
+/* 0.1.79 下一場：PvP 顯示對手（點了看他上一回合的背包），PvE 顯示怪物；右邊「全部對手」點開看 5 位 */
+function nextOppHTML(run) {
+  const r = curRound(run),
+    nr = r.type === 'pvp' ? nextRival(run) : -1,
+    rv = nr >= 0 && run.rivals[nr],
+    alive = run.rivals.filter(x => rivalAlive(x, r.id)).length,
+    who = rv
+      ? `<button class="nxo" data-act="rvBag" data-k="${nr}">${rvClsIc(run, rv)}${sprCv('a_' + rv.av)}<span><small>下一場對手</small><b>${esc(String(rv.name).split('的').pop())}・♥ ${rivalHp(rv)}</b></span><em>看背包 ›</em></button>`
+      : `<div class="nxo pve"><span><small>下一場</small><b>${RTYPE[r.type]}</b></span></div>`;
+  return `<div class="nxrow">${who}<button class="btn sm" data-act="rivals">全部對手<small class="bnote">${alive} 位</small></button></div>`;
 }
 /* 0.1.29 上方資訊欄的「戰報」：點一下直接看上一場的戰鬥紀錄（勝綠、敗紅） */
 function lastLogBtn(run) {
@@ -673,14 +696,15 @@ function prepHTML(run) {
           : '對戰'
         : RTYPE[r.type];
   return `<div class="prep">
-    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="topcore">${coreFabHTML(run)}</div><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
-    <div class="pcol pa">${roundBarHTML(run)}
-    ${modeBarHTML(run)}
+    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
+    <div class="pcol pa">${stageHTML(run)}
+    ${rulesBarHTML(run)}
     ${synHTML(run)}
-    ${rivalHTML(run)}
+    ${nextOppHTML(run)}
+    <div class="pcrv">${rivalHTML(run)}</div>
     ${tutHTML()}
     ${holdHTML(run)}</div>
-    <div class="pcol pb">${coreFabHTML(run)}<div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
+    <div class="pcol pb"><div class="tools"><button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>♥ ${run.hp}<small>／${START_HP}</small></b><small>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</small></span></button>${lastLogBtn(run)}${coreFabHTML(run)}</div><div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
@@ -884,20 +908,6 @@ function modeHTML(run) {
       ? `<b class="big mres">${T.n}</b><ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}</ul>`
       : `<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}`
   }<button class="btn pri big" data-act="modeOk">選職業</button></div></div>`;
-}
-/* 準備畫面上方：賽制小標籤＋印記的件數（點了看規則） */
-function modeBarHTML(run) {
-  const M = MODEI[run.mode],
-    T = POOLTHI[run.theme];
-  /* 0.1.59 轉盤還沒停：不要先洩漏結果 */
-  if (!M || (run.phase === 'mode' && !run.mseen)) return '';
-  const x = run.mode !== 'std' && modeUI(run).bar ? modeUI(run).bar(run) : '',
-    /* 0.1.62 道具池的主題（點了看規則和專屬道具） */
-    tc = T
-      ? `<button class="mchip thc" data-act="thInfo"><img src="${artIconURL(T.ic) || iconURL('star')}" alt=""><b>${T.n}</b></button>`
-      : '';
-  if (run.mode === 'std' && !tc) return '';
-  return `<div class="mbar">${run.mode !== 'std' ? `<button class="mchip" data-act="modeInfo"><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b>${M.n}</b></button>` : ''}${tc}${x}</div>`;
 }
 /* ================= 0.1.59 賽制的畫面 =================
    每個賽制一份（沒寫的就沒有）：intro 開場轉盤停下後規則下面多的、bar 準備畫面上方賽制標籤旁邊的、
@@ -2248,13 +2258,7 @@ function cxModeHTML() {
     modes = MODES.filter(m => m.w > 0)
       .map(
         m =>
-          `<details class="more cxg" data-k="cxm_${m.k}"><summary>${m.n}</summary><div class="cxl">${cxRow(
-            'cxm_' + m.k + '_r',
-            ic(m.ic),
-            m.n,
-            '賽制規則',
-            m.d.join('；')
-          )}${sub[m.k] ? sub[m.k]().join('') : ''}</div></details>`
+          `<details class="more cxg" data-k="cxm_${m.k}" data-q="${esc((m.n + ' ' + m.d.join(' ')).toLowerCase())}"><summary>${ic(m.ic) ? `<img class="cxgi" src="${ic(m.ic)}" alt="">` : ''}${m.n}</summary><ul class="mrules cxrule">${m.d.map(x => `<li>${x}</li>`).join('')}</ul>${sub[m.k] ? `<div class="cxl">${sub[m.k]().join('')}</div>` : ''}</details>`
       )
       .join('');
   return modes;
@@ -2265,13 +2269,7 @@ function cxPoolHTML() {
     const its = ITEMS.filter(i => i.th === x.k && shopOK(i)),
       ws = its.filter(i => i.dmg),
       sp = its.filter(i => !i.dmg);
-    return `<details class="more cxg" data-k="cxp_${x.k}"><summary>${x.n}<small>${its.length} 件專屬道具</small></summary><div class="cxl">${cxRow(
-      'cxp_' + x.k + '_r',
-      artIconURL(x.ic) || '',
-      x.n,
-      '道具池的機制',
-      x.d.join('；')
-    )}${sp
+    return `<details class="more cxg" data-k="cxp_${x.k}" data-q="${esc((x.n + ' ' + x.d.join(' ')).toLowerCase())}"><summary>${artIconURL(x.ic) ? `<img class="cxgi" src="${artIconURL(x.ic)}" alt="">` : ''}${x.n}<small>${its.length} 件專屬道具</small></summary><ul class="mrules cxrule">${x.d.map(d => `<li>${d}</li>`).join('')}</ul><div class="cxl">${sp
       .map(i =>
         cxRow('cxp_' + i.id, itemIcon(i.id), i.n, `${stars(i.star)}・${x.n}`, dsc(itemDesc(i.id)), ` s${i.star}`)
       )
@@ -2455,7 +2453,7 @@ function codexHTML() {
       .join(''),
     cls = CLASSES.map(
       C =>
-        `<details class="more cxg" data-k="cx_${C.id}"><summary>${C.n}<small>${dsc(clsDesc(C.id))}</small></summary><div class="cxl">${ITEMS.filter(
+        `<details class="more cxg" data-k="cx_${C.id}"><summary>${artIconURL(C.ic) ? `<img class="cxgi" src="${artIconURL(C.ic)}" alt="">` : ''}${C.n}<small>${dsc(clsDesc(C.id))}</small></summary><div class="cxl">${ITEMS.filter(
           i => i.cls === C.id && i.core === 1
         )
           .map(i =>
@@ -2503,7 +2501,9 @@ function cxFilter() {
     }
     for (const g of sec.querySelectorAll('.cxg')) {
       const has =
-        g.querySelector('.cxr:not([hidden])') || g.querySelector('summary').textContent.toLowerCase().includes(q);
+        g.querySelector('.cxr:not([hidden])') ||
+        g.querySelector('summary').textContent.toLowerCase().includes(q) ||
+        (g.dataset.q || '').includes(q);
       g.hidden = !has;
       if (has) g.open = true;
     }
@@ -2803,6 +2803,28 @@ const A = {
   sgInfo: () => showDlg('印記', sgInfoHTML(S.run), []),
   synInfo: () => showDlg('系別羈絆', synInfoHTML(S.run), []),
   /* 0.1.62 道具池：規則＋這個主題專屬的道具（點了看說明） */
+  /* 0.1.79 本局規則：賽制＋道具池一起看 */
+  rulesInfo: () => {
+    const run = S.run,
+      M = MODEI[run.mode],
+      T = POOLTHI[run.theme],
+      U = modeUI(run),
+      own = T ? ITEMS.filter(i => i.th === T.k && shopOK(i)).sort((a, b) => a.star - b.star) : [];
+    showDlg(
+      '本局規則',
+      `<div class="rlh"><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b>賽制：${M.n}</b><small>這局的規則變化</small></div><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${U.info ? U.info(run) : ''}${
+        T
+          ? `<div class="rlh"><img src="${artIconURL(T.ic) || iconURL('star')}" alt=""><b>道具池：${T.n}</b><small>商店賣這套道具，圍繞它構築</small></div><ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}<li>商店只出基本池（功能、反制道具）和這個主題的道具</li></ul><h4>專屬道具（${own.length} 件）</h4><div class="thlist">${own.map(i => `<span class="s${i.star}" title="${esc(i.n)}"><img src="${itemIcon(i.id)}" data-iid="${i.id}" alt="">${esc(i.n)}</span>`).join('')}</div>`
+          : ''
+      }`,
+      []
+    );
+  },
+  /* 0.1.79 全部對手（準備畫面只顯示下一場的）：點了看他的背包 */
+  rivals: () => {
+    showDlg('對手', `${rivalHTML(S.run)}<p class="sub">點對手看他上一回合的背包</p>`, []);
+    paintSprites($('modal'));
+  },
   thInfo: () => {
     const T = POOLTHI[S.run.theme];
     if (!T) return;
