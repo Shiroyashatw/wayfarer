@@ -5,6 +5,8 @@
   --bg:#f2eee7; --bg-top:#faf7f2; --card:#ffffff; --card2:#f7f4ef; --fill:#ebe6de; --fill-hi:#e0d9ce; --line:#ddd6ca; --shadow:0 1px 2px #3b2f2014,0 4px 14px #3b2f2012;
   --ink:#201b17; --dim:#6a6158; --faint:#9b9289;
   /* 強調色（主要按鈕、金幣、這一輪）：琥珀 */
+  /* 0.1.84 塔羅牌、星象卡的深藍底（兩套主題一樣；卡圖本身是透明底） */
+  --tcard:#1d2442;
   --gold:#b46d08; --accent:#e08a12; --accent2:#c97500; --on-accent:#ffffff; --accent-soft:#fbe9cc;
   --hp:#e5484d; --hp-track:#eee6dc; --shield:#9aa9b8; --mp:#2f8be0; --good:#2f9e44; --warn:#d9822b; --bad:#d93838; --danger:#e5484d;
   /* 背包：托盤比底色深一點，空格是亮的方塊＋框線，一眼看出有幾格 */
@@ -225,7 +227,9 @@ canvas.spr.flip{transform:scaleX(-1)}
 .pk.tarot.rvs .tno{color:var(--s4)}
 .mchip .tno.sm{display:inline-grid;place-items:center;width:18px;height:24px;border-radius:4px;border:1px solid var(--gold);color:var(--gold);font-size:var(--fs-cap);font-weight:700}
 .mchip .tno.sm.rvs{border-color:var(--s4);color:var(--s4)}
-.pk .tcard{flex:none;width:64px;height:64px;image-rendering:pixelated;border-radius:var(--r-sm)}
+.tcard{box-sizing:content-box;background:var(--tcard);border:2px solid var(--gold);padding:2px;border-radius:var(--r-sm)}
+.tcard.sm{border-width:1px;padding:1px;border-radius:4px}
+.pk .tcard{flex:none;width:64px;height:64px;image-rendering:pixelated}
 .tcard.rvs{transform:rotate(180deg)}
 .mchip .tcard.sm{width:24px;height:24px;image-rendering:pixelated}
 /* ---------- 戰鬥 ---------- */
@@ -651,6 +655,8 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .mchip.astro small{min-width:0;color:var(--dim);font-size:var(--fs-cap);line-height:1.25}
 .astl{display:grid;gap:var(--sp-1);text-align:left;margin:var(--sp-2) 0;font-size:var(--fs-sm)}
 .astl p.on{color:var(--gold)}
+.astl p:has(.tcard){display:flex;align-items:center;gap:var(--sp-2)}
+.astl .tcard.sm{flex:none;width:28px;height:28px;image-rendering:pixelated}
 .relrow{display:flex;gap:var(--sp-1);flex-wrap:wrap}
 .relc{width:38px;height:38px;display:grid;place-items:center;border:0;border-radius:var(--r-md);background:var(--card);box-shadow:var(--shadow)}
 .relc img,.relo img{width:28px;height:28px;image-rendering:pixelated}

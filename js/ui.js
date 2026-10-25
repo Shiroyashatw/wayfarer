@@ -1003,14 +1003,16 @@ function tarotHTML(run) {
     .join('')}</div></div></div>`;
 }
 const modeUI = run => (run && MODEUI[run.mode]) || {};
-/* 0.1.59 星象輪轉：第 a～b 階段的規則（這個階段亮起來） */
+/* 0.1.59 星象輪轉：第 a～b 階段的規則（這個階段亮起來）；0.1.84 前面放月亮卡（art/icons/astro_月.png） */
 function astroListHTML(run, a, b) {
   const r = curRound(run),
     now = r ? r.st : 0;
   let h = '';
   for (let st = a; st <= b; st++) {
-    const x = ASTROI[astroAt(run, st)];
-    if (x) h += `<p class="${st === now ? 'on' : st < now ? 'c-dim' : ''}">第 ${st} 階段・<b>${x.n}</b>：${x.d}</p>`;
+    const x = ASTROI[astroAt(run, st)],
+      u = x && artIconURL('astro_' + x.k);
+    if (x)
+      h += `<p class="${st === now ? 'on' : st < now ? 'c-dim' : ''}">${u ? `<img class="tcard sm" src="${u}" alt="">` : ''}<span>第 ${st} 階段・<b>${x.n}</b>：${x.d}</span></p>`;
   }
   return `<div class="astl">${h}</div>`;
 }
@@ -2250,7 +2252,7 @@ function cxModeHTML() {
         ...CURSES.map(x => cxRow('cxm_c' + x.k, '', x.n, '詛咒', x.d(x.v))),
         ...BLESS.map(x => cxRow('cxm_b' + x.k, '', x.n, '祝福', x.d(x.v)))
       ],
-      astro: () => ASTROS.map(x => cxRow('cxm_a' + x.k, '', x.n, '星象', x.d)),
+      astro: () => ASTROS.map(x => cxRow('cxm_a' + x.k, ic('astro_' + x.k), x.n, '星象', x.d)),
       relic: () => RELICS.map(x => cxRow('cxm_r' + x.k, ic(x.ic), x.n, '遺物', x.d)),
       tarot: () =>
         TAROT.map((x, i) =>
