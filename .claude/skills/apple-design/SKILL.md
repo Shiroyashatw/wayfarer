@@ -1,715 +1,293 @@
 ---
 name: apple-design
-description: Apple 風格（apple.com）的介面設計：大量留白、字級層次、克制的配色、圓角與多層陰影、流暢動效。使用者說「apple design」「Apple 風格」「做得像 Apple」「質感一點」時用。
+description: Apple's approach to interface design and fluid, physical motion, translated for the web. Use when building or reviewing gesture-driven UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible transitions, translucent materials and depth, typography (optical sizing, tracking, leading), reduced-motion, or the design foundations (feedback, spatial consistency, restraint) behind Apple-style interfaces.
 ---
 
-> 來源：[chaos-xxl/apple-design-skill](https://github.com/chaos-xxl/apple-design-skill)（MIT，見 `LICENSE`），原本是 Claude Code 的 `CLAUDE.md`，這裡改包成 skill。
-> **在塞令老師專案裡**：`docs/設計規範.md`（字級、顏色變數、間距、第一屏預算、手遊守則）優先；這份只拿來參考 Apple 的設計手法（留白、層次、克制、細節），不要照搬它的網頁行銷頁版型、色票、Google Fonts 或 Unsplash 圖片。介面改動仍照 skill `ui-design` 的流程與 audit。
+> 來源：[emilkowalski/skills](https://github.com/emilkowalski/skills/tree/2d228630ba1446365f614a108cb8252f1feda202/skills/apple-design)（MIT，見 `LICENSE`），內容照原文。
+> **在塞令老師專案裡**：`docs/設計規範.md` 優先（字級、顏色變數、第一屏預算、手遊守則），介面改動照 skill `ui-design` 的流程與 audit。跟規範衝突的地方：**不用 `backdrop-filter` 或大面積模糊**（規範第 6 節，電腦版很卡），第 12 節的半透明材質改用半透明底色；動效照規範第 10 節（150～250ms、不擋操作）。拖曳、按下回饋、可中斷、彈簧、減少動態這些原則直接拿來用（背包拖曳 `pointerdown`／`pointermove`／`dropEnd` 在 `js/ui.js`）。
 
+# Apple Design
 
-> **Self-contained skill file for Claude Code.** This file includes all design tokens, typography rules, copywriting patterns, image curation strategies, and layout templates needed to generate Apple-style frontend UI code. No external file references required.
+## Initial Response
 
----
+When this skill is first invoked without a specific question, respond only with:
 
-## Identity & Purpose
+> I'm ready to help you build fluid, Apple-style interfaces on the web, my knowledge comes from Apple's WWDC design talks, translated for the web.
 
-You are an AI assistant enhanced with the **Apple Design Skill**. Generate frontend UI code that faithfully reproduces the design aesthetic of apple.com — generous whitespace, typographic precision, restrained color palettes, and relentless clarity.
+Do not provide any other information until the user asks a question.
 
-**Language support:** English (en), Simplified Chinese (zh-CN), Traditional Chinese (zh-TW), Japanese (ja), Korean (ko). Detect the user's language and apply the corresponding font stack and copywriting rules automatically.
+How Apple builds interfaces that stop feeling like a computer and start feeling like an extension of you. This knowledge comes from Apple's WWDC design talks — chiefly *Designing Fluid Interfaces* (WWDC 2018) — distilled and translated into the web platform (CSS, Pointer Events, `requestAnimationFrame`, spring libraries like Motion/Framer Motion).
 
----
+The through-line: **an interface feels alive when motion starts from the current on-screen value, inherits the user's velocity, projects momentum forward, and can be grabbed and reversed at any instant.** Springs are the tool that makes all of this natural, because they are inherently interruptible and velocity-aware.
 
-## Core Design Principles
+## The Core Idea
 
-1. **Simplicity over decoration.** Remove every element that does not serve a clear purpose.
-2. **Whitespace is a feature.** 80–120px between sections gives content room to breathe.
-3. **Typography-first hierarchy.** Large bold headlines (48–80px) anchor each section; subheadings and body step down in size and weight.
-4. **Restrained color palette.** #FFFFFF, #F5F5F7, #1D1D1F for backgrounds. Accent blue (#0066CC) sparingly for interactive elements.
-5. **Precision in detail.** Rounded corners (12–20px), multi-layer shadows, smooth transitions.
-6. **Content-centered layout.** Constrain content to 980–1200px, centered. Full-bleed imagery may extend beyond.
-7. **Responsive by default.** Three breakpoints: 734px, 1068px, 1440px.
+> "When we align the interface to the way we think and move, something magical happens — it stops feeling like a computer and starts feeling like a seamless extension of us."
 
----
+An interface is fluid when it behaves like the physical world: things respond instantly, move continuously, carry momentum, resist at boundaries, and can be redirected mid-motion. Everything below is a way to get closer to that.
 
-## Design Tokens
+Apple frames design as serving four human needs: **safety/predictability, understanding, achievement, and joy.** Every rule here serves one of them.
 
-All visual variables as CSS custom properties. Copy the `:root` blocks into your `<style>` tag. Never hard-code raw values.
+## 1. Response — kill latency
 
-### Colors
+The moment lag appears, the feeling of directness "falls off a cliff." Response is the foundation everything else is built on.
 
-```css
-:root {
-  --apple-bg-white: #FFFFFF;
-  --apple-bg-dark: #1D1D1F;
-  --apple-bg-light-gray: #F5F5F7;
-  --apple-bg-elevated: #FBFBFD;
-
-  --apple-text-primary: #1D1D1F;
-  --apple-text-secondary: #6E6E73;
-  --apple-text-tertiary: #86868B;
-  --apple-text-on-dark: #F5F5F7;
-  --apple-text-white: #FFFFFF;
-
-  --apple-link-blue: #0066CC;
-  --apple-link-blue-hover: #0077ED;
-  --apple-accent-green: #2D8C3C;
-  --apple-accent-orange: #E85D04;
-  --apple-accent-red: #E30000;
-}
-```
-
-### Spacing
+- **Respond on pointer-down, not on release.** Highlight a button the instant it's pressed. Waiting for `click`/touch-up to show feedback feels dead.
+- **Be vigilant about every latency.** Audit debounces, artificial timers, transition waits, and the ~300ms tap delay. Anything on the input path that isn't essential is a regression.
+- **Feedback must be continuous *during* the interaction, not just at the end.** For a drag, slider, or drawer, update the UI 1:1 with the pointer the whole way through — never animate only when the gesture completes.
 
 ```css
-:root {
-  --apple-section-gap: 100px;
-  --apple-section-gap-sm: 80px;
-  --apple-section-gap-lg: 120px;
-
-  --apple-component-gap-sm: 16px;
-  --apple-component-gap-md: 32px;
-  --apple-component-gap-lg: 48px;
-
-  --apple-card-padding: 32px;
-  --apple-card-padding-sm: 24px;
-  --apple-card-padding-lg: 40px;
-
-  --apple-content-max-width: 980px;
-  --apple-content-max-width-lg: 1200px;
+/* Feedback lives on the press, and it's instant */
+.button:active {
+  transform: scale(0.97);
+  transition: transform 100ms ease-out;
 }
 ```
 
-### Font Weights
+## 2. Direct manipulation — 1:1 tracking
+
+> "Touch and content should move together."
+
+When the user drags something, it must stay glued to the finger — and respect the offset from *where they grabbed it*. Snapping to the element's center on grab breaks the illusion immediately.
+
+- Use Pointer Events with `setPointerCapture` so tracking continues even when the pointer leaves the element's bounds.
+- Track a short **velocity/position history** (last few `pointermove` events), not just the current point — you'll need velocity at release.
+
+```js
+el.addEventListener('pointerdown', (e) => {
+  el.setPointerCapture(e.pointerId);
+  const grabOffset = e.clientY - el.getBoundingClientRect().top; // respect where they grabbed
+  // ...track position + timestamp history for velocity
+});
+```
+
+## 3. Interruptibility — the single most important principle
+
+> "The thought and the gesture happen in parallel."
+
+Every animation must be interruptible and redirectable at any moment. A user must be able to grab a moving element mid-flight and reverse it without waiting for the animation to finish. A closing modal the user grabs again should follow the finger — not finish closing first, then reopen.
+
+- **Never lock out input during a transition.**
+- **Always animate from the *presentation* (current) value, never the target value.** On interrupt, read the element's live on-screen transform and start the new animation from there. Starting from the logical/target value causes a visible jump.
+- **Avoid CSS transitions and `@keyframes` for anything gesture-driven** — they can't be smoothly grabbed and reversed mid-flight. Springs animate from the current value by default, which is exactly what interruption needs.
+- **When a gesture reverses, blend velocity — don't hard-cut it.** Replacing one animation with another at a reversal creates a velocity discontinuity, a "brick wall." Spring libraries that carry velocity through a re-target avoid it. (This is what iOS's *additive animations* do natively; on the web, choose a spring library that re-targets from the current velocity.)
+- **Decompose 2D motion into independent X and Y springs.** A single spring on a 2D distance desyncs when X and Y have different velocities.
+
+## 4. Behavior over animation — use springs
+
+> "Think of animation as a conversation between you and the object, not something prescribed by the interface."
+
+A pre-scripted, fixed-duration animation can't respond to new input. A spring can — new input just changes the target, and the motion stays continuous. Reach for springs for anything a user can touch.
+
+Apple deliberately replaced the physics triplet (mass/stiffness/damping) with two designer-friendly parameters. Think in these:
+
+- **Damping ratio** — controls overshoot. `1.0` = critically damped, no bounce, smooth settle. `< 1.0` = overshoots and oscillates. Lower = bouncier.
+- **Response** — how quickly the value reaches the target, in seconds. Lower = snappier. **This is not "duration"** — a spring has no fixed duration; its settle time emerges from the parameters.
+
+**Defaults:**
+- Start most UI at **damping `1.0`** (critically damped) — graceful and non-distracting.
+- Add bounce (**damping ~`0.8`**) **only when the gesture itself carried momentum** (a flick, a throw, a drag release). Overshoot on a menu that just faded in feels wrong; overshoot on a card you flicked feels right.
+
+**Concrete values Apple ships:**
+
+| Interaction | Damping | Response |
+| --- | --- | --- |
+| Move / reposition (e.g. PiP) | `1.0` | `0.4` |
+| Rotation | `0.8` | `0.4` |
+| Drawer / sheet | `0.8` | `0.3` |
+
+**Web mapping (Motion / Framer Motion):** the `bounce` + `duration` spring API maps closely to Apple's damping + response. A safe house style is `damping: 1.0` springs everywhere by default; reserve bounce for momentum-driven, physical interactions.
+
+```js
+import { animate } from 'motion';
+
+// Critically damped default (no overshoot)
+animate(el, { y: 0 }, { type: 'spring', bounce: 0, duration: 0.4 });
+
+// Momentum interaction — a little bounce, only because a flick preceded it
+animate(el, { y: target }, { type: 'spring', bounce: 0.2, duration: 0.4 });
+```
+
+## 5. Velocity handoff — the seam between drag and animation
+
+When a gesture ends, the animation must **continue at the finger's exact velocity**, so there's no visible seam between dragging and animating. This is the detail that most separates "fluid" from "fine."
+
+Pass the pointer's release velocity as the spring's initial velocity. Some spring APIs want **relative** velocity — normalize it by the remaining distance to the target:
+
+```
+relativeVelocity = gestureVelocity / (targetValue − currentValue)
+```
+
+Example: element at `y=50`, target `y=150` (100px to go), finger moving 50px/s → initial spring velocity = `50 / 100 = 0.5`. Framer Motion / Motion take absolute px/s velocity directly (`velocity` option), so you usually hand it the raw value.
+
+## 6. Momentum projection — animate to where the gesture is *going*
+
+> "Take a small input and make a big output."
+
+Don't snap to the nearest boundary from the *release point*. Use velocity to **project the resting position** — exactly like scroll deceleration — then snap to the target nearest that projected point. This is what makes a flick feel like it throws the element.
+
+Apple's exact projection function (from the *Designing Fluid Interfaces* sample code):
+
+```js
+// decelerationRate ≈ 0.998 for normal scroll feel; 0.99 for snappier
+function project(initialVelocity /* px/s */, decelerationRate = 0.998) {
+  return (initialVelocity / 1000) * decelerationRate / (1 - decelerationRate);
+}
+
+const projectedEndpoint = currentPosition + project(releaseVelocity);
+const target = nearestSnapPoint(projectedEndpoint);   // choose target from the projection
+animateSpringTo(target, { velocity: releaseVelocity }); // then hand off velocity (§5)
+```
+
+Note: the physics-textbook `v²/(2·decel)` is *not* what Apple ships — use the exponential-decay form above. This is the standard behavior in good bottom-sheets and carousels (Vaul, Embla).
+
+## 7. Spatial consistency — symmetric paths, anchored origins
+
+> "If something disappears one way, we expect it to emerge from where it came."
+
+- **Enter and exit along the same path.** A panel that slides in from the right must dismiss to the right. In-from-right / out-the-bottom feels disconnected and confusing.
+- **Anchor interactions to their source.** A menu, popover, or sheet should originate from the element that triggered it — set `transform-origin` to the trigger, so the spatial relationship between button and content is obvious. (This is the same origin-awareness point as popovers scaling from their trigger, not their center.)
+- **Mirror the easing on reversible transitions** so the outbound path matches the return path (use inverse cubic-bézier control points for the two directions).
+
+## 8. Hint in the direction of the gesture
+
+Humans predict a final state from a trajectory. Intermediate motion should telegraph where things are going — Control Center modules "grow up and out toward your finger." Make the in-between frames point at the outcome, not just interpolate blindly to it.
+
+## 9. Rubber-banding — soft boundaries
+
+At an edge, resist progressively instead of stopping hard. A hard stop reads as "frozen"; continuous resistance reads as "responsive, but there's nothing more here." Apply damping that increases the further past the boundary the user drags.
+
+```js
+// The further past the bound, the less the element follows — real things slow before they stop
+function rubberband(overshoot, dimension, constant = 0.55) {
+  return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+}
+```
+
+## 10. Gesture design details (the "feel" checklist)
+
+- **Tap:** highlight on touch-*down* (instant), commit on touch-*up*. Add ~10px of hysteresis/hit padding around the target, and allow cancel-by-dragging-away and back.
+- **Drag/swipe:** require a small movement threshold (hysteresis, ~10px) before committing to a direction, then track 1:1.
+- **Detect all plausible gestures in parallel from the first move**, then confidently cancel the losers once intent is clear. Avoid recognizers that only report a *final* state (`swipeleft`-type events) — they throw away the continuous tracking you need for feedback.
+- **Minimize disambiguation delays.** Double-tap detection unavoidably delays single taps; only pay that cost where double-tap truly exists.
+
+## 11. Frame-level smoothness
+
+Smoothness is about *what's in the frames*, not just the frame rate.
+
+- Keep the per-frame positional change below the perception threshold to avoid strobing.
+- For very fast motion, a subtle **motion blur / stretch** encodes speed and reads better than a hard sharp streak.
+- `requestAnimationFrame` is the web's display-synced clock (Apple uses `CADisplayLink`). Animate only compositor-friendly properties — `transform` and `opacity` — and hint with `will-change` where motion is imminent.
+
+## 12. Materials & depth — translucency conveys hierarchy
+
+Apple uses translucent materials as a floating functional layer that brings structure without stealing focus. On the web, approximate with `backdrop-filter`.
+
+- **Build nav/toolbars/sheets as translucent layers** (`backdrop-filter: blur()` + a semi-transparent background) with content scrolling underneath — not opaque bars that consume a fixed strip.
+- **Material weight encodes hierarchy:** darker/heavier materials separate structural regions (sidebars); lighter materials draw attention to interactive elements (buttons). **Never stack a light translucent surface on another** — legibility collapses.
+- **Bigger surfaces should read as thicker:** stronger blur + a deeper shadow than small chips. Consider context-aware shadow — heavier over busy/text content for separation, lighter over plain backgrounds.
+- **Dim to focus, separate to keep flow.** A modal task pairs the surface with a dimming scrim and pushes the background back/down. A parallel, non-blocking panel uses translucency and offset *without* a scrim so the flow isn't broken. For stacked sheets, progressively dim and push back each parent layer.
+- **Vibrancy keeps text legible over changing backgrounds.** Over blurred/translucent surfaces, don't use flat gray text — use higher-contrast, slightly heavier weight, and a small letter-spacing bump. Put color on a solid layer, not the translucent foreground.
+- **Scroll edge effects, not hard dividers.** Instead of a 1px border under a sticky header, fade a small blur/gradient mask where content meets floating chrome — only where floating UI actually overlaps content.
+- **Materialize, don't just fade.** For glass/blur surfaces, animate blur radius and scale together on enter/exit, so the surface reads as a real material arriving rather than a plain opacity fade.
 
 ```css
-:root {
-  --apple-weight-title: 600;
-  --apple-weight-title-bold: 700;
-  --apple-weight-body: 400;
-  --apple-weight-body-medium: 500;
+.toolbar {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.4); /* bright top edge = light catching the material */
 }
 ```
 
-### Border Radius
+## 13. Multimodal feedback — motion + sound + haptics
+
+Three rules for combining senses (from *Designing Audio-Haptic Experiences*):
+
+1. **Causality** — it must be obvious what caused the feedback. Trigger it on the actual causal event (the toggle flipping, the item snapping home), and match its character to the action's physicality.
+2. **Harmony** — the visual, the sound, and the haptic must fire on the **same frame**. Latency between them destroys the illusion. Don't let a CSS transition lag the audio/haptic (Vibration API).
+3. **Utility** — add feedback only where it earns its place. Reserve haptics/sound for meaningful moments (success, error, commit, snap). Over-feedback trains users to ignore all of it.
+
+## 14. Reduced motion & accessibility
+
+Reduced motion doesn't mean *no* feedback — it means a gentler, non-vestibular equivalent. Respond to three independent signals and bake them into your components:
+
+- **`prefers-reduced-motion: reduce`** — replace slides/springs/parallax with short opacity **cross-fades or static transitions**. Drop elastic/overshoot. Keep opacity/color changes that aid comprehension.
+- **`prefers-reduced-transparency: reduce`** — make translucent surfaces frostier/solid: raise background opacity, drop the blur.
+- **`prefers-contrast: more`** — near-solid backgrounds with a defined, contrasting border.
+
+Also: avoid full-viewport moving backgrounds, slow looping oscillations (near 0.2 Hz / one cycle per 5s), and abrupt brightness jumps (ease dark↔light theme changes). Make large moving objects semi-transparent while they travel, and fade big surfaces out during a large reposition and back in once settled.
 
 ```css
-:root {
-  --apple-radius-card: 18px;
-  --apple-radius-card-sm: 12px;
-  --apple-radius-card-lg: 20px;
-  --apple-radius-button: 980px;
-  --apple-radius-badge: 8px;
+@media (prefers-reduced-motion: reduce) {
+  .sheet { transition: opacity 200ms ease; transform: none !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .toolbar { background: white; backdrop-filter: none; }
 }
 ```
 
-### Shadows
+## 15. Typography — optical sizing, tracking, leading
+
+Apple designs type to change shape with size; the same discipline applies on the web. (From *The Details of UI Typography*, WWDC 2020.)
+
+- **Tracking (letter-spacing) is size-specific — never one value for all sizes.** Large display text wants *negative* tracking (letters read too far apart as they grow); small text wants slightly *positive* tracking for legibility. A fixed `letter-spacing` is wrong somewhere. Tighten headings, leave body near `0`.
+- **Leading (line-height) tracks size inversely.** Tight on large headings, looser on body copy. Increase it for scripts with tall ascenders/descenders; tighten it for dense, information-heavy UI.
+- **Build hierarchy from weight + size + leading as a set,** not size alone. Emphasize with weight — it adds presence without taking more space.
+- **Respect the user's text-size setting** (Dynamic Type). Scale layout *with* the text — spacing in `rem`/`em`, not fixed px — so a larger font doesn't break the layout.
+- **Default to the platform's system font** before a custom face; it already ships optical sizing, tracking tables, and legibility tuning. Override only with a reason.
 
 ```css
-:root {
-  --apple-shadow-card: 0 2px 8px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08);
-  --apple-shadow-hover: 0 4px 12px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.12);
-  --apple-shadow-sm: 0 1px 4px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06);
-  --apple-shadow-modal: 0 8px 20px rgba(0,0,0,0.08), 0 20px 60px rgba(0,0,0,0.16);
+:root { font: 100%/1.5 system-ui, sans-serif; } /* body: system font, comfortable leading */
+
+.display {
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1.05;        /* tight leading for large text */
+  letter-spacing: -0.02em;  /* negative tracking as it grows */
+  font-optical-sizing: auto;
 }
 ```
 
-### Gradients
-
-```css
-:root {
-  --apple-gradient-text-purple: linear-gradient(90deg, #7B2FBE, #E040A0);
-  --apple-gradient-text-blue: linear-gradient(90deg, #2997FF, #5AC8FA);
-  --apple-gradient-text-warm: linear-gradient(90deg, #E8590C, #D63384);
-  --apple-gradient-text-green: linear-gradient(90deg, #30D158, #00C7BE);
-  --apple-gradient-bg-light: linear-gradient(180deg, #FBFBFD 0%, #F5F5F7 100%);
-  --apple-gradient-bg-dark: linear-gradient(180deg, #1D1D1F 0%, #000000 100%);
-}
-```
-
-Apply a text gradient:
-
-```css
-.gradient-headline {
-  background: var(--apple-gradient-text-purple);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-```
-
-### Letter Spacing
-
-```css
-:root {
-  --apple-tracking-zh-title: 0.04em;
-  --apple-tracking-en-title: -0.015em;
-  --apple-tracking-en-title-tight: -0.02em;
-  --apple-tracking-en-title-loose: 0.01em;
-  --apple-tracking-body: 0em;
-}
-```
-
-Rule: `zh-CN`, `zh-TW`, `ja` → use `--apple-tracking-zh-title` for headings. `en`, `ko` → use `--apple-tracking-en-title`.
-
-### Line Height
-
-```css
-:root {
-  --apple-leading-title: 1.1;
-  --apple-leading-title-tight: 1.05;
-  --apple-leading-title-loose: 1.15;
-  --apple-leading-body: 1.53;
-  --apple-leading-body-tight: 1.5;
-  --apple-leading-body-loose: 1.58;
-}
-```
-
-### Responsive Breakpoints
-
-```css
-:root {
-  --apple-breakpoint-sm: 734px;
-  --apple-breakpoint-md: 1068px;
-  --apple-breakpoint-lg: 1440px;
-}
-```
-
-```css
-/* Mobile-first base (< 734px) */
-@media (min-width: 734px)  { /* tablet */ }
-@media (min-width: 1068px) { /* desktop */ }
-@media (min-width: 1440px) { /* large desktop */ }
-```
-
----
-
-## Typography — Multi-Language Font Stacks
-
-### Font Stack Data
-
-```json
-{
-  "fontStacks": {
-    "en": {
-      "display": "'SF Pro Display', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-      "text": "'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-      "fallback_google": "'Inter', sans-serif"
-    },
-    "zh-CN": {
-      "display": "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
-      "text": "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
-      "fallback_google": "'Noto Sans SC', sans-serif"
-    },
-    "zh-TW": {
-      "display": "'PingFang TC', 'Hiragino Sans CNS', 'Microsoft JhengHei', sans-serif",
-      "text": "'PingFang TC', 'Hiragino Sans CNS', 'Microsoft JhengHei', sans-serif",
-      "fallback_google": "'Noto Sans TC', sans-serif"
-    },
-    "ja": {
-      "display": "'Hiragino Sans', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'Meiryo', sans-serif",
-      "text": "'Hiragino Sans', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'Meiryo', sans-serif",
-      "fallback_google": "'Noto Sans JP', sans-serif"
-    },
-    "ko": {
-      "display": "'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
-      "text": "'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
-      "fallback_google": "'Noto Sans KR', sans-serif"
-    }
-  }
-}
-```
-
-### Language-Specific CSS
-
-```css
-:root[lang="en"], :root:lang(en) {
-  --apple-font-display: 'SF Pro Display', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
-  --apple-font-text: 'SF Pro Text', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
-}
-:root[lang="zh-CN"], :root:lang(zh-CN) {
-  --apple-font-display: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  --apple-font-text: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-}
-:root[lang="zh-TW"], :root:lang(zh-TW) {
-  --apple-font-display: 'PingFang TC', 'Hiragino Sans CNS', 'Microsoft JhengHei', sans-serif;
-  --apple-font-text: 'PingFang TC', 'Hiragino Sans CNS', 'Microsoft JhengHei', sans-serif;
-}
-:root[lang="ja"], :root:lang(ja) {
-  --apple-font-display: 'Hiragino Sans', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'Meiryo', sans-serif;
-  --apple-font-text: 'Hiragino Sans', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'Meiryo', sans-serif;
-}
-:root[lang="ko"], :root:lang(ko) {
-  --apple-font-display: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-  --apple-font-text: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-}
-```
-
-### Google Fonts Fallback
-
-Include only the tags needed for the detected language:
-
-```html
-<!-- English --> <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- zh-CN -->  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- zh-TW -->  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- ja -->     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!-- ko -->     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
-```
-
-### Font Size Scale
-
-```css
-:root {
-  --apple-font-size-hero: 56px;
-  --apple-font-size-hero-min: 48px;
-  --apple-font-size-hero-max: 80px;
-  --apple-font-size-subtitle: 28px;
-  --apple-font-size-subtitle-min: 24px;
-  --apple-font-size-subtitle-max: 32px;
-  --apple-font-size-body: 17px;
-  --apple-font-size-body-max: 21px;
-  --apple-font-size-caption: 12px;
-  --apple-font-size-caption-max: 14px;
-}
-```
-
-Responsive headline scaling:
-
-```css
-h1, .hero-headline {
-  font-family: var(--apple-font-display);
-  font-size: var(--apple-font-size-hero-min);
-  font-weight: var(--apple-weight-title-bold);
-  line-height: var(--apple-leading-title);
-  letter-spacing: var(--apple-tracking-en-title);
-}
-@media (min-width: 734px)  { h1, .hero-headline { font-size: var(--apple-font-size-hero); } }
-@media (min-width: 1068px) { h1, .hero-headline { font-size: var(--apple-font-size-hero-max); } }
-```
-
-### Language Detection Logic
-
-1. Examine the user's prompt language → use that language's font stack.
-2. Check for explicit `lang` attribute requests.
-3. Character-based fallback: CJK Ideographs → zh-CN/zh-TW; Hiragana/Katakana → ja; Hangul → ko; else → en.
-4. Default: `en`.
-
----
-
-## Copywriting Rules
-
-### Core Principles
-
-1. **One idea per line.** Each headline communicates exactly one benefit.
-2. **Short beats long.** Brevity signals confidence.
-3. **Lead with the benefit, not the spec.** Transform technical parameters into felt experiences.
-4. **Rhythm matters.** Fragments, pauses, parallel structures create intentional tempo.
-5. **Surprise with simplicity.** The most memorable lines are disarmingly simple.
-
-### Title Length Constraints
-
-| Language | Title (H1) | Subtitle (H2) |
-|----------|-----------|---------------|
-| English  | ≤ 8 words | ≤ 20 words    |
-| Chinese  | ≤ 12 chars | ≤ 30 chars   |
-
-Punctuation excluded from count. Count before output; rewrite if over limit.
-
-### English Patterns
-
-| Pattern | Examples |
-|---------|---------|
-| Fragment sentences | "Chip. For dip." · "Pro. Beyond." · "Supercharged. By M2." |
-| Single-word impact | "Whoa." · "Brilliant." · "Power." |
-| Superlative | "The best Mac ever." · "Our thinnest design." |
-| Rhyme / wordplay | "Light. Years ahead." · "Powerful. Portable. Pro." |
-| Question / challenge | "Why Mac?" · "What's a computer?" |
-
-### Chinese Patterns
-
-| Pattern | Examples |
-|---------|---------|
-| 对仗 (parallel) | "强得很，轻得很" · "有颜值，有实力" |
-| 四字格 (4-char idiom) | "放心比好了" · "岂止于大" · "超凡出众" |
-| 反问 (rhetorical) | "还有谁？" · "谁说轻薄不能强大？" |
-| 押韵 (rhyming) | "大的好，好的大" · "一身轻，万事行" |
-
-### Spec-to-Experience Conversion
-
-Never lead with raw specs. Convert to felt outcomes:
-
-| Spec | Apple-style |
-|------|------------|
-| 18-hour battery life | "All day. And then some." |
-| 48MP main camera | "Every detail. Captured beautifully." |
-| M3 chip with 8-core GPU | "Blazingly fast graphics." |
-| 256GB SSD | "Room for everything you love." |
-
-Rules: Never lead with a number. Avoid jargon. Use sensory language. One spec per sentence.
-
-### Copywriting Rules Data
-
-```json
-{
-  "copywritingRules": {
-    "titleRules": { "en": { "maxWords": 8 }, "zh": { "maxChars": 12 } },
-    "subtitleRules": { "en": { "maxWords": 20 }, "zh": { "maxChars": 30 } },
-    "patterns": {
-      "en": [
-        { "name": "fragment-sentences", "examples": ["Chip. For dip.", "Pro. Beyond."] },
-        { "name": "single-word-impact", "examples": ["Whoa.", "Brilliant."] },
-        { "name": "superlative-comparative", "examples": ["The best Mac ever."] },
-        { "name": "rhyme-wordplay", "examples": ["Light. Years ahead."] },
-        { "name": "question-challenge", "examples": ["Why Mac?"] }
-      ],
-      "zh": [
-        { "name": "parallel-structure", "examples": ["强得很，轻得很", "有颜值，有实力"] },
-        { "name": "four-character-idiom", "examples": ["放心比好了", "岂止于大"] },
-        { "name": "rhetorical-question", "examples": ["还有谁？", "何止于快？"] },
-        { "name": "rhyming", "examples": ["大的好，好的大"] }
-      ]
-    }
-  }
-}
-```
-
----
-
-## Image Curation
-
-### Apple-Style Image Characteristics
-
-Every image must pass these tests:
-1. **Clean background** — solid color, subtle gradient, or heavily blurred. No clutter.
-2. **High contrast** — subject "pops" without borders.
-3. **Centered subject** — primary subject at or near center.
-4. **Natural lighting** — soft, diffused. No harsh shadows or flash artifacts.
-5. **Minimal color palette** — 3–4 hues max, muted/desaturated preferred.
-
-Avoid: busy backgrounds, heavy filters, stock-photo clichés, low resolution, watermarks, embedded text.
-
-### Image Specs by Section
-
-| Section | Aspect Ratio | Min Width | Background | Style |
-|---------|-------------|-----------|------------|-------|
-| Hero | 16:9 / 21:9 | 1920px | Dark | Cinematic, high-impact |
-| Product | 1:1 / 4:3 | 800px | Solid / gradient | Clean, centered, studio |
-| Feature | 16:9 / 4:3 | 1200px | Contextual | Lifestyle, natural light |
-
-### CSS Gradient Fallbacks
-
-When images are unavailable, use these CSS gradients:
-
-```css
-.hero-fallback {
-  background: linear-gradient(180deg, #1D1D1F 0%, #000000 100%);
-  color: #FFFFFF;
-}
-.section-fallback-light {
-  background: linear-gradient(180deg, #FBFBFD 0%, #F5F5F7 100%);
-  color: var(--apple-text-primary, #1D1D1F);
-}
-.product-fallback {
-  background: radial-gradient(ellipse at center, #F5F5F7 0%, #E8E8ED 100%);
-}
-.accent-fallback-purple {
-  background: linear-gradient(135deg, #7B2FBE 0%, #E040A0 100%);
-  color: #FFFFFF;
-}
-.accent-fallback-blue {
-  background: linear-gradient(135deg, #2997FF 0%, #5AC8FA 100%);
-  color: #FFFFFF;
-}
-.mesh-fallback {
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(123,47,190,0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 50%, rgba(41,151,255,0.15) 0%, transparent 50%),
-    linear-gradient(180deg, #FBFBFD 0%, #F5F5F7 100%);
-}
-```
-
-### Alt Text Rules
-
-- Describe the scene, not the filename.
-- Include product name when visible.
-- Keep under 125 characters.
-- Use `alt=""` for purely decorative images.
-- Match the page language.
-
-### Image Specs Data
-
-```json
-{
-  "imageSpecs": {
-    "hero": {
-      "aspectRatio": ["16:9", "21:9"],
-      "minWidth": 1920,
-      "background": "dark",
-      "style": "cinematic, high-impact"
-    },
-    "product": {
-      "aspectRatio": ["1:1", "4:3"],
-      "minWidth": 800,
-      "background": "solid or gradient",
-      "style": "product centered, studio lighting"
-    },
-    "feature": {
-      "aspectRatio": ["16:9", "4:3"],
-      "minWidth": 1200,
-      "background": "contextual",
-      "style": "lifestyle, natural light"
-    }
-  },
-  "sources": ["unsplash.com", "pexels.com"],
-  "fallback": "CSS gradient backgrounds",
-  "altText": { "maxLength": 125 }
-}
-```
-
-> **Note:** Image search API calls (Unsplash/Pexels) are an optional extension not included in this Skill. Use keyword suggestions and CSS fallbacks when API is unavailable.
-
----
-
-## Layout Patterns
-
-### Content Area Width
-
-```css
-.apple-content {
-  width: 100%;
-  max-width: var(--apple-content-max-width);
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 24px;
-  padding-right: 24px;
-  box-sizing: border-box;
-}
-@media (min-width: 1440px) {
-  .apple-content { max-width: var(--apple-content-max-width-lg); }
-}
-@media (max-width: 733px) {
-  .apple-content { padding-left: 20px; padding-right: 20px; }
-}
-```
-
-### Vertical Spacing
-
-```css
-.apple-section { padding-top: var(--apple-section-gap); padding-bottom: var(--apple-section-gap); }
-.apple-section--compact { padding-top: var(--apple-section-gap-sm); padding-bottom: var(--apple-section-gap-sm); }
-.apple-section--spacious { padding-top: var(--apple-section-gap-lg); padding-bottom: var(--apple-section-gap-lg); }
-
-.apple-stack-sm { display: flex; flex-direction: column; gap: var(--apple-component-gap-sm); }
-.apple-stack-md { display: flex; flex-direction: column; gap: var(--apple-component-gap-md); }
-.apple-stack-lg { display: flex; flex-direction: column; gap: var(--apple-component-gap-lg); }
-```
-
-
-### Hero Section Template
-
-```html
-<section class="hero">
-  <div class="apple-content hero__content">
-    <h1 class="hero__headline">iPhone 16 Pro.</h1>
-    <p class="hero__subtitle">Hello, Apple Intelligence.</p>
-    <div class="hero__cta">
-      <a href="#learn-more" class="hero__link hero__link--primary">Learn more ›</a>
-      <a href="#buy" class="hero__link hero__link--secondary">Buy ›</a>
-    </div>
-  </div>
-</section>
-```
-
-```css
-.hero {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: var(--apple-gradient-bg-dark);
-  color: var(--apple-text-white);
-  text-align: center;
-  overflow: hidden;
-}
-.hero__content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--apple-component-gap-sm);
-  padding-top: var(--apple-section-gap);
-  padding-bottom: var(--apple-section-gap);
-}
-.hero__headline {
-  font-family: var(--apple-font-display);
-  font-size: var(--apple-font-size-hero-min);
-  font-weight: var(--apple-weight-title-bold);
-  line-height: var(--apple-leading-title);
-  letter-spacing: var(--apple-tracking-en-title);
-  margin: 0;
-}
-.hero__subtitle {
-  font-family: var(--apple-font-text);
-  font-size: var(--apple-font-size-subtitle);
-  font-weight: var(--apple-weight-body);
-  line-height: var(--apple-leading-body);
-  color: var(--apple-text-tertiary);
-  margin: 0;
-}
-.hero__cta {
-  display: flex;
-  gap: var(--apple-component-gap-md);
-  margin-top: var(--apple-component-gap-sm);
-}
-.hero__link {
-  font-family: var(--apple-font-text);
-  font-size: var(--apple-font-size-body);
-  text-decoration: none;
-}
-.hero__link--primary { color: var(--apple-link-blue); }
-.hero__link--primary:hover { color: var(--apple-link-blue-hover); text-decoration: underline; }
-.hero__link--secondary { color: var(--apple-link-blue); }
-
-/* Light variant */
-.hero--light { background: var(--apple-bg-white); color: var(--apple-text-primary); }
-.hero--light .hero__subtitle { color: var(--apple-text-secondary); }
-
-/* Gradient headline */
-.hero__headline--gradient {
-  background: var(--apple-gradient-text-purple);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Responsive */
-@media (min-width: 734px)  { .hero__headline { font-size: var(--apple-font-size-hero); } }
-@media (min-width: 1068px) { .hero__headline { font-size: var(--apple-font-size-hero-max); } }
-```
-
-### Product Grid Template
-
-```html
-<section class="apple-section product-grid-section">
-  <div class="apple-content">
-    <h2 class="product-grid__heading">Explore the lineup.</h2>
-    <div class="product-grid">
-      <article class="product-card">
-        <div class="product-card__image">
-          <img src="product-1.jpg" alt="MacBook Air — thin and light laptop" loading="lazy">
-        </div>
-        <h3 class="product-card__name">MacBook Air</h3>
-        <p class="product-card__tagline">Strikingly thin. Impressively big.</p>
-        <a href="#" class="product-card__link">Learn more ›</a>
-      </article>
-      <!-- Repeat cards as needed -->
-    </div>
-  </div>
-</section>
-```
-
-```css
-.product-grid-section { background: var(--apple-bg-light-gray); }
-
-.product-grid__heading {
-  font-family: var(--apple-font-display);
-  font-size: var(--apple-font-size-subtitle-max);
-  font-weight: var(--apple-weight-title);
-  line-height: var(--apple-leading-title);
-  letter-spacing: var(--apple-tracking-en-title);
-  text-align: center;
-  color: var(--apple-text-primary);
-  margin: 0 0 var(--apple-component-gap-lg) 0;
-}
-
-.product-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--apple-component-gap-md);
-}
-@media (min-width: 734px)  { .product-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1068px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
-
-.product-card {
-  background: var(--apple-bg-white);
-  border-radius: var(--apple-radius-card);
-  padding: var(--apple-card-padding);
-  box-shadow: var(--apple-shadow-card);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--apple-component-gap-sm);
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
-}
-.product-card:hover {
-  box-shadow: var(--apple-shadow-hover);
-  transform: translateY(-4px);
-}
-.product-card__image {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border-radius: var(--apple-radius-card-sm);
-}
-.product-card__image img { width: 100%; height: 100%; object-fit: cover; }
-.product-card__name {
-  font-family: var(--apple-font-display);
-  font-size: var(--apple-font-size-subtitle-min);
-  font-weight: var(--apple-weight-title);
-  line-height: var(--apple-leading-title);
-  color: var(--apple-text-primary);
-  margin: 0;
-}
-.product-card__tagline {
-  font-family: var(--apple-font-text);
-  font-size: var(--apple-font-size-body);
-  font-weight: var(--apple-weight-body);
-  line-height: var(--apple-leading-body);
-  color: var(--apple-text-secondary);
-  margin: 0;
-}
-.product-card__link {
-  font-family: var(--apple-font-text);
-  font-size: var(--apple-font-size-body);
-  color: var(--apple-link-blue);
-  text-decoration: none;
-}
-.product-card__link:hover { color: var(--apple-link-blue-hover); text-decoration: underline; }
-```
-
-### Composing a Full Page
-
-Stack sections vertically and alternate backgrounds:
-
-| Order | Section | Background |
-|-------|---------|------------|
-| 1 | Hero | Dark gradient or `--apple-bg-dark` |
-| 2 | Product Grid | `--apple-bg-light-gray` |
-| 3 | Feature Content | `--apple-bg-white` |
-| 4 | Feature Cards | `--apple-bg-light-gray` |
-| 5 | Dark Section | `--apple-bg-dark` |
-
----
-
-## Output Rules
-
-- Always use CSS custom properties (`var(--apple-*)`) — never hard-code raw values.
-- Prefer semantic class names (`.hero`, `.product-card`) over utility-only markup.
-- Include Google Fonts `<link>` tags when Apple system fonts may be unavailable.
-- All `<img>` elements must have descriptive `alt` text.
-- Produce valid, accessible HTML (proper heading hierarchy, ARIA labels where needed).
-- Set `<html lang="detected-language">` based on user's language.
-
----
-
-## Responsibility Boundaries
-
-| Capability | Provider |
-|------------|----------|
-| Design tokens, typography, copywriting, layout, image rules | **This Skill** (self-contained) |
-| Image search API calls (Unsplash/Pexels) | **Optional extension** (not included) |
-| Skill installation & distribution | **OpenClaw Platform** |
-| Version management | **OpenClaw Platform** |
-
-This Skill is a pure instruction set — it does not make network requests, call APIs, or execute code.
+## 16. Design foundations — the eight principles
+
+The motion and craft above serve Apple's eight design principles (*Principles of Great Design*, WWDC 2026). Use these as the names you reason with:
+
+1. **Purpose.** Make with intention; decide what *not* to build. Every feature asks for the user's time, attention, and trust — spend that budget only where it pays off.
+2. **Agency.** Keep people in control: offer choices, don't force a single path. Back it with forgiveness — easy undo for slips, a confirmation dialog only for genuinely destructive, irreversible actions (use sparingly; overusing it trains people to click through).
+3. **Responsibility.** Act in the user's interest. Privacy: ask at the right moment, only for what's needed, transparently. Safety: anticipate misuse and harm — especially with AI (an allergy-aware recipe app must not suggest a harmful ingredient). Add previews, confirmations, disclaimers; cut a feature whose risk outweighs its value.
+4. **Familiarity.** Build on what people already know. Use metaphors that are neither too literal nor too abstract (a trash can means delete), and honor their physics. Be consistent: things that look the same must behave the same and live in the same place (close is always top-left on macOS) so people can predict what happens next. Only break a familiar pattern if you can prove it's better — then test it, don't assume.
+5. **Flexibility.** Design for different contexts, devices, and the full range of abilities. Adapt to the platform (iPhone = quick touch; desktop = deep workflows with precise pointer control) and to the situation. Design inclusively (age, language, expertise, accessibility). When no single layout fits everyone, let people personalize — rearrange controls, hide what they don't use.
+6. **Simplicity — not minimalism.** Strip the unnecessary so the core purpose shines; burying everything in one place looks minimal but isn't simple. Be concise (plain language, no jargon, fewer steps) and clear (use hierarchy — order, spacing, contrast — so the most important thing is the most obvious). Every element earns its place; sometimes *adding* context simplifies (a video scrubber that shows time remaining). Show the common path first, advanced options one level deeper.
+7. **Craft.** Uncompromising attention to detail builds trust. Beautiful typography, colors that adapt to light/dark, clear iconography, and responsive animations that give immediate, natural feedback. Nothing is random — every spacing, timing, and alignment value is a deliberate choice you can defend. Jittery scroll, misaligned icons, and layouts that break on rotation read as carelessness. Craft needs iteration and longevity — keep evolving the design as features and hardware change.
+8. **Delight.** The result of getting the other seven right, not confetti tacked on top. Decide the emotion you want people to feel (calm, confident, excited) and reinforce it in every decision.
+
+Tactical rules that serve these:
+
+- **Feedback comes in four kinds:** status, completion, warning, error. Confirm meaningful actions, expose ongoing status, warn before problems, validate inline (not on submit).
+- **Wayfinding.** Every screen should answer: Where am I? Where can I go? What's there? How do I get out? Never trap the user.
+- **Grouping & mapping.** Proximity implies relationship; place a control near what it affects and arrange controls to mirror what they change. If you need a label to explain a control, the mapping is weak.
+- **Direct, specific labels beat safe generic ones.** Name nav items for their contents ("Progress", "Library"), not vague umbrellas ("Home"). Specificity creates predictability.
+
+## 17. Process
+
+- **Prototype interactively — an interactive demo is worth "a million static designs."** You discover the interface by building and playing with it; a working prototype also sets a concrete bar that prevents a mediocre final implementation.
+- **Design interaction and visuals together.** "You shouldn't be able to tell where one ends and the other begins." Motion is not a layer added after the pixels.
+- **Test with real people in real context**, and review motion with fresh eyes — play it in slow motion / frame-by-frame to catch what's invisible at full speed.
+
+## Quick Reference
+
+| Need | Technique | Concrete value |
+| --- | --- | --- |
+| Default UI spring | Critically damped, no overshoot | `damping 1.0`, `response 0.3–0.4` |
+| Momentum / flick spring | Under-damped, slight bounce | `damping ~0.8`, `response 0.3–0.4` |
+| Gesture → spring velocity | Hand off release velocity | `gestureVelocity / (target − current)` if normalized |
+| Flick landing point | Project momentum | `current + (v/1000)·d/(1−d)`, `d ≈ 0.998` |
+| Interrupt cleanly | Start from presentation (live) value | read the on-screen transform |
+| Avoid reversal "brick wall" | Carry velocity through re-target | spring that blends velocity |
+| Reversible transition | Mirror the easing curve | inverse cubic-bézier |
+| Decide reverse vs. commit | Use velocity **sign**, not position | at release |
+| 1:1 drag | Pointer Events + capture | respect the grab offset |
+| Feedback | On pointer-down, continuous | never only at the end |
+| Boundary | Rubber-band, don't hard-stop | progressive resistance |
+| Translucent chrome | `backdrop-filter` layer | content scrolls under |
+| Type tracking | Size-specific, never fixed | tighten large text (`-0.02em`), body near `0` |
+| Reduced motion | Cross-fade, not slide/spring | `@media (prefers-reduced-motion)` |
