@@ -32,6 +32,7 @@
 | 動效與手感（0.1.87，skill `apple-design`）：彈簧、按下回饋、拖曳落點、說明卡滑上滑下、對話框進出、提示、震動 | `js/ui.js`、`css/style.css` | `SPRING`、`SPRING_B`、`spr`、`calm`、`land`、`posOf`、`elOf`、`sheetIn`、`sheetOut`、`rubber`、`dlgIn`、`ovlFx`、`HAPT`／`snd`、`toast`（`.on`）、`dropEnd`／`dropDo`；CSS「0.1.87 動效與手感」 |
 | 排版整理（0.1.88）：投降確認、標題列拿掉音效外觀、怎麼玩摺疊、設定打勾、對話框 ✕ | `js/ui.js`、`css/style.css` | `A.menu`、`showDlg`（按鈕第三個值是 class）、`dlgX`、`helpHTML`（`details.more`、`.hl`）、`pickHTMLs`（`.pkb[aria-pressed]`）、`.btn.danger`、`.dlgx` |
 | 準備畫面減少雜訊、電腦版首頁／戰鬥／結束／設定（0.1.89） | `js/ui.js`、`css/style.css` | `stageDots`（`.sdots`）、`infoRowHTML` 的 `.sinfo`（`.sgc.z`）、商店 `.sc` 的 `aria-label`、`.home.endp`、`.page.set`；CSS「0.1.89」那幾段 |
+| 道具動畫、數字滾動、商店價格顏色（0.1.90） | `js/ui.js`、`css/style.css` | `fxSnap`、`itemFx`、`flyImg`、`pop`、`goldEl`、`FXA`（`click` 分派裡呼叫）、`tick`（`V.num`）、`land` 的賣掉飛進金幣；CSS `.fly`、`.sc b` |
 | 機器人分主題參數、估價看位置（0.1.79） | `js/bot.js`、`tools/bot_train.js` | `BOT_PT`、`botPT`、`botTry` 的 `P.posEval`、`BOT_SPOTS_EVAL`、`botPosI`／`botPosBag`、`botBestSpot(…, N)`；`bot_train.js --theme` |
 | 機器人挑職業、擺位看戰力、整理背包、塔羅評估、低血不存錢（0.1.72） | `js/bot.js`、`js/run.js`、`tools/bot_cls.js`、`tools/lobby_pool.js`、`tools/bot_train.js` | `BOT_CLS`、`botClass`、`botSetCls`、`botBestSpot`／`BOT_SPOTS`、`botRelayout`、`botTarot`、`BOT_P.lowHp`、`P.plain`（bot）；`mkBot` 的 `opts`／`opt.rcls`、`joinRivals` 重挑職業（run）；平行對局 `tools/lobby_pool.js`、`bot_train.js --jobs`／`--vs-rcls`／`--vs-plain` |
 | 戰鬥生命照階段放大（0.1.19） | `js/data.js`、`js/run.js` | `HP_ST`、`hpMul`（data）；`stageHp`、`MOB_HP`、`MOB_DMG`（run，`startFight`、`simLobby`、`resumeFight` 都套用） |
@@ -191,24 +192,24 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（576 行）
+### js/news.js（583 行）
 
 
-### js/ui.js（3998 行）
+### js/ui.js（4101 行）
 
 - **小工具**（6），21 個宣告
 - **牌階**（124），5 個宣告
 - **主題**（227），3 個宣告
 - **畫面切換**（241），2 個宣告
-- **首頁**（293），4 個宣告
-- **準備畫面**（438），25 個宣告
-- **0.1.52 賽制**（883），22 個宣告
-- **0.1.62 系別羈絆**（1121），29 個宣告
-- **結算、三選一、一局結束**（1462），6 個宣告
-- **戰鬥播放**（1520），28 個宣告
-- **圖鑑、說明、設定**（2306），27 個宣告
-- **動作**（2756），28 個宣告
-- **拖曳擺放**（3654），15 個宣告
+- **首頁**（294），4 個宣告
+- **準備畫面**（439），25 個宣告
+- **0.1.52 賽制**（884），22 個宣告
+- **0.1.62 系別羈絆**（1122），29 個宣告
+- **結算、三選一、一局結束**（1463），6 個宣告
+- **戰鬥播放**（1521），28 個宣告
+- **圖鑑、說明、設定**（2307），27 個宣告
+- **動作**（2757），36 個宣告
+- **拖曳擺放**（3754），15 個宣告
 
 ### js/main.js（74 行）
 

@@ -814,6 +814,10 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .sc.sold{border:0;background:var(--fill);opacity:.45;color:var(--dim)}
 .bag:not(.hassel) .lk{opacity:.45}
 body:has(.ovl,#modal:not([hidden])) #toast{top:auto;bottom:calc(24px + var(--sab))}
+/* 0.1.90 商店價格：買得起的淡色、特價金色、買不起紅色（之前五個都是金色）；道具飛行的圖 */
+.sc b{color:var(--dim)}
+.sc b.c-gold{color:var(--gold)}
+.fly{position:fixed;z-index:55;pointer-events:none;image-rendering:pixelated;filter:drop-shadow(0 6px 10px #0006)}
 /* 0.1.89 結束畫面、設定不要拉滿寬螢幕 */
 .home.endp{max-width:520px;margin:0 auto;width:100%}
 @media (min-width:1040px){

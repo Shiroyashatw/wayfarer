@@ -280,6 +280,7 @@ function render() {
   paintSprites(app);
   fitBag();
   sheetIn();
+  if (V.scr === 'run' && run && run.phase !== 'end') tick('.top .gold', run.gold, 'g'), tick('.top .hpt', run.hp, 'h');
   /* 0.1.59 開場賽制轉盤 */
   if (V.scr === 'run' && run && run.phase === 'mode') wheelGo(run);
   /* 0.1.55 百科：重畫後照搜尋欄再篩一次 */
@@ -3437,7 +3438,12 @@ document.addEventListener('click', ev => {
   const el = ev.target.closest('[data-act]');
   if (!el || el.disabled) return;
   const f = A[el.dataset.act];
-  if (f) f(el.dataset);
+  if (!f) return;
+  const fx = FXA[el.dataset.act] && S.run && FXA[el.dataset.act](el.dataset, el),
+    snap = fx && fxSnap(),
+    src = fx && fx[0] && { src: fx[0].src, r: fx[0].getBoundingClientRect(), id: fx[1] };
+  f(el.dataset);
+  if (fx) itemFx(snap, src);
 });
 /* 0.1.28 融合過的道具：圖示加元素顏色的光暈（變成哪一系就哪個顏色；沒換系的照效果）＋左下角小輔助圖示 */
 const FUC = {
@@ -3508,7 +3514,7 @@ function land(d, g, before) {
     return;
   }
   const card = d.from === 'shop' && !before.has(u) && document.querySelector(`.shop .sc[data-sk="${d.sk}"]`),
-    to = el || card || (d.fuse && elOf(d.fuse.u)) || (d.sold && $('shop'));
+    to = el || card || (d.fuse && elOf(d.fuse.u)) || (d.sold && goldEl());
   if (!to) return gone();
   /* 回原位（放不下、沒買）或被吃掉（賣掉、融合）：影子飛過去 */
   const r = to.getBoundingClientRect(),
@@ -3527,6 +3533,100 @@ function land(d, g, before) {
     gone();
     if (el) el.classList.remove('lift');
   };
+}
+/* 0.1.90 道具動畫：按鈕操作前記下每件道具在畫面上的位置（fxSnap），畫完再比對（itemFx）：
+   新的從來源飛過來、升階的材料飛到一起再彈一下、賣掉的縮進金幣、換位置的從原位滑過去 */
+function fxSnap() {
+  const run = S.run,
+    m = new Map();
+  if (!run) return m;
+  for (const o of [...run.bag.items, ...run.bench])
+    if (o) {
+      const el = elOf(o.u),
+        img = el && el.querySelector('img');
+      if (img) m.set(o.u, { r: img.getBoundingClientRect(), src: img.src, id: o.id, t: o.t, at: posOf(run).get(o.u) });
+    }
+  return m;
+}
+function flyImg(src, a, b, fade) {
+  const g = document.createElement('img');
+  g.src = src;
+  g.className = 'fly';
+  Object.assign(g.style, { left: a.left + 'px', top: a.top + 'px', width: a.width + 'px', height: a.height + 'px' });
+  document.body.appendChild(g);
+  const an = spr(g, [
+    { transform: 'none', opacity: 1 },
+    {
+      transform: `translate(${b.left - a.left}px,${b.top - a.top}px) scale(${b.width / a.width})`,
+      opacity: fade ? 0 : 1
+    }
+  ]);
+  if (!an) return g.remove(), null;
+  an.onfinish = () => g.remove();
+  return an;
+}
+const pop = el => el && spr(el, [{ transform: 'scale(1.2)' }, { transform: 'none' }], 1);
+const goldEl = () => document.querySelector('.top .gold');
+/* from：新道具的來源（商店卡、三選一的卡）；skip：拖曳放開的那件（land 已經處理） */
+function itemFx(before, from, skip) {
+  const run = S.run;
+  if (!run || calm()) return;
+  const pos = posOf(run),
+    now = new Map([...run.bag.items, ...run.bench].filter(Boolean).map(o => [o.u, o]));
+  for (const [u, o] of now) {
+    const el = elOf(u),
+      img = el && el.querySelector('img');
+    if (!img || u === skip) continue;
+    const r = img.getBoundingClientRect(),
+      b = before.get(u);
+    if (!b) {
+      if (!from) continue;
+      img.style.opacity = 0;
+      const a = flyImg(from.src, from.r, r),
+        show = () => ((img.style.opacity = ''), pop(el));
+      a ? a.finished.then(show, show) : show();
+    } else if (b.t < o.t) {
+      /* 合成：用掉的材料（還有剛買的那件）飛過來，到了這件和階數角標彈一下 */
+      for (const [v, q] of before) if (!now.has(v) && q.id === o.id) flyImg(q.src, q.r, r, 1);
+      if (from && from.id === o.id) flyImg(from.src, from.r, r, 1);
+      setTimeout(() => (pop(el), pop(el.querySelector('.tier'))), 300);
+    } else if (b.at !== pos.get(u))
+      spr(img, [{ transform: `translate(${b.r.left - r.left}px,${b.r.top - r.top}px)` }, { transform: 'none' }]);
+  }
+  /* 不見了、也不是被合成掉的：賣掉了，縮進金幣 */
+  const g = goldEl();
+  for (const [v, q] of before)
+    if (!now.has(v) && v !== skip && ![...now.values()].some(o => o.id === q.id && o.t > (before.get(o.u) || o).t) && g)
+      flyImg(q.src, q.r, g.getBoundingClientRect(), 1);
+}
+/* 按鈕操作的來源：[新道具從哪張圖飛出來, 那件道具的 id]（要在操作之前量，畫完那張卡就不在了） */
+const $q = s => document.querySelector(s);
+const FXA = {
+  buy: d => [$q(`.shop .sc[data-sk="${d.k}"] img`), S.run.shop[d.k] && S.run.shop[d.k].id],
+  legBuy: d => [$q(`[data-act="legSel"][data-k="${d.k}"] img`), S.run.leg && S.run.leg[d.k] && S.run.leg[d.k].id],
+  pick: (d, el) => [el.querySelector('img'), d.k],
+  claim: () => [$q('.hold img'), S.run.hold && S.run.hold.id],
+  sell: () => [],
+  sellHold: () => [],
+  autoPlace: () => [],
+  toBench: () => []
+};
+/* 0.1.90 金幣、生命變動時數字滾到新的值（不直接跳） */
+function tick(sel, v, k) {
+  const el = document.querySelector(sel),
+    old = (V.num = V.num || {})[k];
+  V.num[k] = v;
+  if (!el || old == null || old === v || calm()) return;
+  const t = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.includes(String(v)));
+  if (!t) return;
+  const tpl = t.nodeValue,
+    t0 = performance.now(),
+    f = now => {
+      const p = Math.min(1, (now - t0) / 450);
+      t.nodeValue = tpl.replace(String(v), String(Math.round(old + (v - old) * (1 - Math.pow(1 - p, 3)))));
+      if (p < 1 && t.isConnected) requestAnimationFrame(f);
+    };
+  requestAnimationFrame(f);
 }
 /* 底部的道具說明（手機）：從下面滑上來；往下滑可以關（手指拖多少就跟多少，往上拉有阻力，放開看速度決定關或彈回）；關的時候滑回下面 */
 const rubber = (x, dim, c = 0.55) => (x * dim * c) / (dim + c * Math.abs(x));
@@ -3877,9 +3977,12 @@ function dropEnd(ev) {
   if (!d) return;
   V.drag = null;
   document.querySelectorAll('.it.press').forEach(e => e.classList.remove('press'));
-  const before = S.run ? posOf(S.run) : null;
+  const before = S.run ? posOf(S.run) : null,
+    snap = d.on && fxSnap();
   dropDo(ev, d);
   if (d.el) before ? land(d, d.el, before) : d.el.remove();
+  /* 拖進去之後合成了：材料飛到一起、升階彈一下（拖的那件 land 已經處理，賣掉的也是） */
+  if (snap && !d.sold) itemFx(snap, null, d.o.u);
 }
 function dropDo(ev, d) {
   const run = S.run;
