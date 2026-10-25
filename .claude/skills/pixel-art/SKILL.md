@@ -78,3 +78,7 @@ description: 新增或替換塞令老師的怪物、首領、老師頭像、道�
 ## 玩家頭像（4×4 圖表，全身）
 
 提示詞在 `docs/頭像圖表.md`（照 `docs/圖示圖表.md` 的格式：圖表提示詞、格序對照表、單張補產提示詞）。使用者說「頭像圖表放好了」：讀 `art/sheets/sheet_avatar_1.png`（256×256），照對照表的格序切成 16 張 64×64（透明背景，切完去掉空白邊）存成 `art/monsters/av_*.png`，跑 `python3 tools/art.py`，把 `['檔名', '名稱']` 加進 `js/data.js` 的 `AVATARS`，在設定的頭像選單、首頁、準備畫面、戰鬥畫面截圖確認；做完把提示詞搬到 `docs/提示詞封存.md`、原圖搬到 `art/sheets/done/`。
+
+## 塔羅牌卡圖（64×64）
+
+提示詞在 `docs/塔羅牌圖表.md`（`sheet_tarot_1` 4×4、`sheet_tarot_2` 3×2）。使用者說「塔羅牌圖表放好了」：`python3 tools/tarot_cut.py`（照格序切成 `art/icons/tarot_牌.png`、跑 `art.py`、原圖搬到 `art/sheets/done/`），在塔羅牌陣的四選一截圖確認（逆位由程式倒過來）。

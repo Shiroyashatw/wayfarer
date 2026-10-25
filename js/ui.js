@@ -896,7 +896,7 @@ const MODEUI = {
     /* 現在生效的牌（點了看抽過的牌） */
     bar: run =>
       run.bag.tar
-        ? `<button class="mchip" data-act="modeInfo" aria-label="塔羅牌：${tarotName(run.bag.tar)}"><span class="tno sm${tarOf(run.bag.tar).r ? ' rv' : ''}">${TAROTI[tarOf(run.bag.tar).T.k]}</span><b>${tarotName(run.bag.tar)}</b></button>`
+        ? `<button class="mchip" data-act="modeInfo" aria-label="塔羅牌：${tarotName(run.bag.tar)}">${tarotArt(run.bag.tar, 1)}<b>${tarotName(run.bag.tar)}</b></button>`
         : '',
     info: run =>
       (run.tarot || []).length
@@ -905,6 +905,14 @@ const MODEUI = {
   }
 };
 /* 0.1.69 塔羅牌陣：一張牌的名字（正逆位）、效果 */
+/* 0.1.74 塔羅牌的卡圖（art/icons/tarot_牌.png，64×64）：逆位倒過來；還沒有圖（或大圖還沒載好）就顯示牌的編號 */
+const tarotArt = (k, sm) => {
+  const x = tarOf(k),
+    u = x && artIconURL('tarot_' + x.T.k);
+  return u
+    ? `<img class="tcard${sm ? ' sm' : ''}${x.r ? ' rvs' : ''}" src="${u}" alt="">`
+    : `<span class="tno${sm ? ' sm' : ''}${x && x.r ? ' rvs' : ''}">${x ? TAROTI[x.T.k] : ''}</span>`;
+};
 const tarotName = k => {
   const x = tarOf(k);
   return `${x.T.n}${x.r ? '（逆位）' : ''}`;
@@ -919,7 +927,7 @@ function tarotHTML(run) {
   return `<div class="ovl"><div class="dlg2"><b>塔羅牌陣：選一張</b><p class="c-dim">生效第 ${st}～${st + 1} 階段；選過的牌不會再出現</p><div class="picks">${q.opts
     .map(k => {
       const x = tarOf(k);
-      return `<button class="pk tarot${x.r ? ' rv' : ''}" data-act="tarotPick" data-k="${k}"><span class="tno">${TAROTI[x.T.k]}</span><span><b>${tarotName(k)}・${TAROT_CN[x.e.c]}</b><small>${x.e.d}</small></span></button>`;
+      return `<button class="pk tarot${x.r ? ' rvs' : ''}" data-act="tarotPick" data-k="${k}">${tarotArt(k)}<span><b>${tarotName(k)}・${TAROT_CN[x.e.c]}</b><small>${x.e.d}</small></span></button>`;
     })
     .join('')}</div></div></div>`;
 }

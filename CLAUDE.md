@@ -8,7 +8,7 @@
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。規則或數值改了要同步更新。
 - 介面：照 `docs/設計規範.md`（字級、顏色變數、間距、元件、資訊量規則）；改介面用 skill `ui-design`，改完在手機尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
-- 圖：道具圖示的 PixelLab 提示詞在 `docs/圖示提示詞.md`（只留還沒產的；做完的在 `docs/提示詞封存.md`），怪物在 `docs/怪物提示詞.md`，玩家選的頭像（4×4 大圖、每格 64×64）在 `docs/頭像圖表.md`；新增圖用 skill `pixel-art`。
+- 圖：道具圖示的 PixelLab 提示詞在 `docs/圖示提示詞.md`（只留還沒產的；做完的在 `docs/提示詞封存.md`），怪物在 `docs/怪物提示詞.md`，玩家選的頭像（4×4 大圖、每格 64×64）在 `docs/頭像圖表.md`，塔羅牌卡圖（64×64）在 `docs/塔羅牌圖表.md`；新增圖用 skill `pixel-art`。
 - 說明文字：新增或修改道具、核心、職業、異常、機制後用 skill `item-text`：照規則改產生器（`items.js` 的 `MODN`／`PREN`／`itemDesc`）、百科（`ui.js` 的 `CX_AIL`／`CX_STAT`），跑 `node .claude/skills/item-text/audit.js` 沒有問題才交差。
 - 圖示：新增道具或借用圖示（`ic`）後用 skill `icon-check`：`python3 tools/icon_check.py` 產生 `docs/圖示對照.md`（名字 ↔ 圖示原本畫的東西），對不上就換圖示或改名字。
 - 機器人：新增道具、體系、機制或改經濟、戰鬥規則後用 skill `bot-ai`：確認 `js/bot.js` 的 `botPower` 有算到新東西，`node tools/bot_train.js --iters 30 --lobbies 40 --write` 重新訓練，再重傳種子。
@@ -53,6 +53,7 @@
 | `tools/art.py` | `art/monsters/` 的 PNG 像素圖（裁邊）與 `art/icons/` 的 32×32 圖示（不裁邊）→ 拼成 `img/` 的調色盤大圖＋`js/art.js` 座標；使用者說「放了新圖」就跑（skill `pixel-art`） |
 | `tools/pixellab_batch.py` | PixelLab API 批次產圖：讀 `docs/怪物提示詞.md`／`docs/圖示提示詞.md` 的提示詞，輸出到 `art/new/`（不進 git）；金鑰用環境變數 `PIXELLAB_API_KEY`，不要寫進專案 |
 | `tools/icon_sheets.py` | 圖示圖表：從 `docs/圖示提示詞.md` 組出 `docs/圖示圖表.md`（8×8 一張 64 個），圖表原圖放 `art/sheets/`，`process` 全部切成 `art/icons/` 的單張、跑 `art.py` 打包，最後 `archive`（有圖的提示詞搬到 `docs/提示詞封存.md`；切過的圖表整張移除、原圖搬到 `art/sheets/done/`）；圖表編號固定 |
+| `tools/tarot_cut.py` | 塔羅牌卡圖：`art/sheets/sheet_tarot_N.png` 照 `docs/塔羅牌圖表.md` 的格序切成 `art/icons/tarot_牌.png`（64×64），跑 `art.py`（skill `pixel-art`） |
 | `tools/game_node.js` | 在 Node 載入遊戲純邏輯（core～bot），給訓練與大量模擬用 |
 | `tools/bot_train.js` | 機器人訓練：自我對打調 `BOT_P`，`--vs-old` 跟舊買法比，`--write` 寫回 `js/bot.js`；`--vs-rcls`／`--vs-plain` 比挑職業、擺位，`--jobs` 平行（skill `bot-ai`） |
 | `tools/bot_cls.js` | 機器人挑職業的表 `BOT_CLS`：菁英對局統計職業 × 主題 × 賽制的名次，`--write` 寫回 `js/bot.js`；改了職業、主題、賽制或大改平衡後重跑（skill `bot-ai`） |
