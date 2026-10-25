@@ -1736,6 +1736,10 @@ function bLog(e, tg) {
   else if (e.k === 'revive') t = `${who(e.s)} ${e.ankh ? '安卡' : '女武神降臨'}！復活 ${e.v} 生命`;
   else if (e.k === 'summon') t = `${who(e.s)} 召喚${it(e.s, e.u) || '亞馬遜戰士'}`;
   else if (e.k === 'pinOut') t = `${who(e.s)} 拔出${who(tg)}身上的矛：撕裂`;
+  /* 0.1.74 狂戰士 */ else if (e.k === 'ragna') t = `${who(e.s)} 諸神黃昏！${e.v} 秒內狂暴`;
+  else if (e.k === 'undying') t = `${who(e.s)} 不死之怒！${e.v} 秒內不會倒下`;
+  else if (e.k === 'rite') t = `${who(e.s)} 血祭 -${e.v}`;
+  else if (e.k === 'axeThrow') t = `${who(e.s)} 擲出 ${e.v} 把斧：${who(tg)}破甲、撕裂`;
   /* 0.1.51 火法師、雷法師 */ else if (e.k === 'zap') t = `${who(tg)} 電荷滿了：放電 -${e.v}${e.ov ? '（超載）' : ''}`;
   else if (e.k === 'meteor') t = `${who(e.s)} 隕石落下 → ${who(tg)} -${e.v}`;
   else if (e.k === 'bolt') t = `${who(e.s)} 落雷 → ${who(tg)} -${e.v}`;
@@ -2043,6 +2047,16 @@ function bTick() {
     } else if (e.k === 'pinOut') {
       bPop(tg, '拔矛・撕裂', '#ff3a5a', 1);
       bBurst(tg, '#ff3a5a', 8);
+    } else if (e.k === 'ragna' || e.k === 'undying') {
+      /* 0.1.74 狂戰士：諸神黃昏、不死之怒 */
+      bPop(e.s, e.k === 'ragna' ? '諸神黃昏！' : '不死之怒！', '#ff3a5a', 1);
+      bBurst(e.s, '#ff3a5a', 14, 1);
+    } else if (e.k === 'rite') {
+      bPop(e.s, `血祭 -${e.v}`, '#ff3a5a');
+      bBurst(e.s, '#ff3a5a', 8, 1);
+    } else if (e.k === 'axeThrow') {
+      bPop(tg, '擲斧！', '#ff8a8a', 1);
+      bBurst(tg, '#ff8a8a', 8);
     } else if (e.k === 'summon') bBurst(e.s, '#bfe9ff', 6, 1);
     else if (e.k === 'wolf') {
       bPop(e.s, '戰狼加入', '#ffd27a');
@@ -2228,6 +2242,10 @@ const CX_STAT = () => [
   ['連擊／連鎖', '連擊：有機率馬上再打一下；連鎖：每次攻擊多打幾下，多打的傷害打折。'],
   ['穿甲', `無視一部分護甲與護盾，最多 ${PIERCE_MAX}%。`],
   ['處決／背水', '處決：敵人生命低於 30% 時傷害提高；背水：自己生命低於 50% 時傷害（或攻速）提高。'],
+  [
+    '狂血',
+    `狂戰士的職業特性：每少 10% 生命，斧、鎚攻速 +${BLOOD_SPD}%、吸血 +${BLOOD_LS}%（最多算到少 90%）。血祭讓開戰就少一截，諸神黃昏、不死之怒在快倒下時爆發。`
+  ],
   ['先手', '開戰時武器已經充能幾 %，第一下比較快。'],
   ['越戰越快', '每 5 秒攻速提高，最多 5 次。'],
   ['抗性', `受到某種異常的層數或秒數減少，最多 -${RES_MAX}%；淨化每 ${CLEANSE_T} 秒清掉身上最嚴重的異常。`],

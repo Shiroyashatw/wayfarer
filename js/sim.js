@@ -78,6 +78,13 @@ function simSide(F) {
     furyN: 0,
     rev: 0,
     valk: 0,
+    /* 0.1.74 狂戰士：諸神黃昏（到幾秒、用過了沒）、不死之怒（不會死到幾秒、加成到幾秒、用過了沒）、戰意沸騰層數 */
+    ragT: 0,
+    ragU: 0,
+    undT: 0,
+    undB: 0,
+    undU: 0,
+    bzF: 0,
     cS: 0,
     cB: 0,
     bowX: 0,
@@ -211,9 +218,29 @@ function simulate(FA, FB, seed) {
     });
   const hurt = (t, d, def, src, k, extra) => {
     def.hp -= d;
+    /* 0.1.74 不死之怒：第一次受到致命傷留 1 生命，UNDY_T 秒內不會死 */
+    if (def.hp < 1 && t < def.undT) def.hp = 1;
     log(t, src, k, Math.round(d), extra);
+    if (def.hp <= 0 && def.F.undying && !def.undU) {
+      const x = S.indexOf(def);
+      def.undU = 1;
+      def.hp = 1;
+      def.undT = t + UNDY_T;
+      def.undB = t + UNDY_B;
+      log(t, x, 'undying', UNDY_T, { self: 1 });
+      tr(def, 'undying');
+    }
     if (def.hp <= 0 && (def.F.revive || def.F.ankh) && !def.rev) revive(t, def);
+    /* 0.1.74 諸神黃昏：生命第一次低於 RAGNA_AT% 時發動 */
+    if (def.F.ragna && !def.ragU && def.hp > 0 && def.hp < (def.max * RAGNA_AT) / 100) {
+      def.ragU = 1;
+      def.ragT = t + RAGNA_T;
+      log(t, S.indexOf(def), 'ragna', RAGNA_T, { self: 1 });
+      tr(def, 'ragna');
+    }
   };
+  /* 0.1.74 狂血：少了幾成生命（0～9） */
+  const lost10 = a => Math.max(0, Math.min(9, fl((1 - a.hp / a.max) * 10 + 1e-6)));
   /* 0.1.50 女武神降臨：第一次倒下時復活、清掉持續傷害，之後傷害、攻速提升、免疫暈眩凍結冰緩 */
   /* 0.1.59 法老王的遺物・安卡（ankh）：只復活，沒有女武神的加成 */
   function revive(t, x) {
@@ -248,7 +275,7 @@ function simulate(FA, FB, seed) {
     if ((k === 'frozen' || k === 'chill') && d.F.immFz) return tr(d, 'immFz'), 0;
     if ((k === 'poison' || k === 'venom') && t < (d.F.poisonImm || 0)) return tr(d, 'poisonImm'), 0;
     if (t < (d.F.immT || 0)) return 0;
-    if (d.valk && (k === 'stun' || k === 'frozen' || k === 'chill' || k === 'para')) return 0;
+    if ((d.valk || d.ragT > t) && (k === 'stun' || k === 'frozen' || k === 'chill' || k === 'para')) return 0;
     const v = Math.min(RES_MAX, d.F[RK[k]] || 0);
     if (v > 0) tr(d, RK[k]);
     return 1 - v / 100;
@@ -267,7 +294,8 @@ function simulate(FA, FB, seed) {
       log(t, i, 'heal', Math.round(h), { self: 1, ...extra });
     }
     /* 0.1.52 印記生命 2 級：回復超過上限的部分變成護盾 */
-    if (a.F.sgLife >= 2 && raw - Math.max(0, h) > 0.5) gainBlock(t, a, i, raw - Math.max(0, h), null);
+    /* 0.1.74 嗜血護甲：回復超過上限的部分也變成護盾 */
+    if ((a.F.sgLife >= 2 || a.F.lsShield) && raw - Math.max(0, h) > 0.5) gainBlock(t, a, i, raw - Math.max(0, h), null);
   };
   /* 0.1.37 獲得護盾：腐蝕中不能獲得，改成扣 CORRODE_HP 生命 */
   const gainBlock = (t, a, i, v, u) => {
@@ -487,7 +515,10 @@ function simulate(FA, FB, seed) {
     /* 0.1.37 衰老：不能暴擊 */
     /* 0.1.50 狙擊（必定暴擊）、血獵（敵人撕裂中暴擊率提升）、鷹眼（敵人每支箭暴擊傷害提升） */
     const cr = r() * 100,
-      crit = !(a.age > 0) && (o.force || cr < w.crit + ph.crit + (a.F.huntCrit && d.rend > 0 ? a.F.huntCrit : 0)),
+      crit =
+        !(a.age > 0) &&
+        (o.force ||
+          cr < w.crit + ph.crit + (a.F.huntCrit && d.rend > 0 ? a.F.huntCrit : 0) + (a.undB > t ? UNDY_CRIT : 0)),
       cm = a.F.critMul + (a.F.critArrow || 0) * d.arrow;
     /* 0.1.29 厚皮：暴擊多出來的傷害減少 */
     if (crit) v *= 1 + (cm / 100 - 1) * (1 - Math.min(RES_MAX, d.F.critRes || 0) / 100);
@@ -499,8 +530,13 @@ function simulate(FA, FB, seed) {
     if (a.dmgDown) v *= Math.max(0, 1 - a.dmgDown / 100);
     if (a.F.shatterF && w.cold) v *= 1 + (a.F.shatterF * items(S[1 - ai]).filter(o => o.fz > 0).length) / 100;
     /* 0.1.10 處決（敵人生命低於 30%）、背水（自己生命低於 50%） */
-    if (a.F.execute && d.hp < d.max * 0.3) v *= 1 + a.F.execute / 100;
+    /* 0.1.74 處刑：敵人每層撕裂，處決線 +1%（最多 +20%） */
+    if (a.F.execute && d.hp < d.max * (0.3 + Math.min(0.2, (a.F.execRend || 0) * d.rend * 0.01)))
+      v *= 1 + a.F.execute / 100;
     if (a.F.rage && a.hp < a.max * 0.5) v *= 1 + a.F.rage / 100;
+    /* 0.1.74 諸神黃昏、不死之怒的加成 */
+    if (a.ragT > t) v *= 1 + RAGNA_DMG / 100;
+    if (a.undB > t) v *= 1 + UNDY_DMG / 100;
     /* 0.1.69 塔羅：審判逆位（自己生命低於 30%）、太陽逆位（生命比對手高時受到的傷害減少） */
     if (a.F.tarLow && a.hp < a.max * 0.3) v *= 1 + a.F.tarLow / 100;
     if (!self && d.F.tarHi && d.hp > a.hp) v *= 1 - d.F.tarHi / 100;
@@ -530,7 +566,8 @@ function simulate(FA, FB, seed) {
     }
     let ab = 0;
     if (d.block > 0) {
-      ab = Math.min(d.block, v * (1 - pc));
+      /* 0.1.74 碎骨：一部分傷害無視護盾 */
+      ab = Math.min(d.block, v * (1 - pc) * (1 - (w.shPierce || 0) / 100));
       d.block -= ab;
       v -= ab;
       /* 0.1.52 印記守護 2 級：護盾被打破時反彈 */
@@ -552,6 +589,7 @@ function simulate(FA, FB, seed) {
     a.dmgDone += v;
     if (a.F.streak) a.streak = Math.min(STREAK_MAX, a.streak + 1);
     if (!self && d.F.fury && v > 0) d.furyN = Math.min(FURY_MAX, d.furyN + 1);
+    if (!self && d.F.bzFury && v > 0) d.bzF = Math.min(BZFURY_MAX, d.bzF + 1);
     if (crit && a.F.huntHeal && d.rend > 0 && a.hp > 0) heal(t, a, ai, a.F.huntHeal), tr(a, 'huntHeal');
     /* 0.1.28 守護（質變）：命中時獲得傷害一部分的格擋 */
     if (w.guard && v > 0) gainBlock(t, a, ai, (v * w.guard) / 100, w.u);
@@ -587,7 +625,9 @@ function simulate(FA, FB, seed) {
         const th = d.s.reduce((n, s) => n + s.thorns, 0);
         if (th) hurt(t, th, a, 1 - ai, 'thorns', {});
       }
-      const ls = (w.ls + a.F.ls) / 100;
+      /* 0.1.74 狂血：斧、鎚每少 10% 生命吸血 +BLOOD_LS%；諸神黃昏吸血 ×2 */
+      const ls =
+        ((w.ls + a.F.ls + (w.bz && a.F.blood ? a.F.blood * BLOOD_LS * lost10(a) : 0)) / 100) * (a.ragT > t ? 2 : 1);
       if (ls > 0 && v > 0) heal(t, a, ai, v * ls);
     }
     if (!self) stickArrows(t, ai, d, w.stick);
@@ -598,6 +638,8 @@ function simulate(FA, FB, seed) {
     if (!self && w.charge) addCharge(t, ai, d, w.charge);
     /* 0.1.50 插箭、撕裂、插矛（插滿後下一次命中拔出：撕裂）、元素箭袋（燃燒 → 冰緩 → 中毒） */
     addRend(a, d, (w.rend || 0) + (o.rend || 0), t);
+    /* 0.1.74 撕裂猛擊：每第 REND_EV 下多撕裂 */
+    if (w.rendEv && !self && (w.rc = (w.rc || 0) + 1) % REND_EV === 0) addRend(a, d, w.rendEv, t);
     if (w.pin && !self) {
       if (d.pin >= PIN_MAX) (d.pin = 0), addRend(a, d, PIN_REND, t), log(t, ai, 'pinOut', PIN_MAX, {});
       else d.pin = Math.min(PIN_MAX, d.pin + w.pin);
@@ -846,6 +888,19 @@ function simulate(FA, FB, seed) {
       tr(a, 'spark');
     }
     if (a.F.igniteStart) igniteIt(0, i, S[1 - i]);
+    /* 0.1.74 血祭：開戰扣自己一部分生命（不會死）；擲斧：背包每把斧，敵人破甲、撕裂 */
+    if (a.F.selfCut) {
+      const c = Math.min(a.hp - 1, (a.max * a.F.selfCut) / 100);
+      if (c > 0) (a.hp -= c), log(0, i, 'rite', Math.round(c), { self: 1 }), tr(a, 'selfCut');
+    }
+    if (a.F.axeThrow && a.F.axeN) {
+      const d = S[1 - i],
+        n = a.F.axeN * a.F.axeThrow;
+      d.sunder = Math.min(SUNDER_MAX, d.sunder + AXE_SUNDER * n * res(d, 'sunder', 0));
+      addRend(a, d, AXE_REND * n, 0);
+      log(0, i, 'axeThrow', a.F.axeN, {});
+      tr(a, 'axeThrow');
+    }
     /* 0.1.52 印記幸運 3 級：擲骰，隨機一把 Ⅲ 階以下的武器這場升一階（傷害 ×3） */
     if (a.F.sgLuck >= 3) {
       const c = a.w.filter(w => w.t < TIER_MAX && !w.src);
@@ -949,6 +1004,9 @@ function simulate(FA, FB, seed) {
           (a.zapS ? 1 + (a.zapS * a.F.zapSpd) / 100 : 1) *
           (a.god ? 1 + GOD_SPD / 100 : 1) *
           (a.avatarOn ? 1 + a.F.avatar / 100 : 1) *
+          /* 0.1.74 諸神黃昏、不死之怒 */
+          (a.ragT > t ? 1 + RAGNA_SPD / 100 : 1) *
+          (a.undB > t ? 1 + UNDY_SPD / 100 : 1) *
           (S[1 - i].F.heat ? Math.max(0.4, 1 - (fl(a.burn / 5) * S[1 - i].F.heat) / 100) : 1),
         night = a.F.sunmoon && !isDay(t);
       if (a.F.sunmoon && +!night !== a.sunP) (a.sunP = +!night), log(t, i, 'sun', a.sunP, { self: 1 });
@@ -968,7 +1026,9 @@ function simulate(FA, FB, seed) {
           (w.sgL && a.F.sgLife >= 3 && a.hp < a.max * 0.3 ? 2 : 1) *
           /* 0.1.53 撲殺之後寵物攻速 ×2、狂暴 */
           (w.pet && a.pnc ? 2 : 1) *
-          (w.pet && a.frz ? 1 + (a.frz * a.F.frenzy) / 100 : 1);
+          (w.pet && a.frz ? 1 + (a.frz * a.F.frenzy) / 100 : 1) *
+          /* 0.1.74 狂血（斧、鎚每少 10% 生命攻速 +BLOOD_SPD%）、戰意沸騰（被打中幾次） */
+          (w.bz ? (1 + ((a.F.blood || 0) * BLOOD_SPD * lost10(a)) / 100) * (1 + (a.bzF * (a.F.bzFury || 0)) / 100) : 1);
         /* 0.1.53 召喚的戰狼解封時記一筆（畫面跳「戰狼加入」） */
         if (w.vw && !w.joined && !(w.seal > 0)) (w.joined = 1), log(t, i, 'wolf', w.vw, { u: w.u, self: 1 });
         if (w.tt >= w.cd) {
@@ -1193,6 +1253,9 @@ function simulate(FA, FB, seed) {
         const a = S[i];
         if (a.rend > 0) {
           hurt(t, a.rend, a, 1 - i, 'dot', { el: 'rend' });
+          /* 0.1.74 血泉：敵人撕裂的傷害回復你 */
+          const o = S[1 - i];
+          if (o.F.rendLeech && o.hp > 0) heal(t, o, 1 - i, (a.rend * o.F.rendLeech) / 100), tr(o, 'rendLeech');
           a.rend = fl(a.rend * REND_KEEP);
         }
       }

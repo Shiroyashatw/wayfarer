@@ -241,7 +241,8 @@ function botThreat(F) {
     tot += avg;
     o.burn += (w.burn || 0) * sp * 1.5;
     o.poison += (w.poison || 0) * sp * 2;
-    o.bleed += (w.bleed || 0) * sp;
+    /* 0.1.74 撕裂也算流血（抗流血擋撕裂） */
+    o.bleed += ((w.bleed || 0) + (w.rend || 0) * 2 + (w.rendEv || 0) / 1.5) * sp;
     o.sunder += (w.sunder || 0) * sp * 0.5;
     o.frozen += (((w.freeze ? w.freeze[0] * FREEZE_T * 0.3 : 0) + (w.chill || 0) * CHILL_T * 0.08) / 100) * avg;
     o.poison += (w.venom || 0) * sp * 4;
@@ -284,7 +285,7 @@ function botPower(F, P = BOT_P) {
     let hit = avg * (1 + crit * (cm - 1)) * (w.shots > 1 ? (w.shots * SHOT_DMG) / 100 : 1);
     if (w.snipe) hit *= 1 + 0.35 / w.snipe;
     arrowRate += ((w.stick || 0) * Math.max(1, w.shots || 1)) / Math.max(0.3, w.cd);
-    if (w.rend || w.pin) rendSrc++;
+    if (w.rend || w.pin || w.rendEv) rendSrc++;
     chgRate += ((w.charge || 0) * (1 + (w.chainN || 0))) / Math.max(0.3, w.cd);
     if (w.burn) burnSrc++;
     hit += ((w.rend || 0) + (w.pin ? PIN_REND / (PIN_MAX + 1) : 0)) * rendW * P.dotW;
@@ -315,7 +316,13 @@ function botPower(F, P = BOT_P) {
         (w.corr || 0) * 6) /
       100;
     hit *= 1 + ctrl * 0.4 * P.ctrlW;
-    hit *= 1 + (w.ls || 0) / 200;
+    /* 0.1.74 狂戰士：狂血（一場平均少 4 成生命：斧、鎚攻速、吸血）、戰意沸騰、撕裂猛擊、碎骨（無視護盾，對手越硬越值錢） */
+    const bl = w.bz ? (F.blood || 0) * (F.selfCut ? 1.6 : 1) : 0;
+    hit *= 1 + ((w.ls || 0) + bl * BLOOD_LS * 4) / 200;
+    if (bl) hit *= 1 + (bl * BLOOD_SPD * 4) / 100;
+    if (w.bz && F.bzFury) hit *= 1 + 0.08 * F.bzFury;
+    if (w.rendEv) hit += (w.rendEv / REND_EV) * rendW * P.dotW;
+    if (w.shPierce) hit *= 1 + (w.shPierce / 100) * BOT_ERES.arm;
     /* 0.1.28 質變：連鎖、穿甲、守護 */
     hit *=
       (1 + (w.chain || 0) / 100) *
@@ -437,6 +444,14 @@ function botPower(F, P = BOT_P) {
   ehp += (F.regen || 0) * 9 + (F.startBlock || 0) + (F.thornsF || 0) * 6 + (F.critHeal || 0) * 4 + (F.thornsP || 0) * 8;
   /* 0.1.50 女武神降臨：多一條命（復活的生命）＋之後的加成；血獵的暴擊回血 */
   if (F.revive) ehp *= 1 + F.revive / 100 + 0.1;
+  /* 0.1.74 狂戰士：諸神黃昏、不死之怒、血祭（少的生命；免異常算在 immT）、血泉、嗜血護甲、處刑看撕裂、擲斧 */
+  if (F.ragna) (ehp *= 1.15), (dps *= 1.15);
+  if (F.undying) (ehp *= 1.25), (dps *= 1.1);
+  if (F.selfCut) ehp *= 1 - F.selfCut / 200;
+  if (F.rendLeech && rendSrc) ehp *= 1 + F.rendLeech / 300;
+  if (F.lsShield && (F.ls || F.weapons.some(w => w.ls || (w.bz && F.blood)))) ehp *= 1.06;
+  if (F.execRend && F.execute && rendSrc) dps *= 1.05;
+  if (F.axeThrow && F.axeN) dps += (AXE_REND * 4 * F.axeN * F.axeThrow * rendW * P.dotW) / 18;
   /* 0.1.52 印記：守護 2 級（護盾被打破反彈）、生命 2、3 級（溢出變護盾、低血加速） */
   if (F.sgGuard >= 2) ehp += 40;
   /* 0.1.53 護主、共生（寵物每秒命中幾次 × 回復） */

@@ -541,6 +541,17 @@ function compileBag(bag, extra = {}) {
       whip: 0,
       symHeal: 0,
       dr: 0,
+      /* 0.1.74 狂戰士：狂血、諸神黃昏、不死之怒、血祭（開戰扣血 %）、擲斧（背包幾把斧）、血泉、處刑看撕裂、戰意沸騰、嗜血護甲 */
+      blood: 0,
+      ragna: 0,
+      undying: 0,
+      selfCut: 0,
+      axeThrow: 0,
+      axeN: 0,
+      rendLeech: 0,
+      execRend: 0,
+      bzFury: 0,
+      lsShield: 0,
       /* 0.1.37 格子：每件道具佔哪幾格（敵人的陷阱放在格子上） */
       grid: { w: bag.w, h: bag.h, at: Object.fromEntries(bag.items.map(o => [o.u, cellsOf(o)])) },
       /* 0.1.40 角色加成的來源：{ 加成: [道具 u…] } */
@@ -901,6 +912,10 @@ function compileBag(bag, extra = {}) {
         sure: m.sure ? 1 : 0,
         pin: m.pin || 0,
         rend: m.rend || 0,
+        /* 0.1.74 狂戰士：斧、鎚（狂血、戰意沸騰看這個）、撕裂猛擊、碎骨（無視護盾 %） */
+        bz: has(o, 'axe') || has(o, 'mace') ? 1 : 0,
+        rendEv: m.rendEv || 0,
+        shPierce: Math.min(100, m.shPierce || 0),
         /* 0.1.51 電荷 */
         charge: m.charge || 0,
         /* 0.1.52 這件的印記（有到 1 級才算）：力量（重擊）、迅捷（接力）、生命（困獸）、幸運（幸運一擊） */
@@ -942,6 +957,8 @@ function compileBag(bag, extra = {}) {
     top.alpha = 1;
   }
   if (TK) tarotF(F, bag, TK, towerU);
+  /* 0.1.74 擲斧：背包裡幾把斧 */
+  if (F.axeThrow) F.axeN = F.weapons.filter(w => !w.vw && TG.get(w.u) && TG.get(w.u).includes('axe')).length;
   /* 0.1.69 塔羅・死神：獻祭換來的永久生命 */
   if (bag.hpx) F.hp += bag.hpx;
   /* 0.1.33 審判：每把武器的傷害 +護甲值 */

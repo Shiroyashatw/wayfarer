@@ -3665,10 +3665,12 @@ const CLASSES = [
     n: '狂戰士',
     ic: 'sk_rage',
     th: 'mace',
+    /* 0.1.74 狂戰士重製（狂血）：斧、鎚傷害 +25%、命中撕裂 1；每少 10% 生命，斧、鎚攻速 +BLOOD_SPD%、吸血 +BLOOD_LS%（blood） */
     m: [
-      { tag: 'axe', dmgPct: 15, spd: 10, sunder: 1 },
-      { tag: 'mace', dmgPct: 15, spd: 10, sunder: 1 }
-    ]
+      { tag: 'axe', dmgPct: 25, spd: 10, rend: 1 },
+      { tag: 'mace', dmgPct: 25, spd: 10, rend: 1 }
+    ],
+    F: { blood: 1 }
   },
   {
     id: 'spearman',
@@ -3826,19 +3828,21 @@ const CORE_MAIN = {
     ['破甲斬', { all: onP(P, { sunder: 5, dmgPct: 20, pierce: 50 }) }],
     ['魔劍正宗', { give: 'masamune' }]
   ],
+  /* 0.1.74 狂戰士重製（狂血：越接近死亡越強）：諸神黃昏、不死之怒、血祭（進入低血）、擲斧、撕裂猛擊、血泉、狂血沸騰、處刑（看撕裂）、
+     碎骨（無視護盾）、戰意沸騰、嗜血護甲、巨力（雙手武器充能） */
   berserker: P => [
-    ['狂怒', { all: onP(P, { dmgPct: 15 }), fx: { rage: 60 } }],
-    ['血腥風暴', { all: onP(P, { bleed: 2, spd: 15 }) }],
-    ['碎骨', { all: onP(P, { sunder: 3, dmgPct: 10 }) }],
-    ['越戰越勇', { all: onP(P, { dmgPct: 10 }), fx: { ramp: 12 } }],
-    ['嗜血', { all: onP(P, { ls: 20 }) }],
-    ['震地', { all: onP(P, { stunCh: 15, dmgPct: 15 }) }],
-    ['不屈', { fx: { hp: 80, regen: 2 } }],
-    ['處刑', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60 } }],
-    ['野蠻衝鋒', { all: onP(P, { dmgPct: 20 }), fx: { opener: 80 } }],
-    ['血怒', { all: onP(P, { crit: 10 }), fx: { rage: 30, critHeal: 6 } }],
-    ['巨力', { all: [{ tag: 'twohand', dmgPct: 40 }] }],
-    ['尖刺皮膚', { fx: { thornsF: 4, arm: 5 } }]
+    ['諸神黃昏', { fx: { ragna: 1 }, ic: 'sk_berserk' }],
+    ['不死之怒', { fx: { undying: 1 }, ic: 'asc_bloodmage_b5' }],
+    ['血祭', { all: onP(P, { dmgPct: 20 }), fx: { selfCut: 25, immT: 3 }, ic: 'tree_n092' }],
+    ['擲斧', { fx: { axeThrow: 1 }, all: onP(P, { dmgPct: 10 }), ic: 'sk_axespin' }],
+    ['撕裂猛擊', { all: onP(P, { rendEv: 5 }), ic: 'asc_bloodclaw_b0' }],
+    ['血泉', { fx: { rendLeech: 30 }, all: onP(P, { rend: 1 }), ic: 'asc_bloodclaw_b1' }],
+    ['狂血沸騰', { fx: { blood: 1 }, ic: 'asc_bloodmage_b2' }],
+    ['處刑', { all: onP(P, { dmgPct: 10 }), fx: { execute: 60, execRend: 1 }, ic: 'it_c_berserker_7' }],
+    ['碎骨', { all: onP(P, { sunder: 3, dmgPct: 10, shPierce: 20 }), ic: 'it_c_berserker_2' }],
+    ['戰意沸騰', { fx: { bzFury: 1 }, all: onP(P, { dmgPct: 10 }), ic: 'asc_bloodmage_c0' }],
+    ['嗜血護甲', { all: onP(P, { ls: 10 }), fx: { lsShield: 1 }, ic: 'asc_bloodmage_b3' }],
+    ['巨力', { all: [{ tag: 'twohand', spd: 50 }], ic: 'it_c_berserker_10' }]
   ],
   /* 0.1.50 亞馬遜重製（矛、弓、盾）：協同作戰（召喚戰士）、女武神降臨（復活）、撕裂（新異常）、矛弓連攜、戰舞、插矛、日月輪轉 */
   spearman: P => [
@@ -4351,6 +4355,20 @@ const MODN = {
   sunmoon: v => `每 ${SUN_T} 秒日夜交替（從白天開始）：白天矛傷害 +${pct(v)}，夜晚弓、弩攻速 +${pct(v)}`,
   fury: v => `每被攻擊打中一次，矛、弓、弩傷害 +${pct(v)}（最多 ${FURY_MAX} 層）`,
   rendX: v => `造成的撕裂 ×${v}`,
+  /* 0.1.74 狂戰士 */
+  blood: v => `每少 10% 生命，斧、鎚攻速 +${BLOOD_SPD * v}%、吸血 +${BLOOD_LS * v}%`,
+  ragna: () =>
+    `生命第一次低於 ${RAGNA_AT}% 時發動諸神黃昏：${RAGNA_T} 秒內免疫暈眩、凍結、冰緩與麻痺，攻速 +${RAGNA_SPD}%、傷害 +${RAGNA_DMG}%、吸血 ×2`,
+  undying: () =>
+    `第一次受到致命傷時留 1 生命，${UNDY_T} 秒內不會死；${UNDY_B} 秒內傷害 +${UNDY_DMG}%、攻速 +${UNDY_SPD}%、暴擊率 +${UNDY_CRIT}%`,
+  selfCut: v => `開戰時扣自己 ${pct(v)} 生命（不會因此倒下）`,
+  axeThrow: v => `開戰時擲出背包裡的斧：每把斧讓敵人破甲 ${AXE_SUNDER * v}、撕裂 ${AXE_REND * v}`,
+  rendEv: v => `每第 ${REND_EV} 次命中撕裂 +${v}`,
+  rendLeech: v => `敵人撕裂的傷害 ${pct(v)} 回復你`,
+  execRend: v => `敵人每層撕裂，處決線 +${v}%（最多 +20%）`,
+  shPierce: v => `${pct(v)} 傷害無視護盾`,
+  bzFury: v => `每被攻擊打中一次，斧、鎚攻速 +${pct(v)}（最多 ${BZFURY_MAX} 層）`,
+  lsShield: () => '回復超過生命上限的部分變成護盾',
   /* 0.1.51 火法師（點燃）、雷法師（電荷、放電、麻痺） */
   igniteAt: v => `敵人燃燒到 ${v} 層時自動點燃（燃燒不退反增、傷害 ×${IGNITE_MUL}）`,
   spark: () =>
@@ -4490,6 +4508,22 @@ const ARROW_MAX = 30,
   FURY_MAX = 20,
   VALK_DMG = 40,
   VALK_SPD = 30,
+  /* 0.1.74 狂戰士：狂血（每少 10% 生命）、諸神黃昏、不死之怒、擲斧（每把斧）、撕裂猛擊（每第幾下）、戰意沸騰上限 */
+  BLOOD_SPD = 5,
+  BLOOD_LS = 2,
+  RAGNA_AT = 35,
+  RAGNA_T = 6,
+  RAGNA_SPD = 60,
+  RAGNA_DMG = 20,
+  UNDY_T = 4,
+  UNDY_B = 5,
+  UNDY_DMG = 50,
+  UNDY_SPD = 25,
+  UNDY_CRIT = 25,
+  AXE_SUNDER = 2,
+  AXE_REND = 4,
+  REND_EV = 3,
+  BZFURY_MAX = 20,
   /* 陷阱：捕獸夾（流血、夾幾次壞掉）、獵網（暈眩秒數）、尖樁（固定傷害、破甲、撕裂） */
   SNARE_BLEED = 3,
   SNARE_N = 3,
