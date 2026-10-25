@@ -135,7 +135,7 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（732 行）
+### js/data.js（725 行）
 
 - **一局**（5），61 個宣告
 
@@ -195,7 +195,7 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（598 行）
+### js/news.js（602 行）
 
 
 ### js/ui.js（4209 行）

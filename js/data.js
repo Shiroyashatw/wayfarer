@@ -564,27 +564,20 @@ const POOLTH = [
 ];
 const POOLTHI = Object.fromEntries(POOLTH.map(x => [x.k, x]));
 const MODE_TH_BAN = { shape: ['g'] };
-/* 0.1.92 玩家等級：每場照名次給經驗，升級解鎖賽制、道具池（解鎖後先關著，玩家到設定自己打開）；約 30 場全開。
-   新玩家（和 0.1.92 前的存檔）只有標準＋巨人國 */
+/* 0.1.92 玩家等級：每場照名次給經驗，升級解鎖賽制、道具池（解鎖後先關著，玩家到設定自己打開）。
+   新玩家（和 0.1.92 前的存檔）只有標準＋巨人國。
+   0.1.94 好記的規則：每 5 級開一個賽制（Lv5～Lv50）、每 10 級開一個道具池（Lv10～Lv40）；約 60 場全開 */
 const XP_PLACE = [0, 100, 70, 50, 40, 35, 30];
-const lvNeed = lv => 80 + 5 * lv; // 從 lv 升到 lv + 1 要的經驗
+const lvNeed = lv => 40 + lv; // 從 lv 升到 lv + 1 要的經驗
 const DEF_PICK = { m: ['std'], t: ['g'] };
 const UNLOCK = [
-  [2, 't', 'f'],
-  [3, 'm', 'gale'],
-  [4, 'm', 'sigil'],
-  [5, 't', 'm'],
-  [6, 'm', 'curse'],
-  [7, 'm', 'caravan'],
-  [8, 't', 'c'],
-  [9, 'm', 'legacy'],
-  [10, 'm', 'relic'],
-  [11, 't', 'z'],
-  [12, 'm', 'astro'],
-  [13, 'm', 'tarot'],
-  [14, 'm', 'shape'],
-  [15, 'm', 'dual']
-];
+  ...['gale', 'sigil', 'curse', 'caravan', 'legacy', 'relic', 'astro', 'tarot', 'shape', 'dual'].map((k, i) => [
+    5 * (i + 1),
+    'm',
+    k
+  ]),
+  ...['f', 'm', 'c', 'z'].map((k, i) => [10 * (i + 1), 't', k])
+].sort((a, b) => a[0] - b[0] || (a[1] < b[1] ? -1 : 1));
 /* 經驗 → { lv, cur（這一級已經有的）, need（這一級要的） } */
 function lvInfo(xp = 0) {
   let lv = 1;
@@ -728,4 +721,4 @@ const LEGACY_RC = 2;
 /* 0.1.72 s28：機器人變聰明（全部菁英、挑職業、擺位、反制、記仇），舊種子太弱 */
 /* 0.1.74 s29：狂戰士 12 個核心換新（同一個核心編號換了效果）、新道具黑心貨 */
 const GVER = 's29';
-const VER = '0.1.93';
+const VER = '0.1.94';

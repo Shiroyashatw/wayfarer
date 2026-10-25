@@ -2791,7 +2791,7 @@ function helpHTML() {
   <details class="more"><summary>戰鬥<small>全自動，打久了進入疲勞</small></summary><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></details>
   <details class="more"><summary>異常狀態<small>燃燒、中毒、暈眩…各自的效果</small></summary><p>燃燒、中毒、流血、劇毒每秒扣血（劇毒不會退、×2）；點燃讓燃燒越燒越多；破甲扣護甲；凍結讓一件道具 6 秒不能充能、冰緩讓它充能減半；暈眩不能動；虛弱傷害 -25%；致盲 30% 打不中；衰老不能暴擊；腐蝕不能獲得護盾（改成扣血）；混亂一半打到自己。</p></details>
   <details class="more"><summary>陷阱<small>核心放進敵人背包的陷阱</small></summary><p>有些核心會在開戰時把陷阱放進敵人背包的格子（含空格），那格的道具每次出手都會觸發。戰鬥時有陷阱的道具右上角有紅點。</p></details>
-  <details class="more"><summary>玩家等級<small>每場打完拿經驗，升級解鎖賽制和道具池</small></summary><p>第一次玩只有「標準」賽制和「巨人國」道具池。每場打完照名次拿經驗（第 1 名 ${XP_PLACE[1]}、第 2 名 ${XP_PLACE[2]}…），升級會解鎖新的賽制或道具池，解鎖後到設定打開才會出現在開場轉盤，大約 30 場全部解鎖。</p></details>
+  <details class="more"><summary>玩家等級<small>每場打完拿經驗，升級解鎖賽制和道具池</small></summary><p>第一次玩只有「標準」賽制和「巨人國」道具池。每場打完照名次拿經驗（第 1 名 ${XP_PLACE[1]}、第 2 名 ${XP_PLACE[2]}…），每 5 級解鎖一個新的賽制、每 10 級解鎖一個道具池，解鎖後到設定打開才會出現在開場轉盤，大約 60 場全部解鎖。</p></details>
   <details class="more"><summary>對手<small>其他玩家留下的背包快照</small></summary><p>對戰的對手是其他玩家在同一回合留下的背包快照，不用等人上線。沒有真人時由機器人補位。</p></div></details>`;
 }
 function settingsHTML() {
