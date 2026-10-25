@@ -343,6 +343,7 @@ function astroF(F, k) {
     mul = (o, key, v) => o[key] && (o[key] = o[key] * v);
   if (k === 'fire') for (const x of w) mul(x, 'burn', 2);
   if (k === 'toxin') for (const x of w) mul(x, 'poison', 2), mul(x, 'venom', 2);
+  if (k === 'hunt') for (const x of w) mul(x, 'bleed', 2);
   if (k === 'frost') for (const x of w) mul(x, 'chill', 1.5), x.freeze && mul(x.freeze, 0, 1.5);
   if (k === 'blood') {
     for (const x of w) mul(x, 'ls', 2);

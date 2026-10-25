@@ -514,6 +514,7 @@ const ASTROS = [
   { k: 'wind', n: '疾風月', d: '所有武器、盾的冷卻 -20%' },
   { k: 'iron', n: '鐵壁月', d: '護甲 ×2、盾的格擋 +50%' },
   { k: 'fury', n: '狂暴月', d: '所有武器暴擊率 +15%' },
+  { k: 'hunt', n: '獵月', d: '所有流血 ×2' },
   { k: 'harvest', n: '豐收月', d: '打贏多拿 1 金' }
 ];
 const ASTROI = Object.fromEntries(ASTROS.map(a => [a.k, a]));
@@ -697,4 +698,4 @@ const LEGACY_RC = 2;
 /* 0.1.72 s28：機器人變聰明（全部菁英、挑職業、擺位、反制、記仇），舊種子太弱 */
 /* 0.1.74 s29：狂戰士 12 個核心換新（同一個核心編號換了效果）、新道具黑心貨 */
 const GVER = 's29';
-const VER = '0.1.82';
+const VER = '0.1.83';

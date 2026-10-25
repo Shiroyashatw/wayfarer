@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """0.1.74 塔羅牌圖表 → 單張卡圖：讀 art/sheets/sheet_tarot_N.png，照 docs/塔羅牌圖表.md 的「格序對照」切成
-art/icons/tarot_牌.png（64×64，不裁邊），跑 tools/art.py 打包，切過的原圖搬到 art/sheets/done/。
+art/icons/tarot_牌.png、astro_月.png（64×64，不裁邊），跑 tools/art.py 打包，切過的原圖搬到 art/sheets/done/。
 圖表是放大過的（例如 1024×1024）就照格子數用最近鄰縮回每格 64。
 用法：python3 tools/tarot_cut.py"""
 import pathlib, re, shutil, subprocess, sys
@@ -10,7 +10,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 root = pathlib.Path(__file__).resolve().parent.parent
 doc = (root / 'docs/塔羅牌圖表.md').read_text(encoding='utf-8')
 cells = {}  # 圖表 → [(列, 欄, 檔名)]
-for sh, r, c, name in re.findall(r'^\| `(sheet_tarot_\d+)` \| (\d+)-(\d+) \| `(tarot_\w+)` \|', doc, re.M):
+for sh, r, c, name in re.findall(r'^\| `(sheet_tarot_\d+)` \| (\d+)-(\d+) \| `((?:tarot|astro)_\w+)` \|', doc, re.M):
     cells.setdefault(sh, []).append((int(r), int(c), name))
 icons, done = root / 'art/icons', root / 'art/sheets/done'
 cut = 0
