@@ -2163,8 +2163,50 @@ const CX_TABS = [
   ['item', '道具'],
   ['cls', '職業'],
   ['ail', '異常'],
-  ['stat', '屬性']
+  ['stat', '屬性'],
+  ['mode', '賽制']
 ];
+/* 0.1.74 百科的賽制分頁：每個賽制一組（規則＋細項：印記、商人、詛咒與祝福、星象、遺物、塔羅牌），再來是主題池 */
+function cxModeHTML() {
+  const ic = k => artIconURL(k) || '',
+    sub = {
+      sigil: () =>
+        SIGILS.map((x, i) =>
+          cxRow('cxm_sg' + i, '', `${x.s}・${x.n}`, '印記', x.t.map((t, l) => `${SG_AT[l]} 件：${t}`).join('；'))
+        ),
+      caravan: () => VANS.map(x => cxRow('cxm_v' + x.k, ic(x.ic), x.n, '流浪商人', x.d)),
+      curse: () => [
+        ...CURSES.map(x => cxRow('cxm_c' + x.k, '', x.n, '詛咒', x.d(x.v))),
+        ...BLESS.map(x => cxRow('cxm_b' + x.k, '', x.n, '祝福', x.d(x.v)))
+      ],
+      astro: () => ASTROS.map(x => cxRow('cxm_a' + x.k, '', x.n, '星象', x.d)),
+      relic: () => RELICS.map(x => cxRow('cxm_r' + x.k, ic(x.ic), x.n, '遺物', x.d)),
+      tarot: () =>
+        TAROT.map((x, i) =>
+          cxRow(
+            'cxm_t' + x.k,
+            ic('tarot_' + x.k),
+            `${i} ${x.n}`,
+            '塔羅牌',
+            `正位（${TAROT_CN[x.u.c]}）：${x.u.d}；逆位（${TAROT_CN[x.v.c]}）：${x.v.d}`
+          )
+        )
+    },
+    modes = MODES.filter(m => m.w > 0)
+      .map(
+        m =>
+          `<details class="more cxg" data-k="cxm_${m.k}"><summary>${m.n}</summary><div class="cxl">${cxRow(
+            'cxm_' + m.k + '_r',
+            ic(m.ic),
+            m.n,
+            '賽制規則',
+            m.d.join('；')
+          )}${sub[m.k] ? sub[m.k]().join('') : ''}</div></details>`
+      )
+      .join(''),
+    th = POOLTH.map(x => cxRow('cxm_th' + x.k, ic(x.ic), x.n, '主題池', x.d.join('；'))).join('');
+  return `${modes}<details class="more cxg" data-k="cxm_th"><summary>主題池<small>這局商店賣哪一套主題的道具</small></summary><div class="cxl">${th}</div></details>`;
+}
 /* 異常狀態：[圖示, 名字, 說明] */
 const CX_AIL = () => [
   [icN('ail_n_burn', 'ail_burn'), '燃燒', '每秒受「層數」傷害，之後少 1 層（N 層一共約 N×(N+1)/2）。'],
@@ -2349,6 +2391,7 @@ function codexHTML() {
     ${sec('cls', '2-5 首領掉專屬核心，4-4 首領再掉一個融入第一個，都從你的職業池三選一。點職業展開。', cls)}
     ${sec('ail', '戰鬥中角色身上和道具上的狀態。抗性可以減少層數或秒數。', ail)}
     ${sec('stat', '道具說明裡常見的數值與機制。', stat)}
+    ${sec('mode', '每局開場轉盤抽一個賽制和一個主題池，整局都有效。點賽制展開看規則。', cxModeHTML())}
     <p class="empty" id="cxnone" hidden>找不到符合的項目，換個關鍵字試試（例如「流血」「盾」「5★」）</p></div>`;
 }
 /* 百科的篩選：沒有關鍵字只顯示目前分頁；有關鍵字時四個分頁一起找，沒有符合的分組收起來、有的自動展開 */
