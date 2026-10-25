@@ -632,7 +632,7 @@ function shapeMini(id, r = 0, sm = 0, sh = shmOf(S.run, id)) {
     .join('')}</i>`;
 }
 /* 0.1.79 階段：一個回合一個圓圈、用線連起來（紅＝對戰、紫＝野怪菁英首領）；打過的顯示勝敗（贏亮、輸暗），
-   這回合放大、下面寫回合名；最右邊虛線圈是下一階段。點打過的看那場的戰鬥紀錄 */
+   這回合放大（0.1.81 回合號寫在圓圈裡，不再寫類型文字）；最右邊虛線圈是下一階段。點打過的看那場的戰鬥紀錄 */
 function stageHTML(run) {
   const r = curRound(run),
     st = ROUNDS.filter(q => q.st === r.st),
@@ -642,10 +642,11 @@ function stageHTML(run) {
       const k = ROUNDS.indexOf(q),
         lg = run.log.find(l => l.id === q.id),
         on = k === run.ri;
-      return `<span class="sn ${kind(q)} t-${q.type}${on ? ' on' : ''}${lg ? (lg.win ? ' w' : ' l') : ''}"${lg ? ` data-act="log" data-k="${q.id}"` : ''} aria-label="${q.id} ${RSHORT[q.type]}${lg ? (lg.win ? ' 勝' : ' 敗') : ''}"><i>${lg ? (lg.win ? '✓' : '✕') : q.type === 'boss' ? '★' : q.type === 'elite' ? '◆' : ''}</i>${on ? `<b>${q.id}・${RSHORT[q.type]}</b>` : ''}</span>`;
+      /* 0.1.81 還沒打的（含這回合）圓圈裡直接寫回合號，類型只看顏色；打過的寫 ✓／✕ */
+      return `<span class="sn ${kind(q)} t-${q.type}${on ? ' on' : ''}${lg ? (lg.win ? ' w' : ' l') : ''}"${lg ? ` data-act="log" data-k="${q.id}"` : ''} aria-label="${q.id} ${RSHORT[q.type]}${lg ? (lg.win ? ' 勝' : ' 敗') : ''}"><i>${lg ? (lg.win ? '✓' : '✕') : q.id}</i></span>`;
     };
   return `<div class="stg" aria-label="這個階段的回合">${st.map((q, i) => (i ? `<i class="sl ${kind(q)}"></i>` : '') + node(q)).join('')}${
-    nx ? `<i class="sl nx"></i><span class="sn nx" aria-label="下一階段 ${nx.id}"><i></i><b>${nx.id}</b></span>` : ''
+    nx ? `<i class="sl nx"></i><span class="sn nx" aria-label="下一階段 ${nx.id}"><i>${nx.id}</i></span>` : ''
   }</div>`;
 }
 /* 0.1.80 階段下面一列：下一場對手（小膠囊，點了看他的背包；PvE 是怪物）＋常變的賽制資訊（塔羅、星象、印記件數）；

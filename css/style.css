@@ -679,17 +679,17 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 /* 0.1.79 準備畫面重排：階段（圓圈連線）、本局規則、工具列（角色、戰報、核心）、下一場對手 */
 /* 0.1.79 全部對手的清單：手機收進「全部對手」按鈕，電腦版左欄放得下就直接列出來 */
 .pcrv{display:none}
-.stg{display:flex;align-items:flex-start;padding:var(--sp-1) var(--sp-1) 0;min-height:58px}
-.stg .sn{flex:none;position:relative;display:grid;justify-items:center;align-content:start;width:42px;min-height:44px;cursor:default}
-.stg .sn>i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:2.5px solid var(--sc);background:var(--card);color:var(--sc);font-style:normal;font-size:var(--fs-sm);font-weight:700;line-height:1}
+.stg{display:flex;align-items:center;padding:var(--sp-1)}
+.stg .sn{flex:none;position:relative;display:grid;place-items:center;width:42px;height:44px;cursor:default}
+.stg .sn>i{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:2.5px solid var(--sc);background:var(--card);color:var(--sc);font-style:normal;font-family:var(--f-pix);font-size:var(--fs-cap);font-weight:400;line-height:1;letter-spacing:-.5px}
+.stg .sn.w>i,.stg .sn.l>i{font-family:inherit;font-size:var(--fs-sm);font-weight:700}
 .stg .sn.pvp{--sc:var(--bad)}.stg .sn.pve{--sc:var(--s4)}.stg .sn.t-boss{--sc:var(--warn)}
 .stg .sn.w>i{background:var(--sc);color:#fff}
 .stg .sn.l>i{opacity:.4}
-.stg .sn.on>i{width:34px;height:34px;margin-top:-4px;box-shadow:0 0 0 3px var(--accent-soft),0 0 10px var(--sc)}
-.stg .sn>b{position:absolute;top:34px;white-space:nowrap;font-size:var(--fs-cap);color:var(--ink);font-weight:600}
-.stg .sn.nx{--sc:var(--faint);opacity:.8}.stg .sn.nx>i{border-style:dashed;background:none}.stg .sn.nx>b{color:var(--dim);font-weight:400}
+.stg .sn.on>i{width:40px;height:40px;font-size:var(--fs-sm);color:var(--ink);box-shadow:0 0 0 3px var(--accent-soft),0 0 10px var(--sc)}
+.stg .sn.nx{--sc:var(--faint);opacity:.8}.stg .sn.nx>i{border-style:dashed;background:none;color:var(--dim)}
 .stg .sn[data-act]{cursor:pointer}
-.stg .sl{flex:1;min-width:4px;height:3px;margin-top:12px;border-radius:2px;background:var(--sc)}
+.stg .sl{flex:1;min-width:4px;height:3px;border-radius:2px;background:var(--sc)}
 .stg .sl.pvp{--sc:var(--bad)}.stg .sl.pve{--sc:var(--s4)}.stg .sl.nx{background:none;border-top:2px dashed var(--line)}
 .mchip.rules{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
 .mchip.rules img+img{margin-left:-6px}
