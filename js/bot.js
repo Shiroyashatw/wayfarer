@@ -23,6 +23,17 @@ let BOT_P = {
   synW: 0, // 0.1.74 羈絆進度（還差幾件到下一個門檻）的價值；0.03、0.08 對打都比 0 差（60 場 3.57～3.60 對 3.40～3.43），先關掉
   ehpW: 1.581 // 有效生命的指數（戰力 = 每秒傷害 × 有效生命^ehpW）
 };
+/* 0.1.79 每個道具池自己的參數（跟 BOT_P 不一樣的才寫）：node tools/bot_train.js --theme 代號 --write 訓練寫回這一段 */
+let BOT_PT = {};
+/* 這局用的參數：BOT_P 加上這個道具池的；P.pt 是訓練中的完整參數（不再疊） */
+const BOT_PTC = new WeakMap();
+function botPT(run, P) {
+  const T = run && BOT_PT[run.theme];
+  if (!T || P.pt) return P;
+  let m = BOT_PTC.get(P);
+  if (!m) BOT_PTC.set(P, (m = {}));
+  return m[run.theme] || (m[run.theme] = { ...P, ...T });
+}
 /* 0.1.72 職業挑選：每個職業在每個主題池、每個賽制的平均名次跟全體平均差多少（負的比較強），
    tools/bot_cls.js 用菁英機器人對局統計後寫回（--write 會覆寫這一段）。開局三選一挑「職業本身＋這個主題＋這個賽制」加起來最強的 */
 let BOT_CLS = {
@@ -537,7 +548,19 @@ function botPower(F, P = BOT_P) {
 }
 const botPowerOf = (bag, P) => botPower(compileBag(bag), P);
 /* 假設把 o 放到背包（找最好的位置；prefer 看加成）：回傳 { bag, spot } 或 null */
+/* 0.1.79 看位置的道具（棋子、星座、森林的相鄰、凹口、齒輪、相鄰／同排加成、融合），或背包裡已經有這種道具時：
+   估價就用戰力試幾個位置（BOT_SPOTS_EVAL），不然買之前只用標籤猜位置，棋子、星座、森林的道具常常被低估 */
+const BOT_SPOTS_EVAL = 6;
+const botPosI = I =>
+  !!(I.pc || I.zod || I.perAdj || I.perAdjF || I.hole || I.gear || I.chainAdj || I.pcHit || I.adj || I.row || I.tf);
+const botPosBag = bag => bag.items.some(q => ITEMI[q.id] && (ITEMI[q.id].pc || ITEMI[q.id].zod || ITEMI[q.id].hole));
 function botTry(bag, o, P) {
+  if (!P.plain && !P.noPosEval && (botPosI(ITEMI[o.id]) || botPosBag(bag))) {
+    const b = botBestSpot(bag, { ...o, u: o.u || '_new' }, P, BOT_SPOTS_EVAL);
+    if (!b) return null;
+    const sp = { x: b.x, y: b.y, r: b.r };
+    return { bag: { ...bag, items: [...bag.items, { ...o, ...sp }] }, spot: sp, pow: b.pw };
+  }
   const sp = findSpot(bag, o, true);
   if (!sp) return null;
   const nb = { ...bag, items: [...bag.items, { ...o, ...sp }] };
@@ -655,7 +678,7 @@ function botValue1(run, id, t, P, cx, bag, base, o) {
    取前 BOT_SPOTS 個真的算戰力，挑最高的。共生森林（越擠越強）、棋盤（棋子走法）、黃道（星座）、機關（齒輪）這些
    看位置的效果，findSpot 的標籤加成猜不到，要算過才知道 */
 const BOT_SPOTS = 16;
-function botBestSpot(bag, o, P) {
+function botBestSpot(bag, o, P, N = BOT_SPOTS) {
   const I = ITEMI[o.id];
   if (I.core && bag.items.some(q => q.u !== o.u && ITEMI[q.id].core === I.core)) return null;
   const g = bagGrid(bag),
@@ -693,16 +716,13 @@ function botBestSpot(bag, o, P) {
       }
   }
   if (!cand.length) return null;
-  if (cand.length === 1) return cand[0];
-  /* 同分的照位置散開取（不要全部擠在左上角） */
+  /* 同分的照位置散開取（不要全部擠在左上角）；0.1.79 只有一個位置也要算戰力（之前沒算，整理背包時基準變成 undefined） */
   cand.sort((a, b) => b.sc - a.sc);
-  const pick =
-    cand.length <= BOT_SPOTS
-      ? cand
-      : [
-          ...cand.slice(0, BOT_SPOTS / 2),
-          ...cand.slice(BOT_SPOTS / 2).filter((c, i, a) => i % Math.ceil(a.length / (BOT_SPOTS / 2)) === 0)
-        ];
+  const h = Math.max(1, fl(N / 2)),
+    pick =
+      cand.length <= N
+        ? cand
+        : [...cand.slice(0, h), ...cand.slice(h).filter((c, i, a) => i % Math.ceil(a.length / h) === 0)];
   let best = null;
   for (const c of pick) {
     const pw = botPowerOf({ ...bag, items: [...rest, { ...o, x: c.x, y: c.y, r: c.r }] }, P);
@@ -968,6 +988,7 @@ function botTarot(run, opts, P = BOT_P) {
 }
 /* q：照評估做的機率（牌階高 q 高）；其他時候用簡單的舊規則（照主題、隨便買），低牌階才會笨一點 */
 function botAct(run, theme, q = 0.7, P = BOT_P) {
+  P = botPT(run, P);
   const r = curRound(run);
   BOT_EPET = run.epet ?? 1;
   BOT_ERES = run.eres || BOT_ERES0;

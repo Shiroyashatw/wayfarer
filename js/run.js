@@ -2000,6 +2000,7 @@ function mkBot(seed, i, rr, rating, opt = {}) {
 }
 /* 打完一回合：經濟（打贏拿金幣、連勝連敗）、菁英三選一（照評估挑）、首領核心（隨機）。simLobby 和即時機器人共用 */
 function botAfter(run, r, win, q, P) {
+  P = botPT(run, P);
   if (win) {
     run.ws++;
     run.lsk = 0;

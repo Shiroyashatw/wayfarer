@@ -8,6 +8,7 @@
      node tools/bot_train.js --vs-rcls             只比較：照賽制＋主題挑職業 vs 隨便挑職業
      node tools/bot_train.js --vs-plain            只比較：擺位看戰力＋整理背包 vs 0.1.71 的擺法
      --jobs N                                      幾個行程平行跑（預設 CPU 數）
+     --theme 代號                                  0.1.79 只訓練一個道具池（g f m c z），寫回 BOT_PT[代號]
    0.1.72 rating 預設 BOT_RATING（菁英：每個決定都照評估、每回合多拿的金幣最多），玩家遇到的即時機器人就是這個強度。 */
 const fs = require('fs');
 const path = require('path');
@@ -25,7 +26,9 @@ const ITERS = opt('iters', 30),
   RATING = opt('rating', G.BOT_RATING),
   JOBS = opt('jobs', require('os').cpus().length),
   /* 0.1.72 換一組亂數（挑戰者、場次都不一樣），重跑時不會跟上次一模一樣 */
-  SEED = opt('seed', 0);
+  SEED = opt('seed', 0),
+  /* 0.1.79 --theme 代號：只訓練這個道具池（每場都是這個主題），寫回 js/bot.js 的 BOT_PT[代號]（跟 BOT_P 不一樣的參數） */
+  THEME = (i => (i >= 0 ? args[i + 1] : null))(args.indexOf('--theme'));
 const PL = pool(JOBS);
 
 /* 每個參數的範圍與微調幅度 */
@@ -86,6 +89,7 @@ async function duel(A, B, n, seed0, mode) {
             ? { rcls: side, short: 1 }
             : { P: side.map(s => (s ? B : A)), short: 1 }
     });
+    if (THEME) tasks[tasks.length - 1].opt.theme = THEME;
   }
   const out = await PL.run(tasks);
   out.forEach((L, i) => L.forEach((b, k) => (sides[i][k] ? pb : pa).push(b.place)));
@@ -109,7 +113,9 @@ async function duel(A, B, n, seed0, mode) {
     return;
   }
 
-  let best = { ...G.BOT_P };
+  /* 0.1.79 分主題：從 BOT_P＋這個主題已經有的參數開始（pt：完整參數，遊戲裡不再疊 BOT_PT） */
+  const start = THEME ? { ...G.BOT_P, ...(G.BOT_PT[THEME] || {}), pt: 1 } : { ...G.BOT_P };
+  let best = { ...start };
   console.log('起點', JSON.stringify(best));
   const t0 = Date.now();
   for (let it = 1; it <= ITERS; it++) {
@@ -129,11 +135,21 @@ async function duel(A, B, n, seed0, mode) {
   console.log(JSON.stringify(best, null, 2));
   /* 0.1.43 最後用比較多場（至少 120）驗證；沒有明顯比一開始的好就不寫回（0.1.35 訓練完反而變差，寫回後才發現） */
   const VAL = Math.max(LOBBIES, 120),
-    [x, y] = await duel(best, G.BOT_P, VAL, 777),
+    [x, y] = await duel(best, start, VAL, 777),
     won = x <= y - 0.05;
   console.log(`最好的 vs 一開始的（${VAL} 場）：${x.toFixed(2)} vs ${y.toFixed(2)}${won ? '' : '  → 沒有明顯比較好'}`);
   if (WRITE && !won) console.log('不寫回 js/bot.js（加 --force 強制寫回）');
-  if (WRITE && (won || opt('force', false))) {
+  if (WRITE && (won || opt('force', false)) && THEME) {
+    const p = path.join(__dirname, '..', 'js', 'bot.js');
+    let s = fs.readFileSync(p, 'utf8');
+    const T = { ...G.BOT_PT };
+    T[THEME] = Object.fromEntries(Object.entries(best).filter(([k, v]) => k !== 'pt' && G.BOT_P[k] !== v));
+    const i = s.indexOf('let BOT_PT = '),
+      j = s.indexOf(';\n', i) + 2;
+    s = s.slice(0, i) + 'let BOT_PT = ' + JSON.stringify(T) + ';\n' + s.slice(j);
+    fs.writeFileSync(p, s);
+    console.log(`已寫回 js/bot.js 的 BOT_PT.${THEME}（記得跑 prettier）`);
+  } else if (WRITE && (won || opt('force', false))) {
     const p = path.join(__dirname, '..', 'js', 'bot.js');
     let s = fs.readFileSync(p, 'utf8');
     const i = s.indexOf('let BOT_P = {'),
