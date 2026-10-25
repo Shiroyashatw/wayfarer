@@ -34,7 +34,7 @@ window.audit = function (label) {
       res.overflowX.push(name + ' ' + el.scrollWidth + '>' + el.clientWidth);
     const txt = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
     // 例外（見設計規範）：圖示角標與條上的數字最小 9px；篩選標籤最矮 32px；列表第二行摘要可以截斷
-    const badge = cs.position === 'absolute';
+    const badge = cs.position === 'absolute' || !!el.closest('.cbr');
     if (txt && parseFloat(cs.fontSize) < (badge ? 9 : 11)) res.tinyText.push(name + ' ' + cs.fontSize);
     if (txt && cs.textOverflow === 'ellipsis' && el.scrollWidth > el.clientWidth && !el.matches('.irow small'))
       res.overflowX.push(name + ' 被截斷');

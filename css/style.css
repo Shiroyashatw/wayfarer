@@ -359,7 +359,6 @@ canvas.spr.flip{transform:scaleX(-1)}
 /* 0.1.9 暫存區只留圖示與形狀（名字點開說明看），格子小一點、方的 */
 .bs,.bs.emp{aspect-ratio:1;min-height:0;padding:0}
 .bs img{width:66%}
-.bs .shp{top:auto;bottom:2px;right:2px}
 .bench{gap:3px}
 /* 0.1.9 戰鬥中的異常圖示 */
 .sts{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;min-height:20px;margin-top:3px}
@@ -593,7 +592,6 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .sgb{position:absolute;right:2px;bottom:2px;display:grid;place-items:center;width:15px;height:15px;border-radius:4px;font-size:10px;font-style:normal;font-weight:700;line-height:1;color:#1d1b21;z-index:2;box-shadow:0 0 0 1px #0006}
 .sgb.sg0{background:var(--sg0)}.sgb.sg1{background:var(--sg1)}.sgb.sg2{background:var(--sg2)}.sgb.sg3{background:var(--sg3)}.sgb.sg4{background:var(--sg4)}
 .bag.mini .sgb{width:11px;height:11px;font-size:8px;right:1px;bottom:1px}
-.sc .sgb{right:4px;bottom:auto;top:4px}
 .sginfo{display:grid;gap:var(--sp-3);text-align:left;margin:var(--sp-2) 0}
 .sgi{display:flex;gap:var(--sp-2);align-items:flex-start}
 .sgi .sgb{position:static;width:22px;height:22px;font-size:var(--fs-sm);flex:none}
@@ -647,7 +645,6 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 /* 0.1.59 詛咒寶藏的「咒」、星象的規則、法老王的遺物、遺產攤位 */
 .cub{position:absolute;left:2px;bottom:2px;display:grid;place-items:center;width:15px;height:15px;border-radius:4px;font-size:10px;font-style:normal;font-weight:700;line-height:1;color:#fff;background:var(--curse);z-index:2;box-shadow:0 0 0 1px #0006}
 .bag.mini .cub{width:11px;height:11px;font-size:8px;left:1px;bottom:1px}
-.sc .cub{left:4px;bottom:auto;top:4px}
 .cul{display:flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-sm);color:var(--curse)}
 .cul .cub{position:static;width:18px;height:18px;font-size:var(--fs-cap);flex:none}
 .mchip.astro{flex:1 1 0;min-width:0;height:auto;min-height:38px;padding:var(--sp-1) var(--sp-2);border-radius:var(--r-md);text-align:left;background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
@@ -727,6 +724,45 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 #modal .rivals .rv span{padding-right:26px}
 .cxg summary .cxgi{width:28px;height:28px;image-rendering:pixelated;margin-right:var(--sp-2);vertical-align:middle;flex:none}
 .cxg .cxrule{margin:0 var(--sp-2) var(--sp-2);text-align:left}
+/* 0.1.86 道具格子的四個角（背包、暫存、商店統一）：左上階數、右上格數小圖、左下融合、右下其他（印記、詛咒、加成＋排一排）；
+   背包裡的角標放在道具真的有的那一格（.cn，ui.js 的 cnr） */
+.cn{position:absolute;width:var(--cs);height:var(--cs);pointer-events:none;z-index:2}
+.cbr{position:absolute;right:2px;bottom:2px;z-index:2;display:flex;gap:1px;pointer-events:none}
+.cbr>.sgb,.cbr>.cub{position:static}
+.cbr>.buf{position:static;display:grid;place-items:center;width:15px;height:15px;border-radius:4px;background:var(--card);box-shadow:0 0 0 1px #0006}
+.bag.mini .cbr{right:1px;bottom:1px}
+/* 背包的格子小：右下那排放不下時往上疊（不要蓋到左下的融合圖示） */
+.cn>.cbr{max-width:calc(100% - 18px);flex-wrap:wrap-reverse;justify-content:flex-end}
+.sc .cbr{right:3px;bottom:auto;top:26px}
+.bs .shp{top:2px;right:2px;bottom:auto}
+/* 0.1.86 下一場對手：標題列的回合那一行（點了看他的背包；手機拿掉「下一場」膠囊省一列） */
+.rnx{min-width:0;margin:-4px 0;padding:4px 0;border:0;background:none;font:inherit;font-size:var(--fs-sm);color:var(--dim);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.srow{display:contents}
+.rinfo:has(.rnx){max-width:52%}
+/* 0.1.86 手機：背包、暫存、商店、開戰要在同一個螢幕（背包格子照剩下的高度縮放，fitBag）；
+   上面的資訊壓成兩列：階段圓圈一列，賽制資訊（或羈絆）＋核心／規則／對手按鈕一列 */
+@media (max-width:1039.98px){
+  .prep{gap:var(--sp-1)}
+  .srow{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1)}
+  .srow>.stg{flex:1 0 100%;padding:0}
+  .srow>.stg .sn{height:38px}
+  .srow>.nxr{display:contents}
+  .srow .nxo{display:none}
+  .srow .fabs{order:2;margin-left:auto}
+  .srow>.mbar:not(.nxr){order:1;flex:1 1 0;min-width:0;margin:0}
+  .srow>.synbar{order:1;flex:1 1 0;min-width:0;width:auto;min-height:44px;padding:var(--sp-1) var(--sp-2)}
+  .srow:has(>.mbar:not(.nxr))>.synbar{order:3;flex-basis:100%;min-height:38px}
+  .srow .fab{width:44px;height:44px}
+  .srow .fab img{width:22px;height:22px}
+  .srow .sgc{height:44px}
+  .bagwrap{padding:var(--sp-2)}
+  .prep .top{padding-top:calc(var(--sp-1) + var(--sat));padding-bottom:var(--sp-1)}
+  .bs,.bs.emp{aspect-ratio:auto;height:48px}
+  .bs img{width:auto;height:70%}
+  .sc{padding:2px 2px var(--sp-1);gap:0}
+  .sc img{width:32px;height:32px}
+  .sc .cbr{top:22px}
+}
 @media (min-width:1040px){
   .pa .pcrv{display:block}
   #app{max-width:1360px;padding:var(--sp-5)}

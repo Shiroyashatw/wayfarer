@@ -99,6 +99,12 @@ const tierBadge = t => (t > 1 ? `<b class="tier">${t === 2 ? 'Ⅱ' : 'Ⅲ'}</b>`
 const sgBadge = sg => (sg == null || !SIGILS[sg] ? '' : `<i class="sgb sg${sg}">${SIGILS[sg].s}</i>`);
 /* 0.1.59 詛咒寶藏：格子左下角的「咒」 */
 const cuBadge = cu => (!cu || !CURSES[cu[0]] ? '' : `<i class="cub" aria-label="詛咒">咒</i>`);
+/* 0.1.86 道具格子的四個角統一（背包、暫存、商店都一樣）：左上＝階數、右上＝格數小圖（背包裡看形狀就知道，不放）、
+   左下＝融合的道具、右下＝其他（印記、詛咒、加成＋，排成一排）。這是右下那一排 */
+const brHTML = (o, x = '') => {
+  const s = sgBadge(o.sg) + cuBadge(o.cu) + x;
+  return s ? `<span class="cbr">${s}</span>` : '';
+};
 /* 道具詳細的詛咒那一行（層數 × 每層數值） */
 /* 0.1.60 祝福（綠）＋詛咒（紫）各一行；數值是這件實際的（層數、星級都算進去） */
 const cuLineHTML = o => {
@@ -264,6 +270,7 @@ function render() {
     if (d) d.open = true;
   }
   paintSprites(app);
+  fitBag();
   /* 0.1.59 開場賽制轉盤 */
   if (V.scr === 'run' && run && run.phase === 'mode') wheelGo(run);
   /* 0.1.55 百科：重畫後照搜尋欄再篩一次 */
@@ -424,6 +431,21 @@ const GAP = 4;
 /* 0.1.58 電腦版（寬 1040 以上）：背包在中間那欄，照那欄的寬和視窗的高放大（跟 CSS 的三欄寬度一致） */
 const DESK = () => innerWidth >= 1040;
 const deskW = () => Math.min(innerWidth / V.z, 1360) - 32;
+/* 0.1.86 手機：背包格子照「螢幕剩下的高度」縮放，背包、暫存、商店、開戰一個螢幕放得下（不用上下捲）；
+   V.fitH 是背包可以用的高度（render 後 fitBag 量出來，不一樣就再畫一次） */
+const FIT_MIN = 32;
+function fitBag() {
+  const bag = $('bag'),
+    pr = document.querySelector('.prep');
+  if (DESK() || !bag || !pr || V.scr !== 'run') return;
+  const pad = parseFloat(getComputedStyle($('app')).paddingBottom) || 0,
+    over = pr.getBoundingClientRect().bottom + scrollY + pad - innerHeight,
+    h = Math.max(0, bag.offsetHeight - over);
+  if (Math.abs(h - (V.fitH || 0)) < 2) return;
+  V.fitH = h;
+  /* 格子大小變了才再畫（已經縮到最小、或本來就放得下時不會一直重畫） */
+  if (cellSize(S.run.bag.w, S.run.bag.h) + 'px' !== bag.style.getPropertyValue('--cs')) render();
+}
 function cellSize(w, h = w) {
   if (DESK()) {
     const side = innerWidth < 1240 ? 300 + 340 : 340 + 380,
@@ -431,7 +453,14 @@ function cellSize(w, h = w) {
       ch = innerHeight / V.z - 190;
     return Math.max(30, Math.min(w <= 3 ? 104 : 84, fl((cw - (w - 1) * GAP) / w), fl((ch - (h - 1) * GAP) / h)));
   }
-  return Math.max(30, Math.min(w <= 3 ? 64 : 52, fl((Math.min(innerWidth, 480) - 32 - (w - 1) * GAP) / w)));
+  return Math.max(
+    30,
+    Math.min(
+      w <= 3 ? 64 : 52,
+      fl((Math.min(innerWidth, 480) - 32 - (w - 1) * GAP) / w),
+      V.fitH ? Math.max(FIT_MIN, fl((V.fitH - (h - 1) * GAP) / h)) : 99
+    )
+  );
 }
 /* 0.1.36 對手的職業小圖示（右上角）：你選完職業後才顯示 */
 function rvClsIc(run, rv) {
@@ -559,7 +588,21 @@ function bagHTML(bag, cs, opt = {}) {
       })
       .join(
         ''
-      )}<img src="${itemIcon(o.id)}" alt="${fuName(o)}"${o.f && ITEMI[o.f] ? ` class="fum" style="--fg:${fuColor(o)}"` : ''}>${o.f && ITEMI[o.f] ? `<img class="fui" src="${itemIcon(o.f)}" alt="">` : o.sc && ITEMI[o.sc] ? `<img class="fui" src="${itemIcon(o.sc)}" alt="">` : ''}${tierBadge(o.t)}${sgBadge(o.sg)}${cuBadge(o.cu)}${buf && !opt.mini ? (tfd ? '<b class="buf tfm">✦</b>' : '<b class="buf">+</b>') : ''}</div>`;
+      )}<img src="${itemIcon(o.id)}" alt="${fuName(o)}"${o.f && ITEMI[o.f] ? ` class="fum" style="--fg:${fuColor(o)}"` : ''}>${cnr(
+      cs0,
+      mx,
+      my,
+      cs,
+      [1, 1],
+      tierBadge(o.t)
+    )}${cnr(cs0, mx, my, cs, [1, -1], o.f && ITEMI[o.f] ? `<img class="fui" src="${itemIcon(o.f)}" alt="">` : o.sc && ITEMI[o.sc] ? `<img class="fui" src="${itemIcon(o.sc)}" alt="">` : '')}${cnr(
+      cs0,
+      mx,
+      my,
+      cs,
+      [-1, -1],
+      brHTML(o, buf && !opt.mini ? (tfd ? '<b class="buf tfm">✦</b>' : '<b class="buf">+</b>') : '')
+    )}</div>`;
   }
   if (mods && !opt.mini) h += linkHTML(bag, mods, cs, sel);
   /* 0.1.4 選中的道具右上角放旋轉鈕，不用到下面說明區按 */
@@ -570,6 +613,14 @@ function bagHTML(bag, cs, opt = {}) {
     h += `<button class="rotb" data-act="rot" aria-label="旋轉" style="left:${Math.min(rx - 16, W - 22)}px;top:${Math.max(ry - 12, -10)}px">↻</button>`;
   }
   return h + '</div>';
+}
+/* 0.1.86 角標放在道具真的有的那一格（不是外框的角）：巨人國的 U 形、轉過的 P 形，外框左上角可能是空的，
+   角標會跑到別的空格上、看起來像沒有階數。d＝[x 方向, y 方向]：[1,1] 左上、[1,-1] 左下、[-1,-1] 右下（先比那個角的斜線，再比上下） */
+function cnr(cs0, mx, my, cs, d, html) {
+  if (!html) return '';
+  const k = ([x, y]) => (d[0] * x + d[1] * y) * 100 + d[1] * y,
+    [x, y] = cs0.reduce((a, b) => (k(b) < k(a) ? b : a));
+  return `<span class="cn" style="left:${(x - mx) * (cs + GAP)}px;top:${(y - my) * (cs + GAP)}px">${html}</span>`;
 }
 /* 0.1.28 相鄰加成的連接點：有相鄰加成的兩件，在貼著的那條縫上畫一顆亮點（不用選就看得到誰加成誰）；
    跟選中的道具有關的變亮、其他的變淡 */
@@ -707,10 +758,14 @@ function prepHTML(run) {
           : '對戰'
         : RTYPE[r.type];
   return `<div class="prep">
-    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
-    <div class="pcol pa">${stageHTML(run)}
+    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b>${
+      nr >= 0
+        ? `<button class="rnx" data-act="rvBag" data-k="${nr}" aria-label="下一場對手 ${esc(run.rivals[nr].name)}，看他的背包">${r.id}・${esc(String(run.rivals[nr].name).split('的').pop())} ♥${rivalHp(run.rivals[nr])} ›</button>`
+        : `<small>${r.id}・${oppTxt}</small>`
+    }</div>${sfxBtn()}${themeBtn()}</div>
+    <div class="pcol pa"><div class="srow">${stageHTML(run)}
     ${infoRowHTML(run)}
-    ${synHTML(run)}
+    ${synHTML(run)}</div>
     <div class="pcrv">${rivalHTML(run)}</div>
     ${tutHTML()}
     ${holdHTML(run)}</div>
@@ -718,14 +773,14 @@ function prepHTML(run) {
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
-          ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}${fuCls(o)}" data-bu="${o.u}" data-bi="${i}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt="${fuName(o)}">${o.f && ITEMI[o.f] ? `<img class="fui" src="${itemIcon(o.f)}" alt="">` : ''}${shapeMini(o.id, o.r || 0, o.sm, o.sh)}${tierBadge(o.t)}${sgBadge(o.sg)}${cuBadge(o.cu)}</div>`
+          ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}${fuCls(o)}" data-bu="${o.u}" data-bi="${i}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt="${fuName(o)}">${o.f && ITEMI[o.f] ? `<img class="fui" src="${itemIcon(o.f)}" alt="">` : ''}${shapeMini(o.id, o.r || 0, o.sm, o.sh)}${tierBadge(o.t)}${brHTML(o)}</div>`
           : `<div class="bs emp" data-bi="${i}"></div>`
       )
       .join('')}</div></div></div>
     <div class="pcol pc">${modeUI(run).panel ? modeUI(run).panel(run) : ''}<div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
-          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${sgBadge(s.sg)}${cuBadge(s.cu)}${shapeMini(s.id, 0, 0, s.sh)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金</b></button>`
+          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${brHTML(s)}${shapeMini(s.id, 0, 0, s.sh)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金</b></button>`
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
@@ -1040,7 +1095,7 @@ function legHTML(run) {
   return `<div class="leg"><span class="lbl">遺產</span><div class="legs">${run.leg
     .map(
       (e, k) =>
-        `<button class="sc s${ITEMI[e.id].star}${V.sel === 'leg' + k ? ' sel' : ''}" data-act="legSel" data-k="${k}"><img src="${itemIcon(e.id)}" alt="">${tierBadge(e.t || 1)}${sgBadge(e.sg)}${cuBadge(e.cu)}<span>${ITEMI[e.id].n}</span><b class="${run.gold < legPrice(run, e) ? 'c-bad' : 'c-gold'}">${legPrice(run, e)} 金</b></button>`
+        `<button class="sc s${ITEMI[e.id].star}${V.sel === 'leg' + k ? ' sel' : ''}" data-act="legSel" data-k="${k}"><img src="${itemIcon(e.id)}" alt="">${tierBadge(e.t || 1)}${brHTML(e)}${shapeMini(e.id, e.r || 0, e.sm, e.sh)}<span>${ITEMI[e.id].n}</span><b class="${run.gold < legPrice(run, e) ? 'c-bad' : 'c-gold'}">${legPrice(run, e)} 金</b></button>`
     )
     .join('')}</div></div>`;
 }
