@@ -2239,69 +2239,115 @@ const CX_TABS = [
   ['mode', '賽制'],
   ['pool', '道具池']
 ];
-/* 0.1.74 百科的賽制分頁：每個賽制一組（規則＋細項：印記、商人、詛咒與祝福、星象、遺物、塔羅牌）；0.1.75 道具池拆到自己的分頁 */
-function cxModeHTML() {
-  const ic = k => artIconURL(k) || '',
-    sub = {
-      sigil: () =>
-        SIGILS.map((x, i) =>
-          cxRow('cxm_sg' + i, '', `${x.s}・${x.n}`, '印記', x.t.map((t, l) => `${SG_AT[l]} 件：${t}`).join('；'))
-        ),
-      caravan: () => VANS.map(x => cxRow('cxm_v' + x.k, ic(x.ic), x.n, '流浪商人', x.d)),
-      curse: () => [
-        ...CURSES.map(x => cxRow('cxm_c' + x.k, '', x.n, '詛咒', x.d(x.v))),
-        ...BLESS.map(x => cxRow('cxm_b' + x.k, '', x.n, '祝福', x.d(x.v)))
-      ],
-      astro: () => ASTROS.map(x => cxRow('cxm_a' + x.k, ic('astro_' + x.k), x.n, '星象', x.d)),
-      relic: () => RELICS.map(x => cxRow('cxm_r' + x.k, ic(x.ic), x.n, '遺物', x.d)),
-      tarot: () =>
-        TAROT.map((x, i) =>
-          cxRow(
-            'cxm_t' + x.k,
-            ic('tarot_' + x.k),
-            `${i} ${x.n}`,
-            '塔羅牌',
-            `正位（${TAROT_CN[x.u.c]}）：${x.u.d}；逆位（${TAROT_CN[x.v.c]}）：${x.v.d}`
-          )
-        )
+/* 0.1.85 百科改成用到才產生：分頁點到才產生、分組展開才產生內容（CXG）、圖示捲到才產生（cxIcons）。
+   之前一打開就把 6 個分頁、1800 張圖示一次做完（2.9 MB），每載好一張大圖又整個重畫，會卡好幾秒 */
+const CXG = new Map(); /* 分組的 data-k → 產生內容的函式 */
+const cxGroup = (k, sum, body, q) => {
+  CXG.set(k, body);
+  return `<details class="more cxg" data-k="${k}"${q ? ` data-q="${esc(q.toLowerCase())}"` : ''}><summary>${sum}</summary></details>`;
+};
+/* 展開時才把內容放進去（搜尋時 cxFilter 全部放） */
+function cxFill(g) {
+  const f = !g.dataset.f && CXG.get(g.dataset.k);
+  if (!f) return;
+  g.dataset.f = 1;
+  g.insertAdjacentHTML('beforeend', f());
+  cxIcons(g);
+}
+document.addEventListener(
+  'toggle',
+  ev => ev.target.matches?.('details.cxg') && ev.target.open && cxFill(ev.target),
+  true
+);
+/* 列的圖示先只記名字（道具 data-iid、其他 data-ain），捲到畫面附近才轉成圖片網址 */
+const cxIt = id => `data-iid="${id}"`;
+const cxAi = n => (typeof ART !== 'undefined' && ART[n] ? `data-ain="${n}"` : '');
+const cxSrc = im =>
+  (im.src = im.dataset.iid ? itemIcon(im.dataset.iid) : artIconURL(im.dataset.ain) || iconURL('star'));
+const cxIO =
+  typeof IntersectionObserver !== 'undefined' &&
+  new IntersectionObserver(
+    es => {
+      for (const e of es) if (e.isIntersecting) cxIO.unobserve(e.target), cxSrc(e.target);
     },
-    modes = MODES.filter(m => m.w > 0)
-      .map(
-        m =>
-          `<details class="more cxg" data-k="cxm_${m.k}" data-q="${esc((m.n + ' ' + m.d.join(' ')).toLowerCase())}"><summary>${ic(m.ic) ? `<img class="cxgi" src="${ic(m.ic)}" alt="">` : ''}${m.n}</summary><ul class="mrules cxrule">${m.d.map(x => `<li>${x}</li>`).join('')}</ul>${sub[m.k] ? `<div class="cxl">${sub[m.k]().join('')}</div>` : ''}</details>`
-      )
-      .join('');
-  return modes;
+    { rootMargin: '300px' }
+  );
+function cxIcons(root) {
+  for (const im of root.querySelectorAll('img[data-iid]:not([src]), img[data-ain]:not([src])'))
+    cxIO ? cxIO.observe(im) : cxSrc(im);
 }
+const cxgi = n => (artIconURL(n) ? `<img class="cxgi" src="${artIconURL(n)}" alt="">` : '');
+/* 0.1.74 百科的賽制分頁：每個賽制一組（規則＋細項：印記、商人、詛咒與祝福、星象、遺物、塔羅牌）；0.1.75 道具池拆到自己的分頁 */
+const CX_MODE_SUB = {
+  sigil: () =>
+    SIGILS.map((x, i) =>
+      cxRow('cxm_sg' + i, '', `${x.s}・${x.n}`, '印記', x.t.map((t, l) => `${SG_AT[l]} 件：${t}`).join('；'))
+    ),
+  caravan: () => VANS.map(x => cxRow('cxm_v' + x.k, cxAi(x.ic), x.n, '流浪商人', x.d)),
+  curse: () => [
+    ...CURSES.map(x => cxRow('cxm_c' + x.k, '', x.n, '詛咒', x.d(x.v))),
+    ...BLESS.map(x => cxRow('cxm_b' + x.k, '', x.n, '祝福', x.d(x.v)))
+  ],
+  astro: () => ASTROS.map(x => cxRow('cxm_a' + x.k, cxAi('astro_' + x.k), x.n, '星象', x.d)),
+  relic: () => RELICS.map(x => cxRow('cxm_r' + x.k, cxAi(x.ic), x.n, '遺物', x.d)),
+  tarot: () =>
+    TAROT.map((x, i) =>
+      cxRow(
+        'cxm_t' + x.k,
+        cxAi('tarot_' + x.k),
+        `${i} ${x.n}`,
+        '塔羅牌',
+        `正位（${TAROT_CN[x.u.c]}）：${x.u.d}；逆位（${TAROT_CN[x.v.c]}）：${x.v.d}`
+      )
+    )
+};
+const cxModeHTML = () =>
+  MODES.filter(m => m.w > 0)
+    .map(m =>
+      cxGroup(
+        'cxm_' + m.k,
+        cxgi(m.ic) + m.n,
+        () =>
+          `<ul class="mrules cxrule">${m.d.map(x => `<li>${x}</li>`).join('')}</ul>${CX_MODE_SUB[m.k] ? `<div class="cxl">${CX_MODE_SUB[m.k]().join('')}</div>` : ''}`,
+        m.n + ' ' + m.d.join(' ')
+      )
+    )
+    .join('');
 /* 0.1.75 百科的道具池分頁：每個主題一組（機制＋專屬的飾品、輔助；武器列名字） */
-function cxPoolHTML() {
-  return POOLTH.map(x => {
-    const its = ITEMS.filter(i => i.th === x.k && shopOK(i)),
-      ws = its.filter(i => i.dmg),
-      sp = its.filter(i => !i.dmg);
-    return `<details class="more cxg" data-k="cxp_${x.k}" data-q="${esc((x.n + ' ' + x.d.join(' ')).toLowerCase())}"><summary>${artIconURL(x.ic) ? `<img class="cxgi" src="${artIconURL(x.ic)}" alt="">` : ''}${x.n}<small>${its.length} 件專屬道具</small></summary><ul class="mrules cxrule">${x.d.map(d => `<li>${d}</li>`).join('')}</ul><div class="cxl">${sp
-      .map(i =>
-        cxRow('cxp_' + i.id, itemIcon(i.id), i.n, `${stars(i.star)}・${x.n}`, dsc(itemDesc(i.id)), ` s${i.star}`)
-      )
-      .join('')}${
-      ws.length
-        ? cxRow(
-            'cxp_' + x.k + '_w',
-            '',
-            `武器 ${ws.length} 把`,
-            '道具分頁看詳細',
-            [1, 2, 3, 4, 5]
-              .map(st => {
-                const l = ws.filter(i => i.star === st);
-                return l.length ? `${stars(st)}：${l.map(i => i.n).join('、')}` : '';
-              })
-              .filter(Boolean)
-              .join('；')
+const cxPoolHTML = () =>
+  POOLTH.map(x => {
+    const its = ITEMS.filter(i => i.th === x.k && shopOK(i));
+    return cxGroup(
+      'cxp_' + x.k,
+      `${cxgi(x.ic)}${x.n}<small>${its.length} 件專屬道具</small>`,
+      () => {
+        const ws = its.filter(i => i.dmg);
+        return `<ul class="mrules cxrule">${x.d.map(d => `<li>${d}</li>`).join('')}</ul><div class="cxl">${its
+          .filter(i => !i.dmg)
+          .map(i =>
+            cxRow('cxp_' + i.id, cxIt(i.id), i.n, `${stars(i.star)}・${x.n}`, dsc(itemDesc(i.id)), ` s${i.star}`)
           )
-        : ''
-    }</div></details>`;
+          .join('')}${
+          ws.length
+            ? cxRow(
+                'cxp_' + x.k + '_w',
+                '',
+                `武器 ${ws.length} 把`,
+                '道具分頁看詳細',
+                [1, 2, 3, 4, 5]
+                  .map(st => {
+                    const l = ws.filter(i => i.star === st);
+                    return l.length ? `${stars(st)}：${l.map(i => i.n).join('、')}` : '';
+                  })
+                  .filter(Boolean)
+                  .join('；')
+              )
+            : ''
+        }</div>`;
+      },
+      x.n + ' ' + x.d.join(' ')
+    );
   }).join('');
-}
 /* 異常狀態：[圖示, 名字, 說明] */
 const CX_AIL = () => [
   [icN('ail_n_burn', 'ail_burn'), '燃燒', '每秒受「層數」傷害，之後少 1 層（N 層一共約 N×(N+1)/2）。'],
@@ -2425,77 +2471,108 @@ const plain = h => String(h).replace(/<[^>]*>/g, '');
 const thName = i => {
   if (!shopOK(i)) return '核心送的';
   const t = thOf(i);
+  /* 0.1.85 x：0.1.69 退出商店的舊武器（只當起手道具、舊快照用） */
   return t === 'b'
     ? '基本池'
-    : POOLTH.filter(x => t.includes(x.k))
-        .map(x => x.n)
-        .join('、');
+    : t === 'x'
+      ? '不在商店'
+      : POOLTH.filter(x => t.includes(x.k))
+          .map(x => x.n)
+          .join('、');
 };
+/* ic：圖示的屬性（cxIt／cxAi，捲到才載；固定的圖用 src="…"），空字串是沒有圖示 */
 function cxRow(key, ic, name, sub, body, cls = '') {
   const q = (name + ' ' + plain(sub) + ' ' + plain(body)).toLowerCase();
-  return `<details class="cxr${cls}" data-k="${key}" data-q="${esc(q)}"><summary>${ic ? `<img src="${ic}" alt="">` : ''}<span><b>${name}</b>${sub ? `<small>${sub}</small>` : ''}</span></summary><p>${body}</p></details>`;
+  return `<details class="cxr${cls}" data-k="${key}" data-q="${esc(q)}"><summary>${ic ? `<img ${ic} alt="">` : ''}<span><b>${name}</b>${sub ? `<small>${sub}</small>` : ''}</span></summary><p>${body}</p></details>`;
 }
+const cxTags = i =>
+  i.tags
+    .filter(t => t !== 'weapon')
+    .map(t => TAGN[t])
+    .join('・');
+/* 每個分頁：[說明, 產生內容]（點到這個分頁、或搜尋時才產生） */
+const CX_SEC = {
+  item: [
+    '點星級展開，點道具看說明。',
+    () =>
+      [1, 2, 3, 4, 5]
+        .map(st => {
+          const l = ITEMS.filter(i => i.star === st && !i.core);
+          return cxGroup(
+            'cxst' + st,
+            `<span style="color:${STARC[st]}">${stars(st)}</span><small>${l.length} 種・拿過 ${l.filter(i => S.seen[i.id]).length}</small>`,
+            () =>
+              `<div class="cxl">${l
+                .map(i =>
+                  cxRow(
+                    'cxi_' + i.id,
+                    cxIt(i.id),
+                    i.n,
+                    `${cxTags(i)}・${shapeOf(i.id).length} 格・${thName(i)}`,
+                    dsc(itemDesc(i.id)),
+                    ` s${st}${S.seen[i.id] ? '' : ' unseen'}`
+                  )
+                )
+                .join('')}</div>`
+          );
+        })
+        .join('')
+  ],
+  cls: [
+    '2-5 首領掉專屬核心，4-4 首領再掉一個融入第一個，都從你的職業池三選一。點職業展開。',
+    () =>
+      CLASSES.map(C =>
+        cxGroup(
+          'cx_' + C.id,
+          `${cxgi(C.ic)}${C.n}<small>${dsc(clsDesc(C.id))}</small>`,
+          () =>
+            `<div class="cxl">${ITEMS.filter(i => i.cls === C.id && i.core === 1)
+              .map(i =>
+                cxRow('cxc_' + i.id, cxIt(i.id), i.n.split('・')[1], C.n + '・專屬核心', dsc(itemDesc(i.id)), ' s5')
+              )
+              .join('')}</div>`
+        )
+      ).join('')
+  ],
+  ail: [
+    '戰鬥中角色身上和道具上的狀態。抗性可以減少層數或秒數。',
+    () =>
+      CX_AIL()
+        .map(([ic, n, d, f]) => cxRow('cxa_' + n, cxAi(ic) || `src="${iconURL('star')}"`, n, '', d, f ? ' flip' : ''))
+        .join('')
+  ],
+  stat: [
+    '道具說明裡常見的數值與機制。',
+    () =>
+      CX_STAT()
+        .map(([n, d]) => cxRow('cxs_' + n, '', n, '', d))
+        .join('')
+  ],
+  mode: ['賽制讓每局不一樣：開場轉盤（外圈）抽一個，整局改變規則。點賽制展開看規則。', cxModeHTML],
+  pool: ['道具池決定這局商店賣哪一套道具：開場轉盤（內圈）抽一個，圍繞它的機制構築。點主題展開看專屬道具。', cxPoolHTML]
+};
+const cxSecHTML = k =>
+  `<section class="cxsec" data-tab="${k}"><p class="sub">${CX_SEC[k][0]}</p><div class="cxl">${CX_SEC[k][1]()}</div></section>`;
 function codexHTML() {
   const tab = V.cxTab || 'item',
-    nav = `<div class="cxtab">${CX_TABS.map(([k, n]) => `<button aria-pressed="${tab === k}" data-act="cxTab" data-k="${k}">${n}</button>`).join('')}</div>`,
-    tags = i =>
-      i.tags
-        .filter(t => t !== 'weapon')
-        .map(t => TAGN[t])
-        .join('・'),
-    items = [1, 2, 3, 4, 5]
-      .map(st => {
-        const l = ITEMS.filter(i => i.star === st && !i.core),
-          seen = l.filter(i => S.seen[i.id]).length;
-        return `<details class="more cxg" data-k="cxst${st}"><summary><span style="color:${STARC[st]}">${stars(st)}</span><small>${l.length} 種・拿過 ${seen}</small></summary><div class="cxl">${l
-          .map(i =>
-            cxRow(
-              'cxi_' + i.id,
-              itemIcon(i.id),
-              i.n,
-              `${tags(i)}・${shapeOf(i.id).length} 格・${thName(i)}`,
-              dsc(itemDesc(i.id)),
-              ` s${st}${S.seen[i.id] ? '' : ' unseen'}`
-            )
-          )
-          .join('')}</div></details>`;
-      })
-      .join(''),
-    cls = CLASSES.map(
-      C =>
-        `<details class="more cxg" data-k="cx_${C.id}"><summary>${artIconURL(C.ic) ? `<img class="cxgi" src="${artIconURL(C.ic)}" alt="">` : ''}${C.n}<small>${dsc(clsDesc(C.id))}</small></summary><div class="cxl">${ITEMS.filter(
-          i => i.cls === C.id && i.core === 1
-        )
-          .map(i =>
-            cxRow('cxc_' + i.id, itemIcon(i.id), i.n.split('・')[1], C.n + '・專屬核心', dsc(itemDesc(i.id)), ' s5')
-          )
-          .join('')}</div></details>`
-    ).join(''),
-    ail = CX_AIL()
-      .map(([ic, n, d, f]) => cxRow('cxa_' + n, artIconURL(ic) || iconURL('star'), n, '', d, f ? ' flip' : ''))
-      .join(''),
-    stat = CX_STAT()
-      .map(([n, d]) => cxRow('cxs_' + n, '', n, '', d))
-      .join(''),
-    sec = (k, sub, body) =>
-      `<section class="cxsec" data-tab="${k}"><p class="sub">${sub}</p><div class="cxl">${body}</div></section>`;
+    nav = `<div class="cxtab">${CX_TABS.map(([k, n]) => `<button aria-pressed="${tab === k}" data-act="cxTab" data-k="${k}">${n}</button>`).join('')}</div>`;
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>百科</b><small>${ITEMS.filter(i => !i.core).length} 種道具・拿過的會亮起來</small></div>
     <div class="cxsearch"><input class="inp" id="cxq" type="search" placeholder="搜尋道具、核心、異常、機制…" value="${esc(V.cxQ || '')}" autocomplete="off"><button class="iconbtn" data-act="cxClear" aria-label="清除搜尋">✕</button></div>
     ${nav}<p class="sub cxcount" id="cxcount" hidden></p>
-    ${sec('item', '點星級展開，點道具看說明。', items)}
-    ${sec('cls', '2-5 首領掉專屬核心，4-4 首領再掉一個融入第一個，都從你的職業池三選一。點職業展開。', cls)}
-    ${sec('ail', '戰鬥中角色身上和道具上的狀態。抗性可以減少層數或秒數。', ail)}
-    ${sec('stat', '道具說明裡常見的數值與機制。', stat)}
-    ${sec('mode', '賽制讓每局不一樣：開場轉盤（外圈）抽一個，整局改變規則。點賽制展開看規則。', cxModeHTML())}
-    ${sec('pool', '道具池決定這局商店賣哪一套道具：開場轉盤（內圈）抽一個，圍繞它的機制構築。點主題展開看專屬道具。', cxPoolHTML())}
+    ${cxSecHTML(tab)}
     <p class="empty" id="cxnone" hidden>找不到符合的項目，換個關鍵字試試（例如「流血」「盾」「5★」）</p></div>`;
 }
-/* 百科的篩選：沒有關鍵字只顯示目前分頁；有關鍵字時四個分頁一起找，沒有符合的分組收起來、有的自動展開 */
+/* 百科的篩選：沒有關鍵字只顯示目前分頁；有關鍵字時所有分頁一起找（還沒產生的分頁、分組這時才產生），沒有符合的分組收起來、有的自動展開 */
 function cxFilter() {
   const root = $('app'),
     q = (V.cxQ || '').trim().toLowerCase(),
     tab = V.cxTab || 'item';
   if (!root || !root.querySelector('#cxq')) return;
+  if (q) {
+    for (const [k] of CX_TABS)
+      if (!root.querySelector(`.cxsec[data-tab="${k}"]`)) $('cxnone').insertAdjacentHTML('beforebegin', cxSecHTML(k));
+    for (const g of root.querySelectorAll('.cxg')) cxFill(g);
+  }
   let n = 0;
   for (const sec of root.querySelectorAll('.cxsec')) {
     if (!q) {
@@ -2526,6 +2603,7 @@ function cxFilter() {
   c.textContent = q ? `搜尋「${V.cxQ.trim()}」：${n} 筆` : '';
   none.hidden = !q || n > 0;
   root.querySelector('.cxtab').classList.toggle('off', !!q);
+  cxIcons(root);
 }
 function helpHTML() {
   return `<div class="page help"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
