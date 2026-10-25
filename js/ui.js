@@ -235,12 +235,7 @@ function applyTheme() {
   if (m) m.content = d ? '#1d1b21' : '#f2eee7';
 }
 darkMQ.addEventListener('change', () => S && S.theme === 'auto' && applyTheme());
-/* 畫面最上方的深淺切換（跟隨系統時切到相反的那一個） */
-const themeBtn = () => {
-  const d = document.documentElement.dataset.theme === 'dark';
-  return `<button class="iconbtn" data-act="themeTog" aria-label="${d ? '切到淺色' : '切到深色'}">${d ? '☀' : '☾'}</button>`;
-};
-/* 0.1.55 音效開關（上方資訊欄、首頁、戰鬥畫面都有，一鍵開關） */
+/* 0.1.55 音效開關（0.1.88 起只在戰鬥畫面；準備時在選單、平常在設定） */
 const sfxBtn = () =>
   `<button class="iconbtn sfxb" data-act="sfxTog" aria-label="${S.sfx ? '關掉音效' : '打開音效'}" aria-pressed="${!!S.sfx}">${S.sfx ? '🔊' : '🔇'}</button>`;
 /* ================= 畫面切換 ================= */
@@ -300,7 +295,7 @@ function homeHTML() {
   /* 0.1.74 打完的那局（phase end）不算進行中：首頁直接是「開始對戰」 */
   const run = S.run && S.run.phase !== 'end' ? S.run : null;
   return `<div class="home hm">
-    <div class="htop">${sfxBtn()}${themeBtn()}</div>
+
     <div class="logo"><b>塞令老師</b><small>背包自動對戰</small></div>
     <div class="hcol hc1"><div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b>${rankHTML()}<div class="kv3"><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span><span>第 1 名<b>${(S.hist || []).filter(x => x.place === 1).length}</b></span></div></div></div>
     <button class="btn pri big" data-act="play">${run ? `繼續對局（${curRound(run) ? curRound(run).id : ''}）` : '開始對戰'}</button>
@@ -776,7 +771,7 @@ function prepHTML(run) {
       nr >= 0
         ? `<button class="rnx" data-act="rvBag" data-k="${nr}" aria-label="下一場對手 ${esc(run.rivals[nr].name)}，看他的背包">${r.id}・${esc(String(run.rivals[nr].name).split('的').pop())} ♥${rivalHp(run.rivals[nr])} ›</button>`
         : `<small>${r.id}・${oppTxt}</small>`
-    }</div>${sfxBtn()}${themeBtn()}</div>
+    }</div></div>
     <div class="pcol pa"><div class="srow">${stageHTML(run)}
     ${infoRowHTML(run)}
     ${synHTML(run)}</div>
@@ -2674,21 +2669,28 @@ function cxFilter() {
   root.querySelector('.cxtab').classList.toggle('off', !!q);
   cxIcons(root);
 }
+/* 0.1.88 每段收成「標題＋一句摘要」，點開看細節（之前是一整面文字） */
 function helpHTML() {
   return `<div class="page help"><div class="ptop"><button class="iconbtn" data-act="${S.run && S.run.phase !== 'end' ? 'play' : 'home'}" aria-label="返回">‹</button><b>怎麼玩</b></div>
-  <div class="card"><b>一局</b><p>4 位玩家一場，每人 ${START_HP} 點生命。每回合在商店買道具、擺進背包，然後自動戰鬥。輸了扣生命，歸零就淘汰；最後活下來的是第 1 名。戰鬥中角色的生命會跟著階段變多（第 1 階段 ×1.5、第 2 階段 ×2.6、第 3 階段 ×3.6…），後期一場大約打 8～10 秒，持續傷害、回復、慢速重武器才有發揮空間。</p></div>
-  <div class="card"><b>職業</b><p>每局開打前三選一（可以刷新一次），整局都有效：例如弓箭手讓弓、弩傷害 +20%、攻速 +15%。照職業去買武器和輔助道具（箭袋、劍帶、法術卷軸、火藥地雷、獸牙項鍊…），輔助道具要擺在武器旁邊或同一排才有用，背包空間要取捨。點左上角頭像可以看職業與數值。</p></div>
-  <div class="card"><b>賽制</b><p>每局開場隨機一種（公開後才選職業）：${MODES.map(m => `<b>${m.n}</b>（${m.d.join('；')}）`).join('、')}。賽制的標籤在準備畫面上方，點了看規則。</p></div>
-  <div class="card"><b>回合</b><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完專屬核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星），4-4 是首領（第二個專屬核心三選一）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></div>
-  <div class="card"><b>金幣</b><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></div>
-  <div class="card"><b>背包</b><p>從 3×3 開始，花金幣升級（最大 6×7，越大越貴：3×4 要 14 金，開局只有 ${START_GOLD} 金，要在買道具和存錢之間取捨），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉（電腦版拖曳中按 R、空白鍵、滑鼠右鍵或滾輪也能轉）；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></div>
-  <div class="card"><b>合成</b><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></div>
-  <div class="card"><b>相鄰效果</b><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></div>
-  <div class="card"><b>職業核心</b><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 再掉一個專屬核心，選了直接融入第一個（兩個效果都有）。核心不佔背包格子，放在背包上方的「核心」按鈕，點了看效果。百科的「職業」分頁可以看全部。</p></div>
-  <div class="card"><b>戰鬥</b><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></div>
-  <div class="card"><b>異常狀態</b><p>燃燒、中毒、流血、劇毒每秒扣血（劇毒不會退、×2）；點燃讓燃燒越燒越多；破甲扣護甲；凍結讓一件道具 6 秒不能充能、冰緩讓它充能減半；暈眩不能動；虛弱傷害 -25%；致盲 30% 打不中；衰老不能暴擊；腐蝕不能獲得護盾（改成扣血）；混亂一半打到自己。</p></div>
-  <div class="card"><b>陷阱</b><p>有些核心會在開戰時把陷阱放進敵人背包的格子（含空格），那格的道具每次出手都會觸發。戰鬥時有陷阱的道具右上角有紅點。</p></div>
-  <div class="card"><b>對手</b><p>對戰的對手是其他玩家在同一回合留下的背包快照，不用等人上線。沒有真人時由機器人補位。</p></div></div>`;
+  <details class="more" open><summary>一局<small>4 人一場，生命歸零淘汰，活到最後是第 1 名</small></summary><p>4 位玩家一場，每人 ${START_HP} 點生命。每回合在商店買道具、擺進背包，然後自動戰鬥。輸了扣生命，歸零就淘汰；最後活下來的是第 1 名。戰鬥中角色的生命會跟著階段變多（第 1 階段 ×1.5、第 2 階段 ×2.6、第 3 階段 ×3.6…），後期一場大約打 8～10 秒，持續傷害、回復、慢速重武器才有發揮空間。</p></details>
+  <details class="more"><summary>職業<small>開局三選一，整局有效</small></summary><p>每局開打前三選一（可以刷新一次），整局都有效：例如弓箭手讓弓、弩傷害 +20%、攻速 +15%。照職業去買武器和輔助道具（箭袋、劍帶、法術卷軸、火藥地雷、獸牙項鍊…），輔助道具要擺在武器旁邊或同一排才有用，背包空間要取捨。點左上角頭像可以看職業與數值。</p></details>
+  <details class="more"><summary>賽制<small>每局隨機一種全場規則</small></summary><ul class="hl">${MODES.filter(
+    m => m.w > 0
+  )
+    .map(m => `<li><b>${m.n}</b>：${m.d[0]}</li>`)
+    .join(
+      ''
+    )}</ul><p class="sub">開場轉盤公開後才選職業；完整規則在百科的「賽制」分頁，準備畫面的「規則」按鈕看這局的。</p></details>
+  <details class="more"><summary>回合<small>野怪、菁英、對戰、首領的順序</small></summary><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完專屬核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星），4-4 是首領（第二個專屬核心三選一）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></details>
+  <details class="more"><summary>金幣<small>每回合收入＋利息＋連勝連敗獎勵</small></summary><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></details>
+  <details class="more"><summary>背包<small>花金幣升級；道具有形狀、可以旋轉</small></summary><p>從 3×3 開始，花金幣升級（最大 6×7，越大越貴：3×4 要 14 金，開局只有 ${START_GOLD} 金，要在買道具和存錢之間取捨），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉（電腦版拖曳中按 R、空白鍵、滑鼠右鍵或滾輪也能轉）；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></details>
+  <details class="more"><summary>合成<small>3 件一樣的自動升一階</small></summary><p>3 件相同、同一階的道具（背包＋暫存區都算）會自動合成高一階，最多 Ⅲ 階，數值大幅提升，還會多一條詞綴。</p></details>
+  <details class="more"><summary>相鄰效果<small>飾品加強旁邊、同一排的道具</small></summary><p>飾品會加強「相鄰」（上下左右）、「同一排」或「所有」特定種類的道具。點一下道具，被它加強的道具會亮起來，有吃到加成的道具右上角有「＋」。</p></details>
+  <details class="more"><summary>職業核心<small>首領掉落，不佔背包格子</small></summary><p>首領掉落、從你的職業池三選一：2-5 掉專屬核心（每個職業 12 個，各有特色，例如先手、處決、連擊、越戰越快），4-4 再掉一個專屬核心，選了直接融入第一個（兩個效果都有）。核心不佔背包格子，放在背包上方的「核心」按鈕，點了看效果。百科的「職業」分頁可以看全部。</p></details>
+  <details class="more"><summary>戰鬥<small>全自動，打久了進入疲勞</small></summary><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></details>
+  <details class="more"><summary>異常狀態<small>燃燒、中毒、暈眩…各自的效果</small></summary><p>燃燒、中毒、流血、劇毒每秒扣血（劇毒不會退、×2）；點燃讓燃燒越燒越多；破甲扣護甲；凍結讓一件道具 6 秒不能充能、冰緩讓它充能減半；暈眩不能動；虛弱傷害 -25%；致盲 30% 打不中；衰老不能暴擊；腐蝕不能獲得護盾（改成扣血）；混亂一半打到自己。</p></details>
+  <details class="more"><summary>陷阱<small>核心放進敵人背包的陷阱</small></summary><p>有些核心會在開戰時把陷阱放進敵人背包的格子（含空格），那格的道具每次出手都會觸發。戰鬥時有陷阱的道具右上角有紅點。</p></details>
+  <details class="more"><summary>對手<small>其他玩家留下的背包快照</small></summary><p>對戰的對手是其他玩家在同一回合留下的背包快照，不用等人上線。沒有真人時由機器人補位。</p></div></details>`;
 }
 function settingsHTML() {
   const anon = typeof CLOUD === 'undefined' || CLOUD.anon;
@@ -2772,13 +2774,32 @@ const A = {
       ['戰鬥紀錄', () => showLog()],
       ['回首頁（這局會保留）', () => go('home')],
       ['怎麼玩', () => go('help')],
+      /* 0.1.88 音效開關從標題列收進選單（外觀在設定） */
+      [
+        S.sfx ? '音效：開' : '音效：關',
+        () => {
+          A.sfxTog();
+          A.menu();
+        }
+      ],
+      /* 0.1.88 投降不能復原：紅字、再問一次 */
       [
         '投降',
         () => {
-          endRun(run, Math.max(2, 1 + aliveRivals(run).length));
-          save();
-          render();
-        }
+          const pl = Math.max(2, 1 + aliveRivals(run).length);
+          showDlg('確定投降？', `<p class="sub">這局直接結束，算第 ${pl} 名，沒辦法復原。</p>`, [
+            [
+              '投降',
+              () => {
+                endRun(run, pl);
+                save();
+                render();
+              },
+              'danger'
+            ]
+          ]);
+        },
+        'danger'
       ]
     ]);
   },
@@ -3308,7 +3329,7 @@ function showLog(id, hi, sel) {
     body = logs.length
       ? `<div class="lgl">${[...logs].reverse().map(row).join('')}</div>`
       : '<p class="c-dim">還沒有打過</p>';
-  m.innerHTML = `<div class="dlg2${lg ? ' lgw' : ''}"><b>${lg ? '這場的紀錄' : '戰鬥紀錄'}</b>${body}<div class="btns col">${lg ? `<button class="btn" data-lgx="1">${H ? '回到這一局' : '所有紀錄'}</button>` : ''}<button class="btn" data-lgc="1">關閉</button></div></div>`;
+  m.innerHTML = `<div class="dlg2${lg ? ' lgw' : ''}">${dlgX('data-lgc="1"')}<b>${lg ? '這場的紀錄' : '戰鬥紀錄'}</b>${body}${lg ? `<div class="btns col"><button class="btn" data-lgx="1">${H ? '回到這一局' : '所有紀錄'}</button></div>` : ''}</div>`;
   m.hidden = false;
   paintSprites(m);
   if (sel) {
@@ -3358,7 +3379,7 @@ function showMatch(hi) {
         : ''
     }
     <h4>每一場（點了看詳細）</h4><div class="lgl">${[...H.log].reverse().map(row).join('')}</div>
-    <div class="btns col"><button class="btn" data-lgc="1">關閉</button></div></div>`;
+</div>`;
   m.hidden = false;
   paintSprites(m);
   m.onclick = ev => {
@@ -3370,18 +3391,20 @@ function showMatch(hi) {
 /* 0.1.15 更新紀錄（首頁左下）：照版本列出遊戲功能的變化（資料在 news.js），最新的展開、舊的收起來 */
 function showNews() {
   const m = $('modal');
-  m.innerHTML = `<div class="dlg2 newsd"><b>更新紀錄</b><div class="nwl">${NEWS.map(
+  m.innerHTML = `<div class="dlg2 newsd">${dlgX('data-nwc="1"')}<b>更新紀錄</b><div class="nwl">${NEWS.map(
     (n, i) =>
       `<details${i < 1 ? ' open' : ''}><summary>v${n.v}${n.v === VER ? '<small>目前版本</small>' : ''}</summary><ul>${n.d.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`
-  ).join('')}</div><div class="btns col"><button class="btn" data-nwc="1">關閉</button></div></div>`;
+  ).join('')}</div></div>`;
   m.hidden = false;
   m.onclick = ev => {
     if (ev.target.closest('[data-nwc]') || ev.target === m) m.hidden = true;
   };
 }
+/* 0.1.88 對話框右上角的 ✕（點旁邊空白也能關）；按鈕第三個值是 class（例：'danger' 紅字，用在不能復原的動作） */
+const dlgX = a => `<button class="iconbtn dlgx" ${a} aria-label="關閉">✕</button>`;
 function showDlg(title, body, buttons) {
   const m = $('modal');
-  m.innerHTML = `<div class="dlg2"><b>${title}</b>${body}<div class="btns col">${buttons.map(([t], i) => `<button class="btn" data-mi="${i}">${t}</button>`).join('')}<button class="btn" data-mi="x">關閉</button></div></div>`;
+  m.innerHTML = `<div class="dlg2">${dlgX('data-mi="x"')}<b>${title}</b>${body}${buttons.length ? `<div class="btns col">${buttons.map(([t, , c], i) => `<button class="btn${c ? ' ' + c : ''}" data-mi="${i}">${t}</button>`).join('')}</div>` : ''}</div>`;
   m.hidden = false;
   m.onclick = ev => {
     const b = ev.target.closest('[data-mi]');

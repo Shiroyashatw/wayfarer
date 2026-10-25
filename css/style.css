@@ -82,7 +82,6 @@ canvas.spr.big{width:72px;height:72px}
 canvas.spr.flip{transform:scaleX(-1)}
 /* ---------- 首頁 ---------- */
 .home{display:grid;gap:var(--sp-2);padding-top:var(--sp-4)}
-.htop{display:flex;justify-content:flex-end;margin-bottom:calc(-1 * var(--sp-5))}
 .logo{text-align:center;padding:var(--sp-5) 0}
 .logo b{display:block;font-family:var(--f-pix);font-size:44px;color:var(--accent);text-shadow:0 3px 0 var(--accent2);letter-spacing:.06em;font-weight:400}
 .logo small{color:var(--dim);font-size:var(--fs-btn)}
@@ -478,7 +477,8 @@ canvas.spr.flip{transform:scaleX(-1)}
 .page details.more{background:var(--card);border-radius:var(--r-md);margin-bottom:var(--sp-2);box-shadow:var(--shadow)}
 .page details.more > summary{display:block;cursor:pointer;padding:var(--sp-2) var(--sp-3);font-weight:700;font-size:var(--fs-btn);min-height:44px;list-style:none}
 .page details.more > summary::-webkit-details-marker{display:none}
-.page details.more > summary::after{content:'▾';float:right;color:var(--dim)}
+.page details.more > summary{position:relative;padding-right:32px}
+.page details.more > summary::after{content:'▾';position:absolute;right:var(--sp-3);top:50%;transform:translateY(-50%);color:var(--dim)}
 .page details.more[open] > summary::after{content:'▴'}
 .page details.more > summary small{display:block;font-weight:400;font-size:var(--fs-sm);color:var(--dim)}
 .page details.more .cores{padding:0 var(--sp-3) var(--sp-2)}
@@ -641,7 +641,6 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .cxr summary small{color:var(--dim);font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cxr p{margin:0;padding:0 var(--sp-3) var(--sp-2);font-size:var(--fs-sm);color:var(--dim);line-height:1.5}
 .cxg summary small{white-space:normal}
-.htop{gap:var(--sp-2)}
 /* 0.1.59 詛咒寶藏的「咒」、星象的規則、法老王的遺物、遺產攤位 */
 .cub{position:absolute;left:2px;bottom:2px;display:grid;place-items:center;width:15px;height:15px;border-radius:4px;font-size:10px;font-style:normal;font-weight:700;line-height:1;color:#fff;background:var(--curse);z-index:2;box-shadow:0 0 0 1px #0006}
 .bag.mini .cub{width:11px;height:11px;font-size:8px;left:1px;bottom:1px}
@@ -779,6 +778,19 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .ghost{animation:none;transform:none}
   #toast{transform:translateX(-50%)!important}
 }
+/* 0.1.88 設定的賽制、道具池：選到的打勾、一般底色；沒選的只剩框（之前 15 顆全是亮金色，看不出選了哪些） */
+.pkb[aria-pressed="true"]{background:var(--fill);color:var(--ink)}
+.pkb[aria-pressed="true"]::after{content:'✓';color:var(--good);font-weight:700}
+.pkb[aria-pressed="false"]{background:none;box-shadow:inset 0 0 0 1.5px var(--line);color:var(--faint)}
+/* 0.1.88 對話框右上角的 ✕；不能復原的動作紅字 */
+.dlg2{position:relative}
+.dlgx{position:absolute;top:var(--sp-2);right:var(--sp-2);z-index:2}
+.btn.danger{color:var(--bad)}
+/* 0.1.88 怎麼玩：點開的段落內容 */
+.page details.more>p{margin:0;padding:0 var(--sp-3) var(--sp-3)}
+.page details.more>.hl{margin:0;padding:0 var(--sp-3) var(--sp-2) calc(var(--sp-3) + 1.2em)}
+.hl{padding-left:1.2em;display:grid;gap:var(--sp-1)}
+.hl li{font-size:var(--fs-body);line-height:1.45}
 @media (min-width:1040px){
   .pa .pcrv{display:block}
   #app{max-width:1360px;padding:var(--sp-5)}
@@ -831,7 +843,7 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .bbags>div:nth-child(2){grid-area:b1;justify-self:start}
   /* 首頁：左＝角色、開始、最近的對局；右＝排行榜 */
   .home.hm{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--sp-2) var(--sp-5);max-width:1040px;margin:0 auto;align-items:start}
-  .home.hm>.htop,.home.hm>.logo,.home.hm>.hfoot{grid-column:1/-1}
+  .home.hm>.logo,.home.hm>.hfoot{grid-column:1/-1}
   .home.hm .hcol{display:grid;gap:var(--sp-2);align-content:start;min-width:0}
   .home.hm .hc2>h3:first-child{margin-top:0}
   /* 其他頁：加寬到 960，清單排兩欄 */
@@ -840,7 +852,7 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .page .cxg .cxl{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
   .page.help{columns:2;column-gap:var(--sp-4)}
   .page.help>.ptop{column-span:all}
-  .page.help>.card{break-inside:avoid}
+  .page.help>details{break-inside:avoid}
   .avs{grid-template-columns:repeat(8,1fr)}
 }
 @media (min-width:1040px) and (max-width:1239px){
