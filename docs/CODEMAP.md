@@ -27,7 +27,7 @@
 | 機器人 AI（0.1.20） | `js/bot.js`、`tools/game_node.js`、`tools/bot_train.js` | `botPower`（戰力分數）、`botValue`、`botPlace`、`botWeakest`、`botAct`、`BOT_P`、`botActOld`；`simLobby` 的 `opt.P`／`opt.old`（run） |
 | 選要玩的賽制、道具池（0.1.77） | `js/run.js`、`js/ui.js` | `rollMode`／`rollTheme` 的 allow、`pickOf`（run）；`S.pick`、`PICK_MIN`、`pickAll`、`pickNow`、`pickHTMLs`、動作 `pickTog`／`pickAll`（ui） |
 | 詳細統計頁：賽制、道具池的職業勝率與核心選擇率（0.1.77） | `js/ghost.js`、`js/ui.js`、`supabase/migrations/20261026000000_serling_mode_stats.sql` | `ghostStats`、`STAT`、`STAT_MIN`（ghost）；`mstatHTML`、`V.mst`、動作 `mstTab`、`data-chg` 的 change 監聽（ui）；RPC `class_stats_mt`、`core_stats_mt` |
-| 準備畫面重排（0.1.79）：階段圓圈、本局規則、工具列、下一場對手 | `js/ui.js`、`css/style.css` | `stageHTML`（`.stg`／`.sn`／`.sl`）、`rulesBarHTML`、`A.rulesInfo`、`.tools`（角色 `.me`、`lastLogBtn`、`coreFabHTML`）、`nextOppHTML`（`.nxo`）、`A.rivals`、電腦版 `.pcrv` |
+| 準備畫面重排（0.1.79～0.1.80）：階段圓圈、下一場對手、核心／規則／對手按鈕 | `js/ui.js`、`css/style.css` | `stageHTML`（`.stg`／`.sn`／`.sl`）、`infoRowHTML`（`.nxo`）、`fabHTML`（`.fab`、`MODEUI` 的 `badge`）、`A.rulesInfo`、`A.rivals`、電腦版 `.pcrv` |
 | 機器人分主題參數、估價看位置（0.1.79） | `js/bot.js`、`tools/bot_train.js` | `BOT_PT`、`botPT`、`botTry` 的 `P.posEval`、`BOT_SPOTS_EVAL`、`botPosI`／`botPosBag`、`botBestSpot(…, N)`；`bot_train.js --theme` |
 | 機器人挑職業、擺位看戰力、整理背包、塔羅評估、低血不存錢（0.1.72） | `js/bot.js`、`js/run.js`、`tools/bot_cls.js`、`tools/lobby_pool.js`、`tools/bot_train.js` | `BOT_CLS`、`botClass`、`botSetCls`、`botBestSpot`／`BOT_SPOTS`、`botRelayout`、`botTarot`、`BOT_P.lowHp`、`P.plain`（bot）；`mkBot` 的 `opts`／`opt.rcls`、`joinRivals` 重挑職業（run）；平行對局 `tools/lobby_pool.js`、`bot_train.js --jobs`／`--vs-rcls`／`--vs-plain` |
 | 戰鬥生命照階段放大（0.1.19） | `js/data.js`、`js/run.js` | `HP_ST`、`hpMul`（data）；`stageHp`、`MOB_HP`、`MOB_DMG`（run，`startFight`、`simLobby`、`resumeFight` 都套用） |
@@ -85,7 +85,7 @@
 | 弓箭手、亞馬遜重製（0.1.50：插箭、爆裂箭、箭雨、多重射擊、狙擊、元素箭袋、連珠箭、游擊、風之箭、捕獸夾／獵網／尖樁陷阱、撕裂、插矛、協同作戰召喚、女武神復活、矛弓連攜、戰舞、反擊、血獵、日月輪轉、姊妹盟約、浴血戰姬） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`css/style.css` | `CORE_MAIN.archer`／`spearman`、`skyhawk`、常數 `ARROW_MAX` 等、`MODN` 的新鍵、`TRN`（items）；`compileBag` 的新角色鍵、武器的 `kind`／`stick`／`shots`／`snipe`／`elem`／`sure`／`pin`／`rend`、姊妹盟約 `sisters`（bag）；`simulate` 的 `stickArrows`、`addRend`、`fire`、`counter`、`revive`、`isDay`、召喚 `sm0`／`sm1`、陷阱 `snare`／`net`／`stake`、事件 `boom`／`rain`／`revive`／`summon`／`sun`／`pinOut`（sim）；`botPower` 的插箭、撕裂、召喚（bot）；`smnHTML`、`bSun`、`STI` 的插箭／撕裂／插矛、`CX_AIL`（ui）；`.smn`／`.smf`／`.smit`、`.sunb`、`--day`／`--night`（css） |
 | 火法師、雷法師重製（0.1.51：自動點燃、星星之火、爆燃、流星火雨、焚盡斬殺線、自焚、火之化身、炎爆、灼命、熱浪、鳳凰涅槃；連鎖、電荷、放電、麻痺、癱瘓、超載、雷神降臨、雷暴雲、疾雷、雷鳴、電磁脈衝、雷火、靜電場、避雷針、電網陷阱；新雷系道具；核心自訂圖示 icx） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`css/style.css` | `CORE_MAIN.pyro`／`storm`、`thunderjav`／`thunderbow`／`teslacoil`／`thunderheart`／`thunderbat`、常數 `CHARGE_MAX`／`ZAP_*`／`PARA_*`／`METEOR_*`／`SPARK_*` 等、`genCores` 的 `icx`（items）；`compileBag` 的新角色鍵、武器 `charge`（bag）；`simulate` 的 `igniteIt`、`stunIt`、`addPara`、`addCharge`、`zap`、定時效果（流星、雷暴雲、炎爆、焚盡、鳳凰、星星之火蔓延）、事件 `zap`／`meteor`／`bolt`／`flash`／`combust`／`burnout`／`phoenix`／`avatar`／`god`／`palsy`／`static`／`spark`（sim）；`botPower` 的電荷、點燃（bot）；`itemIcon` 的 `icx`、`bSpark`、`bFall`、斬殺線 `kl0`／`kl1`、`STI` 的電荷／麻痺（ui）；`.kline`、`.firec`、`.fall`、`.sp.avt`／`.sp.god`（css） |
 | 系別羈絆（0.1.62） | `js/data.js`、`js/bag.js`、`js/ui.js` | `SYN`／`SYN_AT`／`SYNI`／`synLv`（data）；`synCount`、`compileBag` 的羈絆（bag）；`synName`、`synTxt`、`SYN_ICN`／`synIc`（代表圖示）、`synHTML`（0.1.66 一條按鈕＋湊成的圖示）、`synInfoHTML`、動作 `synInfo`（ui）；道具的 `syn`／`for` |
-| 道具池：基本池＋主題池（0.1.62） | `js/items.js`、`js/data.js`、`js/run.js`、`js/ui.js`、`tools/pools.js` | `POOLS`／`ITEM_TH`／`thOf`／`thOK`、道具的 `th`（items）；`POOLTH`／`POOLTHI`／`MODE_TH_BAN`（data）；`poolOK`、`rollTheme`、`setTheme`、`simLobby` 的 theme（run）；`wheelEnd2`、`rulesBarHTML`／`A.rulesInfo` 的道具池、動作 `thInfo`、`thName`（ui）；`docs/道具池.md` |
+| 道具池：基本池＋主題池（0.1.62） | `js/items.js`、`js/data.js`、`js/run.js`、`js/ui.js`、`tools/pools.js` | `POOLS`／`ITEM_TH`／`thOf`／`thOK`、道具的 `th`（items）；`POOLTH`／`POOLTHI`／`MODE_TH_BAN`（data）；`poolOK`、`rollTheme`、`setTheme`、`simLobby` 的 theme（run）；`wheelEnd2`、`fabHTML`／`A.rulesInfo` 的道具池、動作 `thInfo`、`thName`（ui）；`docs/道具池.md` |
 | 主題道具的機制（0.1.62） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js` | 新形狀與凹口 `SHHOLE`／`holeOf`；`compileBag` 的 `self`、`perAdj`、`perAdjF`、`hole`、`gear`、`chainAdj`、`nth`、`wake`；`sim` 出手後的 `nth`／`gear`／`drv`；`botPower` 的 `HIT`；`findSpot` 的凹口 |
 | 賽制框架（0.1.60：每個賽制一份掛勾，新增賽制用 skill `new-mode`） | `js/run.js`、`js/ui.js` | `MODEH`／`modeH`（share、fix、slot、item、price、sell、bought、reroll、round、fought、lobby、luck、winBonus、fight）、`setMode`、`modeShareOf`／`modeShare`、`modeFix`、`shopItem`（run）；`MODEUI`／`modeUI`（intro、bar、info、panel）（ui） |
 | 雙修、塔羅牌陣（0.1.69：別的職業的核心四選一＋刷新；22 張大牌正逆位、四選一、經濟與戰鬥效果、獻祭、命運之輪四選一） | `js/data.js`、`js/run.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js` | `TAROT`／`tarOf`／`TAROT_AT`、`DUAL_N`（data）；`MODEH.dual.core2`、`bossCores`、`rerollCores`、`MODEH.tarot`、`tarotTick`／`tarotPick`／`tarotRound`／`tarotFx`／`tarotShop`／`tarotWheel`／`tarHit`／`tarotSac`、`rerollNo`、`buyNo`／`sellNo`（run）；`tarotF`、`synView`、`packBag` 的 `tar`／`tn`／`hx`（bag）；`tarCopy`／`tarMiss`／`tarRefl`／`tarHi`／`tarLow`（sim）；`botTarot`（bot）；卡圖 `tarotArt`（0.1.74，`art/icons/tarot_牌.png`，`tools/tarot_cut.py`、`docs/塔羅牌圖表.md`；逆位 `.rvs` 倒過來）、`tarotHTML`、`MODEUI.tarot`、動作 `tarotPick`／`tarotSac`／`pickRe`（ui） |
@@ -93,7 +93,7 @@
 | 統計（0.1.61，skill `stats`） | `tools/stats.js`、`tools/core_stats.js` | 道具購買率／對口職業購買率／持有／名次、冷門熱門、職業 × 賽制名次；`--jobs` 平行、`--save`／`--diff`；真人資料的 SQL 在 skill |
 | 固定檢查（0.1.60） | `tools/check.js` | 整局模擬＋不變量（買賣價差、NaN、格子、快照還原、星象 × 怪物、七十二變 1★）、`--golden` 重構比對 |
 | 賽制（0.1.59：詛咒寶藏、七十二變、星象輪轉、法老王的遺物、遺產市集） | `js/data.js`、`js/run.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`js/items.js`、`css/style.css` | `CURSES`／`CURSE_P`、`ASTROS`、`RELICS`／`RELIC_AT`、`LEGACY_RC`（data）；`curseRoll`、`rollShm`／`shmOf`／`modeFix`、`rollAstro`／`astroAt`／`astroF`／`fightF`、`relicOpts`／`relicTake`／`relicOpen`／`relicPick`、`legacyDrop`／`legPrice`／`legacyBuy`（run）；`shapeO`（items）；`compileBag` 的詛咒與遺物、`mergeAll` 的詛咒疊加、`packIt` 的 `sh`／`cu`、`packBag` 的 `rel`（bag）；安卡 `F.ankh`（sim）；`botEx`、`botRelic`、`botLegacy`（bot）；`cuBadge`、`cuLineHTML`、`astroListHTML`、`relicLine`、`relicHTML`、`legHTML`、動作 `relicPick`／`legSel`／`legBuy`（ui）；`.cub`、`.astl`、`.relo`、`.leg`（css） |
-| 賽制（0.1.52：開場隨機、狂風市集、印記、流浪商隊、種子 300 局職業輪流） | `js/data.js`、`js/run.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`js/ghost.js`、`css/style.css` | `MODES`／`MODEI`、`SIGILS`／`SG_AT`／`sgLv`、`VANS`／`VANI`（data）；`rollMode`、`newRun` 的 `phase: 'mode'`、`sgCount`、`slotPrice`（狂風 -1）、`afterBuy`（雙胞胎、狂風換新）、`rerollShop`／`rollsLeft`、`bossCores` 的 `ban`、`luckWin`、流浪商隊 `vanDo`／`vanOK`／`itemCat`／`takeOut`／`findU`／`shopTop`／`vanRoll`、`mkBot` 的 `opt.mode`／`opt.cls`、`simLobby` 的賽制（run）；`mergeAll` 的印記三選一 `run.sgq`、`packIt`／`unpackIt` 的印記、`compileBag` 的 `sgMight`… 與武器的 `sgM`／`sgS`／`sgL`／`sgK`（bag）；`heal` 溢出變護盾、`gainBlock` 的盾擊、`fire` 的重擊、`relay`、幸運一擊、開戰擲骰（sim）；`botPower` 的印記、`sgBias`、`botCaravan`（bot）；`modeHTML`、`rulesBarHTML`、`sgInfoHTML`、`sgLineHTML`、`sgPickHTML`、`vanHTML`、`vanGo`、`vanPick`、`sgBadge`、動作 `modeOk`／`modeInfo`／`sgInfo`／`sgPick`／`van`（ui）；`seedGhosts` 300 局、職業輪流（ghost）；`.mbar`、`.mchip`、`.sgrow`／`.sgc`、`.sgb.sg0`～`.sg4`、`.van`、`.btn.sm`／`.btn.buy`（css） |
+| 賽制（0.1.52：開場隨機、狂風市集、印記、流浪商隊、種子 300 局職業輪流） | `js/data.js`、`js/run.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`js/ghost.js`、`css/style.css` | `MODES`／`MODEI`、`SIGILS`／`SG_AT`／`sgLv`、`VANS`／`VANI`（data）；`rollMode`、`newRun` 的 `phase: 'mode'`、`sgCount`、`slotPrice`（狂風 -1）、`afterBuy`（雙胞胎、狂風換新）、`rerollShop`／`rollsLeft`、`bossCores` 的 `ban`、`luckWin`、流浪商隊 `vanDo`／`vanOK`／`itemCat`／`takeOut`／`findU`／`shopTop`／`vanRoll`、`mkBot` 的 `opt.mode`／`opt.cls`、`simLobby` 的賽制（run）；`mergeAll` 的印記三選一 `run.sgq`、`packIt`／`unpackIt` 的印記、`compileBag` 的 `sgMight`… 與武器的 `sgM`／`sgS`／`sgL`／`sgK`（bag）；`heal` 溢出變護盾、`gainBlock` 的盾擊、`fire` 的重擊、`relay`、幸運一擊、開戰擲骰（sim）；`botPower` 的印記、`sgBias`、`botCaravan`（bot）；`modeHTML`、`fabHTML`、`sgInfoHTML`、`sgLineHTML`、`sgPickHTML`、`vanHTML`、`vanGo`、`vanPick`、`sgBadge`、動作 `modeOk`／`modeInfo`／`sgInfo`／`sgPick`／`van`（ui）；`seedGhosts` 300 局、職業輪流（ghost）；`.mbar`、`.mchip`、`.sgrow`／`.sgc`、`.sgb.sg0`～`.sg4`、`.van`、`.btn.sm`／`.btn.buy`（css） |
 | 馴獸師重製（0.1.53：成長、寵物不吃反彈、捕獲、進化、獸群召喚、獸群首領、巨獸化、群狼戰術、護主、撲殺、狂暴、馴獸鞭、共生、四兇召來／遠古之器、反制寵物調整） | `js/items.js`、`js/bag.js`、`js/run.js`、`js/sim.js`、`js/bot.js`、`js/ui.js` | `CORE_MAIN.tamer`、`vessel`／`taotie`／`qiongqi`／`taowu`／`hundun`、`WOLF_T`／`FRENZY_MAX`／`VESSEL_N`／`GORGE_MAX`／`PERILS`（items）；`compileBag` 的看不見的戰狼 `vw`、成長 `gw`、巨獸化、首領、`dr`，`packIt` 的 `gw`、`mergeAll` 留最高成長（bag）；`petWin`（成長、捕獲）、`petEvolve`、`sacrifice`／`sacOK`（run）；`attack` 的護主 `inGd`、`noTh`、共生、狂暴、四兇的吞噬／命中封鎖／混沌，計時的撲殺、馴獸鞭、戰狼加入（sim）；`botPower` 的四兇與馴獸師、`botEcon` 的捕獲／進化、獻祭（bot）；`sacPick`、動作 `sacr`、結算的捕獲、戰鬥事件 `wolf`／`pounce`／`whip`／`petGuard`（ui） |
 | 音效開關、百科搜尋與收合清單（0.1.55） | `js/ui.js`、`css/style.css` | `sfxBtn`、動作 `sfxTog`；`codexHTML`、`cxRow`、`cxFilter`、`plain`、動作 `cxClear`／`cxTab`、`V.cxQ`、`input` 事件的 `#cxq`；`.sfxb`、`.cxsearch`、`.cxr`、`.cxg`、`.cxsec` |
 | 點對手看上一回合的背包、重畫保留折疊（0.1.32） | `js/ui.js` | `showRivalBag`、`A.rvBag`、`rivalHTML` 的 `button.rv`；`render` 保留 `details[data-k]`（圖鑑 `codexHTML` 的 `cx_職業`） |
@@ -167,10 +167,10 @@
 - **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1959），4 個宣告
 - **即時機器人（0.1.30）**（2144），7 個宣告
 
-### js/bot.js（1159 行）
+### js/bot.js（1160 行）
 
-- **戰力分數**（211），25 個宣告
-- **每回合**（836），10 個宣告
+- **戰力分數**（212），25 個宣告
+- **每回合**（837），10 個宣告
 
 ### js/ghost.js（283 行）
 
@@ -187,10 +187,10 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（515 行）
+### js/news.js（523 行）
 
 
-### js/ui.js（3601 行）
+### js/ui.js（3608 行）
 
 - **小工具**（6），19 個宣告
 - **牌階**（112），5 個宣告
@@ -198,13 +198,13 @@
 - **畫面切換**（234），2 個宣告
 - **首頁**（277），4 個宣告
 - **準備畫面**（422），21 個宣告
-- **0.1.52 賽制**（799），22 個宣告
-- **0.1.62 系別羈絆**（1037），29 個宣告
-- **結算、三選一、一局結束**（1378），6 個宣告
-- **戰鬥播放**（1436），28 個宣告
-- **圖鑑、說明、設定**（2222），14 個宣告
-- **動作**（2587），12 個宣告
-- **拖曳擺放**（3277），14 個宣告
+- **0.1.52 賽制**（808），22 個宣告
+- **0.1.62 系別羈絆**（1044），29 個宣告
+- **結算、三選一、一局結束**（1385），6 個宣告
+- **戰鬥播放**（1443），28 個宣告
+- **圖鑑、說明、設定**（2229），14 個宣告
+- **動作**（2594），12 個宣告
+- **拖曳擺放**（3284），14 個宣告
 
 ### js/main.js（74 行）
 

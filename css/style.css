@@ -572,6 +572,9 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .sgleg span{display:inline-flex;align-items:center;gap:var(--sp-1)}
 .sgleg .sgb{position:static}
 .mbar{display:flex;align-items:center;gap:var(--sp-2);margin:var(--sp-1) 0;flex-wrap:wrap}
+.mbar>.mchip{min-width:0}
+.mbar.nxr{flex-wrap:nowrap}
+.mbar.nxr .nxo{flex:0 1 auto;max-width:none;min-width:0}
 .mchip{display:inline-flex;align-items:center;gap:var(--sp-1);height:38px;padding:0 var(--sp-2);border:0;border-radius:999px;background:var(--accent-soft);color:var(--gold);font-size:var(--fs-sm)}
 .mchip img{width:20px;height:20px;image-rendering:pixelated}
 .sgrow{display:flex;gap:var(--sp-1);flex:1;min-width:0}
@@ -674,7 +677,6 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .hcol{display:contents}
 .detph{display:none}
 /* 0.1.79 準備畫面重排：階段（圓圈連線）、本局規則、工具列（角色、戰報、核心）、下一場對手 */
-.top .rinfo{flex:1;min-width:0}
 /* 0.1.79 全部對手的清單：手機收進「全部對手」按鈕，電腦版左欄放得下就直接列出來 */
 .pcrv{display:none}
 .stg{display:flex;align-items:flex-start;padding:var(--sp-1) var(--sp-1) 0;min-height:58px}
@@ -694,25 +696,24 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .rlh{display:flex;align-items:center;gap:var(--sp-2);margin:var(--sp-2) 0 0;text-align:left}
 .rlh img{width:28px;height:28px;image-rendering:pixelated}
 .rlh small{color:var(--dim);font-size:var(--fs-sm);margin-left:auto}
-.tools{display:flex;align-items:center;gap:var(--sp-2);width:100%;margin-bottom:var(--sp-2)}
-.tools .me{display:flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:2px var(--sp-2) 2px var(--sp-1);border-radius:var(--r-md);background:var(--card);border:0;box-shadow:var(--shadow);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
-.tools .me canvas{width:32px;height:32px}
-.tools .me span{display:grid;line-height:1.15}
-.tools .me b{font-size:var(--fs-sm);color:var(--hp);font-family:var(--f-pix);font-weight:400}
-.tools .me b small{color:var(--dim)}
-.tools .me span>small{font-size:var(--fs-cap);color:var(--dim)}
-.tools .iconbtn.lgb{min-height:44px;height:44px}
-.tools .corefab{margin:0 0 0 auto;min-width:0}
-.nxrow{display:flex;align-items:stretch;gap:var(--sp-2)}
-.nxo{flex:1;min-width:0;position:relative;display:flex;align-items:center;gap:var(--sp-2);min-height:48px;padding:var(--sp-1) var(--sp-2);border-radius:var(--r-md);background:var(--card);border:1.5px solid var(--bad);box-shadow:var(--shadow);color:var(--ink);text-align:left;font:inherit}
-.nxo.pve{border-color:var(--s4)}
+.nxo{flex:none;display:inline-flex;align-items:center;gap:var(--sp-1);height:44px;max-width:52%;padding:0 var(--sp-2) 0 2px;border-radius:999px;background:var(--card);border:1.5px solid var(--bad);box-shadow:var(--shadow);color:var(--ink);text-align:left;font:inherit}
+.nxo.pve{border-color:var(--s4);padding-left:var(--sp-2)}
 .nxo canvas{width:32px;height:32px;flex:none}
-.nxo span{display:grid;min-width:0;line-height:1.2}
+.nxo span{display:grid;min-width:0;line-height:1.15}
 .nxo span small{font-size:var(--fs-cap);color:var(--dim)}
 .nxo span b{font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nxo em{margin-left:auto;font-style:normal;font-size:var(--fs-cap);color:var(--dim);white-space:nowrap}
-.nxo .rvc{position:static;width:18px;height:18px;image-rendering:pixelated;order:3}
-.nxrow>.btn{flex:none;min-height:48px}
+/* 0.1.80 核心、本局規則、全部對手：下一場那一列的右邊 */
+.fabs{display:flex;gap:var(--sp-1);margin-left:auto}
+.fab{position:relative;display:grid;place-items:center;align-content:center;width:46px;height:50px;padding:0;border-radius:var(--r-md);background:var(--card);border:1.5px solid var(--line);box-shadow:var(--shadow);color:var(--ink);font:inherit}
+.fab img{width:26px;height:26px;image-rendering:pixelated}
+.fab img.f2{position:absolute;top:4px;right:2px;width:16px;height:16px;border-radius:4px;background:var(--card)}
+.fab small{font-size:var(--fs-cap);line-height:1.1;color:var(--dim)}
+.fab b{font-family:var(--f-pix);font-weight:400;font-size:var(--fs-title);line-height:1;color:var(--bad)}
+.fab.core{border-color:var(--s5)}.fab.core small{color:var(--s5)}
+.fab.sel{background:var(--fill-hi)}
+.fab .fbg{position:absolute;top:-6px;left:-6px;min-width:20px;height:20px;padding:0 3px;border-radius:999px;background:var(--gold);color:#201b17;font-style:normal;font-size:var(--fs-cap);font-weight:700;line-height:20px;text-align:center}
+.fab .fbg.rvs{background:var(--s4);color:#fff}
+.rlh .tcard.sm,.rlh .tno.sm{width:28px;height:28px;flex:none}
 #modal .rivals.n5{grid-template-columns:1fr;gap:var(--sp-2)}
 #modal .rivals .rv,#modal .rivals.n5 button.rv{flex-direction:row;gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);text-align:left;min-height:52px}
 #modal .rivals.n5 .rv canvas{width:32px;height:32px}
@@ -722,7 +723,6 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .cxg .cxrule{margin:0 var(--sp-2) var(--sp-2);text-align:left}
 @media (min-width:1040px){
   .pa .pcrv{display:block}
-  .pa .nxrow>.btn{display:none}
   #app{max-width:1360px;padding:var(--sp-5)}
   /* 準備：上方資訊欄整條；左＝回合、賽制、對手，中＝背包＋暫存（格子照那欄放大，cellSize），右＝商店、按鈕、道具說明（固定在這裡，不浮出來） */
   .prep{grid-template-columns:340px minmax(0,1fr) 380px;grid-template-areas:"t t t" "a b c" "a b d";grid-template-rows:auto auto minmax(0,1fr);gap:var(--sp-4) var(--sp-5);min-height:calc(var(--vh,100vh) - 32px);align-items:start}

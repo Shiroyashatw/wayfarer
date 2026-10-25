@@ -648,24 +648,34 @@ function stageHTML(run) {
     nx ? `<i class="sl nx"></i><span class="sn nx" aria-label="下一階段 ${nx.id}"><i></i><b>${nx.id}</b></span>` : ''
   }</div>`;
 }
-/* 0.1.79 本局規則：一顆按鈕（賽制、道具池的圖示），點開看兩者的規則；常變的（塔羅、星象、印記件數）留在旁邊 */
-function rulesBarHTML(run) {
-  const M = MODEI[run.mode],
-    T = POOLTHI[run.theme];
-  if (!M || (run.phase === 'mode' && !run.mseen)) return '';
-  const x = run.mode !== 'std' && modeUI(run).bar ? modeUI(run).bar(run) : '';
-  return `<div class="mbar"><button class="mchip rules" data-act="rulesInfo" aria-label="本局規則：${M.n}${T ? '、' + T.n : ''}"><img src="${artIconURL(M.ic) || iconURL('star')}" alt="">${T ? `<img src="${artIconURL(T.ic) || iconURL('star')}" alt="">` : ''}<b>本局規則</b></button>${x}</div>`;
-}
-/* 0.1.79 下一場：PvP 顯示對手（點了看他上一回合的背包），PvE 顯示怪物；右邊「全部對手」點開看 5 位 */
-function nextOppHTML(run) {
+/* 0.1.80 階段下面一列：下一場對手（小膠囊，點了看他的背包；PvE 是怪物）＋常變的賽制資訊（塔羅、星象、印記件數）；
+   本局規則、核心、全部對手改成懸浮按鈕（fabHTML） */
+function infoRowHTML(run) {
   const r = curRound(run),
     nr = r.type === 'pvp' ? nextRival(run) : -1,
     rv = nr >= 0 && run.rivals[nr],
-    alive = run.rivals.filter(x => rivalAlive(x, r.id)).length,
     who = rv
-      ? `<button class="nxo" data-act="rvBag" data-k="${nr}">${rvClsIc(run, rv)}${sprCv('a_' + rv.av)}<span><small>下一場對手</small><b>${esc(String(rv.name).split('的').pop())}・♥ ${rivalHp(rv)}</b></span><em>看背包 ›</em></button>`
-      : `<div class="nxo pve"><span><small>下一場</small><b>${RTYPE[r.type]}</b></span></div>`;
-  return `<div class="nxrow">${who}<button class="btn sm" data-act="rivals">全部對手<small class="bnote">${alive} 位</small></button></div>`;
+      ? `<button class="nxo" data-act="rvBag" data-k="${nr}" aria-label="下一場對手 ${esc(rv.name)}，看他的背包">${sprCv('a_' + rv.av)}<span><small>下一場</small><b>${esc(String(rv.name).split('的').pop())} ♥${rivalHp(rv)}</b></span></button>`
+      : `<span class="nxo pve"><span><small>下一場</small><b>${RSHORT[r.type]}</b></span></span>`,
+    x = run.mode !== 'std' && modeUI(run).bar && !(run.phase === 'mode' && !run.mseen) ? modeUI(run).bar(run) : '';
+  return `<div class="mbar nxr">${who}${fabHTML(run)}</div>${x ? `<div class="mbar">${x}</div>` : ''}`;
+}
+/* 0.1.80 三顆小按鈕（下一場那一列的右邊）：核心、本局規則、全部對手。試過懸浮在右側，會蓋到暫存區和 5～6 格寬的背包 */
+function fabHTML(run) {
+  const c = run.bag.core,
+    M = MODEI[run.mode],
+    T = POOLTHI[run.theme],
+    rules = M && !(run.phase === 'mode' && !run.mseen),
+    alive = run.rivals.filter(x => rivalAlive(x, curRound(run).id)).length;
+  return `<div class="fabs">${
+    c
+      ? `<button class="fab core${V.sel === 'core' ? ' sel' : ''}" data-act="coreSel" aria-label="職業核心"><img src="${itemIcon(c.id)}" alt="">${c.sc && ITEMI[c.sc] ? `<img class="f2" src="${itemIcon(c.sc)}" alt="">` : ''}<small>核心</small></button>`
+      : ''
+  }${
+    rules
+      ? `<button class="fab" data-act="rulesInfo" aria-label="本局規則：${M.n}${T ? '、' + T.n : ''}${run.bag.tar ? '；塔羅牌：' + tarotName(run.bag.tar) : ''}"><img src="${artIconURL(M.ic) || iconURL('star')}" alt="">${T ? `<img class="f2" src="${artIconURL(T.ic) || iconURL('star')}" alt="">` : ''}${modeUI(run).badge ? modeUI(run).badge(run) : ''}<small>規則</small></button>`
+      : ''
+  }<button class="fab" data-act="rivals" aria-label="全部對手"><b>${alive}</b><small>對手</small></button></div>`;
 }
 /* 0.1.29 上方資訊欄的「戰報」：點一下直接看上一場的戰鬥紀錄（勝綠、敗紅） */
 function lastLogBtn(run) {
@@ -696,15 +706,14 @@ function prepHTML(run) {
           : '對戰'
         : RTYPE[r.type];
   return `<div class="prep">
-    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
+    <div class="top"><button class="iconbtn" data-act="menu" aria-label="選單">☰</button>${lastLogBtn(run)}<button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>${esc(S.name)}</b><small class="hpt">♥ ${run.hp}／${START_HP}<em>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</em></small></span></button><div class="rinfo"><b class="gold">${run.gold} 金${incTxt(run)}</b><small>${r.id}・${oppTxt}</small></div>${sfxBtn()}${themeBtn()}</div>
     <div class="pcol pa">${stageHTML(run)}
-    ${rulesBarHTML(run)}
+    ${infoRowHTML(run)}
     ${synHTML(run)}
-    ${nextOppHTML(run)}
     <div class="pcrv">${rivalHTML(run)}</div>
     ${tutHTML()}
     ${holdHTML(run)}</div>
-    <div class="pcol pb"><div class="tools"><button class="me" data-act="stats" aria-label="角色數值">${sprCv('a_' + S.av)}<span><b>♥ ${run.hp}<small>／${START_HP}</small></b><small>${CLSI[run.bag.cls] ? CLSI[run.bag.cls].n : '數值'} ›</small></span></button>${lastLogBtn(run)}${coreFabHTML(run)}</div><div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
+    <div class="pcol pb"><div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
@@ -911,7 +920,7 @@ function modeHTML(run) {
 }
 /* ================= 0.1.59 賽制的畫面 =================
    每個賽制一份（沒寫的就沒有）：intro 開場轉盤停下後規則下面多的、bar 準備畫面上方賽制標籤旁邊的、
-   info 點賽制標籤看規則時多的、panel 商店上面的一列（流浪商人、遺產攤位）。規則文字本身在 data.js 的 MODES */
+   info 點賽制標籤看規則時多的、panel 商店上面的一列（流浪商人、遺產攤位）、0.1.80 badge 規則按鈕上的小標（塔羅牌編號、星象）。規則文字本身在 data.js 的 MODES */
 const MODEUI = {
   sigil: {
     intro: () => `<div class="sgleg">${SIGILS.map((g, i) => `<span>${sgBadge(i)}${g.n}</span>`).join('')}</div>`,
@@ -932,11 +941,11 @@ const MODEUI = {
   },
   astro: {
     intro: run => astroListHTML(run, 1, 2),
-    /* 這個階段的規則（下一個在規則說明裡） */
-    bar: run => {
+    /* 0.1.80 這個階段的星象：規則按鈕上的小標（點開看這個和下一個階段） */
+    badge: run => {
       const r = curRound(run),
         a = r && ASTROI[astroAt(run, r.st)];
-      return a ? `<button class="mchip astro" data-act="modeInfo"><b>${a.n}</b><small>${a.d}</small></button>` : '';
+      return a ? `<em class="fbg">${a.n.slice(0, 2)}</em>` : '';
     },
     info: run => {
       const st = curRound(run) ? curRound(run).st : 1;
@@ -956,11 +965,9 @@ const MODEUI = {
   },
   legacy: { panel: run => legHTML(run) },
   tarot: {
-    /* 現在生效的牌（點了看抽過的牌） */
-    bar: run =>
-      run.bag.tar
-        ? `<button class="mchip" data-act="modeInfo" aria-label="塔羅牌：${tarotName(run.bag.tar)}">${tarotArt(run.bag.tar, 1)}<b>${tarotName(run.bag.tar)}</b></button>`
-        : '',
+    /* 0.1.80 現在生效的牌：規則按鈕上的小標（編號，逆位紫色；點開看抽過的牌和效果） */
+    badge: run =>
+      run.bag.tar ? `<em class="fbg${tarOf(run.bag.tar).r ? ' rvs' : ''}">${TAROTI[tarOf(run.bag.tar).T.k]}</em>` : '',
     info: run =>
       (run.tarot || []).length
         ? `<div class="astl">${run.tarot.map((k, i) => `<p class="${i === run.tarot.length - 1 ? 'on' : 'c-dim'}">第 ${TAROT_AT[i]}～${TAROT_AT[i] + 1} 階段・${tarotLine(k)}</p>`).join('')}</div>`
@@ -2812,7 +2819,7 @@ const A = {
       own = T ? ITEMS.filter(i => i.th === T.k && shopOK(i)).sort((a, b) => a.star - b.star) : [];
     showDlg(
       '本局規則',
-      `<div class="rlh"><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b>賽制：${M.n}</b><small>這局的規則變化</small></div><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${U.info ? U.info(run) : ''}${
+      `${run.bag.tar ? `<div class="rlh">${tarotArt(run.bag.tar, 1)}<b>${tarotLine(run.bag.tar)}</b></div>` : ''}<div class="rlh"><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b>賽制：${M.n}</b><small>這局的規則變化</small></div><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${U.info ? U.info(run) : ''}${
         T
           ? `<div class="rlh"><img src="${artIconURL(T.ic) || iconURL('star')}" alt=""><b>道具池：${T.n}</b><small>商店賣這套道具，圍繞它構築</small></div><ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}<li>商店只出基本池（功能、反制道具）和這個主題的道具</li></ul><h4>專屬道具（${own.length} 件）</h4><div class="thlist">${own.map(i => `<span class="s${i.star}" title="${esc(i.n)}"><img src="${itemIcon(i.id)}" data-iid="${i.id}" alt="">${esc(i.n)}</span>`).join('')}</div>`
           : ''
