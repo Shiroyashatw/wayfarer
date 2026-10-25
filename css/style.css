@@ -163,6 +163,13 @@ canvas.spr.flip{transform:scaleX(-1)}
 .lk{position:absolute;z-index:3;pointer-events:none;background:var(--good);border-radius:4px;box-shadow:0 0 0 2px var(--card),0 0 6px var(--good);opacity:.9;transition:opacity .15s,transform .15s}
 .lk.h{width:14px;height:8px;margin:-4px 0 0 -7px}.lk.v{width:8px;height:14px;margin:-7px 0 0 -4px}
 .lk.tf{background:var(--s4);box-shadow:0 0 0 2px var(--card),0 0 6px var(--s4)}
+/* 0.1.96 範圍提示（選中、拖曳時會影響到的空格）、棋子的遠距虛線（平常只露出棋子那頭一小段 45%，選中時整條＋箭頭） */
+.bag .cell.rng{background:color-mix(in srgb,var(--good) 22%,var(--cell));border-color:var(--good);transition:background .15s,border-color .15s}
+.lks{position:absolute;left:0;top:0;z-index:3;overflow:visible;pointer-events:none}
+.pcl{stroke:var(--gold);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:10 9999;opacity:.45;transition:opacity .15s}
+.pcl.on{stroke-dasharray:5 5;opacity:1}
+.bag.hassel .pcl:not(.on){opacity:.15}
+.lks marker path{fill:var(--gold)}
 .bag.hassel .lk{opacity:.3}.bag.hassel .lk.on{opacity:1;transform:scale(1.3)}
 .it.lift{opacity:.35}
 .tier{position:absolute;left:3px;top:2px;font-family:var(--f-pix);font-size:10px;line-height:1;color:#fff;background:var(--accent2);border-radius:3px;padding:1px 2px;font-weight:400}
@@ -704,6 +711,14 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .nxo span small{font-size:var(--fs-cap);color:var(--dim)}
 .nxo span b{font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* 0.1.80 核心、本局規則、全部對手：下一場那一列的右邊 */
+/* 0.1.95 規則標籤：賽制・道具池＋一句話（手機上旁邊有羈絆、印記時只剩圖示） */
+.rtag{position:relative;display:flex;align-items:center;gap:var(--sp-1);flex:0 1 auto;min-width:46px;height:50px;padding:0 var(--sp-2) 0 6px;margin-left:auto;border-radius:var(--r-md);background:var(--card);border:1.5px solid var(--line);box-shadow:var(--shadow);color:var(--ink);font:inherit;text-align:left}
+.rtag img{flex:none;width:26px;height:26px;image-rendering:pixelated}
+.rtag img.f2{position:absolute;left:24px;top:4px;width:16px;height:16px;border-radius:4px;background:var(--card)}
+.rtag span{display:grid;min-width:0;margin-left:6px;line-height:1.2}
+.rtag b{font-size:var(--fs-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rtag small{font-size:var(--fs-cap);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rtag+.fabs{margin-left:0}
 .fabs{display:flex;gap:var(--sp-1);margin-left:auto}
 .fab{position:relative;display:grid;place-items:center;align-content:center;width:46px;height:50px;padding:0;border-radius:var(--r-md);background:var(--card);border:1.5px solid var(--line);box-shadow:var(--shadow);color:var(--ink);font:inherit}
 .fab img{width:26px;height:26px;image-rendering:pixelated}
@@ -712,8 +727,8 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .fab b{font-family:var(--f-pix);font-weight:400;font-size:var(--fs-title);line-height:1;color:var(--bad)}
 .fab.core{border-color:var(--s5)}.fab.core small{color:var(--s5)}
 .fab.sel{background:var(--fill-hi)}
-.fab .fbg{position:absolute;top:-6px;left:-6px;min-width:20px;height:20px;padding:0 3px;border-radius:999px;background:var(--gold);color:#201b17;font-style:normal;font-size:var(--fs-cap);font-weight:700;line-height:20px;text-align:center}
-.fab .fbg.rvs{background:var(--s4);color:#fff}
+.fab .fbg,.rtag .fbg{position:absolute;top:-6px;left:-6px;min-width:20px;height:20px;padding:0 3px;border-radius:999px;background:var(--gold);color:#201b17;font-style:normal;font-size:var(--fs-cap);font-weight:700;line-height:20px;text-align:center}
+.fab .fbg.rvs,.rtag .fbg.rvs{background:var(--s4);color:#fff}
 .rlh .tcard.sm,.rlh .tno.sm{width:28px;height:28px;flex:none}
 #modal .rivals.n5{grid-template-columns:1fr;gap:var(--sp-2)}
 #modal .rivals .rv,#modal .rivals.n5 button.rv{flex-direction:row;gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);text-align:left;min-height:52px}
@@ -727,6 +742,8 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .cn{position:absolute;width:var(--cs);height:var(--cs);pointer-events:none;z-index:2}
 .cbr{position:absolute;right:2px;bottom:2px;z-index:2;display:flex;gap:1px;pointer-events:none}
 .cbr>.sgb,.cbr>.cub{position:static}
+.cbr>.buf.n,.cbr>.buf.zd{width:auto;padding:0 2px;white-space:nowrap}
+.buf.n.z{color:var(--faint)}.buf.zd{color:var(--s5)}
 .cbr>.buf{position:static;display:grid;place-items:center;width:15px;height:15px;border-radius:4px;background:var(--card);box-shadow:0 0 0 1px #0006}
 .bag.mini .cbr{right:1px;bottom:1px}
 /* 背包的格子小：右下那排放不下時往上疊（不要蓋到左下的融合圖示） */
@@ -758,6 +775,11 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .sinfo .synbar>b,.sinfo .synbar>em,.sinfo .syl small{display:none}
   .sinfo .syi img{width:22px;height:22px}
   .srow .fab{width:44px;height:44px}
+  .srow .rtag{order:2;flex:1 1 auto;height:44px}
+  .srow:not(:has(.sinfo>*)) .sinfo{display:none}
+  .srow:has(.sinfo>*) .rtag{flex:0 0 auto}
+  .srow:has(.sinfo>*) .rtag span{display:none}
+  .srow:has(.sinfo>*) .rtag{padding-right:18px}
   .srow .fab img{width:22px;height:22px}
   .srow .sgc{height:44px}
   .bagwrap{padding:var(--sp-2)}
@@ -768,6 +790,22 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .sc img{width:32px;height:32px}
   .sc .cbr{top:22px}
 }
+/* 0.1.95 規則觸發提示：從原因旁邊冒出的小膠囊（不擋點擊）；狂風價格旁的 −1 */
+.rhint{position:fixed;z-index:60;translate:-50% calc(-100% - 6px);max-width:min(300px,90vw);padding:6px 12px;border-radius:999px;background:var(--gold);color:#201b17;font-size:var(--fs-sm);font-weight:700;line-height:1.3;text-align:center;box-shadow:var(--shadow);pointer-events:none}
+.rhint.dn{translate:-50% 6px}
+.sc b .poff{margin-left:2px;font-style:normal;font-size:var(--fs-cap);color:var(--good)}
+/* 0.1.98 凹口（空著時一直發光）、遺物生效的格子（遺物的顏色）、塔羅影響的道具角標、詛咒寶藏紫框 */
+.bag .cell.hole{border:1.5px dashed var(--gold);background:color-mix(in srgb,var(--gold) 14%,var(--cell));box-shadow:inset 0 0 8px color-mix(in srgb,var(--gold) 45%,transparent)}
+.bag .cell.rz{background:color-mix(in srgb,var(--rz) 16%,var(--cell));border-color:color-mix(in srgb,var(--rz) 55%,transparent)}
+.relc[style*="--rz"]{box-shadow:inset 0 0 0 2px var(--rz)}
+.cbr>.buf.tr{width:auto;padding:0 2px;color:var(--gold)}
+.sc:has(.cub),.it:has(.cub) .c{border-color:var(--s4)}
+.sc:has(.cub){box-shadow:0 0 0 1px var(--s4),0 0 8px color-mix(in srgb,var(--s4) 50%,transparent)}
+/* 0.1.97 戰鬥：連動光線、機關城計數點 */
+.bag .beam{position:absolute;z-index:4;height:3px;margin-top:-1.5px;border-radius:2px;background:var(--bc);box-shadow:0 0 6px var(--bc);transform-origin:0 50%;pointer-events:none}
+.it .nkp{position:absolute;left:0;right:0;bottom:1px;z-index:2;display:flex;justify-content:center;gap:2px;pointer-events:none}
+.it .nkp i{width:5px;height:5px;border-radius:50%;background:#0008;box-shadow:0 0 0 1px #7fe0ff88}
+.it .nkp i.on{background:#7fe0ff}
 /* ================= 0.1.87 動效與手感（skill apple-design；參數在 ui.js 的 SPRING） =================
    按下就有回饋（縮 0.97，100ms）；拖起來的影子稍微放大、影子變深；提示從上面滑下來；拖的時候整件跟著手指 */
 .sc,.bs,.rv,.nxo,.fab,.sgc,.relc,.pk,.iconbtn,.me,.lgb,.rnx,.cxtab,.hist .hr,.stg .sn[data-act],.rvit button{transition:transform .1s ease-out}

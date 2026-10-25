@@ -12,6 +12,60 @@ function toast(t) {
   clearTimeout(toast.t);
   toast.t = setTimeout(() => el.classList.remove('on'), 1800);
 }
+/* 0.1.95 規則觸發提示：從造成它的元件旁邊冒出一顆小膠囊（不擋點擊），進出走同一條路；
+   同一種（k）每局前 2 次才跳（記在 run.hn），之後只剩元件本身的動畫。系統訊息（存檔、錯誤）還是用 toast */
+function hint(el, t, k) {
+  const run = S.run,
+    hn = run && (run.hn = run.hn || {});
+  if (!el || !hn || (hn[k] || 0) >= 2) return;
+  hn[k] = (hn[k] || 0) + 1;
+  const r = el.getBoundingClientRect(),
+    z = V.z || 1,
+    up = r.top > 80,
+    p = document.createElement('div'),
+    kf = [
+      { transform: `translateY(${up ? 8 : -8}px) scale(.92)`, opacity: 0 },
+      { transform: 'none', opacity: 1 }
+    ];
+  p.className = 'rhint' + (up ? '' : ' dn');
+  p.textContent = t;
+  Object.assign(p.style, { zoom: 'var(--z,1)', top: (up ? r.top : r.bottom) / z + 'px' });
+  document.body.appendChild(p);
+  /* 置中在原因上面，但不超出畫面左右 */
+  const w = p.offsetWidth / 2 + 8;
+  p.style.left = Math.min(Math.max((r.left + r.width / 2) / z, w), innerWidth / z - w) + 'px';
+  spr(p, kf);
+  setTimeout(() => {
+    const a = spr(p, kf.slice().reverse());
+    a ? (a.onfinish = () => p.remove()) : p.remove();
+  }, 1900);
+}
+/* 0.1.95 重畫後跟上一次比：規則真的生效了（狂風換新、羈絆過門檻、換階段…）就由賽制的 MODEUI.fx、共用的 ruleFxAll 播提示。
+   同一回合的準備畫面才比（換回合、讀檔不算） */
+const rfSnap = run => ({
+  id: run.seed,
+  ri: run.ri,
+  st: curRound(run) ? curRound(run).st : 0,
+  ph: run.phase,
+  shop: run.shop.map(x => (x ? x.id + ':' + (x.t || 1) : '')).join(),
+  syn: synView(run.bag).lv,
+  sg: sgCount(run.bag).map(sgLv)
+});
+function ruleFx(run) {
+  const was = V.rf,
+    now = (V.rf = rfSnap(run));
+  if (!was || was.id !== now.id || now.ph !== 'prep') return;
+  /* 換階段（星象換一條規則）：可能跨過結算畫面，只看階段 */
+  if (was.st && was.st !== now.st && modeUI(run).stage) modeUI(run).stage(run);
+  if (was.ri !== now.ri || was.ph !== 'prep') return;
+  if (modeUI(run).fx) modeUI(run).fx(run, was, now);
+  /* 羈絆過門檻（黃道的 8、10 件也是）：羈絆列旁邊提示＋音效 */
+  const up = now.syn.findIndex((l, i) => l > (was.syn[i] || 0));
+  if (up >= 0) {
+    snd('select');
+    hint($q('.synbar'), `${synName(SYN[up])} ${SYN_AT[now.syn[up] - 1]} 件：羈絆 ${now.syn[up]} 級開啟`, 'syn');
+  }
+}
 /* 0.1.87 震動跟音效同一格發生（手機支援 navigator.vibrate 才有）：只給放好、買、合成、錯誤這幾個有意義的時刻 */
 const HAPT = { select: 8, coin: 12, level: [12, 60, 18], nope: [10, 40, 10] };
 const snd = n => {
@@ -284,7 +338,8 @@ function render() {
   sheetIn();
   if (V.scr === 'run' && run && run.phase !== 'end') tick('.top .gold', run.gold, 'g'), tick('.top .hpt', run.hp, 'h');
   /* 教學關的框：說明卡、對話框滑進來後位置才對，晚一點再量一次 */
-  if (run && run.tutor) coachFx(), setTimeout(coachFx, 550);
+  if (run && (run.tutor || (V.scr === 'run' && seenK(run).length))) coachFx(), setTimeout(coachFx, 550);
+  if (V.scr === 'run' && run) ruleFx(run);
   /* 0.1.59 開場賽制轉盤 */
   if (V.scr === 'run' && run && run.phase === 'mode') wheelGo(run);
   /* 0.1.55 百科：重畫後照搜尋欄再篩一次 */
@@ -627,15 +682,28 @@ function coachStep(run) {
 function coachFx() {
   document.querySelectorAll('.coach').forEach(e => e.remove());
   const run = S.run,
-    c = V.scr === 'run' && run && run.tutor && !V.drag && coachStep(run);
+    c = V.scr === 'run' && run && !V.drag && (run.tutor ? coachStep(run) : firstStep(run));
   if (!c) return;
   const el = document.querySelector(c.s),
     r = el && el.getBoundingClientRect(),
     w = document.createElement('div');
   w.className = 'coach';
   const up = r && r.top > innerHeight / 2;
-  w.innerHTML = `${r ? `<i class="cspot" style="left:${r.left - 4}px;top:${r.top - 4}px;width:${r.width + 8}px;height:${r.height + 8}px"></i>` : ''}<div class="cbub" style="${c.top ? 'top:calc(12px + var(--sat))' : r ? (up ? `bottom:${innerHeight - r.top + 14}px` : `top:${r.bottom + 14}px`) : 'top:40%'}"><p>${c.t}</p><button class="btn sm" data-act="tutEnd" data-k="skip">跳過教學</button></div>`;
+  w.innerHTML = `${r ? `<i class="cspot" style="left:${r.left - 4}px;top:${r.top - 4}px;width:${r.width + 8}px;height:${r.height + 8}px"></i>` : ''}<div class="cbub" style="${c.top ? 'top:calc(12px + var(--sat))' : r ? (up ? `bottom:${innerHeight - r.top + 14}px` : `top:${r.bottom + 14}px`) : 'top:40%'}"><p>${c.t}</p>${c.k ? `<button class="btn sm" data-act="seenOk" data-k="${c.k}">知道了</button>` : '<button class="btn sm" data-act="tutEnd" data-k="skip">跳過教學</button>'}</div>`;
   document.body.appendChild(w);
+}
+/* 0.1.95 第一次遇到的賽制、道具池：開局後框起它生效的地方（沒寫 spot 就框規則標籤）＋一句話規則；按「知道了」記在 S.seen（'r:m:賽制'、'r:t:道具池'） */
+const seenK = run =>
+  [run.mode !== 'std' && 'r:m:' + run.mode, run.theme && 'r:t:' + run.theme].filter(k => k && !S.seen[k]);
+function firstStep(run) {
+  if (run.phase !== 'prep' || run.pend || run.relq || run.tarq || run.sgq?.length || run.legNew?.length || V.sel)
+    return null;
+  const k = seenK(run)[0];
+  if (!k) return null;
+  const m = k[2] === 'm',
+    X = m ? MODEI[run.mode] : POOLTHI[run.theme],
+    sp = m && modeUI(run).spot;
+  return { t: `「${X.n}」${X.s}`, s: (sp && document.querySelector(sp) && sp) || '.rtag', k };
 }
 /* 到 1-4：完成 */
 function tutDoneHTML(run) {
@@ -660,9 +728,16 @@ function bagHTML(bag, cs, opt = {}) {
     src = new Set(sel && mods && mods.get(sel.u) ? mods.get(sel.u).map(x => x.from) : []);
   if (sel && mods) for (const [u, l] of mods) if (l.some(x => x.from === sel.u)) lit.add(u);
   let h = `<div class="bag${opt.mini ? ' mini' : ''}${sel ? ' hassel' : ''}" id="${opt.id || 'bag'}" style="width:${W}px;height:${H}px;--cs:${cs}px">`;
+  const rng = sel && !opt.mini ? rngOf(bag, sel) : new Map(),
+    g = bagGrid(bag),
+    /* 0.1.98 空著的凹口一直發光（塞進去才有加成）；遺物生效的格子塗遺物的顏色 */
+    hole = new Set(opt.mini ? [] : bag.items.flatMap(o => (ITEMI[o.id].hole ? holeOf(o) : [])).map(p => p + '')),
+    rz = (x, y) => !opt.mini && (bag.rel || []).find(k => RZ[k] && RZ[k][0](x, y, bag));
   for (let y = 0; y < bag.h; y++)
-    for (let x = 0; x < bag.w; x++)
-      h += `<i class="cell" style="left:${x * (cs + GAP)}px;top:${y * (cs + GAP)}px"></i>`;
+    for (let x = 0; x < bag.w; x++) {
+      const z = rz(x, y);
+      h += `<i class="cell${rng.get(x + ',' + y) === 'on' ? ' rng' : hole.has(x + ',' + y) && g[y][x] == null ? ' hole' : z ? ' rz' : ''}" style="left:${x * (cs + GAP)}px;top:${y * (cs + GAP)}px${z ? ';--rz:' + RZ[z][1] : ''}"></i>`;
+    }
   for (const o of bag.items) {
     const I = ITEMI[o.id],
       cs0 = cellsOf(o),
@@ -673,7 +748,8 @@ function bagHTML(bag, cs, opt = {}) {
       bw = (Mx - mx + 1) * (cs + GAP) - GAP,
       bh = (My - my + 1) * (cs + GAP) - GAP,
       buf = mods && mods.get(o.u) && mods.get(o.u).length,
-      tfd = buf && mods.get(o.u).some(x => x.w === 'tf');
+      tfd = buf && mods.get(o.u).some(x => x.w === 'tf'),
+      bt = opt.mini ? '' : bufTag(bag, o, mods);
     h += `<div class="it s${I.star}${V.sel === o.u ? ' sel' : ''}${lit.has(o.u) ? ' lit' : ''}${src.has(o.u) ? ' src' : ''}${I.core ? ' core' : ''}" data-u="${o.u}" style="left:${mx * (cs + GAP)}px;top:${my * (cs + GAP)}px;width:${bw}px;height:${bh}px">${cs0
       .map(([x, y]) => {
         /* 同一件的格子連在一起：相鄰那一邊補滿間隙、不畫框線與圓角 */
@@ -701,7 +777,11 @@ function bagHTML(bag, cs, opt = {}) {
       my,
       cs,
       [-1, -1],
-      brHTML(o, buf && !opt.mini ? (tfd ? '<b class="buf tfm">✦</b>' : '<b class="buf">+</b>') : '')
+      brHTML(
+        o,
+        (opt.tar && opt.tar.has(o.u) ? `<b class="buf tr">${TAROTI[tarOf(bag.tar).T.k]}</b>` : '') +
+          (bt || (buf && !opt.mini ? (tfd ? '<b class="buf tfm">✦</b>' : '<b class="buf">+</b>') : ''))
+      )
     )}</div>`;
   }
   if (mods && !opt.mini) h += linkHTML(bag, mods, cs, sel);
@@ -713,6 +793,91 @@ function bagHTML(bag, cs, opt = {}) {
     h += `<button class="rotb" data-act="rot" aria-label="旋轉" style="left:${Math.min(rx - 16, W - 22)}px;top:${Math.max(ry - 12, -10)}px">↻</button>`;
   }
   return h + '</div>';
+}
+/* 0.1.98 法老王的遺物：看位置的遺物生效在哪些格子（判斷、顏色；遺物列的圖示框同色） */
+const RZ = {
+  scarab: [(x, y, b) => y === b.h - 1, '#5fd3c4'],
+  horus: [(x, y) => y === 0, '#7fb8ff'],
+  feather: [(x, y, b) => (x === 0 || x === b.w - 1) && (y === 0 || y === b.h - 1), '#ffe27a'],
+  pyramid: [(x, y, b) => x > 0 && y > 0 && x < b.w - 1 && y < b.h - 1, '#ffb15a']
+};
+/* 0.1.98 塔羅牌只作用在特定道具的（皇帝：佔最多格的武器；戀人：每秒傷害最高的兩把；高塔逆位：星級最高、整場不出手的那把）：
+   那幾件加塔羅編號角標。跟 bag.js 的 tarotF、compileBag 同一套挑法 */
+function tarAff(bag) {
+  const TK = bag.tar,
+    out = new Set();
+  if (!['emperor', 'lovers', 'lovers_r', 'tower_r'].includes(TK)) return out;
+  if (TK === 'tower_r') {
+    const t = bag.items
+      .filter(o => ITEMI[o.id].dmg && !ITEMI[o.id].block)
+      .sort((a, b) => ITEMI[b.id].star * 10 + b.t - (ITEMI[a.id].star * 10 + a.t))[0];
+    if (t) out.add(t.u);
+    return out;
+  }
+  const ws = compileBag(bag).weapons.filter(w => !w.vw && bag.items.some(o => o.u === w.u)),
+    dps = w => (w.dmg[0] + w.dmg[1]) / w.cd,
+    cells = w => shapeO(bag.items.find(o => o.u === w.u)).length;
+  if (TK === 'emperor')
+    ws.sort((a, b) => cells(b) - cells(a) || b.star - a.star)
+      .slice(0, 1)
+      .forEach(w => out.add(w.u));
+  else
+    ws.sort((a, b) => dps(b) - dps(a))
+      .slice(0, 2)
+      .forEach(w => out.add(w.u));
+  return out;
+}
+/* 0.1.96 加成角標寫出是什麼、有多少：被幾個棋子影響（♞2）、森林道具旁邊有幾件（🌿3，0 件也顯示，提醒要擠）、被星座染色（✶） */
+function bufTag(bag, o, mods) {
+  const I = ITEMI[o.id],
+    l = (mods && mods.get(o.u)) || [],
+    pc = l.filter(x => x.w === 'pc').length;
+  if (l.some(x => x.w === 'tf')) return '';
+  if (pc) return `<b class="buf n">♞${pc}</b>`;
+  if (I.perAdj) {
+    const n = bag.items.filter(q => q !== o && adjacent(o, q)).length;
+    return `<b class="buf n${n ? '' : ' z'}">🌿${n}</b>`;
+  }
+  const z = l.find(x => {
+    const q = bag.items.find(i => i.u === x.from);
+    return q && ITEMI[q.id].zod;
+  });
+  return z ? '<b class="buf zd">✶</b>' : '';
+}
+/* 0.1.96 範圍提示：這件會影響到哪些格子（Map 'x,y' → 'on' 空格／'hit' 被影響的道具）：
+   棋子照走法（每個方向碰到第一件就停）、凹口、森林／齒輪／連鎖／星座的相鄰格。o 可以是拖曳中的落點（不在背包裡） */
+function rngOf(bag, o) {
+  const I = ITEMI[o.id],
+    out = new Map(),
+    g = bagGrid(bag),
+    mine = new Set(cellsOf(o).map(p => p + '')),
+    put = (x, y) => {
+      if (x < 0 || y < 0 || x >= bag.w || y >= bag.h || mine.has([x, y] + '')) return undefined;
+      const u = g[y][x] === o.u ? null : g[y][x];
+      out.set(x + ',' + y, u != null ? 'hit' : 'on');
+      return u;
+    };
+  if (I.pc) {
+    const D = PC_DIR[I.pc.k] || {},
+      [px, py] = cellsOf(o)[0];
+    for (const [dx, dy] of D.ray || [])
+      for (let k = 1; k < 9; k++) {
+        const x = px + dx * k,
+          y = py + dy * k;
+        if (x < 0 || y < 0 || x >= bag.w || y >= bag.h || put(x, y) != null) break;
+      }
+    for (const [dx, dy] of D.jump || []) put(px + dx, py + dy);
+  } else if (I.hole) for (const [x, y] of holeOf(o)) put(x, y);
+  else if (I.perAdj || I.perAdjF || I.gear || I.chainAdj || I.zod)
+    for (const [x, y] of cellsOf(o))
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1]
+      ])
+        put(x + dx, y + dy);
+  return out;
 }
 /* 0.1.86 角標放在道具真的有的那一格（不是外框的角）：巨人國的 U 形、轉過的 P 形，外框左上角可能是空的，
    角標會跑到別的空格上、看起來像沒有階數。d＝[x 方向, y 方向]：[1,1] 左上、[1,-1] 左下、[-1,-1] 右下（先比那個角的斜線，再比上下） */
@@ -728,9 +893,21 @@ function linkHTML(bag, mods, cs, sel) {
   const byU = new Map(bag.items.map(o => [o.u, o])),
     seen = new Set(),
     st = cs + GAP;
-  let h = '';
+  let h = '',
+    ln = '';
   for (const [u, l] of mods)
     for (const x of l) {
+      /* 0.1.96 棋子不相鄰：從棋子中心畫虛線到被影響的那件最近的一格（平常只露出棋子那頭一小段，選中時整條＋箭頭） */
+      if (x.w === 'pc' && byU.has(x.from) && byU.has(u)) {
+        const [px, py] = cellsOf(byU.get(x.from))[0],
+          [tx, ty] = cellsOf(byU.get(u)).reduce((a, b) =>
+            Math.hypot(b[0] - px, b[1] - py) < Math.hypot(a[0] - px, a[1] - py) ? b : a
+          ),
+          on = sel && (sel.u === x.from || sel.u === u),
+          c = v => v * st + cs / 2;
+        ln += `<line class="pcl${on ? ' on' : ''}" x1="${c(px)}" y1="${c(py)}" x2="${c(tx)}" y2="${c(ty)}"${on ? ' marker-end="url(#pca)"' : ''}/>`;
+        continue;
+      }
       if ((x.w !== 'adj' && x.w !== 'tf') || !byU.has(x.from) || !byU.has(u)) continue;
       const key = [x.from, u].sort().join('|');
       if (seen.has(key)) continue;
@@ -752,12 +929,15 @@ function linkHTML(bag, mods, cs, sel) {
         on = sel && (sel.u === a.u || sel.u === b.u);
       h += `<i class="lk ${dx ? 'h' : 'v'}${on ? ' on' : ''}${x.w === 'tf' ? ' tf' : ''}" style="left:${cx * st + cs / 2 + (dx * st) / 2}px;top:${cy * st + cs / 2 + (dy * st) / 2}px"></i>`;
     }
-  return h;
+  return ln
+    ? h +
+        `<svg class="lks" width="${bag.w * st}" height="${bag.h * st}" aria-hidden="true"><defs><marker id="pca" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L8 4L0 8z"/></marker></defs>${ln}</svg>`
+    : h;
 }
 /* 0.1.28 拖曳中：放下後會跟它有加成（或能融合）的道具先亮起來 */
 function dragLit(d) {
   const run = S.run,
-    t = d.tgt && d.ok ? { ...d.o, x: d.tgt[0], y: d.tgt[1], r: d.r } : null,
+    t = d.tgt && d.ok ? { ...d.o, u: d.o.u || '_d', x: d.tgt[0], y: d.tgt[1], r: d.r } : null,
     key = d.fuse ? 'f' + d.fuse.u : t ? [t.x, t.y, t.r] + '' : '';
   if (d.lk === key) return;
   d.lk = key;
@@ -768,9 +948,29 @@ function dragLit(d) {
     const e = bag.querySelector(`.it[data-u="${q.u}"]`);
     if (e) e.classList.add('pv');
   };
+  const cells = bag.querySelectorAll('.cell');
+  cells.forEach(e => e.classList.remove('rng'));
   if (d.fuse) return on(d.fuse);
   if (!t) return;
-  for (const q of run.bag.items) if (q.u !== d.o.u && adjacent(t, q) && synergy(t, q) + synergy(q, t) > 0) on(q);
+  /* 0.1.96 放下去之後的背包重算加成：跟它互相有加成的（相鄰、森林、凹口、棋子、齒輪…）都亮起來 */
+  const B = { ...run.bag, items: [...run.bag.items.filter(q => q.u !== t.u), t] },
+    M = bagMods(B);
+  for (const q of B.items)
+    if (
+      q !== t &&
+      (M.get(q.u).some(x => x.from === t.u && x.w !== 'all') || M.get(t.u).some(x => x.from === q.u && x.w !== 'all'))
+    )
+      on(q);
+  /* 範圍提示：拖的是棋子、凹口、森林這類就標它會影響的空格；拖一般道具就標棋子打得到的空格 */
+  const rg = rngOf(B, t);
+  const B0 = { ...B, items: B.items.filter(q => q !== t) };
+  if (!rg.size) for (const p of B0.items) if (ITEMI[p.id].pc) for (const [k, v] of rngOf(B0, p)) rg.set(k, v);
+  for (const [k, v] of rg)
+    if (v === 'on') {
+      const [x, y] = k.split(',').map(Number),
+        e = cells[y * run.bag.w + x];
+      if (e) e.classList.add('rng');
+    }
 }
 /* 0.1.4 道具形狀的小圖（商店、說明、三選一）：幾格、怎麼排一眼看得出來 */
 /* sh：0.1.59 七十二變換過的形狀（沒給的話照這局的對照表 shmOf） */
@@ -821,22 +1021,31 @@ function infoRowHTML(run) {
       : `<span class="nxo pve"><span><small>下一場</small><b>${RSHORT[r.type]}</b></span></span>`,
     x = run.mode !== 'std' && modeUI(run).bar && !(run.phase === 'mode' && !run.mseen) ? modeUI(run).bar(run) : '';
   /* 0.1.89 賽制資訊（印記件數、遺物）跟羈絆放同一格 .sinfo：手機排在三顆按鈕左邊同一列，電腦版照舊一列一列 */
-  return `<div class="mbar nxr">${who}${fabHTML(run)}</div><div class="sinfo">${x ? `<div class="mbar">${x}</div>` : ''}${synHTML(run)}</div>`;
+  return `<div class="mbar nxr">${who}${rtagHTML(run)}${fabHTML(run)}</div><div class="sinfo">${x ? `<div class="mbar">${x}</div>` : ''}${synHTML(run)}</div>`;
 }
-/* 0.1.80 三顆小按鈕（下一場那一列的右邊）：核心、本局規則、全部對手。試過懸浮在右側，會蓋到暫存區和 5～6 格寬的背包 */
+/* 0.1.95 規則標籤：賽制・道具池＋一句話規則（星象、塔羅換成現在生效的那條），點了看本局規則（對話框從標籤長出來） */
+function rtagHTML(run) {
+  const M = MODEI[run.mode],
+    T = POOLTHI[run.theme];
+  if (!M || (run.phase === 'mode' && !run.mseen)) return '';
+  const r = curRound(run),
+    a = run.mode === 'astro' && r && ASTROI[astroAt(run, r.st)],
+    s = a
+      ? `本階段：${a.n}`
+      : run.bag.tar
+        ? `塔羅：${tarotName(run.bag.tar)}${/^hermit/.test(run.bag.tar) ? `・背包 ${run.bag.items.length} 件` : ''}`
+        : run.mode === 'std' && T
+          ? T.s
+          : M.s;
+  return `<button class="rtag" data-act="rulesInfo" aria-label="本局規則：${M.n}${T ? '、' + T.n : ''}。${s}"><img src="${artIconURL(M.ic) || iconURL('star')}" alt="">${T ? `<img class="f2" src="${artIconURL(T.ic) || iconURL('star')}" alt="">` : ''}${modeUI(run).badge ? modeUI(run).badge(run) : ''}<span><b>${M.n}${T ? '・' + T.n : ''}</b><small>${s}</small></span></button>`;
+}
+/* 0.1.80 小按鈕（下一場那一列的右邊）：核心、全部對手（0.1.95 本局規則改成規則標籤 rtagHTML）。試過懸浮在右側，會蓋到暫存區和 5～6 格寬的背包 */
 function fabHTML(run) {
   const c = run.bag.core,
-    M = MODEI[run.mode],
-    T = POOLTHI[run.theme],
-    rules = M && !(run.phase === 'mode' && !run.mseen),
     alive = run.rivals.filter(x => rivalAlive(x, curRound(run).id)).length;
   return `<div class="fabs">${
     c
       ? `<button class="fab core${V.sel === 'core' ? ' sel' : ''}" data-act="coreSel" aria-label="職業核心"><img src="${itemIcon(c.id)}" alt="">${c.sc && ITEMI[c.sc] ? `<img class="f2" src="${itemIcon(c.sc)}" alt="">` : ''}<small>核心</small></button>`
-      : ''
-  }${
-    rules
-      ? `<button class="fab" data-act="rulesInfo" aria-label="本局規則：${M.n}${T ? '、' + T.n : ''}${run.bag.tar ? '；塔羅牌：' + tarotName(run.bag.tar) : ''}"><img src="${artIconURL(M.ic) || iconURL('star')}" alt="">${T ? `<img class="f2" src="${artIconURL(T.ic) || iconURL('star')}" alt="">` : ''}${modeUI(run).badge ? modeUI(run).badge(run) : ''}<small>規則</small></button>`
       : ''
   }<button class="fab" data-act="rivals" aria-label="全部對手"><b>${alive}</b><small>對手</small></button></div>`;
 }
@@ -854,6 +1063,11 @@ function incTxt(run) {
   const e = incomeEst(run);
   if (!e) return '';
   return `<small class="inc" title="下回合收入（輸～贏）">+${e[0] === e[1] ? e[0] : e[0] + '～' + e[1]}</small>`;
+}
+/* 0.1.95 賽制改過的價格（狂風 -1）：價格旁邊標出差多少 */
+function priceOff(run, s) {
+  const d = slotPrice(run, s) - shopPrice(run, s.id, s.t, s.p);
+  return d ? `<em class="poff">${d > 0 ? '+' : '−'}${Math.abs(d)}</em>` : '';
 }
 function prepHTML(run) {
   const r = curRound(run),
@@ -879,7 +1093,7 @@ function prepHTML(run) {
     <div class="pcrv">${rivalHTML(run)}</div>
     ${tutHTML()}
     ${holdHTML(run)}</div>
-    <div class="pcol pb"><div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods })}</div>
+    <div class="pcol pb"><div class="bagwrap" id="bagwrap">${bagHTML(bag, cs, { mods, tar: tarAff(bag) })}</div>
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
@@ -890,13 +1104,13 @@ function prepHTML(run) {
     <div class="pcol pc">${modeUI(run).panel ? modeUI(run).panel(run) : ''}<div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
-          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}" aria-label="${ITEMI[s.id].n}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${brHTML(s)}${shapeMini(s.id, 0, 0, s.sh)}<b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金</b></button>`
+          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}" aria-label="${ITEMI[s.id].n}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${brHTML(s)}${shapeMini(s.id, 0, 0, s.sh)}<b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金${priceOff(run, s)}</b></button>`
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
     <div class="acts">${
       rerollNo(run)
-        ? `<button class="btn" disabled>不能刷新<small class="bnote">${modeH(run).rerollNote || ''}</small></button>`
+        ? `<button class="btn rr" disabled>不能刷新<small class="bnote">${modeH(run).rerollNote || ''}</small></button>`
         : `<button class="btn" data-act="reroll" ${(run.gold < REROLL && freeRolls(run) <= 0) || rollsLeft(run) <= 0 ? 'disabled' : ''}>刷新<small class="bnote">${rollsLeft(run) <= 0 ? '用完了' : freeRolls(run) > 0 ? '免費' : REROLL + ' 金'}</small></button>`
     }<button class="btn" data-act="lock" aria-pressed="${!!run.lock}">${run.lock ? '已鎖' : '鎖住'}<small class="bnote">商店</small></button><button class="btn" data-act="lvup" ${!lvNext || !lvOpen(run) || run.gold < lvCost(run) ? 'disabled' : ''}>${lvNext ? `背包 ${lvNext.w}×${lvNext.h}` : '背包最大'}<small class="bnote">${lvNext ? (lvOpen(run) ? lvCost(run) + ' 金' : lvNext.from + ' 開放') : ''}</small></button><button class="btn pri" data-act="fight">開戰<small class="bnote">輸了 -${r.loss}</small></button></div></div>
     ${detailHTML(run) || '<div class="detph">點道具看說明</div>'}
@@ -957,7 +1171,7 @@ function detailHTML(run) {
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
   return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0, o.sm, o.sh)} ${shapeO(o).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div>${oddsHTML(run, o.id)}<button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${sgLineHTML(run, o.sg)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+    <p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${modeUI(run).det ? modeUI(run).det(run, o) : ''}${sgLineHTML(run, o.sg)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
       .filter(([, m]) => modTxt(m))
@@ -968,7 +1182,7 @@ function detailHTML(run) {
         ? `<button class="btn pri" data-act="buy" data-k="${k}" ${run.gold < slotPrice(run, o) ? 'disabled' : ''}>買 ${slotPrice(run, o)} 金</button>`
         : where === 'leg'
           ? `<button class="btn pri" data-act="legBuy" data-k="${k}" ${run.gold < legPrice(run, o) ? 'disabled' : ''}>買 ${legPrice(run, o)} 金</button><small class="c-dim">${esc(o.from || '')}的遺產・還剩 ${o.lx - run.ri + 1} 回合</small>`
-          : `${I.sacrifice ? '<button class="btn buy" data-act="sacr">獻祭寵物</button>' : ''}${run.bag.tar === 'death' && !I.core && !run.tarSac ? `<button class="btn buy" data-act="tarotSac">獻祭 +${tarSacHp(o)} 生命</button>` : ''}${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o, run)} 金</button>`
+          : `${I.sacrifice ? '<button class="btn buy" data-act="sacr">獻祭寵物</button>' : ''}${run.bag.tar === 'death' && !I.core && !run.tarSac ? `<button class="btn buy" data-act="tarotSac">獻祭 +${tarSacHp(o)} 生命</button>` : ''}${where === 'bag' ? '<button class="btn" data-act="rot">旋轉</button><button class="btn" data-act="toBench">收回暫存</button>' : '<button class="btn" data-act="autoPlace">放進背包</button>'}<button class="btn" data-act="sell">賣 ${sellO(o, run)} 金${modeUI(run).sellNote ? modeUI(run).sellNote(run, o) : ''}</button>`
     }</div></div>`;
 }
 /* ================= 0.1.52 賽制 ================= */
@@ -1086,8 +1300,30 @@ function modeHTML(run) {
 }
 /* ================= 0.1.59 賽制的畫面 =================
    每個賽制一份（沒寫的就沒有）：intro 開場轉盤停下後規則下面多的、bar 準備畫面上方賽制標籤旁邊的、
-   info 點賽制標籤看規則時多的、panel 商店上面的一列（流浪商人、遺產攤位）、0.1.80 badge 規則按鈕上的小標（塔羅牌編號、星象）。規則文字本身在 data.js 的 MODES */
+   info 點賽制標籤看規則時多的、panel 商店上面的一列（流浪商人、遺產攤位）、0.1.80 badge 規則標籤上的小標（塔羅牌編號、星象）；
+   0.1.95 spot 第一次遇到時框哪裡、fx 規則觸發時的提示（ruleFx）、stage 換階段、sellNote 賣鈕的註記、det 道具詳細多的一行。規則文字本身在 data.js 的 MODES（s 是一句話） */
 const MODEUI = {
+  /* 0.1.95 狂風：第一次框刷新鈕；買了整排換新時，新商品照風向從左邊依序吹進來＋刷新鈕旁的提示；這回合買的賣價註明 */
+  gale: {
+    spot: '.acts .rr',
+    sellNote: (run, o) => (o.bt === run.ri ? '<small class="bnote">狂風：這回合買的</small>' : ''),
+    fx: (run, was, now) => {
+      if (was.shop === now.shop || !run.shop.some(Boolean)) return;
+      document.querySelectorAll('.shop .sc').forEach((e, i) =>
+        spr(
+          e,
+          [
+            { transform: 'translateX(-28px)', opacity: 0 },
+            { transform: 'none', opacity: 1 }
+          ],
+          0,
+          i * 40
+        )
+      );
+      snd('select');
+      hint($q('.acts .rr'), '狂風！買一件，商店整排換新', 'gale');
+    }
+  },
   sigil: {
     intro: () => `<div class="sgleg">${SIGILS.map((g, i) => `<span>${sgBadge(i)}${g.n}</span>`).join('')}</div>`,
     /* 每個印記幾件（點了看規則） */
@@ -1098,16 +1334,30 @@ const MODEUI = {
         return `<button class="sgc${lv ? ' on' : ''}${n[i] ? '' : ' z'}" data-act="sgInfo" aria-label="${g.n} ${n[i]} 件">${sgBadge(i)}<b>${n[i]}</b><span class="pip">${SG_AT.map(a => `<i${n[i] >= a ? ' class="on"' : ''}></i>`).join('')}</span></button>`;
       }).join('')}</div>`;
     },
-    info: run => sgInfoHTML(run)
+    info: run => sgInfoHTML(run),
+    /* 0.1.98 印記湊到門檻：印記列旁邊提示 */
+    fx: (run, was, now) => {
+      const k = now.sg.findIndex((l, i) => l > was.sg[i]),
+        c = sgCount(run.bag)[k];
+      if (k < 0) return;
+      snd('select');
+      hint($q('.sgrow'), `${SIGILS[k].n} ${c} 件：印記 ${now.sg[k]} 級`, 'sg');
+    }
   },
-  caravan: { panel: run => vanHTML(run) },
+  caravan: { spot: '.van', panel: run => vanHTML(run) },
   curse: {
     info: () =>
       `<div class="astl"><b class="c-good">祝福（不分星級）</b>${BLESS.map(b => `<p><b>${b.n}</b>：${b.d(b.v)}${b.w ? '（只會在武器上）' : b.a ? '（武器或盾）' : ''}</p>`).join('')}<b class="cul">詛咒（下面是 1 倍，2★ ×1.5、3★ ×2、4★ ×2.5、5★ ×3）</b>${CURSES.map(c => `<p><b>${c.n}</b>：${c.d(c.v)}${c.w ? '（只會在武器上）' : ''}</p>`).join('')}</div>`
   },
   astro: {
     intro: run => astroListHTML(run, 1, 2),
-    /* 0.1.80 這個階段的星象：規則按鈕上的小標（點開看這個和下一個階段） */
+    /* 0.1.98 換階段：規則標籤旁邊大字提示新的星象（每階段一次，不受每局 2 次的限制） */
+    stage: run => {
+      const r = curRound(run),
+        a = r && ASTROI[astroAt(run, r.st)];
+      if (a) setTimeout(() => hint($q('.rtag'), `新星象「${a.n}」：${a.d}`, 'astro' + r.st), 400);
+    },
+    /* 0.1.80 這個階段的星象：規則標籤上的小標（點開看這個和下一個階段） */
     badge: run => {
       const r = curRound(run),
         a = r && ASTROI[astroAt(run, r.st)];
@@ -1122,7 +1372,7 @@ const MODEUI = {
     /* 拿到的遺物小圖示 */
     bar: run =>
       (run.bag.rel || []).length
-        ? `<div class="relrow">${run.bag.rel.map(k => `<button class="relc" data-act="modeInfo" aria-label="${RELICI[k].n}"><img src="${artIconURL(RELICI[k].ic) || iconURL('star')}" alt=""></button>`).join('')}</div>`
+        ? `<div class="relrow">${run.bag.rel.map(k => `<button class="relc" data-act="modeInfo" aria-label="${RELICI[k].n}"${RZ[k] ? ` style="--rz:${RZ[k][1]}"` : ''}><img src="${artIconURL(RELICI[k].ic) || iconURL('star')}" alt=""></button>`).join('')}</div>`
         : '',
     info: run =>
       (run.bag.rel || []).length
@@ -1130,8 +1380,17 @@ const MODEUI = {
         : '<p class="c-dim">還沒有遺物</p>'
   },
   legacy: { panel: run => legHTML(run) },
+  /* 0.1.98 七十二變：道具詳細多一行原本的形狀（對照這局換過的） */
+  shape: {
+    det: (run, o) => {
+      const sh = o.sh || shmOf(run, o.id);
+      return String(shapeOf(o.id, 0, 0, 0)) === String(shapeOf(o.id, 0, 0, sh))
+        ? ''
+        : `<p class="c-dim">原本的形狀 ${shapeMini(o.id, 0, 0, 0)}・這局 ${shapeMini(o.id, 0, 0, sh)}</p>`;
+    }
+  },
   tarot: {
-    /* 0.1.80 現在生效的牌：規則按鈕上的小標（編號，逆位紫色；點開看抽過的牌和效果） */
+    /* 0.1.80 現在生效的牌：規則標籤上的小標（編號，逆位紫色；點開看抽過的牌和效果） */
     badge: run =>
       run.bag.tar ? `<em class="fbg${tarOf(run.bag.tar).r ? ' rvs' : ''}">${TAROTI[tarOf(run.bag.tar).T.k]}</em>` : '',
     info: run =>
@@ -2078,6 +2337,62 @@ function bFlash(side, u) {
   void el.offsetWidth;
   el.classList.add('act');
 }
+/* 0.1.97 戰鬥中的連動光線（從來源道具射到目標道具，射到後淡掉；2 倍速以上透明度 45%）：
+   齒輪 → 被充能的武器、連鎖機關 → 被帶動的武器、棋子 → 被它加成的武器出手 */
+function bBeam(side, a, b, col) {
+  const root = $('bb' + side),
+    A = root && root.querySelector(`.it[data-u="${a}"]`),
+    Z = root && root.querySelector(`.it[data-u="${b}"]`);
+  if (!A || !Z || calm()) return;
+  const c = el => [el.offsetLeft + el.offsetWidth / 2, el.offsetTop + el.offsetHeight / 2],
+    [x1, y1] = c(A),
+    [x2, y2] = c(Z),
+    r = `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)`,
+    l = document.createElement('i');
+  l.className = 'beam';
+  l.style.cssText = `left:${x1}px;top:${y1}px;width:${Math.hypot(x2 - x1, y2 - y1)}px;--bc:${col};opacity:${(S.speed || 1) >= 2 ? 0.45 : 1}`;
+  root.appendChild(l);
+  const an = l.animate(
+    [
+      { transform: r + ' scaleX(0)' },
+      { transform: r + ' scaleX(1)', opacity: 1, offset: 0.45 },
+      { transform: r + ' scaleX(1)', opacity: 0 }
+    ],
+    { duration: 420 / Math.min(2, S.speed || 1), easing: 'ease-out' }
+  );
+  an.onfinish = () => l.remove();
+}
+/* 棋子 → 被它加成的武器（開戰時算一次：目標 u → 棋子 u） */
+function bPcBeam(side, u) {
+  if (!B.pcm) {
+    B.pcm = [S.run.bag, B.fb.opp.bag].map(b => {
+      const m = new Map();
+      if (b) for (const [p, us] of pcTargets(b)) for (const x of us) m.set(x, [...(m.get(x) || []), p]);
+      return m;
+    });
+  }
+  for (const p of B.pcm[side].get(u) || []) bBeam(side, p, u, 'var(--gold)');
+}
+/* 機關城：武器下面的計數點（每第 N 次多打，滿了閃一下＋「連擊！」）、齒輪充能、連鎖帶動 */
+function bMech(e) {
+  if (e.x !== 'nk') {
+    for (const to of e.to) bBeam(e.s, e.u, to, '#7fe0ff'), e.x === 'drv' && bFlash(e.s, to);
+    return;
+  }
+  const el = document.querySelector(`#bb${e.s} .it[data-u="${e.u}"]`);
+  if (!el) return;
+  let p = el.querySelector('.nkp');
+  if (!p) {
+    p = document.createElement('span');
+    p.className = 'nkp';
+    p.innerHTML = '<i></i>'.repeat(e.n);
+    el.appendChild(p);
+  }
+  [...p.children].forEach((d, i) => d.classList.toggle('on', e.v === 0 || i < e.v));
+  if (e.v) return;
+  bPop(1 - e.s, '連擊！', '#7fe0ff', 1);
+  setTimeout(() => [...p.children].forEach(d => d.classList.remove('on')), 300);
+}
 /* 0.1.47 陷阱放置：從丟的人飛到對方背包的那幾格，落地後留一個圖示（空格也看得到）；
    對方沒有背包（怪物）就在牠下面排一個圖示。n 是第幾個（錯開時間） */
 function bTrapSet(e, n) {
@@ -2214,6 +2529,7 @@ function bTick() {
     if (e.k === 'sun') bSun(e);
     if (e.k === 'spark') bSpark(e);
     if (e.k === 'pot') bPot(e);
+    if (e.k === 'mech') bMech(e);
     if (k++ > 6) continue;
     if (e.k === 'hit' || e.k === 'crit') {
       bPop(
@@ -2230,6 +2546,7 @@ function bTick() {
         e.k === 'crit'
       );
       bFlash(e.s, e.u);
+      if (k < 3) bPcBeam(e.s, e.u);
       bHit(e, tg);
       if (k < 2) snd(e.k === 'crit' ? 'crit' : 'hit');
     } else if (e.k === 'miss') bPop(tg, e.parry ? '招架' : '閃避', '#b3a9bd');
@@ -2781,7 +3098,7 @@ function helpHTML() {
     .map(m => `<li><b>${m.n}</b>：${m.d[0]}</li>`)
     .join(
       ''
-    )}</ul><p class="sub">開場轉盤公開後才選職業；完整規則在百科的「賽制」分頁，準備畫面的「規則」按鈕看這局的。</p></details>
+    )}</ul><p class="sub">開場轉盤公開後才選職業；完整規則在百科的「賽制」分頁，準備畫面上方的規則標籤（賽制・道具池）看這局的。</p></details>
   <details class="more"><summary>回合<small>野怪、菁英、對戰、首領的順序</small></summary><p>開局有 ${START_GOLD} 金、商店 5 件 1★，買好擺好就開打：1-1～1-3 野怪 → 1-4 菁英（打完三選一）→ 第 2 階段對戰與野怪穿插：2-1 對戰、2-2 群體野怪、2-3 對戰、2-4 菁英、2-5 首領（打完專屬核心三選一）→ 第 3 階段起以對戰為主，每階段第 4 輪是菁英（戰利品越後面越高星），4-4 是首領（第二個專屬核心三選一）。每一輪開始都能逛商店。畫面上方的回合列看得到這一階段每一輪是什麼。越後面輸一場扣越多。</p></details>
   <details class="more"><summary>金幣<small>每回合收入＋利息＋連勝連敗獎勵</small></summary><p>每回合 ${BASE_INCOME} 金＋利息（每 10 金 +1，最多 +${INTEREST_MAX}）＋連勝或連敗獎勵。刷新商店 ${REROLL} 金，鎖住的商店下回合不換。</p></details>
   <details class="more"><summary>背包<small>花金幣升級；道具有形狀、可以旋轉</small></summary><p>從 3×3 開始，花金幣升級（最大 6×7，越大越貴：3×4 要 14 金，開局只有 ${START_GOLD} 金，要在買道具和存錢之間取捨），背包越大商店越容易出高星道具。道具有形狀，點一下可以旋轉（電腦版拖曳中按 R、空白鍵、滑鼠右鍵或滾輪也能轉）；商店的道具可以直接拖進背包，拖到別的道具上會交換位置（放得下的話），拖回暫存區收起來，拖到商店區直接賣掉。</p></details>
@@ -3085,6 +3402,12 @@ const A = {
     render();
   },
   sgInfo: () => showDlg('印記', sgInfoHTML(S.run), []),
+  seenOk: d => {
+    S.seen[d.k] = 1;
+    snd('tap');
+    save();
+    render();
+  },
   synInfo: () => showDlg('系別羈絆', synInfoHTML(S.run), []),
   /* 0.1.62 道具池：規則＋這個主題專屬的道具（點了看說明） */
   /* 0.1.79 本局規則：賽制＋道具池一起看 */
@@ -3096,13 +3419,14 @@ const A = {
       own = T ? ITEMS.filter(i => i.th === T.k && shopOK(i)).sort((a, b) => a.star - b.star) : [];
     showDlg(
       '本局規則',
-      `${run.bag.tar ? `<div class="rlh">${tarotArt(run.bag.tar, 1)}<b>${tarotLine(run.bag.tar)}</b></div>` : ''}<div class="rlh"><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b>賽制：${M.n}</b><small>這局的規則變化</small></div><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${U.info ? U.info(run) : ''}${
+      `${run.bag.tar ? `<div class="rlh">${tarotArt(run.bag.tar, 1)}<b>${tarotLine(run.bag.tar)}</b></div>` : ''}<div class="rlh"><img src="${artIconURL(M.ic) || iconURL('star')}" alt=""><b>賽制：${M.n}</b><small>${M.s}</small></div><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${U.info ? U.info(run) : ''}${
         T
-          ? `<div class="rlh"><img src="${artIconURL(T.ic) || iconURL('star')}" alt=""><b>道具池：${T.n}</b><small>商店賣這套道具，圍繞它構築</small></div><ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}<li>商店只出基本池（功能、反制道具）和這個主題的道具</li></ul><h4>專屬道具（${own.length} 件）</h4><div class="thlist">${own.map(i => `<span class="s${i.star}" title="${esc(i.n)}"><img src="${itemIcon(i.id)}" data-iid="${i.id}" alt="">${esc(i.n)}</span>`).join('')}</div>`
+          ? `<div class="rlh"><img src="${artIconURL(T.ic) || iconURL('star')}" alt=""><b>道具池：${T.n}</b><small>${T.s}</small></div><ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}<li>商店只出基本池（功能、反制道具）和這個主題的道具</li></ul><h4>專屬道具（${own.length} 件）</h4><div class="thlist">${own.map(i => `<span class="s${i.star}" title="${esc(i.n)}"><img src="${itemIcon(i.id)}" data-iid="${i.id}" alt="">${esc(i.n)}</span>`).join('')}</div>`
           : ''
       }`,
       []
     );
+    dlgFrom($q('.rtag'));
   },
   /* 0.1.79 全部對手（準備畫面只顯示下一場的）：點了看他的背包 */
   rivals: () => {
@@ -3584,10 +3908,12 @@ const SPRING_B =
   'linear(0,0.079,0.248,0.436,0.608,0.747,0.851,0.922,0.968,0.995,1.009,1.014,1.015,1.013,1.01,1.008,1.005,1.003,1.002,1.001,1,1,1,1,1)';
 const EASE_OK = typeof CSS !== 'undefined' && CSS.supports('animation-timing-function', 'linear(0, 1)');
 const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-function spr(el, kf, bounce = 0) {
+function spr(el, kf, bounce = 0, delay = 0) {
   if (!el || !el.animate) return null;
   if (calm()) kf = kf.map(k => ({ opacity: k.opacity ?? 1 }));
   return el.animate(kf, {
+    delay,
+    fill: delay ? 'backwards' : 'auto',
     duration: calm() ? 150 : bounce ? 600 : 500,
     easing: calm() ? 'ease-out' : EASE_OK ? (bounce ? SPRING_B : SPRING) : 'cubic-bezier(.2,.9,.3,1)'
   });
@@ -3827,6 +4153,19 @@ document.addEventListener('pointerdown', ev => {
     }
   });
 })();
+/* 0.1.95 對話框從按下的那個東西長出來（規則標籤）：縮放的原點設在它的中心，關的時候也縮回那裡 */
+function dlgFrom(el) {
+  const b = $('modal').firstElementChild;
+  if (!el || !b) return;
+  const r = el.getBoundingClientRect(),
+    q = b.getBoundingClientRect(),
+    z = V.z || 1;
+  b.style.transformOrigin = `${(r.left + r.width / 2 - q.left) / z}px ${(r.top + r.height / 2 - q.top) / z}px`;
+  spr(b, [
+    { transform: 'scale(.6)', opacity: 0 },
+    { transform: 'none', opacity: 1 }
+  ]);
+}
 function dlgIn(o) {
   o.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
   const box = o.firstElementChild;

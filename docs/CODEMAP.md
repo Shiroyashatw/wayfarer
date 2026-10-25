@@ -27,7 +27,9 @@
 | 機器人 AI（0.1.20） | `js/bot.js`、`tools/game_node.js`、`tools/bot_train.js` | `botPower`（戰力分數）、`botValue`、`botPlace`、`botWeakest`、`botAct`、`BOT_P`、`botActOld`；`simLobby` 的 `opt.P`／`opt.old`（run） |
 | 選要玩的賽制、道具池（0.1.77） | `js/run.js`、`js/ui.js` | `rollMode`／`rollTheme` 的 allow、`pickOf`（run）；`S.pick`、`PICK_MIN`、`pickAll`、`pickNow`、`pickHTMLs`、動作 `pickTog`／`pickAll`（ui） |
 | 詳細統計頁：賽制、道具池的職業勝率與核心選擇率（0.1.77） | `js/ghost.js`、`js/ui.js`、`supabase/migrations/20261026000000_serling_mode_stats.sql` | `ghostStats`、`STAT`、`STAT_MIN`（ghost）；`mstatHTML`、`V.mst`、動作 `mstTab`、`data-chg` 的 change 監聽（ui）；RPC `class_stats_mt`、`core_stats_mt` |
-| 準備畫面重排（0.1.79～0.1.80）：階段圓圈、下一場對手、核心／規則／對手按鈕 | `js/ui.js`、`css/style.css` | `stageHTML`（`.stg`／`.sn`／`.sl`）、`infoRowHTML`（`.nxo`）、`fabHTML`（`.fab`、`MODEUI` 的 `badge`）、`A.rulesInfo`、`A.rivals`、電腦版 `.pcrv` |
+| 準備畫面重排（0.1.79～0.1.80）：階段圓圈、下一場對手、核心／規則／對手按鈕 | `js/ui.js`、`css/style.css` | `stageHTML`（`.stg`／`.sn`／`.sl`）、`infoRowHTML`（`.nxo`）、`fabHTML`（`.fab`）、0.1.95 規則標籤 `rtagHTML`（`.rtag`、`MODEUI` 的 `badge`）、`A.rulesInfo`、`A.rivals`、電腦版 `.pcrv` |
+| 規則提示（0.1.95）：一句話規則、規則標籤、觸發提示、第一次遇到、範圍提示、棋子虛線、加成角標、遺物區域、凹口、塔羅角標 | `js/data.js`、`js/ui.js`、`css/style.css` | `MODES`／`POOLTH` 的 `s`（data）；`rtagHTML`、`dlgFrom`、`hint`（`.rhint`）、`ruleFx`／`rfSnap`、`MODEUI` 的 `spot`／`fx`／`stage`／`sellNote`／`det`、`firstStep`／`seenK`／`A.seenOk`、`priceOff`、`rngOf`（`.cell.rng`）、`bufTag`、`linkHTML` 的 `.lks`／`.pcl`、`dragLit`、`RZ`（`.cell.rz`）、`.cell.hole`、`tarAff`（ui） |
+| 戰鬥連動事件（0.1.95）：機關城計數點、齒輪／連鎖／棋子光線 | `js/sim.js`、`js/ui.js`、`css/style.css` | `simulate` 的 `mech` 事件（`nk`／`gear`／`drv`，只給畫面）（sim）；`bMech`、`bBeam`、`bPcBeam`、`B.pcm`（ui）；`.beam`、`.nkp` |
 | 手機準備畫面一屏放得下、道具四個角統一（0.1.86） | `js/ui.js`、`css/style.css` | `fitBag`、`FIT_MIN`、`V.fitH`、`cellSize`；`.srow`、`.rnx`；角標 `brHTML`（`.cbr` 右下一排）、`cnr`（`.cn` 放在道具真的有的那一格） |
 | 動效與手感（0.1.87，skill `apple-design`）：彈簧、按下回饋、拖曳落點、說明卡滑上滑下、對話框進出、提示、震動 | `js/ui.js`、`css/style.css` | `SPRING`、`SPRING_B`、`spr`、`calm`、`land`、`posOf`、`elOf`、`sheetIn`、`sheetOut`、`rubber`、`dlgIn`、`ovlFx`、`HAPT`／`snd`、`toast`（`.on`）、`dropEnd`／`dropDo`；CSS「0.1.87 動效與手感」 |
 | 排版整理（0.1.88）：投降確認、標題列拿掉音效外觀、怎麼玩摺疊、設定打勾、對話框 ✕ | `js/ui.js`、`css/style.css` | `A.menu`、`showDlg`（按鈕第三個值是 class）、`dlgX`、`helpHTML`（`details.more`、`.hl`）、`pickHTMLs`（`.pkb[aria-pressed]`）、`.btn.danger`、`.dlgx` |
@@ -135,7 +137,7 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（725 行）
+### js/data.js（750 行）
 
 - **一局**（5），61 個宣告
 
@@ -156,7 +158,7 @@
 - **合成**（307），3 個宣告
 - **戰鬥數值**（400），10 個宣告
 
-### js/sim.js（1377 行）
+### js/sim.js（1383 行）
 
 
 ### js/run.js（2237 行）
@@ -195,24 +197,24 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（602 行）
+### js/news.js（614 行）
 
 
-### js/ui.js（4209 行）
+### js/ui.js（4548 行）
 
-- **小工具**（6），21 個宣告
-- **牌階**（124），5 個宣告
-- **主題**（227），3 個宣告
-- **畫面切換**（241），2 個宣告
-- **首頁**（298），7 個宣告
-- **準備畫面**（465），30 個宣告
-- **0.1.52 賽制**（974），22 個宣告
-- **0.1.62 系別羈絆**（1212），29 個宣告
-- **結算、三選一、一局結束**（1553），6 個宣告
-- **戰鬥播放**（1611），28 個宣告
-- **圖鑑、說明、設定**（2397），27 個宣告
-- **動作**（2853），37 個宣告
-- **拖曳擺放**（3862），15 個宣告
+- **小工具**（6），24 個宣告
+- **牌階**（178），5 個宣告
+- **主題**（281），3 個宣告
+- **畫面切換**（295），2 個宣告
+- **首頁**（353），7 個宣告
+- **準備畫面**（520），38 個宣告
+- **0.1.52 賽制**（1188），22 個宣告
+- **0.1.62 系別羈絆**（1471），29 個宣告
+- **結算、三選一、一局結束**（1812），6 個宣告
+- **戰鬥播放**（1870），31 個宣告
+- **圖鑑、說明、設定**（2714），27 個宣告
+- **動作**（3170），38 個宣告
+- **拖曳擺放**（4201），15 個宣告
 
 ### js/main.js（79 行）
 
