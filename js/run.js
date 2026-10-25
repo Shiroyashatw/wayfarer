@@ -1961,7 +1961,7 @@ const THEMES = ['sword', 'bow', 'dagger', 'fire', 'pet', 'shield', 'mace', 'cold
 function mkBot(seed, i, rr, rating, opt = {}) {
   const s = h(seed, i, 31),
     rt = Math.max(600, (rating || 1000) + fl((rr() - 0.5) * 150)),
-    /* 0.1.72 菁英（最高牌階）：每個決定都照評估做、每回合多拿的金幣最多 */
+    /* 0.1.72 菁英（最高牌階）：每個決定都照評估做；0.1.73 每回合多拿的金幣 BOT_GOLD（0） */
     elite = opt.elite || (rating || 1000) >= BOT_RATING,
     q = elite ? 1 : Math.max(0.3, Math.min(0.95, 0.6 + (rt - 1000) / 800));
   const run = newRunState(s, opt.mode || 'std'),
@@ -1984,7 +1984,7 @@ function mkBot(seed, i, rr, rating, opt = {}) {
     P: (opt.P && opt.P[i]) || BOT_P,
     old: !!(opt.old && opt.old[i]),
     /* 0.1.6 牌階越高的機器人每回合多拿一點金幣（越往上越強）；鐵牌、銅牌少拿 */
-    gb: elite ? 5 : Math.max(-2, Math.min(5, fl((rt - 1000) / 200))),
+    gb: elite ? BOT_GOLD : Math.max(-2, Math.min(5, fl((rt - 1000) / 200))),
     info: {
       name: randName(rng(h(s, 9))),
       av: AVATARS[(s >>> 3) % AVATARS.length][0],
