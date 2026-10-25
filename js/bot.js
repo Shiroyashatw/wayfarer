@@ -20,11 +20,12 @@ let BOT_P = {
   lowHp: 12, // 0.1.72 生命剩這麼少就不存利息錢
   resW: 1.339, // 0.1.72 抗異常、抗暴擊（擋掉對手幾成傷害）的權重
   nemW: 1.988, // 0.1.72 被同一個人打敗：評估對手時他的權重多幾倍（每輸一次 +nemW，慢慢淡掉）
+  posEval: 0, // 0.1.79 看位置的道具估價時用戰力試位置（森林、棋盤開；黃道開了反而變差 3.65 對 3.35）
   synW: 0, // 0.1.74 羈絆進度（還差幾件到下一個門檻）的價值；0.03、0.08 對打都比 0 差（60 場 3.57～3.60 對 3.40～3.43），先關掉
   ehpW: 1.581 // 有效生命的指數（戰力 = 每秒傷害 × 有效生命^ehpW）
 };
 /* 0.1.79 每個道具池自己的參數（跟 BOT_P 不一樣的才寫）：node tools/bot_train.js --theme 代號 --write 訓練寫回這一段 */
-let BOT_PT = {};
+let BOT_PT = { f: { posEval: 1 }, c: { posEval: 1 } };
 /* 這局用的參數：BOT_P 加上這個道具池的；P.pt 是訓練中的完整參數（不再疊） */
 const BOT_PTC = new WeakMap();
 function botPT(run, P) {
@@ -549,13 +550,14 @@ function botPower(F, P = BOT_P) {
 const botPowerOf = (bag, P) => botPower(compileBag(bag), P);
 /* 假設把 o 放到背包（找最好的位置；prefer 看加成）：回傳 { bag, spot } 或 null */
 /* 0.1.79 看位置的道具（棋子、星座、森林的相鄰、凹口、齒輪、相鄰／同排加成、融合），或背包裡已經有這種道具時：
-   估價就用戰力試幾個位置（BOT_SPOTS_EVAL），不然買之前只用標籤猜位置，棋子、星座、森林的道具常常被低估 */
+   估價就用戰力試幾個位置（BOT_SPOTS_EVAL），不然買之前只用標籤猜位置。P.posEval 開的才用：
+   各 60 場，森林 3.38 對 3.62、棋盤 3.42 對 3.58 變強，黃道 3.65 對 3.35 變差，機關、巨人國差不多 */
 const BOT_SPOTS_EVAL = 6;
 const botPosI = I =>
   !!(I.pc || I.zod || I.perAdj || I.perAdjF || I.hole || I.gear || I.chainAdj || I.pcHit || I.adj || I.row || I.tf);
 const botPosBag = bag => bag.items.some(q => ITEMI[q.id] && (ITEMI[q.id].pc || ITEMI[q.id].zod || ITEMI[q.id].hole));
 function botTry(bag, o, P) {
-  if (!P.plain && !P.noPosEval && (botPosI(ITEMI[o.id]) || botPosBag(bag))) {
+  if (!P.plain && P.posEval && (botPosI(ITEMI[o.id]) || botPosBag(bag))) {
     const b = botBestSpot(bag, { ...o, u: o.u || '_new' }, P, BOT_SPOTS_EVAL);
     if (!b) return null;
     const sp = { x: b.x, y: b.y, r: b.r };

@@ -49,9 +49,10 @@ const SPACE = {
   lowHp: [0, 40, 4],
   resW: [0.3, 3, 0.25],
   nemW: [0, 6, 0.75],
-  synW: [0, 0.15, 0.015]
+  synW: [0, 0.15, 0.015],
+  posEval: [0, 1, 1]
 };
-const INT = new Set(['reserve', 'reserveFrom', 'rollGold', 'maxRolls', 'lvKeep', 'lowHp']);
+const INT = new Set(['reserve', 'reserveFrom', 'rollGold', 'maxRolls', 'lvKeep', 'lowHp', 'posEval']);
 const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
 
 function mutate(P, seed) {
