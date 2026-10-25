@@ -253,6 +253,7 @@ function render() {
         (run.phase === 'cls' ? clsHTML(run) : '');
   } else if (V.scr === 'codex') html = codexHTML();
   else if (V.scr === 'help') html = helpHTML();
+  else if (V.scr === 'mstat') html = mstatHTML();
   else if (V.scr === 'settings') html = settingsHTML();
   else html = homeHTML();
   /* 0.1.32 重畫時保留打開的折疊（details[data-k]）：圖鑑打開時一直在載大圖、每載好一張就重畫，之前一打開馬上被收起來 */
@@ -351,7 +352,58 @@ function boardHTML() {
           )}</div><p class="sub">${cloud ? `最近 30 天${BOARD.seed ? '（真人還不多，含電腦對局）' : ''}` : '你自己的對局（連上雲端後顯示全部玩家）'}</p>`
       : `<p class="empty">還沒有對局紀錄，打完一局就會出現</p>`;
   }
-  return `<h3>排行榜</h3>${tabs}${body}`;
+  return `<h3>排行榜</h3>${tabs}${body}<button class="btn" data-act="go" data-k="mstat">詳細統計：賽制、道具池的職業勝率與核心</button>`;
+}
+/* 0.1.77 統計頁：照賽制、道具池（可以兩個都選）篩選，看各職業的勝率、各職業核心的選擇率（雲端的對局；真人少時連電腦對局） */
+function mstatHTML() {
+  const f = (V.mst = V.mst || { m: '', t: '', tab: 'c', cls: CLASSES[0].id }),
+    key = (f.m || '*') + '|' + (f.t || '*'),
+    D = STAT[key];
+  if (ghostOK() && (!D || (!D.busy && Date.now() - D.at > 60000)))
+    ghostStats(f.m, f.t).then(() => V.scr === 'mstat' && render());
+  const opt = (k, list, v) =>
+      `<select class="inp" data-chg="mst" data-k="${k}">${list.map(([c, n]) => `<option value="${c}"${c === v ? ' selected' : ''}>${n}</option>`).join('')}</select>`,
+    filt = `<div class="mstf">${opt('m', [['', '全部賽制'], ...MODES.filter(m => m.w > 0).map(m => [m.k, m.n])], f.m)}${opt(
+      't',
+      [['', '全部道具池'], ...POOLTH.map(x => [x.k, x.n])],
+      f.t
+    )}</div>`,
+    tabs = `<div class="lbt"><button class="btn sm" data-act="mstTab" data-k="c" aria-pressed="${f.tab === 'c'}">職業勝率</button><button class="btn sm" data-act="mstTab" data-k="k" aria-pressed="${f.tab === 'k'}">核心選擇率</button></div>`;
+  let body;
+  if (!ghostOK()) body = '<p class="empty">連上雲端後才看得到統計</p>';
+  else if (!D || (D.busy && !D.c)) body = '<p class="empty">讀取中…</p>';
+  else if (D.err && !D.c) body = '<p class="empty">統計暫時拿不到，等一下再試</p>';
+  else if (f.tab === 'c') {
+    const rows = (D.c || []).filter(x => CLSI[x.cls]).sort((a, b) => a.avg_place - b.avg_place);
+    body = rows.length
+      ? `<div class="lb">${rows
+          .map(
+            (x, i) =>
+              `<div class="lbr"><b class="no p${i + 1}">${i + 1}</b><img src="${artIconURL(CLSI[x.cls].ic) || iconURL('star')}" alt=""><span><b>${CLSI[x.cls].n}</b><small>${x.games} 場・平均第 ${(+x.avg_place).toFixed(2)} 名</small></span><b class="v">${Math.round((x.wins / x.games) * 100)}%<small>第 1 名</small></b></div>`
+          )
+          .join('')}</div>`
+      : '<p class="empty">這個組合還沒有對局</p>';
+  } else {
+    const rows = (D.k || [])
+      .filter(x => x.cls === f.cls && ITEMI[x.core])
+      .sort((a, b) => b.picked / Math.max(1, b.offered) - a.picked / Math.max(1, a.offered));
+    body = `${opt(
+      'cls',
+      CLASSES.map(c => [c.id, c.n]),
+      f.cls
+    )}${
+      rows.length
+        ? `<div class="lb">${rows
+            .map(
+              x =>
+                `<div class="lbr"><img src="${itemIcon(x.core)}" alt=""><span><b>${ITEMI[x.core].cls === f.cls ? ITEMI[x.core].n.split('・').pop() : ITEMI[x.core].n}</b><small>出現 ${x.offered} 次・拿著 ${x.held} 局${x.avg_place != null ? `・平均第 ${(+x.avg_place).toFixed(2)} 名` : ''}</small></span><b class="v">${x.offered ? Math.round((x.picked / x.offered) * 100) + '%' : '—'}<small>選擇率</small></b></div>`
+            )
+            .join('')}</div>`
+        : '<p class="empty">這個組合還沒有這個職業的核心紀錄</p>'
+    }`;
+  }
+  return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>詳細統計</b></div>
+    ${filt}${tabs}${body}<p class="sub">最近 30 天打完的對局${D && D.seed ? '・真人還不多，含電腦對局' : ''}；局數少的時候差距大多是運氣</p></div>`;
 }
 async function startRun() {
   audioOn();
@@ -2497,6 +2549,7 @@ function settingsHTML() {
     )
     .join('')}</div>
   <h3>聲音</h3><button class="btn" data-act="tog" data-k="sfx" aria-pressed="${S.sfx}">音效 ${S.sfx ? '開' : '關'}</button>
+  ${pickHTMLs()}
   <h3>帳號</h3><div class="card"><p class="sub">${typeof CLOUD !== 'undefined' ? esc(CLOUD.status) : ''}${anon ? '・目前是遊客，存檔綁在這台裝置' : '・' + esc(CLOUD.email || '')}</p>${
     typeof CLOUD !== 'undefined' && CLOUD.recovery
       ? `<p>請設定新密碼</p><input class="inp" id="authPw" type="password" placeholder="新密碼（至少 6 個字）" autocomplete="new-password" value="${esc(V.authPw || '')}"><button class="btn pri" data-act="newPw" ${V.authBusy ? 'disabled' : ''}>設定新密碼</button><p class="sub${V.authErr ? ' c-bad' : ''}" id="authMsg">${esc(V.authMsg || '')}</p>`
@@ -2506,6 +2559,30 @@ function settingsHTML() {
   }</div>
   <h3>新手教學</h3><button class="btn" data-act="tutReset">重看新手提示</button>
   <p class="sub ver">塞令老師 v${VER}${GHOST.off ? '・快照對戰離線（用機器人對手）' : ''}</p></div>`;
+}
+/* 0.1.77 設定：要玩哪些賽制（至少 PICK_MIN.m 個）、道具池（至少 PICK_MIN.t 個）；預設全選（S.pick 沒有就是全部） */
+const PICK_MIN = { m: 4, t: 2 },
+  pickAll = k => (k === 'm' ? MODES.filter(m => m.w > 0).map(m => m.k) : POOLTH.map(x => x.k)),
+  pickNow = k => (S.pick && S.pick[k] && S.pick[k].length ? S.pick[k] : pickAll(k));
+function pickHTMLs() {
+  const grp = (k, title, list) => {
+    const on = pickNow(k);
+    return `<h3>${title}<small class="c-dim">・${on.length}／${list.length}，至少 ${PICK_MIN[k]} 個</small></h3><div class="seg3 pkg">${list
+      .map(
+        ([c, n]) =>
+          `<button class="btn" data-act="pickTog" data-k="${k}" data-v="${c}" aria-pressed="${on.includes(c)}">${n}</button>`
+      )
+      .join('')}</div>`;
+  };
+  return `${grp(
+    'm',
+    '要玩的賽制',
+    MODES.filter(m => m.w > 0).map(m => [m.k, m.n])
+  )}${grp(
+    't',
+    '要玩的道具池',
+    POOLTH.map(x => [x.k, x.n])
+  )}<p class="sub">開場轉盤只會抽你選的；配對也照抽到的賽制＋道具池找對手。${S.pick ? '<button class="btn sm" data-act="pickAll">全部選回來</button>' : ''}</p>`;
 }
 /* ================= 動作 ================= */
 function audioOn() {
@@ -2925,6 +3002,29 @@ const A = {
     save();
     render();
   },
+  /* 0.1.77 選要玩的賽制、道具池：少於最低數量不能再取消 */
+  pickTog: d => {
+    const k = d.k,
+      on = [...pickNow(k)],
+      i = on.indexOf(d.v);
+    if (i >= 0) {
+      if (on.length <= PICK_MIN[k]) return toast(`${k === 'm' ? '賽制' : '道具池'}至少要選 ${PICK_MIN[k]} 個`);
+      on.splice(i, 1);
+    } else on.push(d.v);
+    S.pick = { ...(S.pick || {}), [k]: on.length >= pickAll(k).length ? null : on };
+    if (!S.pick.m && !S.pick.t) S.pick = null;
+    save();
+    render();
+  },
+  mstTab: d => {
+    V.mst.tab = d.k;
+    render();
+  },
+  pickAll: () => {
+    S.pick = null;
+    save();
+    render();
+  },
   tog: d => {
     S[d.k] = !S[d.k];
     save();
@@ -3114,6 +3214,15 @@ function showDlg(title, body, buttons) {
     if (b && b.dataset.mi !== 'x') buttons[+b.dataset.mi][1]();
   };
 }
+/* 0.1.77 下拉選單（data-chg）：統計頁的篩選 */
+document.addEventListener('change', ev => {
+  const el = ev.target.closest('select[data-chg]');
+  if (!el) return;
+  if (el.dataset.chg === 'mst') {
+    V.mst[el.dataset.k] = el.value;
+    render();
+  }
+});
 document.addEventListener('click', ev => {
   if (V.noClick) return;
   const el = ev.target.closest('[data-act]');

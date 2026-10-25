@@ -185,6 +185,37 @@ async function ghostBoard(force = false) {
   BOARD.busy = false;
   return true;
 }
+/* ================= 0.1.77 統計頁（賽制、道具池篩選的職業勝率、核心選擇率） ================= */
+/* STAT[篩選鍵] = { c: 職業列, k: 核心列, seed: 有沒有連種子一起算, at }；真人不到 STAT_MIN 局就連種子（機器人對局）一起算 */
+const STAT = {},
+  STAT_MIN = 40;
+async function ghostStats(mode, theme) {
+  const key = (mode || '*') + '|' + (theme || '*'),
+    o = STAT[key];
+  if (!ghostOK()) return null;
+  if (o && (o.busy || Date.now() - o.at < 60000)) return o;
+  const x = (STAT[key] = { ...(o || {}), busy: true });
+  try {
+    const ask = seed =>
+      Promise.all([
+        CLOUD.sb.rpc('class_stats_mt', { p_seed: seed, p_days: 30, p_mode: mode || null, p_theme: theme || null }),
+        CLOUD.sb.rpc('core_stats_mt', { p_seed: seed, p_days: 30, p_mode: mode || null, p_theme: theme || null })
+      ]);
+    let [a, b] = await ask(false),
+      seed = false;
+    if (a.error || b.error) throw a.error || b.error;
+    if ((a.data || []).reduce((n, r) => n + r.games, 0) < STAT_MIN) {
+      const [a2, b2] = await ask(true);
+      if (!a2.error && !b2.error) (a = a2), (b = b2), (seed = true);
+    }
+    Object.assign(x, { c: a.data || [], k: b.data || [], seed, err: '' });
+  } catch (e) {
+    x.err = (e && e.message) || String(e);
+  }
+  x.at = Date.now();
+  x.busy = false;
+  return x;
+}
 /* ================= 開服種子資料（開發用） ================= */
 /* 在瀏覽器主控台執行 seedGhosts(160)：分數 700～2100 平均分布（每個牌階都有對手，越高越強），用目前的帳號產生 n 局機器人對局（4 個一場、真的互打），上傳成種子快照（runs.seed = true）。
    真人對局夠多以後可以在 SQL Editor 刪掉：delete from public.runs where seed; */

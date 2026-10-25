@@ -292,10 +292,13 @@ function rollClasses(run) {
   return out;
 }
 /* 0.1.52 抽賽制（照權重） */
-function rollMode(rand) {
-  const tot = MODES.reduce((n, m) => n + m.w, 0);
+/* 0.1.77 allow：玩家在設定裡選的賽制（代號陣列；沒給或是空的就全部） */
+function rollMode(rand, allow) {
+  const ms = allow && allow.length ? MODES.filter(m => allow.includes(m.k) && m.w > 0) : MODES,
+    L = ms.length ? ms : MODES,
+    tot = L.reduce((n, m) => n + m.w, 0);
   let x = rand() * tot;
-  for (const m of MODES) if ((x -= m.w) < 0) return m.k;
+  for (const m of L) if ((x -= m.w) < 0) return m.k;
   return 'std';
 }
 /* ================= 0.1.59 七十二變、星象輪轉 ================= */
@@ -381,10 +384,15 @@ function setMode(run, m) {
 /* 這局商店、戰利品、商人會出的：商店道具（shopOK）而且在這局的主題池或基本池（thOK） */
 const poolOK = (run, it) => shopOK(it) && thOK(run && run.theme, it);
 /* 抽主題（機率一樣；跟賽制衝突的不抽，MODE_TH_BAN） */
-function rollTheme(rand, mode) {
-  const c = POOLTH.filter(x => !(MODE_TH_BAN[mode] || []).includes(x.k));
+/* 0.1.77 allow：玩家選的道具池（同上）；跟賽制衝突的扣掉後沒剩就照全部的抽 */
+function rollTheme(rand, mode, allow) {
+  const ok = x => !(MODE_TH_BAN[mode] || []).includes(x.k),
+    mine = POOLTH.filter(x => ok(x) && (!allow || !allow.length || allow.includes(x.k))),
+    c = mine.length ? mine : POOLTH.filter(ok);
   return c[fl(rand() * c.length)].k;
 }
+/* 0.1.77 玩家在設定裡選的賽制、道具池（S.pick；沒選過是全部） */
+const pickOf = k => (typeof S !== 'undefined' && S.pick && S.pick[k]) || null;
 /* 設定這局的主題（玩家那局）；即時機器人跟你同一個主題 */
 function setTheme(run, th) {
   run.theme = th;
@@ -556,12 +564,12 @@ function newRun(rivals = []) {
   run.rivals = rivals;
   setMode(
     run,
-    rollMode(() => r01(run))
+    rollMode(() => r01(run), pickOf('m'))
   );
   /* 0.1.62 內圈：道具池的主題 */
   setTheme(
     run,
-    rollTheme(() => r01(run), run.mode)
+    rollTheme(() => r01(run), run.mode, pickOf('t'))
   );
   joinRivals(run, rivals);
   Object.assign(run, {
