@@ -53,7 +53,7 @@ p{margin:var(--sp-2) 0;line-height:1.5;font-size:var(--fs-body)}
 .sub{color:var(--dim);font-size:var(--fs-sm)}
 .c-gold{color:var(--gold)}.c-good{color:var(--good)}.c-bad{color:var(--bad)}.c-dim{color:var(--dim)}
 #app{max-width:480px;margin:0 auto;min-height:100%;padding:calc(var(--sp-3) + var(--sat)) var(--sp-5) calc(var(--sp-5) + var(--sab))}
-#toast{position:fixed;left:50%;top:calc(70px + var(--sat));transform:translateX(-50%);z-index:60;background:#201b17ee;color:#fff;border-radius:999px;padding:8px 16px;font-size:var(--fs-btn);max-width:88vw;text-align:center;pointer-events:none;transition:opacity .3s;box-shadow:var(--shadow)}
+#toast{position:fixed;left:50%;top:calc(70px + var(--sat));transform:translate(-50%,-10px);opacity:0;z-index:60;background:#201b17ee;color:#fff;border-radius:999px;padding:8px 16px;font-size:var(--fs-btn);max-width:88vw;text-align:center;pointer-events:none;transition:opacity .3s;box-shadow:var(--shadow)}
 /* ---------- 元件 ---------- */
 .btn{min-height:44px;border-radius:var(--r-md);border:0;background:var(--fill);font-size:var(--fs-btn);font-weight:500;padding:var(--sp-2) var(--sp-3);display:grid;place-items:center;line-height:1.2;transition:transform .12s ease-out,background .12s}
 .btn:active{transform:scale(.97);background:var(--fill-hi)}
@@ -762,6 +762,22 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .sc{padding:2px 2px var(--sp-1);gap:0}
   .sc img{width:32px;height:32px}
   .sc .cbr{top:22px}
+}
+/* ================= 0.1.87 動效與手感（skill apple-design；參數在 ui.js 的 SPRING） =================
+   按下就有回饋（縮 0.97，100ms）；拖起來的影子稍微放大、影子變深；提示從上面滑下來；拖的時候整件跟著手指 */
+.sc,.bs,.rv,.nxo,.fab,.sgc,.relc,.pk,.iconbtn,.me,.lgb,.rnx,.cxtab,.hist .hr,.stg .sn[data-act],.rvit button{transition:transform .1s ease-out}
+.sc:active,.bs[data-bu]:active,.rv:active,.nxo:active,.fab:active,.sgc:active,.relc:active,.pk:active,.iconbtn:active,.me:active,.lgb:active,.rnx:active,.cxtab:active,.hist .hr:active,.stg .sn[data-act]:active,.rvit button:active{transform:scale(.97)}
+.it{transition:transform .1s ease-out}
+.it.press{transform:scale(.97)}
+.it.lift,.bs.lift{transition:opacity .15s}
+.ghost{transform:scale(1.06);filter:drop-shadow(0 10px 14px #0005);animation:ghostin .18s ease-out}
+@keyframes ghostin{from{transform:scale(1);filter:drop-shadow(0 1px 2px #0003)}}
+#toast{transition:opacity .2s ease-out,transform .25s ease-out}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.det{touch-action:pan-x}
+@media (prefers-reduced-motion:reduce){
+  .ghost{animation:none;transform:none}
+  #toast{transform:translateX(-50%)!important}
 }
 @media (min-width:1040px){
   .pa .pcrv{display:block}

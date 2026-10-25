@@ -4,14 +4,20 @@ let S = null, // 存檔（main.js）
   B = null; // 播放中的戰鬥
 const V = { scr: 'home', sel: null, drag: null }; // 畫面狀態（不存檔）
 /* ================= 小工具 ================= */
+/* 0.1.87 提示從上面滑下來、往上收（同一條路，.on） */
 function toast(t) {
   const el = $('toast');
   el.textContent = t;
-  el.style.opacity = 1;
+  el.classList.add('on');
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => (el.style.opacity = 0), 1800);
+  toast.t = setTimeout(() => el.classList.remove('on'), 1800);
 }
-const snd = n => typeof sfx === 'function' && sfx(n);
+/* 0.1.87 震動跟音效同一格發生（手機支援 navigator.vibrate 才有）：只給放好、買、合成、錯誤這幾個有意義的時刻 */
+const HAPT = { select: 8, coin: 12, level: [12, 60, 18], nope: [10, 40, 10] };
+const snd = n => {
+  if (typeof sfx === 'function') sfx(n);
+  if (HAPT[n] && S && S.sfx && navigator.vibrate) navigator.vibrate(HAPT[n]);
+};
 /* 道具圖示：先用專屬的 art/icons/it_代號.png；還沒有就借 ic：'sk_…'（舊的 PNG 圖示）、'p:鍵'（程式像素圖）、'a:檔名'（怪物 PNG） */
 const ICU = new Map();
 function borrowIcon(id) {
@@ -263,14 +269,22 @@ function render() {
   else if (V.scr === 'settings') html = settingsHTML();
   else html = homeHTML();
   /* 0.1.32 重畫時保留打開的折疊（details[data-k]）：圖鑑打開時一直在載大圖、每載好一張就重畫，之前一打開馬上被收起來 */
-  const open = [...app.querySelectorAll('details[data-k][open]')].map(d => d.dataset.k);
+  const open = [...app.querySelectorAll('details[data-k][open]')].map(d => d.dataset.k),
+    oldOvl = [...app.querySelectorAll('.ovl')],
+    scr = V.scr + (run ? run.phase === 'battle' : '');
   app.innerHTML = html;
+  /* 0.1.87 換畫面時淡入（同一個畫面重畫不動） */
+  if (V.lastScr !== scr && V.lastScr != null)
+    app.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+  V.lastScr = scr;
+  ovlFx(oldOvl);
   for (const k of open) {
     const d = app.querySelector(`details[data-k="${k}"]`);
     if (d) d.open = true;
   }
   paintSprites(app);
   fitBag();
+  sheetIn();
   /* 0.1.59 開場賽制轉盤 */
   if (V.scr === 'run' && run && run.phase === 'mode') wheelGo(run);
   /* 0.1.55 百科：重畫後照搜尋欄再篩一次 */
@@ -2834,10 +2848,7 @@ const A = {
     save();
     render();
   },
-  desel: () => {
-    V.sel = null;
-    render();
-  },
+  desel: () => sheetOut(),
   reroll: () => {
     const e = rerollShop(S.run);
     if (e) return toast(e);
@@ -3417,6 +3428,196 @@ function fuColor(o) {
 }
 const fuCls = o => (o.f && ITEMI[o.f] ? ' fu' : '');
 const fuSty = o => (o.f && ITEMI[o.f] ? ` style="--fg:${fuColor(o)}"` : '');
+/* ================= 0.1.87 動效（skill apple-design）=================
+   彈簧（臨界阻尼 response 0.35；有甩動的才用 damping 0.8 帶一點回彈）、從畫面上現在的位置開始動、進出走同一條路；
+   系統設定「減少動態」時只淡入淡出 */
+const SPRING =
+  'linear(0,0.055,0.173,0.309,0.441,0.558,0.656,0.736,0.8,0.849,0.887,0.916,0.938,0.955,0.967,0.976,0.982,0.987,0.991,0.993,0.995,0.997,0.998,0.998,1)';
+const SPRING_B =
+  'linear(0,0.079,0.248,0.436,0.608,0.747,0.851,0.922,0.968,0.995,1.009,1.014,1.015,1.013,1.01,1.008,1.005,1.003,1.002,1.001,1,1,1,1,1)';
+const EASE_OK = typeof CSS !== 'undefined' && CSS.supports('animation-timing-function', 'linear(0, 1)');
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function spr(el, kf, bounce = 0) {
+  if (!el || !el.animate) return null;
+  if (calm()) kf = kf.map(k => ({ opacity: k.opacity ?? 1 }));
+  return el.animate(kf, {
+    duration: calm() ? 150 : bounce ? 600 : 500,
+    easing: calm() ? 'ease-out' : EASE_OK ? (bounce ? SPRING_B : SPRING) : 'cubic-bezier(.2,.9,.3,1)'
+  });
+}
+/* 拖曳放開後：道具從影子現在的位置彈進它的新位置；放不下就飛回原位；賣掉、融合掉就縮進商店／那件道具 */
+const posOf = run => {
+  const m = new Map();
+  for (const o of run.bag.items) m.set(o.u, 'b' + [o.x, o.y, o.r]);
+  run.bench.forEach((o, i) => o && m.set(o.u, 'q' + i));
+  return m;
+};
+const elOf = u => document.querySelector(`#bag .it[data-u="${u}"], #bench .bs[data-bu="${u}"]`);
+function land(d, g, before) {
+  const gx = parseFloat(g.style.left) * V.z,
+    gy = parseFloat(g.style.top) * V.z,
+    now = posOf(S.run);
+  let u = d.o.u;
+  if (d.from === 'shop') u = [...now.keys()].find(k => !before.has(k)) || u;
+  const el = now.has(u) && elOf(u),
+    gone = () => g.remove();
+  if (el && now.get(u) !== before.get(u)) {
+    /* 放到新位置：從影子那裡彈過去（甩動放開的，帶一點回彈） */
+    g.remove();
+    const r = el.getBoundingClientRect();
+    el.style.zIndex = 20;
+    const a = spr(
+      el,
+      [{ transform: `translate(${(gx - r.left) / V.z}px,${(gy - r.top) / V.z}px) scale(1.06)` }, { transform: 'none' }],
+      1
+    );
+    if (a) a.onfinish = () => (el.style.zIndex = '');
+    return;
+  }
+  const card = d.from === 'shop' && !before.has(u) && document.querySelector(`.shop .sc[data-sk="${d.sk}"]`),
+    to = el || card || (d.fuse && elOf(d.fuse.u)) || (d.sold && $('shop'));
+  if (!to) return gone();
+  /* 回原位（放不下、沒買）或被吃掉（賣掉、融合）：影子飛過去 */
+  const r = to.getBoundingClientRect(),
+    back = to === el || to === card;
+  if (el) el.classList.add('lift');
+  g.classList.remove('good', 'bad', 'swap');
+  const a = spr(g, [
+    { transform: 'scale(1.06)', opacity: 0.9 },
+    {
+      transform: `translate(${(r.left - gx) / V.z}px,${(r.top - gy) / V.z}px) scale(${back ? 1 : 0.4})`,
+      opacity: back ? 0.9 : 0
+    }
+  ]);
+  if (!a) return gone(), el && el.classList.remove('lift');
+  a.onfinish = () => {
+    gone();
+    if (el) el.classList.remove('lift');
+  };
+}
+/* 底部的道具說明（手機）：從下面滑上來；往下滑可以關（手指拖多少就跟多少，往上拉有阻力，放開看速度決定關或彈回）；關的時候滑回下面 */
+const rubber = (x, dim, c = 0.55) => (x * dim * c) / (dim + c * Math.abs(x));
+const sheetOn = () => !DESK() && document.querySelector('.prep>.det');
+function sheetIn() {
+  const det = sheetOn();
+  if (det && !V.detOn) spr(det, [{ transform: 'translate(-50%,110%)' }, { transform: 'translate(-50%,0)' }]);
+  V.detOn = !!det;
+}
+function sheetOut(from = 0, bounce = 0) {
+  const det = sheetOn(),
+    done = () => {
+      V.sel = null;
+      render();
+    };
+  if (!det) return done();
+  const a = spr(det, [{ transform: `translate(-50%,${from}px)` }, { transform: 'translate(-50%,110%)' }], bounce);
+  if (!a) return done();
+  det.style.pointerEvents = 'none';
+  a.onfinish = done;
+}
+document.addEventListener('pointerdown', ev => {
+  const det = ev.target.closest('.prep>.det');
+  if (!det || DESK() || ev.target.closest('button, a, select, details')) return;
+  const sw = { det, y0: ev.clientY, h: [[ev.clientY, performance.now()]], dy: 0 };
+  const mv = e => {
+    sw.dy = e.clientY - sw.y0;
+    sw.h.push([e.clientY, performance.now()]);
+    if (sw.h.length > 5) sw.h.shift();
+    const y = sw.dy > 0 ? sw.dy : rubber(sw.dy, det.offsetHeight);
+    det.style.transform = `translate(-50%,${y}px)`;
+  };
+  const up = () => {
+    removeEventListener('pointermove', mv);
+    removeEventListener('pointerup', up);
+    removeEventListener('pointercancel', up);
+    if (Math.abs(sw.dy) < 6) return (det.style.transform = '');
+    V.noClick = true;
+    setTimeout(() => (V.noClick = false), 50);
+    const [a, b] = [sw.h[0], sw.h[sw.h.length - 1]],
+      v = b[1] > a[1] ? ((b[0] - a[0]) / (b[1] - a[1])) * 1000 : 0,
+      /* Apple 的動量投影：放開的速度推算會停在哪裡，過一半就關 */
+      end = sw.dy + ((v / 1000) * 0.998) / (1 - 0.998),
+      y = sw.dy > 0 ? sw.dy : rubber(sw.dy, det.offsetHeight);
+    det.style.transform = '';
+    if (end > det.offsetHeight / 2) return sheetOut(y, 1);
+    spr(det, [{ transform: `translate(-50%,${y}px)` }, { transform: 'translate(-50%,0)' }], 1);
+  };
+  addEventListener('pointermove', mv);
+  addEventListener('pointerup', up);
+  addEventListener('pointercancel', up);
+});
+/* 對話框（#modal）：開的時候遮罩淡入、框從 0.96 放大；關的時候走同一條路回去。很多地方直接設 m.hidden，攔 hidden 這個屬性就好；
+   內容換掉（已經開著又設 hidden = false）不重播 */
+(function () {
+  const m = $('modal'),
+    P = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'hidden');
+  if (!m || !P) return;
+  let out = null;
+  Object.defineProperty(m, 'hidden', {
+    get: () => P.get.call(m),
+    set(v) {
+      const was = P.get.call(m);
+      if (out) (out.onfinish = null), out.cancel(), (out = null), (m.style.pointerEvents = '');
+      if (!v) {
+        P.set.call(m, false);
+        if (was) dlgIn(m);
+        return;
+      }
+      if (was) return;
+      const box = m.firstElementChild;
+      if (!box || !box.animate) return P.set.call(m, true);
+      m.style.pointerEvents = 'none';
+      m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: 'ease-in' });
+      out = box.animate(
+        [
+          { transform: 'none', opacity: 1 },
+          { transform: calm() ? 'none' : 'scale(.96)', opacity: 0 }
+        ],
+        {
+          duration: 180,
+          easing: 'ease-in'
+        }
+      );
+      out.onfinish = () => {
+        out = null;
+        m.style.pointerEvents = '';
+        P.set.call(m, true);
+      };
+    }
+  });
+})();
+function dlgIn(o) {
+  o.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
+  const box = o.firstElementChild;
+  if (box)
+    spr(box, [
+      { transform: 'scale(.96)', opacity: 0 },
+      { transform: 'none', opacity: 1 }
+    ]);
+}
+/* render 時：新出現的整頁遮罩（.ovl，結算、三選一、賽制…）淡入；消失的那個拿出來淡出再拿掉 */
+const ovlSig = o => (o.firstElementChild ? o.firstElementChild.className : '');
+function ovlFx(old) {
+  const now = [...$('app').querySelectorAll('.ovl')],
+    sig = new Set(now.map(ovlSig)),
+    was = new Set(old.map(ovlSig));
+  for (const o of now) if (!was.has(ovlSig(o))) dlgIn(o);
+  for (const o of old) {
+    if (sig.has(ovlSig(o)) || !o.animate) continue;
+    o.style.zoom = 'var(--z,1)';
+    document.body.appendChild(o);
+    o.style.pointerEvents = 'none';
+    const box = o.firstElementChild;
+    if (box)
+      box.animate([{ transform: 'none' }, { transform: calm() ? 'none' : 'scale(.96)' }], {
+        duration: 180,
+        easing: 'ease-in'
+      });
+    o.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: 'ease-in' }).onfinish = () => o.remove();
+  }
+}
+/* iOS Safari 要有 touchstart 監聽 :active 才會在按下時就變（按下回饋） */
+document.addEventListener('touchstart', () => {}, { passive: true });
 /* ================= 拖曳擺放 ================= */
 /* 0.1.28 融合好的提示 */
 function fuseToast(l) {
@@ -3490,12 +3691,18 @@ document.addEventListener('pointerdown', ev => {
     o = run.bag.items.find(q => q.u === c.dataset.u);
     grab = [+c.dataset.cx - o.x, +c.dataset.cy - o.y];
   }
+  /* 0.1.87 按下就有回饋（整件縮一點）；抓在格子的哪裡，拖的時候手指就一直在那裡（不跳到格子中間） */
+  const it = c.closest('.it');
+  if (it) it.classList.add('press');
+  const cr = c.getBoundingClientRect(),
+    ox = from === 'bag' ? (ev.clientX - cr.left) / V.z : null,
+    oy = from === 'bag' ? (ev.clientY - cr.top) / V.z : null;
   /* 0.1.29 gi：抓的是形狀的第幾格（拖曳中旋轉後，手指還是抓著同一格） */
   const gi = Math.max(
     0,
     shapeO(o).findIndex(p => p[0] === grab[0] && p[1] === grab[1])
   );
-  V.drag = { o, from, grab, gi, rot: 0, sk, sx: ev.clientX, sy: ev.clientY, on: false, el: null };
+  V.drag = { o, from, grab, gi, rot: 0, sk, sx: ev.clientX, sy: ev.clientY, on: false, el: null, ox, oy };
 });
 document.addEventListener(
   'pointermove',
@@ -3515,6 +3722,8 @@ document.addEventListener(
       d.el = document.createElement('div');
       d.el.className = 'ghost s' + ITEMI[d.o.id].star;
       document.body.appendChild(d.el);
+      /* 拿起來：稍微放大、影子變深（.ghost 的 lift 動畫） */
+      document.querySelectorAll('.it.press').forEach(e => e.classList.remove('press'));
       document
         .querySelectorAll(`.it[data-u="${d.o.u}"], .bs[data-bu="${d.o.u}"]`)
         .forEach(e => e.classList.add('lift'));
@@ -3546,10 +3755,13 @@ function dragMove(d) {
     }
   }
   drawGhost(d);
-  const st = d.cs + GAP;
-  /* 影子也有縮放（.ghost 的 zoom），位置要換回縮放前的單位 */
-  d.el.style.left = d.px / V.z - d.g[0] * st - d.cs / 2 + 'px';
-  d.el.style.top = d.py / V.z - d.g[1] * st - d.cs / 2 + 'px';
+  const st = d.cs + GAP,
+    ox = d.ox ?? d.cs / 2,
+    oy = d.oy ?? d.cs / 2;
+  /* 影子也有縮放（.ghost 的 zoom），位置要換回縮放前的單位；放大的中心是手指抓的那一點 */
+  d.el.style.left = d.px / V.z - d.g[0] * st - ox + 'px';
+  d.el.style.top = d.py / V.z - d.g[1] * st - oy + 'px';
+  d.el.style.transformOrigin = `${d.g[0] * st + ox}px ${d.g[1] * st + oy}px`;
   /* 放不下但剛好擋到一件、而且換得過去：可以交換 */
   /* 0.1.28 輔助拖到能融合的道具上：融合 */
   d.fuse = fuseAt(S.run, d.o, c);
@@ -3626,11 +3838,17 @@ function autoFit(bag, o, c) {
   }
   return null;
 }
+/* 0.1.87 放開：先照原本的規則處理，畫完再讓道具從影子的位置彈過去（land） */
 function dropEnd(ev) {
   const d = V.drag;
   if (!d) return;
   V.drag = null;
-  if (d.el) d.el.remove();
+  document.querySelectorAll('.it.press').forEach(e => e.classList.remove('press'));
+  const before = S.run ? posOf(S.run) : null;
+  dropDo(ev, d);
+  if (d.el) before ? land(d, d.el, before) : d.el.remove();
+}
+function dropDo(ev, d) {
   const run = S.run;
   /* 商店的卡片點一下交給 click（看說明） */
   if (d.from === 'shop' && !d.on) return;
@@ -3666,6 +3884,7 @@ function dropEnd(ev) {
     if (sellNo(run)) snd('nope'), toast(sellNo(run));
     else {
       const v = sellItem(run, d.o.u);
+      d.sold = 1;
       snd('coin');
       toast(`賣了 ${v} 金`);
     }
@@ -3724,9 +3943,11 @@ function dropShop(run, d, ev) {
 }
 document.addEventListener('pointerup', dropEnd);
 document.addEventListener('pointercancel', () => {
-  if (V.drag && V.drag.el) V.drag.el.remove();
+  const d = V.drag;
   V.drag = null;
   render();
+  /* 被系統打斷（來電、捲動）：影子飛回原位 */
+  if (d && d.el) land(d, d.el, posOf(S.run));
 });
 /* 手機叫出鍵盤也會觸發 resize：正在打字時不要重畫（不然輸入框會被換掉、鍵盤一直收起來） */
 window.addEventListener('resize', () => {
