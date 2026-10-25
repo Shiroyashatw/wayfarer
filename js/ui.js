@@ -826,8 +826,8 @@ function modeHTML(run) {
   /* 0.1.65 分兩步：先看賽制（內圈變暗），按「看道具池」再看道具池（外圈變暗），一次只講一件事、對話框不會太長 */
   const T = POOLTHI[run.theme];
   if (T && !run.mstep)
-    return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制（外圈）</small>${wheelHTML(run, 1)}<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}<button class="btn pri big" data-act="modeOk">看道具池</button></div></div>`;
-  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">${T ? `本局道具池（內圈）・賽制：${M.n}` : '本局賽制'}</small>${wheelHTML(run, T ? 2 : 1)}${
+    return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">本局賽制（外圈）・這局的規則變化</small>${wheelHTML(run, 1)}<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}<button class="btn pri big" data-act="modeOk">看道具池</button></div></div>`;
+  return `<div class="ovl"><div class="dlg2 modeint"><small class="c-dim">${T ? `本局道具池（內圈）・商店賣這套道具，圍繞它構築` : '本局賽制'}</small>${wheelHTML(run, T ? 2 : 1)}${
     T
       ? `<b class="big mres">${T.n}</b><ul class="mrules">${T.d.map(x => `<li>${x}</li>`).join('')}</ul>`
       : `<b class="big mres">${M.n}</b><ul class="mrules">${M.d.map(x => `<li>${x}</li>`).join('')}</ul>${modeUI(run).intro ? modeUI(run).intro(run) : ''}`
@@ -2164,9 +2164,10 @@ const CX_TABS = [
   ['cls', '職業'],
   ['ail', '異常'],
   ['stat', '屬性'],
-  ['mode', '賽制']
+  ['mode', '賽制'],
+  ['pool', '道具池']
 ];
-/* 0.1.74 百科的賽制分頁：每個賽制一組（規則＋細項：印記、商人、詛咒與祝福、星象、遺物、塔羅牌），再來是主題池 */
+/* 0.1.74 百科的賽制分頁：每個賽制一組（規則＋細項：印記、商人、詛咒與祝福、星象、遺物、塔羅牌）；0.1.75 道具池拆到自己的分頁 */
 function cxModeHTML() {
   const ic = k => artIconURL(k) || '',
     sub = {
@@ -2203,9 +2204,43 @@ function cxModeHTML() {
             m.d.join('；')
           )}${sub[m.k] ? sub[m.k]().join('') : ''}</div></details>`
       )
-      .join(''),
-    th = POOLTH.map(x => cxRow('cxm_th' + x.k, ic(x.ic), x.n, '主題池', x.d.join('；'))).join('');
-  return `${modes}<details class="more cxg" data-k="cxm_th"><summary>主題池<small>這局商店賣哪一套主題的道具</small></summary><div class="cxl">${th}</div></details>`;
+      .join('');
+  return modes;
+}
+/* 0.1.75 百科的道具池分頁：每個主題一組（機制＋專屬的飾品、輔助；武器列名字） */
+function cxPoolHTML() {
+  return POOLTH.map(x => {
+    const its = ITEMS.filter(i => i.th === x.k && shopOK(i)),
+      ws = its.filter(i => i.dmg),
+      sp = its.filter(i => !i.dmg);
+    return `<details class="more cxg" data-k="cxp_${x.k}"><summary>${x.n}<small>${its.length} 件專屬道具</small></summary><div class="cxl">${cxRow(
+      'cxp_' + x.k + '_r',
+      artIconURL(x.ic) || '',
+      x.n,
+      '道具池的機制',
+      x.d.join('；')
+    )}${sp
+      .map(i =>
+        cxRow('cxp_' + i.id, itemIcon(i.id), i.n, `${stars(i.star)}・${x.n}`, dsc(itemDesc(i.id)), ` s${i.star}`)
+      )
+      .join('')}${
+      ws.length
+        ? cxRow(
+            'cxp_' + x.k + '_w',
+            '',
+            `武器 ${ws.length} 把`,
+            '道具分頁看詳細',
+            [1, 2, 3, 4, 5]
+              .map(st => {
+                const l = ws.filter(i => i.star === st);
+                return l.length ? `${stars(st)}：${l.map(i => i.n).join('、')}` : '';
+              })
+              .filter(Boolean)
+              .join('；')
+          )
+        : ''
+    }</div></details>`;
+  }).join('');
 }
 /* 異常狀態：[圖示, 名字, 說明] */
 const CX_AIL = () => [
@@ -2391,7 +2426,8 @@ function codexHTML() {
     ${sec('cls', '2-5 首領掉專屬核心，4-4 首領再掉一個融入第一個，都從你的職業池三選一。點職業展開。', cls)}
     ${sec('ail', '戰鬥中角色身上和道具上的狀態。抗性可以減少層數或秒數。', ail)}
     ${sec('stat', '道具說明裡常見的數值與機制。', stat)}
-    ${sec('mode', '每局開場轉盤抽一個賽制和一個主題池，整局都有效。點賽制展開看規則。', cxModeHTML())}
+    ${sec('mode', '賽制讓每局不一樣：開場轉盤（外圈）抽一個，整局改變規則。點賽制展開看規則。', cxModeHTML())}
+    ${sec('pool', '道具池決定這局商店賣哪一套道具：開場轉盤（內圈）抽一個，圍繞它的機制構築。點主題展開看專屬道具。', cxPoolHTML())}
     <p class="empty" id="cxnone" hidden>找不到符合的項目，換個關鍵字試試（例如「流血」「盾」「5★」）</p></div>`;
 }
 /* 百科的篩選：沒有關鍵字只顯示目前分頁；有關鍵字時四個分頁一起找，沒有符合的分組收起來、有的自動展開 */
