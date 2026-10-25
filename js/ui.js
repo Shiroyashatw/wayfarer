@@ -2569,19 +2569,19 @@ function pickHTMLs() {
     const on = pickNow(k);
     return `<h3>${title}<small class="c-dim">・${on.length}／${list.length}，至少 ${PICK_MIN[k]} 個</small></h3><div class="seg3 pkg">${list
       .map(
-        ([c, n]) =>
-          `<button class="btn" data-act="pickTog" data-k="${k}" data-v="${c}" aria-pressed="${on.includes(c)}">${n}</button>`
+        ([c, n, ic]) =>
+          `<button class="btn pkb" data-act="pickTog" data-k="${k}" data-v="${c}" aria-pressed="${on.includes(c)}">${artIconURL(ic) ? `<img src="${artIconURL(ic)}" alt="">` : ''}${n}</button>`
       )
       .join('')}</div>`;
   };
   return `${grp(
     'm',
     '要玩的賽制',
-    MODES.filter(m => m.w > 0).map(m => [m.k, m.n])
+    MODES.filter(m => m.w > 0).map(m => [m.k, m.n, m.ic])
   )}${grp(
     't',
     '要玩的道具池',
-    POOLTH.map(x => [x.k, x.n])
+    POOLTH.map(x => [x.k, x.n, x.ic])
   )}<p class="sub">開場轉盤只會抽你選的；配對也照抽到的賽制＋道具池找對手。${S.pick ? '<button class="btn sm" data-act="pickAll">全部選回來</button>' : ''}</p>`;
 }
 /* ================= 動作 ================= */

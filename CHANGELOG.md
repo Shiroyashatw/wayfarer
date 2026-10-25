@@ -1,5 +1,8 @@
 # 更新紀錄
 
+## v0.1.78
+- 設定的賽制、道具池選擇按鈕加上圖示（`MODES`／`POOLTH` 的 `ic`，`.pkb`；沒選的灰階），改成一排 2 個（「法老王的遺物」不會斷行）
+
 ## v0.1.77
 - **選要玩的賽制、道具池**（設定頁，`S.pick`、`pickHTMLs`、`A.pickTog`／`pickAll`）：賽制至少 4 個（`PICK_MIN`）、道具池至少 2 個，預設全選；`rollMode`／`rollTheme` 多一個 allow（`pickOf`），跟賽制衝突的道具池扣掉後沒剩就照全部抽。機器人對局、種子不受影響
 - **詳細統計頁**（`mstatHTML`，首頁排行榜下方的按鈕）：賽制、道具池兩個下拉篩選（可以只選一個或兩個都選），分頁「職業勝率」（局數、第 1 名率、平均名次）與「核心選擇率」（選職業；出現次數、被選比例、拿著的局數與平均名次；雙修拿到的別的職業核心寫全名）。資料：新 RPC `class_stats_mt`、`core_stats_mt`（`supabase/migrations/20261026000000_serling_mode_stats.sql`，**已套用到資料庫**），`ghost.js` 的 `ghostStats`／`STAT`，真人不到 40 局就連種子一起算（頁尾標示）；下拉選單用 `data-chg`（新的 change 監聽）
