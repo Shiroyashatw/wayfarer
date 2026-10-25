@@ -409,7 +409,7 @@ function rvDetHTML(o) {
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
-  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeO(o).length} 格</small></div></div><p>${dsc(itemDesc(o.id, o.t))}</p>${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
+  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}${I.core ? '' : `・${shapeO(o).length} 格`}</small></div></div><p>${dsc(itemDesc(o.id, o.t))}</p>${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
 }
 /* 0.1.32 點對手：看他上一回合的背包（準備時看上一回合；打完結算時看剛打完的這回合，你已經看過了）。不給看這回合的，跟機器人一樣；
    0.1.38 點清單或背包裡的道具看詳細（sel 是選中的道具） */
@@ -426,13 +426,14 @@ function showRivalBag(i, sel) {
   else {
     const bag = unpackBag(sn.bag),
       cs = Math.min(36, fl(260 / bag.w));
-    const so = bag.items.find(o => o.u === sel);
-    body = `<p class="sub">${cls ? cls.n + '・' : ''}${r.id} 的背包・${bag.items.length} 件・點道具看詳細</p><div class="bagwrap">${bagHTML(bag, cs, { mini: 1, id: 'rvbag' })}</div>${so ? rvDetHTML(so) : ''}<div class="rvit">${bag.items
-      .map(
-        o =>
-          `<button class="s${ITEMI[o.id].star}${o.u === sel ? ' sel' : ''}" data-rvu="${o.u}"><img src="${itemIcon(o.id)}" alt="">${esc(fuName(o))}${tierTxt(o.t)}</button>`
-      )
-      .join('')}</div>`;
+    /* 0.1.74 他的核心（核心欄，含融入的第二個）：點了看詳細；拿掉下方的道具清單（點背包裡的格子看） */
+    const co = bag.core && ITEMI[bag.core.id] ? bag.core : null,
+      so = [...bag.items, co].find(o => o && o.u === sel);
+    body = `<p class="sub">${cls ? cls.n + '・' : ''}${r.id} 的背包・${bag.items.length} 件・點道具看詳細</p>${
+      co
+        ? `<div class="rvit rvco"><button class="s5${co.u === sel ? ' sel' : ''}" data-rvu="${co.u}"><img src="${itemIcon(co.id)}" alt="">${esc(ITEMI[co.id].n)}${co.sc && ITEMI[co.sc] ? `<small>＋${esc(ITEMI[co.sc].n.split('・').pop())}</small>` : ''}</button></div>`
+        : ''
+    }<div class="bagwrap">${bagHTML(bag, cs, { mini: 1, id: 'rvbag' })}</div>${so ? rvDetHTML(so) : ''}`;
   }
   showDlg(`${esc(rv.name)}・♥ ${Math.max(0, rivalHp(rv))}`, body, []);
   paintSprites($('modal'));
