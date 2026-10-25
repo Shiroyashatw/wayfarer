@@ -810,8 +810,9 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .sdots i.l{background:var(--bad);opacity:.6}
   .sdots i.on{width:10px;height:10px;background:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 }
-/* 0.1.89 全畫面檢查：已買的商店格跟空格一樣不畫框；有對話框時提示改到下面，不蓋到標題（0.1.91 連接點恢復常亮：玩家要不用點就看得到加成） */
+/* 0.1.89 全畫面檢查：已買的商店格跟空格一樣不畫框；相鄰加成的連接點平常淡一點（選了道具才亮）；有對話框時提示改到下面，不蓋到標題 */
 .sc.sold{border:0;background:var(--fill);opacity:.45;color:var(--dim)}
+.bag:not(.hassel) .lk{opacity:.45}
 body:has(.ovl,#modal:not([hidden])) #toast{top:auto;bottom:calc(24px + var(--sab))}
 /* 0.1.90 商店價格：買得起的淡色、特價金色、買不起紅色（之前五個都是金色）；道具飛行的圖 */
 .sc b{color:var(--dim)}
