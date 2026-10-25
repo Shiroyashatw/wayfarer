@@ -21,6 +21,7 @@ description: 塞令老師的機器人（電腦對手）AI 與訓練。新增道�
   - 塔羅 `botTarot`：戰鬥類的牌直接比戰力（`compileBag` 看 `bag.tar`），經濟、構築類照靜態分數＋看時機。
   - `BOT_P.lowHp`：生命剩這麼少就不存利息錢。
   - 比較：`--vs-rcls`（挑職業 vs 隨便挑）、`--vs-plain`（新擺位 vs 0.1.71 擺法，`P.plain`）。
+- **0.1.79 分主題參數**：`BOT_PT[道具池]`（只寫跟 `BOT_P` 不一樣的），遊戲裡 `botPT` 把它疊在 `BOT_P` 上。訓練：`node tools/bot_train.js --theme g --iters 12 --lobbies 30 --write`（5 個主題各約 25 分鐘）；改了某個道具池的道具或機制就重訓那一個。`posEval`（估價時用戰力試位置）只在森林、棋盤開。
 - **`tools/lobby_pool.js`**：平行跑 `simLobby`（子行程），`bot_train.js`、`bot_cls.js` 用；`--jobs N` 指定行程數（預設 CPU 數）。
 - **`tools/game_node.js`**：在 Node 載入遊戲的純邏輯（core、data、items、bag、sim、run、bot），訓練與大量模擬用。新增遊戲邏輯檔案時把檔名加進 `FILES`（照 `index.html` 的順序，`ui.js` 以後的不用）。
 - **`tools/bot_train.js`**：自我對打調 `BOT_P`。每輪把最好的參數隨機微調成挑戰者，2 對 2 打 N 場比平均名次，明顯比較好就換。`simLobby` 每場照權重抽賽制，所以訓練會涵蓋各賽制。

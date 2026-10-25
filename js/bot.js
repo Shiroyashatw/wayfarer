@@ -29,7 +29,8 @@ let BOT_PT = {
   f: { gainMin: 0.047, ctrlW: 1.013, resW: 1.207, posEval: 1, synW: 0.008 },
   c: { gainMin: 0.047, lowHp: 16, posEval: 1 },
   z: { gainMin: 0.047, reserve: 31, ctrlW: 1.013, lowHp: 16, resW: 1.207, synW: 0.008, ehpW: 1.6 },
-  m: { gainMin: 0.029, rollGold: 2, lvKeep: 4, lowHp: 16, resW: 1.318, synW: 0.008 }
+  m: { gainMin: 0.029, rollGold: 2, lvKeep: 4, lowHp: 16, resW: 1.318, synW: 0.008 },
+  g: { gainMin: 0.047, perGold: 0.004, reserve: 31, mergeBonus: 0.164, lowHp: 16 }
 };
 /* 這局用的參數：BOT_P 加上這個道具池的；P.pt 是訓練中的完整參數（不再疊） */
 const BOT_PTC = new WeakMap();
