@@ -393,7 +393,9 @@ function rollTheme(rand, mode, allow) {
   return c[fl(rand() * c.length)].k;
 }
 /* 0.1.77 玩家在設定裡選的賽制、道具池（S.pick；沒選過是全部） */
-const pickOf = k => (typeof S !== 'undefined' && S.pick && S.pick[k]) || null;
+/* 0.1.92 沒選過就是預設（標準＋巨人國）；Node 模擬的假存檔（沒有 v）照全部抽 */
+const pickOf = k =>
+  typeof S === 'undefined' || !S.v ? null : S.pick && S.pick[k] && S.pick[k].length ? S.pick[k] : DEF_PICK[k];
 /* 設定這局的主題（玩家那局）；即時機器人跟你同一個主題 */
 function setTheme(run, th) {
   run.theme = th;
@@ -1283,7 +1285,8 @@ function finishFight(run, fb) {
       ahead = pre.filter(rv => rivalHp(rv) <= 0 && rv.hp > run.hp).length;
     run.hp = 0;
     endRun(run, Math.max(2, 1 + al + ahead));
-  } else if (!aliveRivals(run).length) endRun(run, 1);
+    /* 0.1.92 教學關本來就沒有對手，不算贏 */
+  } else if (!aliveRivals(run).length && !run.tutor) endRun(run, 1);
   return out;
 }
 /* 0.1.26 沒打你的對手這回合也要打：對戰回合剩下的兩個用快照背包互打，
@@ -1340,6 +1343,9 @@ function endRun(run, place) {
   S.rating = Math.max(0, S.rating + d);
   S.games = (S.games || 0) + 1;
   S.best = Math.min(S.best || 9, place);
+  /* 0.1.92 經驗（結束畫面顯示這局拿多少、有沒有升級） */
+  run.xp0 = S.xp || 0;
+  S.xp = run.xp0 + (XP_PLACE[place] || 0);
   /* 0.1.21 對局紀錄多存：職業、最後的背包、整局每件道具的傷害、每一場的摘要（不存對手背包，省空間）；只有最近 HIST_FULL 局留詳細 */
   const full = {
     cls: run.bag.cls || null,

@@ -33,6 +33,8 @@
 | 排版整理（0.1.88）：投降確認、標題列拿掉音效外觀、怎麼玩摺疊、設定打勾、對話框 ✕ | `js/ui.js`、`css/style.css` | `A.menu`、`showDlg`（按鈕第三個值是 class）、`dlgX`、`helpHTML`（`details.more`、`.hl`）、`pickHTMLs`（`.pkb[aria-pressed]`）、`.btn.danger`、`.dlgx` |
 | 準備畫面減少雜訊、電腦版首頁／戰鬥／結束／設定（0.1.89） | `js/ui.js`、`css/style.css` | `stageDots`（`.sdots`）、`infoRowHTML` 的 `.sinfo`（`.sgc.z`）、商店 `.sc` 的 `aria-label`、`.home.endp`、`.page.set`；CSS「0.1.89」那幾段 |
 | 道具動畫、數字滾動、商店價格顏色（0.1.90） | `js/ui.js`、`css/style.css` | `fxSnap`、`itemFx`、`flyImg`、`pop`、`goldEl`、`FXA`（`click` 分派裡呼叫）、`tick`（`V.num`）、`land` 的賣掉飛進金幣；CSS `.fly`、`.sc b` |
+| 玩家等級、解鎖賽制道具池、標準賽制回來（0.1.92） | `js/data.js`、`js/run.js`、`js/main.js`、`js/ui.js` | `XP_PLACE`、`lvNeed`、`DEF_PICK`、`UNLOCK`、`lvInfo`、`unlockLv`（data）；`pickOf`、`endRun` 的經驗（run）；`migrate` 的 v101（main）；`lvHTML`、`xpHTML`、`unlockName`、`myLv`、`pickAll`／`pickNow`／`pickHTMLs`、`A.pickTog`（ui） |
+| 教學關（0.1.92） | `js/ui.js`、`js/run.js`、`css/style.css` | `tutStart`、`tutPrep`、`coachStep`、`coachFx`、`tutDoneHTML`、`A.tutStart`／`A.tutEnd`、`run.tutor`、首頁的「開始教學」；`finishFight` 沒對手不算贏（run）；CSS `.coach`、`.cspot`、`.cbub` |
 | 機器人分主題參數、估價看位置（0.1.79） | `js/bot.js`、`tools/bot_train.js` | `BOT_PT`、`botPT`、`botTry` 的 `P.posEval`、`BOT_SPOTS_EVAL`、`botPosI`／`botPosBag`、`botBestSpot(…, N)`；`bot_train.js --theme` |
 | 機器人挑職業、擺位看戰力、整理背包、塔羅評估、低血不存錢（0.1.72） | `js/bot.js`、`js/run.js`、`tools/bot_cls.js`、`tools/lobby_pool.js`、`tools/bot_train.js` | `BOT_CLS`、`botClass`、`botSetCls`、`botBestSpot`／`BOT_SPOTS`、`botRelayout`、`botTarot`、`BOT_P.lowHp`、`P.plain`（bot）；`mkBot` 的 `opts`／`opt.rcls`、`joinRivals` 重挑職業（run）；平行對局 `tools/lobby_pool.js`、`bot_train.js --jobs`／`--vs-rcls`／`--vs-plain` |
 | 戰鬥生命照階段放大（0.1.19） | `js/data.js`、`js/run.js` | `HP_ST`、`hpMul`（data）；`stageHp`、`MOB_HP`、`MOB_DMG`（run，`startFight`、`simLobby`、`resumeFight` 都套用） |
@@ -132,9 +134,9 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（702 行）
+### js/data.js（732 行）
 
-- **一局**（5），55 個宣告
+- **一局**（5），61 個宣告
 
 ### js/sprites.js（139 行）
 
@@ -156,21 +158,21 @@
 ### js/sim.js（1377 行）
 
 
-### js/run.js（2231 行）
+### js/run.js（2237 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），8 個宣告
 - **0.1.59 七十二變、星象輪轉**（304），7 個宣告
 - **0.1.62 道具池的主題**（384），13 個宣告
-- **0.1.36 池子**（610），43 個宣告
-- **對手**（998），16 個宣告
-- **戰鬥**（1101），23 個宣告
-- **0.1.52 流浪商隊**（1496），7 個宣告
-- **0.1.59 法老王的遺物**（1624），4 個宣告
-- **0.1.69 塔羅牌陣**（1669），11 個宣告
-- **0.1.59 遺產市集**（1788），9 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1960），4 個宣告
-- **即時機器人（0.1.30）**（2145），7 個宣告
+- **0.1.36 池子**（612），43 個宣告
+- **對手**（1000），16 個宣告
+- **戰鬥**（1103），23 個宣告
+- **0.1.52 流浪商隊**（1502），7 個宣告
+- **0.1.59 法老王的遺物**（1630），4 個宣告
+- **0.1.69 塔羅牌陣**（1675），11 個宣告
+- **0.1.59 遺產市集**（1794），9 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（1966），4 個宣告
+- **即時機器人（0.1.30）**（2151），7 個宣告
 
 ### js/bot.js（1161 行）
 
@@ -192,25 +194,25 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（583 行）
+### js/news.js（592 行）
 
 
-### js/ui.js（4101 行）
+### js/ui.js（4203 行）
 
 - **小工具**（6），21 個宣告
 - **牌階**（124），5 個宣告
 - **主題**（227），3 個宣告
 - **畫面切換**（241），2 個宣告
-- **首頁**（294），4 個宣告
-- **準備畫面**（439），25 個宣告
-- **0.1.52 賽制**（884），22 個宣告
-- **0.1.62 系別羈絆**（1122），29 個宣告
-- **結算、三選一、一局結束**（1463），6 個宣告
-- **戰鬥播放**（1521），28 個宣告
-- **圖鑑、說明、設定**（2307），27 個宣告
-- **動作**（2757），36 個宣告
-- **拖曳擺放**（3754），15 個宣告
+- **首頁**（298），7 個宣告
+- **準備畫面**（465），30 個宣告
+- **0.1.52 賽制**（974），22 個宣告
+- **0.1.62 系別羈絆**（1212），29 個宣告
+- **結算、三選一、一局結束**（1553），6 個宣告
+- **戰鬥播放**（1611），28 個宣告
+- **圖鑑、說明、設定**（2397），27 個宣告
+- **動作**（2853），36 個宣告
+- **拖曳擺放**（3856），15 個宣告
 
-### js/main.js（74 行）
+### js/main.js（79 行）
 
 <!-- index:end -->

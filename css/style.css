@@ -787,7 +787,7 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 /* 0.1.88 設定的賽制、道具池：選到的打勾、一般底色；沒選的只剩框（之前 15 顆全是亮金色，看不出選了哪些） */
 .pkb[aria-pressed="true"]{background:var(--fill);color:var(--ink)}
 .pkb[aria-pressed="true"]::after{content:'✓';color:var(--good);font-weight:700}
-.pkb[aria-pressed="false"]{background:none;box-shadow:inset 0 0 0 1.5px var(--line);color:var(--faint)}
+.pkb[aria-pressed="false"]{background:none;box-shadow:inset 0 0 0 1.5px var(--line);color:var(--dim)}
 /* 0.1.88 對話框右上角的 ✕；不能復原的動作紅字 */
 .dlg2{position:relative}
 .dlgx{position:absolute;top:var(--sp-2);right:var(--sp-2);z-index:2}
@@ -818,6 +818,23 @@ body:has(.ovl,#modal:not([hidden])) #toast{top:auto;bottom:calc(24px + var(--sab
 .sc b{color:var(--dim)}
 .sc b.c-gold{color:var(--gold)}
 .fly{position:fixed;z-index:55;pointer-events:none;image-rendering:pixelated;filter:drop-shadow(0 6px 10px #0006)}
+/* 0.1.92 玩家等級（首頁、結束畫面）、設定裡還沒解鎖的賽制道具池、教學關的框和說明 */
+.lvl{display:flex;align-items:center;gap:var(--sp-2);margin:var(--sp-1) 0}
+.lvl>b{font-family:var(--f-pix);font-weight:400;color:var(--gold);flex:none}
+.lvl>small{flex:none}
+.xpb{flex:1;display:block;height:6px;border-radius:3px;background:var(--hp-track);overflow:hidden}
+.xpb>i{display:block;height:100%;background:var(--gold)}
+.xpc p{margin:var(--sp-1) 0}
+.pkb.lock{background:none;box-shadow:inset 0 0 0 1.5px var(--line);color:var(--faint);opacity:.6}
+.pkb.lock small{margin-left:var(--sp-1)}
+.tutn{text-align:center;margin:0}
+.coach{position:fixed;inset:0;z-index:48;pointer-events:none}
+.cspot{position:fixed;border-radius:var(--r-md);box-shadow:0 0 0 200vmax #0008,0 0 0 3px var(--accent);animation:cpulse 1.6s ease-in-out infinite}
+@keyframes cpulse{50%{box-shadow:0 0 0 200vmax #0008,0 0 0 6px var(--accent-soft)}}
+.cbub{position:fixed;left:50%;transform:translateX(-50%);width:min(340px,calc(100% - 32px));background:var(--card);border-radius:var(--r-lg);padding:var(--sp-3) var(--sp-4);box-shadow:0 8px 30px #0006,0 0 0 1px var(--line);pointer-events:auto;display:flex;align-items:center;gap:var(--sp-3)}
+.cbub p{margin:0;flex:1;font-size:var(--fs-btn);line-height:1.45}
+.cbub .btn{flex:none;color:var(--dim)}
+@media (prefers-reduced-motion:reduce){.cspot{animation:none}}
 /* 0.1.89 結束畫面、設定不要拉滿寬螢幕 */
 .home.endp{max-width:520px;margin:0 auto;width:100%}
 @media (min-width:1040px){

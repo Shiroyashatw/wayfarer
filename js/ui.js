@@ -245,6 +245,8 @@ function render() {
   const run = S.run,
     app = $('app');
   let html = '';
+  document.querySelectorAll('.coach').forEach(e => e.remove());
+  if (run && run.tutor) tutPrep(run);
   if (V.scr === 'run' && run) {
     if (run.phase === 'battle') return renderBattle();
     if (run.phase === 'end') html = endHTML(run);
@@ -254,7 +256,7 @@ function render() {
         (run.phase === 'result' ? resultHTML(run) : '') +
         (run.phase === 'pick' ? pickHTML(run) : '') +
         (run.phase === 'prep'
-          ? revealHTML(run) + sgPickHTML(run) + relicHTML(run) + tarotHTML(run) + legNewHTML(run)
+          ? revealHTML(run) + sgPickHTML(run) + relicHTML(run) + tarotHTML(run) + legNewHTML(run) + tutDoneHTML(run)
           : '') +
         (run.phase === 'mode' ? modeHTML(run) : '') +
         (run.phase === 'cls' ? clsHTML(run) : '');
@@ -281,6 +283,8 @@ function render() {
   fitBag();
   sheetIn();
   if (V.scr === 'run' && run && run.phase !== 'end') tick('.top .gold', run.gold, 'g'), tick('.top .hpt', run.hp, 'h');
+  /* 教學關的框：說明卡、對話框滑進來後位置才對，晚一點再量一次 */
+  if (run && run.tutor) coachFx(), setTimeout(coachFx, 550);
   /* 0.1.59 開場賽制轉盤 */
   if (V.scr === 'run' && run && run.phase === 'mode') wheelGo(run);
   /* 0.1.55 百科：重畫後照搜尋欄再篩一次 */
@@ -292,14 +296,36 @@ const go = scr => {
   render();
 };
 /* ================= 首頁 ================= */
+/* 0.1.92 玩家等級：Lv＋經驗條＋下一級解鎖什麼（首頁）；結束畫面多「這局 +多少經驗、升級解鎖了什麼」 */
+const unlockName = u => (u[1] === 'm' ? '賽制・' + MODEI[u[2]].n : '道具池・' + POOLTHI[u[2]].n);
+function lvHTML() {
+  const L = lvInfo(S.xp),
+    nx = UNLOCK.find(u => u[0] > L.lv);
+  return `<div class="lvl"><b>Lv ${L.lv}</b><i class="xpb"><i style="width:${(L.cur / L.need) * 100}%"></i></i><small>${L.cur}／${L.need}</small></div>${nx ? `<small class="c-dim">Lv ${nx[0]} 解鎖${unlockName(nx)}</small>` : ''}`;
+}
+function xpHTML(run) {
+  if (run.xp0 == null || run.tutor) return '';
+  const a = lvInfo(run.xp0),
+    b = lvInfo(S.xp),
+    ups = UNLOCK.filter(u => u[0] > a.lv && u[0] <= b.lv);
+  return `<div class="card xpc"><div class="lvl"><b>Lv ${b.lv}</b><i class="xpb"><i style="width:${(b.cur / b.need) * 100}%"></i></i><small class="c-good">+${S.xp - run.xp0} 經驗</small></div>${
+    b.lv > a.lv
+      ? `<p class="c-gold">升級了！</p>${ups.map(u => `<p>解鎖${unlockName(u)}</p>`).join('')}${ups.length ? '<button class="btn" data-act="go" data-k="settings">到設定打開</button>' : ''}`
+      : ''
+  }</div>`;
+}
 function homeHTML() {
   /* 0.1.74 打完的那局（phase end）不算進行中：首頁直接是「開始對戰」 */
   const run = S.run && S.run.phase !== 'end' ? S.run : null;
   return `<div class="home hm">
 
     <div class="logo"><b>塞令老師</b><small>背包自動對戰</small></div>
-    <div class="hcol hc1"><div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b>${rankHTML()}<div class="kv3"><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span><span>第 1 名<b>${(S.hist || []).filter(x => x.place === 1).length}</b></span></div></div></div>
-    <button class="btn pri big" data-act="play">${run ? `繼續對局（${curRound(run) ? curRound(run).id : ''}）` : '開始對戰'}</button>
+    <div class="hcol hc1"><div class="card prof">${sprCv('a_' + S.av, 'big')}<div><b>${esc(S.name)}</b>${lvHTML()}${rankHTML()}<div class="kv3"><span>場數<b>${S.games || 0}</b></span><span>最佳<b>${S.best < 9 ? '第 ' + S.best : '—'}</b></span><span>第 1 名<b>${(S.hist || []).filter(x => x.place === 1).length}</b></span></div></div></div>
+    ${
+      run || S.tutDone
+        ? `<button class="btn pri big" data-act="play">${run ? `${run.tutor ? '繼續教學' : '繼續對局'}（${curRound(run) ? curRound(run).id : ''}）` : '開始對戰'}</button>`
+        : '<button class="btn pri big" data-act="tutStart">開始教學</button><p class="sub tutn">第一次玩先打一場教學關（3 回合），打完開放正式對戰</p>'
+    }
     <div class="g3"><button class="btn" data-act="go" data-k="help">怎麼玩</button><button class="btn" data-act="go" data-k="codex">百科</button><button class="btn" data-act="go" data-k="settings">設定</button></div>
     ${
       (S.hist || []).length
@@ -552,8 +578,72 @@ function nextRival(run) {
   if (!al.length) return -1;
   return (al.find(([, i]) => i >= run.rp % run.rivals.length) || al[0])[1];
 }
+/* ================= 0.1.92 教學關 =================
+   標準＋巨人國、沒有對手，打 1-1～1-3 三場野怪：選職業 → 把送的道具拖進背包 → 買一件一樣的 → 開戰 →
+   1-2 再買一件（3 件一樣合成 Ⅱ 階）→ 1-3 升級背包 → 到 1-4 就完成。每一步把要按的地方框起來（coachStep／coachFx），
+   商店第一格固定放職業送的那件（tutPrep）。不建快照、不算分、不給經驗；隨時可以跳過 */
+function tutStart() {
+  const keep = S.pick;
+  S.pick = { m: ['std'], t: ['g'] };
+  const run = newRun([]);
+  S.pick = keep;
+  Object.assign(run, { tutor: 1, ver: VER, mseen: 1, mstep: 1, phase: 'cls' });
+  S.run = run;
+  V.scr = 'run';
+  V.sel = null;
+  audioOn();
+  save();
+  render();
+}
+function tutPrep(run) {
+  if (!run.tutor || run.phase !== 'prep' || run.tutShop === run.ri) return;
+  run.tutShop = run.ri;
+  run.tutW = run.tutW || (CLSI[run.bag.cls] || {}).st;
+  const id = curRound(run).id;
+  if (id === '1-3') run.gold = Math.max(run.gold, lvCost(run) + 2);
+  else if (run.tutW && ITEMI[run.tutW]) run.shop[0] = { id: run.tutW, t: 1 };
+}
+function coachStep(run) {
+  /* top：說明固定在畫面最上面（不要蓋到三個選項） */
+  if (run.phase === 'cls')
+    return { t: '先選一個職業：整局都有效，商店會多出這個職業用的道具', s: '.ovl .picks', top: 1 };
+  if (run.phase === 'result') return { t: '戰鬥是全自動的。打完了，按「繼續」', s: '.ovl .btn.pri' };
+  if (run.phase !== 'prep') return null;
+  const id = curRound(run).id,
+    buy = t =>
+      V.sel === 'shop0'
+        ? { t: '按「買」買下它（也可以直接把商店的道具拖進背包）', s: '.det [data-act="buy"]' }
+        : { t, s: '.shop .sc[data-sk="0"]' };
+  if (id === '1-4') return null;
+  if (run.bench.some(Boolean)) return { t: '道具在暫存區：把它拖進上面的背包格子', s: '.bench .bs[data-bu]' };
+  if (id === '1-1' && run.bag.items.length < 2 && run.shop[0]) return buy('點商店的道具，先看說明再買');
+  if (id === '1-2' && run.shop[0] && ![...run.bag.items, ...run.bench].some(o => o && o.t > 1))
+    return buy('3 件一樣的道具會自動合成 Ⅱ 階：買下這件');
+  if (id === '1-3' && run.lv < 2)
+    return { t: '背包可以升級：越大放越多，商店也越常出高星道具', s: '[data-act="lvup"]' };
+  return { t: '擺好了就按「開戰」', s: '[data-act="fight"]' };
+}
+/* 框起要按的地方（其他地方變暗，但不擋點擊）、旁邊一句話＋跳過 */
+function coachFx() {
+  document.querySelectorAll('.coach').forEach(e => e.remove());
+  const run = S.run,
+    c = V.scr === 'run' && run && run.tutor && !V.drag && coachStep(run);
+  if (!c) return;
+  const el = document.querySelector(c.s),
+    r = el && el.getBoundingClientRect(),
+    w = document.createElement('div');
+  w.className = 'coach';
+  const up = r && r.top > innerHeight / 2;
+  w.innerHTML = `${r ? `<i class="cspot" style="left:${r.left - 4}px;top:${r.top - 4}px;width:${r.width + 8}px;height:${r.height + 8}px"></i>` : ''}<div class="cbub" style="${c.top ? 'top:calc(12px + var(--sat))' : r ? (up ? `bottom:${innerHeight - r.top + 14}px` : `top:${r.bottom + 14}px`) : 'top:40%'}"><p>${c.t}</p><button class="btn sm" data-act="tutEnd" data-k="skip">跳過教學</button></div>`;
+  document.body.appendChild(w);
+}
+/* 到 1-4：完成 */
+function tutDoneHTML(run) {
+  if (!run.tutor || curRound(run).id !== '1-4') return '';
+  return `<div class="ovl"><div class="dlg2 tutd"><b class="big">教學完成！</b><ul class="mrules"><li>正式對戰 6 人一場（其他玩家的背包快照或電腦），生命 ${START_HP}，輸了扣血、歸零淘汰，活到最後是第 1 名</li><li>第 2 階段起會跟其他玩家的背包對打，每階段有首領掉職業核心</li><li>每場打完拿經驗，升級解鎖新的賽制和道具池（到設定打開）</li></ul><button class="btn pri big" data-act="tutEnd" data-k="play">開始正式對戰</button><button class="btn" data-act="tutEnd" data-k="home">回首頁</button></div></div>`;
+}
 function tutHTML() {
-  if (S.tut >= 3) return '';
+  if (S.tut >= 3 || (S.run && S.run.tutor)) return '';
   const t = [
     '點商店的道具看說明，或直接把它拖進背包（也可以先買到暫存區）',
     '把暫存區的道具拖進背包格子（點一下可以旋轉、賣出；拖到別的道具上可以交換位置）',
@@ -1515,7 +1605,7 @@ function endHTML(run) {
   const cs = Math.min(40, cellSize(run.bag.w));
   return `<div class="home endp"><div class="logo"><b class="pl p${run.place}">第 ${run.place} 名</b><small>${run.place === 1 ? '你是第一名！' : run.place === 2 ? '差一點點' : '下次再來'}</small></div>
     <div class="card endrk">${rankHTML(1)}${rankMove(run)}<small class="c-dim">打到 ${curRound(run) ? curRound(run).id : '最後'}</small></div>
-    <h3>最後的背包</h3><div class="bagwrap">${bagHTML(run.bag, cs, { mini: 1, id: 'endbag' })}</div>
+    ${xpHTML(run)}<h3>最後的背包</h3><div class="bagwrap">${bagHTML(run.bag, cs, { mini: 1, id: 'endbag' })}</div>
     <button class="btn pri big" data-act="again">再來一局</button><button class="btn" data-act="endHome">結束戰鬥回首頁</button></div>`;
 }
 /* ================= 戰鬥播放 ================= */
@@ -2701,6 +2791,7 @@ function helpHTML() {
   <details class="more"><summary>戰鬥<small>全自動，打久了進入疲勞</small></summary><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></details>
   <details class="more"><summary>異常狀態<small>燃燒、中毒、暈眩…各自的效果</small></summary><p>燃燒、中毒、流血、劇毒每秒扣血（劇毒不會退、×2）；點燃讓燃燒越燒越多；破甲扣護甲；凍結讓一件道具 6 秒不能充能、冰緩讓它充能減半；暈眩不能動；虛弱傷害 -25%；致盲 30% 打不中；衰老不能暴擊；腐蝕不能獲得護盾（改成扣血）；混亂一半打到自己。</p></details>
   <details class="more"><summary>陷阱<small>核心放進敵人背包的陷阱</small></summary><p>有些核心會在開戰時把陷阱放進敵人背包的格子（含空格），那格的道具每次出手都會觸發。戰鬥時有陷阱的道具右上角有紅點。</p></details>
+  <details class="more"><summary>玩家等級<small>每場打完拿經驗，升級解鎖賽制和道具池</small></summary><p>第一次玩只有「標準」賽制和「巨人國」道具池。每場打完照名次拿經驗（第 1 名 ${XP_PLACE[1]}、第 2 名 ${XP_PLACE[2]}…），升級會解鎖新的賽制或道具池，解鎖後到設定打開才會出現在開場轉盤，大約 30 場全部解鎖。</p></details>
   <details class="more"><summary>對手<small>其他玩家留下的背包快照</small></summary><p>對戰的對手是其他玩家在同一回合留下的背包快照，不用等人上線。沒有真人時由機器人補位。</p></div></details>`;
 }
 function settingsHTML() {
@@ -2727,21 +2818,26 @@ function settingsHTML() {
         ? `<input class="inp" id="authEmail" type="email" placeholder="信箱" autocomplete="email" value="${esc(V.authEm || '')}"><input class="inp" id="authPw" type="password" placeholder="密碼（至少 6 個字）" autocomplete="current-password" value="${esc(V.authPw || '')}"><div class="g2"><button class="btn pri" data-act="register" ${V.authBusy ? 'disabled' : ''}>註冊</button><button class="btn" data-act="login" ${V.authBusy ? 'disabled' : ''}>登入</button></div><button class="btn sm" data-act="resetPw" ${V.authBusy ? 'disabled' : ''}>忘記密碼</button><p class="sub${V.authErr ? ' c-bad' : ''}" id="authMsg">${esc(V.authMsg || '')}</p>`
         : '<button class="btn" data-act="logout">登出</button>'
   }</div>
-  <h3>新手教學</h3><button class="btn" data-act="tutReset">重看新手提示</button>
+  <h3>新手教學</h3><button class="btn" data-act="tutStart">重玩教學關</button>
   <p class="sub ver">塞令老師 v${VER}${GHOST.off ? '・快照對戰離線（用機器人對手）' : ''}</p></div>`;
 }
-/* 0.1.77 設定：要玩哪些賽制（至少 PICK_MIN.m 個）、道具池（至少 PICK_MIN.t 個）；預設全選（S.pick 沒有就是全部） */
-const PICK_MIN = { m: 4, t: 2 },
-  pickAll = k => (k === 'm' ? MODES.filter(m => m.w > 0).map(m => m.k) : POOLTH.map(x => x.k)),
-  pickNow = k => (S.pick && S.pick[k] && S.pick[k].length ? S.pick[k] : pickAll(k));
+/* 0.1.77 設定：要玩哪些賽制、道具池；0.1.92 沒選過是預設（標準＋巨人國），其他照玩家等級解鎖（UNLOCK），解鎖後自己打開 */
+const PICK_MIN = { m: 1, t: 1 },
+  myLv = () => lvInfo(S.xp).lv,
+  pickAll = k =>
+    (k === 'm' ? MODES.filter(m => m.w > 0).map(m => m.k) : POOLTH.map(x => x.k)).filter(v => unlockLv(k, v) <= myLv()),
+  pickNow = k => (S.pick && S.pick[k] && S.pick[k].length ? S.pick[k] : DEF_PICK[k]);
 function pickHTMLs() {
   const grp = (k, title, list) => {
     const on = pickNow(k);
-    return `<h3>${title}<small class="c-dim">・${on.length}／${list.length}，至少 ${PICK_MIN[k]} 個</small></h3><div class="seg3 pkg">${list
-      .map(
-        ([c, n, ic]) =>
-          `<button class="btn pkb" data-act="pickTog" data-k="${k}" data-v="${c}" aria-pressed="${on.includes(c)}">${artIconURL(ic) ? `<img src="${artIconURL(ic)}" alt="">` : ''}${n}</button>`
-      )
+    return `<h3>${title}<small class="c-dim">・開了 ${on.length}／解鎖 ${pickAll(k).length}</small></h3><div class="seg3 pkg">${list
+      .map(([c, n, ic]) => {
+        const L = unlockLv(k, c),
+          im = artIconURL(ic) ? `<img src="${artIconURL(ic)}" alt="">` : '';
+        return L > myLv()
+          ? `<button class="btn pkb lock" disabled>${im}${n}<small>Lv ${L}</small></button>`
+          : `<button class="btn pkb" data-act="pickTog" data-k="${k}" data-v="${c}" aria-pressed="${on.includes(c)}">${im}${n}</button>`;
+      })
       .join('')}</div>`;
   };
   return `${grp(
@@ -2752,7 +2848,7 @@ function pickHTMLs() {
     't',
     '要玩的道具池',
     POOLTH.map(x => [x.k, x.n, x.ic])
-  )}<p class="sub">開場轉盤只會抽你選的；配對也照抽到的賽制＋道具池找對手。${S.pick ? '<button class="btn sm" data-act="pickAll">全部選回來</button>' : ''}</p>`;
+  )}<p class="sub">開場轉盤只會抽你打開的；配對也照抽到的賽制＋道具池找對手。玩家等級升級會解鎖新的。${['m', 't'].some(k => pickAll(k).some(v => !pickNow(k).includes(v))) ? '<button class="btn sm" data-act="pickAll">已解鎖的全部打開</button>' : ''}</p>`;
 }
 /* ================= 動作 ================= */
 function audioOn() {
@@ -2793,25 +2889,27 @@ const A = {
           A.menu();
         }
       ],
-      /* 0.1.88 投降不能復原：紅字、再問一次 */
-      [
-        '投降',
-        () => {
-          const pl = Math.max(2, 1 + aliveRivals(run).length);
-          showDlg('確定投降？', `<p class="sub">這局直接結束，算第 ${pl} 名，沒辦法復原。</p>`, [
-            [
-              '投降',
-              () => {
-                endRun(run, pl);
-                save();
-                render();
-              },
-              'danger'
-            ]
-          ]);
-        },
-        'danger'
-      ]
+      /* 0.1.88 投降不能復原：紅字、再問一次；0.1.92 教學關沒有投降，是跳過教學 */
+      run.tutor
+        ? ['跳過教學', () => A.tutEnd({ k: 'skip' })]
+        : [
+            '投降',
+            () => {
+              const pl = Math.max(2, 1 + aliveRivals(run).length);
+              showDlg('確定投降？', `<p class="sub">這局直接結束，算第 ${pl} 名，沒辦法復原。</p>`, [
+                [
+                  '投降',
+                  () => {
+                    endRun(run, pl);
+                    save();
+                    render();
+                  },
+                  'danger'
+                ]
+              ]);
+            },
+            'danger'
+          ]
     ]);
   },
   shopSel: d => {
@@ -3219,8 +3317,8 @@ const A = {
       if (on.length <= PICK_MIN[k]) return toast(`${k === 'm' ? '賽制' : '道具池'}至少要選 ${PICK_MIN[k]} 個`);
       on.splice(i, 1);
     } else on.push(d.v);
-    S.pick = { ...(S.pick || {}), [k]: on.length >= pickAll(k).length ? null : on };
-    if (!S.pick.m && !S.pick.t) S.pick = null;
+    if (unlockLv(k, d.v) > myLv()) return;
+    S.pick = { m: pickNow('m'), t: pickNow('t'), [k]: on };
     save();
     render();
   },
@@ -3229,7 +3327,7 @@ const A = {
     render();
   },
   pickAll: () => {
-    S.pick = null;
+    S.pick = { m: pickAll('m'), t: pickAll('t') };
     save();
     render();
   },
@@ -3238,10 +3336,14 @@ const A = {
     save();
     render();
   },
-  tutReset: () => {
-    S.tut = 0;
+  tutStart: () => tutStart(),
+  /* 0.1.92 教學關結束：done 打完（之後的第一局不再顯示舊的提示列）、play 直接開始正式對戰 */
+  tutEnd: d => {
+    S.tutDone = 1;
+    if (d.k !== 'skip') S.tut = 3;
+    S.run = null;
     save();
-    toast('下一局會再顯示提示');
+    d.k === 'play' ? startRun() : go('home');
   },
   register: () => authDo(authRegister),
   login: () => authDo(authLogin),

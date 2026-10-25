@@ -71,14 +71,14 @@
 python3 -m http.server 8000   # 開 http://localhost:8000
 python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 ```
-存檔在 localStorage（鍵 `serling_v1`）；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換（存檔版本是 `S.v`，0.1.0 起是 100）。進行中的一局記著版本（`S.run.ver`），版本不同會直接結束那局。
+存檔在 localStorage（鍵 `serling_v1`）；改了存檔格式要在 `main.js` 的 `migrate()` 補轉換（存檔版本是 `S.v`，0.1.0 起是 100，0.1.92 起是 101（玩家等級 `S.xp`、教學關 `S.tutDone`））。進行中的一局記著版本（`S.run.ver`），版本不同會直接結束那局。
 測試用另一份存檔：網址加 `?p=2`。
 瀏覽器測一整局：`newRun(liveBots(LOBBY_N - 1, 1000))` 後用 `botAct`（`js/bot.js`）代替玩家、`startFight`／`finishFight` 跑每回合（見 `docs/CODEMAP.md`）。
 
 ## Supabase
 - 專案 ref：`eugkdfhkoaxvqhztvptc`，URL `https://eugkdfhkoaxvqhztvptc.supabase.co`
 - 資料表 `public.saves`（user_id、data jsonb、game_version、updated_at），RLS 只允許本人讀寫。
-- 快照對戰：`public.runs`（`ver` 存的是快照版本 `GVER`，不是遊戲版本；回合表或道具改到舊快照不能用時才換 `GVER`，換了要重產種子）、`public.snaps`（大家可讀、只能寫自己的）、RPC `pick_rivals`；SQL 在 `supabase/migrations/20261022000000_serling_ghosts.sql`。資料表不存在時遊戲自動改用機器人對手（`GHOST.off`）。開服種子：在瀏覽器主控台執行 `seedGhosts()`（skill `ghost-seed`），產生 588 局機器人對局（0.1.71 起；全部是最高牌階 2100 的機器人，49 種賽制 × 主題各 2 場、13 個職業輪流；分數相近的快照不夠時配對會用 2100 再找一次）上傳成 `runs.seed = true`；配對只配同一個賽制＋主題（0.1.69，`runs.mode`／`theme`、RPC `pick_rivals_mt`，SQL 在 `supabase/migrations/20261025000000_serling_mode_theme.sql`，要在 SQL Editor 跑過），真人優先，真人夠多後可用 `delete from public.runs where seed;` 刪掉。
+- 快照對戰：`public.runs`（`ver` 存的是快照版本 `GVER`，不是遊戲版本；回合表或道具改到舊快照不能用時才換 `GVER`，換了要重產種子）、`public.snaps`（大家可讀、只能寫自己的）、RPC `pick_rivals`；SQL 在 `supabase/migrations/20261022000000_serling_ghosts.sql`。資料表不存在時遊戲自動改用機器人對手（`GHOST.off`）。開服種子：在瀏覽器主控台執行 `seedGhosts()`（skill `ghost-seed`），產生 648 局機器人對局（0.1.92 標準賽制加回後；全部是最高牌階 2100 的機器人，54 種賽制 × 主題各 2 場、13 個職業輪流；分數相近的快照不夠時配對會用 2100 再找一次）上傳成 `runs.seed = true`；配對只配同一個賽制＋主題（0.1.69，`runs.mode`／`theme`、RPC `pick_rivals_mt`，SQL 在 `supabase/migrations/20261025000000_serling_mode_theme.sql`，要在 SQL Editor 跑過），真人優先，真人夠多後可用 `delete from public.runs where seed;` 刪掉。
 - 排行榜（0.1.29）：`runs.cls`、`runs.rating_end`、RPC `leaderboard`／`class_stats`，SQL 在 `supabase/migrations/20261023000000_serling_leaderboard.sql`（要在 SQL Editor 跑過才有資料；沒跑時首頁職業勝率改用自己的對局）。
 - 核心統計（0.1.45）：`runs.core1`／`core2`／`core_log`（首領核心三選一紀錄）、RPC `core_stats`／`core_combo_stats`，SQL 在 `supabase/migrations/20261024000000_serling_core_stats.sql`（要在 SQL Editor 跑過才會存）；瀏覽器主控台 `await coreStatsCloud()` 看真人的選擇率與組合（`coreStatsCloud(true)` 連種子一起算）。
 - 詳細統計（0.1.77）：RPC `class_stats_mt`、`core_stats_mt`（照賽制、道具池篩選），SQL 在 `supabase/migrations/20261026000000_serling_mode_stats.sql`（已套用）。

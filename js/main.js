@@ -2,7 +2,10 @@
 'use strict';
 /* 存檔：帳號資料（名字、頭像、分數、戰績、圖鑑、設定）＋進行中的那一局（run） */
 const newGame = () => ({
-  v: 100,
+  v: 101,
+  /* 0.1.92 玩家等級的經驗、教學關打完了沒 */
+  xp: 0,
+  tutDone: 0,
   name: randName(),
   av: AVATARS[0][0],
   rating: 1000,
@@ -53,6 +56,8 @@ function migrate(s) {
   /* 0.1.4 預設改成深色：沒自己選過主題的存檔也跟著換 */
   if (!o.themeSet) o.theme = 'dark';
   delete o.music;
+  /* 0.1.92 玩家等級：舊存檔全部從 Lv1 開始、賽制道具池回到預設（標準＋巨人國）；打過的不用再玩教學關 */
+  if (s.v < 101) Object.assign(o, { v: 101, xp: 0, pick: null, tutDone: (s.games || 0) > 0 ? 1 : 0 });
   /* 0.1.17 頭像換成新的一批：舊的（鍾馗、門神…）不在清單裡就換成第一個 */
   if (!AVATARS.some(x => x[0] === o.av)) o.av = AVATARS[0][0];
   return o;

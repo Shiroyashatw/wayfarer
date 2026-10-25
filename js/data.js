@@ -172,7 +172,8 @@ const randName = (r = Math.random) => NAME_A[fl(r() * NAME_A.length)] + NAME_B[f
 /* 0.1.59 新增詛咒寶藏、七十二變、星象輪轉、法老王的遺物、遺產市集（權重：標準 20、其他各 10）；0.1.60 標準降到 5（約 6%） */
 const MODES = [
   /* 0.1.69 標準不上轉盤（w 0），留著給測試、舊快照用 */
-  { k: 'std', n: '標準', w: 0, ic: 'cur_regal', d: ['沒有特殊規則'] },
+  /* 0.1.92 標準加回轉盤（新玩家預設只玩標準＋巨人國） */
+  { k: 'std', n: '標準', w: 10, ic: 'cur_regal', d: ['沒有特殊規則'] },
   {
     k: 'gale',
     n: '狂風市集',
@@ -563,6 +564,35 @@ const POOLTH = [
 ];
 const POOLTHI = Object.fromEntries(POOLTH.map(x => [x.k, x]));
 const MODE_TH_BAN = { shape: ['g'] };
+/* 0.1.92 玩家等級：每場照名次給經驗，升級解鎖賽制、道具池（解鎖後先關著，玩家到設定自己打開）；約 30 場全開。
+   新玩家（和 0.1.92 前的存檔）只有標準＋巨人國 */
+const XP_PLACE = [0, 100, 70, 50, 40, 35, 30];
+const lvNeed = lv => 80 + 5 * lv; // 從 lv 升到 lv + 1 要的經驗
+const DEF_PICK = { m: ['std'], t: ['g'] };
+const UNLOCK = [
+  [2, 't', 'f'],
+  [3, 'm', 'gale'],
+  [4, 'm', 'sigil'],
+  [5, 't', 'm'],
+  [6, 'm', 'curse'],
+  [7, 'm', 'caravan'],
+  [8, 't', 'c'],
+  [9, 'm', 'legacy'],
+  [10, 'm', 'relic'],
+  [11, 't', 'z'],
+  [12, 'm', 'astro'],
+  [13, 'm', 'tarot'],
+  [14, 'm', 'shape'],
+  [15, 'm', 'dual']
+];
+/* 經驗 → { lv, cur（這一級已經有的）, need（這一級要的） } */
+function lvInfo(xp = 0) {
+  let lv = 1;
+  while (xp >= lvNeed(lv)) xp -= lvNeed(lv++);
+  return { lv, cur: xp, need: lvNeed(lv) };
+}
+/* 這個賽制（k 'm'）或道具池（'t'）幾級解鎖；預設的是 1 */
+const unlockLv = (k, v) => (DEF_PICK[k].includes(v) ? 1 : (UNLOCK.find(u => u[1] === k && u[2] === v) || [99])[0]);
 /* 0.1.62 系別羈絆：背包裡同一系（g 裡任一個標籤）湊 SYN_AT 件分別是 1／2／3 級，效果累加（3 級＝L[0]＋L[1]＋L[2]）；
    m 給那一系的道具（跟飾品加成一樣算進道具身上）、F 給角色。系別飾品（for）算 1 件、重做的羈絆飾品（syn）照寫的件數算 */
 /* 0.1.69 黃道十二宮：背包裡有星座時多開 8、10 件兩個門檻（L[3]、L[4]） */
@@ -698,4 +728,4 @@ const LEGACY_RC = 2;
 /* 0.1.72 s28：機器人變聰明（全部菁英、挑職業、擺位、反制、記仇），舊種子太弱 */
 /* 0.1.74 s29：狂戰士 12 個核心換新（同一個核心編號換了效果）、新道具黑心貨 */
 const GVER = 's29';
-const VER = '0.1.90';
+const VER = '0.1.92';
