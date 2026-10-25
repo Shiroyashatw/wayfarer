@@ -786,8 +786,14 @@ function botAbsorb(run, o, P) {
 }
 /* 0.1.43 照核心與道具要留著不花的錢：鈔能力（守住已經到的那一級）、金錢標（開戰每下花 1 金）、賄賂（要超過 5 金） */
 /* 鈔能力已經到的那一級是硬底線（掉級就少一截加成），其他是軟的（動到時門檻加倍） */
-const botFloor = run =>
-  coreProp(bagAll(run.bag), 'rich') ? Math.max(0, ...RICH.map(([n]) => n).filter(n => run.gold >= n)) : 0;
+/* 0.1.74 商人職業特性（RICH_C）也一樣守住已經到的那一級 */
+const botFloor = run => {
+  const ns = [
+    ...(coreProp(bagAll(run.bag), 'rich') ? RICH : []),
+    ...(((CLSI[run.bag.cls] || {}).F || {}).richC ? RICH_C : [])
+  ].map(([n]) => n);
+  return Math.max(0, ...ns.filter(n => run.gold >= n));
+};
 function botKeep(run) {
   const its = bagAll(run.bag);
   let k = botFloor(run);

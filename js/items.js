@@ -1231,6 +1231,17 @@ const ITEMS = [
     ns: 1,
     ic: 'asc_alchemist_c1'
   },
+  /* 0.1.74 商人・奸商送的：開戰時讓敵人隨機兩把武器降一階 */
+  {
+    id: 'blackgoods',
+    n: '黑心貨',
+    star: 3,
+    sh: 's1',
+    tags: ['trinket'],
+    pre: { down: 2 },
+    ns: 1,
+    ic: 'cur_chaos'
+  },
   /* 煉成做出來的：效果存在道具的 ex（BREW 的代號），生命低於 50% 喝、可以喝 2 次 */
   {
     id: 'ultelixir',
@@ -3774,7 +3785,8 @@ const CLASSES = [
     F: { throwPct: 50, potUse: 1 }
   },
   /* 0.1.33 eliteGold：打完菁英多拿的金幣 */
-  { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_regal', gold: 1, eliteGold: 3 }
+  /* 0.1.74 商人職業特性：開戰時身上的金幣越多越強（鈔能力的弱化版 RICH_C，鈔能力改成中後期的 RICH） */
+  { id: 'merchant', st: 'purse', n: '商人', ic: 'cur_regal', gold: 1, eliteGold: 3, F: { richC: 1 } }
 ];
 const CLSI = Object.fromEntries(CLASSES.map(c => [c.id, c]));
 /* 0.1.10 職業核心兩次：2-5 首領掉「專屬核心」（每個職業 12 個、各有特色），4-4 首領掉「副核心」（照模板對主打標籤加成，12 個）。
@@ -4003,7 +4015,8 @@ const CORE_MAIN = {
     ['賄賂', { bribe: 5 }],
     ['折價卷', { lvOff: 50 }],
     ['回扣', { kick: 5 }],
-    ['奸商', { gold: 1, pre: { down: 2 } }],
+    /* 0.1.74 奸商：送一件黑心貨（1 格，開戰時讓敵人隨機兩把武器降一階） */
+    ['奸商', { gold: 1, give: 'blackgoods' }],
     /* 0.1.33 拿到時送 2 隻隨機 4★ 寵物 */
     ['保鏢', { gift: [4, 'pet', 2] }],
     ['豪賭', { all: onP(P, { dmgPct: 50, spd: 30 }), rollCap: 2 }]
@@ -4075,7 +4088,10 @@ function clsDesc(id) {
   if (c.F) out.push(modTxt(Object.fromEntries(Object.entries(c.F).filter(([k]) => MODN[k]))));
   if (c.F && c.F.potMul) out.push(`藥水回復 +${c.F.potMul}%${c.F.potUse ? `、多喝 ${c.F.potUse} 次` : ''}`);
   else if (c.F && c.F.potUse) out.push(`生命藥水多喝 ${c.F.potUse} 次`);
-  if (c.gold) out.push(`每回合 +${c.gold} 金${c.eliteGold ? `、打完菁英 +${c.eliteGold} 金` : ''}（沒有戰鬥加成）`);
+  if (c.gold)
+    out.push(
+      `每回合 +${c.gold} 金${c.eliteGold ? `、打完菁英 +${c.eliteGold} 金` : ''}${c.m || c.F ? '' : '（沒有戰鬥加成）'}`
+    );
   return out.filter(Boolean).join('；');
 }
 /* 升階：3 件相同、相同階的合成高一階（最多 3 階）；數值倍率與加成倍率 */
@@ -4369,6 +4385,8 @@ const MODN = {
   shPierce: v => `${pct(v)} 傷害無視護盾`,
   bzFury: v => `每被攻擊打中一次，斧、鎚攻速 +${pct(v)}（最多 ${BZFURY_MAX} 層）`,
   lsShield: () => '回復超過生命上限的部分變成護盾',
+  /* 0.1.74 商人職業特性 */
+  richC: () => `開戰時身上的金幣越多越強：${RICHCN.join('；')}`,
   /* 0.1.51 火法師（點燃）、雷法師（電荷、放電、麻痺） */
   igniteAt: v => `敵人燃燒到 ${v} 層時自動點燃（燃燒不退反增、傷害 ×${IGNITE_MUL}）`,
   spark: () =>
@@ -4434,20 +4452,32 @@ const brewTxt = ex =>
     .filter(Boolean)
     .join('、');
 /* 0.1.35 鈔能力：開戰時身上的金幣到幾金有什麼加成（同一種取最高的那一級，不疊加） */
+/* 0.1.74 鈔能力改成中後期（40 金起，120 金免疫所有異常）；前期的 10／25 金給商人職業特性（RICH_C，跟鈔能力的加成相加） */
 const RICH = [
-  [10, { dmgPct: 10 }],
-  [25, { dmgPct: 10, spd: 25, seal: 3 }],
-  [40, { dmgPct: 25, spd: 25, seal: 3, startBlock: 150 }],
-  [60, { dmgPct: 25, spd: 25, sealAll: 4, startBlock: 150 }],
-  [100, { dmgPct: 40, spd: 35, crit: 15, sealAll: 4, startBlock: 150 }]
+  [40, { dmgPct: 15, spd: 15, startBlock: 150 }],
+  [60, { dmgPct: 15, spd: 15, startBlock: 150, sealAll: 4 }],
+  [80, { dmgPct: 25, spd: 25, crit: 10, startBlock: 150, sealAll: 4 }],
+  [100, { dmgPct: 40, spd: 35, crit: 15, startBlock: 150, sealAll: 4 }],
+  [120, { dmgPct: 40, spd: 35, crit: 15, startBlock: 150, sealAll: 4, immAll: 1 }]
 ];
 const richOf = g => (RICH.filter(([n]) => g >= n).pop() || [0, null])[1];
 const RICHN = [
-  '10 金：所有武器傷害 +10%',
-  '25 金：所有武器攻速 +25%、開戰封鎖敵人一把武器 3 秒',
-  '40 金：開戰有 150 護盾、所有武器傷害提升到 +25%',
+  '40 金：所有武器傷害 +15%、攻速 +15%，開戰有 150 護盾',
   '60 金：開戰封鎖敵人所有武器 4 秒',
-  '100 金：所有武器傷害提升到 +40%、攻速提升到 +35%、暴擊率 +15%'
+  '80 金：所有武器傷害提升到 +25%、攻速提升到 +25%、暴擊率 +10%',
+  '100 金：所有武器傷害提升到 +40%、攻速提升到 +35%、暴擊率提升到 +15%',
+  '120 金：免疫所有異常'
+];
+const RICH_C = [
+  [10, { dmgPct: 5 }],
+  [25, { dmgPct: 10, spd: 10 }],
+  [40, { dmgPct: 15, spd: 15 }]
+];
+const richCOf = g => (RICH_C.filter(([n]) => g >= n).pop() || [0, null])[1];
+const RICHCN = [
+  '10 金：所有武器傷害 +5%',
+  '25 金：傷害提升到 +10%、攻速 +10%',
+  '40 金：傷害提升到 +15%、攻速提升到 +15%'
 ];
 /* 0.1.35 財源滾滾：這個階段每回合幾金 */
 const goldStOf = (G, st) => (G.filter(([s]) => st >= s).pop() || [0, 0])[1];

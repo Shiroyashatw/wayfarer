@@ -613,6 +613,8 @@ function compileBag(bag, extra = {}) {
     F.startBlock += RB.startBlock || 0;
     if (RB.seal) F.pre.push({ u: ru, k: 'seal', v: RB.seal });
     if (RB.sealAll) F.pre.push({ u: ru, k: 'sealAll', v: RB.sealAll });
+    /* 0.1.74 120 金：免疫所有異常 */
+    if (RB.immAll) F.immAll += 1;
   }
   for (const s of its) {
     const S0 = ITEMI[s.id];
@@ -804,7 +806,10 @@ function compileBag(bag, extra = {}) {
   const C = CLSI[bag.cls];
   if (C) {
     for (const b of C.m || []) for (const q of its) if (has(q, b.tag)) add(q, b);
-    for (const k in C.F || {}) F[k] += C.F[k];
+    for (const k in C.F || {}) F[k] = (F[k] || 0) + C.F[k];
+    /* 0.1.74 商人職業特性：開戰時的金幣越多，所有武器加成（跟鈔能力相加） */
+    const RC = C.F && C.F.richC ? richCOf(bag.gp || 0) : null;
+    if (RC) for (const q of its) if (has(q, 'weapon')) add(q, { dmgPct: RC.dmgPct || 0, spd: RC.spd || 0 });
   }
   for (const o of its) {
     const I = ITEMI[o.id],
