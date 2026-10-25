@@ -709,6 +709,16 @@ function stageHTML(run) {
     nx ? `<i class="sl nx"></i><span class="sn nx" aria-label="下一階段 ${nx.id}"><i>${nx.id}</i></span>` : ''
   }</div>`;
 }
+/* 0.1.89 手機：階段圓圈縮成標題列右下的一排小點（綠贏、紅輸、亮的是這回合），省一整列；電腦版還是圓圈 */
+function stageDots(run) {
+  const r = curRound(run);
+  return `<span class="sdots" aria-hidden="true">${ROUNDS.filter(q => q.st === r.st)
+    .map(q => {
+      const lg = run.log.find(l => l.id === q.id);
+      return `<i class="${q === r ? 'on' : lg ? (lg.win ? 'w' : 'l') : ''}"></i>`;
+    })
+    .join('')}</span>`;
+}
 /* 0.1.80 階段下面一列：下一場對手（小膠囊，點了看他的背包；PvE 是怪物）＋常變的賽制資訊（塔羅、星象、印記件數）；
    本局規則、核心、全部對手改成懸浮按鈕（fabHTML） */
 function infoRowHTML(run) {
@@ -719,7 +729,8 @@ function infoRowHTML(run) {
       ? `<button class="nxo" data-act="rvBag" data-k="${nr}" aria-label="下一場對手 ${esc(rv.name)}，看他的背包">${sprCv('a_' + rv.av)}<span><small>下一場</small><b>${esc(String(rv.name).split('的').pop())} ♥${rivalHp(rv)}</b></span></button>`
       : `<span class="nxo pve"><span><small>下一場</small><b>${RSHORT[r.type]}</b></span></span>`,
     x = run.mode !== 'std' && modeUI(run).bar && !(run.phase === 'mode' && !run.mseen) ? modeUI(run).bar(run) : '';
-  return `<div class="mbar nxr">${who}${fabHTML(run)}</div>${x ? `<div class="mbar">${x}</div>` : ''}`;
+  /* 0.1.89 賽制資訊（印記件數、遺物）跟羈絆放同一格 .sinfo：手機排在三顆按鈕左邊同一列，電腦版照舊一列一列 */
+  return `<div class="mbar nxr">${who}${fabHTML(run)}</div><div class="sinfo">${x ? `<div class="mbar">${x}</div>` : ''}${synHTML(run)}</div>`;
 }
 /* 0.1.80 三顆小按鈕（下一場那一列的右邊）：核心、本局規則、全部對手。試過懸浮在右側，會蓋到暫存區和 5～6 格寬的背包 */
 function fabHTML(run) {
@@ -771,10 +782,9 @@ function prepHTML(run) {
       nr >= 0
         ? `<button class="rnx" data-act="rvBag" data-k="${nr}" aria-label="下一場對手 ${esc(run.rivals[nr].name)}，看他的背包">${r.id}・${esc(String(run.rivals[nr].name).split('的').pop())} ♥${rivalHp(run.rivals[nr])} ›</button>`
         : `<small>${r.id}・${oppTxt}</small>`
-    }</div></div>
+    }${stageDots(run)}</div></div>
     <div class="pcol pa"><div class="srow">${stageHTML(run)}
-    ${infoRowHTML(run)}
-    ${synHTML(run)}</div>
+    ${infoRowHTML(run)}</div>
     <div class="pcrv">${rivalHTML(run)}</div>
     ${tutHTML()}
     ${holdHTML(run)}</div>
@@ -789,7 +799,7 @@ function prepHTML(run) {
     <div class="pcol pc">${modeUI(run).panel ? modeUI(run).panel(run) : ''}<div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
-          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${brHTML(s)}${shapeMini(s.id, 0, 0, s.sh)}<span>${ITEMI[s.id].n}</span><b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金</b></button>`
+          ? `<button class="sc s${ITEMI[s.id].star}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}" aria-label="${ITEMI[s.id].n}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${brHTML(s)}${shapeMini(s.id, 0, 0, s.sh)}<b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金</b></button>`
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
@@ -994,7 +1004,7 @@ const MODEUI = {
       const n = sgCount(run.bag);
       return `<div class="sgrow">${SIGILS.map((g, i) => {
         const lv = sgLv(n[i]);
-        return `<button class="sgc${lv ? ' on' : ''}" data-act="sgInfo" aria-label="${g.n} ${n[i]} 件">${sgBadge(i)}<b>${n[i]}</b><span class="pip">${SG_AT.map(a => `<i${n[i] >= a ? ' class="on"' : ''}></i>`).join('')}</span></button>`;
+        return `<button class="sgc${lv ? ' on' : ''}${n[i] ? '' : ' z'}" data-act="sgInfo" aria-label="${g.n} ${n[i]} 件">${sgBadge(i)}<b>${n[i]}</b><span class="pip">${SG_AT.map(a => `<i${n[i] >= a ? ' class="on"' : ''}></i>`).join('')}</span></button>`;
       }).join('')}</div>`;
     },
     info: run => sgInfoHTML(run)
@@ -1104,7 +1114,7 @@ function legHTML(run) {
   return `<div class="leg"><span class="lbl">遺產</span><div class="legs">${run.leg
     .map(
       (e, k) =>
-        `<button class="sc s${ITEMI[e.id].star}${V.sel === 'leg' + k ? ' sel' : ''}" data-act="legSel" data-k="${k}"><img src="${itemIcon(e.id)}" alt="">${tierBadge(e.t || 1)}${brHTML(e)}${shapeMini(e.id, e.r || 0, e.sm, e.sh)}<span>${ITEMI[e.id].n}</span><b class="${run.gold < legPrice(run, e) ? 'c-bad' : 'c-gold'}">${legPrice(run, e)} 金</b></button>`
+        `<button class="sc s${ITEMI[e.id].star}${V.sel === 'leg' + k ? ' sel' : ''}" data-act="legSel" data-k="${k}" aria-label="${ITEMI[e.id].n}"><img src="${itemIcon(e.id)}" alt="">${tierBadge(e.t || 1)}${brHTML(e)}${shapeMini(e.id, e.r || 0, e.sm, e.sh)}<b class="${run.gold < legPrice(run, e) ? 'c-bad' : 'c-gold'}">${legPrice(run, e)} 金</b></button>`
     )
     .join('')}</div></div>`;
 }
@@ -1502,7 +1512,7 @@ function rankMove(run) {
 }
 function endHTML(run) {
   const cs = Math.min(40, cellSize(run.bag.w));
-  return `<div class="home"><div class="logo"><b class="pl p${run.place}">第 ${run.place} 名</b><small>${run.place === 1 ? '你是第一名！' : run.place === 2 ? '差一點點' : '下次再來'}</small></div>
+  return `<div class="home endp"><div class="logo"><b class="pl p${run.place}">第 ${run.place} 名</b><small>${run.place === 1 ? '你是第一名！' : run.place === 2 ? '差一點點' : '下次再來'}</small></div>
     <div class="card endrk">${rankHTML(1)}${rankMove(run)}<small class="c-dim">打到 ${curRound(run) ? curRound(run).id : '最後'}</small></div>
     <h3>最後的背包</h3><div class="bagwrap">${bagHTML(run.bag, cs, { mini: 1, id: 'endbag' })}</div>
     <button class="btn pri big" data-act="again">再來一局</button><button class="btn" data-act="endHome">結束戰鬥回首頁</button></div>`;
@@ -2694,7 +2704,7 @@ function helpHTML() {
 }
 function settingsHTML() {
   const anon = typeof CLOUD === 'undefined' || CLOUD.anon;
-  return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>設定</b></div>
+  return `<div class="page set"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>設定</b></div>
   <h3>名字</h3><div class="card row"><input class="inp" id="nameInp" maxlength="10" value="${esc(S.name)}"><button class="btn" data-act="setName">儲存</button></div>
   <h3>頭像</h3><div class="avs">${AVATARS.map(([k, n]) => `<button class="av${S.av === k ? ' on' : ''}" data-act="setAv" data-k="${k}" aria-label="${n}">${sprCv('a_' + k)}<small>${n}</small></button>`).join('')}</div>
   <h3>外觀</h3><div class="seg3">${[

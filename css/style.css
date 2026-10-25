@@ -187,7 +187,6 @@ canvas.spr.flip{transform:scaleX(-1)}
 .shop.sellhot{background:#e5484d33;outline:2px dashed var(--danger)}
 .sc{min-width:0;display:grid;justify-items:center;gap:2px;padding:var(--sp-1) 2px;border-radius:var(--r-md);border:2px solid var(--sb,var(--line));background:var(--sc,var(--card));font-size:var(--fs-cap);box-shadow:var(--shadow);touch-action:none}
 .sc img{width:36px;height:36px;image-rendering:pixelated}
-.sc span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
 .sc b{font-family:var(--f-pix);font-weight:400;color:var(--gold)}
 .sc b.c-bad{color:var(--bad)}
 .sc.sel{box-shadow:0 0 0 2px var(--accent)}
@@ -736,21 +735,28 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .bs .shp{top:2px;right:2px;bottom:auto}
 /* 0.1.86 下一場對手：標題列的回合那一行（點了看他的背包；手機拿掉「下一場」膠囊省一列） */
 .rnx{min-width:0;margin:-4px 0;padding:4px 0;border:0;background:none;font:inherit;font-size:var(--fs-sm);color:var(--dim);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.srow{display:contents}
+.srow,.sinfo{display:contents}
+.sdots{display:none}
 .rinfo:has(.rnx){max-width:52%}
 /* 0.1.86 手機：背包、暫存、商店、開戰要在同一個螢幕（背包格子照剩下的高度縮放，fitBag）；
    上面的資訊壓成兩列：階段圓圈一列，賽制資訊（或羈絆）＋核心／規則／對手按鈕一列 */
 @media (max-width:1039.98px){
   .prep{gap:var(--sp-1)}
   .srow{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1)}
-  .srow>.stg{flex:1 0 100%;padding:0}
-  .srow>.stg .sn{height:38px}
   .srow>.nxr{display:contents}
   .srow .nxo{display:none}
   .srow .fabs{order:2;margin-left:auto}
-  .srow>.mbar:not(.nxr){order:1;flex:1 1 0;min-width:0;margin:0}
-  .srow>.synbar{order:1;flex:1 1 0;min-width:0;width:auto;min-height:44px;padding:var(--sp-1) var(--sp-2)}
-  .srow:has(>.mbar:not(.nxr))>.synbar{order:3;flex-basis:100%;min-height:38px}
+  /* 0.1.89 階段圓圈收進標題列（.sdots）；賽制資訊＋羈絆（.sinfo）跟三顆按鈕同一列，太多時 .sinfo 自己換行 */
+  .srow>.stg{display:none}
+  .srow .sinfo{order:1;flex:1 1 0;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px}
+  .sinfo>.mbar{margin:0;flex:none}
+  .sinfo .sgrow{flex:none}
+  .sinfo .sgrow{gap:2px}
+  .sinfo .sgc{flex:none;height:40px;padding:0 3px;gap:1px;background:none}
+  .sinfo .sgc.z,.sinfo .sgc .pip{display:none}
+  .sinfo .synbar{flex:0 1 auto;width:auto;min-height:40px;padding:0;background:none;box-shadow:none}
+  .sinfo .synbar>b,.sinfo .synbar>em,.sinfo .syl small{display:none}
+  .sinfo .syi img{width:22px;height:22px}
   .srow .fab{width:44px;height:44px}
   .srow .fab img{width:22px;height:22px}
   .srow .sgc{height:44px}
@@ -791,6 +797,25 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .page details.more>.hl{margin:0;padding:0 var(--sp-3) var(--sp-2) calc(var(--sp-3) + 1.2em)}
 .hl{padding-left:1.2em;display:grid;gap:var(--sp-1)}
 .hl li{font-size:var(--fs-body);line-height:1.45}
+/* 0.1.89 準備畫面減少雜訊（使用者看過示意圖後決定）：
+   印記、詛咒角標降低彩度（一眼先看星級框色）；商店只留圖示＋價格（名字在說明裡）；空格子不畫框線 */
+.cbr>.sgb,.cbr>.cub{filter:saturate(.4)}
+.sc.sold{min-height:0;align-self:stretch}
+.bs.emp{border:0;background:var(--fill);opacity:.45}
+.bag .cell{border-color:transparent}
+@media (max-width:1039.98px){
+  .sdots{display:flex;gap:3px;justify-content:flex-end;align-items:center;height:12px}
+  .sdots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+  .sdots i.w{background:var(--good)}
+  .sdots i.l{background:var(--bad);opacity:.6}
+  .sdots i.on{width:10px;height:10px;background:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+}
+/* 0.1.89 全畫面檢查：已買的商店格跟空格一樣不畫框；相鄰加成的連接點平常淡一點（選了道具才亮）；有對話框時提示改到下面，不蓋到標題 */
+.sc.sold{border:0;background:var(--fill);opacity:.45;color:var(--dim)}
+.bag:not(.hassel) .lk{opacity:.45}
+body:has(.ovl,#modal:not([hidden])) #toast{top:auto;bottom:calc(24px + var(--sab))}
+/* 0.1.89 結束畫面、設定不要拉滿寬螢幕 */
+.home.endp{max-width:520px;margin:0 auto;width:100%}
 @media (min-width:1040px){
   .pa .pcrv{display:block}
   #app{max-width:1360px;padding:var(--sp-5)}
@@ -835,14 +860,18 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .btop{grid-area:top}.arena{grid-area:arena;min-height:300px}.bctl{grid-area:ctl}
   .blog{grid-area:log;height:200px}
   .bt.nob .blog{height:auto;max-height:440px;align-self:stretch}
-  .fr canvas.spr.big{width:128px;height:128px}
   .bbags .bag.mini .sgb{width:16px;height:16px;font-size:var(--fs-cap)}
   .bbags{display:contents}
   .bbags>div{align-self:center;padding:var(--sp-3)}
   .bbags>div:first-child{grid-area:b0;justify-self:end}
   .bbags>div:nth-child(2){grid-area:b1;justify-self:start}
   /* 首頁：左＝角色、開始、最近的對局；右＝排行榜 */
-  .home.hm{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--sp-2) var(--sp-5);max-width:1040px;margin:0 auto;align-items:start}
+  .home.hm{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--sp-2) var(--sp-5);max-width:1040px;margin:0 auto;align-items:start;align-content:center;min-height:calc(var(--vh,100vh) - 32px)}
+  /* 0.1.89 設定一欄就好，不要把按鈕拉到 300px 寬 */
+  .page.set{max-width:720px}
+  /* 0.1.89 戰鬥：場地照視窗高度放大，不要只佔上面三分之一 */
+  .arena{min-height:max(300px,calc(var(--vh,100vh) - 420px))}
+  .fr canvas.spr.big{width:160px;height:160px}
   .home.hm>.logo,.home.hm>.hfoot{grid-column:1/-1}
   .home.hm .hcol{display:grid;gap:var(--sp-2);align-content:start;min-width:0}
   .home.hm .hc2>h3:first-child{margin-top:0}
