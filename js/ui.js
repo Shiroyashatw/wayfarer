@@ -527,7 +527,7 @@ function rvDetHTML(o) {
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
-  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}${I.core ? '' : `・${shapeO(o).length} 格`}</small></div></div><p>${dsc(itemDesc(o.id, o.t))}</p>${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
+  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}${I.core ? '' : `・${shapeO(o).length} 格`}</small></div></div><p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
 }
 /* 0.1.32 點對手：看他上一回合的背包（準備時看上一回合；打完結算時看剛打完的這回合，你已經看過了）。不給看這回合的，跟機器人一樣；
    0.1.38 點清單或背包裡的道具看詳細（sel 是選中的道具） */
@@ -957,7 +957,7 @@ function detailHTML(run) {
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
   return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0, o.sm, o.sh)} ${shapeO(o).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div>${oddsHTML(run, o.id)}<button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p>${dsc(itemDesc(o.id, o.t))}</p>${sgLineHTML(run, o.sg)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+    <p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${sgLineHTML(run, o.sg)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
       .filter(([, m]) => modTxt(m))
@@ -2515,19 +2515,19 @@ const cxPoolHTML = () =>
   }).join('');
 /* 異常狀態：[圖示, 名字, 說明] */
 const CX_AIL = () => [
-  [icN('ail_n_burn', 'ail_burn'), '燃燒', '每秒受「層數」傷害，之後少 1 層（N 層一共約 N×(N+1)/2）。'],
+  [icN('ail_n_burn', 'ail_burn'), '燃燒', '每秒扣「層數」的血，之後少 1 層（N 層一共約扣 N×(N+1)/2）。'],
   [
     'sk_fireburst',
     '點燃',
     `被點燃後整場有效、只有一層：燃燒不再每秒 -1，改成每秒 +1，而且燃燒傷害 ×${IGNITE_MUL}。火法師讓敵人燃燒到 15 層時自動點燃。`
   ],
-  ['ail_poison', '中毒', `每秒受「層數」傷害，層數不會退。最多 ${POISON_MAX} 層（毒師讓敵人最多 24 層）。`],
+  ['ail_poison', '中毒', `每秒扣「層數」的血，層數不會減少。最多 ${POISON_MAX} 層（毒師讓敵人最多 24 層）。`],
   [
     'ail_dmark',
     '劇毒',
-    `每秒受「層數 ×${VENOM_MUL}」傷害，層數不會退。最多 ${VENOM_MAX} 層（毒師核心「劇毒」40 層）。`
+    `每秒扣「層數 ×${VENOM_MUL}」的血，層數不會減少。最多 ${VENOM_MAX} 層（毒師核心「劇毒」40 層）。`
   ],
-  ['ail_bleed', '流血', '每秒受「層數」傷害，之後層數減半（N 層一共約 2N）。'],
+  ['ail_bleed', '流血', '每秒扣「層數」的血，之後層數減半（N 層一共約扣 2N）。'],
   [
     'asc_valkyrie_c0',
     '撕裂',
@@ -2541,7 +2541,7 @@ const CX_AIL = () => [
   [
     'sk_spark',
     '電荷',
-    `雷法師的雷命中（含彈射）讓敵人 +1 電荷，滿 ${CHARGE_MAX} 層放電：${ZAP_DMG} 傷害（固定）、麻痺 ${ZAP_PARA}，然後歸零。`
+    `雷法師的雷命中（含彈射）讓敵人 +1 電荷，滿 ${CHARGE_MAX} 層放電：${ZAP_DMG} 固定傷害、麻痺 ${ZAP_PARA} 層，然後歸零。`
   ],
   ['asc_storm_b1', '麻痺', `每層攻速 -${PARA_SLOW}%（最多 ${PARA_MAX} 層），每秒少 1 層；吃暈眩抗性。`],
   [
@@ -2596,7 +2596,7 @@ const CX_STAT = () => [
     '反彈',
     '被攻擊打中、真的扣到血時，反彈固定傷害給攻擊者（無視他的護甲與護盾）；被閃避、招架或整下被護盾吃掉時不反彈。盾的「格擋時反彈」是護盾吃到傷害時才反彈。'
   ],
-  ['受到的傷害 +%', '缺點類效果：受到的攻擊傷害變多（持續傷害、固定傷害不變）。'],
+  ['受到的攻擊傷害 +%', '缺點類效果：受到的攻擊傷害變多（持續傷害、固定傷害不變）。'],
   ['連擊／連鎖', '連擊：有機率馬上再打一下；連鎖：每次攻擊多打幾下，多打的傷害打折。'],
   ['穿甲', `無視一部分護甲與護盾，最多 ${PIERCE_MAX}%。`],
   ['處決／背水', '處決：敵人生命低於 30% 時傷害提高；背水：自己生命低於 50% 時傷害（或攻速）提高。'],
@@ -3514,6 +3514,12 @@ function showNews() {
   };
 }
 /* 0.1.88 對話框右上角的 ✕（點旁邊空白也能關）；按鈕第三個值是 class（例：'danger' 紅字，用在不能復原的動作） */
+/* 0.1.93 道具說明一個效果一行（itemDesc 用「；」分段）：詳細、對手背包的詳細用 */
+const descLines = t =>
+  t
+    .split('；')
+    .map(x => `<span>${dsc(x)}</span>`)
+    .join('');
 const dlgX = a => `<button class="iconbtn dlgx" ${a} aria-label="關閉">✕</button>`;
 function showDlg(title, body, buttons) {
   const m = $('modal');

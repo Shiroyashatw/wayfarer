@@ -4264,24 +4264,24 @@ const MODN = {
   dmgPct: v => `傷害 ${sg(v)}${pct(v)}`,
   spd: v => `攻速 ${sg(v)}${pct(v)}`,
   crit: v => `暴擊率 ${sg(v)}${pct(v)}`,
-  burn: v => `命中燃燒 ${sg(v)}${v}`,
-  poison: v => `命中中毒 ${sg(v)}${v}`,
+  burn: v => `命中時燃燒 ${sg(v)}${v} 層`,
+  poison: v => `命中時中毒 ${sg(v)}${v} 層`,
   ls: v => `吸血 ${pct(v)}`,
   block: v => `格擋 ${sg(v)}${v}`,
   blockPct: v => `格擋 ${sg(v)}${pct(v)}`,
   freezeCh: v => `命中時凍結機率 ${sg(v)}${pct(v)}`,
   stunCh: v => `命中時暈眩機率 ${sg(v)}${pct(v)}`,
-  regen: v => `每秒回復 ${sg(v)}${v}`,
+  regen: v => `每秒回復 ${sg(v)}${v} 生命`,
   hp: v => `生命 ${sg(v)}${v}`,
   arm: v => `護甲 ${sg(v)}${v}`,
   dodge: v => `閃避 ${sg(v)}${pct(v)}`,
   critMul: v => `暴擊傷害 ${sg(v)}${pct(v)}`,
-  bleed: v => `命中流血 ${sg(v)}${v}`,
-  sunder: v => `命中破甲 ${sg(v)}${v}`,
+  bleed: v => `命中時流血 ${sg(v)}${v} 層`,
+  sunder: v => `命中時破甲 ${sg(v)}${v}`,
   weakCh: v => `命中時虛弱機率 ${sg(v)}${pct(v)}`,
   blindCh: v => `命中時致盲機率 ${sg(v)}${pct(v)}`,
   throwPct: v => `丟出的藥劑效果 ${sg(v)}${pct(v)}`,
-  opener: v => `開戰時武器先充能 ${pct(v)}`,
+  opener: v => `開戰時武器已經充能 ${pct(v)}`,
   execute: v => `對生命低於 30% 的敵人傷害 +${pct(v)}`,
   /* 0.1.62 羈絆用 */
   potMul: v => `藥水回復 +${pct(v)}`,
@@ -4290,14 +4290,14 @@ const MODN = {
   ramp: v => `每 5 秒攻速 +${pct(v)}（最多 5 次）`,
   startBlock: v => `開戰時有 ${v} 護盾`,
   double: v => `${pct(v)} 機率連擊`,
-  thornsF: v => `被攻擊打中時反彈 ${v}（固定傷害）`,
-  critHeal: v => `暴擊時回復 ${v}`,
+  thornsF: v => `被攻擊打中時反彈 ${v} 固定傷害`,
+  critHeal: v => `暴擊時回復 ${v} 生命`,
   /* 0.1.28 質變與反制寵物 */
   pierce: v => `無視 ${pct(Math.min(PIERCE_MAX, v))} 護甲與格擋`,
   chain: v => `${pct(v)} 機率連鎖（多打一次）`,
   guard: v => `命中時獲得傷害 ${pct(v)} 的格擋`,
   bash: v => `格擋時對敵人造成格擋量 ${pct(v)} 的傷害`,
-  heal: v => `格擋時回復 ${sg(v)}${v}`,
+  heal: v => `格擋時回復 ${v} 生命`,
   potBomb: v => `喝下時對敵人造成回復量 ${pct(v)} 的傷害`,
   preBoost: v => `開戰丟出的效果 +${pct(v)}`,
   petDown: v => `敵人的寵物傷害 -${pct(Math.min(PETDOWN_MAX, v))}`,
@@ -4315,8 +4315,8 @@ const MODN = {
   cleanse: v => `每 ${CLEANSE_T} 秒清掉身上最嚴重的 ${v} 種異常`,
   healCut: v => `敵人的回復與吸血 -${pct(Math.min(RES_MAX, v))}`,
   critRes: v => `受到的暴擊額外傷害 -${pct(Math.min(RES_MAX, v))}`,
-  cellPct: v => `每佔 1 格傷害 +${pct(v)}`,
-  cellHp: v => `每佔 1 格生命 +${v}`,
+  cellPct: v => `每佔 1 格，傷害 +${pct(v)}`,
+  cellHp: v => `每佔 1 格，生命 +${v}`,
   /* 0.1.33 核心新機制（連鎖 = 這一下打完再多打一下） */
   chainN: v => `連鎖 +${v}（每次攻擊多打 ${Math.min(CHAIN_MAX, v)} 下、傷害 ${CHAIN_DMG}%，最多 +${CHAIN_MAX}）`,
   openDbl: v => `開戰 ${v} 秒內每次攻擊都連擊`,
@@ -4328,10 +4328,10 @@ const MODN = {
   triple: v => `${pct(v)} 機率連鎖追擊（一共打三下）`,
   immT: v => `開戰 ${v} 秒內不會中任何異常`,
   rageSpd: v => `自己生命低於 50% 時攻速 +${pct(v)}`,
-  cellDbl: v => `每佔 1 格 ${pct(v)} 機率連擊`,
+  cellDbl: v => `每佔 1 格，${pct(v)} 機率連擊`,
   /* 0.1.37 異常重製 */
   chillCh: v => `命中時冰緩機率 ${sg(v)}${pct(v)}`,
-  venom: v => `命中劇毒 ${sg(v)}${v}`,
+  venom: v => `命中時劇毒 ${sg(v)}${v} 層`,
   poisonCap: v => `敵人中毒上限提高到 ${v} 層`,
   venomCap: v => `敵人劇毒上限提高到 ${v} 層`,
   p2v: () => '敵人中毒滿層後，每 2 秒 +1 劇毒',
@@ -4346,16 +4346,16 @@ const MODN = {
   stick: v => `命中時在敵人身上插 ${v} 支箭`,
   shots: v => `每次攻擊射出 ${v} 支箭（每支 ${SHOT_DMG}% 傷害；命中效果只有第 1 支有，每支都會插箭）`,
   snipe: v => `每第 ${v} 次攻擊必定暴擊、無視全部護甲與護盾`,
-  elem: () => '攻擊輪流附加：燃燒 2、50% 機率冰緩敵人一件道具、中毒 1',
+  elem: () => '攻擊輪流附加：燃燒 2 層、50% 機率冰緩敵人一件道具、中毒 1 層',
   sure: () => '不會被閃避、招架',
   pin: v =>
-    `命中時插 ${v} 把矛在敵人身上（每把敵人攻速 -${PIN_SLOW}%，最多 ${PIN_MAX} 把；插滿後下一次命中全部拔出，撕裂 ${PIN_REND}）`,
-  rend: v => `命中撕裂 ${sg(v)}${v}`,
+    `命中時插 ${v} 把矛在敵人身上（每把敵人攻速 -${PIN_SLOW}%，最多 ${PIN_MAX} 把；插滿後下一次命中全部拔出，撕裂 ${PIN_REND} 層）`,
+  rend: v => `命中時撕裂 ${sg(v)}${v} 層`,
   arrowPct: v => `敵人身上每支箭，受到你的攻擊傷害 +${pct(v)}（最多 ${ARROW_MAX} 支）`,
-  boom: v => `每支箭插上 ${BOOM_T} 秒後引爆：${v} 傷害（固定）、燃燒 +${BOOM_BURN}`,
+  boom: v => `每支箭插上 ${BOOM_T} 秒後引爆：${v} 固定傷害、燃燒 +${BOOM_BURN} 層`,
   rain: v => `開戰時射出「弓、弩數量 × ${v}」支箭插在敵人身上（每支 ${RAIN_DMG} 傷害）`,
   arrowCap: v => `插箭上限 +${v}`,
-  barb: v => `每插一支箭，敵人流血 +${v}`,
+  barb: v => `每插一支箭，敵人流血 +${v} 層`,
   critArrow: v => `敵人身上每支箭，暴擊傷害 +${pct(v)}`,
   streak: v => `連續命中每次所有武器攻速 +${pct(v)}（最多 ${STREAK_MAX} 層，被閃開或招架就歸零）`,
   kite: v => `閃避成功時所有武器充能 +${pct(v)}`,
@@ -4363,11 +4363,11 @@ const MODN = {
   revive: v =>
     `第一次倒下時以 ${pct(v)} 生命復活、清掉身上的持續傷害，化身女武神：傷害 +${VALK_DMG}%、攻速 +${VALK_SPD}%、免疫暈眩、凍結與冰緩`,
   link3: v =>
-    `矛攻擊 ${v} 次後，下一次弓、弩攻擊傷害 ×2；弓、弩攻擊 ${v} 次後，下一次矛攻擊傷害 ×2、撕裂 +${LINK_REND}`,
+    `矛攻擊 ${v} 次後，下一次弓、弩攻擊傷害 ×2；弓、弩攻擊 ${v} 次後，下一次矛攻擊傷害 ×2、撕裂 +${LINK_REND} 層`,
   link: v => `矛出手時所有弓、弩充能 +${pct(v)}；弓、弩出手時所有矛充能 +${pct(v)}`,
-  counter: v => `閃開、招架攻擊或盾格擋時，最強的一把矛立刻反擊（${pct(v)} 傷害、撕裂 +${CTR_REND}）`,
+  counter: v => `閃開、招架攻擊或盾格擋時，最強的一把矛立刻反擊（${pct(v)} 傷害、撕裂 +${CTR_REND} 層）`,
   huntCrit: v => `敵人撕裂中時暴擊率 +${pct(v)}`,
-  huntHeal: v => `敵人撕裂中時暴擊回復 ${v}`,
+  huntHeal: v => `敵人撕裂中時暴擊回復 ${v} 生命`,
   sunmoon: v => `每 ${SUN_T} 秒日夜交替（從白天開始）：白天矛傷害 +${pct(v)}，夜晚弓、弩攻速 +${pct(v)}`,
   fury: v => `每被攻擊打中一次，矛、弓、弩傷害 +${pct(v)}（最多 ${FURY_MAX} 層）`,
   rendX: v => `造成的撕裂 ×${v}`,
@@ -4378,8 +4378,8 @@ const MODN = {
   undying: () =>
     `第一次受到致命傷時留 1 生命，${UNDY_T} 秒內不會死；${UNDY_B} 秒內傷害 +${UNDY_DMG}%、攻速 +${UNDY_SPD}%、暴擊率 +${UNDY_CRIT}%`,
   selfCut: v => `開戰時扣自己 ${pct(v)} 生命（不會因此倒下）`,
-  axeThrow: v => `開戰時擲出背包裡的斧：每把斧讓敵人破甲 ${AXE_SUNDER * v}、撕裂 ${AXE_REND * v}`,
-  rendEv: v => `每第 ${REND_EV} 次命中撕裂 +${v}`,
+  axeThrow: v => `開戰時擲出背包裡的斧：每把斧讓敵人破甲 ${AXE_SUNDER * v}、撕裂 ${AXE_REND * v} 層`,
+  rendEv: v => `每第 ${REND_EV} 次命中，撕裂 +${v} 層`,
   rendLeech: v => `敵人撕裂的傷害 ${pct(v)} 回復你`,
   execRend: v => `敵人每層撕裂，處決線 +${v}%（最多 +20%）`,
   shPierce: v => `${pct(v)} 傷害無視護盾`,
@@ -4390,30 +4390,30 @@ const MODN = {
   /* 0.1.51 火法師（點燃）、雷法師（電荷、放電、麻痺） */
   igniteAt: v => `敵人燃燒到 ${v} 層時自動點燃（燃燒不退反增、傷害 ×${IGNITE_MUL}）`,
   spark: () =>
-    `開戰時在敵人背包隨機放 1 格火苗，每 ${SPARK_T} 秒往上下左右蔓延 1 格；著火格子上的道具每次出手，敵人燃燒 +${SPARK_BURN}`,
-  flash: v => `敵人被點燃的那一刻爆炸：燃燒層數 ×${v} 傷害（固定）；之後火的命中燃燒 +1`,
+    `開戰時在敵人背包隨機放 1 格火苗，每 ${SPARK_T} 秒往上下左右蔓延 1 格；著火格子上的道具每次出手，敵人燃燒 +${SPARK_BURN} 層`,
+  flash: v => `敵人被點燃的那一刻爆炸：燃燒層數 ×${v} 固定傷害；之後火的命中時燃燒 +1 層`,
   meteor: v =>
-    `每 ${METEOR_T} 秒落下一顆隕石：${v} 傷害（固定）、燃燒 +${METEOR_BURN}；敵人點燃後改成每 ${METEOR_FAST} 秒一顆`,
+    `每 ${METEOR_T} 秒落下一顆隕石：${v} 固定傷害、燃燒 +${METEOR_BURN} 層；敵人點燃後改成每 ${METEOR_FAST} 秒一顆`,
   burnout: v => `敵人剩下的生命低於「燃燒層數 ×${v}」時直接燒死`,
-  selfBurn: v => `點燃中的敵人每次出手，受到燃燒層數 ${pct(v)} 的傷害（固定）`,
-  avatar: v => `敵人被點燃後化身火焰：所有武器攻速 +${pct(v)}，不是火的武器也命中燃燒 +2、傷害 +10%`,
+  selfBurn: v => `點燃中的敵人每次出手，受到燃燒層數 ${pct(v)} 的固定傷害`,
+  avatar: v => `敵人被點燃後化身火焰：所有武器攻速 +${pct(v)}，不是火的武器也命中時燃燒 +2 層、傷害 +10%`,
   igniteStart: () => '開戰時點燃敵人',
-  combust: v => `每 ${COMBUST_T} 秒引爆敵人身上的燃燒：每層 ${v} 傷害（固定，點燃中 ×${IGNITE_MUL}），層數不會減少`,
+  combust: v => `每 ${COMBUST_T} 秒引爆敵人身上的燃燒：每層 ${v} 固定傷害（點燃中 ×${IGNITE_MUL}），層數不會減少`,
   burnLeech: v => `敵人燃燒每秒造成的傷害，回復你 ${pct(v)}`,
   heat: v => `敵人每 5 層燃燒，攻速 -${pct(v)}（最多 -60%）`,
   thornsBurn: v => `被攻擊打中時讓攻擊者燃燒 ${v} 層`,
   phoenix: v => `生命低於 30% 時清掉自己的異常、回復「敵人燃燒層數 ×${v}」（一次）`,
-  charge: v => `命中時讓敵人 +${v} 電荷（滿 ${CHARGE_MAX} 層放電：${ZAP_DMG} 傷害（固定）、麻痺 ${ZAP_PARA}）`,
+  charge: v => `命中時讓敵人 +${v} 電荷（滿 ${CHARGE_MAX} 層放電：${ZAP_DMG} 固定傷害、麻痺 ${ZAP_PARA} 層）`,
   palsy: () => `敵人麻痺滿 ${PARA_MAX} 層時暈眩 ${PALSY_STUN} 秒，然後麻痺清空`,
   overload: () => `放電改成要 ${OVERLOAD_N} 層電荷，但傷害 ×${OVERLOAD_MUL}，而且暈眩 ${OVERLOAD_STUN} 秒`,
   thunderGod: () => `放電 ${GOD_N} 次後化身雷神：所有武器攻速 +${GOD_SPD}%，命中的電荷 ×2`,
-  cloud: v => `每 ${CLOUD_T} 秒落雷打敵人一次：${v} 傷害（固定）、電荷 +1`,
+  cloud: v => `每 ${CLOUD_T} 秒落雷打敵人一次：${v} 固定傷害、電荷 +1`,
   zapSpd: v => `每次放電，所有武器攻速 +${pct(v)}（最多 5 層）`,
   stunCharge: v => `每次暈眩敵人，你所有武器充能 +${pct(v)}`,
   emp: v => `放電時封鎖敵人最強的一把武器（每秒傷害最高） ${v} 秒`,
   zapIgnite: () => '放電時點燃敵人',
   static: v => `敵人每次出手 ${pct(v)} 機率觸電：那次出手落空、電荷 +1`,
-  rod: v => `被攻擊打中時 ${pct(v)} 機率電擊攻擊者：${ROD_DMG} 傷害（固定）、電荷 +1`,
+  rod: v => `被攻擊打中時 ${pct(v)} 機率電擊攻擊者：${ROD_DMG} 固定傷害、電荷 +1`,
   zapPct: v => `放電傷害 +${pct(v)}`,
   /* 0.1.69 聖羈絆 10 件（跟法老王的安卡一樣） */
   ankh: v => `每場第一次倒下時以 ${pct(v)} 生命復活`,
@@ -4429,18 +4429,18 @@ const MODN = {
   pounce: () => '敵人生命第一次低於 30% 時，所有寵物立刻出手一次，之後寵物攻速 ×2',
   frenzy: v => `寵物每命中一次疊 1 層狂暴：寵物攻速 +${pct(v)}（最多 ${FRENZY_MAX} 層；你被暈眩時歸零）`,
   whip: v => `每 ${v} 秒鞭策：最慢的寵物立刻出手，這一下傷害 ×2`,
-  symHeal: v => `寵物每命中一次，你回復 ${v}`
+  symHeal: v => `寵物每命中一次，你回復 ${v} 生命`
 };
 /* 0.1.37 終極藥劑的效果（煉成三選一）：喝下時套用 */
 const BREW = {
-  heal: { n: '回復 80', heal: 80 },
+  heal: { n: '回復 80 生命', heal: 80 },
   shield: { n: '獲得 100 護盾', block: 100 },
   dmg: { n: '8 秒內傷害 +50%', buff: [8, 50, 0] },
   spd: { n: '8 秒內攻速 +40%', buff: [8, 0, 40] },
-  regen: { n: '之後每秒回復 +5', regen: 5 },
+  regen: { n: '之後每秒回復 5 生命', regen: 5 },
   cleanse: { n: '清掉身上所有異常', cleanse: 1 },
-  poison: { n: '讓敵人中毒 10、劇毒 4', poison: 10, venom: 4 },
-  burn: { n: '讓敵人燃燒 15 並點燃', burn: 15, ignite: 1 },
+  poison: { n: '讓敵人中毒 10 層、劇毒 4 層', poison: 10, venom: 4 },
+  burn: { n: '讓敵人燃燒 15 層並點燃', burn: 15, ignite: 1 },
   chill: { n: '敵人所有道具冰緩 6 秒', chill: 6 },
   age: { n: '讓敵人衰老 8 秒', age: 8 }
 };
@@ -4575,8 +4575,7 @@ const JOIN_P = [
   '開戰時敵人',
   '開戰時',
   '被攻擊打中時',
-  '命中時',
-  '命中'
+  '命中時'
 ];
 const headOf = p => JOIN_P.find(x => p.startsWith(x) && !/^[\s\d時]/.test(p.slice(x.length)));
 function joinTxt(parts, sep = '、') {
@@ -4598,20 +4597,36 @@ const modTxt = m =>
 const tagTxt = t => (t === 'weapon' ? '武器' : t === '*' ? '道具' : TAGN[t] || t);
 /* 0.1.6 開戰前的特殊效果（越強越稀有）：seal 封鎖敵人隨機一把武器 N 秒（每升一階 +1 秒）、down 敵人隨機一把武器降 1 階（最低 Ⅰ 階） */
 /* 0.1.9 擴充成各種開戰效果（藥劑丟出去）：秒數類每升一階 +1 秒，層數類照升階倍率 */
+/* 0.1.93 異常的白話說明（括號裡那一段）：道具的命中效果、開戰效果用同一套說法，數字從常數拿（常數在 sim.js，呼叫時才讀） */
+const ailx = k =>
+  ({
+    burn: '每秒扣「層數」的血，每秒少 1 層',
+    poison: '每秒扣「層數」的血，不會減少',
+    venom: `每秒扣「層數 ×${VENOM_MUL}」的血，不會減少`,
+    bleed: '每秒扣「層數」的血，然後層數減半',
+    freeze: `那件 ${FREEZE_T} 秒不能充能`,
+    chill: '充能變慢一半',
+    stun: '不能出手',
+    weak: `敵人傷害 -${WEAK_PCT}%`,
+    blind: `敵人 ${BLIND_MISS}% 打不中`,
+    age: '敵人不能暴擊',
+    corrode: '敵人不能獲得護盾',
+    confuse: '敵人出手一半機率打到自己'
+  })[k];
 const PRE_T = ['seal', 'weak', 'blind', 'frozen', 'sealAll', 'corrode', 'age', 'confuse'],
   PREN = {
     seal: v => `開戰時封鎖敵人隨機一把武器 ${v} 秒`,
     down: v => `開戰時把敵人隨機 ${v > 1 ? v + ' 把' : '一把'}武器降 1 階（最低 Ⅰ 階）`,
-    weak: v => `開戰時讓敵人虛弱 ${v} 秒（傷害 -25%）`,
-    blind: v => `開戰時讓敵人致盲 ${v} 秒（30% 打不中）`,
+    weak: v => `開戰時讓敵人虛弱 ${v} 秒（${ailx('weak')}）`,
+    blind: v => `開戰時讓敵人致盲 ${v} 秒（${ailx('blind')}）`,
     /* 0.1.37 凍結改成單件道具 6 秒，開戰的「凍結」改成所有道具冰緩 */
-    frozen: v => `開戰時敵人所有道具冰緩 ${v} 秒（充能減半）`,
-    freezeN: v => `開戰時凍結敵人隨機 ${v} 把武器（6 秒不能充能）`,
-    selfV: (v, n) => `開戰時讓敵人隨機 ${n || 1} 把武器自殘（那把出手時敵人自己 +${v} 劇毒）`,
+    frozen: v => `開戰時讓敵人所有道具冰緩 ${v} 秒（${ailx('chill')}）`,
+    freezeN: v => `開戰時凍結敵人隨機 ${v} 把武器（${ailx('freeze')}）`,
+    selfV: (v, n) => `開戰時讓敵人隨機 ${n || 1} 把武器自殘（那把出手時敵人自己劇毒 +${v} 層）`,
     venom: v => `開戰時讓敵人劇毒 ${v} 層`,
-    corrode: v => `開戰時讓敵人腐蝕 ${v} 秒（不能獲得護盾，本來會獲得時扣 30 生命）`,
-    age: v => `開戰時讓敵人衰老 ${v} 秒（不能暴擊）`,
-    confuse: v => `開戰時讓敵人混亂 ${v} 秒（出手一半機率打到自己）`,
+    corrode: v => `開戰時讓敵人腐蝕 ${v} 秒（${ailx('corrode')}，要獲得時改成扣 30 生命）`,
+    age: v => `開戰時讓敵人衰老 ${v} 秒（${ailx('age')}）`,
+    confuse: v => `開戰時讓敵人混亂 ${v} 秒（${ailx('confuse')}）`,
     dmgDown: v => `敵人整場傷害 -${v}%`,
     burn: v => `開戰時讓敵人燃燒 ${v} 層`,
     poison: v => `開戰時讓敵人中毒 ${v} 層`,
@@ -4650,37 +4665,39 @@ function itemDesc(id, t = 1) {
     out.push(
       it.absorb
         ? `每 ${cdT(it, t)} 秒攻擊一次（本身沒有傷害）`
-        : `每 ${cdT(it, t)} 秒造成 ${a}～${b} 傷害${o.crit ? `（暴擊 ${o.crit}%）` : ''}`
+        : `每 ${cdT(it, t)} 秒造成 ${a === b ? a : `${a}～${b}`} 傷害${o.crit ? `（暴擊率 ${o.crit}%）` : ''}`
     );
   }
   if (it.on) {
-    /* 0.1.44 命中效果合成一行「命中時：…」；括號說明異常規則（百科也有） */
+    /* 0.1.44 命中效果合成一行「命中時：…」；括號用白話說明異常（ailx，百科有完整規則） */
     const h = [];
-    if (o.burn) h.push(`燃燒 ${o.burn} 層（每秒扣層數、少 1 層）`);
-    if (o.poison) h.push(`中毒 ${o.poison} 層（每秒扣層數、不會退）`);
-    if (o.venom) h.push(`劇毒 ${o.venom} 層（不會退、每秒 ×2）`);
-    if (o.bleed) h.push(`流血 ${o.bleed} 層（每秒扣層數、然後減半）`);
-    if (o.sunder) h.push(`破甲 ${o.sunder}（敵人護甲 -${o.sunder}，會疊加）`);
-    if (o.freeze) h.push(`${o.freeze[0]}% 機率凍結敵人一件道具 6 秒（不能充能）`);
-    if (o.chill) h.push(`${o.chill}% 機率冰緩敵人一件道具 4 秒（充能減半）`);
-    if (o.stun) h.push(`${o.stun[0]}% 機率暈眩 ${o.stun[1]} 秒（不能動）`);
-    if (o.weak) h.push(`${o.weak}% 機率虛弱 3 秒（傷害 -25%）`);
-    if (o.blind) h.push(`${o.blind}% 機率致盲 2.5 秒（30% 打不中）`);
-    if (o.age) h.push(`衰老 ${o.age} 秒（不能暴擊）`);
-    if (o.corrode) h.push(`腐蝕 ${o.corrode} 秒（不能獲得護盾）`);
+    if (o.burn) h.push(`燃燒 ${o.burn} 層（${ailx('burn')}）`);
+    if (o.poison) h.push(`中毒 ${o.poison} 層（${ailx('poison')}）`);
+    if (o.venom) h.push(`劇毒 ${o.venom} 層（${ailx('venom')}）`);
+    if (o.bleed) h.push(`流血 ${o.bleed} 層（${ailx('bleed')}）`);
+    if (o.sunder) h.push(`破甲 ${o.sunder}（敵人護甲 -${o.sunder}，可以疊加）`);
+    if (o.freeze) h.push(`${o.freeze[0]}% 機率凍結敵人一件道具（${ailx('freeze')}）`);
+    if (o.chill) h.push(`${o.chill}% 機率冰緩敵人一件道具 ${CHILL_T} 秒（${ailx('chill')}）`);
+    if (o.stun) h.push(`${o.stun[0]}% 機率暈眩敵人 ${o.stun[1]} 秒（${ailx('stun')}）`);
+    if (o.weak) h.push(`${o.weak}% 機率虛弱 ${WEAK_T} 秒（${ailx('weak')}）`);
+    if (o.blind) h.push(`${o.blind}% 機率致盲 ${BLIND_T} 秒（${ailx('blind')}）`);
+    if (o.age) h.push(`衰老 ${o.age} 秒（${ailx('age')}）`);
+    if (o.corrode) h.push(`腐蝕 ${o.corrode} 秒（${ailx('corrode')}）`);
     if (h.length) out.push(`命中時：${h.join('、')}`);
     if (o.ls) out.push(`吸血 ${o.ls}%`);
   }
   if (it.block)
     out.push(
-      `每 ${cdT(it, t)} 秒格擋 ${Math.round(it.block * k)}${it.thorns ? `，格擋時反彈 ${it.thorns}` : ''}${it.heal ? `、回復 ${Math.round(it.heal * k)}` : ''}`
+      `每 ${cdT(it, t)} 秒格擋 ${Math.round(it.block * k)}${it.thorns ? `，格擋時反彈 ${it.thorns} 傷害` : ''}${it.heal ? `、回復 ${Math.round(it.heal * k)} 生命` : ''}`
     );
   if (it.hp) out.push(`生命 +${Math.round(it.hp * k)}`);
   if (it.arm) out.push(`護甲 +${Math.round(it.arm * k)}`);
   if (it.dodge) out.push(`閃避 ${Math.round(it.dodge * TIERB[t])}%`);
-  if (it.regen) out.push(`每秒回復 ${Math.round(it.regen * k)}`);
+  if (it.regen) out.push(`每秒回復 ${Math.round(it.regen * k)} 生命`);
   if (it.pot)
-    out.push(`生命低於 ${it.pot[0]}% 時回復 ${Math.round(it.pot[1] * k)}（${it.pot[2] + (t === 3 ? 1 : 0)} 次）`);
+    out.push(
+      `生命低於 ${it.pot[0]}% 時喝下，回復 ${Math.round(it.pot[1] * k)} 生命（可以喝 ${it.pot[2] + (t === 3 ? 1 : 0)} 次）`
+    );
   for (const [w, n] of [
     ['adj', '相鄰的'],
     ['row', '同一排的'],
@@ -4689,15 +4706,18 @@ function itemDesc(id, t = 1) {
     /* 0.1.44 同樣的加成給好幾種標籤：合成一行「所有弓、弩：傷害 +30%」 */
     const g = new Map();
     for (const b of it[w] || []) {
-      const txt = `${modTxt(scaleMod(b, t))}${b.per ? `（背包裡每有 1 件${tagTxt(b.per)}）` : ''}`;
+      /* 0.1.93 條件寫在前面：「所有匕首：背包裡每有 1 件匕首，傷害 +10%」 */
+      const txt = `${b.per ? `背包裡每有 1 件${tagTxt(b.per)}，` : ''}${modTxt(scaleMod(b, t))}`;
       g.set(txt, [...(g.get(txt) || []), tagTxt(b.tag)]);
     }
     for (const [txt, tags] of g) out.push(`${n}${tags.join('、')}：${txt}`);
   }
   if (it.tf) out.push(tfTxt(it.tf, t));
   /* 0.1.62 主題池的專屬道具 */
-  if (it.self) out.push(`這件：${modTxt(scaleMod(it.self, t))}`);
-  if (it.perAdj) out.push(`每有 1 件相鄰的道具，這件${modTxt(scaleMod(it.perAdj, t))}`);
+  /* 0.1.93 只加在這件身上的都寫「這件：（條件，）效果」；前面已經有「命中時：」，這裡不再寫一次 */
+  const selfT = m => modTxt(scaleMod(m, t)).replace(/(^|、)命中時/g, '$1');
+  if (it.self) out.push(`這件：${selfT(it.self)}`);
+  if (it.perAdj) out.push(`這件：每有 1 件相鄰的道具，${selfT(it.perAdj)}`);
   if (it.perAdjF) out.push(`每有 1 件相鄰的道具，${modTxt(scaleMod(it.perAdjF, t))}`);
   if (it.hole) out.push(`放在凹口的道具：${modTxt(scaleMod(it.hole, t))}`);
   if (it.nth) out.push(`每第 ${it.nth[0]} 次出手，多打 ${it.nth[1]} 下`);
@@ -4706,8 +4726,8 @@ function itemDesc(id, t = 1) {
   if (it.chainAdj) out.push('相鄰的武器出手時，帶動另一件相鄰的武器出手（每件每秒最多一次）');
   /* 0.1.69 棋盤王國、黃道十二宮 */
   if (it.pc) out.push(`棋子：${PC_TXT[it.pc.k]}${modTxt(scaleMod(it.pc.m, t))}`);
-  if (it.pcHit) out.push(`每被 1 個棋子影響，這件${modTxt(scaleMod(it.pcHit, t))}`);
-  if (it.synPer) out.push(`背包每開一個羈絆門檻，這件${modTxt(scaleMod(it.synPer, t))}`);
+  if (it.pcHit) out.push(`這件：每被 1 個棋子影響，${selfT(it.pcHit)}`);
+  if (it.synPer) out.push(`這件：背包每開一個羈絆門檻，${selfT(it.synPer)}`);
   if (it.zod) {
     const x = SYN[SYNI[it.zod]],
       nm = x.g.map(g => TAGN[g]).join('、');
@@ -4750,15 +4770,15 @@ function itemDesc(id, t = 1) {
   /* 陷阱：[名字, 觸發時做什麼] */
   const TRN = {
     ignite: ['點燃陷阱', '敵人被點燃（燃燒不退反增、傷害 ×1.5）'],
-    bomb: ['藥劑炸彈', `敵人受 ${BOMB_DMG[0]}～${BOMB_DMG[1]} 傷害、流血 ${BOMB_BLEED}`],
-    spore: ['劇毒孢子', '敵人中毒 +3、劇毒 +3'],
+    bomb: ['藥劑炸彈', `敵人受 ${BOMB_DMG[0]}～${BOMB_DMG[1]} 固定傷害、流血 ${BOMB_BLEED} 層`],
+    spore: ['劇毒孢子', '敵人中毒 +3 層、劇毒 +3 層'],
     icicle: ['冰錐', '凍結觸發的那件道具'],
     /* 0.1.50 弓箭手、亞馬遜的陷阱 */
-    snare: ['捕獸夾', `那次出手落空、敵人流血 ${SNARE_BLEED}（夾 ${SNARE_N} 次後壞掉）`],
+    snare: ['捕獸夾', `那次出手落空、敵人流血 ${SNARE_BLEED} 層（夾 ${SNARE_N} 次後壞掉）`],
     net: ['獵網', `敵人暈眩 ${NET_STUN} 秒`],
-    stake: ['尖樁', `敵人受 ${STAKE_DMG} 傷害（固定）、破甲 ${STAKE_SUNDER}、撕裂 ${STAKE_REND}`],
+    stake: ['尖樁', `敵人受 ${STAKE_DMG} 固定傷害、破甲 ${STAKE_SUNDER}、撕裂 ${STAKE_REND} 層`],
     /* 0.1.51 雷法師的陷阱 */
-    shock: ['電網', `敵人麻痺 ${SHOCK_PARA}、電荷 +${SHOCK_CHG}`]
+    shock: ['電網', `敵人麻痺 ${SHOCK_PARA} 層、電荷 +${SHOCK_CHG}`]
   };
   for (const tp of it.traps || [])
     out.push(
@@ -4795,7 +4815,7 @@ function itemDesc(id, t = 1) {
     );
   if (it.gorge) out.push(`吞噬：每命中一次這隻的傷害 +${it.gorge}%（這場累積，最多 +${GORGE_MAX}%）`);
   if (it.sealHit) out.push(`命中時 ${it.sealHit[0]}% 機率封鎖敵人一把武器 ${it.sealHit[1]} 秒`);
-  if (it.chaos) out.push('命中時隨機附加一種：燃燒 3、中毒 3、流血 4、虛弱、致盲、混亂 1 秒');
+  if (it.chaos) out.push('命中時隨機附加一種：燃燒 3 層、中毒 3 層、流血 4 層、虛弱、致盲、混亂 1 秒');
   if (it.capture) out.push(`打贏野怪、菁英時 ${it.capture}% 機率捕獲一隻寵物（星級照現在商店最高的，首領不行）`);
   if (it.evolve) out.push(`寵物在背包裡每待滿 ${it.evolve} 回合，自動升一階（最多 Ⅲ 階）`);
   if (it.sisters)
@@ -4816,7 +4836,7 @@ function itemDesc(id, t = 1) {
   const sy = it.syn ? Object.entries(it.syn) : it.for && it.tags.includes('trinket') ? [[it.for, 1]] : [];
   for (const [k, n] of sy) {
     const x = SYN.find(x => x.k === k || x.g.includes(k));
-    if (x) out.push(`羈絆算 ${n} 件${x.g.map(t => TAGN[t]).join('、')}`);
+    if (x) out.push(`羈絆：算 ${n} 件${x.g.map(t => TAGN[t]).join('、')}`);
   }
   for (const b of it.fxPer || [])
     out.push(

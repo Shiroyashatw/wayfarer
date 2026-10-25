@@ -835,6 +835,9 @@ body:has(.ovl,#modal:not([hidden])) #toast{top:auto;bottom:calc(24px + var(--sab
 .cbub p{margin:0;flex:1;font-size:var(--fs-btn);line-height:1.45}
 .cbub .btn{flex:none;color:var(--dim)}
 @media (prefers-reduced-motion:reduce){.cspot{animation:none}}
+/* 0.1.93 道具說明一個效果一行 */
+.dls>span{display:block}
+.dls>span+span{margin-top:2px}
 /* 0.1.89 結束畫面、設定不要拉滿寬螢幕 */
 .home.endp{max-width:520px;margin:0 auto;width:100%}
 @media (min-width:1040px){

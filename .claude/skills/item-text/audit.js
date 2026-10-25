@@ -14,7 +14,18 @@ const BAD = [
   [/格檔/, '格擋'],
   [/暴集/, '暴擊'],
   [/攻擊速度/, '攻速'],
-  [/(?<!開戰)護甲 \+\d{3}/, '三位數的護甲多半是「護盾」']
+  [/(?<!開戰)護甲 \+\d{3}/, '三位數的護甲多半是「護盾」'],
+  /* 0.1.93 白話、統一 */
+  [/每秒扣層數/, '括號用 ailx 的說法：每秒扣「層數」的血'],
+  [/命中(燃燒|中毒|劇毒|流血|破甲|撕裂)/, '命中時燃燒 +N 層'],
+  [/傷害（固定|（固定傷害）/, 'N 固定傷害（不要括號裡再括號）'],
+  [/(?<![\d.])(\d+)～\1 傷害/, '兩個數字一樣只寫一個'],
+  [/（暴擊 \d/, '（暴擊率 N%）'],
+  [/(燃燒|中毒|劇毒|流血|撕裂|麻痺) \+?\d+(?![\d.%]| 層| 秒)/, '層數寫「N 層」'],
+  [/回復 \+?\d+(?![\d.%]| 生命)/, '回復寫「回復 N 生命」'],
+  [/羈絆算/, '羈絆：算 N 件…'],
+  [/[^：；]每(有|被|佔)[^；]*，這件/, '只加在這件身上：「這件：條件，效果」'],
+  [/（[^）]*（/, '括號裡不要再括號']
 ];
 const list = [];
 for (const i of G.ITEMS.filter(i => i.core !== 2)) {
@@ -34,6 +45,31 @@ for (const i of G.ITEMS.filter(i => i.core !== 2)) {
   if (/undefined|NaN|\+-|\+ -|\(\)|（）/.test(d)) issues.push(['錯字', i.n, d]);
   for (const [re, fix] of BAD) if (re.test(d)) issues.push(['用詞', i.n, `${d.match(re)[0]} → ${fix}`]);
 }
+/* 0.1.93 道具以外的說明也照同一套用詞：賽制、塔羅、印記、詛咒祝福、星象、遺物、商人、羈絆、道具池（data.js 的表），
+   以及百科、怎麼玩（ui.js 的原始碼一行一行看，只看用詞，不看數字） */
+const walk = (x, out, d = 0) => {
+  if (d > 4 || x == null) return out;
+  if (typeof x === 'string') out.push(x);
+  else if (typeof x === 'function' && x.length === 1) {
+    try {
+      const v = x(3);
+      if (typeof v === 'string') out.push(v);
+    } catch (e) {}
+  } else if (typeof x === 'object') for (const k in x) walk(x[k], out, d + 1);
+  return out;
+};
+for (const T of ['MODES', 'TAROT', 'SIGILS', 'VANS', 'CURSES', 'BLESS', 'ASTROS', 'RELICS', 'POOLTH', 'SYN'])
+  for (const d of walk(G[T], []))
+    if (/[\u4e00-\u9fff]/.test(d)) for (const [re, fix] of BAD) if (re.test(d)) issues.push(['用詞', T, `${d.match(re)[0]} → ${fix}`]);
+const WORD = BAD.filter(([re]) => !/\\d/.test(re.source)).concat([[/每秒受「層數/, '每秒扣「層數」的血']]);
+const fs = require('fs');
+for (const f of ['ui.js'])
+  fs.readFileSync(path.join(__dirname, '../../../js', f), 'utf8')
+    .split('\n')
+    .forEach((ln, i) => {
+      if (/^\s*(\/\*|\*|\/\/)/.test(ln)) return;
+      for (const [re, fix] of WORD) if (re.test(ln)) issues.push(['用詞', `${f}:${i + 1}`, `${ln.match(re)[0]} → ${fix}`]);
+    });
 for (const C of G.CLASSES) {
   const d = G.clsDesc(C.id);
   if (/undefined|NaN|\+-/.test(d)) issues.push(['錯字', C.n, d]);
