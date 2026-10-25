@@ -50,7 +50,7 @@
 | 戰鬥冷卻條、封鎖顯示 | `js/ui.js` | `cdTimeline`、`bCd`（`bTick` 每格呼叫） |
 | 開戰前特殊效果（封鎖、降階） | `js/items.js`、`js/bag.js`、`js/sim.js` | 道具的 `pre`、`preVal`、`preTxt`（items）；`compileBag` 的 `F.pre`（bag）；`simulate` 開頭（sim） |
 | 戰利品寄放（暫存區滿了） | `js/run.js`、`js/ui.js` | `takePick`（hold）、`claimHold`（run）；`botHold`（bot，0.1.27 機器人賣最沒用的一件騰位置）；`holdHTML`、`A.claim`、`A.sellHold`（ui） |
-| 機器人強度：即時機器人、種子一律菁英（0.1.72，`BOT_RATING`：q＝1、每回合 +5 金）；其他牌階照分數 | `js/data.js`、`js/run.js`、`js/ghost.js` | `BOT_RATING`（data）；`mkBot` 的 `elite`、`q`、`gb`、`liveBots`（run）；`SEED_RATING`、`seedGhosts`（ghost） |
+| 機器人強度：即時機器人、種子一律菁英（0.1.72，`BOT_RATING`：q＝1；0.1.73 `BOT_GOLD` 每回合多拿 0 金）；其他牌階照分數 | `js/data.js`、`js/run.js`、`js/ghost.js` | `BOT_RATING`、`BOT_GOLD`（data）；`mkBot` 的 `elite`、`q`、`gb`、`liveBots`（run）；`SEED_RATING`、`seedGhosts`（ghost） |
 | 會動的頭像、頭像攻擊動畫（四大美女） | `js/data.js`、`js/ui.js`、`art/anim/` | `AVANIM`（播哪幾格）、`avCv`、`avFrame`、`avPlay`（`bHit` 出手時播）、`paintSprites` 畫第 1 格 |
 | 角色數值面板（點左上角頭像） | `js/ui.js` | `statsHTML`、`A.stats`（用 `compileBag` 算） |
 | 5★ 隨機詞綴、開獎畫面 | `js/items.js`、`js/run.js`、`js/ui.js` | `MOD5`、`roll5`、`mod5Q`、`mod5Txt`（items）；`newItem` 擲詞綴（run）；`compileBag`、`mergeAll` 留最好的（bag）；`mod5HTML`、`revealHTML`、`A.seen5`（ui） |
@@ -123,7 +123,7 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（688 行）
+### js/data.js（690 行）
 
 - **一局**（5），55 個宣告
 
@@ -182,7 +182,7 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（469 行）
+### js/news.js（473 行）
 
 
 ### js/ui.js（3350 行）
