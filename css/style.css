@@ -622,6 +622,9 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .sgl{display:flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-sm);color:var(--dim)}
 .sgl .sgb{position:static}
 .sgopts{display:grid;gap:var(--sp-2);margin-top:var(--sp-2)}
+.sgo .shp{flex:none}
+/* 0.1.100 鑿子挖掉的那格碎掉 */
+.shard{position:fixed;z-index:60;pointer-events:none;background:var(--cell-line);border-radius:var(--r-sm)}
 .sgo{display:flex;align-items:center;gap:var(--sp-2);justify-content:flex-start;text-align:left}
 .sgo .sgb{position:static;width:24px;height:24px;font-size:var(--fs-btn)}
 .sgo span{display:grid}

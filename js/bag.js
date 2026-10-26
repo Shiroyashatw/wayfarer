@@ -74,7 +74,7 @@ function findSpot(bag, o, prefer = true) {
   const g = bagGrid(bag),
     /* 0.1.62 背包裡別人的凹口（空著的才算） */
     holes = bag.items
-      .filter(q => q.u !== o.u && ITEMI[q.id].hole)
+      .filter(q => q.u !== o.u && holeMod(q) && holeFits(holeMod(q), I.tags))
       .flatMap(q => holeOf(q))
       .filter(([x, y]) => g[y] && g[y][x] == null)
       .map(([x, y]) => x + ',' + y),
@@ -101,16 +101,16 @@ function findSpot(bag, o, prefer = true) {
           const t = { ...o, x, y, r };
           for (const [q, n] of rel) if (adjacent(t, q)) sc += n;
         }
-        /* 0.1.62 巨人國的凹口：有凹口的道具想包住一件武器，武器想塞進別人的凹口 */
-        if (prefer && (I.hole || holes.length)) {
+        /* 0.1.62 巨人國的凹口：有凹口的道具想包住吃得到的道具，吃得到的道具想塞進別人的凹口 */
+        if (prefer && (holeMod(o) || holes.length)) {
           const t = { ...o, x, y, r };
-          if (I.hole)
+          if (holeMod(o))
             for (const [hx, hy] of holeOf(t)) {
               const u = g[hy] && g[hy][hx];
               const q = u != null && bag.items.find(z => z.u === u);
-              if (q && ITEMI[q.id].dmg) sc += 3;
+              if (q && holeFits(holeMod(o), ITEMI[q.id].tags)) sc += 3;
             }
-          if (I.dmg) {
+          {
             const cs = new Set(shapeO(o, r).map(([dx, dy]) => x + dx + ',' + (y + dy)));
             for (const hc of holes) if (cs.has(hc)) sc += 3;
           }
@@ -136,9 +136,10 @@ function synergy(a, b) {
    回傳 Map(道具 u → { id: 輔助代號, t: 階, u: 還在背包裡的輔助 u（已經融合的是 null） })；
    還沒融合、只是貼在旁邊的（機器人評估、擺放的瞬間）也算，每個輔助只算一件（星級最高、再來階數高的） */
 const tfRank = o => ITEMI[o.id].star * 10 + o.t;
-const canFuse = (s, q) => {
+const canFuse = (s, q, c) => {
   const T = ITEMI[s.id].tf,
     Q = ITEMI[q.id];
+  if (ITEMI[s.id].mod) return canMod(s, q, c);
   return !!T && q !== s && !Q.tf && !q.f && Q.tags.includes(T.tag);
 };
 function tfOf(its, adjQ = adjacent) {
@@ -153,14 +154,65 @@ function tfOf(its, adjQ = adjacent) {
   }
   return out;
 }
-/* 把輔助 s（背包或暫存區）融合進 q */
-function fuseInto(run, s, q) {
+/* 把輔助 s（背包或暫存區）融合進 q；0.1.100 巨人國的工具改用 modInto（c 是鑿子挖的那格） */
+function fuseInto(run, s, q, c) {
+  if (ITEMI[s.id].mod) return modInto(run, s, q, c);
   q.f = s.id;
   q.ft = s.t;
   run.bag.items = run.bag.items.filter(x => x !== s);
   const i = run.bench.indexOf(s);
   if (i >= 0) run.bench[i] = null;
   return q;
+}
+/* 0.1.100 巨人國的改造：工具 s 能不能用在 q（c 是背包座標，鑿子要；暫存區的道具只能縮小、放大） */
+function canMod(s, q, c) {
+  const M = ITEMI[s.id].mod,
+    Q = ITEMI[q.id];
+  if (!M || q === s || q.md || Q.core || Q.mod || q.sm) return false;
+  if (M === 'shrink') return shapeO(q).length > 1;
+  if (M === 'grow') return true;
+  return chiselIdx(q, c) >= 0;
+}
+/* 把改造 md（形狀 sh）套到 q 上；在背包裡的照原位放，放不下找別的位置，再不行收回暫存區（再不行賣掉，跟長柄大師一樣）。
+   at：縮小後留在哪一格（沒給就是原本的第一格）、鑿子挖掉的那格 */
+function mdSet(run, q, md, sh, at) {
+  const inBag = run.bag.items.includes(q),
+    c0 = inBag ? cellsOf(q) : null;
+  if (md) q.md = md;
+  else delete q.md;
+  if (sh) q.sh = sh;
+  else delete q.sh;
+  q.sm = 0;
+  if (!inBag) return q;
+  if (md === 'shrink') [q.x, q.y] = at || c0[0];
+  /* 鑿子：挖掉的那格（合成時沒給，就是原形狀的第幾格），剩下的格子留在原地 */
+  const rm = md === 'chisel' && (at || c0[+sh.split(':')[2]]);
+  if (rm && c0.length === SH[sh].length + 1) {
+    const keep = c0.filter(([x, y]) => x !== rm[0] || y !== rm[1]);
+    q.x = Math.min(...keep.map(p => p[0]));
+    q.y = Math.min(...keep.map(p => p[1]));
+  }
+  /* 判斷位置要用不含這件的背包（它的新形狀可能蓋住別人，格子表會把別人那格記成它的） */
+  const rest = { ...run.bag, items: run.bag.items.filter(x => x !== q) };
+  if (canPlace(rest, q, q.x, q.y, q.r)) return q;
+  const sp = findSpot(rest, q, true);
+  if (sp) return Object.assign(q, sp);
+  run.bag.items = run.bag.items.filter(x => x !== q);
+  const fi = run.bench.indexOf(null);
+  if (fi >= 0) run.bench[fi] = q;
+  else run.gold += sellO(q, run);
+  return q;
+}
+function modInto(run, s, q, c) {
+  const M = ITEMI[s.id].mod;
+  run.bag.items = run.bag.items.filter(x => x !== s);
+  const i = run.bench.indexOf(s);
+  if (i >= 0) run.bench[i] = null;
+  if (M === 'shrink') return mdSet(run, q, 'shrink', 's1', c);
+  if (M === 'grow') return mdSet(run, q, 'grow', growSh(shapeO(q).length));
+  const k = 'k:' + (q.sh || ITEMI[q.id].sh) + ':' + chiselIdx(q, c);
+  shReg(k);
+  return mdSet(run, q, 'chisel', k, c);
 }
 /* 背包裡貼在一起的輔助與道具自動融合；回傳融合好的道具 */
 function fuseAll(run) {
@@ -226,7 +278,9 @@ function sellO(o, run) {
   return H.sell ? H.sell(run, o, v) : v;
 }
 /* 融合過的名字 */
-const fuName = o => (o.f && ITEMI[o.f] ? ITEMI[o.f].tf.n + '・' : '') + ITEMI[o.id].n;
+/* 0.1.100 巨人國改造過的名字前面多一個字 */
+const MD_PRE = { shrink: '小・', grow: '巨・', chisel: '鑿・' };
+const fuName = o => (MD_PRE[o.md] || '') + (o.f && ITEMI[o.f] ? ITEMI[o.f].tf.n + '・' : '') + ITEMI[o.id].n;
 /* 質變後的標籤（原本的＋質變多的） */
 function tagsWith(o, tfm) {
   const s = tfm.get(o.u),
@@ -366,7 +420,7 @@ function mergeAll(run, r) {
       if (w === 'bag') run.bag.items = run.bag.items.filter(x => x !== q);
       else if (w === 'st') run.bag.st = run.bag.st.filter(x => x !== q);
       else run.bench[run.bench.indexOf(q)] = null;
-      if (run.sgq) run.sgq = run.sgq.filter(x => x.u !== q.u);
+      if (run.mdq) run.mdq = run.mdq.filter(x => x.u !== q.u);
     }
     /* 0.1.69 塔羅・女祭司：合成直接升兩階 */
     o.t = Math.min(TIER_MAX, o.t + (run.bag.tar === 'priestess' ? 2 : 1));
@@ -393,7 +447,27 @@ function mergeAll(run, r) {
       .filter(q => q.f)
       .sort((x, y) => tfRank({ id: y.f, t: y.ft || 1 }) - tfRank({ id: x.f, t: x.ft || 1 }))[0];
     if (fu) (o.f = fu.f), (o.ft = fu.ft);
-    /* 0.1.52 印記：三件的印記不一樣，玩家三選一（run.sgq 排隊，畫面跳出來選）；機器人（auto）直接選背包裡最多的那個 */
+    /* 0.1.100 巨人國的改造：三件不一樣時玩家選（run.mdq 排隊，畫面跳出來選，沒改造也是一個選項），機器人直接選戰力最高的 */
+    const mds = [
+      ...new Map(use.map(([, q]) => [(q.md || '') + '|' + (q.sh || ''), { md: q.md || 0, sh: q.sh || 0 }])).values()
+    ];
+    if (mds.length > 1) {
+      if (run.auto) {
+        const P = BOT_P,
+          pw = m => {
+            const t = {
+                ...run,
+                bag: { ...run.bag, items: run.bag.items.map(q => (q === o ? { ...q } : q)) },
+                bench: [...run.bench]
+              },
+              c = t.bag.items.find(q => q.u === o.u);
+            if (c) mdSet(t, c, m.md, m.sh);
+            return botPowerOf(t.bag, P);
+          },
+          best = mds.map(m => [m, pw(m)]).sort((x, y) => y[1] - x[1])[0][0];
+        mdSet(run, o, best.md, best.sh);
+      } else (run.mdq = run.mdq || []).push({ u: o.u, o: mds });
+    }
     /* 0.1.53 馴獸師的成長：留三件裡最高的 */
     const gw = Math.max(0, ...use.map(([, q]) => q.gw || 0));
     if (gw) o.gw = gw;
@@ -643,7 +717,8 @@ function compileBag(bag, extra = {}) {
     const give = (list, test) => {
       for (const b0 of list || []) {
         const b = scaleMod(b0, s.t),
-          mul = b.per ? cnt(b.per) : 1;
+          /* 0.1.100 縮小、放大過的道具，給別人的加成也照倍率 */
+          mul = (b.per ? cnt(b.per) : 1) * mdK(s);
         for (const q of its) if (q !== s && test(q) && (b.tag === '*' || has(q, b.tag))) add(q, b, mul);
       }
     };
@@ -713,12 +788,14 @@ function compileBag(bag, extra = {}) {
       const f = scaleMod(I.perAdjF, o.t);
       for (const k in f) F[k] = (F[k] || 0) + f[k] * nn;
     }
-    if (I.hole) {
+    /* 0.1.100 凹口照類別：吃得到的才加（放大、鑿子做出來的凹口也算） */
+    const hm = holeMod(o);
+    if (hm) {
       GR = GR || bagGrid(bag);
       for (const [x, y] of holeOf(o)) {
         const u = GR[y] && GR[y][x];
         const q = u != null && bag.items.find(z => z.u === u);
-        if (q && q !== o) add(q, scaleMod(I.hole, o.t));
+        if (q && q !== o && holeFits(hm, TG.get(q.u))) add(q, scaleMod(hm, o.t));
       }
     }
     if (I.gear || I.chainAdj) {
@@ -871,12 +948,14 @@ function compileBag(bag, extra = {}) {
   for (const o of its) {
     const I = ITEMI[o.id],
       dx = isDef(I) ? defX : 1,
-      k = TIERM[o.t] * dx,
-      m = mods.get(o.u);
-    if (I.hp) F.hp += Math.round(I.hp * k);
+      m = mods.get(o.u),
+      /* 0.1.100 巨人國：縮小、放大的倍率；凹口的所有數值（allPct）、護甲與生命（defPct） */
+      k = TIERM[o.t] * dx * mdK(o) * (1 + (m.allPct || 0) / 100),
+      kd = k * (1 + (m.defPct || 0) / 100);
+    if (I.hp) F.hp += Math.round(I.hp * kd);
     /* 0.1.37 寒冰之心：跨場累積的生命 */
     if (o.hh) F.hp += o.hh;
-    if (I.arm) F.arm += Math.round(I.arm * k);
+    if (I.arm) F.arm += Math.round(I.arm * kd);
     if (I.dodge) F.dodge += Math.round(I.dodge * TIERB[o.t] * dx);
     if (I.regen || m.regen) F.regen += Math.round((I.regen || 0) * k) + (m.regen || 0);
     if (I.regen) (F.src.regen = F.src.regen || []).push(o.u);
@@ -912,8 +991,8 @@ function compileBag(bag, extra = {}) {
       F.shields.push({
         u: o.u,
         cd: Math.max(0.6, cdT(I, o.t) / (1 + (m.spd || 0) / 100)),
-        block: Math.round((I.block * k + (m.block || 0)) * (1 + (m.blockPct || 0) / 100)),
-        thorns: Math.round((I.thorns || 0) * k),
+        block: Math.round((I.block * kd + (m.block || 0)) * (1 + (m.blockPct || 0) / 100)),
+        thorns: Math.round((I.thorns || 0) * kd),
         heal: Math.round((I.heal || 0) * k) + (m.heal || 0),
         bash: m.bash || 0
       });
@@ -1096,7 +1175,8 @@ function bagMods(bag) {
     ])
       for (const b0 of [...(S0[w] || []), ...(w === 'all' && s.sc && ITEMI[s.sc] ? ITEMI[s.sc].all || [] : [])]) {
         const b = scaleMod(b0, s.t),
-          mul = b.per ? cnt(b.per) : 1;
+          /* 0.1.100 縮小、放大過的道具，給別人的加成也照倍率 */
+          mul = (b.per ? cnt(b.per) : 1) * mdK(s);
         for (const q of its)
           if (q !== s && test(q) && (b.tag === '*' || has(q, b.tag))) {
             const m = {};
@@ -1117,12 +1197,13 @@ function bagMods(bag) {
       for (const q of nb) if (ITEMI[q.id].dmg) out.get(q.u).push({ from: o.u, w: 'adj', m: {} });
   }
   for (const o of bag.items) {
-    const I = ITEMI[o.id];
-    if (!I.hole) continue;
+    const hm = holeMod(o);
+    if (!hm) continue;
     const g = bagGrid(bag);
     for (const [x, y] of holeOf(o)) {
-      const u = g[y] && g[y][x];
-      if (u != null && u !== o.u && out.has(u)) out.get(u).push({ from: o.u, w: 'adj', m: scaleMod(I.hole, o.t) });
+      const u = g[y] && g[y][x],
+        q = u != null && u !== o.u && out.has(u) && bag.items.find(z => z.u === u);
+      if (q && holeFits(hm, ITEMI[q.id].tags)) out.get(u).push({ from: o.u, w: 'adj', m: scaleMod(hm, o.t) });
     }
   }
   /* 0.1.96 星河：河裡的道具跟兩端的星座連起來（選星座時亮起來、角標 ✶） */
@@ -1152,7 +1233,7 @@ function bagMods(bag) {
 }
 /* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值, 終極藥劑的效果, 寒冰之心的生命, 封印過了幾回合]；
    後面是預設值的就不存。gp：0.1.35 開戰時的金幣（鈔能力、金錢標） */
-const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const packIt = o => {
   const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
     /* 0.1.52 最後一格是印記（+1，0 是沒有） */
@@ -1172,7 +1253,9 @@ const packIt = o => {
       o.sh || 0,
       o.cu || 0,
       /* 0.1.60 祝福 [祝福, 層數] */
-      o.bl || 0
+      o.bl || 0,
+      /* 0.1.100 巨人國的改造 */
+      o.md || 0
     ];
   while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
   return [...a, ...t];
@@ -1215,9 +1298,10 @@ const unpackIt = (a, u) => ({
   rc: a[15] || 0,
   ...(a[16] ? { sg: a[16] - 1 } : {}),
   ...(a[17] ? { gw: a[17] } : {}),
-  ...(a[18] && SH[a[18]] ? { sh: a[18] } : {}),
+  ...(a[18] && shReg(a[18]) ? { sh: a[18] } : {}),
   ...(a[19] && CURSES[a[19][0]] ? { cu: [a[19][0], a[19][1] || 1] } : {}),
-  ...(a[20] && BLESS[a[20][0]] ? { bl: [a[20][0], a[20][1] || 1] } : {})
+  ...(a[20] && BLESS[a[20][0]] ? { bl: [a[20][0], a[20][1] || 1] } : {}),
+  ...(MD_K[a[21]] || a[21] === 'chisel' ? { md: a[21] } : {})
 });
 const unpackBag = p => ({
   w: p.w,
@@ -1241,7 +1325,7 @@ function syncShrink(run) {
   ).shrink;
   for (const o of [...run.bag.items, ...run.bench]) {
     if (!o) continue;
-    const want = t && ITEMI[o.id].tags.includes(t) && !ITEMI[o.id].core ? 1 : 0;
+    const want = t && ITEMI[o.id].tags.includes(t) && !ITEMI[o.id].core && !o.md ? 1 : 0;
     if ((o.sm || 0) === want) continue;
     o.sm = want;
     if (!want && run.bag.items.includes(o) && !canPlace(run.bag, o, o.x, o.y, o.r)) {

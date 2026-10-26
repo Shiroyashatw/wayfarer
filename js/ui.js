@@ -350,7 +350,7 @@ function render() {
         (run.phase === 'result' ? resultHTML(run) : '') +
         (run.phase === 'pick' ? pickHTML(run) : '') +
         (run.phase === 'prep'
-          ? revealHTML(run) + relicHTML(run) + tarotHTML(run) + legNewHTML(run) + tutDoneHTML(run)
+          ? revealHTML(run) + mdPickHTML(run) + relicHTML(run) + tarotHTML(run) + legNewHTML(run) + tutDoneHTML(run)
           : '') +
         (run.phase === 'mode' ? modeHTML(run) : '') +
         (run.phase === 'cls' ? clsHTML(run) : '');
@@ -622,7 +622,7 @@ function rvDetHTML(o) {
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
-  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}${I.core ? '' : `・${shapeO(o).length} 格`}</small></div></div><p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
+  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}${I.core ? '' : `・${shapeO(o).length} 格`}</small></div></div><p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${mdLineHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
 }
 /* 0.1.32 點對手：看他上一回合的背包（準備時看上一回合；打完結算時看剛打完的這回合，你已經看過了）。不給看這回合的，跟機器人一樣；
    0.1.38 點清單或背包裡的道具看詳細（sel 是選中的道具） */
@@ -736,7 +736,7 @@ function coachFx() {
 const seenK = run =>
   [run.mode !== 'std' && 'r:m:' + run.mode, run.theme && 'r:t:' + run.theme].filter(k => k && !S.seen[k]);
 function firstStep(run) {
-  if (run.phase !== 'prep' || run.pend || run.relq || run.tarq || run.sgq?.length || run.legNew?.length || V.sel)
+  if (run.phase !== 'prep' || run.pend || run.relq || run.tarq || run.mdq?.length || run.legNew?.length || V.sel)
     return null;
   const k = seenK(run)[0];
   if (!k) return null;
@@ -774,7 +774,7 @@ function bagHTML(bag, cs, opt = {}) {
   const rng = sel && !opt.mini ? rngOf(bag, sel) : new Map(),
     g = bagGrid(bag),
     /* 0.1.98 空著的凹口一直發光（塞進去才有加成）；遺物生效的格子塗遺物的顏色 */
-    hole = new Set(opt.mini ? [] : bag.items.flatMap(o => (ITEMI[o.id].hole ? holeOf(o) : [])).map(p => p + '')),
+    hole = new Set(opt.mini ? [] : bag.items.flatMap(o => holeOf(o)).map(p => p + '')),
     rz = (x, y) => !opt.mini && (bag.rel || []).find(k => RZ[k] && RZ[k][0](x, y, bag));
   for (let y = 0; y < gh; y++)
     for (let x = 0; x < gw; x++) {
@@ -980,7 +980,7 @@ function rngOf(bag, o) {
         if (x < 0 || y < 0 || x >= bag.w || y >= bag.h || put(x, y) != null) break;
       }
     for (const [dx, dy] of D.jump || []) put(px + dx, py + dy);
-  } else if (I.hole) for (const [x, y] of holeOf(o)) put(x, y);
+  } else if (holeMod(o)) for (const [x, y] of holeOf(o)) put(x, y);
   else if (I.zod) {
     /* 0.1.96 星座：它連成的星河經過的格子 */
     for (const R of rivers(bag)) if (R.a.u === o.u || R.b.u === o.u) for (const [x, y] of R.cells) put(x, y);
@@ -1054,7 +1054,7 @@ function linkHTML(bag, mods, cs, sel) {
 function dragLit(d) {
   const run = S.run,
     t = d.tgt && d.ok ? { ...d.o, u: d.o.u || '_d', x: d.tgt[0], y: d.tgt[1], r: d.r } : null,
-    key = d.fuse ? 'f' + d.fuse.u : t ? [t.x, t.y, t.r] + '' : '';
+    key = d.fuse ? 'f' + d.fuse.u + d.fc : t ? [t.x, t.y, t.r] + '' : '';
   if (d.lk === key) return;
   d.lk = key;
   const bag = $('bag');
@@ -1066,7 +1066,14 @@ function dragLit(d) {
   };
   const cells = bag.querySelectorAll('.cell');
   cells.forEach(e => e.classList.remove('rng'));
-  if (d.fuse) return on(d.fuse);
+  if (d.fuse) {
+    /* 0.1.100 鑿子：要挖的那一格先亮起來 */
+    if (ITEMI[d.o.id].mod === 'chisel' && d.fc) {
+      const ce = cellEl(d.fc);
+      if (ce) ce.classList.add('rng');
+    }
+    return on(d.fuse);
+  }
   if (!t) return;
   /* 0.1.96 放下去之後的背包重算加成：跟它互相有加成的（相鄰、森林、凹口、棋子、齒輪…）都亮起來 */
   const B = { ...run.bag, items: [...run.bag.items.filter(q => q.u !== t.u), t] },
@@ -1125,6 +1132,31 @@ function stageDots(run) {
       return `<i class="${q === r ? 'on' : lg ? (lg.win ? 'w' : 'l') : ''}"></i>`;
     })
     .join('')}</span>`;
+}
+/* 0.1.100 改造過的道具：說明多一行（放大、鑿子做出來的凹口照類別，寫出凹口給什麼） */
+function mdLineHTML(o) {
+  if (!o.md) return '';
+  const hm = !ITEMI[o.id].hole && holeMod(o);
+  return `<p class="c-tf">✦ ${MD_N[o.md]}過：${MD_D[o.md]}${hm ? `；凹口裡的${HOLE_N[hm.tag]}：${modTxt(scaleMod(hm, o.t))}` : ''}</p>`;
+}
+/* 0.1.100 合成時三件的巨人國改造不一樣：選要保留哪一種 */
+const MD_D = {
+  0: '原本的形狀',
+  shrink: `1 格、數值 ×${MD_K.shrink * 100}%`,
+  grow: `數值 ×${MD_K.grow * 100}%、有凹口`,
+  chisel: '少 1 格、多 1 個凹口'
+};
+function mdPickHTML(run) {
+  while (run.mdq && run.mdq.length && !findU(run, run.mdq[0].u)) run.mdq.shift();
+  const q = run.mdq && run.mdq[0],
+    o = q && findU(run, q.u);
+  if (!o) return '';
+  return `<div class="ovl"><div class="dlg2"><b>合成：選要保留的改造</b><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[ITEMI[o.id].star]}">${esc(ITEMI[o.id].n)}${tierTxt(o.t)}</b><small>三件的改造不一樣</small></div></div><div class="sgopts">${q.o
+    .map(
+      (m, k) =>
+        `<button class="btn sgo" data-act="mdPick" data-k="${k}">${shapeMini(o.id, 0, 0, m.sh || ITEMI[o.id].sh)}<span><b>${m.md ? MD_N[m.md] : '不改造'}</b><small>${MD_D[m.md || 0]}</small></span></button>`
+    )
+    .join('')}</div></div></div>`;
 }
 /* 0.1.80 階段下面一列：下一場對手（小膠囊，點了看他的背包；PvE 是怪物）＋常變的賽制資訊（塔羅、星象、印記件數）；
    本局規則、核心、全部對手改成懸浮按鈕（fabHTML） */
@@ -1316,7 +1348,7 @@ function detailHTML(run) {
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
   return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0, o.sm, o.sh)} ${shapeO(o).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div>${oddsHTML(run, o.id)}<button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${modeUI(run).det ? modeUI(run).det(run, o) : ''}${sinLineHTML(run, o)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+    <p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${modeUI(run).det ? modeUI(run).det(run, o) : ''}${sinLineHTML(run, o)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${mdLineHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
       .filter(([, m]) => modTxt(m))
@@ -1544,7 +1576,7 @@ const TAROT_CN = { fight: '戰鬥', syn: '羈絆', life: '生存', pet: '寵物'
 /* 四選一：每張一個按鈕（號碼、名字、正逆位、類型、效果） */
 function tarotHTML(run) {
   const q = run.tarq;
-  if (!q || run.pend || run.relq || run.sgq?.length) return '';
+  if (!q || run.pend || run.relq || run.mdq?.length) return '';
   const st = TAROT_AT[(run.tarot || []).length] || 1;
   return `<div class="ovl"><div class="dlg2"><b>塔羅牌陣：選一張</b><p class="c-dim">生效第 ${st}～${st + 1} 階段；選過的牌不會再出現</p><div class="picks">${q.opts
     .map(k => {
@@ -1575,13 +1607,13 @@ const relicLine = (k, act) => {
 /* 寶庫打開：生命比你低的已經拿走的、你可以挑的 */
 function relicHTML(run) {
   const q = run.relq;
-  if (!q || run.pend || run.sgq?.length) return '';
+  if (!q || run.pend || run.mdq?.length) return '';
   return `<div class="ovl"><div class="dlg2"><b>法老王的寶庫</b><p class="c-dim">遺物不佔格子、整局有效${q.took.length ? '；生命比你低的先挑了：' + q.took.map(([n, k]) => `${esc(n)}拿走${RELICI[k].n}`).join('、') : ''}</p><div class="relopts">${q.opts.map(k => relicLine(k, 1)).join('')}</div></div></div>`;
 }
 /* 0.1.60 遺產來囉：有人淘汰時（下一個準備畫面）跳一次：誰淘汰了、你分到幾件 */
 function legNewHTML(run) {
   const L = run.legNew;
-  if (!L || !L.length || run.pend || run.relq || run.sgq?.length) return '';
+  if (!L || !L.length || run.pend || run.relq || run.mdq?.length) return '';
   const n = L.reduce((a, x) => a + x.got, 0);
   return `<div class="ovl"><div class="dlg2 legnew"><b class="big">遺產來囉！</b>${L.map(x => `<div class="lgr l">${sprCv('a_' + (x.av || AVATARS[0][0]))}<span><b>${esc(x.n)}</b><small>淘汰了・你分到 ${x.got} 件</small></span></div>`).join('')}<p class="c-dim">${n ? `道具在商店上方的遺產攤位：半價、放 ${LEGACY_RC} 回合` : '這次沒有分到道具'}</p><button class="btn pri big" data-act="legOk">${n ? '去看看' : '知道了'}</button></div></div>`;
 }
@@ -3060,7 +3092,14 @@ const CX_STAT = () => [
   ['越戰越快', '每 5 秒攻速提高，最多 5 次。'],
   ['抗性', `受到某種異常的層數或秒數減少，最多 -${RES_MAX}%；淨化每 ${CLEANSE_T} 秒清掉身上最嚴重的異常。`],
   ['陷阱', '開戰時放進敵人背包的格子（至少一格壓在道具上），那格的道具每次出手都會觸發；打怪時掛在怪物的武器上。'],
-  ['凹口', '巨人國的 U 形、環形、H 形、C 形武器中間空出來的格子；放進凹口的道具吃那把武器寫的加成。'],
+  [
+    '凹口',
+    '巨人國的 U 形、環形、H 形、C 形道具中間空出來的格子，也可以用巨大藥、鑿子做出來；凹口裡吃得到的道具有加成：武器的凹口加武器、防具和盾的凹口加護甲與生命、飾品的凹口所有數值都加（數字比較小）。'
+  ],
+  [
+    '改造',
+    `巨人國的工具拖到道具上：縮小藥變成 1 格、數值 ×${MD_K.shrink * 100}%；巨大藥變大、數值 ×${MD_K.grow * 100}%、長出凹口；鑿子把拖到的那一格挖成凹口。每件道具只能改造一次，職業核心不能改造；合成時三件的改造不一樣可以選要留哪一種。`
+  ],
   [
     '融合',
     '融合輔助放到道具上或貼在旁邊，就跟它合成一件「前綴・道具」：多了標籤（變成某系、吃那一系的加成）和效果，輔助消失、空出格子。一件道具只能融合一次。'
@@ -3597,6 +3636,20 @@ const A = {
       []
     );
   },
+  mdPick: d => {
+    const run = S.run,
+      q = run.mdq && run.mdq.shift(),
+      o = q && findU(run, q.u),
+      m = q && q.o[+d.k];
+    if (o && m) {
+      V.mdFx = { u: o.u, md: m.md === 'grow' ? 'grow' : 'shrink', r: elOf(o.u) && elOf(o.u).getBoundingClientRect() };
+      mdSet(run, o, m.md, m.sh);
+      requestAnimationFrame(modFx);
+    }
+    snd('tap');
+    save();
+    render();
+  },
   van: () => {
     const run = S.run,
       v = run.van && VANI[run.van.k];
@@ -3724,8 +3777,18 @@ const A = {
     const run = S.run,
       i = run.bench.findIndex(q => q && q.u === V.sel);
     if (i < 0) return;
-    const o = run.bench[i],
-      tg = run.bag.items.filter(q => canFuse(o, q)).sort((a, b) => tfRank(b) - tfRank(a))[0];
+    const o = run.bench[i];
+    /* 0.1.100 巨人國的工具：用在最划算的那件（跟機器人一樣評估）；鑿子連格子一起挑 */
+    if (ITEMI[o.id].mod) {
+      const ev = botModBest(run, o, BOT_P, botPowerOf(run.bag, BOT_P)),
+        q = ev.how === 'mod' && run.bag.items.find(x => x.u === ev.q);
+      if (!q) return toast('背包裡沒有能改造的道具');
+      modDo(run, o, q, ev.c || cellsOf(q)[0]);
+      V.sel = q.u;
+      save();
+      return render();
+    }
+    const tg = run.bag.items.filter(q => canFuse(o, q)).sort((a, b) => tfRank(b) - tfRank(a))[0];
     if (tg) {
       fuseToast([fuseInto(run, o, tg)]);
       V.sel = tg.u;
@@ -4209,7 +4272,7 @@ function itemFx(before, from, skip) {
   for (const [u, o] of now) {
     const el = elOf(u),
       img = el && el.querySelector('img');
-    if (!img || u === skip) continue;
+    if (!img || u === skip || (V.mdFx && V.mdFx.u === u)) continue;
     const r = img.getBoundingClientRect(),
       b = before.get(u);
     if (!b) {
@@ -4405,14 +4468,71 @@ function fuseToast(l) {
     toast(`融合！${l.map(fuName).join('、')}`);
   }
 }
-/* 輔助 o 拖到哪一格：那格是能融合的道具就回傳它 */
+/* 輔助 o 拖到哪一格：那格是能融合的道具就回傳它；0.1.100 巨人國的工具也一樣（鑿子看是哪一格） */
 function fuseAt(run, o, c) {
-  if (!c || !ITEMI[o.id].tf) return null;
+  if (!c || !(ITEMI[o.id].tf || ITEMI[o.id].mod)) return null;
   const g = bagGrid(run.bag),
     u = g[c[1]] && g[c[1]][c[0]],
     q = u != null && run.bag.items.find(x => x.u === u);
-  return q && canFuse(o, q) ? q : null;
+  return q && canFuse(o, q, c) ? q : null;
 }
+/* 0.1.100 巨人國的改造：套用、提示，畫完播動畫（縮小、放大從原本的大小縮放過去；鑿子那格碎掉、道具抖一下） */
+const MD_N = { shrink: '縮小', grow: '放大', chisel: '鑿洞' };
+function modDo(run, s, q, c) {
+  const el = elOf(q.u),
+    md = ITEMI[s.id].mod,
+    cell = md === 'chisel' && c && cellEl(c);
+  V.mdFx = { u: q.u, md, r: el && el.getBoundingClientRect(), hc: cell && cell.getBoundingClientRect() };
+  fuseInto(run, s, q, c);
+  snd('level');
+  toast(`${MD_N[md]}！${fuName(q)}${run.bag.items.includes(q) ? '' : '（放不下，收進暫存區）'}`);
+  requestAnimationFrame(modFx);
+}
+const cellEl = c => {
+  const b = $('bag');
+  return b && b.querySelectorAll('.cell')[c[1] * +b.dataset.gw + c[0]];
+};
+function modFx() {
+  const f = V.mdFx,
+    el = f && elOf(f.u);
+  V.mdFx = null;
+  if (!el || !f.r) return;
+  const r = el.getBoundingClientRect();
+  if (f.md !== 'chisel') {
+    el.style.transformOrigin = '0 0';
+    const a = spr(
+      el,
+      [
+        {
+          transform: `translate(${(f.r.left - r.left) / V.z}px,${(f.r.top - r.top) / V.z}px) scale(${f.r.width / r.width},${f.r.height / r.height})`
+        },
+        { transform: 'none' }
+      ],
+      f.md === 'grow' ? 1 : 0
+    );
+    if (a) a.onfinish = () => (el.style.transformOrigin = '');
+    return;
+  }
+  spr(el, [{ transform: 'translateX(-3px)' }, { transform: 'none' }], 1);
+  if (!f.hc) return;
+  const sh = document.createElement('i');
+  sh.className = 'shard';
+  Object.assign(sh.style, {
+    left: f.hc.left + 'px',
+    top: f.hc.top + 'px',
+    width: f.hc.width + 'px',
+    height: f.hc.height + 'px'
+  });
+  document.body.appendChild(sh);
+  const a = spr(sh, [
+    { transform: 'none', opacity: 1 },
+    { transform: 'translateY(14px) rotate(20deg) scale(.4)', opacity: 0 }
+  ]);
+  if (a) a.onfinish = () => sh.remove();
+  else sh.remove();
+}
+/* 拖到道具上：工具改造、輔助融合 */
+const fuseDo = (run, s, q, c) => (ITEMI[s.id].mod ? modDo(run, s, q, c) : fuseToast([fuseInto(run, s, q)]));
 function placeFromBench(run, i, x, y, r) {
   const o = run.bench[i];
   Object.assign(o, { x, y, r });
@@ -4538,6 +4658,7 @@ function dragMove(d) {
   }
   /* 放不下但剛好擋到一件、而且換得過去：可以交換；0.1.28 輔助拖到能融合的道具上：融合 */
   d.fuse = fuseAt(S.run, d.o, c);
+  d.fc = c;
   d.swap = !d.ok && !d.fuse && d.tgt && d.from !== 'stage' ? swapPlan(S.run, ro, d.tgt[0], d.tgt[1], d.from) : null;
   /* 0.1.96 交換也自動轉向：這個方向換不了，就試其他方向（手指底下那格還是道具的一部分） */
   if (!d.ok && !d.fuse && !d.swap && c && shapeO(d.o).length > 1 && d.from !== 'stage')
@@ -4675,7 +4796,7 @@ function dropDo(ev, d) {
     Object.assign(d.o, { x: d.tgt[0], y: d.tgt[1], r: d.r });
     (run.bag.st = run.bag.st || []).push(d.o);
     snd('select');
-  } else if (d.fuse) fuseToast([fuseInto(run, d.o, d.fuse)]);
+  } else if (d.fuse) fuseDo(run, d.o, d.fuse, d.fc);
   else if (d.ok) {
     if (d.from === 'bench') return placeFromBench(run, run.bench.indexOf(d.o), d.tgt[0], d.tgt[1], d.r);
     d.o.x = d.tgt[0];
@@ -4731,7 +4852,8 @@ function dropShop(run, d, ev) {
     const before = new Set(run.bench.filter(Boolean).map(o => o.u));
     res = buyItem(run, d.sk);
     const o = typeof res === 'object' && run.bench.find(q => q && !before.has(q.u) && q.id === d.o.id);
-    if (o && canFuse(o, d.fuse)) res.merged.fused = [fuseInto(run, o, d.fuse)];
+    if (o && ITEMI[o.id].mod && canFuse(o, d.fuse, d.fc)) modDo(run, o, d.fuse, d.fc);
+    else if (o && canFuse(o, d.fuse)) res.merged.fused = [fuseInto(run, o, d.fuse)];
   } else if (d.ok || (d.swap && d.swap.toBench)) res = buyToBag(run, d.sk, d.tgt[0], d.tgt[1], d.r, d.swap && d.swap.B);
   else if (
     inside($('bench'), ev.clientX, ev.clientY) ||

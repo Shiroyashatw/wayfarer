@@ -616,7 +616,7 @@ const botPowerOf = (bag, P) => botPower(compileBag(bag), P);
 const BOT_SPOTS_EVAL = 6;
 const botPosI = I =>
   !!(I.pc || I.zod || I.perAdj || I.perAdjF || I.hole || I.gear || I.chainAdj || I.pcHit || I.adj || I.row || I.tf);
-const botPosBag = bag => bag.items.some(q => ITEMI[q.id] && (ITEMI[q.id].pc || ITEMI[q.id].zod || ITEMI[q.id].hole));
+const botPosBag = bag => bag.items.some(q => ITEMI[q.id] && (ITEMI[q.id].pc || ITEMI[q.id].zod || holeMod(q)));
 function botTry(bag, o, P) {
   if (!P.plain && P.posEval && (botPosI(ITEMI[o.id]) || botPosBag(bag))) {
     const b = botBestSpot(bag, { ...o, u: o.u || '_new' }, P, BOT_SPOTS_EVAL);
@@ -710,6 +710,8 @@ function botEcon(run, d) {
   return v;
 }
 function botValue1(run, id, t, P, cx, bag, base, o) {
+  /* P.noMod：不用工具（測巨人國的改造值不值得：tools/mod_ab.js） */
+  if (ITEMI[id].mod) return P.noMod ? { gain: -1, how: 'none' } : botModBest(run, { ...o }, P, base);
   /* 湊滿 3 件：當成背包那件直接升一階 */
   if (wouldMerge(run, id, t)) {
     const inBag = bag.items.find(q => q.id === id && q.t === t);
@@ -737,6 +739,65 @@ function botValue1(run, id, t, P, cx, bag, base, o) {
     best.gain = Math.max(best.gain, P.mergeBonus * 0.5);
   return best;
 }
+/* 0.1.100 巨人國的工具 s：每件道具（鑿子再試每一格）套用看看，縮小、放大的再找一次位置，鑿子試著把小道具塞進新凹口；
+   回傳戰力最高的 { gain, how: 'mod', q（道具 u）, c（鑿子的格子） }。縮小空出的格子背包快滿時另外算一點 */
+const BOT_CELL = 0.03;
+function botModBest(run, s, P, base) {
+  const M = ITEMI[s.id].mod,
+    fill = run.bag.items.reduce((n, o) => n + shapeO(o).length, 0) / (run.bag.w * run.bag.h);
+  let best = { gain: -1, how: 'none' };
+  for (const q of run.bag.items)
+    for (const c of M === 'chisel' ? cellsOf(q) : [null]) {
+      if (!canMod(s, q, c)) continue;
+      const t = { ...run, bag: { ...run.bag, items: run.bag.items.map(x => ({ ...x })) }, bench: [...run.bench] },
+        tq = t.bag.items.find(x => x.u === q.u);
+      modInto(t, s, tq, c || cellsOf(q)[0]);
+      let pw = botPowerOf(t.bag, P),
+        sell = null;
+      if (!t.bag.items.includes(tq)) {
+        /* 放大後放不下：試著賣掉最弱的 1～2 件騰位置（玩家也會這樣做），不然就當它收回暫存區 */
+        pw *= 0.8;
+        let b = { ...t.bag, items: t.bag.items.filter(x => x !== tq) };
+        const out = [];
+        for (let k = 0; k < 2; k++) {
+          const w = botWeakest(b, P)[0];
+          if (!w) break;
+          out.push(w.o.u);
+          b = { ...b, items: b.items.filter(x => x !== w.o) };
+          const sp = botBestSpot(b, tq, P, 8);
+          if (sp && sp.pw * (1 - P.sellMargin * out.length) > pw) {
+            pw = sp.pw * (1 - P.sellMargin * out.length);
+            sell = [...out];
+            break;
+          }
+        }
+      } else if (M === 'chisel') pw = Math.max(pw, botFillHole(t.bag, tq, P));
+      else {
+        const sp = botBestSpot(t.bag, tq, P, 8);
+        if (sp) pw = Math.max(pw, sp.pw);
+      }
+      const g = pw / base - 1 + (M === 'shrink' && fill > 0.75 ? BOT_CELL * (shapeO(q).length - 1) : 0);
+      if (g > best.gain) best = { gain: g, how: 'mod', q: q.u, c, sell };
+    }
+  return best;
+}
+/* 凹口塞得進去的小道具（2 格以內）搬進 o 的凹口，回傳最高戰力 */
+function botFillHole(bag, o, P) {
+  let pw = botPowerOf(bag, P);
+  const hm = holeMod(o);
+  for (const [hx, hy] of holeOf(o))
+    for (const w of bag.items) {
+      if (w === o || shapeO(w).length > 2 || !holeFits(hm, ITEMI[w.id].tags)) continue;
+      for (let r = 0; r < 4; r++)
+        for (const [dx, dy] of shapeO(w, r))
+          if (canPlace(bag, w, hx - dx, hy - dy, r))
+            pw = Math.max(
+              pw,
+              botPowerOf({ ...bag, items: bag.items.map(x => (x === w ? { ...w, x: hx - dx, y: hy - dy, r } : x)) }, P)
+            );
+    }
+  return pw;
+}
 /* 0.1.72 擺位看戰力：列出 o 能放的位置（同一組格子只算一次），先照「加成條數、貼著幾件」排，
    取前 BOT_SPOTS 個真的算戰力，挑最高的。共生森林（越擠越強）、棋盤（棋子走法）、黃道（星座）、機關（齒輪）這些
    看位置的效果，findSpot 的標籤加成猜不到，要算過才知道 */
@@ -747,6 +808,14 @@ function botBestSpot(bag, o, P, N = BOT_SPOTS) {
   const g = bagGrid(bag),
     rest = bag.items.filter(q => q.u !== o.u),
     rel = rest.map(q => [q, synergy(o, q) + synergy(q, o)]).filter(([, n]) => n > 0),
+    hm = holeMod(o),
+    holes = new Set(
+      rest
+        .filter(q => holeMod(q) && holeFits(holeMod(q), I.tags))
+        .flatMap(q => holeOf(q))
+        .filter(([x, y]) => g[y] && g[y][x] == null)
+        .map(p => p + '')
+    ),
     seen = new Set(),
     cand = [];
   for (let r = 0; r < 4; r++) {
@@ -759,8 +828,8 @@ function botBestSpot(bag, o, P, N = BOT_SPOTS) {
           .map(c => c.join(','))
           .sort()
           .join(' ');
-        if (seen.has(key) && !I.hole && !I.pc) continue;
-        seen.add(key + (I.hole || I.pc ? '|' + r : ''));
+        if (seen.has(key) && !hm && !I.pc) continue;
+        seen.add(key + (hm || I.pc ? '|' + r : ''));
         const t = { ...o, x, y, r },
           nb = new Set();
         for (const [cx, cy] of cs)
@@ -775,6 +844,13 @@ function botBestSpot(bag, o, P, N = BOT_SPOTS) {
           }
         let sc = nb.size;
         for (const [q, n] of rel) if (adjacent(t, q)) sc += n * 3;
+        /* 0.1.100 巨人國的凹口：塞進別人空著的凹口、自己的凹口包住吃得到的道具，都排前面（不然 16 個候選常常沒有凹口的位置） */
+        for (const [cx, cy] of cs) if (holes.has(cx + ',' + cy)) sc += 6;
+        if (hm)
+          for (const [hx, hy] of holeOf(t)) {
+            const q = g[hy] && g[hy][hx] != null && rest.find(z => z.u === g[hy][hx]);
+            if (q && holeFits(hm, ITEMI[q.id].tags)) sc += 6;
+          }
         cand.push({ x, y, r, sc });
       }
   }
@@ -816,6 +892,15 @@ function botRelayout(run, P) {
 /* 把道具 o（已經在暫存區）照評估的方式放進背包 */
 function botPlace(run, o, P, cx = {}) {
   const ev = botValue(run, o.id, o.t, P, cx, botEx(o));
+  /* 0.1.100 巨人國的工具：用在評估挑的那件上 */
+  if (ev.how === 'mod') {
+    const q = run.bag.items.find(x => x.u === ev.q);
+    if (!q || ev.gain <= 0 || !canMod(o, q, ev.c || cellsOf(q)[0])) return false;
+    botBump(cx);
+    for (const u of ev.sell || []) sellItem(run, u);
+    modInto(run, o, q, ev.c || cellsOf(q)[0]);
+    return true;
+  }
   if (ev.how !== 'place' && ev.how !== 'swap') return false;
   botBump(cx);
   if (ev.how === 'swap' && ev.sell) sellItem(run, ev.sell.u);

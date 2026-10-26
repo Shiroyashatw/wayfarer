@@ -2185,9 +2185,9 @@ const ITEMS = [
     sh: 'c5',
     tags: ['weapon', 'mace', 'twohand'],
     cd: 2,
-    dmg: [8, 12],
+    dmg: [11, 16],
     on: { sunder: 2 },
-    hole: { tag: '*', spd: 20 },
+    hole: { tag: 'weapon', dmgPct: 40, spd: 15 },
     ic: 'sk_bash'
   },
   {
@@ -2198,7 +2198,7 @@ const ITEMS = [
     sh: 't5',
     tags: ['weapon', 'axe', 'twohand'],
     cd: 2.2,
-    dmg: [14, 20],
+    dmg: [22, 31],
     on: { bleed: 2, sunder: 1 },
     ic: 'sk_execute'
   },
@@ -2210,7 +2210,7 @@ const ITEMS = [
     sh: 'l5',
     tags: ['weapon', 'bow', 'twohand'],
     cd: 1.6,
-    dmg: [9, 14],
+    dmg: [12, 19],
     crit: 10,
     ic: 'gear_weapon_24'
   },
@@ -2222,7 +2222,7 @@ const ITEMS = [
     sh: 'v5',
     tags: ['weapon', 'spear', 'twohand'],
     cd: 1.7,
-    dmg: [15, 22],
+    dmg: [25, 36],
     crit: 10,
     on: { bleed: 2 },
     ic: 'sk_skypierce'
@@ -2246,8 +2246,8 @@ const ITEMS = [
     th: 'g',
     sh: 'u5',
     tags: ['trinket'],
-    hp: 20,
-    hole: { tag: '*', dmgPct: 90 },
+    hp: 60,
+    hole: { tag: 'weapon', dmgPct: 90, spd: 20 },
     ic: 'sk_pride'
   },
   {
@@ -2258,7 +2258,7 @@ const ITEMS = [
     sh: 'h7',
     tags: ['trinket'],
     hp: 100,
-    hole: { tag: '*', crit: 25 },
+    hole: { tag: 'def', defPct: 60 },
     ic: 'gear_amulet_9'
   },
   {
@@ -2268,8 +2268,9 @@ const ITEMS = [
     th: 'g',
     sh: 'o8',
     tags: ['trinket'],
-    hole: { tag: '*', spd: 80, dmgPct: 40 },
-    all: [{ tag: 'weapon', spd: 5 }],
+    hp: 80,
+    hole: { tag: '*', allPct: 100 },
+    all: [{ tag: 'weapon', spd: 10, dmgPct: 10 }],
     ic: 'sk_inspire'
   },
   {
@@ -2286,6 +2287,10 @@ const ITEMS = [
   },
   { id: 'gflask', n: '巨人藥瓶', star: 3, th: 'g', sh: 'sq', tags: ['potion'], pot: [40, 90, 1], ic: 'gear_belt_6' },
   { id: 'garmor', n: '巨人鎧', star: 4, th: 'g', sh: 'p5', tags: ['armor'], hp: 100, arm: 8, ic: 'gear_helm_6' },
+  /* 0.1.100 巨人國×小人國的改造工具（mod）：拖到道具上生效，每件道具只能改造一次（o.md），跟融合分開算 */
+  { id: 'gshrink', n: '縮小藥', star: 2, th: 'g', sh: 's1', tags: ['trinket'], mod: 'shrink', ic: 'asc_alchemist_e' },
+  { id: 'ggrow', n: '巨大藥', star: 3, th: 'g', sh: 's1', tags: ['trinket'], mod: 'grow', ic: 'asc_alchemist_b5' },
+  { id: 'gchisel', n: '鑿子', star: 2, th: 'g', sh: 's1', tags: ['trinket'], mod: 'chisel', ic: 'tree_n099' },
   /* ---------- 共生森林：看旁邊有幾件道具（perAdj 給這件、perAdjF 給角色，每有 1 件相鄰的道具算一次） ---------- */
   {
     id: 'fvine',
@@ -2613,7 +2618,7 @@ const ITEMS = [
     cd: 2.2,
     dmg: [8, 11],
     on: { blind: 12 },
-    hole: { tag: '*', spd: 16 },
+    hole: { tag: 'weapon', dmgPct: 30, spd: 16 },
     self: { cellPct: 4 },
     ic: 'sk_titanfall'
   },
@@ -2627,7 +2632,7 @@ const ITEMS = [
     cd: 2.2,
     dmg: [8, 11],
     on: { stun: [12, 0.4] },
-    hole: { tag: '*', spd: 16 },
+    hole: { tag: 'weapon', dmgPct: 30, spd: 16 },
     self: { cellPct: 4 },
     ic: 'gear_weapon_23'
   },
@@ -4606,18 +4611,19 @@ function shapeOf(id, rot = 0, sm = 0, sh) {
 }
 /* 一件道具（背包、暫存區、商店的一格）的形狀；r 沒給就用它自己的旋轉 */
 const shapeO = (o, r = o.r || 0) => shapeOf(o.id, r, o.sm, o.sh);
+/* 格子連在一起（上下左右） */
+const linked = a => {
+  const seen = new Set([a[0] + '']),
+    st = [a[0]];
+  while (st.length) {
+    const [x, y] = st.pop();
+    for (const p of a)
+      if (!seen.has(p + '') && Math.abs(p[0] - x) + Math.abs(p[1] - y) === 1) seen.add(p + ''), st.push(p);
+  }
+  return seen.size === a.length;
+};
 function shrinkShape(c) {
   if (c.length < 2) return c;
-  const linked = a => {
-    const seen = new Set([a[0] + '']),
-      st = [a[0]];
-    while (st.length) {
-      const [x, y] = st.pop();
-      for (const p of a)
-        if (!seen.has(p + '') && Math.abs(p[0] - x) + Math.abs(p[1] - y) === 1) seen.add(p + ''), st.push(p);
-    }
-    return seen.size === a.length;
-  };
   for (let i = c.length - 1; i >= 0; i--) {
     const d = c.filter((_, j) => j !== i);
     if (linked(d)) return d;
@@ -4625,7 +4631,7 @@ function shrinkShape(c) {
   return c.slice(0, -1);
 }
 function shapeRaw(id, rot, sm, sh) {
-  let c = SH[(sh && SH[sh] && sh) || ITEMI[id].sh].map(p => [...p]);
+  let c = SH[(sh && shReg(sh) && sh) || ITEMI[id].sh].map(p => [...p]);
   if (sm) c = shrinkShape(c);
   for (let i = 0; i < (rot & 3); i++) c = c.map(([x, y]) => [-y, x]);
   const mx = Math.min(...c.map(p => p[0])),
@@ -4644,14 +4650,50 @@ const SHHOLE = {
 };
 function holeOf(o) {
   const k = o.sh || ITEMI[o.id].sh,
-    hs = SHHOLE[k];
-  if (!hs || o.sm) return [];
+    hs = shReg(k) && SHHOLE[k];
+  if (!hs || o.sm || !holeMod(o)) return [];
   let c = SH[k].map(p => [...p]),
     hh = hs.map(p => [...p]);
   for (let i = 0; i < ((o.r || 0) & 3); i++) (c = c.map(([x, y]) => [-y, x])), (hh = hh.map(([x, y]) => [-y, x]));
   const mx = Math.min(...c.map(p => p[0])),
     my = Math.min(...c.map(p => p[1]));
   return hh.map(([x, y]) => [o.x + x - mx, o.y + y - my]);
+}
+/* 0.1.100 巨人國的改造（o.md）：縮小變 1 格、數值 ×0.6；放大照格數換成有凹口的大形狀、數值 ×2（×0.5／×1.6 時巨大藥幾乎沒人買）；
+   鑿子挖掉一格變凹口（形狀代號 k:原形狀:第幾格，用到時才登記進 SH／SHHOLE，快照存的就是這個代號） */
+const MD_K = { shrink: 0.6, grow: 2 };
+const mdK = o => MD_K[o.md] || 1;
+const growSh = n => (n <= 2 ? 'u5' : n <= 4 ? 'h7' : 'o8');
+function shReg(k) {
+  if (SH[k] || typeof k !== 'string' || !k.startsWith('k:')) return SH[k];
+  const [, b, i] = k.split(':');
+  if (!SH[b] || !SH[b][+i]) return undefined;
+  SHHOLE[k] = [...(SHHOLE[b] || []), SH[b][+i]];
+  return (SH[k] = SH[b].filter((_, j) => j !== +i));
+}
+/* 凹口加成：手做的照 I.hole；放大、鑿子做出來的照這件的類別（武器→裡面的武器、防具和盾→裡面的護甲與生命、其他→全部但小） */
+const HOLE_C = {
+  w: { tag: 'weapon', dmgPct: 50, spd: 15 },
+  d: { tag: 'def', defPct: 50 },
+  a: { tag: '*', allPct: 30 }
+};
+function holeMod(o) {
+  const I = ITEMI[o.id];
+  if (I.hole) return I.hole;
+  if (o.md !== 'grow' && o.md !== 'chisel') return null;
+  return HOLE_C[I.block || I.tags.includes('armor') ? 'd' : I.dmg ? 'w' : 'a'];
+}
+/* 凹口裡的道具 q（標籤 tags）吃不吃得到 */
+const holeFits = (hm, tags) =>
+  hm.tag === '*' || (hm.tag === 'def' ? tags.includes('armor') || tags.includes('shield') : tags.includes(hm.tag));
+/* 鑿子挖背包座標 c 那格：回傳原形狀的第幾格；不能挖（不是這件、剩 1 格、斷開）回傳 -1 */
+function chiselIdx(q, c) {
+  if (!c || q.x == null || q.x < 0) return -1;
+  const b = q.sh || ITEMI[q.id].sh,
+    cs = shapeO(q),
+    i = cs.findIndex(([dx, dy]) => q.x + dx === c[0] && q.y + dy === c[1]);
+  if (i < 0 || cs.length < 3) return -1;
+  return linked(cs.filter((_, j) => j !== i)) && SH[b] ? i : -1;
 }
 /* 升階時隨機多一條小詞綴（保留一點刷寶感） */
 const AFFX = [
@@ -4711,9 +4753,19 @@ const mod5Txt = m => MODN[MOD5[m[0]].k](m[1]);
 const pct = v => Math.round(v) + '%';
 /* 正數加 +，負數本來就有 -（不要變成「+-10%」） */
 const sg = v => (v < 0 ? '' : '+');
+const MOD_TXT = {
+  shrink: `拖到道具上：變成 1 格、數值 ×${MD_K.shrink * 100}%`,
+  grow: `拖到道具上：變大、數值 ×${MD_K.grow * 100}%，長出凹口（1～2 格變 U 形、3～4 格變 H 形、5 格以上變口字形）`,
+  chisel: '拖到道具的某一格上：那格挖成凹口，少佔 1 格、數值不變；不能挖到剩 1 格或斷成兩塊'
+};
+/* 0.1.100 凹口吃得到的類別（holeMod 的 tag） */
+const HOLE_N = { weapon: '武器', def: '防具或盾', '*': '道具' };
 const MODN = {
   dmg: v => `傷害 ${sg(v)}${v}`,
   dmgPct: v => `傷害 ${sg(v)}${pct(v)}`,
+  /* 0.1.100 巨人國的凹口 */
+  defPct: v => `護甲、生命、格擋 ${sg(v)}${pct(v)}`,
+  allPct: v => `所有數值 ${sg(v)}${pct(v)}`,
   spd: v => `攻速 ${sg(v)}${pct(v)}`,
   crit: v => `暴擊率 ${sg(v)}${pct(v)}`,
   burn: v => `命中時燃燒 ${sg(v)}${v} 層`,
@@ -5165,13 +5217,15 @@ function itemDesc(id, t = 1) {
     for (const [txt, tags] of g) out.push(`${n}${tags.join('、')}：${txt}`);
   }
   if (it.tf) out.push(tfTxt(it.tf, t));
+  /* 0.1.100 巨人國的改造工具 */
+  if (it.mod) out.push(MOD_TXT[it.mod], '每件道具只能改造一次');
   /* 0.1.62 主題池的專屬道具 */
   /* 0.1.93 只加在這件身上的都寫「這件：（條件，）效果」；前面已經有「命中時：」，這裡不再寫一次 */
   const selfT = m => modTxt(scaleMod(m, t)).replace(/(^|、)命中時/g, '$1');
   if (it.self) out.push(`這件：${selfT(it.self)}`);
   if (it.perAdj) out.push(`這件：每有 1 件相鄰的道具，${selfT(it.perAdj)}`);
   if (it.perAdjF) out.push(`每有 1 件相鄰的道具，${modTxt(scaleMod(it.perAdjF, t))}`);
-  if (it.hole) out.push(`放在凹口的道具：${modTxt(scaleMod(it.hole, t))}`);
+  if (it.hole) out.push(`凹口裡的${HOLE_N[it.hole.tag] || '道具'}：${modTxt(scaleMod(it.hole, t))}`);
   if (it.nth) out.push(`每第 ${it.nth[0]} 次出手，多打 ${it.nth[1]} 下`);
   if (it.wake) out.push(`開戰 ${it.wake} 秒後才開始出手`);
   if (it.gear) out.push(`相鄰的武器出手時，其他相鄰的武器充能 +${gearV(it, t)}%`);

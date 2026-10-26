@@ -474,7 +474,7 @@ const MODEH = {
     share: rand => ({ shm: rollShm(rand) }),
     salt: 8,
     /* 形狀表還沒抽（機器人對局先建好每一局才抽）就先不換，之後 modeFix 補 */
-    fix: (run, o) => shmOf(run, o.id) && (o.sh = run.shm[o.id]),
+    fix: (run, o) => !o.md && shmOf(run, o.id) && (o.sh = run.shm[o.id]),
     slot: (run, s) => shmOf(run, s.id) && (s.sh = run.shm[s.id]),
     item: (run, o) => shmOf(run, o.id) && (o.sh = run.shm[o.id])
   },
@@ -741,6 +741,7 @@ function rollShop(run, lotto) {
     if (id) run.shop.push({ id, t: 1 }), poolAdd(used, id, 1);
   }
   shopPity(run, used);
+  toolPity(run, used);
   /* 0.1.35 六合彩：價格打亂成 0 金～5★ 的價格（p） */
   if (lotto) for (const s of run.shop) if (s) s.p = fl(r01(run) * (5 * 3 ** (s.t - 1) + 1));
 }
@@ -773,6 +774,21 @@ function shopPity(run, used) {
     poolAdd(used, id, 1);
     miss[id] = 0;
   }
+}
+/* 0.1.100 巨人國：前 TOOL_PITY 回合，每次商店至少 1 件改造工具（只從池子剩下的抽，每個人各自保底） */
+const TOOL_PITY = 3;
+function toolPity(run, used) {
+  if (run.theme !== 'g' || run.ri < 1 || run.ri > TOOL_PITY || run.tutor) return;
+  if (run.shop.some(x => x && ITEMI[x.id].mod)) return;
+  const id = wpick(
+    run,
+    ITEMS.filter(i => i.mod && poolOK(run, i)),
+    i => Math.max(0, poolOf(i.id) - (used.get(i.id) || 0))
+  );
+  const at = run.shop.findLastIndex(x => x && !x.pity);
+  if (!id || at < 0) return;
+  run.shop[at] = { id: id.id, t: 1 };
+  poolAdd(used, id.id, 1);
 }
 /* 0.1.59 詛咒寶藏：隨機一個詛咒（沉睡只給武器） */
 function curseRoll(run, id) {
