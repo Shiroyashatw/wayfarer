@@ -386,7 +386,7 @@ function botPower(F, P = BOT_P) {
     hit *=
       (1 + (w.chain || 0) / 100) *
       (1 + (w.pierce || 0) * 0.004 * (1 + 2 * BOT_ERES.arm)) *
-      (1 + ((w.chainN || 0) * CHAIN_DMG) / 100);
+      (1 + ((w.chainN || 0) * (CHAIN_DMG + (F.chainPct || 0))) / 100);
     /* 0.1.35 雙手大師（這一件的連擊）、金錢標（開戰時的錢夠打大半場才算翻倍） */
     hit *= 1 + (w.dbl || 0) / 100;
     /* 0.1.62 機關城：每第 N 次多打 k 下；開戰幾秒後才啟動（雷電砲台、詛咒・沉睡的 seal） */
@@ -531,7 +531,10 @@ function botPower(F, P = BOT_P) {
   ehp += (F.thornsBurn || 0) * 6;
   if (F.rod) ehp *= 1 + (F.rod / 100) * 0.3;
   if (F.huntHeal && rendSrc) ehp += F.huntHeal * 4;
-  for (const p of F.pots) ehp += p.v * p.n + (p.ex ? p.ex.length * 25 * p.n : 0) + (F.potBuff ? F.potBuff[0] * p.n : 0);
+  /* 0.1.101 投擲藥劑：藥水不回血，變成傷害（一場約 18 秒） */
+  for (const p of F.pots)
+    if (F.potThrow) dps += (p.v * p.n * F.potThrow) / 100 / 18;
+    else ehp += p.v * p.n + (p.ex ? p.ex.length * 25 * p.n : 0) + (F.potBuff ? F.potBuff[0] * p.n : 0);
   if (F.poisonLife) ehp *= 1.08;
   if (F.immAll) ehp *= 1.15;
   /* 0.1.43 受到的傷害 +%（詛咒面具這類缺點）、免疫一切的寵物（別西卜） */
@@ -542,6 +545,18 @@ function botPower(F, P = BOT_P) {
   if (F.tarMiss) ehp *= 1.04;
   if (F.tarHi) ehp *= 1 + F.tarHi / 200;
   if (F.tarLow) dps *= 1 + F.tarLow / 600;
+  /* 0.1.101 覺醒／質變：半血化身女武神、英靈殿、第二次涅槃、火鳥、凍結得護盾、黃昏加倍、整場黃昏扣血、蛻皮、連擊疊異常、連鎖電荷、藥劑大師 */
+  if (F.valkAt) (dps *= 1 + (VALK_DMG / 100) * (F.valkAt / 100) * 0.6), (ehp *= 1.08);
+  if (F.valhalla) dps += F.valhalla / 18;
+  if (F.phx2) (ehp *= 1.15), (dps *= 1 + F.phx2 / 300);
+  if (F.bird) dps += (F.bird + 2 * P.dotW * 3) / 2;
+  if (F.fzBlk) ehp += F.fzBlk * 2 * F.weapons.filter(w => w.freeze[0] > 0).length;
+  if (F.ragX) (ehp *= 1.1), (dps *= 1.1);
+  if (F.rag0) (dps *= 1 + (RAGNA_SPD + RAGNA_DMG) / 100), (ehp *= 1 - F.rag0 * 0.06);
+  if (F.molt) ehp += F.molt * 5;
+  if (F.dblDot) dps *= 1 + (F.double || 0) / 300;
+  if (F.chainChg) dps *= 1.06;
+  if (F.potAdj) dps *= 1 + Object.values(F.potAdj).reduce((n, us) => n + us.length, 0) * 0.04;
   if (F.weapons.some(w => w.imm)) dps *= 1.08;
   else if (F.immFz) ehp *= 1.05;
   ehp += gd;

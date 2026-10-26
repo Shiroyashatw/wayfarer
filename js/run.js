@@ -857,6 +857,7 @@ function buyItem(run, k) {
   const fi = benchFree(run);
   if (fi < 0 && !wouldMerge(run, s.id, s.t || 1)) return '暫存區滿了，先把道具放進背包或賣掉';
   run.gold -= p;
+  spendUp(run, p);
   /* 0.1.5 暫存區滿了但買了就湊滿 3 件：先放在多出來的一格，合成後收回 */
   const it = shopItem(run, s, p);
   if (fi < 0) run.bench.push(it);
@@ -867,6 +868,10 @@ function buyItem(run, k) {
   benchTrim(run);
   kickback(run);
   return { merged };
+}
+/* 0.1.101 一擲千金：記下買東西淨花掉的金幣（賣掉的扣回，買了馬上賣不會變強） */
+function spendUp(run, v) {
+  if (coreProp(bagAll(run.bag), 'spendUp')) run.bag.sp = Math.max(0, (run.bag.sp || 0) + v);
 }
 /* 0.1.54 暫存區多出來的格子（滿了還買來合成）收回：放回空格，沒空格就寄放（再不行換成金幣） */
 function benchTrim(run) {
@@ -951,6 +956,7 @@ function sellItem(run, u) {
   }
   const v = sellO(o, run);
   run.gold += v;
+  spendUp(run, -v);
   if (o.bt === run.ri && run.kb > 0) run.kb--;
   /* 0.1.69 塔羅・審判：記下賣掉過星級最高的（商店道具才記） */
   if (vanOK(o) && (!run.soldB || ITEMI[o.id].star >= ITEMI[run.soldB].star)) run.soldB = o.id;
@@ -1311,7 +1317,9 @@ function finishFight(run, fb) {
       t: C2
         ? '雙修：選一個別的職業的核心'
         : r.st > 2 && mc
-          ? '首領掉落了第二個專屬核心：選一個融入你的核心'
+          ? coreVars(mc.id).length && !mc.sc
+            ? '首領掉落了核心：融入一個新核心，或覺醒、質變你的核心'
+            : '首領掉落了第二個專屬核心：選一個融入你的核心'
           : '首領掉落了專屬核心：選一個',
       opts: o,
       ...(C2 && C2.re ? { re: C2.re } : {})
@@ -1570,6 +1578,16 @@ function sacrifice(run, us) {
 /* 0.1.53 進化：寵物在背包裡每待滿 N 回合升一階（Ⅲ 階開詞綴） */
 function petEvolve(run) {
   const n = coreProp(bagAll(run.bag), 'evolve');
+  /* 0.1.101 突變：每回合沒有詞綴的寵物開一條，再挑一隻還沒有 5★ 詞綴的寵物開一條 */
+  if (coreProp(bagAll(run.bag), 'mutate')) {
+    const ps = run.bag.items.filter(o => ITEMI[o.id].tags.includes('pet'));
+    for (const o of ps) if (!o.a) o.a = affOf(o.id, runR(run));
+    const nm = ps.filter(o => !o.m);
+    if (nm.length) {
+      const o = nm[fl(r01(run) * nm.length)];
+      (o.m = roll5(o.id, runR(run))), (o.mv = 0);
+    }
+  }
   if (!n) return;
   for (const o of run.bag.items) {
     if (!ITEMI[o.id].tags.includes('pet') || o.t >= TIER_MAX) continue;
@@ -1960,16 +1978,20 @@ function bossCores(run, not = []) {
     own = mc ? [mc.id, mc.sc] : [],
     ban = (MODEI[run.mode] || {}).ban || [],
     clsOK = i => !run.bag.cls || (C2 && C2.other ? i.cls !== run.bag.cls : i.cls === run.bag.cls);
-  let cs = ITEMS.filter(i => i.core === 1 && clsOK(i) && !own.includes(i.id) && !ban.some(k => i[k])).map(i => i.id);
+  let cs = ITEMS.filter(i => i.core === 1 && !i.vof && clsOK(i) && !own.includes(i.id) && !ban.some(k => i[k])).map(
+    i => i.id
+  );
+  /* 0.1.101 4-4：你的核心有覺醒、質變時，三選一是 1 個新核心＋覺醒＋質變（雙修照舊） */
+  const V = mc && !C2 && !mc.sc ? coreVars(mc.id) : [];
   const fresh = cs.filter(id => !not.includes(id)),
-    n = (C2 ? C2.n : 3) + (sinLv(run, 'greed') >= 2 ? 1 : 0),
+    n = (C2 ? C2.n : 3) + (sinLv(run, 'greed') >= 2 ? 1 : 0) - V.length,
     o = [];
   if (fresh.length >= n) cs = fresh;
-  while (o.length < Math.min(n, cs.length)) {
+  while (o.length < Math.min(Math.max(1, n), cs.length)) {
     const c = pick(run, cs);
     if (!o.includes(c)) o.push(c);
   }
-  return o;
+  return [...o, ...V];
 }
 /* 0.1.69 雙修：刷新核心選項（pend.re 次），盡量不跟這次的重複 */
 function rerollCores(run) {
@@ -1999,6 +2021,14 @@ function takePick(run, id, hold) {
     P = run.pend || {},
     t = P.tier || 1,
     mk = () => Object.assign(newItem(run, id, t), P.z ? { z: 1 } : {});
+  /* 0.1.101 覺醒、質變：取代原本的核心（不融入） */
+  if (mc && ITEMI[id].vof === mc.id) {
+    run.bag.core = newItem(run, id);
+    run.pend = null;
+    giveGift(run, id);
+    syncShrink(run);
+    return '';
+  }
   if (mc && mc.id !== id) {
     mc.sc = id;
     run.pend = null;

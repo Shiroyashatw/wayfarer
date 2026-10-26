@@ -108,6 +108,10 @@ function simSide(F) {
     /* 0.1.74 狂戰士：諸神黃昏（到幾秒、用過了沒）、不死之怒（不會死到幾秒、加成到幾秒、用過了沒）、戰意沸騰層數 */
     ragT: 0,
     ragU: 0,
+    /* 0.1.101 覺醒／質變：火鳥、血之契約扣血的計時；蛻皮過幾次 */
+    bdT: 0,
+    dnT: 0,
+    mk: 0,
     undT: 0,
     undB: 0,
     undU: 0,
@@ -337,9 +341,15 @@ function simulate(FA, FB, seed) {
     /* 0.1.74 諸神黃昏：生命第一次低於 RAGNA_AT% 時發動 */
     if (def.F.ragna && !def.ragU && def.hp > 0 && def.hp < (def.max * RAGNA_AT) / 100) {
       def.ragU = 1;
-      def.ragT = t + RAGNA_T;
-      log(t, S.indexOf(def), 'ragna', RAGNA_T, { self: 1 });
+      def.ragT = t + RAGNA_T * (def.F.ragX ? 2 : 1);
+      log(t, S.indexOf(def), 'ragna', RAGNA_T * (def.F.ragX ? 2 : 1), { self: 1 });
       tr(def, 'ragna');
+    }
+    /* 0.1.101 女武神之槍：生命第一次低於 valkAt% 時化身女武神（不復活） */
+    if (def.F.valkAt && !def.valk && def.hp > 0 && def.hp < (def.max * def.F.valkAt) / 100) {
+      def.valk = 1;
+      log(t, S.indexOf(def), 'cv', 0, { x: 'valk', self: 1 });
+      tr(def, 'valkAt');
     }
   };
   /* 0.1.74 狂血：少了幾成生命（0～9） */
@@ -353,6 +363,12 @@ function simulate(FA, FB, seed) {
     for (const k of ['burn', 'poison', 'venom', 'bleed', 'rend', 'ignite']) x[k] = 0;
     log(t, S.indexOf(x), 'revive', Math.round(x.hp), { self: 1, ...(x.valk ? {} : { ankh: 1 }) });
     tr(x, 'revive');
+    /* 0.1.101 英靈殿：復活時對敵人造成所有盾的格擋值總和 */
+    if (x.F.valhalla) {
+      const xi = S.indexOf(x);
+      hurt(t, x.F.valhalla, S[1 - xi], xi, 'cv', { x: 'valh' });
+      tr(x, 'valhalla');
+    }
   }
   /* 0.1.29 抗異常：k 是 d 身上的異常（burn、poison…），回傳抗完剩幾成；開戰免毒的秒數內不會中毒；
      0.1.37 賢者之石免疫所有異常、冰甲免疫凍結與冰緩 */
@@ -431,6 +447,8 @@ function simulate(FA, FB, seed) {
     o.fz = v;
     S[ai].iceN++;
     log(t, ai, 'freeze', v, { tu: o.u });
+    /* 0.1.101 碎冰之甲：凍結敵人時得到護盾 */
+    if (S[ai].F.fzBlk) gainBlock(t, S[ai], ai, S[ai].F.fzBlk, ''), tr(S[ai], 'fzBlk');
   };
   const chillIt = (t, di, o, ai, sec = CHILL_T) => {
     const d = S[di];
@@ -778,7 +796,7 @@ function simulate(FA, FB, seed) {
           (isS(w, 'glut') && L(a, 'glut') ? 6 : 0) +
           (w.bz && a.F.blood ? a.F.blood * BLOOD_LS * lost10(a) : 0)) /
           100) *
-        (a.ragT > t ? 2 : 1);
+        (a.ragT > t ? (a.F.ragX ? 3 : 2) : 1);
       if (ls > 0 && v > 0) heal(t, a, ai, v * ls);
     }
     if (!self) stickArrows(t, ai, d, w.stick);
@@ -1105,6 +1123,9 @@ function simulate(FA, FB, seed) {
       sinFx(0, i, 'pride', { duel: 1 });
     }
   }
+  /* 0.1.101 血之契約：開戰就進入諸神黃昏（整場），之後每秒扣生命 */
+  for (let i = 0; i < 2; i++)
+    if (S[i].F.rag0) (S[i].ragU = 1), (S[i].ragT = MAX_T), log(0, i, 'ragna', 0, { self: 1 }), tr(S[i], 'rag0');
   /* 0.1.33 先手射擊：星級最高的一把開戰先打一下 */
   for (let i = 0; i < 2; i++)
     if (S[i].F.firstStrike) {
@@ -1313,10 +1334,22 @@ function simulate(FA, FB, seed) {
           const dc = (a.F.double || 0) + (w.dbl || 0);
           if (S[1 - i].hp > 0 && a.F.triple && prd(w, 'triple', a.F.triple))
             for (let c = 0; c < 2 && S[1 - i].hp > 0; c++) fire(t, a, i, w);
-          else if (S[1 - i].hp > 0 && ((a.F.openDbl && t <= a.F.openDbl) || (dc && prd(w, 'dbl', dc))))
+          else if (S[1 - i].hp > 0 && ((a.F.openDbl && t <= a.F.openDbl) || (dc && prd(w, 'dbl', dc)))) {
             fire(t, a, i, w);
+            /* 0.1.101 淬毒連擊：連擊那一下，這把的中毒、流血再疊一次 */
+            if (a.F.dblDot && (w.poison || w.bleed)) {
+              const d = S[1 - i];
+              addPoison(a, d, w.poison, t);
+              if (w.bleed) d.bleed += w.bleed * res(d, 'bleed', t);
+              tr(a, 'dblDot');
+            }
+          }
           /* 0.1.33 閃電鏈：連鎖 N（每次攻擊多打 N 下） */
-          for (let c = 0; c < (w.chainN || 0) && S[1 - i].hp > 0; c++) attack(t, a, i, w, CHAIN_DMG / 100, { ch: 1 });
+          /* 0.1.101 雷霆網：連鎖傷害提升（chainPct）、每多打一下電荷 +1 */
+          for (let c = 0; c < (w.chainN || 0) && S[1 - i].hp > 0; c++) {
+            attack(t, a, i, w, (CHAIN_DMG + a.F.chainPct) / 100, { ch: 1 });
+            if (a.F.chainChg && S[1 - i].hp > 0) addCharge(t, i, S[1 - i], 1);
+          }
           if (w.chain && S[1 - i].hp > 0 && prd(w, 'chain', w.chain)) attack(t, a, i, w);
         }
       }
@@ -1345,7 +1378,19 @@ function simulate(FA, FB, seed) {
           if (s.heal) heal(t, a, i, s.heal, { u: s.u });
         }
       }
-      for (const p of a.pots)
+      /* 0.1.101 投擲藥劑：藥水不喝，開戰 2 秒起每瓶每 3 秒丟一次（次數照原本能喝幾次）：回復量 ×potThrow% 的傷害、中毒 3 層 */
+      if (a.F.potThrow)
+        for (const p of a.pots) {
+          const o = S[1 - i];
+          if (!(p.n > 0) || a.hp <= 0 || o.hp <= 0 || t < (p.thT || 2)) continue;
+          p.n--;
+          p.thT = t + 3;
+          trapFire(t, i, p.u);
+          hurt(t, (p.v * a.F.potThrow) / 100, o, i, 'cv', { x: 'pthrow', u: p.u, el: 'poison' });
+          addPoison(a, o, 3, t);
+          tr(a, 'potThrow');
+        }
+      for (const p of a.F.potThrow ? [] : a.pots)
         if (p.n > 0 && a.hp > 0 && a.hp < (a.max * p.at) / 100) {
           p.n--;
           trapFire(t, i, p.u);
@@ -1368,6 +1413,11 @@ function simulate(FA, FB, seed) {
           }
           /* 0.1.37 終極藥劑的效果 */
           if (p.ex) brewFx(t, a, i, p);
+          /* 0.1.101 藥劑大師：喝藥水時，相鄰的武器馬上出手一次 */
+          if (a.F.potAdj && a.F.potAdj[p.u])
+            for (const x of a.w)
+              if (a.F.potAdj[p.u].includes(x.u) && !(x.seal > 0) && !(x.fz > 0) && S[1 - i].hp > 0)
+                fire(t, a, i, x), tr(a, 'potAdj');
         }
     }
     /* 0.1.51 火法師、雷法師的定時效果（i 是放的人、o 是敵人） */
@@ -1412,8 +1462,47 @@ function simulate(FA, FB, seed) {
         hurt(t, o.hp, o, i, 'burnout', { el: 'fire' });
         tr(a, 'burnout');
       }
-      if (a.F.phoenix && !a.phx && a.hp > 0 && a.hp < a.max * 0.3) {
-        a.phx = 1;
+      /* 0.1.101 火鳥：每 2 秒啄一次（敵人點燃中 1.2 秒），燃燒 +2 */
+      if (a.F.bird && (a.bdT += SIM_DT) >= (o.ignite ? 1.2 : 2) - 1e-6) {
+        a.bdT = 0;
+        hurt(t, a.F.bird, o, i, 'cv', { x: 'bird', el: 'fire' });
+        o.burn += 2 * res(o, 'burn', t);
+        tr(a, 'bird');
+      }
+      /* 0.1.101 血之契約：每秒扣 rag0% 最大生命（不會因此倒下） */
+      if (a.F.rag0 && (a.dnT += SIM_DT) >= 1 - 1e-6) (a.dnT = 0), (a.hp = Math.max(1, a.hp - (a.max * a.F.rag0) / 100));
+      /* 0.1.101 蛻皮：每少 10% 生命蛻皮一次：清掉異常、得到護盾、敵人中毒 3 層 */
+      if (a.F.molt && lost10(a) > a.mk) {
+        a.mk = lost10(a);
+        for (const k of [
+          'burn',
+          'poison',
+          'venom',
+          'bleed',
+          'rend',
+          'ignite',
+          'stun',
+          'weak',
+          'blind',
+          'confuse',
+          'age',
+          'corrode',
+          'para'
+        ])
+          a[k] = 0;
+        gainBlock(t, a, i, a.F.molt, '');
+        addPoison(a, o, 3, t);
+        log(t, i, 'cv', 0, { x: 'molt', self: 1 });
+        tr(a, 'molt');
+      }
+      /* 0.1.101 不滅之火：第二次涅槃在 15%，每次涅槃後所有武器傷害 +phx2%（整場） */
+      if (
+        a.F.phoenix &&
+        a.hp > 0 &&
+        ((!a.phx && a.hp < a.max * 0.3) || (a.F.phx2 && a.phx === 1 && a.hp < a.max * 0.15))
+      ) {
+        a.phx = (a.phx || 0) + 1;
+        if (a.F.phx2) (a.buffT = MAX_T), (a.bDmg = Math.max(a.bDmg, a.F.phx2 * a.phx));
         for (const k of [
           'burn',
           'poison',

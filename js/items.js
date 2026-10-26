@@ -172,7 +172,7 @@ const TAGN = {
   dark: '暗',
   twohand: '雙手',
   holy: '聖',
-  tf: '質變'
+  tf: '融合'
 };
 /* 道具（ic：借用的圖示，0.1.1 起裝備類用舊版的 PNG 裝備圖 gear_欄位_序號；有 it_代號.png 時優先用）：
    cd 攻擊冷卻（秒）、dmg 傷害區間、crit 暴擊率、on 命中效果（burn 燃燒層、poison 中毒層、freeze／stun [機率%, 秒]、ls 吸血%）
@@ -4035,12 +4035,97 @@ const CORE_SUB = [
   ['鐵壁', () => ({ fx: { arm: 8 } })],
   ['幻影', () => ({ fx: { dodge: 12 } })]
 ];
+/* 0.1.101 覺醒／質變（docs/質變核心.md）：4-4 時 2-5 拿的核心有變體，三選一是「1 個新核心＋覺醒＋質變」，選了就取代原本的核心。
+   d 覺醒（原本效果全部保留再加強）、t 質變（換掉機制、只留主題）；強度對齊「原本＋新核心」 */
+const CORE_VAR = {
+  archer: P => ({
+    游擊: {
+      d: ['疾風游擊', { all: onP(P, { spd: 15 }), fx: { dodge: 25, kite: 40 }, kitePer: 10 }],
+      t: ['一箭入魂', { all: onP(P, { spd: -25, dmgPct: 170, crit: 25 }), fx: { critMul: 60 } }]
+    }
+  }),
+  swordsman: P => ({
+    連斬: {
+      d: ['千刃', { all: onP(P, { dmgPct: 15 }), fx: { double: 30, triple: 10 }, perBlade: 5 }],
+      t: ['居合', { all: onP(P, { dmgPct: 30, pierce: 60 }), iai: [3, 2] }]
+    }
+  }),
+  spearman: () => ({
+    女武神降臨: {
+      d: ['英靈殿', { fx: { revive: 50 }, revShield: 10, valhalla: 1, ic: 'asc_valkyrie_c1' }],
+      t: ['女武神之槍', { fx: { valkAt: 60 }, all: [{ tag: 'spear', rend: 1, dmgPct: 30 }], ic: 'asc_valkyrie_c1' }]
+    }
+  }),
+  assassin: P => ({
+    連擊: {
+      d: ['淬毒連擊', { all: onP(P, { dmgPct: 20 }), fx: { double: 30, dblDot: 1 } }],
+      t: ['刀陣輪舞', { all: onP(P, { dmgPct: 60 }), bladeDrv: 1 }]
+    }
+  }),
+  pyro: () => ({
+    鳳凰涅槃: {
+      d: ['不滅之火', { fx: { phoenix: 6, phx2: 30 }, ic: 'sk_phoenix' }],
+      t: ['火鳥', { fx: { bird: 45 }, ic: 'sk_phoenix' }]
+    }
+  }),
+  cryo: P => ({
+    冰甲: {
+      d: ['永凍堡壘', { fx: { startBlock: 120, immFz: 1 }, iceBlk: 25 }],
+      t: ['碎冰之甲', { fx: { fzBlk: 20 }, all: onP(P, { freezeCh: 15 }) }]
+    }
+  }),
+  berserker: () => ({
+    諸神黃昏: {
+      d: ['永恆黃昏', { fx: { ragX: 1 }, ic: 'sk_berserk' }],
+      t: ['血之契約', { fx: { rag0: 2 }, ic: 'sk_berserk' }]
+    }
+  }),
+  storm: () => ({
+    連鎖閃電: {
+      d: ['雷霆網', { all: [{ tag: 'light', chainN: 2 }], chainChg: 1, chainPer: 8, ic: 'asc_storm_b0' }],
+      t: ['導電', { all: [{ tag: 'light', dmgPct: 60 }], conduct: 30, ic: 'asc_storm_b0' }]
+    }
+  }),
+  venom: () => ({
+    毒刺皮膚: {
+      d: ['劇毒甲殼', { fx: { startBlock: 150, hp: 120, thornsF: 6, thornsP: 2 }, thPer: 1 }],
+      t: ['蛻皮', { fx: { thornsF: 5, thornsP: 3, molt: 40 } }]
+    }
+  }),
+  knight: () => ({
+    鐵壁: {
+      d: ['不動如山', { fx: { arm: 18 }, armPer: 4 }],
+      t: ['荊棘鐵壁', { fx: { thornsF: 10 }, armTh: 70 }]
+    }
+  }),
+  alchemist: () => ({
+    萬能藥: {
+      d: ['藥劑大師', { potBuff: [90, 5, 40, 25], potAdj: 1 }],
+      t: ['投擲藥劑', { potThrow: 200 }]
+    }
+  }),
+  merchant: () => ({
+    鈔能力: {
+      d: ['富可敵國', { rich: 1, richX: 1 }],
+      t: ['一擲千金', { spendUp: 10 }]
+    }
+  }),
+  tamer: () => ({
+    進化: {
+      d: ['適者生存', { evolve: 4, fitPet: 50, ic: 'asc_tamer_c1' }],
+      t: ['突變', { mutate: 1, all: [{ tag: 'pet', dmgPct: 20 }], ic: 'asc_tamer_c1' }]
+    }
+  })
+};
+/* 0.1.101 這個核心的覺醒、質變（沒有就是空的） */
+const coreVars = id => ITEMS.filter(i => i.vof === id).map(i => i.id);
 function genCores() {
   const out = [];
   for (const C of CLASSES) {
-    const P = CORE_P[C.id] || ['weapon'];
-    CORE_MAIN[C.id](P).forEach(([n, d], k) =>
-      out.push({
+    const P = CORE_P[C.id] || ['weapon'],
+      V = CORE_VAR[C.id] ? CORE_VAR[C.id](P) : {};
+    CORE_MAIN[C.id](P).forEach(([n, d], k) => {
+      const base = {
         id: `c_${C.id}_${k}`,
         n: `${C.n}・${n}`,
         star: 5,
@@ -4052,8 +4137,25 @@ function genCores() {
         ...d,
         /* 0.1.51 重製過的核心自己指定圖示（icx：不用舊的 it_c_職業_編號 圖） */
         ...(d.ic ? { icx: 1 } : {})
-      })
-    );
+      };
+      out.push(base);
+      /* 0.1.101 覺醒（vk d）、質變（vk t）：vof 是原本的核心；圖示沿用原本的（畫面加標記） */
+      for (const vk of ['d', 't'])
+        if (V[n] && V[n][vk]) {
+          const [vn, vd] = V[n][vk];
+          out.push({
+            ...base,
+            ...Object.fromEntries(Object.keys(d).map(x => [x, undefined])),
+            ...vd,
+            id: base.id + vk,
+            n: `${C.n}・${vn}`,
+            vof: base.id,
+            vk,
+            ic: vd.ic || base.ic,
+            ...(vd.ic || base.icx ? { icx: 1 } : {})
+          });
+        }
+    });
     CORE_SUB.forEach(([n, f], k) =>
       out.push({
         id: `s_${C.id}_${k}`,
@@ -4907,6 +5009,18 @@ const MODN = {
   heat: v => `敵人每 5 層燃燒，攻速 -${pct(v)}（最多 -60%）`,
   thornsBurn: v => `被攻擊打中時讓攻擊者燃燒 ${v} 層`,
   phoenix: v => `生命低於 30% 時清掉自己的異常、回復「敵人燃燒層數 ×${v}」（一次）`,
+  /* 0.1.101 覺醒／質變 */
+  phx2: v => `生命低於 15% 時再涅槃一次；每次涅槃後所有武器傷害 +${v}%（整場，可以疊加）`,
+  bird: v => `開戰召喚火鳥（不佔格子）：每 2 秒啄一次，造成 ${v} 傷害、敵人燃燒 +2 層；敵人被點燃時每 1.2 秒一次`,
+  valkAt: v =>
+    `生命第一次低於 ${v}% 時化身女武神：傷害 +${VALK_DMG}%、攻速 +${VALK_SPD}%、免疫暈眩、凍結與冰緩（不會復活）`,
+  fzBlk: v => `凍結敵人的道具時獲得 ${v} 護盾`,
+  ragX: () =>
+    `生命第一次低於 ${RAGNA_AT}% 時發動諸神黃昏：${RAGNA_T * 2} 秒內免疫暈眩、凍結、冰緩與麻痺，攻速 +${RAGNA_SPD}%、傷害 +${RAGNA_DMG}%、吸血 ×3`,
+  rag0: v =>
+    `開戰就發動諸神黃昏（整場）：免疫暈眩、凍結、冰緩與麻痺，攻速 +${RAGNA_SPD}%、傷害 +${RAGNA_DMG}%、吸血 ×2；之後每秒失去 ${v}% 最大生命（不會因此倒下）`,
+  molt: v => `每少 10% 生命蛻皮一次：清掉自己的異常、獲得 ${v} 護盾、敵人中毒 +3 層`,
+  dblDot: () => '連擊的那一下，這把的中毒、流血再疊一次',
   charge: v => `命中時讓敵人 +${v} 電荷（滿 ${CHARGE_MAX} 層放電：${ZAP_DMG} 固定傷害、麻痺 ${ZAP_PARA} 層）`,
   palsy: () => `敵人麻痺滿 ${PARA_MAX} 層時暈眩 ${PALSY_STUN} 秒，然後麻痺清空`,
   overload: () => `放電改成要 ${OVERLOAD_N} 層電荷，但傷害 ×${OVERLOAD_MUL}，而且暈眩 ${OVERLOAD_STUN} 秒`,
@@ -5162,6 +5276,8 @@ function itemDesc(id, t = 1) {
     k = TIERM[t],
     out = [];
   if (it.d) return [it.d, preTxt(id, t)].filter(Boolean).join('；');
+  /* 0.1.101 覺醒、質變：先說會取代哪個核心（覺醒／質變的標記在三選一、圖鑑） */
+  if (it.vof) out.push(`取代原本的「${ITEMI[it.vof].n.split('・')[1]}」`);
   const o = onT(it, t);
   if (it.dmg) {
     const a = Math.round(it.dmg[0] * k),
@@ -5267,7 +5383,7 @@ function itemDesc(id, t = 1) {
         .map(([st, g]) => `、第 ${st} 階段起 +${g} 金`)
         .join('')}`
     );
-  if (it.rich) out.push(`開戰時身上的金幣越多越強（到哪一級就用那一級）：${RICHN.join('；')}`);
+  if (it.rich && !it.richX) out.push(`開戰時身上的金幣越多越強（到哪一級就用那一級）：${RICHN.join('；')}`);
   if (it.lotto) out.push('每回合第一次的商店價格打亂（0 金到 5★ 的價格都有可能），而且更常出高星級');
   if (it.early) out.push('合成到 Ⅱ 階就開一條隨機詞綴（本來要 Ⅲ 階）');
   if (it.lvOff) out.push(`背包升級費用 -${it.lvOff}%`);
@@ -5326,6 +5442,33 @@ function itemDesc(id, t = 1) {
   if (it.chaos) out.push('命中時隨機附加一種：燃燒 3 層、中毒 3 層、流血 4 層、虛弱、致盲、混亂 1 秒');
   if (it.capture) out.push(`打贏野怪、菁英時 ${it.capture}% 機率捕獲一隻寵物（星級照現在商店最高的，首領不行）`);
   if (it.evolve) out.push(`寵物在背包裡每待滿 ${it.evolve} 回合，自動升一階（最多 Ⅲ 階）`);
+  /* 0.1.101 覺醒／質變 */
+  if (it.kitePer) out.push(`背包裡每有 1 件有閃避的道具，閃避時的充能再 +${it.kitePer}%（最多 +60%）`);
+  if (it.perBlade)
+    out.push(`背包裡每有 1 件劍或矛，連擊機率 +${it.perBlade}%（最多 +40%）、連鎖追擊機率 +2%（最多 +16%）`);
+  if (it.iai) out.push(`劍、矛每第 ${it.iai[0]} 次出手，多打 ${it.iai[1]} 下`);
+  if (it.revShield) out.push(`背包裡每有 1 面盾，復活的生命 +${it.revShield}%`);
+  if (it.valhalla) out.push('復活時對敵人造成「所有盾的格擋值總和」傷害');
+  if (it.bladeDrv) out.push('匕首出手時，帶動一把相鄰的匕首跟著出手（每把每秒一次）');
+  if (it.iceBlk) out.push(`背包裡每有 1 件冰系道具，開戰護盾 +${it.iceBlk}`);
+  if (it.thPer) out.push('背包裡每有 1 件毒系道具，反彈時讓攻擊者多中毒 1 層');
+  if (it.armPer) out.push(`背包裡每有 1 件防具或盾，護甲 +${it.armPer}`);
+  if (it.armTh) out.push(`沒有護甲：護甲的 ${it.armTh}% 改成加進反彈的傷害`);
+  if (it.chainPer) out.push(`背包裡每有 1 件雷系道具，連鎖的傷害 +${it.chainPer}%`);
+  if (it.chainChg) out.push('連鎖每多打一下，敵人電荷 +1');
+  if (it.conduct) out.push(`雷系武器旁邊的其他武器：命中時電荷 +1、傷害 +${it.conduct}%`);
+  if (it.potAdj) out.push('喝藥水時，相鄰的武器馬上出手一次');
+  if (it.potThrow)
+    out.push(
+      `生命藥水不喝了：開戰 2 秒起每 3 秒丟向敵人一次（次數跟能喝的一樣），造成回復量 ${it.potThrow}% 的傷害、敵人中毒 +3 層`
+    );
+  if (it.richX)
+    out.push(
+      `開戰時身上的金幣越多越強（效果跟鈔能力一樣），門檻改成 ${RICH.map(([n]) => (n < 120 ? n + 10 : n)).join('／')} 金；120 金以上每多 20 金再升一級（所有武器傷害、攻速各 +5%，最多 10 級）`
+    );
+  if (it.spendUp) out.push(`拿到後買東西每淨花 ${it.spendUp} 金，所有武器傷害 +1%（整局累積，賣掉會扣回）`);
+  if (it.fitPet) out.push(`Ⅲ 階的寵物傷害 +${it.fitPet}%`);
+  if (it.mutate) out.push('每回合開始：沒有詞綴的寵物開一條詞綴，再隨機挑一隻還沒有 5★ 詞綴的寵物開一條');
   if (it.sisters)
     out.push(`背包裡矛和弓、弩一樣多（至少各 1 件）時，所有武器傷害 +${it.sisters[0]}%、攻速 +${it.sisters[1]}%`);
   if (it.defX) out.push(`所有防具、盾的效果 ×${it.defX}`);

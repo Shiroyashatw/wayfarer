@@ -1924,6 +1924,9 @@ function resultHTML(run) {
   const l = run.last;
   return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.hit ? `<p class="c-good">${l.ko ? '對手淘汰！' : `對手生命 -${l.hit}`}</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金${l.luck ? '（幸運 +2）' : ''}</p>` : ''}${l.capture && ITEMI[l.capture] ? `<p class="c-good">捕獲了${ITEMI[l.capture].n}！（放進暫存區）</p>` : ''}${l.spent ? `<p class="c-dim">金錢標花了 ${l.spent} 金</p>` : ''}<div class="g2"><button class="btn" data-act="log" data-k="${run.log.length ? run.log[run.log.length - 1].id : ''}">詳細</button><button class="btn pri" data-act="afterRes">繼續</button></div></div></div>`;
 }
+/* 0.1.101 覺醒／質變的戰鬥事件（sim 的 'cv'，x 是哪一種） */
+const CVTXT = { valk: '女武神之槍！', valh: '英靈殿', bird: '火鳥', molt: '蛻皮', pthrow: '投擲藥劑' },
+  CVCOL = { valk: '#ffe9a0', valh: '#ffe9a0', bird: '#ff9a5a', molt: '#9be27a', pthrow: '#9be27a' };
 function pickHTML(run) {
   const p = run.pend;
   const t = p.tier || 1;
@@ -1938,11 +1941,34 @@ function pickHTML(run) {
   return `<div class="ovl"><div class="dlg2"><b>${p.t}</b><div class="picks">${p.opts
     .map(
       id =>
-        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${t > 1 ? tierBadge(t) : ''}${ITEMI[id].core ? '' : shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${ITEMI[id].n}${t > 1 ? tierTxt(t) : ''}</b><small>${dsc(itemDesc(id, t))}</small></span></button>`
+        `<button class="pk s${ITEMI[id].star}" data-act="pick" data-k="${id}"><img src="${itemIcon(id)}" alt="">${t > 1 ? tierBadge(t) : ''}${ITEMI[id].core ? '' : shapeMini(id)}<span><b style="color:${STARC[ITEMI[id].star]}">${vkTag(run, id)}${ITEMI[id].n}${t > 1 ? tierTxt(t) : ''}</b><small>${dsc(ITEMI[id].vk === 'd' ? vkDesc(id) : itemDesc(id, t))}</small></span></button>`
     )
     .join(
       ''
     )}</div>${p.re != null ? `<button class="btn" data-act="pickRe" ${p.re > 0 ? '' : 'disabled'}>${p.re > 0 ? `刷新<small class="bnote">剩 ${p.re} 次</small>` : '刷新用完了'}</button>` : ''}</div></div>`;
+}
+/* 0.1.101 4-4 有覺醒、質變時，每個選項前面標「新核心／覺醒／質變」 */
+function vkTag(run, id) {
+  const I = ITEMI[id],
+    mc = I.core && mainCore(run);
+  if (!mc || !(run.pend.opts || []).some(k => ITEMI[k].vof)) return '';
+  const k = I.vk || 'n';
+  return `<em class="vkt vk-${k}">${{ n: '新核心', d: '覺醒', t: '質變' }[k]}</em>`;
+}
+/* 0.1.101 三選一裡的覺醒只寫多出來的：跟原本核心同一句（只差數字）的算「數值提高」，完整的在圖鑑與詳細說明 */
+function vkDesc(id) {
+  const seg = d => d.split(/[；、]/),
+    key = x => x.replace(/[\d.]+/g, '#'),
+    b0 = seg(itemDesc(ITEMI[id].vof)),
+    base = new Set(b0.map(key)),
+    v = seg(itemDesc(id)).slice(1),
+    add = v.filter(x => !base.has(key(x))),
+    up = v.some(x => base.has(key(x)) && !b0.includes(x));
+  const n = ITEMI[ITEMI[id].vof].n.split('・')[1];
+  /* 只有數字變了（永恆黃昏）、或原本的效果被換掉一部分（富可敵國）：照完整說明 */
+  const vk = new Set(v.map(key));
+  if (!add.length || b0.some(x => !vk.has(key(x)))) return itemDesc(id).split('；').slice(1).join('；');
+  return `保留「${n}」的效果${up ? '（數值提高）' : ''}，再加：${add.join('、')}`;
 }
 /* 0.1.7 開局職業三選一（可以刷新一次） */
 function clsHTML(run) {
@@ -2388,6 +2414,8 @@ function bLog(e, tg) {
   else if (e.k === 'revive') t = `${who(e.s)} ${e.ankh ? '安卡' : '女武神降臨'}！復活 ${e.v} 生命`;
   else if (e.k === 'summon') t = `${who(e.s)} 召喚${it(e.s, e.u) || '亞馬遜戰士'}`;
   else if (e.k === 'pinOut') t = `${who(e.s)} 拔出${who(tg)}身上的矛：撕裂`;
+  /* 0.1.101 覺醒／質變 */ else if (e.k === 'cv')
+    t = `${who(e.s)} ${CVTXT[e.x] || ''}${e.v ? ` → ${who(tg)} -${e.v}` : ''}`;
   /* 0.1.74 狂戰士 */ else if (e.k === 'ragna') t = `${who(e.s)} 諸神黃昏！${e.v} 秒內狂暴`;
   else if (e.k === 'undying') t = `${who(e.s)} 不死之怒！${e.v} 秒內不會倒下`;
   else if (e.k === 'rite') t = `${who(e.s)} 血祭 -${e.v}`;
@@ -2759,6 +2787,12 @@ function bTick() {
     } else if (e.k === 'pinOut') {
       bPop(tg, '拔矛・撕裂', '#ff3a5a', 1);
       bBurst(tg, '#ff3a5a', 8);
+    } else if (e.k === 'cv') {
+      /* 0.1.101 覺醒／質變：自己身上的（女武神、蛻皮）跳在自己，打人的跳在對手 */
+      const on = e.self ? e.s : tg;
+      bPop(on, `${CVTXT[e.x] || ''}${e.v ? ` ${e.v}` : ''}`, CVCOL[e.x] || '#ffe9a0', 1);
+      bBurst(on, CVCOL[e.x] || '#ffe9a0', 10, e.self ? 1 : 0);
+      if (e.x === 'valk') $('sp' + e.s)?.classList.add('valk');
     } else if (e.k === 'ragna' || e.k === 'undying') {
       /* 0.1.74 狂戰士：諸神黃昏、不死之怒 */
       bPop(e.s, e.k === 'ragna' ? '諸神黃昏！' : '不死之怒！', '#ff3a5a', 1);
@@ -3192,7 +3226,15 @@ const CX_SEC = {
           () =>
             `<div class="cxl">${ITEMS.filter(i => i.cls === C.id && i.core === 1)
               .map(i =>
-                cxRow('cxc_' + i.id, cxIt(i.id), i.n.split('・')[1], C.n + '・專屬核心', dsc(itemDesc(i.id)), ' s5')
+                cxRow(
+                  'cxc_' + i.id,
+                  cxIt(i.id),
+                  i.n.split('・')[1],
+                  /* 0.1.101 覺醒、質變排在原本的核心後面 */
+                  i.vof ? `${i.vk === 'd' ? '覺醒' : '質變'}「${ITEMI[i.vof].n.split('・')[1]}」` : C.n + '・專屬核心',
+                  dsc(itemDesc(i.id)),
+                  ' s5'
+                )
               )
               .join('')}</div>`
         )

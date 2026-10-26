@@ -648,6 +648,21 @@ function compileBag(bag, extra = {}) {
       execRend: 0,
       bzFury: 0,
       lsShield: 0,
+      /* 0.1.101 覺醒／質變：半血化身女武神、第二次涅槃、火鳥、凍結得護盾、黃昏加倍、開戰黃昏扣血、蛻皮、連擊疊異常、
+         連鎖傷害與電荷、投擲藥劑、喝藥水帶動相鄰武器（藥水 u → 武器 u）、英靈殿的傷害 */
+      valkAt: 0,
+      phx2: 0,
+      bird: 0,
+      fzBlk: 0,
+      ragX: 0,
+      rag0: 0,
+      molt: 0,
+      dblDot: 0,
+      chainPct: 0,
+      chainChg: 0,
+      potThrow: 0,
+      potAdj: null,
+      valhalla: 0,
       /* 0.1.37 格子：每件道具佔哪幾格（敵人的陷阱放在格子上） */
       grid: { w: bag.w, h: bag.h, at: Object.fromEntries(bag.items.map(o => [o.u, cellsOf(o)])) },
       /* 0.1.40 角色加成的來源：{ 加成: [道具 u…] } */
@@ -669,7 +684,18 @@ function compileBag(bag, extra = {}) {
   /* 0.1.20 相鄰與同一排先用格子表算好（原本每一對都重算一次格子，機器人評估時太慢） */
   const NB = new Map(),
     RW = new Map();
-  const NBQ = I => I.adj || I.row || I.tf || I.perAdj || I.perAdjF || I.hole || I.gear || I.chainAdj;
+  const NBQ = I =>
+    I.adj ||
+    I.row ||
+    I.tf ||
+    I.perAdj ||
+    I.perAdjF ||
+    I.hole ||
+    I.gear ||
+    I.chainAdj ||
+    I.conduct ||
+    I.bladeDrv ||
+    I.potAdj;
   if (its.some(o => NBQ(ITEMI[o.id]) || o.cu || o.bl)) {
     const g = bagGrid(bag);
     for (const o of bag.items) {
@@ -702,7 +728,12 @@ function compileBag(bag, extra = {}) {
     cnt = tag => its.filter(o => !o.vw && has(o, tag)).length;
   for (const [u, s] of tfm) add({ u }, scaleMod(ITEMI[s.id].tf.m, s.t));
   /* 0.1.35 鈔能力：照開戰時的金幣，所有武器加成、開戰護盾與封鎖 */
-  const RB = coreProp(its, 'rich') ? richOf(bag.gp || 0) : null;
+  /* 0.1.101 富可敵國：前三級的門檻 +10 金，120 金以上每多 20 金再升一級（傷害、攻速各 +5%，最多 10 級） */
+  const GP = bag.gp || 0,
+    RX = coreProp(its, 'richX'),
+    RB0 = coreProp(its, 'rich') ? richOf(RX && GP < 120 ? GP - 10 : GP) : null,
+    RL = RX && GP >= 120 ? Math.min(10, fl((GP - 120) / 20)) : 0,
+    RB = RB0 && RL ? { ...RB0, dmgPct: RB0.dmgPct + 5 * RL, spd: RB0.spd + 5 * RL } : RB0;
   if (RB) {
     const ru = its.find(o => defsOf(o).some(d => d.rich)).u;
     for (const q of its) if (has(q, 'weapon')) add(q, { dmgPct: RB.dmgPct || 0, spd: RB.spd || 0, crit: RB.crit || 0 });
@@ -774,6 +805,35 @@ function compileBag(bag, extra = {}) {
       (F.src.sisters = F.src.sisters || []).push(its.find(o => defsOf(o).some(d => d.sisters)).u);
     }
   }
+  /* 0.1.101 覺醒／質變（核心）：照背包內容加成 */
+  const cv = k => coreProp(its, k),
+    blades = its.filter(o => !o.vw && (has(o, 'sword') || has(o, 'spear'))).length;
+  if (cv('kitePer')) F.kite += Math.min(60, cv('kitePer') * bag.items.filter(o => ITEMI[o.id].dodge).length);
+  if (cv('perBlade')) (F.double += Math.min(40, cv('perBlade') * blades)), (F.triple += Math.min(16, 2 * blades));
+  if (cv('revShield')) F.revive += cv('revShield') * cnt('shield');
+  if (cv('iceBlk')) F.startBlock += cv('iceBlk') * cnt('cold');
+  if (cv('thPer')) F.thornsP += cv('thPer') * cnt('poison');
+  if (cv('armPer')) F.arm += cv('armPer') * (cnt('armor') + cnt('shield'));
+  if (cv('chainPer')) F.chainPct += cv('chainPer') * cnt('light');
+  if (cv('chainChg')) F.chainChg = 1;
+  /* 永恆黃昏：一樣會發動諸神黃昏（時間、吸血在 sim 看 ragX） */
+  if (F.ragX) F.ragna = Math.max(F.ragna, 1);
+  if (cv('potThrow')) F.potThrow = cv('potThrow');
+  if (cv('spendUp') && bag.sp)
+    for (const q of its) if (has(q, 'weapon')) add(q, { dmgPct: fl(bag.sp / cv('spendUp')) });
+  /* 導電：雷系武器旁邊的非雷系武器命中加電荷、傷害提升 */
+  if (cv('conduct'))
+    for (const s of bag.items)
+      if (ITEMI[s.id].dmg && has(s, 'light'))
+        for (const q of bag.items)
+          if (q !== s && ITEMI[q.id].dmg && !has(q, 'light') && adjQ(s, q))
+            add(q, { charge: 1, dmgPct: cv('conduct') });
+  /* 藥劑大師：每瓶藥水相鄰的武器 */
+  if (cv('potAdj')) {
+    F.potAdj = {};
+    for (const p of bag.items)
+      if (ITEMI[p.id].pot) F.potAdj[p.u] = bag.items.filter(q => ITEMI[q.id].dmg && adjQ(p, q)).map(q => q.u);
+  }
   /* 0.1.62 主題道具：self（這件自己）、perAdj／perAdjF（每有 1 件相鄰道具）、hole（巨人國：凹口裡的道具）、
      gear（機關城齒輪：相鄰武器出手時其他相鄰武器充能）、chainAdj（連鎖機關：相鄰武器出手時帶動另一件相鄰武器） */
   const GEAR = new Map(),
@@ -813,6 +873,13 @@ function compileBag(bag, extra = {}) {
       }
     }
   }
+  /* 0.1.101 刀陣輪舞：匕首出手時帶動一把相鄰的匕首（跟連鎖機關一樣，每把每秒一次） */
+  if (cv('bladeDrv'))
+    for (const o of bag.items) {
+      if (!ITEMI[o.id].dmg || !has(o, 'dagger')) continue;
+      const nb = bag.items.filter(q => q !== o && ITEMI[q.id].dmg && has(q, 'dagger') && adjQ(o, q)).map(q => q.u);
+      if (nb.length) DRV.set(o.u, [...new Set([...(DRV.get(o.u) || []), ...nb])]);
+    }
   /* 0.1.69 棋盤王國：棋子照走法加成碰到的道具；被影響的棋盤武器（pcHit）每個棋子再加成 */
   const PCH = pcTargets(bag);
   for (const [pu, us] of PCH) {
@@ -1087,6 +1154,15 @@ function compileBag(bag, extra = {}) {
   const pets = F.weapons.filter(w => w.pet && !w.vw),
     mulD = (w, k) => (w.dmg = w.dmg.map(v => Math.round(v * k)));
   if (F.petGrow) for (const w of pets) if (w.gw) mulD(w, 1 + (F.petGrow * Math.min(10, w.gw)) / 100);
+  /* 0.1.101 適者生存：Ⅲ 階的寵物傷害提升 */
+  if (cv('fitPet')) for (const w of pets) if (w.t >= TIER_MAX) mulD(w, 1 + cv('fitPet') / 100);
+  /* 0.1.101 居合：劍、矛每第 N 次出手多打幾下 */
+  const IAI = its.flatMap(defsOf).find(d => d.iai);
+  if (IAI)
+    for (const w of F.weapons)
+      if (!w.nth && TG.get(w.u) && TG.get(w.u).some(t => t === 'sword' || t === 'spear')) w.nth = IAI.iai;
+  /* 0.1.101 英靈殿：復活時對敵人造成所有盾的格擋值總和 */
+  if (cv('valhalla')) F.valhalla = F.shields.reduce((n, x) => n + x.block, 0);
   if (F.giant && pets.length && pets.length <= 2) {
     for (const w of pets) mulD(w, 2.5);
     F.hp += 80;
@@ -1102,6 +1178,8 @@ function compileBag(bag, extra = {}) {
   /* 0.1.69 塔羅・死神：獻祭換來的永久生命 */
   if (bag.hpx) F.hp += bag.hpx;
   /* 0.1.33 審判：每把武器的傷害 +護甲值 */
+  /* 0.1.101 荊棘鐵壁：護甲全部拿掉，armTh% 變成反彈 */
+  if (cv('armTh')) (F.thornsF += Math.round((F.arm * cv('armTh')) / 100)), (F.arm = 0);
   if (F.armDmg && F.arm > 0) for (const w of F.weapons) w.dmg = w.dmg.map(v => v + F.arm);
   if (F.potMul || F.potUse) F.pots.forEach(p => ((p.v = Math.round(p.v * (1 + F.potMul / 100))), (p.n += F.potUse)));
   F.dodge = Math.min(40, F.dodge);
@@ -1276,6 +1354,8 @@ const packBag = bag => ({
     : {}),
   ...(bag.hpx ? { hx: bag.hpx } : {}),
   ...(bag.sin ? { sn: 1 } : {}),
+  /* 0.1.101 一擲千金：拿到後花掉的金幣 */
+  ...(bag.sp ? { sp: bag.sp } : {}),
   it: bag.items.map(packIt)
 });
 const unpackIt = (a, u) => ({
@@ -1314,6 +1394,7 @@ const unpackBag = p => ({
   ...(tarOf(p.tar) ? { tar: p.tar, tarN: p.tn || 0 } : {}),
   ...(p.hx ? { hpx: p.hx } : {}),
   ...(p.sn ? { sin: 1 } : {}),
+  ...(p.sp ? { sp: p.sp } : {}),
   items: (p.it || []).filter(a => ITEMI[a[0]]).map((a, i) => unpackIt(a, 'g' + i))
 });
 /* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */

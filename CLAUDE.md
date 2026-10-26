@@ -67,6 +67,8 @@
 | `tools/check.js` | 固定檢查：每個賽制整局跑（機器人代打）＋不變量；`--modes`、`--games`、`--golden`（重構前後比對）；有 ❌ 時結束碼 1 |
 | `tools/pools.js` | 道具池：檢查每個主題、每類職業武器 1～5★ 都有、武器只屬於一個主題、基本池沒有武器；`--write` 寫 `docs/道具池.md`（分配表在 `items.js` 的 `POOLS`、新道具的 `th`） |
 | `tools/stats.js` | 統計（skill `stats`）：機器人對局裡每件商店道具的購買率、對口職業購買率、持有率、名次，冷門／熱門道具，職業 × 賽制的名次；`--jobs` 平行、`--mode`、`--item`、`--save`／`--diff`（改數值前後比較）、`--write` 寫到 `docs/道具統計.md` |
+| `tools/core_var.js` | 核心的覺醒／質變強度：同一個背包換成「原本＋新核心／覺醒／質變」比勝率、機器人 4-4 怎麼選（`docs/質變核心.md`） |
+| `tools/branch_base.js` | 0.2 規格書的基準：撞職業的名次差、同職業背包相似度、2-5 核心有沒有改變買法 |
 | `tools/pve_check.js` | Node 版 PvE 勝率與對戰秒數：`node tools/pve_check.js 局數 q [MOB_HP] [MOB_DMG]` |
 | `tools/icon_check.py` | 圖示對照：每件道具的圖示原本畫的是什麼（讀 `docs/提示詞封存.md` 等提示詞），輸出 `docs/圖示對照.md` 與候選圖示；加關鍵字只列相關的（skill `icon-check`） |
 | `tools/codemap.py` | 重新產生 `docs/CODEMAP.md` 的區段大綱與 `docs/SYMBOLS.txt`（檔案照 `index.html` 的順序），並檢查 CODEMAP 裡失效的名稱 |
