@@ -35,7 +35,7 @@
 | 排版整理（0.1.88）：投降確認、標題列拿掉音效外觀、怎麼玩摺疊、設定打勾、對話框 ✕ | `js/ui.js`、`css/style.css` | `A.menu`、`showDlg`（按鈕第三個值是 class）、`dlgX`、`helpHTML`（`details.more`、`.hl`）、`pickHTMLs`（`.pkb[aria-pressed]`）、`.btn.danger`、`.dlgx` |
 | 準備畫面減少雜訊、電腦版首頁／戰鬥／結束／設定（0.1.89） | `js/ui.js`、`css/style.css` | `stageDots`（`.sdots`）、`infoRowHTML` 的 `.sinfo`（`.sgc.z`）、商店 `.sc` 的 `aria-label`、`.home.endp`、`.page.set`；CSS「0.1.89」那幾段 |
 | 道具動畫、數字滾動、商店價格顏色（0.1.90） | `js/ui.js`、`css/style.css` | `fxSnap`、`itemFx`、`flyImg`、`pop`、`goldEl`、`FXA`（`click` 分派裡呼叫）、`tick`（`V.num`）、`land` 的賣掉飛進金幣；CSS `.fly`、`.sc b` |
-| 玩家等級、解鎖賽制道具池、標準賽制回來（0.1.92） | `js/data.js`、`js/run.js`、`js/main.js`、`js/ui.js` | `XP_PLACE`、`lvNeed`、`DEF_PICK`、`UNLOCK`、`lvInfo`、`unlockLv`（data）；`pickOf`、`endRun` 的經驗（run）；`migrate` 的 v101（main）；`lvHTML`、`xpHTML`、`unlockName`、`myLv`、`pickAll`／`pickNow`／`pickHTMLs`、`A.pickTog`（ui） |
+| 玩家等級、解鎖賽制道具池（0.1.96 先不鎖）、標準賽制回來（0.1.92） | `js/data.js`、`js/run.js`、`js/main.js`、`js/ui.js` | `XP_PLACE`、`lvNeed`、`DEF_PICK`、`UNLOCK`、`lvInfo`、`unlockLv`（data）；`pickOf`、`endRun` 的經驗（run）；`migrate` 的 v101（main）；`lvHTML`、`xpHTML`、`unlockName`、`myLv`、`pickAll`／`pickNow`／`pickHTMLs`、`A.pickTog`（ui） |
 | 教學關（0.1.92） | `js/ui.js`、`js/run.js`、`css/style.css` | `tutStart`、`tutPrep`、`coachStep`、`coachFx`、`tutDoneHTML`、`A.tutStart`／`A.tutEnd`、`run.tutor`、首頁的「開始教學」；`finishFight` 沒對手不算贏（run）；CSS `.coach`、`.cspot`、`.cbub` |
 | 說明文字風格統一、異常白話說明、說明一個效果一行（0.1.93） | `js/items.js`、`js/ui.js`、`.claude/skills/item-text/` | `ailx`、`MODN`、`PREN`、`itemDesc`（`selfT`）、`JOIN_P`（items）；`descLines`（`.dls`）、`CX_AIL`（ui）；說明檢查 `.claude/skills/item-text/audit.js` |
 | 機器人分主題參數、估價看位置（0.1.79） | `js/bot.js`、`tools/bot_train.js` | `BOT_PT`、`botPT`、`botTry` 的 `P.posEval`、`BOT_SPOTS_EVAL`、`botPosI`／`botPosBag`、`botBestSpot(…, N)`；`bot_train.js --theme` |
@@ -137,7 +137,7 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（750 行）
+### js/data.js（744 行）
 
 - **一局**（5），61 個宣告
 
@@ -197,7 +197,7 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（110），7 個宣告
 
-### js/news.js（614 行）
+### js/news.js（621 行）
 
 
 ### js/ui.js（4548 行）

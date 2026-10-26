@@ -708,7 +708,7 @@ function firstStep(run) {
 /* 到 1-4：完成 */
 function tutDoneHTML(run) {
   if (!run.tutor || curRound(run).id !== '1-4') return '';
-  return `<div class="ovl"><div class="dlg2 tutd"><b class="big">教學完成！</b><ul class="mrules"><li>正式對戰 6 人一場（其他玩家的背包快照或電腦），生命 ${START_HP}，輸了扣血、歸零淘汰，活到最後是第 1 名</li><li>第 2 階段起會跟其他玩家的背包對打，每階段有首領掉職業核心</li><li>每場打完拿經驗，升級解鎖新的賽制和道具池（到設定打開）</li></ul><button class="btn pri big" data-act="tutEnd" data-k="play">開始正式對戰</button><button class="btn" data-act="tutEnd" data-k="home">回首頁</button></div></div>`;
+  return `<div class="ovl"><div class="dlg2 tutd"><b class="big">教學完成！</b><ul class="mrules"><li>正式對戰 6 人一場（其他玩家的背包快照或電腦），生命 ${START_HP}，輸了扣血、歸零淘汰，活到最後是第 1 名</li><li>第 2 階段起會跟其他玩家的背包對打，每階段有首領掉職業核心</li><li>每場打完拿經驗升級；想玩其他賽制和道具池，到設定打開</li></ul><button class="btn pri big" data-act="tutEnd" data-k="play">開始正式對戰</button><button class="btn" data-act="tutEnd" data-k="home">回首頁</button></div></div>`;
 }
 function tutHTML() {
   if (S.tut >= 3 || (S.run && S.run.tutor)) return '';
@@ -3108,7 +3108,7 @@ function helpHTML() {
   <details class="more"><summary>戰鬥<small>全自動，打久了進入疲勞</small></summary><p>完全自動：每件武器照自己的冷卻出手，盾定時格擋，藥水在生命低的時候喝。${FATIGUE_T} 秒後進入疲勞，雙方受到的傷害越來越高，一定分出勝負。</p></details>
   <details class="more"><summary>異常狀態<small>燃燒、中毒、暈眩…各自的效果</small></summary><p>燃燒、中毒、流血、劇毒每秒扣血（劇毒不會退、×2）；點燃讓燃燒越燒越多；破甲扣護甲；凍結讓一件道具 6 秒不能充能、冰緩讓它充能減半；暈眩不能動；虛弱傷害 -25%；致盲 30% 打不中；衰老不能暴擊；腐蝕不能獲得護盾（改成扣血）；混亂一半打到自己。</p></details>
   <details class="more"><summary>陷阱<small>核心放進敵人背包的陷阱</small></summary><p>有些核心會在開戰時把陷阱放進敵人背包的格子（含空格），那格的道具每次出手都會觸發。戰鬥時有陷阱的道具右上角有紅點。</p></details>
-  <details class="more"><summary>玩家等級<small>每場打完拿經驗，升級解鎖賽制和道具池</small></summary><p>第一次玩只有「標準」賽制和「巨人國」道具池。每場打完照名次拿經驗（第 1 名 ${XP_PLACE[1]}、第 2 名 ${XP_PLACE[2]}…），每 5 級解鎖一個新的賽制、每 10 級解鎖一個道具池，解鎖後到設定打開才會出現在開場轉盤，大約 60 場全部解鎖。</p></details>
+  <details class="more"><summary>玩家等級<small>每場打完拿經驗</small></summary><p>每場打完照名次拿經驗（第 1 名 ${XP_PLACE[1]}、第 2 名 ${XP_PLACE[2]}…）升級。第一次玩預設「標準」賽制和「巨人國」道具池，其他的到設定打開就會出現在開場轉盤。</p></details>
   <details class="more"><summary>對手<small>其他玩家留下的背包快照</small></summary><p>對戰的對手是其他玩家在同一回合留下的背包快照，不用等人上線。沒有真人時由機器人補位。</p></div></details>`;
 }
 function settingsHTML() {
@@ -3138,7 +3138,7 @@ function settingsHTML() {
   <h3>新手教學</h3><button class="btn" data-act="tutStart">重玩教學關</button>
   <p class="sub ver">塞令老師 v${VER}${GHOST.off ? '・快照對戰離線（用機器人對手）' : ''}</p></div>`;
 }
-/* 0.1.77 設定：要玩哪些賽制、道具池；0.1.92 沒選過是預設（標準＋巨人國），其他照玩家等級解鎖（UNLOCK），解鎖後自己打開 */
+/* 0.1.77 設定：要玩哪些賽制、道具池；0.1.92 沒選過是預設（標準＋巨人國）；0.1.96 先不鎖，全部可以自己打開 */
 const PICK_MIN = { m: 1, t: 1 },
   myLv = () => lvInfo(S.xp).lv,
   pickAll = k =>
@@ -3147,7 +3147,7 @@ const PICK_MIN = { m: 1, t: 1 },
 function pickHTMLs() {
   const grp = (k, title, list) => {
     const on = pickNow(k);
-    return `<h3>${title}<small class="c-dim">・開了 ${on.length}／解鎖 ${pickAll(k).length}</small></h3><div class="seg3 pkg">${list
+    return `<h3>${title}<small class="c-dim">・開了 ${on.length}／${pickAll(k).length}</small></h3><div class="seg3 pkg">${list
       .map(([c, n, ic]) => {
         const L = unlockLv(k, c),
           im = artIconURL(ic) ? `<img src="${artIconURL(ic)}" alt="">` : '';
@@ -3165,7 +3165,7 @@ function pickHTMLs() {
     't',
     '要玩的道具池',
     POOLTH.map(x => [x.k, x.n, x.ic])
-  )}<p class="sub">開場轉盤只會抽你打開的；配對也照抽到的賽制＋道具池找對手。玩家等級升級會解鎖新的。${['m', 't'].some(k => pickAll(k).some(v => !pickNow(k).includes(v))) ? '<button class="btn sm" data-act="pickAll">已解鎖的全部打開</button>' : ''}</p>`;
+  )}<p class="sub">開場轉盤只會抽你打開的；配對也照抽到的賽制＋道具池找對手。每類至少選 1 個。${['m', 't'].some(k => pickAll(k).some(v => !pickNow(k).includes(v))) ? '<button class="btn sm" data-act="pickAll">全部打開</button>' : ''}</p>`;
 }
 /* ================= 動作 ================= */
 function audioOn() {
