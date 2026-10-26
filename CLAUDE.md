@@ -17,8 +17,8 @@
 - 圖：道具圖示的 PixelLab 提示詞在 `docs/圖示提示詞.md`（只留還沒產的；做完的在 `docs/提示詞封存.md`），怪物在 `docs/怪物提示詞.md`，玩家選的頭像（4×4 大圖、每格 64×64）在 `docs/頭像圖表.md`，塔羅牌卡圖（64×64）在 `docs/塔羅牌圖表.md`；新增圖用 skill `pixel-art`。
 - 說明文字：新增或修改道具、核心、職業、異常、機制後用 skill `item-text`：照規則改產生器（`items.js` 的 `MODN`／`PREN`／`itemDesc`）、百科（`ui.js` 的 `CX_AIL`／`CX_STAT`），跑 `node .claude/skills/item-text/audit.js` 沒有問題才交差。
 - 圖示：新增道具或借用圖示（`ic`）後用 skill `icon-check`：`python3 tools/icon_check.py` 產生 `docs/圖示對照.md`（名字 ↔ 圖示原本畫的東西），對不上就換圖示或改名字。
-- 機器人：新增道具、體系、機制或改經濟、戰鬥規則後用 skill `bot-ai`：確認 `js/bot.js` 的 `botPower` 有算到新東西，`node tools/bot_train.js --iters 30 --lobbies 40 --write` 重新訓練，再重傳種子。
-- 種子與快照：要上版而且改了道具、核心、職業、回合表、經濟或機器人時用 skill `ghost-seed`（判斷要不要換 `GVER`、push 上線後在瀏覽器重傳種子、到資料庫確認）。
+- 機器人：新增道具、體系、機制或改經濟、戰鬥規則後用 skill `bot-ai`：確認 `js/bot.js` 的 `botPower` 有算到新東西，`node tools/bot_train.js --iters 30 --lobbies 40 --write` 重新訓練。
+- 快照版本：要上版而且改了道具、核心、職業、回合表、經濟時用 skill `ghost-seed` 判斷要不要換 `GVER`。**0.1.101 起不再上傳機器人種子**：沒有真人快照時一律打即時機器人（`ghostRivals` 不夠就機器人補位）。
 - 檢查：改了遊戲邏輯（道具、核心、賽制、經濟、戰鬥、商店、合成、快照格式）都跑 `node tools/check.js`（整局模擬＋不變量：買了馬上賣不會賺、沒有 NaN、格子不重疊、快照還原一樣），沒有 ❌ 才交差；重構前後用 `--golden` 比對結果要一模一樣。
 - 賽制：新增或修改賽制用 skill `new-mode`。賽制的差別只透過 `run.js` 的 `MODEH`（規則掛勾）和 `ui.js` 的 `MODEUI`（畫面），不要再寫 `run.mode === '…'`。
 - 道具池：新增道具要決定它在哪個池（主題專屬寫 `th: 'g'／'f'／'m'`，舊道具改 `items.js` 的 `POOLS`；基本池 `b` 只放功能、反制道具，武器每件只屬於一個主題），改完跑 `node tools/pools.js --write`。
@@ -86,7 +86,7 @@ python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 ## Supabase
 - 專案 ref：`eugkdfhkoaxvqhztvptc`，URL `https://eugkdfhkoaxvqhztvptc.supabase.co`
 - 資料表 `public.saves`（user_id、data jsonb、game_version、updated_at），RLS 只允許本人讀寫。
-- 快照對戰：`public.runs`（`ver` 存的是快照版本 `GVER`，不是遊戲版本；回合表或道具改到舊快照不能用時才換 `GVER`，換了要重產種子）、`public.snaps`（大家可讀、只能寫自己的）、RPC `pick_rivals`；SQL 在 `supabase/migrations/20261022000000_serling_ghosts.sql`。資料表不存在時遊戲自動改用機器人對手（`GHOST.off`）。開服種子：在瀏覽器主控台執行 `seedGhosts()`（skill `ghost-seed`），產生 648 局機器人對局（0.1.92 標準賽制加回後；全部是最高牌階 2100 的機器人，54 種賽制 × 主題各 2 場、13 個職業輪流；分數相近的快照不夠時配對會用 2100 再找一次）上傳成 `runs.seed = true`；配對只配同一個賽制＋主題（0.1.69，`runs.mode`／`theme`、RPC `pick_rivals_mt`，SQL 在 `supabase/migrations/20261025000000_serling_mode_theme.sql`，要在 SQL Editor 跑過），真人優先，真人夠多後可用 `delete from public.runs where seed;` 刪掉。
+- 快照對戰：`public.runs`（`ver` 存的是快照版本 `GVER`，不是遊戲版本；回合表或道具改到舊快照不能用時才換 `GVER`）、`public.snaps`（大家可讀、只能寫自己的）、RPC `pick_rivals`；SQL 在 `supabase/migrations/20261022000000_serling_ghosts.sql`。資料表不存在時遊戲自動改用機器人對手（`GHOST.off`）。舊的開服種子（0.1.101 起不再上傳；`seedGhosts()` 留著但不要再跑）： 648 局機器人對局（0.1.92 標準賽制加回後；全部是最高牌階 2100 的機器人，54 種賽制 × 主題各 2 場、13 個職業輪流；分數相近的快照不夠時配對會用 2100 再找一次）上傳成 `runs.seed = true`；配對只配同一個賽制＋主題（0.1.69，`runs.mode`／`theme`、RPC `pick_rivals_mt`，SQL 在 `supabase/migrations/20261025000000_serling_mode_theme.sql`，要在 SQL Editor 跑過），真人優先，真人夠多後可用 `delete from public.runs where seed;` 刪掉。
 - 排行榜（0.1.29）：`runs.cls`、`runs.rating_end`、RPC `leaderboard`／`class_stats`，SQL 在 `supabase/migrations/20261023000000_serling_leaderboard.sql`（要在 SQL Editor 跑過才有資料；沒跑時首頁職業勝率改用自己的對局）。
 - 核心統計（0.1.45）：`runs.core1`／`core2`／`core_log`（首領核心三選一紀錄）、RPC `core_stats`／`core_combo_stats`，SQL 在 `supabase/migrations/20261024000000_serling_core_stats.sql`（要在 SQL Editor 跑過才會存）；瀏覽器主控台 `await coreStatsCloud()` 看真人的選擇率與組合（`coreStatsCloud(true)` 連種子一起算）。
 - 詳細統計（0.1.77）：RPC `class_stats_mt`、`core_stats_mt`（照賽制、道具池篩選），SQL 在 `supabase/migrations/20261026000000_serling_mode_stats.sql`（已套用）。
