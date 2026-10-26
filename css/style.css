@@ -406,6 +406,7 @@ button.gold{border:0;background:none;padding:6px 0;margin:-6px 0;cursor:pointer;
 .lgb b{font-size:var(--fs-sm)}
 .lgb span>i{display:block;height:6px;border-radius:3px;background:var(--hp-track);overflow:hidden}
 .lgb span>i>i{display:block;height:100%;background:var(--accent)}
+.lgb.lgx span>i>i{background:var(--s4)}
 .lgb em{font-style:normal;font-family:var(--f-pix);font-size:var(--fs-btn);color:var(--gold)}
 .lgd .bagwrap{justify-self:center}
 /* 0.1.99 戰報分頁：三個切換鈕、可以點的傷害長條（點了在背包亮出那件）、全部場次裡這一場標出來 */
@@ -750,6 +751,7 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .fab.sel{background:var(--fill-hi)}
 .fab .fbg,.rtag .fbg{position:absolute;top:-6px;left:-6px;min-width:20px;height:20px;padding:0 3px;border-radius:999px;background:var(--gold);color:#201b17;font-style:normal;font-size:var(--fs-cap);font-weight:700;line-height:20px;text-align:center}
 .fab .fbg.rvs,.rtag .fbg.rvs{background:var(--s4);color:#fff}
+.fab .fbg.ok{background:var(--good);color:#fff}.fab .fbg.no{background:var(--fill-hi);color:var(--dim);box-shadow:0 0 0 1px var(--line)}
 .rlh .tcard.sm,.rlh .tno.sm{width:28px;height:28px;flex:none}
 #modal .rivals.n5{grid-template-columns:1fr;gap:var(--sp-2)}
 #modal .rivals .rv,#modal .rivals.n5 button.rv{flex-direction:row;gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);text-align:left;min-height:52px}
@@ -825,6 +827,7 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 /* 0.1.96 七宗罪：貪婪的萬能牌加在哪一組（羈絆列）、王冠角標；黃道的星河光帶、成形時的流星 */
 .syi.wild{position:relative}.syi.wild em{position:absolute;right:-4px;top:-6px;padding:0 2px;border-radius:4px;background:#e6b84a;color:#201b17;font-size:9px;font-style:normal;font-weight:700;line-height:12px}
 .cbr>.buf.cr{width:auto;padding:0 2px;color:#ffd76a}
+.cbr>.buf.gt{color:var(--good)}
 .bag .rvb{position:absolute;z-index:3;pointer-events:none;border-radius:3px;opacity:.45;background:linear-gradient(90deg,#9ad0ff,#ffd76a,#ff9ad0)}
 .bag .rvb.h{height:6px;margin-top:-3px}.bag .rvb.v{width:6px;margin-left:-3px;background:linear-gradient(180deg,#9ad0ff,#ffd76a,#ff9ad0)}
 .bag.hassel .rvb{opacity:.3}

@@ -1197,21 +1197,56 @@ function startFight(run) {
   return { r, opp, me, res };
 }
 /* 0.1.12 戰鬥紀錄：秒數、造成與受到的傷害、傷害最高的 5 件、對手的背包（對戰才有）、圖 */
+/* 0.1.x 不是道具命中的傷害（異常、反傷、陷阱⋯）照種類記，戰報跟道具一起排（id 是 '#種類'，ui 的 LGX 給名字和圖示） */
+const DMGK = [
+  'hit',
+  'crit',
+  'dot',
+  'thorns',
+  'fatigue',
+  'trap',
+  'corrode',
+  'boom',
+  'rain',
+  'zap',
+  'bolt',
+  'cv',
+  'flash',
+  'meteor',
+  'combust',
+  'burnout'
+];
+const dmgKey = e =>
+  (e.k === 'hit' || e.k === 'crit') && e.u
+    ? e.u
+    : '#' +
+      (e.k === 'dot'
+        ? e.el === 'fire'
+          ? 'burn'
+          : e.el
+        : e.k === 'cv'
+          ? e.x
+          : ['flash', 'combust', 'burnout'].includes(e.k)
+            ? 'burn'
+            : e.k === 'crit'
+              ? 'hit'
+              : e.k);
 function fightSum(run, fb) {
   const { res, opp } = fb,
-    by = {};
+    by = [{}, {}];
   let dealt = 0,
     taken = 0;
   for (const e of res.ev) {
-    if (!['hit', 'crit', 'dot', 'thorns', 'fatigue', 'trap', 'corrode', 'boom', 'rain'].includes(e.k)) continue;
-    if (e.s === 0) {
-      dealt += e.v;
-      if (e.u && (e.k === 'hit' || e.k === 'crit')) by[e.u] = (by[e.u] || 0) + e.v;
-    } else taken += e.v;
+    if (!DMGK.includes(e.k) || !e.v) continue;
+    if (e.s === 0) dealt += e.v;
+    else taken += e.v;
+    const b = by[e.s ? 1 : 0],
+      k = dmgKey(e);
+    b[k] = (b[k] || 0) + e.v;
   }
   /* 0.1.21 整局累計：每件道具（照種類）造成的傷害，一局結束存進對局紀錄 */
   run.dmg = run.dmg || {};
-  for (const [u, v] of Object.entries(by)) {
+  for (const [u, v] of Object.entries(by[0])) {
     const o = run.bag.items.find(q => q.u === u);
     if (!o) continue;
     const d = (run.dmg[o.id] = run.dmg[o.id] || [o.id, o.t, 0]);
@@ -1219,33 +1254,22 @@ function fightSum(run, fb) {
     d[2] += v;
   }
   /* 0.1.60 對手那邊每件道具的傷害（對手有背包才有；怪物沒有）、你這場的背包（戰鬥紀錄左右對照） */
-  const ob = {};
-  if (opp.bag)
-    for (const e of res.ev) if (e.s === 1 && e.u && (e.k === 'hit' || e.k === 'crit')) ob[e.u] = (ob[e.u] || 0) + e.v;
-  const otop = opp.bag
-    ? Object.entries(ob)
-        .map(([u, v]) => {
-          const o = opp.bag.items.find(q => q.u === u);
-          return o ? [o.id, o.t, v] : null;
-        })
-        .filter(Boolean)
-        .sort((a, b) => b[2] - a[2])
-        .slice(0, 5)
-    : null;
-  const top = Object.entries(by)
-    .map(([u, v]) => {
-      const o = run.bag.items.find(q => q.u === u);
-      return o ? [o.id, o.t, v] : null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => b[2] - a[2])
-    .slice(0, 5);
+  const rank = (b, bag) =>
+    Object.entries(b)
+      .map(([u, v]) => {
+        if (u[0] === '#') return [u, 0, v];
+        const o = bag && bag.items.find(q => q.u === u);
+        return o ? [o.id, o.t, v] : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b[2] - a[2])
+      .slice(0, 8);
   return {
     t: Math.round(res.t * 10) / 10,
     dealt,
     taken,
-    top,
-    otop,
+    top: rank(by[0], run.bag),
+    otop: opp.bag ? rank(by[1], opp.bag) : null,
     spr: opp.spr,
     ob: opp.bag ? packBag(opp.bag) : null,
     mb: packBag(run.bag)

@@ -73,7 +73,8 @@ const rfSnap = run => ({
   wild: synView(run.bag).wild.join(),
   riv: rivers(run.bag).map(R => R.a.u + R.b.u),
   pity: run.shop.map((x, i) => (x && x.pity ? i + x.id : '')).join(''),
-  pn: run.pityNote ? run.pityNote.id + run.pityNote.k : ''
+  pn: run.pityNote ? run.pityNote.id + run.pityNote.k : '',
+  gnt: (petFx(run.bag) || {}).giant
 });
 function ruleFx(run) {
   const was = V.rf,
@@ -103,6 +104,27 @@ function ruleFx(run) {
   if (now.wild && now.wild !== was.wild) wildFx(now.wild.split(',').map(Number));
   /* 0.1.96 新的星河：流星從一端劃到另一端，河旁邊提示 */
   for (const R of rivers(run.bag)) if (!was.riv.includes(R.a.u + R.b.u)) riverFx(R);
+  /* 巨獸化：寵物數量剛好進到 1～2 隻時，寵物和核心彈一下；超過就提示失效 */
+  if (now.gnt && !was.gnt) {
+    snd('select');
+    for (const u of petFx(run.bag).gu) pop(elOf(u));
+    pop($q('.fab.core'));
+    hint($q('.fab.core'), '巨獸化：寵物傷害 ×2.5、生命 +80', 'giant');
+  } else if (now.gnt === false && was.gnt) hint($q('.fab.core'), `寵物超過 2 隻，巨獸化失效`, 'giant0');
+}
+/* 馴獸師的條件式核心：巨獸化（只有 1～2 隻寵物，跟 bag.js 同一套算法）、獸群首領（最強那隻）；準備畫面標在寵物和核心上 */
+function petFx(bag) {
+  if (!bag.core) return null;
+  const F = compileBag(bag);
+  if (!F.giant && !F.alpha) return null;
+  const pets = F.weapons.filter(w => w.pet && !w.vw),
+    on = F.giant && pets.length >= 1 && pets.length <= 2;
+  return {
+    n: pets.length,
+    giant: F.giant ? on : null,
+    gu: on ? pets.map(w => w.u) : [],
+    top: (pets.find(w => w.alpha) || {}).u
+  };
 }
 /* 0.1.87 震動跟音效同一格發生（手機支援 navigator.vibrate 才有）：只給放好、買、合成、錯誤這幾個有意義的時刻 */
 const HAPT = { select: 8, coin: 12, level: [12, 60, 18], nope: [10, 40, 10] };
@@ -791,6 +813,7 @@ function bagHTML(bag, cs, opt = {}) {
       h += `<i class="rvb${hz ? ' h' : ' v'}" data-rv="${R.a.u + R.b.u}" style="left:${ax * st + cs / 2}px;top:${ay * st + cs / 2}px;${hz ? `width:${(bx - ax) * st}px` : `height:${(by - ay) * st}px`}"></i>`;
     }
   const crown = opt.mini ? null : crownOf(bag),
+    pf = opt.mini ? null : petFx(bag),
     st = new Set(opt.stage ? (bag.st || []).map(o => o.u) : []);
   for (const o of [...bag.items, ...(opt.stage ? bag.st || [] : [])]) {
     const I = ITEMI[o.id],
@@ -835,6 +858,8 @@ function bagHTML(bag, cs, opt = {}) {
         o,
         (opt.tar && opt.tar.has(o.u) ? `<b class="buf tr">${TAROTI[tarOf(bag.tar).T.k]}</b>` : '') +
           (crown === o.u ? '<b class="buf cr">♛</b>' : '') +
+          (pf && pf.gu.includes(o.u) ? '<b class="buf gt" title="巨獸化">巨</b>' : '') +
+          (pf && pf.top === o.u ? '<b class="buf cr" title="獸群首領">王</b>' : '') +
           (bt || (buf && !opt.mini ? (tfd ? '<b class="buf tfm">✦</b>' : '<b class="buf">+</b>') : ''))
       )
     )}</div>`;
@@ -1190,10 +1215,11 @@ function rtagHTML(run) {
 /* 0.1.80 小按鈕（下一場那一列的右邊）：核心、全部對手（0.1.95 本局規則改成規則標籤 rtagHTML）。試過懸浮在右側，會蓋到暫存區和 5～6 格寬的背包 */
 function fabHTML(run) {
   const c = run.bag.core,
+    pf = petFx(run.bag),
     alive = run.rivals.filter(x => rivalAlive(x, curRound(run).id)).length;
   return `<div class="fabs">${
     c
-      ? `<button class="fab core${V.sel === 'core' ? ' sel' : ''}" data-act="coreSel" aria-label="職業核心"><img src="${itemIcon(c.id)}" alt="">${c.sc && ITEMI[c.sc] ? `<img class="f2" src="${itemIcon(c.sc)}" alt="">` : ''}<small>核心</small></button>`
+      ? `<button class="fab core${V.sel === 'core' ? ' sel' : ''}" data-act="coreSel" aria-label="職業核心${pf && pf.giant != null ? `，巨獸化${pf.giant ? '達成' : '未達成'}` : ''}">${pf && pf.giant != null ? `<em class="fbg ${pf.giant ? 'ok' : 'no'}">${pf.n}/2</em>` : ''}<img src="${itemIcon(c.id)}" alt="">${c.sc && ITEMI[c.sc] ? `<img class="f2" src="${itemIcon(c.sc)}" alt="">` : ''}<small>核心</small></button>`
       : ''
   }<button class="fab" data-act="rivals" aria-label="全部對手"><b>${alive}</b><small>對手</small></button></div>`;
 }
@@ -1799,13 +1825,20 @@ function coreFabHTML(run) {
   const nm = id => ITEMI[id].n.split('・').pop();
   return `<button class="corefab${V.sel === 'core' ? ' sel' : ''}" data-act="coreSel" aria-label="職業核心"><img src="${itemIcon(c.id)}" alt="">${c.sc && ITEMI[c.sc] ? `<img src="${itemIcon(c.sc)}" alt="">` : ''}<span>核心：${nm(c.id)}${c.sc && ITEMI[c.sc] ? '＋' + nm(c.sc) : ''}</span><b>›</b></button>`;
 }
+function giantTxt(bag) {
+  const pf = petFx(bag);
+  if (!pf || pf.giant == null) return '';
+  return pf.giant
+    ? `<p class="c-good">巨獸化：已達成（寵物 ${pf.n} 隻）</p>`
+    : `<p class="c-warn">巨獸化：未達成，寵物 ${pf.n} 隻（要 1～2 隻）</p>`;
+}
 function coreDetHTML(run) {
   const c = run.bag.core;
   if (!c) return '';
   const one = (id, sub) =>
     `<div class="cdet"><img src="${itemIcon(id)}" alt=""><div><b style="color:${STARC[5]}">${ITEMI[id].n}</b>${sub ? `<small>${sub}</small>` : ''}<p>${dsc(itemDesc(id))}</p></div></div>`;
   return `<div class="det" id="det"><div class="dh"><img src="${itemIcon(c.id)}" alt=""><div><b style="color:${STARC[5]}">職業核心</b><small>不佔背包格子・整局有效</small></div><button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    ${one(c.id, '2-5 首領')}${c.sc && ITEMI[c.sc] ? one(c.sc, '4-4 首領・融入') : '<p class="c-dim">4-4 首領會再給一個核心，融入這裡</p>'}${c.m ? mod5HTML(c.m) : ''}</div>`;
+    ${one(c.id, '2-5 首領')}${giantTxt(run.bag)}${c.sc && ITEMI[c.sc] ? one(c.sc, '4-4 首領・融入') : '<p class="c-dim">4-4 首領會再給一個核心，融入這裡</p>'}${c.m ? mod5HTML(c.m) : ''}</div>`;
 }
 /* 0.1.40 上一場這件觸發了幾次（武器以外的道具：飾品、防具、盾、藥水；武器看戰鬥紀錄的傷害） */
 function trigHTML(run, o, where) {
@@ -4012,6 +4045,32 @@ document.addEventListener('input', ev => {
 /* 0.1.99 戰報改成三個分頁，一屏看完（docs/設計原則.md：玩家點進來只想知道三件事）：
    「我的」這場每件道具的傷害＋占比＋我的背包、「對手」他的背包和傷害、「全部場次」這局每一場（點了切到那一場的「我的」）。
    id 沒給就看最新一場；tab 是 me／op／all；sel 是 'm:道具u' 或 'o:道具u'（背包裡亮起來、下面看詳細） */
+/* 戰報裡不是道具的傷害來源（run.js 的 dmgKey）：名字、圖示 */
+const LGX = {
+  burn: ['燃燒', 'ail_n_burn', 'ail_burn'],
+  poison: ['中毒', 'ail_poison'],
+  bleed: ['流血', 'ail_bleed'],
+  venom: ['劇毒', 'ail_dmark'],
+  rend: ['撕裂', 'asc_valkyrie_c0'],
+  corrode: ['腐蝕', 'ail_n_corrode', 'asc_alchemist_c0'],
+  thorns: ['反傷', 'it_thornshield'],
+  trap: ['陷阱', 'sk_trapshot'],
+  boom: ['爆炸', 'sin_wrath_bomber'],
+  rain: ['箭雨', 'sk_rainarrow'],
+  zap: ['放電', 'sk_spark'],
+  bolt: ['雷雲', 'asc_storm_c'],
+  meteor: ['隕石', 'sk_meteor'],
+  bird: ['火鳥', 'sk_phoenix'],
+  valh: ['英靈殿', 'asc_s_flame'],
+  pthrow: ['投擲藥劑', 'asc_s_potion'],
+  fatigue: ['疲勞', 'it_hourglass'],
+  hit: ['其他攻擊', 'sk_spark']
+};
+const lgxN = id => (LGX[id.slice(1)] || [id.slice(1)])[0],
+  lgxIc = id => {
+    const x = LGX[id.slice(1)];
+    return (x && artIconURL(icN(x[1], x[2] || x[1]))) || iconURL('star');
+  };
 function showLog(id, hi, sel, tab) {
   const H = hi != null ? S.hist[hi] : null,
     logs = H ? H.log || [] : S.run && S.run.log,
@@ -4031,8 +4090,9 @@ function showLog(id, hi, sel, tab) {
         l.length
           ? `<div class="lgbars">${l
               .map(([iid, t, v]) => {
-                const o = bag && bag.items.find(q => q.id === iid && q.t === t);
-                return `<button class="lgb" ${o ? `data-lgu="${k}:${o.u}"` : 'disabled'}><img src="${itemIcon(iid)}" alt=""><span><b>${ITEMI[iid] ? ITEMI[iid].n : iid}${tierTxt(t)}</b><i><i style="width:${Math.round((v / mx) * 100)}%"></i></i></span><em>${Math.round((v / all) * 100)}%<small>${v}</small></em></button>`;
+                const x = iid[0] === '#',
+                  o = !x && bag && bag.items.find(q => q.id === iid && q.t === t);
+                return `<button class="lgb${x ? ' lgx' : ''}" ${o ? `data-lgu="${k}:${o.u}"` : 'disabled'}><img src="${x ? lgxIc(iid) : itemIcon(iid)}" alt=""><span><b>${x ? lgxN(iid) : (ITEMI[iid] ? ITEMI[iid].n : iid) + tierTxt(t)}</b><i><i style="width:${Math.round((v / mx) * 100)}%"></i></i></span><em>${Math.round((v / all) * 100)}%<small>${v}</small></em></button>`;
               })
               .join('')}</div>`
           : '<p class="c-dim">沒有紀錄</p>'
