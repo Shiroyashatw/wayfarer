@@ -548,14 +548,8 @@ const MODE_TH_BAN = { shape: ['g'] };
 const XP_PLACE = [0, 100, 70, 50, 40, 35, 30];
 const lvNeed = lv => 40 + lv; // 從 lv 升到 lv + 1 要的經驗
 const DEF_PICK = { m: ['std'], t: ['g'] };
-const UNLOCK = [
-  ...['gale', 'sins', 'curse', 'caravan', 'legacy', 'relic', 'astro', 'tarot', 'shape', 'dual'].map((k, i) => [
-    5 * (i + 1),
-    'm',
-    k
-  ]),
-  ...['f', 'm', 'c', 'z'].map((k, i) => [10 * (i + 1), 't', k])
-].sort((a, b) => a[0] - b[0] || (a[1] < b[1] ? -1 : 1));
+/* 0.1.96 先不鎖：賽制、道具池全部一開始就能選（UNLOCK 空的），等級照樣升 */
+const UNLOCK = [];
 /* 經驗 → { lv, cur（這一級已經有的）, need（這一級要的） } */
 function lvInfo(xp = 0) {
   let lv = 1;
@@ -563,7 +557,7 @@ function lvInfo(xp = 0) {
   return { lv, cur: xp, need: lvNeed(lv) };
 }
 /* 這個賽制（k 'm'）或道具池（'t'）幾級解鎖；預設的是 1 */
-const unlockLv = (k, v) => (DEF_PICK[k].includes(v) ? 1 : (UNLOCK.find(u => u[1] === k && u[2] === v) || [99])[0]);
+const unlockLv = (k, v) => (DEF_PICK[k].includes(v) ? 1 : (UNLOCK.find(u => u[1] === k && u[2] === v) || [1])[0]);
 /* 0.1.96 羈絆＝七宗罪（只有七宗罪賽制有，MODES 的 syn → bag.sin）：每件道具固定一組（5★ 兩組，表在 items.js 的 SIN_OF，tools/sins.js 產生），
    背包裡同一組湊 SYN_AT 件分別是 1～5 級。效果多半在戰鬥裡（sim.js 看 a.sin），t 是每一級的說明、ex 是一句話例子 */
 const SYN_AT = [2, 4, 6, 8, 10];
@@ -714,4 +708,4 @@ const LEGACY_RC = 2;
 /* 0.1.72 s28：機器人變聰明（全部菁英、挑職業、擺位、反制、記仇），舊種子太弱 */
 /* 0.1.74 s29：狂戰士 12 個核心換新（同一個核心編號換了效果）、新道具黑心貨 */
 const GVER = 's30';
-const VER = '0.1.96';
+const VER = '0.1.97';

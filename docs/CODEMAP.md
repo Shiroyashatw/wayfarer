@@ -28,8 +28,9 @@
 | 選要玩的賽制、道具池（0.1.77） | `js/run.js`、`js/ui.js` | `rollMode`／`rollTheme` 的 allow、`pickOf`（run）；`S.pick`、`PICK_MIN`、`pickAll`、`pickNow`、`pickHTMLs`、動作 `pickTog`／`pickAll`（ui） |
 | 詳細統計頁：賽制、道具池的職業勝率與核心選擇率（0.1.77） | `js/ghost.js`、`js/ui.js`、`supabase/migrations/20261026000000_serling_mode_stats.sql` | `ghostStats`、`STAT`、`STAT_MIN`（ghost）；`mstatHTML`、`V.mst`、動作 `mstTab`、`data-chg` 的 change 監聽（ui）；RPC `class_stats_mt`、`core_stats_mt` |
 | 準備畫面重排（0.1.79～0.1.80）：階段圓圈、下一場對手、核心／規則／對手按鈕 | `js/ui.js`、`css/style.css` | `stageHTML`（`.stg`／`.sn`／`.sl`）、`infoRowHTML`（`.nxo`）、`fabHTML`（`.fab`）、0.1.95 規則標籤 `rtagHTML`（`.rtag`、`MODEUI` 的 `badge`）、`A.rulesInfo`、`A.rivals`、電腦版 `.pcrv` |
-| 後追（0.1.96，落後的人菁英四選一）、收入明細（點金幣） | `js/run.js`、`js/ui.js` | `catchUp`、`eliteOpts` 的 `win`、`finishFight` 的菁英標題（run）；`incomeHTML`、動作 `incInfo`、`.top .gold`（ui） |
-| 整理區（0.1.96，背包外暫放道具）、拖曳自動轉向與交換轉向 | `js/bag.js`、`js/run.js`、`js/ui.js`、`css/style.css` | `STG_W`／`STG_H`、`stCells`、`canStage`、`stageSync`、`canPlace` 避開整理區、`mergeAll` 的 `st`（bag）；`levelUp`、`findU`、`sellItem`（run）；`bagHTML` 的 `opt.stage`（`.cell.lock`、`.it.out`）、`dragMove` 的 `d.stg` 與交換轉向、`dropDo`、`A.unstage`、`A.fight`、`rotIt`（ui） |
+| 手機誤按上一頁（0.1.97）、打開直接回對局、切到背景再存 | `js/ui.js`、`js/main.js`、`js/cloud.js` | `backGuard`、`popstate`、`V.guard`／`V.backT`（ui）；`start` 的 `V.scr`（main）；`visibilitychange` 的 `save`（cloud） |
+| 後追（0.1.97，落後的人菁英四選一）、收入明細（點金幣） | `js/run.js`、`js/ui.js` | `catchUp`、`eliteOpts` 的 `win`、`finishFight` 的菁英標題（run）；`incomeHTML`、動作 `incInfo`、`.top .gold`（ui） |
+| 整理區（0.1.97，背包外暫放道具）、拖曳自動轉向與交換轉向 | `js/bag.js`、`js/run.js`、`js/ui.js`、`css/style.css` | `STG_W`／`STG_H`、`stCells`、`canStage`、`stageSync`、`canPlace` 避開整理區、`mergeAll` 的 `st`（bag）；`levelUp`、`findU`、`sellItem`（run）；`bagHTML` 的 `opt.stage`（`.cell.lock`、`.it.out`）、`dragMove` 的 `d.stg` 與交換轉向、`dropDo`、`A.unstage`、`A.fight`、`rotIt`（ui） |
 | 規則提示（0.1.95）：一句話規則、規則標籤、觸發提示、第一次遇到、範圍提示、棋子虛線、加成角標、遺物區域、凹口、塔羅角標 | `js/data.js`、`js/ui.js`、`css/style.css` | `MODES`／`POOLTH` 的 `s`（data）；`rtagHTML`、`dlgFrom`、`hint`（`.rhint`）、`ruleFx`／`rfSnap`、`MODEUI` 的 `spot`／`fx`／`stage`／`sellNote`／`det`、`firstStep`／`seenK`／`A.seenOk`、`priceOff`、`rngOf`（`.cell.rng`）、`bufTag`、`linkHTML` 的 `.lks`／`.pcl`、`dragLit`、`RZ`（`.cell.rz`）、`.cell.hole`、`tarAff`（ui） |
 | 戰鬥連動事件（0.1.95）：機關城計數點、齒輪／連鎖／棋子光線 | `js/sim.js`、`js/ui.js`、`css/style.css` | `simulate` 的 `mech` 事件（`nk`／`gear`／`drv`，只給畫面）（sim）；`bMech`、`bBeam`、`bPcBeam`、`B.pcm`（ui）；`.beam`、`.nkp` |
 | 手機準備畫面一屏放得下、道具四個角統一（0.1.86） | `js/ui.js`、`css/style.css` | `fitBag`、`FIT_MIN`、`V.fitH`、`cellSize`；`.srow`、`.rnx`；角標 `brHTML`（`.cbr` 右下一排）、`cnr`（`.cn` 放在道具真的有的那一格） |
@@ -37,7 +38,7 @@
 | 排版整理（0.1.88）：投降確認、標題列拿掉音效外觀、怎麼玩摺疊、設定打勾、對話框 ✕ | `js/ui.js`、`css/style.css` | `A.menu`、`showDlg`（按鈕第三個值是 class）、`dlgX`、`helpHTML`（`details.more`、`.hl`）、`pickHTMLs`（`.pkb[aria-pressed]`）、`.btn.danger`、`.dlgx` |
 | 準備畫面減少雜訊、電腦版首頁／戰鬥／結束／設定（0.1.89） | `js/ui.js`、`css/style.css` | `stageDots`（`.sdots`）、`infoRowHTML` 的 `.sinfo`（`.sgc.z`）、商店 `.sc` 的 `aria-label`、`.home.endp`、`.page.set`；CSS「0.1.89」那幾段 |
 | 道具動畫、數字滾動、商店價格顏色（0.1.90） | `js/ui.js`、`css/style.css` | `fxSnap`、`itemFx`、`flyImg`、`pop`、`goldEl`、`FXA`（`click` 分派裡呼叫）、`tick`（`V.num`）、`land` 的賣掉飛進金幣；CSS `.fly`、`.sc b` |
-| 玩家等級、解鎖賽制道具池、標準賽制回來（0.1.92） | `js/data.js`、`js/run.js`、`js/main.js`、`js/ui.js` | `XP_PLACE`、`lvNeed`、`DEF_PICK`、`UNLOCK`、`lvInfo`、`unlockLv`（data）；`pickOf`、`endRun` 的經驗（run）；`migrate` 的 v101（main）；`lvHTML`、`xpHTML`、`unlockName`、`myLv`、`pickAll`／`pickNow`／`pickHTMLs`、`A.pickTog`（ui） |
+| 玩家等級、解鎖賽制道具池（0.1.96 先不鎖）、標準賽制回來（0.1.92） | `js/data.js`、`js/run.js`、`js/main.js`、`js/ui.js` | `XP_PLACE`、`lvNeed`、`DEF_PICK`、`UNLOCK`、`lvInfo`、`unlockLv`（data）；`pickOf`、`endRun` 的經驗（run）；`migrate` 的 v101（main）；`lvHTML`、`xpHTML`、`unlockName`、`myLv`、`pickAll`／`pickNow`／`pickHTMLs`、`A.pickTog`（ui） |
 | 教學關（0.1.92） | `js/ui.js`、`js/run.js`、`css/style.css` | `tutStart`、`tutPrep`、`coachStep`、`coachFx`、`tutDoneHTML`、`A.tutStart`／`A.tutEnd`、`run.tutor`、首頁的「開始教學」；`finishFight` 沒對手不算贏（run）；CSS `.coach`、`.cspot`、`.cbub` |
 | 說明文字風格統一、異常白話說明、說明一個效果一行（0.1.93） | `js/items.js`、`js/ui.js`、`.claude/skills/item-text/` | `ailx`、`MODN`、`PREN`、`itemDesc`（`selfT`）、`JOIN_P`（items）；`descLines`（`.dls`）、`CX_AIL`（ui）；說明檢查 `.claude/skills/item-text/audit.js` |
 | 機器人分主題參數、估價看位置（0.1.79） | `js/bot.js`、`tools/bot_train.js` | `BOT_PT`、`botPT`、`botTry` 的 `P.posEval`、`BOT_SPOTS_EVAL`、`botPosI`／`botPosBag`、`botBestSpot(…, N)`；`bot_train.js --theme` |
@@ -96,7 +97,7 @@
 | 核心統計進資料庫（0.1.45） | `js/ghost.js`、`supabase/migrations/20261024000000_serling_core_stats.sql` | `ghostEnd` 的核心欄位、`coreCols`、`seedGhosts` 的核心、`coreStatsCloud`；RPC `core_stats`／`core_combo_stats` |
 | 弓箭手、亞馬遜重製（0.1.50：插箭、爆裂箭、箭雨、多重射擊、狙擊、元素箭袋、連珠箭、游擊、風之箭、捕獸夾／獵網／尖樁陷阱、撕裂、插矛、協同作戰召喚、女武神復活、矛弓連攜、戰舞、反擊、血獵、日月輪轉、姊妹盟約、浴血戰姬） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`css/style.css` | `CORE_MAIN.archer`／`spearman`、`skyhawk`、常數 `ARROW_MAX` 等、`MODN` 的新鍵、`TRN`（items）；`compileBag` 的新角色鍵、武器的 `kind`／`stick`／`shots`／`snipe`／`elem`／`sure`／`pin`／`rend`、姊妹盟約 `sisters`（bag）；`simulate` 的 `stickArrows`、`addRend`、`fire`、`counter`、`revive`、`isDay`、召喚 `sm0`／`sm1`、陷阱 `snare`／`net`／`stake`、事件 `boom`／`rain`／`revive`／`summon`／`sun`／`pinOut`（sim）；`botPower` 的插箭、撕裂、召喚（bot）；`smnHTML`、`bSun`、`STI` 的插箭／撕裂／插矛、`CX_AIL`（ui）；`.smn`／`.smf`／`.smit`、`.sunb`、`--day`／`--night`（css） |
 | 火法師、雷法師重製（0.1.51：自動點燃、星星之火、爆燃、流星火雨、焚盡斬殺線、自焚、火之化身、炎爆、灼命、熱浪、鳳凰涅槃；連鎖、電荷、放電、麻痺、癱瘓、超載、雷神降臨、雷暴雲、疾雷、雷鳴、電磁脈衝、雷火、靜電場、避雷針、電網陷阱；新雷系道具；核心自訂圖示 icx） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js`、`js/ui.js`、`css/style.css` | `CORE_MAIN.pyro`／`storm`、`thunderjav`／`thunderbow`／`teslacoil`／`thunderheart`／`thunderbat`、常數 `CHARGE_MAX`／`ZAP_*`／`PARA_*`／`METEOR_*`／`SPARK_*` 等、`genCores` 的 `icx`（items）；`compileBag` 的新角色鍵、武器 `charge`（bag）；`simulate` 的 `igniteIt`、`stunIt`、`addPara`、`addCharge`、`zap`、定時效果（流星、雷暴雲、炎爆、焚盡、鳳凰、星星之火蔓延）、事件 `zap`／`meteor`／`bolt`／`flash`／`combust`／`burnout`／`phoenix`／`avatar`／`god`／`palsy`／`static`／`spark`（sim）；`botPower` 的電荷、點燃（bot）；`itemIcon` 的 `icx`、`bSpark`、`bFall`、斬殺線 `kl0`／`kl1`、`STI` 的電荷／麻痺（ui）；`.kline`、`.firec`、`.fall`、`.sp.avt`／`.sp.god`（css） |
-| 羈絆・七宗罪（0.1.96，只有七宗罪賽制；取代 0.1.62 系別羈絆、0.1.52 印記） | `js/data.js`、`js/items.js`、`js/bag.js`、`js/sim.js`、`js/run.js`、`js/bot.js`、`js/ui.js`、`tools/sins.js` | `SYN`／`SYN_AT`／`SYNI`／`synLv`、`MODES.sins` 的 `syn`、`WRATH_MAX`／`WRATH_T`／`LUST_N`／`FEED_HP`（data）；`SIN_OF`、道具的 `sins`（items）；`synCount`、`synView`（萬能牌 `wild`）、`synMax`、`compileBag` 的 `F.sin`／`F.tierSum`、`packBag` 的 `sn`（bag）；`simulate` 的 `L`／`isS`／`sinFx`、`wrathHit`、`relay`、`heart`、魅惑 `chm`、王冠 `crownW`、嫉妒（sim）；`sinLv`、`modeShare` 的 `bag.sin`、`plunder`、`sinFeed`／`feedHp`、`eliteOpts`／`bossCores` 多 1 個（run）；`botPower` 的七宗罪、`botAct` 的餵食（bot）；`synHTML`、`synInfoHTML`、`sinLineHTML`、`sinBadge`／`sinTag`、`crownOf`、`wildFx`、`sinPop`、動作 `synInfo`／`feed`、`MODEUI.sins`（ui）；`docs/羈絆分配.md` |
+| 羈絆・七宗罪（0.1.97，只有七宗罪賽制；取代 0.1.62 系別羈絆、0.1.52 印記） | `js/data.js`、`js/items.js`、`js/bag.js`、`js/sim.js`、`js/run.js`、`js/bot.js`、`js/ui.js`、`tools/sins.js` | `SYN`／`SYN_AT`／`SYNI`／`synLv`、`MODES.sins` 的 `syn`、`WRATH_MAX`／`WRATH_T`／`LUST_N`／`FEED_HP`（data）；`SIN_OF`、道具的 `sins`（items）；`synCount`、`synView`（萬能牌 `wild`）、`synMax`、`compileBag` 的 `F.sin`／`F.tierSum`、`packBag` 的 `sn`（bag）；`simulate` 的 `L`／`isS`／`sinFx`、`wrathHit`、`relay`、`heart`、魅惑 `chm`、王冠 `crownW`、嫉妒（sim）；`sinLv`、`modeShare` 的 `bag.sin`、`plunder`、`sinFeed`／`feedHp`、`eliteOpts`／`bossCores` 多 1 個（run）；`botPower` 的七宗罪、`botAct` 的餵食（bot）；`synHTML`、`synInfoHTML`、`sinLineHTML`、`sinBadge`／`sinTag`、`crownOf`、`wildFx`、`sinPop`、動作 `synInfo`／`feed`、`MODEUI.sins`（ui）；`docs/羈絆分配.md` |
 | 道具池：基本池＋主題池（0.1.62） | `js/items.js`、`js/data.js`、`js/run.js`、`js/ui.js`、`tools/pools.js` | `POOLS`／`ITEM_TH`／`thOf`／`thOK`、道具的 `th`（items）；`POOLTH`／`POOLTHI`／`MODE_TH_BAN`（data）；`poolOK`、`rollTheme`、`setTheme`、`simLobby` 的 theme（run）；`wheelEnd2`、`fabHTML`／`A.rulesInfo` 的道具池、動作 `thInfo`、`thName`（ui）；`docs/道具池.md` |
 | 主題道具的機制（0.1.62） | `js/items.js`、`js/bag.js`、`js/sim.js`、`js/bot.js` | 新形狀與凹口 `SHHOLE`／`holeOf`；`compileBag` 的 `self`、`perAdj`、`perAdjF`、`hole`、`gear`、`chainAdj`、`nth`、`wake`；`sim` 出手後的 `nth`／`gear`／`drv`；`botPower` 的 `HIT`；`findSpot` 的凹口 |
 | 賽制框架（0.1.60：每個賽制一份掛勾，新增賽制用 skill `new-mode`） | `js/run.js`、`js/ui.js` | `MODEH`／`modeH`（share、fix、slot、item、price、sell、bought、reroll、round、fought、lobby、luck、winBonus、fight）、`setMode`、`modeShareOf`／`modeShare`、`modeFix`、`shopItem`（run）；`MODEUI`／`modeUI`（intro、bar、info、panel）（ui） |
@@ -139,7 +140,7 @@
 
 - **utils**（5），5 個宣告
 
-### js/data.js（718 行）
+### js/data.js（712 行）
 
 - **一局**（5），60 個宣告
 
@@ -199,7 +200,7 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（112），7 個宣告
 
-### js/news.js（628 行）
+### js/news.js（636 行）
 
 
 ### js/ui.js（4696 行）
