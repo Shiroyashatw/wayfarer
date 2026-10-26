@@ -7,22 +7,22 @@
 let BOT_P = {
   gainMin: 0.023, // 一件道具至少要讓戰力提升這個比例才買
   perGold: 0.007, // 每 1 金至少要換到多少戰力（比例）
-  reserve: 34, // 想留著吃利息的錢（後期才存）
-  reserveFrom: 9, // 第幾回合開始存利息
+  reserve: 31, // 想留著吃利息的錢（後期才存）
+  reserveFrom: 14, // 第幾回合開始存利息
   rollGold: 3, // 錢多於這個、又沒東西好買就刷新
-  maxRolls: 8, // 一回合最多刷新幾次
-  lvFill: 0.97, // 背包塞到幾成滿就考慮升級
+  maxRolls: 7, // 一回合最多刷新幾次
+  lvFill: 0.924, // 背包塞到幾成滿就考慮升級
   lvKeep: 3, // 升級後至少留幾金
   sellMargin: 0.037, // 賣掉舊的換新的，戰力至少要多這個比例
   mergeBonus: 0.123, // 湊合成的額外偏好（還沒湊滿也先收）
-  dotW: 0.5, // 燃燒、中毒、流血每層的價值（約幾秒）
-  ctrlW: 1.084, // 暈眩、凍結、虛弱、致盲的價值倍率
-  lowHp: 12, // 0.1.72 生命剩這麼少就不存利息錢
-  resW: 1.339, // 0.1.72 抗異常、抗暴擊（擋掉對手幾成傷害）的權重
-  nemW: 1.988, // 0.1.72 被同一個人打敗：評估對手時他的權重多幾倍（每輸一次 +nemW，慢慢淡掉）
-  posEval: 0, // 0.1.79 看位置的道具估價時用戰力試位置（森林、棋盤開；黃道開了反而變差 3.65 對 3.35）
+  dotW: 1.062, // 燃燒、中毒、流血每層的價值（約幾秒）
+  ctrlW: 0.942, // 暈眩、凍結、虛弱、致盲的價值倍率
+  lowHp: 7, // 0.1.72 生命剩這麼少就不存利息錢
+  resW: 0.769, // 0.1.72 抗異常、抗暴擊（擋掉對手幾成傷害）的權重
+  nemW: 1.514, // 0.1.72 被同一個人打敗：評估對手時他的權重多幾倍（每輸一次 +nemW，慢慢淡掉）
+  posEval: 1, // 0.1.79 看位置的道具估價時用戰力試位置（森林、棋盤開；黃道開了反而變差 3.65 對 3.35）
   synW: 0, // 0.1.74 羈絆進度（還差幾件到下一個門檻）的價值；0.03、0.08 對打都比 0 差（60 場 3.57～3.60 對 3.40～3.43），先關掉
-  ehpW: 1.581 // 有效生命的指數（戰力 = 每秒傷害 × 有效生命^ehpW）
+  ehpW: 1.549 // 有效生命的指數（戰力 = 每秒傷害 × 有效生命^ehpW）
 };
 /* 0.1.79 每個道具池自己的參數（跟 BOT_P 不一樣的才寫）：node tools/bot_train.js --theme 代號 --write 訓練寫回這一段 */
 let BOT_PT = {
@@ -45,153 +45,202 @@ function botPT(run, P) {
    tools/bot_cls.js 用菁英機器人對局統計後寫回（--write 會覆寫這一段）。開局三選一挑「職業本身＋這個主題＋這個賽制」加起來最強的 */
 let BOT_CLS = {
   archer: [
-    0.33,
-    { m: 0.17, c: 0.08, z: -0.14, f: -0.02 },
+    0.22,
+    { g: 0.12, m: -0.19, c: -0.04, f: 0.18 },
     {
-      legacy: 0.36,
-      caravan: 0.03,
-      curse: 0.21,
-      dual: 0.24,
-      sigil: -0.09,
-      gale: -0.19,
-      astro: 0.03,
-      shape: -0.52,
-      tarot: -0.03
+      relic: 0.06,
+      legacy: 0.28,
+      caravan: -0.02,
+      astro: 0.28,
+      gale: 0.12,
+      std: 0.02,
+      shape: -0.64,
+      dual: -0.12,
+      curse: 0.07,
+      sins: 0.09
     }
   ],
   swordsman: [
-    0.27,
-    { g: -0.23, m: 0.25, c: -0.23, z: 0.24, f: 0.05 },
-    { legacy: -0.26, caravan: 0.16, curse: 0.45, relic: -0.08, sigil: 0.03, gale: 0.05, astro: 0.06, shape: -0.39 }
+    -0.01,
+    { g: -0.16, m: 0.14, c: -0.11, z: 0.16, f: -0.03 },
+    {
+      relic: 0.02,
+      legacy: -0.06,
+      caravan: 0.05,
+      astro: -0.11,
+      gale: 0.21,
+      std: 0.02,
+      shape: -0.18,
+      tarot: -0.05,
+      dual: -0.06,
+      curse: 0.06,
+      sins: 0.1
+    }
   ],
   berserker: [
-    0.62,
-    { g: 0.16, m: -0.08, c: -0.09, z: 0.09, f: 0.06 },
-    { legacy: 0.04, curse: 0.37, relic: 0.03, dual: -0.09, gale: 0.13, astro: 0.14, shape: -0.36, tarot: -0.12 }
+    0.45,
+    { g: 0.32, m: -0.14, c: -0.28, z: 0.07, f: 0.2 },
+    {
+      relic: -0.2,
+      legacy: 0.21,
+      caravan: -0.09,
+      astro: 0.19,
+      gale: 0.07,
+      std: -0.07,
+      shape: -0.29,
+      tarot: 0.06,
+      curse: 0.33
+    }
   ],
   spearman: [
-    0,
-    { g: -0.64, m: 0.35, c: -0.04, z: 0.15, f: 0.12 },
+    -0.23,
+    { g: -0.5, m: 0.45, c: 0.02, z: -0.06, f: -0.07 },
     {
-      legacy: 0.33,
-      caravan: -0.16,
-      curse: -0.36,
-      relic: 0.11,
-      dual: 0.05,
-      sigil: 0.12,
-      gale: 0.14,
-      astro: 0.05,
-      shape: -0.12,
-      tarot: -0.08
+      relic: -0.17,
+      legacy: 0.03,
+      caravan: 0.42,
+      astro: 0.03,
+      gale: -0.27,
+      std: -0.29,
+      shape: 0.06,
+      tarot: -0.03,
+      dual: 0.14,
+      curse: -0.06,
+      sins: -0.07
     }
   ],
   assassin: [
-    0.17,
-    { g: 0.24, m: -0.19, c: 0.36, z: -0.19, f: -0.15 },
+    0.38,
+    { g: -0.09, c: 0.16 },
     {
-      legacy: 0.41,
-      caravan: 0.03,
-      curse: -0.23,
-      relic: -0.3,
-      dual: -0.14,
-      sigil: -0.09,
-      gale: -0.13,
-      astro: 0.1,
-      shape: 0.45
+      relic: 0.16,
+      legacy: -0.07,
+      caravan: -0.18,
+      astro: -0.25,
+      gale: 0.03,
+      std: -0.08,
+      shape: 0.57,
+      tarot: -0.08,
+      dual: 0.06,
+      sins: -0.1
     }
   ],
   pyro: [
-    -0.26,
-    { g: -0.16, m: 0.49, c: 0.02, z: -0.22, f: -0.3 },
-    { curse: -0.57, relic: 0.2, sigil: 0.56, astro: -0.28, shape: 0.12, tarot: 0.08 }
+    -0.53,
+    { g: -0.39, m: 0.53, c: 0.33, z: -0.45, f: -0.23 },
+    { relic: -0.16, legacy: 0.09, astro: -0.09, gale: -0.03, std: -0.24, tarot: 0.34, curse: -0.21, sins: 0.09 }
   ],
   cryo: [
-    0.19,
-    { g: 0.39, m: 0.25, c: 0.11, z: -0.04, f: -0.66 },
-    { legacy: 0.12, caravan: -0.04, curse: 0.14, relic: -0.13, dual: 0.03, gale: 0.09, shape: -0.03, tarot: -0.15 }
+    0.33,
+    { g: 0.15, m: -0.03, c: 0.27, z: 0.25, f: -0.52 },
+    {
+      legacy: 0.13,
+      caravan: 0.09,
+      astro: 0.12,
+      gale: -0.19,
+      std: -0.04,
+      shape: -0.17,
+      tarot: -0.09,
+      dual: 0.14,
+      curse: 0.12,
+      sins: 0.14
+    }
   ],
   storm: [
-    -0.62,
-    { g: 0.29, m: -0.58, c: 0.1, z: -0.46, f: 0.7 },
-    { legacy: -0.15, curse: -0.08, dual: -0.13, sigil: -0.1, gale: -0.27, shape: 0.23, tarot: 0.28 }
+    -0.17,
+    { g: 0.3, m: -0.36, z: -0.37, f: 0.44 },
+    {
+      relic: 0.26,
+      legacy: -0.22,
+      caravan: -0.17,
+      astro: 0.1,
+      gale: -0.07,
+      shape: 0.22,
+      dual: -0.1,
+      curse: -0.08,
+      sins: 0.02
+    }
   ],
   venom: [
-    -0.21,
-    { g: -0.07, m: -0.04, c: -0.12, z: 0.06, f: 0.12 },
+    -0.14,
+    { g: -0.39, m: 0.14, c: -0.21, f: 0.33 },
     {
-      legacy: -0.16,
-      caravan: -0.22,
-      curse: 0.06,
-      relic: -0.03,
-      dual: -0.07,
-      sigil: 0.2,
-      gale: 0.14,
-      astro: 0.1,
-      shape: 0.04,
-      tarot: -0.07
+      relic: 0.2,
+      legacy: -0.39,
+      astro: 0.14,
+      gale: 0.06,
+      std: 0.1,
+      shape: 0.17,
+      tarot: 0.03,
+      dual: -0.06,
+      curse: 0.05,
+      sins: -0.2
     }
   ],
   tamer: [
-    0.33,
-    { g: 0.31, m: -0.37, c: -0.33, z: -0.03, f: 0.65 },
+    0.5,
+    { g: 0.25, m: -0.38, c: 0.02, z: -0.05, f: 0.47 },
     {
-      legacy: -0.21,
-      caravan: 0.07,
-      curse: -0.13,
-      relic: 0.22,
-      dual: -0.16,
-      sigil: 0.12,
-      gale: 0.1,
-      astro: -0.08,
-      shape: 0.38,
-      tarot: -0.17
+      relic: 0.04,
+      legacy: 0.11,
+      caravan: -0.11,
+      astro: -0.07,
+      gale: -0.04,
+      std: 0.16,
+      shape: 0.23,
+      dual: 0.11,
+      curse: -0.2,
+      sins: -0.03
     }
   ],
   knight: [
-    0.02,
-    { g: -0.42, m: 0.1, c: -0.03, z: 0.26, f: 0.07 },
+    -0.18,
+    { g: -0.11, m: -0.03, c: 0.09, z: 0.16, f: -0.15 },
     {
-      legacy: -0.23,
-      caravan: -0.04,
-      curse: -0.08,
-      relic: -0.02,
-      dual: 0.26,
-      sigil: -0.11,
-      gale: -0.03,
-      astro: -0.1,
-      shape: 0.21,
-      tarot: 0.14
+      relic: -0.21,
+      legacy: -0.03,
+      caravan: 0.03,
+      astro: -0.05,
+      gale: -0.05,
+      std: 0.17,
+      shape: 0.07,
+      tarot: 0.05,
+      dual: -0.07,
+      sins: 0.02
     }
   ],
   alchemist: [
-    -0.6,
-    { g: -0.07, m: -0.05, c: 0.04, z: 0.19, f: -0.25 },
+    -0.34,
+    { g: -0.09, m: -0.06, c: 0.09, z: 0.19, f: -0.22 },
     {
-      legacy: -0.07,
-      caravan: 0.15,
-      curse: 0.18,
-      relic: -0.11,
-      dual: 0.05,
-      sigil: -0.36,
+      relic: -0.23,
+      legacy: 0.14,
+      caravan: -0.13,
+      astro: -0.05,
       gale: -0.14,
-      astro: 0.08,
-      shape: -0.09
+      std: -0.2,
+      shape: -0.31,
+      tarot: -0.02,
+      dual: 0.43,
+      curse: 0.39,
+      sins: -0.16
     }
   ],
   merchant: [
-    -0.28,
-    { g: 0.16, m: 0.13, c: 0.09, f: -0.4 },
+    -0.36,
+    { g: 0.35, m: 0.05, c: -0.25, z: -0.09, f: -0.07 },
     {
-      legacy: 0.04,
-      caravan: 0.06,
-      curse: 0.08,
-      relic: 0.14,
-      dual: -0.07,
-      sigil: -0.44,
-      gale: -0.23,
-      astro: 0.11,
-      shape: 0.04,
-      tarot: 0.07
+      relic: 0.2,
+      legacy: -0.08,
+      caravan: 0.16,
+      astro: 0.07,
+      gale: -0.03,
+      std: 0.13,
+      shape: -0.17,
+      tarot: -0.18,
+      dual: -0.23,
+      curse: -0.21,
+      sins: 0.12
     }
   ]
 };
@@ -390,13 +439,20 @@ function botPower(F, P = BOT_P) {
     if (F.zapIgnite) dps *= 1.1;
   }
   if (F.static) dps *= 1 + (F.static / 100) * 1.2;
-  /* 0.1.52 印記：照有印記的武器佔幾成估（力量重擊、迅捷接力、幸運一擊）；守護、生命算進有效生命 */
+  /* 0.1.96 七宗罪（只有七宗罪賽制）：照那一組的武器佔幾成、幾級粗估（細的交給訓練出來的 synW）；
+     星河的數值已經算進武器，雙子、水瓶、牡羊這種戰鬥中的照武器數估 */
   const nW = Math.max(1, F.weapons.length),
-    sh = k => F.weapons.filter(w => w[k]).length / nW;
-  if (F.sgMight) dps *= 1 + sh('sgM') * (0.25 + (F.sgMight >= 2 ? 0.08 : 0) + (F.sgMight >= 3 ? 0.2 : 0));
-  if (F.sgSwift) dps *= 1 + sh('sgS') * (F.sgSwift >= 2 ? 0.3 : 0.17) * (F.sgSwift >= 3 ? 1.3 : 1);
-  if (F.sgLuck) dps *= (1 + sh('sgK') * 0.2) * (F.sgLuck >= 3 ? 1.15 : 1);
-  if (F.sgGuard >= 3) dps *= 1.12;
+    S7 = F.sin || {},
+    sh = k => F.weapons.filter(w => w.sins && w.sins.includes(k)).length / nW;
+  if (S7.wrath) dps *= 1 + sh('wrath') * [0, 0.12, 0.25, 0.35, 0.45, 0.55][S7.wrath];
+  if (S7.sloth) dps *= 1 + sh('sloth') * [0, 0.15, 0.25, 0.35, 0.55, 0.75][S7.sloth];
+  if (S7.glut) dps *= 1 + sh('glut') * [0, 0.05, 0.1, 0.12, 0.22, 0.3][S7.glut];
+  if (S7.pride) dps *= 1 + Math.min(0.5, ((F.tierSum || 0) * 0.02) / nW) + [0, 0, 0.08, 0.15, 0.25, 0.35][S7.pride];
+  if (S7.greed >= 5) dps *= 1 + 0.15 * Object.values(S7).filter(Boolean).length;
+  if (S7.envy) dps *= 1 + sh('envy') * 0.05 + [0, 0, 0.15, 0.2, 0.25, 0.35][S7.envy];
+  if (S7.lust) dps *= 1 + [0, 0.08, 0.15, 0.22, 0.3, 0.4][S7.lust];
+  for (const w of F.weapons)
+    if (w.zdbl || w.zaq || w.zchg) dps *= 1 + ((w.zdbl || 0) + (w.zaq || 0) / 3 + (w.zchg || 0) / 8) / 100 / nW;
   /* 0.1.53 馴獸師：群狼戰術、撲殺、狂暴、馴獸鞭（寵物佔幾成） */
   const nP = F.weapons.filter(w => w.pet).length,
     pS = nP / nW;
@@ -462,14 +518,13 @@ function botPower(F, P = BOT_P) {
   if (F.lsShield && (F.ls || F.weapons.some(w => w.ls || (w.bz && F.blood)))) ehp *= 1.06;
   if (F.execRend && F.execute && rendSrc) dps *= 1.05;
   if (F.axeThrow && F.axeN) dps += (AXE_REND * 4 * F.axeN * F.axeThrow * rendW * P.dotW) / 18;
-  /* 0.1.52 印記：守護 2 級（護盾被打破反彈）、生命 2、3 級（溢出變護盾、低血加速） */
-  if (F.sgGuard >= 2) ehp += 40;
+  /* 0.1.96 暴食：吸血、脂肪 */
+  if (S7.glut) ehp *= 1 + [0, 0.08, 0.12, 0.15, 0.25, 0.3][S7.glut];
   /* 0.1.53 護主、共生（寵物每秒命中幾次 × 回復） */
   const petRate = F.weapons.filter(w => w.pet).reduce((n, w) => n + 1 / Math.max(0.3, w.cd), 0);
   if (F.petGuard && petRate) ehp *= 1 + (F.petGuard / 100) * 0.5;
   if (F.dr) ehp /= Math.max(0.2, 1 - F.dr / 100);
   if (F.symHeal) ehp += petRate * F.symHeal * 9;
-  if (F.sgLife >= 2) ehp *= F.sgLife >= 3 ? 1.15 : 1.05;
   /* 0.1.51 鳳凰涅槃（一次大回復）、灼命、火焰護體、避雷針 */
   if (F.phoenix) ehp *= 1.25;
   if (F.burnLeech) ehp *= 1.12;
@@ -857,12 +912,6 @@ function botPend(run, q, P) {
         : opts[fl(r01(run) * opts.length)];
   takePick(run, pick, true);
 }
-/* 0.1.52 印記：差一件就升級的印記多加分（評估時新道具沒有印記，用這個補） */
-function sgBias(run, sg) {
-  if (sg == null) return 1;
-  const n = sgCount(run.bag)[sg];
-  return n === 1 || n === 3 || n === 5 ? 1.25 : n >= 2 ? 1.1 : 1;
-}
 /* 0.1.52 流浪商隊：機器人跟商人交易（每回合一次）；有交易回傳 true */
 function botCaravan(run, q, P, cx) {
   const v = run.van && !run.van.done && VANI[run.van.k];
@@ -1002,6 +1051,13 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
   BOT_ERES = run.eres || BOT_ERES0;
   /* 三選一：挑戰力最高的 */
   for (let g = 0; g < 5 && run.pend; g++) botPend(run, q, P);
+  /* 0.1.96 暴食 6 件：暫存區裡最便宜的 1、2★ 道具拿去餵（每回合一次） */
+  if (sinLv(run, 'glut') >= 3 && run.fedRi !== run.ri) {
+    const c = run.bench
+      .filter(o => o && !ITEMI[o.id].core && ITEMI[o.id].star <= 2)
+      .sort((a, b) => sellO(a, run) - sellO(b, run))[0];
+    if (c) sinFeed(run, c.u);
+  }
   botHold(run, P);
   /* 0.1.35 鈔能力：評估時用現在的金幣 */
   run.bag.gp = run.gold;
@@ -1041,7 +1097,7 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
       if (price > run.gold - floor) return;
       const smart = r01(run) < q;
       let gain;
-      if (smart) gain = botValue(run, s.id, s.t || 1, P, cx, botEx(s)).gain * sgBias(run, s.sg);
+      if (smart) gain = botValue(run, s.id, s.t || 1, P, cx, botEx(s)).gain;
       else {
         const I = ITEMI[s.id];
         gain =

@@ -59,9 +59,10 @@ const CL = G.CLASSES.map(c => c.id),
   if (WRITE) {
     const p = path.join(__dirname, '..', 'js', 'bot.js');
     let s = fs.readFileSync(p, 'utf8');
+    /* 換行可能是 CRLF（Windows 的 git）：找表後面第一個「;＋換行」，之前只找 ;\n 找不到時會把整份檔案接在後面 */
     const i = s.indexOf('let BOT_CLS = '),
-      j = s.indexOf(';\n', i) + 2;
-    s = s.slice(0, i) + 'let BOT_CLS = ' + JSON.stringify(T) + ';\n' + s.slice(j);
+      j = i + s.slice(i).search(/;\r?\n/) + 1;
+    s = s.slice(0, i) + 'let BOT_CLS = ' + JSON.stringify(T) + ';' + s.slice(j);
     fs.writeFileSync(p, s);
     console.log('已寫回 js/bot.js 的 BOT_CLS（記得跑 prettier）');
   }

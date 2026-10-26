@@ -58,6 +58,9 @@ function migrate(s) {
   delete o.music;
   /* 0.1.92 玩家等級：舊存檔全部從 Lv1 開始、賽制道具池回到預設（標準＋巨人國）；打過的不用再玩教學關 */
   if (s.v < 101) Object.assign(o, { v: 101, xp: 0, pick: null, tutDone: (s.games || 0) > 0 ? 1 : 0 });
+  /* 0.1.96 印記賽制換成七宗罪：設定裡選了印記的改成七宗罪（等級解鎖照新的表） */
+  if (o.pick && o.pick.m)
+    o.pick.m = [...new Set(o.pick.m.map(k => (k === 'sigil' ? 'sins' : k)))].filter(k => MODEI[k]);
   /* 0.1.17 頭像換成新的一批：舊的（鍾馗、門神…）不在清單裡就換成第一個 */
   if (!AVATARS.some(x => x[0] === o.av)) o.av = AVATARS[0][0];
   return o;
@@ -65,9 +68,12 @@ function migrate(s) {
 function start() {
   const local = load();
   S = migrate(local);
+  /* 0.1.96 有進行中的對局：打開就直接回到對局（手機誤按上一頁跳出去再回來，不會以為紀錄不見） */
+  if (S.run && S.run.phase !== 'end') V.scr = 'run';
   cloudInit().then(remote => {
     if (remote && remote.v >= 100 && (remote.savedAt || 0) > (S.savedAt || 0)) {
       S = migrate(remote);
+      if (S.run && S.run.phase !== 'end') V.scr = 'run';
       save();
       if (!typing()) render();
       toast('已從雲端載入存檔');

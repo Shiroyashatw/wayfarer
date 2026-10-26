@@ -12,18 +12,50 @@ function bagGrid(bag) {
 }
 /* 能不能把 o 放在 (x, y)、旋轉 r（忽略自己） */
 function canPlace(bag, o, x, y, r) {
-  const g = bagGrid(bag);
+  const g = bagGrid(bag),
+    st = stCells(bag, o.u);
   for (const [dx, dy] of shapeO(o, r)) {
     const cx = x + dx,
       cy = y + dy;
     if (cx < 0 || cy < 0 || cx >= bag.w || cy >= bag.h) return false;
     const u = g[cy][cx];
-    if (u != null && u !== o.u) return false;
+    if ((u != null && u !== o.u) || st.has(cx + ',' + cy)) return false;
   }
   /* 職業核心一個背包最多一個 */
   /* 專屬核心（core 1）、副核心（core 2）各最多 1 個 */
   if (ITEMI[o.id].core && bag.items.some(q => q.u !== o.u && ITEMI[q.id].core === ITEMI[o.id].core)) return false;
   return true;
+}
+/* 0.1.96 整理區（手機整理背包用）：背包還沒開的格子（畫到最大背包 STG_W×STG_H）可以暫放道具（bag.st），
+   放在那裡的（包括一半壓在背包裡的）不算戰力、不在快照裡；有東西在整理區就不能開戰。
+   stCells：整理區的道具佔的格子（skip 是正在拖的那件） */
+const STG_W = BAGLV[BAG_MAX].w,
+  STG_H = BAGLV[BAG_MAX].h;
+function stCells(bag, skip) {
+  const out = new Set();
+  for (const q of bag.st || []) if (q.u !== skip) for (const c of cellsOf(q)) out.add(c + '');
+  return out;
+}
+/* 能不能放進整理區：格子在 STG_W×STG_H 裡、不壓到背包或整理區的道具，而且至少有一格在背包外面（整件都在背包裡就直接放背包） */
+function canStage(bag, o, x, y, r) {
+  const g = bagGrid(bag),
+    st = stCells(bag, o.u);
+  let out = false;
+  for (const [dx, dy] of shapeO(o, r)) {
+    const cx = x + dx,
+      cy = y + dy;
+    if (cx < 0 || cy < 0 || cx >= STG_W || cy >= STG_H || st.has(cx + ',' + cy)) return false;
+    if (cx >= bag.w || cy >= bag.h) out = true;
+    else if (g[cy][cx] != null && g[cy][cx] !== o.u) return false;
+  }
+  return out;
+}
+/* 背包變大後：整件都進到背包裡、放得下的，從整理區搬進背包 */
+function stageSync(bag) {
+  for (const q of [...(bag.st || [])]) {
+    const rest = { ...bag, st: bag.st.filter(x => x !== q) };
+    if (canPlace(rest, q, q.x, q.y, q.r)) (bag.st = rest.st), bag.items.push(q);
+  }
 }
 /* 兩件是不是相鄰（上下左右） */
 function adjacent(a, b) {
@@ -201,80 +233,72 @@ function tagsWith(o, tfm) {
     I = ITEMI[o.id];
   return s && ITEMI[s.id].tf.add ? [...ITEMI[s.id].tf.add, ...I.tags] : I.tags;
 }
-/* ================= 0.1.62 系別羈絆 ================= */
-/* 每一系幾件（只算背包，核心不算）：有那一系的標籤（質變後的）算 1；系別飾品（for）沒有那個標籤也算 1；
-   重做的羈絆飾品（syn: { 系: 件數 }）照寫的件數算（取代原本的 1）。tg 是一件道具的標籤（compileBag 傳質變後的） */
+/* ================= 0.1.96 羈絆（七宗罪） ================= */
+/* 每一組幾件（只算背包，核心不算）：道具的宗罪（it.sins，5★ 兩組）各算 1 件；星座本身算它那一組。tg 留著不用（舊介面） */
 function synCount(bag, tg) {
-  if (!tg) {
-    const tfm = tfOf(bag.items);
-    tg = o => tagsWith(o, tfm);
-  }
   const n = SYN.map(() => 0),
-    hitOf = o => {
-      const I = ITEMI[o.id],
-        ts = tg(o),
-        hit = SYN.map(x => x.g.some(t => ts.includes(t)) || (!!I.for && x.g.includes(I.for)));
-      /* 0.1.69 星座本身算 1 件它那一系 */
-      if (I.zod && SYNI[I.zod] != null) hit[SYNI[I.zod]] = true;
-      return hit;
-    };
+    hitOf = o => SYN.map(x => (ITEMI[o.id].sins || []).includes(x.k));
   for (const o of bag.items) {
     const I = ITEMI[o.id];
     if (!I || I.core) continue;
-    const hit = hitOf(o);
-    for (const k in I.syn || {}) if (SYNI[k] != null) (n[SYNI[k]] += I.syn[k]), (hit[SYNI[k]] = false);
-    hit.forEach((h, i) => h && n[i]++);
-  }
-  /* 0.1.69 星座：旁邊最多 ZOD_ADJ 件（每升一階多 1 件）也算它那一系；本來就算那一系的、星座、已經被同一系的星座帶過的不算 */
-  const zs = bag.items.filter(o => ITEMI[o.id] && ITEMI[o.id].zod && SYNI[ITEMI[o.id].zod] != null);
-  if (zs.length) {
-    const g = bagGrid(bag),
-      got = new Set();
-    for (const z of zs) {
-      const i = SYNI[ITEMI[z.id].zod],
-        nb = new Set();
-      for (const [x, y] of cellsOf(z))
-        for (const [dx, dy] of [
-          [1, 0],
-          [-1, 0],
-          [0, 1],
-          [0, -1]
-        ]) {
-          const u = g[y + dy] && g[y + dy][x + dx];
-          if (u != null && u !== z.u) nb.add(u);
-        }
-      let k = ZOD_ADJ + (z.t || 1) - 1;
-      for (const q of bag.items) {
-        if (k <= 0) break;
-        const I = ITEMI[q.id];
-        if (!nb.has(q.u) || I.zod || I.core || got.has(q.u + '|' + i)) continue;
-        if (hitOf(q)[i] || (I.syn && I.syn[SYN[i].k])) continue;
-        got.add(q.u + '|' + i);
-        (n.zg = n.zg || []).push([z.u, q.u]);
-        n[i]++;
-        k--;
-      }
-    }
+    hitOf(o).forEach((h, i) => h && n[i]++);
   }
   return n;
 }
 /* 0.1.69 羈絆的件數、級數、效果倍率（戰鬥和畫面共用）：塔羅的力量（多算 1 件）、世界（多算 2 件）、力量逆位（只有最多的那系、×2） */
 function synView(bag, tg) {
-  const TK = bag.tar || '';
-  let n = synCount(bag, tg);
-  if (TK === 'strength' || TK === 'world') n = n.map(c => (c ? c + (TK === 'world' ? 2 : 1) : 0));
   const mx = synMax(bag),
-    mul = n.map(() => 1);
-  let lv = n.map(c => synLv(c, mx));
-  if (TK === 'strength_r') {
-    const top = n.indexOf(Math.max(...n));
-    lv = lv.map((l, i) => (i === top ? l : 0));
-    mul[top] = 2;
+    n = mx ? synCount(bag, tg) : SYN.map(() => 0),
+    raw = [...n],
+    gi = SYNI.greed,
+    gl = synLv(raw[gi], mx),
+    wild = [];
+  /* 0.1.96 貪婪 2 件・萬能牌：每件貪婪也算件數最多的另一組 1 件；8 件同時算最多的兩組（件數一樣看排在前面的） */
+  if (gl) {
+    const ord = raw
+      .map((c, i) => [c, i])
+      .filter(([c, i]) => i !== gi && c > 0)
+      .sort((x, y) => y[0] - x[0] || x[1] - y[1]);
+    for (const [, i] of ord.slice(0, gl >= 4 ? 2 : 1)) (n[i] += raw[gi]), wild.push(i);
   }
-  return { n, lv, mul, mx };
+  return { n, lv: n.map(c => synLv(c, mx)), mx, wild };
 }
-/* 0.1.69 羈絆最多開到幾級：背包裡有星座 5 級（8、10 件），不然 3 級 */
-const synMax = bag => (bag.items.some(o => ITEMI[o.id] && ITEMI[o.id].zod) ? SYN_AT.length : 3);
+/* 0.1.96 羈絆最多開到幾級：七宗罪賽制（bag.sin）5 級，其他賽制沒有羈絆 */
+const synMax = bag => (bag.sin ? SYN_AT.length : 0);
+/* 0.1.96 黃道十二宮・星河：同一排或同一行、中間沒有別的星座的一對星座之間是一條河（緊貼的不算）；
+   回傳 [{ a, b（兩端的星座）, cells（河經過的格子）, us（河裡的道具 u） }] */
+function rivers(bag) {
+  const zs = bag.items.filter(o => ITEMI[o.id] && ITEMI[o.id].zod);
+  if (zs.length < 2) return [];
+  const g = bagGrid(bag),
+    at = new Map(zs.map(z => [cellsOf(z)[0] + '', z])),
+    out = [];
+  for (const z of zs) {
+    const [x, y] = cellsOf(z)[0];
+    for (const [dx, dy] of [
+      [1, 0],
+      [0, 1]
+    ]) {
+      const cells = [];
+      for (let k = 1; x + dx * k < bag.w && y + dy * k < bag.h; k++) {
+        const c = [x + dx * k, y + dy * k],
+          o = at.get(c + '');
+        if (o) {
+          if (cells.length)
+            out.push({
+              a: z,
+              b: o,
+              cells,
+              us: [...new Set(cells.map(([px, py]) => g[py][px]).filter(u => u != null))]
+            });
+          break;
+        }
+        cells.push(c);
+      }
+    }
+  }
+  return out;
+}
 /* 0.1.69 棋子影響到哪些道具：Map(棋子 u → [道具 u…])。棋子是 1 格（看它的左上角那格）；
    ray 每個方向碰到的第一件（會被擋），jump 跳到的格子上的道具 */
 function pcTargets(bag) {
@@ -321,7 +345,11 @@ function mergeAll(run, r) {
     /* 0.1.37 再生藥劑：生命藥水 Ⅱ 階就開詞綴 */
     earlyPot = coreProp(bagAll(run.bag), 'earlyPot');
   for (let guard = 0; guard < 20; guard++) {
-    const all = [...run.bag.items.map(o => ['bag', o]), ...run.bench.filter(Boolean).map(o => ['bench', o])],
+    const all = [
+        ...run.bag.items.map(o => ['bag', o]),
+        ...run.bench.filter(Boolean).map(o => ['bench', o]),
+        ...(run.bag.st || []).map(o => ['st', o])
+      ],
       key = {};
     for (const [w, o] of all) (key[o.id + '|' + o.t] = key[o.id + '|' + o.t] || []).push([w, o]);
     const m2 = run.bag.tar === 'magician' ? '*' : merge2Of([...all.map(([, o]) => o), run.bag.core]),
@@ -336,6 +364,7 @@ function mergeAll(run, r) {
     for (const [w, q] of use) {
       if (q === o) continue;
       if (w === 'bag') run.bag.items = run.bag.items.filter(x => x !== q);
+      else if (w === 'st') run.bag.st = run.bag.st.filter(x => x !== q);
       else run.bench[run.bench.indexOf(q)] = null;
       if (run.sgq) run.sgq = run.sgq.filter(x => x.u !== q.u);
     }
@@ -383,13 +412,6 @@ function mergeAll(run, r) {
           cus.reduce((a, c) => a + c[1], 0)
         )
       ];
-    }
-    const sgs = [...new Set(use.map(([, q]) => q.sg).filter(x => x != null))];
-    if (sgs.length > 1) {
-      if (run.auto) {
-        const n = sgCount(run.bag);
-        o.sg = sgs.sort((a, b) => n[b] - n[a])[0];
-      } else (run.sgq = run.sgq || []).push({ u: o.u, o: sgs });
     }
     done.push(o);
   }
@@ -677,12 +699,6 @@ function compileBag(bag, extra = {}) {
       (F.src.sisters = F.src.sisters || []).push(its.find(o => defsOf(o).some(d => d.sisters)).u);
     }
   }
-  /* 0.1.52 印記：背包裡每個印記幾件 → 等級；守護 1 級開戰護盾（每件 15）、生命 1 級吸血 */
-  const SGN = sgCount(bag),
-    SGL = SGN.map(sgLv);
-  [F.sgMight, F.sgSwift, F.sgGuard, F.sgLife, F.sgLuck] = SGL;
-  if (SGL[2]) F.startBlock += 15 * SGN[2];
-  if (SGL[3]) for (const q of bag.items) if (q.sg === 3) add(q, { ls: 5 });
   /* 0.1.62 主題道具：self（這件自己）、perAdj／perAdjF（每有 1 件相鄰道具）、hole（巨人國：凹口裡的道具）、
      gear（機關城齒輪：相鄰武器出手時其他相鄰武器充能）、chainAdj（連鎖機關：相鄰武器出手時帶動另一件相鄰武器） */
   const GEAR = new Map(),
@@ -734,25 +750,63 @@ function compileBag(bag, extra = {}) {
   /* 0.1.62 系別羈絆：湊 2／4／6 件，效果累加；m 給那一系的道具、F 給角色 */
   /* 0.1.69 塔羅（bag.tar）：力量（門檻 -1＝多算 1 件）、世界（多算 2 件）、力量逆位（只有最多的那系、效果 ×2）、世界逆位（每個門檻加成武器） */
   const TK = bag.tar || '',
-    SV = synView(bag, o => TG.get(o.u)),
-    synMul = SV.mul;
+    SV = synView(bag, o => TG.get(o.u));
   F.syn = SV.lv;
   /* 0.1.74 每一系湊了幾件、最多開到幾級（機器人估「差幾件到下一個門檻」用） */
   F.synN = SV.n.slice(0, SYN.length);
   F.synMx = SV.mx;
-  SYN.forEach((x, i) => {
-    for (let l = 0; l < F.syn[i]; l++) {
-      const L = x.L[l];
-      if (L.m) for (const q of bag.items) if (x.g.some(t => has(q, t))) add(q, L.m, synMul[i]);
-      for (const k in L.F || {}) F[k] = (F[k] || 0) + L.F[k] * synMul[i];
+  /* 0.1.96 七宗罪：效果多半在戰鬥裡（sim 看 F.sin）；這裡只記每組幾級、背包階數總和（傲慢的王冠）、餵食加的生命在 bag.hpx */
+  F.sin = Object.fromEntries(SYN.map((x, i) => [x.k, F.syn[i]]));
+  F.tierSum = bag.items.reduce((a, o) => a + (ITEMI[o.id].core ? 0 : o.t || 1), 0);
+  /* 0.1.96 星河：河裡的道具拿到兩端星座的效果（數值直接加、特殊效果記在 ZF 給武器）；黃道武器每在一條河裡變強（synPer） */
+  const ZF = new Map(),
+    RV = rivers(bag);
+  for (const R of RV)
+    for (const z of [R.a, R.b]) {
+      const Z = ZODS[ITEMI[z.id].zod],
+        k = zodMul(z.t);
+      for (const u of R.us) {
+        const q = bag.items.find(o => o.u === u);
+        if (Z.m) add(q, Z.m, k);
+        if (Z.f === 'zblk') F.startBlock += Z.v * k;
+        else if (Z.f) {
+          const f = ZF.get(u) || {};
+          f[Z.f] = (f[Z.f] || 0) + Z.v * k;
+          ZF.set(u, f);
+        }
+      }
     }
-  });
-  /* 0.1.69 黃道十二宮的武器：每開一個羈絆門檻變強（synPer） */
-  const synSum = F.syn.reduce((a, b) => a + b, 0);
-  if (synSum) for (const o of bag.items) if (ITEMI[o.id].synPer) add(o, scaleMod(ITEMI[o.id].synPer, o.t), synSum);
+  for (const o of bag.items)
+    if (ITEMI[o.id].synPer) {
+      const n = RV.filter(R => R.us.includes(o.u)).length;
+      if (n) add(o, scaleMod(ITEMI[o.id].synPer, o.t), n);
+    }
+  /* 0.1.96 塔羅：力量逆位（武器攻速 -25%）、世界（每種道具類別 +5%）、世界逆位（武器只有一種類別時那類 +40%、攻速 +15%） */
+  const KIND = o =>
+    [
+      'sword',
+      'axe',
+      'mace',
+      'bow',
+      'xbow',
+      'spear',
+      'dagger',
+      'staff',
+      'pet',
+      'shield',
+      'armor',
+      'potion',
+      'trinket'
+    ].find(t => has(o, t)) || ITEMI[o.id].tags[0];
+  if (TK === 'strength') F.tarStr = 1;
+  if (TK === 'strength_r') (F.tarStrR = 1), its.forEach(q => has(q, 'weapon') && add(q, { spd: -25 }));
+  if (TK === 'world') {
+    const n = new Set(bag.items.filter(o => !ITEMI[o.id].core).map(KIND)).size;
+    for (const q of its) if (has(q, 'weapon')) add(q, { dmgPct: 5 * n });
+  }
   if (TK === 'world_r') {
-    const n = F.syn.reduce((a, b) => a + b, 0);
-    if (n) for (const q of its) if (has(q, 'weapon')) add(q, { dmgPct: 8 * n, spd: 5 * n });
+    const ws = bag.items.filter(o => has(o, 'weapon'));
+    if (ws.length && new Set(ws.map(KIND)).size === 1) for (const q of ws) add(q, { dmgPct: 40, spd: 15 });
   }
   /* 隱者（背包 5 件以下）、隱者逆位（每件）、高塔逆位（最強的一把整場不出手，其他武器 +30%） */
   if (TK === 'hermit' && bag.items.length <= 5) for (const q of its) if (has(q, 'weapon')) add(q, { dmgPct: 50 });
@@ -926,11 +980,10 @@ function compileBag(bag, extra = {}) {
         shPierce: Math.min(100, m.shPierce || 0),
         /* 0.1.51 電荷 */
         charge: m.charge || 0,
-        /* 0.1.52 這件的印記（有到 1 級才算）：力量（重擊）、迅捷（接力）、生命（困獸）、幸運（幸運一擊） */
-        sgM: o.sg === 0 && SGL[0] ? 1 : 0,
-        sgS: o.sg === 1 && SGL[1] ? 1 : 0,
-        sgL: o.sg === 3 && SGL[3] ? 1 : 0,
-        sgK: o.sg === 4 && SGL[4] ? 1 : 0,
+        /* 0.1.96 這件的宗罪（戰鬥裡看這組有沒有開）；星河的特殊效果（牡羊開戰充能、雙子再出手、處女回復、天蠍、摩羯免疫、水瓶） */
+        sins: I.sins || [],
+        ...(ZF.get(o.u) || {}),
+        ...(ZF.get(o.u) && ZF.get(o.u).zimm ? { imm: 1 } : {}),
         /* 0.1.53 召喚的戰狼（第幾隻、開戰封住到幾秒）、馴獸師的成長 */
         ...(o.vw ? { vw: o.vw, seal: o.vw * WOLF_T } : {}),
         /* 0.1.59 詛咒・沉睡：開戰後幾秒才開始出手；0.1.62 雷電砲台（wake）也一樣 */
@@ -1072,7 +1125,9 @@ function bagMods(bag) {
       if (u != null && u !== o.u && out.has(u)) out.get(u).push({ from: o.u, w: 'adj', m: scaleMod(I.hole, o.t) });
     }
   }
-  for (const [zu, qu] of synCount(bag).zg || []) if (out.has(qu)) out.get(qu).push({ from: zu, w: 'adj', m: {} });
+  /* 0.1.96 星河：河裡的道具跟兩端的星座連起來（選星座時亮起來、角標 ✶） */
+  for (const R of rivers(bag))
+    for (const u of R.us) for (const z of [R.a, R.b]) if (out.has(u)) out.get(u).push({ from: z.u, w: 'riv', m: {} });
   /* 0.1.69 棋子影響到的道具（選棋子時亮起來、道具詳細列出加成） */
   for (const [pu, us] of pcTargets(bag)) {
     const p = bag.items.find(o => o.u === pu);
@@ -1137,6 +1192,7 @@ const packBag = bag => ({
     ? { tar: bag.tar, ...(bag.tarN ? { tn: bag.tarN } : {}) }
     : {}),
   ...(bag.hpx ? { hx: bag.hpx } : {}),
+  ...(bag.sin ? { sn: 1 } : {}),
   it: bag.items.map(packIt)
 });
 const unpackIt = (a, u) => ({
@@ -1173,6 +1229,7 @@ const unpackBag = p => ({
   rel: (p.rel || []).filter(k => RELICI[k]),
   ...(tarOf(p.tar) ? { tar: p.tar, tarN: p.tn || 0 } : {}),
   ...(p.hx ? { hpx: p.hx } : {}),
+  ...(p.sn ? { sin: 1 } : {}),
   items: (p.it || []).filter(a => ITEMI[a[0]]).map((a, i) => unpackIt(a, 'g' + i))
 });
 /* 0.1.33 長柄大師：背包（含暫存區）裡有 shrink 的核心時，那個標籤的道具少佔 1 格（o.sm）；核心拿掉後放不下的收回暫存區 */

@@ -407,6 +407,8 @@ function modeShare(run, sh) {
   for (const k of Object.keys(run.share || {})) delete run[k];
   run.share = sh;
   Object.assign(run, sh);
+  /* 0.1.96 有羈絆的賽制（七宗罪）：記在背包上，戰鬥、快照都看這個 */
+  run.bag.sin = MODEI[run.mode] && MODEI[run.mode].syn ? 1 : 0;
 }
 /* 賽制開場後補上：已經拿到的道具（起手道具、換賽制前拿到的）補上印記、七十二變的形狀 */
 function modeFix(run) {
@@ -442,13 +444,6 @@ const MODEH = {
     bought: run => rollShop(run),
     reroll: '狂風市集不能刷新：買一件，商店就會整排換新',
     rerollNote: '買一件就換新'
-  },
-  sigil: {
-    fix: (run, o) => o.sg == null && (o.sg = fl(r01(run) * SIGILS.length)),
-    slot: (run, s) => (s.sg = fl(r01(run) * SIGILS.length)),
-    item: (run, o, from) => (o.sg = from && from.sg != null ? from.sg : fl(r01(run) * SIGILS.length)),
-    /* 幸運 2 級：打贏 30% 多拿 2 金 */
-    luck: run => sgLv(sgCount(run.bag)[4]) >= 2 && r01(run) < 0.3
   },
   caravan: {
     /* 每回合換一位商人（不跟上回合同一位）；雙胞胎只在那一回合有效 */
@@ -553,12 +548,8 @@ const MODEH = {
   }
 };
 const modeH = run => (run && MODEH[run.mode]) || {};
-/* 0.1.52 背包裡每個印記幾件（只算背包，暫存區、核心不算） */
-const sgCount = bag => {
-  const n = SIGILS.map(() => 0);
-  for (const o of bag.items) if (o.sg != null && !ITEMI[o.id].core) n[o.sg]++;
-  return n;
-};
+/* 0.1.96 七宗罪：這一組現在幾級（準備時的經濟效果用：貪婪、暴食的餵食） */
+const sinLv = (run, k) => synView(run.bag).lv[SYNI[k]] || 0;
 /* 開新的一局；rivals 是對手（ghost.js 配好，或機器人）。
    0.1.69 先抽好賽制、主題再配對手（快照只配同一個賽制＋主題）：newRun() 不帶對手，配好再 joinRivals */
 function newRun(rivals = []) {
@@ -743,6 +734,11 @@ function rollShop(run, lotto) {
   });
   /* 0.1.69 賽制：整排商店抽完（塔羅的多一格、保底） */
   if (modeH(run).shop && run.ri > 0) modeH(run).shop(run, used);
+  /* 0.1.96 貪婪 4 件：商店多 1 格 */
+  if (run.ri > 0 && sinLv(run, 'greed') >= 2) {
+    const id = rollItem(run, lotto, used);
+    if (id) run.shop.push({ id, t: 1 }), poolAdd(used, id, 1);
+  }
   /* 0.1.35 六合彩：價格打亂成 0 金～5★ 的價格（p） */
   if (lotto) for (const s of run.shop) if (s) s.p = fl(r01(run) * (5 * 3 ** (s.t - 1) + 1));
 }
@@ -896,8 +892,9 @@ function swapPlan(run, o, tx, ty, from) {
 }
 function sellItem(run, u) {
   if (sellNo(run)) return 0;
-  let o = run.bag.items.find(q => q.u === u);
-  if (o) run.bag.items = run.bag.items.filter(q => q !== o);
+  let o = run.bag.items.find(q => q.u === u) || (run.bag.st || []).find(q => q.u === u);
+  if (o)
+    (run.bag.items = run.bag.items.filter(q => q !== o)), run.bag.st && (run.bag.st = run.bag.st.filter(q => q !== o));
   else {
     const i = run.bench.findIndex(q => q && q.u === u);
     if (i < 0) return 0;
@@ -955,6 +952,7 @@ function levelUp(run) {
   run.lv++;
   run.bag.w = BAGLV[run.lv].w;
   run.bag.h = BAGLV[run.lv].h;
+  stageSync(run.bag);
   return '';
 }
 /* 0.1.25 每回合收入：基礎＋利息＋連勝連敗＋額外金幣（nextRound 與準備畫面的預估共用） */
@@ -1102,7 +1100,7 @@ function shopOdds(run) {
 }
 /* ================= 戰鬥 ================= */
 /* 0.1.19 戰鬥用的生命照階段放大（data.js 的 HP_ST）；回傳複本，不改原本的 */
-/* 怪物：生命跟著階段放大（MOB_HP）、傷害放大更多（MOB_DMG；玩家生命變多，怪也要打得痛）。0.1.20 機器人變聰明後重調 */
+/* 怪物：生命跟著階段放大（MOB_HP）、傷害放大更多（MOB_DMG；玩家生命變多，怪也要打得痛）。0.1.20 機器人變聰明後重調；0.1.96 平常局拿掉羈絆後調低（1.25／1.7 → 1.1／1.6） */
 function stageHp(F, st, mob) {
   const m = hpMul(st);
   if (!mob) return { ...F, hp: Math.round(F.hp * m) };
@@ -1114,8 +1112,8 @@ function stageHp(F, st, mob) {
   };
 }
 /* 0.1.62 系別羈絆讓大家變強（首領 2-5 勝率 87% → 100%），怪物生命 ×1.25、傷害倍率 1.5 → 1.7 拉回原本的難度 */
-let MOB_HP = 1.25,
-  MOB_DMG = 1.7;
+let MOB_HP = 1.1,
+  MOB_DMG = 1.6;
 /* 開戰：存快照（給別人當對手）、算好整場（固定亂數） */
 /* 0.1.33 賄賂：背包有這個核心、金幣超過 N 就付 N，這場（快照也一樣）整場封鎖敵人星級最高的武器 */
 /* 0.1.35 也記下開戰時的金幣（bag.gp：鈔能力的加成、金錢標能花的錢） */
@@ -1221,8 +1219,6 @@ function finishFight(run, fb) {
     run.ws++;
     run.lsk = 0;
     out.gold = winGold(r, run);
-    /* 0.1.52 印記：幸運 2 級，打贏 30% 多拿 2 金 */
-    if (luckWin(run)) (out.gold += 2), (out.luck = 1);
     /* 0.1.53 馴獸師：寵物成長、捕獲 */
     out.capture = petWin(run, r);
     /* 打贏對手：他扣跟你輸了會扣的一樣多（加上你背包的寵物）；結果視窗顯示他扣多少、是否淘汰 */
@@ -1233,6 +1229,7 @@ function finishFight(run, fb) {
       out.hit = tarHit(rivalBag(rv, r.id).bag, rv, rivalHp(rv), r.loss + petLoss(run.bag));
       rv.hp = rivalHp(rv) - out.hit;
       out.ko = rivalHp(rv) <= 0;
+      out.plunder = plunder(run, opp.bag);
     }
   } else {
     run.lsk++;
@@ -1248,7 +1245,7 @@ function finishFight(run, fb) {
     const [a, b] = eliteStars(r.st);
     run.pend = {
       kind: 'pick',
-      t: '菁英的戰利品：選一件',
+      t: res.win && catchUp(run) ? '菁英的戰利品：選一件（後追：多一個選項）' : '菁英的戰利品：選一件',
       opts: eliteOpts(run, a, b, res.win),
       tier: eliteTier(run, res.win)
     };
@@ -1400,7 +1397,25 @@ function eliteOpts(run, a, b, win = true) {
   const o = [0, 1].map(() => pick(run, pool).id);
   if (wp.length) o.splice(fl(runR(run)() * 3), 0, pick(run, wp).id);
   else o.push(pick(run, pool).id);
+  /* 0.1.96 貪婪 4 件：多 1 個選項；後追（打贏菁英、落後的人）：再多 1 個 */
+  if (sinLv(run, 'greed') >= 2) o.push(pick(run, pool).id);
+  if (win && catchUp(run)) o.push(pick(run, pool).id);
   return o;
+}
+/* 0.1.96 後追：第 3 階段起打倒菁英時，存活的人裡生命最後兩名（剩 3 人時最後一名、2 人以下不觸發）多 1 個選項。
+   生命一樣的都算。玩家看對手的生命（rivalHp），機器人對局看同一場的其他機器人（run.lob） */
+function catchUp(run) {
+  const r = curRound(run);
+  if (!r || r.st < 3 || run.hp <= 0) return false;
+  const hs = run.lob
+      ? run
+          .lob()
+          .filter(x => x.hp > 0)
+          .map(x => x.hp)
+      : (run.rivals || []).filter(rv => rivalAlive(rv, r.id)).map(rivalHp),
+    n = hs.length + 1,
+    k = n >= 4 ? 2 : n === 3 ? 1 : 0;
+  return k > 0 && hs.filter(v => v < run.hp).length < k;
 }
 /* 三選一的獎勵放進暫存區 */
 /* 0.1.6 暫存區滿了：剛好湊滿 3 件就先放多出來的一格合成；不然玩家的話先寄放在 run.hold（下回合空出位置再領），不會卡住 */
@@ -1431,6 +1446,31 @@ function giveGift(run, id) {
   const pool = ITEMS.filter(i => poolOK(run, i) && i.star === G[0] && i.tags.includes(G[1]));
   /* 0.1.74 跟其他送的道具一樣：暫存區滿了先寄放 */
   for (let k = 0; k < G[2] && pool.length; k++) putItem(run, newItem(run, pick(run, pool).id));
+}
+/* 0.1.96 貪婪 6 件・掠奪：打贏對戰時，複製對手背包裡隨機 1 件道具（Ⅰ 階、賣 0 金）；回傳道具代號 */
+function plunder(run, bag) {
+  if (sinLv(run, 'greed') < 3) return null;
+  const c = (bag.items || []).filter(o => ITEMI[o.id] && !ITEMI[o.id].core);
+  if (!c.length) return null;
+  const o = newItem(run, c[fl(r01(run) * c.length)].id, 1);
+  o.z = 1;
+  putItem(run, o);
+  return o.id;
+}
+/* 0.1.96 暴食 6 件・餵食：每回合一次，把一件道具餵掉，永久 +生命（星級 × 階數 × FEED_HP，記在 bag.hpx，快照也算） */
+const feedHp = o => ITEMI[o.id].star * (o.t || 1) * FEED_HP;
+function sinFeed(run, u) {
+  if (sinLv(run, 'glut') < 3) return '暴食要 6 件才能餵食';
+  if (run.fedRi === run.ri) return '這回合已經餵過了';
+  const o = [...run.bag.items, ...run.bench].find(q => q && q.u === u);
+  if (!o || ITEMI[o.id].core) return '這件不能餵';
+  run.bag.items = run.bag.items.filter(q => q !== o);
+  const i = run.bench.indexOf(o);
+  if (i >= 0) run.bench[i] = null;
+  run.bag.hpx = (run.bag.hpx || 0) + feedHp(o);
+  run.fedRi = run.ri;
+  syncShrink(run);
+  return '';
 }
 /* 送的道具放進暫存區；滿了先寄放，寄放也有了就換成賣價 */
 function putItem(run, o) {
@@ -1498,7 +1538,6 @@ function petEvolve(run) {
   mergeAll(run, runR(run));
 }
 /* 0.1.52 印記：幸運 2 級（4 件）以上，打贏 30% 多拿 2 金 */
-const luckWin = run => !!modeH(run).luck && modeH(run).luck(run);
 /* ================= 0.1.52 流浪商隊 ================= */
 /* 能被商人換掉的道具：商店買得到的（不是核心、不是核心送的） */
 const vanOK = o => o && ITEMI[o.id] && shopOK(ITEMI[o.id]);
@@ -1528,7 +1567,8 @@ function takeOut(run, u) {
   run.bench[i] = null;
   return b;
 }
-const findU = (run, u) => run.bag.items.find(q => q.u === u) || run.bench.find(q => q && q.u === u);
+const findU = (run, u) =>
+  run.bag.items.find(q => q.u === u) || run.bench.find(q => q && q.u === u) || (run.bag.st || []).find(q => q.u === u);
 /* 商店現在最高能出到幾星 */
 const shopTop = run => {
   const od = shopOdds(run);
@@ -1874,7 +1914,7 @@ function bossCores(run, not = []) {
     clsOK = i => !run.bag.cls || (C2 && C2.other ? i.cls !== run.bag.cls : i.cls === run.bag.cls);
   let cs = ITEMS.filter(i => i.core === 1 && clsOK(i) && !own.includes(i.id) && !ban.some(k => i[k])).map(i => i.id);
   const fresh = cs.filter(id => !not.includes(id)),
-    n = C2 ? C2.n : 3,
+    n = (C2 ? C2.n : 3) + (sinLv(run, 'greed') >= 2 ? 1 : 0),
     o = [];
   if (fresh.length >= n) cs = fresh;
   while (o.length < Math.min(n, cs.length)) {
@@ -2011,7 +2051,7 @@ function botAfter(run, r, win, q, P) {
   if (win) {
     run.ws++;
     run.lsk = 0;
-    run.gold += winGold(r, run) + (luckWin(run) ? 2 : 0);
+    run.gold += winGold(r, run);
     petWin(run, r);
   } else {
     run.lsk++;
@@ -2129,6 +2169,7 @@ function simLobby(seed, rating, opt = {}) {
         h(seed, k, i)
       );
       afterSim(run, res, 0);
+      if (res.win && o) plunder(run, o.run.bag);
       /* 0.1.10 跟玩家一樣的經濟：打贏拿金幣、連勝連敗（之前沒算，機器人的背包比玩家窮、快照偏弱） */
       if (!res.win && !solo) run.hp -= tarHit(run.bag, run, run.hp, r.loss);
       botAfter(run, r, res.win, b.q, b.P);

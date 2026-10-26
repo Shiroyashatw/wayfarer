@@ -104,6 +104,8 @@ setInterval(() => {
   if (CLOUD.dirty && !(typeof B !== 'undefined' && B)) cloudPush();
 }, 15000);
 document.addEventListener('visibilitychange', () => {
+  /* 0.1.96 切到背景、關掉前本機再存一次 */
+  if (document.hidden && typeof save === 'function') save();
   if (document.hidden && CLOUD.dirty) cloudPush();
 });
 

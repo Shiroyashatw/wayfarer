@@ -58,7 +58,7 @@ const walk = (x, out, d = 0) => {
   } else if (typeof x === 'object') for (const k in x) walk(x[k], out, d + 1);
   return out;
 };
-for (const T of ['MODES', 'TAROT', 'SIGILS', 'VANS', 'CURSES', 'BLESS', 'ASTROS', 'RELICS', 'POOLTH', 'SYN'])
+for (const T of ['MODES', 'TAROT', 'ZODS', 'VANS', 'CURSES', 'BLESS', 'ASTROS', 'RELICS', 'POOLTH', 'SYN'])
   for (const d of walk(G[T], []))
     if (/[\u4e00-\u9fff]/.test(d)) for (const [re, fix] of BAD) if (re.test(d)) issues.push(['用詞', T, `${d.match(re)[0]} → ${fix}`]);
 const WORD = BAD.filter(([re]) => !/\\d/.test(re.source)).concat([[/每秒受「層數/, '每秒扣「層數」的血']]);

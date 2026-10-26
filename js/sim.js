@@ -114,7 +114,18 @@ function simSide(F) {
     frz: 0,
     wpT: 0,
     /* 0.1.69 塔羅・月亮逆位：還能閃開幾次敵人的攻擊 */
-    tmiss: F.tarMiss || 0
+    tmiss: F.tarMiss || 0,
+    /* 0.1.96 七宗罪：每組幾級（嫉妒會在開戰時改）、暴怒的怒氣／暴走到幾秒／暴走中受到的傷害／最後的狂怒、
+       怠惰傳了幾圈／累加的傷害、王冠武器 */
+    sin: { ...(F.sin || {}) },
+    wr: 0,
+    rmpT: 0,
+    rmpD: 0,
+    lastU: 0,
+    lastT: 0,
+    lapN: 0,
+    slothB: 0,
+    crownW: null
   };
 }
 /* 0.1.35 金錢標花 1 金那一下：傷害、暴擊率、命中效果、吸血都翻倍 */
@@ -151,9 +162,46 @@ function simulate(FA, FB, seed) {
   const r = rng(seed),
     S = [simSide(FA), simSide(FB)],
     ev = [];
-  /* 0.1.69 塔羅・月亮：開戰時複製敵人最強的一把武器（幻影，傷害 tarCopy%，不在格子上） */
+  /* 0.1.96 七宗罪：L 是幾級、isS 是這件算不算那一組 */
+  const L = (a, k) => a.sin[k] || 0,
+    isS = (w, k) => !!w.sins && w.sins.includes(k);
+  /* 嫉妒 10 件：偷走對手件數最多的一組的 2 件；嫉妒 6 件：對手比你高級的組，嫉妒道具也算那一組（至少 1 級） */
   for (let i = 0; i < 2; i++) {
-    const P = S[i].F.tarCopy,
+    const a = S[i],
+      d = S[1 - i],
+      n = d.F.synN;
+    if (L(a, 'envy') < 5 || !n || !n.length) continue;
+    const top = n.indexOf(Math.max(...n));
+    if (!(n[top] > 0)) continue;
+    const k = SYN[top].k;
+    d.sin[k] = synLv(Math.max(0, n[top] - 2), d.F.synMx || 3);
+    a.sin[k] = Math.max(L(a, k), synLv(((a.F.synN || [])[top] || 0) + 2, a.F.synMx || 3));
+    a.envyK = k;
+  }
+  for (let i = 0; i < 2; i++) {
+    const a = S[i],
+      d = S[1 - i];
+    if (L(a, 'envy') < 3) continue;
+    for (const x of SYN)
+      if (x.k !== 'envy' && L(d, x.k) > L(a, x.k)) {
+        a.sin[x.k] = Math.max(1, L(a, x.k));
+        for (const w of a.w) if (isS(w, 'envy') && !isS(w, x.k)) w.sins = [...w.sins, x.k];
+      }
+  }
+  /* 傲慢：階數最高的傲慢武器戴王冠（同階看星級、再看每秒傷害）；6 件起王冠不會被凍結、封鎖 */
+  for (const a of S)
+    if (L(a, 'pride')) {
+      const c = a.w
+        .filter(w => isS(w, 'pride') && !w.vw)
+        .sort(
+          (x, y) =>
+            (y.t || 1) - (x.t || 1) || y.star - x.star || (y.dmg[0] + y.dmg[1]) / y.cd - (x.dmg[0] + x.dmg[1]) / x.cd
+        )[0];
+      if (c) (c.crown = 1), (a.crownW = c), L(a, 'pride') >= 3 && (c.imm = 1);
+    }
+  /* 0.1.69 塔羅・月亮：開戰時複製敵人最強的一把武器（幻影，傷害 tarCopy%，不在格子上）；0.1.96 嫉妒 4 件也是（40%） */
+  for (let i = 0; i < 2; i++) {
+    const P = Math.max(S[i].F.tarCopy || 0, L(S[i], 'envy') >= 2 ? 40 : 0),
       src =
         P &&
         [...S[1 - i].w]
@@ -170,6 +218,10 @@ function simulate(FA, FB, seed) {
         seal: 0,
         gear: undefined,
         drv: undefined,
+        /* 0.1.96 幻影不算任何宗罪、不戴王冠 */
+        sins: [],
+        crown: 0,
+        imm: 0,
         fz: 0,
         ch: 0,
         tt: 0
@@ -216,6 +268,13 @@ function simulate(FA, FB, seed) {
       bk: [Math.round(S[0].block), Math.round(S[1].block)],
       ...extra
     });
+  /* 0.1.96 羈絆效果發動：記一筆（q＝太常發生的不記）；嫉妒 8 件：對手發動時，嫉妒道具充能 +15% */
+  const sinFx = (t, i, k, extra, q) => {
+    if (!q) log(t, i, 'sin', 0, { x: k, self: 1, ...(extra || {}) });
+    const o = S[1 - i];
+    if (L(o, 'envy') >= 4)
+      for (const w of o.w) if (isS(w, 'envy') && !(w.seal > 0)) w.tt = Math.min(w.cd * 0.99, w.tt + w.cd * 0.15);
+  };
   const hurt = (t, d, def, src, k, extra) => {
     def.hp -= d;
     /* 0.1.74 不死之怒：第一次受到致命傷留 1 生命，UNDY_T 秒內不會死 */
@@ -229,6 +288,15 @@ function simulate(FA, FB, seed) {
       def.undB = t + UNDY_B;
       log(t, x, 'undying', UNDY_T, { self: 1 });
       tr(def, 'undying');
+    }
+    /* 0.1.96 暴怒 10 件・最後的狂怒：第一次歸零時留 1 生命、暴走 5 秒，時間到才倒下 */
+    if (def.hp <= 0 && L(def, 'wrath') >= 5 && !def.lastU) {
+      const x = S.indexOf(def);
+      def.lastU = 1;
+      def.hp = 1;
+      def.undT = def.lastT = def.rmpT = t + 5;
+      def.rmpD = 0;
+      sinFx(t, x, 'wrath', { v: 5, last: 1 });
     }
     if (def.hp <= 0 && (def.F.revive || def.F.ankh) && !def.rev) revive(t, def);
     /* 0.1.74 諸神黃昏：生命第一次低於 RAGNA_AT% 時發動 */
@@ -295,21 +363,17 @@ function simulate(FA, FB, seed) {
     }
     /* 0.1.52 印記生命 2 級：回復超過上限的部分變成護盾 */
     /* 0.1.74 嗜血護甲：回復超過上限的部分也變成護盾 */
-    if ((a.F.sgLife >= 2 || a.F.lsShield) && raw - Math.max(0, h) > 0.5) gainBlock(t, a, i, raw - Math.max(0, h), null);
+    /* 0.1.96 暴食：溢出變脂肪（4 件以下最多到最大生命的 20%） */
+    if (a.F.lsShield || L(a, 'glut')) {
+      const ov = raw - Math.max(0, h),
+        v = a.F.lsShield || L(a, 'glut') >= 4 ? ov : Math.min(ov, a.max * 0.2 - a.block);
+      if (v > 0.5) gainBlock(t, a, i, v, null);
+    }
   };
   /* 0.1.37 獲得護盾：腐蝕中不能獲得，改成扣 CORRODE_HP 生命 */
   const gainBlock = (t, a, i, v, u) => {
     if (a.corrode > 0) return hurt(t, CORRODE_HP, a, 1 - i, 'corrode', { u });
     a.block = Math.min(a.max, a.block + v);
-    /* 0.1.52 印記守護 3 級：獲得護盾時最強的武器立刻出手（每秒最多一次） */
-    if (a.F.sgGuard >= 3 && t >= a.gT && a.hp > 0 && S[1 - i].hp > 0) {
-      const w = a.w.filter(x => !(x.seal > 0) && !(x.fz > 0)).sort((x, y) => wPow(y) - wPow(x))[0];
-      if (w) {
-        a.gT = t + 1;
-        log(t, i, 'sgBash', 0, { u: w.u, self: 1 });
-        attack(t, a, i, w);
-      }
-    }
     return true;
   };
   /* 0.1.37 中毒、劇毒：上限看攻擊方（毒師 24、劇毒核心 40）；以毒為生：讓敵人中毒時自己也中毒（自己的中毒變回血） */
@@ -356,7 +420,7 @@ function simulate(FA, FB, seed) {
       d.burn += SPARK_BURN * (d.sparkM ? Math.min(1, t / 10) : 1) * res(d, 'burn', t);
     for (const p of d.traps) {
       if (!p.us.has(u)) continue;
-      if (p.k === 'snare' && !(p.left > 0)) continue;
+      if ((p.k === 'snare' || p.k === 'heart') && !(p.left > 0)) continue;
       const a = S[p.by];
       /* 0.1.47 每次觸發都記一筆（畫面讓那個陷阱閃一下）；i 是放陷阱時的編號 */
       log(t, p.by, 'trapHit', 0, { tu: u, x: p.k, ti: p.i });
@@ -375,7 +439,14 @@ function simulate(FA, FB, seed) {
           items(d).find(o => o.u === u),
           p.by
         );
-      else if (p.k === 'snare') {
+      /* 0.1.96 色慾的愛心：這一下傷害無效；4 件起踩到的武器被魅惑（下一次出手打自己） */ else if (p.k === 'heart') {
+        p.left--;
+        cancel = true;
+        log(t, p.by, 'trap', 0, { tu: u, x: 'heart', ...(p.left ? {} : { brk: 1 }) });
+        const x = L(a, 'lust') >= 2 && items(d).find(o => o.u === u);
+        if (x && !x.imm && x.dmg) (x.chm = 1), log(t, p.by, 'charm', 0, { tu: u });
+        sinFx(t, p.by, 'lust', null, 1);
+      } else if (p.k === 'snare') {
         p.left--;
         cancel = true;
         d.bleed += SNARE_BLEED * res(d, 'bleed', t);
@@ -475,8 +546,10 @@ function simulate(FA, FB, seed) {
   /* mul：0.1.33 連鎖多打的那幾下傷害打折 */
   /* o：0.1.50 這一下的特殊效果（force 必定暴擊並無視護甲護盾、el3 元素箭袋輪到哪個、rend 多的撕裂、ctr 反擊、lk 連攜 ×2） */
   const attack = (t, a, ai, w, mul = 1, o = {}) => {
-    /* 0.1.37 混亂：一半機率打到自己 */
-    const self = a.confuse > 0 && r() * 100 < CONFUSE,
+    /* 0.1.37 混亂：一半機率打到自己；0.1.96 被魅惑（色慾）的武器這一下一定打自己 */
+    const chm = !!w.chm && !o.sub;
+    if (chm) w.chm = 0;
+    const self = chm || (a.confuse > 0 && r() * 100 < CONFUSE),
       d = self ? a : S[1 - ai],
       di = S.indexOf(d);
     /* 0.1.50 風之箭（sure）不會被閃避、招架；閃避成功：游擊充能、迴避反擊；沒打中連珠箭歸零 */
@@ -550,9 +623,17 @@ function simulate(FA, FB, seed) {
     /* 0.1.53 饕餮吞噬（這場累積）、檮杌（你受到的攻擊傷害 -%） */
     if (w.gb) v *= 1 + w.gb / 100;
     if (d.F.dr) v *= Math.max(0.2, 1 - d.F.dr / 100);
-    /* 0.1.52 印記：幸運一擊（幸運道具 10% 傷害 ×3）、力量的重擊（o.hv） */
-    const lucky = w.sgK && r() * 100 < 10;
-    if (lucky) v *= 3;
+    /* 0.1.96 七宗罪：暴怒暴走（4 件 +25%）、怠惰每圈累加、暴食每 50 脂肪、王冠（階數總和 × 2%）、貪婪 10 件（每組 +15%）、魅惑打自己（8 件 ×1.5） */
+    if (a.rmpT > t && isS(w, 'wrath') && L(a, 'wrath') >= 2) v *= 1.25;
+    if (a.slothB && isS(w, 'sloth')) v *= 1 + a.slothB / 100;
+    if (L(a, 'glut') >= 4 && isS(w, 'glut')) v *= 1 + fl(a.block / 50) * 0.1;
+    if (w.crown) v *= 1 + ((a.F.tierSum || 0) * 2) / 100;
+    if (L(a, 'greed') >= 5) v *= 1 + 0.15 * Object.values(a.sin).filter(Boolean).length;
+    if (chm && L(S[1 - ai], 'lust') >= 4) v *= 1.5;
+    /* 0.1.96 星河・天蠍（敵人受到的傷害累加）；塔羅・力量（開戰 +40%，每 4 秒少 10%）、力量逆位（每命中一次 +2%） */
+    if (d.scp) v *= 1 + d.scp / 100;
+    if (a.F.tarStr) v *= 1 + Math.max(0, 40 - 10 * fl(t / 4)) / 100;
+    if (a.F.tarStrR) (v *= 1 + (w.sk || 0) * 0.02), (w.sk = (w.sk || 0) + 1);
     /* 0.1.28 穿甲：無視一部分護甲，那部分傷害也不會被格擋吃掉 */
     const pc = o.force ? 1 : (w.pierce || 0) / 100;
     const arm = d.F.arm + d.parA - d.sunder;
@@ -570,9 +651,6 @@ function simulate(FA, FB, seed) {
       ab = Math.min(d.block, v * (1 - pc) * (1 - (w.shPierce || 0) / 100));
       d.block -= ab;
       v -= ab;
-      /* 0.1.52 印記守護 2 級：護盾被打破時反彈 */
-      if (d.F.sgGuard >= 2 && d.block <= 0.5 && !self && !(w.pet && a.F.petNoThorns))
-        hurt(t, 20, a, di, 'thorns', { sg: 1 });
     }
     v = Math.max(ab > 0 ? 0 : 1, v);
     hurt(t, v, d, ai, crit ? 'crit' : 'hit', {
@@ -583,10 +661,38 @@ function simulate(FA, FB, seed) {
       ...(o.ctr ? { ctr: 1 } : {}),
       ...(o.lk ? { lk: 1 } : {}),
       ...(o.ch ? { ch: 1 } : {}),
-      ...(o.hv ? { hv: 1 } : {}),
-      ...(lucky ? { luck: 1 } : {})
+      ...(o.hv ? { hv: 1 } : {})
     });
     a.dmgDone += v;
+    /* 0.1.96 七宗罪的命中效果 */
+    if (chm && L(S[1 - ai], 'lust') >= 4 && S[1 - ai].hp > 0) heal(t, S[1 - ai], 1 - ai, v * 0.3);
+    if (!self && v > 0 && L(d, 'wrath')) wrathHit(t, di, v);
+    /* 星河・處女（命中回復）、天蠍 */
+    if (!self && w.zheal && a.hp > 0) heal(t, a, ai, w.zheal);
+    if (!self && w.zsc) d.scp = Math.min(20, (d.scp || 0) + w.zsc);
+    if (!self && d.hp > 0) {
+      if (isS(w, 'envy') && L(a, 'envy') && d.block > 0) {
+        const x = Math.min(5, d.block);
+        d.block -= x;
+        gainBlock(t, a, ai, x, w.u);
+      }
+      if (isS(w, 'glut') && L(a, 'glut') >= 2 && d.block > 0) {
+        const x = Math.min(10, d.block);
+        d.block -= x;
+        gainBlock(t, a, ai, x, w.u);
+      }
+      if (isS(w, 'wrath') && a.rmpT > t && L(a, 'wrath') >= 3) {
+        const x = d.w[fl(r() * d.w.length)];
+        if (x) x.tt = Math.max(0, x.tt - x.cd * 0.2);
+      }
+      /* 色慾 6 件：命中 15% 再丟一顆（一場最多多丟 6 顆） */
+      if (isS(w, 'lust') && L(a, 'lust') >= 3 && !o.sub && (a.hx || 0) < 6 && r() * 100 < 15)
+        (a.hx = (a.hx || 0) + 1), heart(t, ai, 1);
+      if (isS(w, 'glut') && L(a, 'glut') >= 5 && d.hp < d.max * 0.15) {
+        hurt(t, d.hp, d, ai, 'hit', { u: w.u, eat: 1 });
+        sinFx(t, ai, 'glut', { eat: 1 });
+      }
+    }
     if (a.F.streak) a.streak = Math.min(STREAK_MAX, a.streak + 1);
     if (!self && d.F.fury && v > 0) d.furyN = Math.min(FURY_MAX, d.furyN + 1);
     if (!self && d.F.bzFury && v > 0) d.bzF = Math.min(BZFURY_MAX, d.bzF + 1);
@@ -627,7 +733,12 @@ function simulate(FA, FB, seed) {
       }
       /* 0.1.74 狂血：斧、鎚每少 10% 生命吸血 +BLOOD_LS%；諸神黃昏吸血 ×2 */
       const ls =
-        ((w.ls + a.F.ls + (w.bz && a.F.blood ? a.F.blood * BLOOD_LS * lost10(a) : 0)) / 100) * (a.ragT > t ? 2 : 1);
+        ((w.ls +
+          a.F.ls +
+          (isS(w, 'glut') && L(a, 'glut') ? 6 : 0) +
+          (w.bz && a.F.blood ? a.F.blood * BLOOD_LS * lost10(a) : 0)) /
+          100) *
+        (a.ragT > t ? 2 : 1);
       if (ls > 0 && v > 0) heal(t, a, ai, v * ls);
     }
     if (!self) stickArrows(t, ai, d, w.stick);
@@ -721,9 +832,8 @@ function simulate(FA, FB, seed) {
   const fire = (t, a, ai, w, mul = 1) => {
     const o = {};
     w.k = (w.k || 0) + 1;
-    /* 0.1.52 印記力量：每第 4 次出手是重擊（×2）；2 級暈眩、3 級其他力量道具跟著出手 */
-    const hv = w.sgM && w.k % 4 === 0;
-    if (hv) (mul *= 2), (o.hv = 1);
+    /* 0.1.96 怠惰 4 件：被接力叫醒的那一下傷害 +30% */
+    if (w.rl) (mul *= 1.3), (w.rl = 0), (o.rl = 1);
     if (w.snipe && w.k % w.snipe === 0) o.force = 1;
     if (w.elem) o.el3 = w.k % 3;
     if (a.F.link3 && w.kind) {
@@ -736,30 +846,56 @@ function simulate(FA, FB, seed) {
     /* 多射的箭（第 2 支起）只有傷害與插箭，不重複命中效果 */
     for (let c = 0; c < n && S[1 - ai].hp > 0; c++)
       attack(t, a, ai, w, mul * (n > 1 ? SHOT_DMG / 100 : 1), c ? { ...o, sub: 1, el3: -1 } : o);
-    if (hv && S[1 - ai].hp > 0) {
-      if (a.F.sgMight >= 2) stunIt(t, ai, S[1 - ai], 0.3);
-      if (a.F.sgMight >= 3 && !inHv) {
-        inHv = 1;
-        for (const x of a.w)
-          if (x !== w && x.sgM && !(x.seal > 0) && !(x.fz > 0) && S[1 - ai].hp > 0) fire(t, a, ai, x);
-        inHv = 0;
-      }
-    }
   };
-  /* 0.1.52 印記迅捷：出手後下一件迅捷道具充能（接力）；3 級 25% 再往下接 */
-  const relay = (a, w) => {
-    const l = a.w.filter(x => x.sgS);
-    if (l.length < 2) return;
-    const p = a.F.sgSwift >= 2 ? 35 : 20;
+  /* 0.1.96 怠惰：出手後下一件怠惰道具充能 +25%（接力）；6 件 25% 再往下接；從最後一件接回第一件算傳完一圈：
+     8 件全部一起出手、10 件每圈傷害 +15% */
+  const relay = (t, a, ai, w) => {
+    const l = a.w.filter(x => isS(x, 'sloth')),
+      N = L(a, 'sloth');
+    if (!N || l.length < 2 || !isS(w, 'sloth')) return;
     let i = l.indexOf(w);
     for (let n = 0; n < l.length - 1; n++) {
       i = (i + 1) % l.length;
       const x = l[i];
-      if (x !== w && !(x.seal > 0)) x.tt = Math.min(x.cd * 0.99, x.tt + (x.cd * p) / 100);
-      if (!(a.F.sgSwift >= 3 && r() * 100 < 25)) break;
+      if (i === 0) {
+        a.lapN++;
+        if (N >= 5) a.slothB += 15;
+        sinFx(t, ai, 'sloth', { v: a.lapN });
+        if (N >= 4 && !inHv) {
+          inHv = 1;
+          for (const y of l) if (!(y.seal > 0) && !(y.fz > 0) && S[1 - ai].hp > 0) fire(t, a, ai, y);
+          inHv = 0;
+        }
+      } else sinFx(t, ai, 'sloth', null, 1);
+      if (!(x.seal > 0)) (x.tt = Math.min(x.cd * 0.99, x.tt + x.cd * 0.25)), N >= 2 && (x.rl = 1);
+      if (!(N >= 3 && r() * 100 < 25)) break;
     }
   };
-  /* 0.1.50 協同作戰：開戰召喚亞馬遜戰士，各自隨機繼承一把武器（不是寵物；複製一份、u 是 sm0、sm1，不在背包格子上） */
+  /* 暴怒：受到攻擊得 1 層怒氣，滿了暴走（暴走中受到的傷害記下來，8 件結束時打回去） */
+  const wrathHit = (t, i, v) => {
+    const a = S[i],
+      N = L(a, 'wrath');
+    if (a.rmpT > t) return void (a.rmpD += v);
+    if (++a.wr < WRATH_MAX[N >= 2 ? 1 : 0]) return;
+    a.wr = 0;
+    a.rmpT = t + WRATH_T + (N >= 3 ? 2 : 0);
+    a.rmpD = 0;
+    sinFx(t, i, 'wrath', { v: a.rmpT - t });
+  };
+  /* 色慾：往敵人背包的武器丟愛心（陷阱，一格）；怪物沒有背包就掛在隨機一把武器上 */
+  const heart = (t, i, n) => {
+    const d = S[1 - i],
+      G = d.F.grid;
+    for (let c = 0; c < n; c++) {
+      const ws = d.w.filter(w => !w.vw && (!G || !G.at || G.at[w.u]));
+      if (!ws.length) return;
+      const w = ws[fl(r() * ws.length)],
+        cs = G && G.at && G.at[w.u],
+        cell = cs ? cs[fl(r() * cs.length)] : null;
+      d.traps.push({ k: 'heart', by: i, us: new Set([w.u]), i: d.traps.length, left: L(S[i], 'lust') >= 5 ? 3 : 2 });
+      log(t, i, 'trapSet', 1, { x: 'heart', cells: cell ? [cell] : [], tus: [w.u], ti: d.traps.length - 1 });
+    }
+  }; /* 0.1.50 協同作戰：開戰召喚亞馬遜戰士，各自隨機繼承一把武器（不是寵物；複製一份、u 是 sm0、sm1，不在背包格子上） */
   for (let i = 0; i < 2; i++) {
     const a = S[i],
       c = a.w.filter(w => !w.pet),
@@ -901,15 +1037,30 @@ function simulate(FA, FB, seed) {
       log(0, i, 'axeThrow', a.F.axeN, {});
       tr(a, 'axeThrow');
     }
-    /* 0.1.52 印記幸運 3 級：擲骰，隨機一把 Ⅲ 階以下的武器這場升一階（傷害 ×3） */
-    if (a.F.sgLuck >= 3) {
-      const c = a.w.filter(w => w.t < TIER_MAX && !w.src);
-      if (c.length) {
-        const w = c[fl(r() * c.length)];
-        w.dmg = w.dmg.map(v => v * (TIERM[w.t + 1] / TIERM[w.t]));
-        w.t++;
-        log(0, i, 'dice', w.t, { u: w.u, self: 1 });
+  }
+  /* 0.1.96 星河・牡羊：河裡的武器開戰充能 */
+  for (const a of S) for (const w of a.w) if (w.zchg) w.tt = Math.min(w.cd * 0.99, w.tt + (w.cd * w.zchg) / 100);
+  /* 0.1.96 七宗罪的開戰效果：嫉妒偷羈絆（記一筆）、色慾丟愛心＋傾城、傲慢的威壓與王者決鬥 */
+  for (let i = 0; i < 2; i++) {
+    const a = S[i],
+      d = S[1 - i];
+    if (a.envyK) sinFx(0, i, 'envy', { g: a.envyK });
+    const N = L(a, 'lust');
+    if (N) heart(0, i, LUST_N[Math.min(3, N) - 1]);
+    if (N >= 5)
+      for (const w of [...d.w]
+        .filter(w => !w.imm && !w.vw)
+        .sort((x, y) => wPow(y) - wPow(x))
+        .slice(0, 2))
+        (w.chm = 1), log(0, i, 'charm', 0, { tu: w.u });
+    const c = a.crownW;
+    if (c && L(a, 'pride') >= 3) for (const w of d.w) if ((w.t || 1) < (c.t || 1)) w.prs = 0.85;
+    if (c && L(a, 'pride') >= 5) {
+      for (const x of S) {
+        const w = x.w.filter(q => !q.crown && !q.imm && !q.vw).sort((p, q) => wPow(q) - wPow(p))[0];
+        if (w) (w.seal = Math.max(w.seal || 0, 5)), log(0, i, 'seal', 5, { tu: w.u, ...(x === a ? { own: 1 } : {}) });
       }
+      sinFx(0, i, 'pride', { duel: 1 });
     }
   }
   /* 0.1.33 先手射擊：星級最高的一把開戰先打一下 */
@@ -975,6 +1126,18 @@ function simulate(FA, FB, seed) {
         if (o.fz > 0) o.fz -= SIM_DT;
         if (o.ch > 0) o.ch -= SIM_DT;
       }
+      /* 0.1.96 暴怒：暴走結束（8 件把暴走中受到的傷害 50% 打回去）；最後的狂怒時間到就倒下 */
+      if (a.rmpT && t >= a.rmpT) {
+        if (L(a, 'wrath') >= 4 && a.rmpD > 0 && S[1 - i].hp > 0)
+          hurt(t, a.rmpD * 0.5, S[1 - i], i, 'thorns', { wr: 1 });
+        a.rmpT = 0;
+      }
+      if (a.lastT && t >= a.lastT) {
+        a.lastT = 0;
+        a.hp = 0;
+        log(t, i, 'sin', 0, { x: 'wrath', end: 1, self: 1 });
+        break;
+      }
       if (a.stun > 0) {
         a.stun -= SIM_DT;
         /* 0.1.27 暈眩時封鎖照樣倒數（之前會跟著暫停，暈眩＋凍結變得比說明強） */
@@ -1023,7 +1186,10 @@ function simulate(FA, FB, seed) {
           ice(w) *
           (w.cold ? shS : 1) *
           (night && w.kind === 'bow' ? 1 + a.F.sunmoon / 100 : 1) *
-          (w.sgL && a.F.sgLife >= 3 && a.hp < a.max * 0.3 ? 2 : 1) *
+          /* 0.1.96 暴怒暴走（×1.5）、傲慢的威壓（敵人的，×0.85）、貪婪 10 件（每組 +10%） */
+          (a.rmpT > t && isS(w, 'wrath') ? 1.5 : 1) *
+          (w.prs || 1) *
+          (L(a, 'greed') >= 5 ? 1 + 0.1 * Object.values(a.sin).filter(Boolean).length : 1) *
           /* 0.1.53 撲殺之後寵物攻速 ×2、狂暴 */
           (w.pet && a.pnc ? 2 : 1) *
           (w.pet && a.frz ? 1 + (a.frz * a.F.frenzy) / 100 : 1) *
@@ -1051,7 +1217,24 @@ function simulate(FA, FB, seed) {
           if (a.hp <= 0) break;
           if (miss) continue;
           fire(t, a, i, w);
-          if (w.sgS) relay(a, w);
+          relay(t, a, i, w);
+          /* 0.1.96 星河・雙子（機率再出手一次）、水瓶（下一把武器充能） */
+          if (w.zdbl && r() * 100 < w.zdbl && S[1 - i].hp > 0) fire(t, a, i, w);
+          if (w.zaq) {
+            const nx = a.w[(a.w.indexOf(w) + 1) % a.w.length];
+            if (nx && nx !== w && !(nx.seal > 0)) nx.tt = Math.min(nx.cd * 0.99, nx.tt + (nx.cd * w.zaq) / 100);
+          }
+          /* 0.1.96 傲慢：朝拜（其他傲慢道具出手，王冠充能 +20%）；8 件王冠出手時 Ⅲ 階以上的武器跟著出手 */
+          const cw = a.crownW;
+          if (cw && L(a, 'pride') >= 2 && w !== cw && isS(w, 'pride') && !(cw.seal > 0))
+            (cw.tt = Math.min(cw.cd * 0.99, cw.tt + cw.cd * 0.2)), sinFx(t, i, 'pride', null, 1);
+          if (w === cw && L(a, 'pride') >= 4 && !inHv) {
+            inHv = 1;
+            for (const x of a.w)
+              if (x !== w && (x.t || 1) >= 3 && !(x.seal > 0) && !(x.fz > 0) && S[1 - i].hp > 0) fire(t, a, i, x);
+            inHv = 0;
+            sinFx(t, i, 'pride', { court: 1 }, 1);
+          }
           /* 0.1.62 機關城：每第 N 次出手多打幾下（nth = [N, 幾下]）、齒輪（相鄰的武器充能）、連鎖機關（帶動一件相鄰的武器，每秒一次） */
           w.nk = (w.nk || 0) + 1;
           /* 0.1.97 機關城的事件只給畫面（計數點、齒輪與連鎖的光線），不影響計算：mech 的 x 是 nk（v＝這次是第幾下，0＝多打）、gear、drv */
@@ -1128,7 +1311,8 @@ function simulate(FA, FB, seed) {
             over = a.hp + pv - a.max;
           a.hp = Math.min(a.max, a.hp + pv);
           /* 0.1.54 印記生命 2 級：藥水溢出的回復也變護盾 */
-          if (a.F.sgLife >= 2 && over > 0.5) gainBlock(t, a, i, over, p.u);
+          if (L(a, 'glut') && over > 0.5)
+            gainBlock(t, a, i, L(a, 'glut') >= 4 ? over : Math.min(over, a.max * 0.2 - a.block), p.u);
           log(t, i, 'pot', Math.round(pv), { self: 1, u: p.u });
           /* 0.1.28 爆裂（質變）：喝藥水時炸敵人 */
           if (p.bomb) hurt(t, (p.v * p.bomb) / 100, S[1 - i], i, 'hit', { u: p.u, ab: 0, el: 'fire' });
@@ -1314,6 +1498,8 @@ function simulate(FA, FB, seed) {
             'sunder'
           ].filter(k => a[k] > 0);
           for (const k of ks.slice(0, a.F.cleanse)) a[k] = 0;
+          /* 0.1.96 淨化也解除魅惑 */
+          for (const w of a.w) w.chm = 0;
           if (ks.length) log(t, i, 'cleanse', Math.min(ks.length, a.F.cleanse), { self: 1 }), tr(a, 'cleanse');
         }
         if (a.F.regen && a.hp > 0 && a.hp < a.max) heal(t, a, i, a.F.regen, { regen: 1 }), tr(a, 'regen');

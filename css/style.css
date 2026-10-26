@@ -105,6 +105,12 @@ canvas.spr.flip{transform:scaleX(-1)}
 .rinfo{display:grid;text-align:right;min-width:0;flex:0 1 auto}
 .gold{font-family:var(--f-pix);font-size:var(--fs-num);color:var(--gold);font-weight:400}
 .rinfo small{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button.gold{border:0;background:none;padding:6px 0;margin:-6px 0;cursor:pointer;line-height:inherit}
+.inct{width:100%;border-collapse:collapse;font-size:var(--fs-sm);margin:var(--sp-2) 0}
+.inct th{text-align:left;font-weight:400;padding:6px 4px}.inct th small{display:block;color:var(--dim);font-size:var(--fs-cap)}
+.inct td{text-align:right;padding:6px 4px;font-variant-numeric:tabular-nums;color:var(--good);width:56px}
+.inct tr:first-child td{color:var(--dim)}.inct tr+tr{border-top:1px solid var(--line)}
+.inct tr.sum th,.inct tr.sum td{font-weight:700;color:var(--gold)}
 .gold .inc{font-size:var(--fs-sm);color:var(--good);margin-left:var(--sp-1)}
 .rivals{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-1)}
 /* 0.1.29 6 人一場：5 位對手一排，頭像在上、名字和生命在下 */
@@ -596,13 +602,14 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .sgc .pip i{display:block;width:4px;height:4px;border-radius:50%;background:var(--line)}
 .sgc .pip i.on{background:var(--gold)}
 .sgb{position:absolute;right:2px;bottom:2px;display:grid;place-items:center;width:15px;height:15px;border-radius:4px;font-size:10px;font-style:normal;font-weight:700;line-height:1;color:#1d1b21;z-index:2;box-shadow:0 0 0 1px #0006}
-.sgb.sg0{background:var(--sg0)}.sgb.sg1{background:var(--sg1)}.sgb.sg2{background:var(--sg2)}.sgb.sg3{background:var(--sg3)}.sgb.sg4{background:var(--sg4)}
+.sgb{background:var(--sgc,var(--gold))}.sgb+.sgb{right:19px}.sgb.sg0{background:var(--sg0)}.sgb.sg1{background:var(--sg1)}.sgb.sg2{background:var(--sg2)}.sgb.sg3{background:var(--sg3)}.sgb.sg4{background:var(--sg4)}
 .bag.mini .sgb{width:11px;height:11px;font-size:8px;right:1px;bottom:1px}
 .sginfo{display:grid;gap:var(--sp-3);text-align:left;margin:var(--sp-2) 0}
 .sgi{display:flex;gap:var(--sp-2);align-items:flex-start}
 .sgi .sgb{position:static;width:22px;height:22px;font-size:var(--fs-sm);flex:none}
 .sgi b{display:flex;gap:var(--sp-2);align-items:baseline;font-size:var(--fs-btn)}
 .sgi b small{color:var(--dim);font-weight:400}
+.sgi.syn b{flex-wrap:wrap;row-gap:0}.sgi.syn b small{flex:1 1 100%}
 .sgi p{margin:2px 0;font-size:var(--fs-sm)}
 .sgi p.on{color:var(--gold)}
 .sgl{display:flex;align-items:center;gap:var(--sp-1);font-size:var(--fs-sm);color:var(--dim)}
@@ -771,7 +778,7 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
   .sinfo .sgrow{gap:2px}
   .sinfo .sgc{flex:none;height:40px;padding:0 3px;gap:1px;background:none}
   .sinfo .sgc.z,.sinfo .sgc .pip{display:none}
-  .sinfo .synbar{flex:0 1 auto;width:auto;min-height:40px;padding:0;background:none;box-shadow:none}
+  .sinfo .synbar{flex:0 1 auto;width:auto;min-width:44px;min-height:44px;padding:0;background:none;box-shadow:none}
   .sinfo .synbar>b,.sinfo .synbar>em,.sinfo .syl small{display:none}
   .sinfo .syi img{width:22px;height:22px}
   .srow .fab{width:44px;height:44px}
@@ -801,6 +808,19 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .cbr>.buf.tr{width:auto;padding:0 2px;color:var(--gold)}
 .sc:has(.cub),.it:has(.cub) .c{border-color:var(--s4)}
 .sc:has(.cub){box-shadow:0 0 0 1px var(--s4),0 0 8px color-mix(in srgb,var(--s4) 50%,transparent)}
+/* 0.1.96 七宗罪：貪婪的萬能牌加在哪一組（羈絆列）、王冠角標；黃道的星河光帶、成形時的流星 */
+.syi.wild{position:relative}.syi.wild em{position:absolute;right:-4px;top:-6px;padding:0 2px;border-radius:4px;background:#e6b84a;color:#201b17;font-size:9px;font-style:normal;font-weight:700;line-height:12px}
+.cbr>.buf.cr{width:auto;padding:0 2px;color:#ffd76a}
+.bag .rvb{position:absolute;z-index:3;pointer-events:none;border-radius:3px;opacity:.45;background:linear-gradient(90deg,#9ad0ff,#ffd76a,#ff9ad0)}
+.bag .rvb.h{height:6px;margin-top:-3px}.bag .rvb.v{width:6px;margin-left:-3px;background:linear-gradient(180deg,#9ad0ff,#ffd76a,#ff9ad0)}
+.bag.hassel .rvb{opacity:.3}
+.meteor{position:fixed;z-index:61;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle,#fff,#ffd76a 45%,transparent 70%);box-shadow:0 0 12px 4px #ffd76a;pointer-events:none}
+/* 0.1.96 整理區：背包還沒開的格子（虛線）、放在那裡的道具紅框、拖曳時放得進整理區的影子 */
+.bag .cell.lock{background:transparent;border:1.5px dashed color-mix(in srgb,var(--bad) 35%,var(--line))}
+.it.out .c{border-color:var(--bad)!important;box-shadow:inset 0 0 0 1px var(--bad)}
+.it.out img{opacity:.75}
+.ghost.out i{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 18%,transparent)}
+.bagwrap .stgall{display:block;margin:var(--sp-1) auto 0;color:var(--bad)}
 /* 0.1.97 戰鬥：連動光線、機關城計數點 */
 .bag .beam{position:absolute;z-index:4;height:3px;margin-top:-1.5px;border-radius:2px;background:var(--bc);box-shadow:0 0 6px var(--bc);transform-origin:0 50%;pointer-events:none}
 .it .nkp{position:absolute;left:0;right:0;bottom:1px;z-index:2;display:flex;justify-content:center;gap:2px;pointer-events:none}
