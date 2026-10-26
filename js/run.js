@@ -619,7 +619,8 @@ function poolHeld(m, x, shop = true) {
     for (const a of x.it) poolAdd(m, a[0], a[1]), a[8] && poolAdd(m, a[8], a[9] || 1);
     return;
   }
-  for (const o of [...x.bag.items, ...x.bench, x.hold]) if (o) poolAdd(m, o.id, o.t), o.f && poolAdd(m, o.f, o.ft || 1);
+  for (const o of [...x.bag.items, ...x.bench, x.hold, ...(x.bag.st || [])])
+    if (o) poolAdd(m, o.id, o.t), o.f && poolAdd(m, o.f, o.ft || 1);
   if (shop) for (const o of x.shop || []) if (o) poolAdd(m, o.id, o.t);
 }
 /* 玩家那局的其他人：還活著的對手（即時機器人的那局、其他人這回合的快照） */
@@ -739,8 +740,39 @@ function rollShop(run, lotto) {
     const id = rollItem(run, lotto, used);
     if (id) run.shop.push({ id, t: 1 }), poolAdd(used, id, 1);
   }
+  shopPity(run, used);
   /* 0.1.35 六合彩：價格打亂成 0 金～5★ 的價格（p） */
   if (lotto) for (const s of run.shop) if (s) s.p = fl(r01(run) * (5 * 3 ** (s.t - 1) + 1));
+}
+/* 0.1.99 商店保底（docs/設計原則.md 第 3 節）：差 1 件就合成的道具（Ⅰ 階），連續 PITY_N 次商店（含刷新）沒出現，下一次保證出一件，
+   但只從池子剩下的抽；池子被收光或只剩 PITY_LOW 件以下，記在 run.pityNote 給畫面提示（不破壞共用池的取捨） */
+const PITY_N = 3,
+  PITY_LOW = 2;
+function shopPity(run, used) {
+  if (run.ri <= 0 || run.tutor) return;
+  const own = [...run.bag.items, ...run.bench, ...(run.bag.st || [])].filter(o => o && o.t === 1 && !ITEMI[o.id].core),
+    cnt = {};
+  for (const o of own) cnt[o.id] = (cnt[o.id] || 0) + 1;
+  const want = Object.keys(cnt).filter(id => cnt[id] === mergeNeed(own, id) - 1 && poolOK(run, ITEMI[id])),
+    miss = (run.pity = Object.fromEntries(Object.entries(run.pity || {}).filter(([id]) => want.includes(id))));
+  run.pityNote = null;
+  for (const id of want) {
+    const left = Math.max(0, poolOf(id) - (used.get(id) || 0));
+    if (run.shop.some(x => x && x.id === id)) {
+      miss[id] = 0;
+      continue;
+    }
+    miss[id] = (miss[id] || 0) + 1;
+    if (!left) run.pityNote = run.pityNote || { id, k: 'gone' };
+    else if (left <= PITY_LOW) run.pityNote = run.pityNote || { id, k: 'low', n: left };
+    if (miss[id] < PITY_N || !left) continue;
+    const k = run.shop.findIndex(x => x && ITEMI[x.id].star === ITEMI[id].star && !want.includes(x.id)),
+      at = k >= 0 ? k : run.shop.findIndex(x => x && !want.includes(x.id));
+    if (at < 0) continue;
+    run.shop[at] = { id, t: 1, pity: 1 };
+    poolAdd(used, id, 1);
+    miss[id] = 0;
+  }
 }
 /* 0.1.59 詛咒寶藏：隨機一個詛咒（沉睡只給武器） */
 function curseRoll(run, id) {

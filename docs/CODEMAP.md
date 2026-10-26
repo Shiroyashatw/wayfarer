@@ -29,6 +29,8 @@
 | 詳細統計頁：賽制、道具池的職業勝率與核心選擇率（0.1.77） | `js/ghost.js`、`js/ui.js`、`supabase/migrations/20261026000000_serling_mode_stats.sql` | `ghostStats`、`STAT`、`STAT_MIN`（ghost）；`mstatHTML`、`V.mst`、動作 `mstTab`、`data-chg` 的 change 監聽（ui）；RPC `class_stats_mt`、`core_stats_mt` |
 | 準備畫面重排（0.1.79～0.1.80）：階段圓圈、下一場對手、核心／規則／對手按鈕 | `js/ui.js`、`css/style.css` | `stageHTML`（`.stg`／`.sn`／`.sl`）、`infoRowHTML`（`.nxo`）、`fabHTML`（`.fab`）、0.1.95 規則標籤 `rtagHTML`（`.rtag`、`MODEUI` 的 `badge`）、`A.rulesInfo`、`A.rivals`、電腦版 `.pcrv` |
 | 手機誤按上一頁（0.1.97）、打開直接回對局、切到背景再存 | `js/ui.js`、`js/main.js`、`js/cloud.js` | `backGuard`、`popstate`、`V.guard`／`V.backT`（ui）；`start` 的 `V.scr`（main）；`visibilitychange` 的 `save`（cloud） |
+| 戰鬥偽隨機、商店保底、陷阱落點（0.1.99，`docs/設計原則.md` 第 3 節） | `js/sim.js`、`js/run.js`、`js/ui.js` | `prdC`、`simulate` 的 `prd`、陷阱的 `occ`（sim）；`shopPity`／`PITY_N`／`PITY_LOW`、`run.pity`／`run.pityNote`、`poolHeld` 算整理區（run）；`.sc.pity`、`ruleFx` 的保底與池子提示（ui） |
+| 戰報分頁、支援單位列（0.1.99） | `js/ui.js`、`js/sim.js`、`css/style.css` | `showLog`（`data-lt`、`data-lgu`）、`lgBagHTML`（ui）；`supHTML`、`res.sup`、`bFlash` 的 `#sup`（ui／sim）；`.lgtab`、`button.lgb`、`.supr` |
 | 後追（0.1.97，落後的人菁英四選一）、收入明細（點金幣） | `js/run.js`、`js/ui.js` | `catchUp`、`eliteOpts` 的 `win`、`finishFight` 的菁英標題（run）；`incomeHTML`、動作 `incInfo`、`.top .gold`（ui） |
 | 整理區（0.1.97，背包外暫放道具）、拖曳自動轉向與交換轉向 | `js/bag.js`、`js/run.js`、`js/ui.js`、`css/style.css` | `STG_W`／`STG_H`、`stCells`、`canStage`、`stageSync`、`canPlace` 避開整理區、`mergeAll` 的 `st`（bag）；`levelUp`、`findU`、`sellItem`（run）；`bagHTML` 的 `opt.stage`（`.cell.lock`、`.it.out`）、`dragMove` 的 `d.stg` 與交換轉向、`dropDo`、`A.unstage`、`A.fight`、`rotIt`（ui） |
 | 規則提示（0.1.95）：一句話規則、規則標籤、觸發提示、第一次遇到、範圍提示、棋子虛線、加成角標、遺物區域、凹口、塔羅角標 | `js/data.js`、`js/ui.js`、`css/style.css` | `MODES`／`POOLTH` 的 `s`（data）；`rtagHTML`、`dlgFrom`、`hint`（`.rhint`）、`ruleFx`／`rfSnap`、`MODEUI` 的 `spot`／`fx`／`stage`／`sellNote`／`det`、`firstStep`／`seenK`／`A.seenOk`、`priceOff`、`rngOf`（`.cell.rng`）、`bufTag`、`linkHTML` 的 `.lks`／`.pcl`、`dragLit`、`RZ`（`.cell.rz`）、`.cell.hole`、`tarAff`（ui） |
@@ -161,24 +163,24 @@
 - **合成**（331），3 個宣告
 - **戰鬥數值**（422），10 個宣告
 
-### js/sim.js（1569 行）
+### js/sim.js（1618 行）
 
 
-### js/run.js（2278 行）
+### js/run.js（2310 行）
 
 - **野怪、菁英、首領（也是一組道具，直接寫成戰鬥用的角色）**（3），7 個宣告
 - **一局**（234），8 個宣告
 - **0.1.59 七十二變、星象輪轉**（304），7 個宣告
 - **0.1.62 道具池的主題**（384），13 個宣告
-- **0.1.36 池子**（603），43 個宣告
-- **對手**（998），16 個宣告
-- **戰鬥**（1101），26 個宣告
-- **0.1.52 流浪商隊**（1541），7 個宣告
-- **0.1.59 法老王的遺物**（1670），4 個宣告
-- **0.1.69 塔羅牌陣**（1715），11 個宣告
-- **0.1.59 遺產市集**（1834），9 個宣告
-- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（2006），4 個宣告
-- **即時機器人（0.1.30）**（2192），7 個宣告
+- **0.1.36 池子**（603），45 個宣告
+- **對手**（1030），16 個宣告
+- **戰鬥**（1133），26 個宣告
+- **0.1.52 流浪商隊**（1573），7 個宣告
+- **0.1.59 法老王的遺物**（1702），4 個宣告
+- **0.1.69 塔羅牌陣**（1747），11 個宣告
+- **0.1.59 遺產市集**（1866），9 個宣告
+- **機器人對手（沒有真人快照時補位；跟玩家用同一套規則跑一整局）**（2038），4 個宣告
+- **即時機器人（0.1.30）**（2224），7 個宣告
 
 ### js/bot.js（1217 行）
 
@@ -200,24 +202,24 @@
 - **cloud save (Supabase)**（4），6 個宣告
 - **accounts**（112），7 個宣告
 
-### js/news.js（640 行）
+### js/news.js（651 行）
 
 
-### js/ui.js（4717 行）
+### js/ui.js（4782 行）
 
 - **小工具**（6），26 個宣告
-- **牌階**（206），5 個宣告
-- **主題**（309），3 個宣告
-- **畫面切換**（323），2 個宣告
-- **首頁**（381），7 個宣告
-- **準備畫面**（548），42 個宣告
-- **0.1.52 賽制**（1324），22 個宣告
-- **0.1.96 羈絆（七宗罪，只有七宗罪賽制）**（1589），24 個宣告
-- **結算、三選一、一局結束**（1881），6 個宣告
-- **戰鬥播放**（1939），33 個宣告
-- **圖鑑、說明、設定**（2806），29 個宣告
-- **動作**（3286），38 個宣告
-- **拖曳擺放**（4335），15 個宣告
+- **牌階**（218），5 個宣告
+- **主題**（321），3 個宣告
+- **畫面切換**（335），2 個宣告
+- **首頁**（393），7 個宣告
+- **準備畫面**（560），42 個宣告
+- **0.1.52 賽制**（1333），22 個宣告
+- **0.1.96 羈絆（七宗罪，只有七宗罪賽制）**（1598），24 個宣告
+- **結算、三選一、一局結束**（1890），6 個宣告
+- **戰鬥播放**（1948），34 個宣告
+- **圖鑑、說明、設定**（2833），29 個宣告
+- **動作**（3313），38 個宣告
+- **拖曳擺放**（4400），15 個宣告
 
 ### js/main.js（85 行）
 

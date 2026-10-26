@@ -23,6 +23,33 @@ const WEAK_PCT = 25,
   BOMB_DMG = [8, 12],
   BOMB_BLEED = 4;
 /* 一方的戰鬥狀態 */
+/* 0.1.99 偽隨機（PRD，魔獸爭霸 3 的做法；docs/設計原則.md 第 3 節）：顯示 p% 的效果，第 n 次沒中後的機率是 C × n，中了就從 1 重算。
+   平均觸發率一樣是 p%，但不會連續好幾次都中、也不會很多次都不中。prdC(p) 用二分法找 C（p 是 0～1，算一次記起來） */
+const PRDC = new Map();
+function prdC(p) {
+  p = Math.round(p * 1000) / 1000;
+  if (p <= 0 || p >= 1) return p <= 0 ? 0 : 1;
+  if (PRDC.has(p)) return PRDC.get(p);
+  const rate = c => {
+    let e = 0,
+      s = 1;
+    for (let n = 1; s > 1e-9; n++) {
+      const q = Math.min(1, c * n);
+      e += n * q * s;
+      s *= 1 - q;
+    }
+    return 1 / e;
+  };
+  let lo = 0,
+    hi = p;
+  for (let i = 0; i < 40; i++) {
+    const m = (lo + hi) / 2;
+    if (rate(m) < p) lo = m;
+    else hi = m;
+  }
+  PRDC.set(p, hi);
+  return hi;
+}
 function simSide(F) {
   return {
     F,
@@ -162,6 +189,14 @@ function simulate(FA, FB, seed) {
   const r = rng(seed),
     S = [simSide(FA), simSide(FB)],
     ev = [];
+  /* 0.1.99 偽隨機的一次判定：o 是記次數的東西（武器記自己的、閃避招架記在被打的那一方），k 是哪一種效果，pct 是顯示的機率 */
+  const prd = (o, k, pct) => {
+    if (!(pct > 0)) return false;
+    if (pct >= 100) return true;
+    const n = ((o.pr = o.pr || {})[k] = (o.pr[k] || 0) + 1);
+    if (r() < prdC(pct / 100) * n) return (o.pr[k] = 0), true;
+    return false;
+  };
   /* 0.1.96 七宗罪：L 是幾級、isS 是這件算不算那一組 */
   const L = (a, k) => a.sin[k] || 0,
     isS = (w, k) => !!w.sins && w.sins.includes(k);
@@ -553,25 +588,27 @@ function simulate(FA, FB, seed) {
       d = self ? a : S[1 - ai],
       di = S.indexOf(d);
     /* 0.1.50 風之箭（sure）不會被閃避、招架；閃避成功：游擊充能、迴避反擊；沒打中連珠箭歸零 */
-    const rr = self || w.sure ? 100 : r() * 100;
+    /* 0.1.99 閃避、致盲落空用偽隨機（風之箭、打自己不會落空） */
+    const dodged = !self && !w.sure && prd(d, 'dodge', d.F.dodge),
+      blinded = !dodged && !self && !w.sure && a.blind > 0 && prd(a, 'blind', BLIND_MISS);
     /* 0.1.69 塔羅・月亮逆位：敵人的第一次攻擊打到幻影 */
     if (!self && d.tmiss > 0) {
       d.tmiss--;
       log(t, ai, 'miss', 0, { u: w.u });
       return;
     }
-    if (rr < d.F.dodge + (a.blind > 0 ? BLIND_MISS : 0)) {
+    if (dodged || blinded) {
       a.streak = 0;
       if (d.F.dodge) tr(d, 'dodge');
       log(t, ai, 'miss', 0, { u: w.u });
-      if (rr < d.F.dodge) {
+      if (dodged) {
         if (d.F.kite) for (const x of d.w) x.tt = Math.min(x.cd * 0.99, x.tt + (x.cd * d.F.kite) / 100);
         counter(t, di);
       }
       return;
     }
     /* 0.1.35 招架：有機率格擋這一下（不受傷害）；第一次成功後護甲 +parryArm */
-    if (!self && !w.sure && d.F.parry && r() * 100 < d.F.parry) {
+    if (!self && !w.sure && d.F.parry && prd(d, 'parry', d.F.parry)) {
       a.streak = 0;
       if (d.F.parryArm && !d.parried) (d.parried = 1), (d.parA += d.F.parryArm);
       log(t, ai, 'miss', 0, { u: w.u, parry: 1 });
@@ -587,11 +624,14 @@ function simulate(FA, FB, seed) {
     let v = (w.dmg[0] + r() * (w.dmg[1] - w.dmg[0])) * mul;
     /* 0.1.37 衰老：不能暴擊 */
     /* 0.1.50 狙擊（必定暴擊）、血獵（敵人撕裂中暴擊率提升）、鷹眼（敵人每支箭暴擊傷害提升） */
-    const cr = r() * 100,
-      crit =
+    const crit =
         !(a.age > 0) &&
         (o.force ||
-          cr < w.crit + ph.crit + (a.F.huntCrit && d.rend > 0 ? a.F.huntCrit : 0) + (a.undB > t ? UNDY_CRIT : 0)),
+          prd(
+            w,
+            'crit',
+            w.crit + ph.crit + (a.F.huntCrit && d.rend > 0 ? a.F.huntCrit : 0) + (a.undB > t ? UNDY_CRIT : 0)
+          )),
       cm = a.F.critMul + (a.F.critArrow || 0) * d.arrow;
     /* 0.1.29 厚皮：暴擊多出來的傷害減少 */
     if (crit) v *= 1 + (cm / 100 - 1) * (1 - Math.min(RES_MAX, d.F.critRes || 0) / 100);
@@ -641,7 +681,7 @@ function simulate(FA, FB, seed) {
     v *= 1 + d.F.take / 100;
     /* 0.1.53 護主：被打時機率由寵物擋下一半，那隻寵物反咬 */
     let biter = null;
-    if (!self && !inGd && d.F.petGuard && r() * 100 < d.F.petGuard) {
+    if (!self && !inGd && d.F.petGuard && prd(d, 'petGuard', d.F.petGuard)) {
       const ps = d.w.filter(x => x.pet && !(x.seal > 0));
       if (ps.length) (biter = ps[fl(r() * ps.length)]), (v *= 0.5);
     }
@@ -721,7 +761,7 @@ function simulate(FA, FB, seed) {
       if (d.F.thornsP && v > 0) addPoison(d, a, d.F.thornsP, t);
       /* 0.1.51 火焰護體（攻擊者燃燒）、避雷針（機率電擊攻擊者） */
       if (d.F.thornsBurn && v > 0) a.burn += d.F.thornsBurn * res(a, 'burn', t);
-      if (d.F.rod && v > 0 && !noTh && r() * 100 < d.F.rod) {
+      if (d.F.rod && v > 0 && !noTh && prd(d, 'rod', d.F.rod)) {
         hurt(t, ROD_DMG, a, 1 - ai, 'thorns', { rod: 1 });
         addCharge(t, 1 - ai, a, 1);
         tr(d, 'rod');
@@ -775,16 +815,17 @@ function simulate(FA, FB, seed) {
       d[k] = Math.max(d[k], v);
       log(t, ai, ev, v, {});
     };
-    if (w.weak && r() * 100 < w.weak) ctl('weak', 'weak', WEAK_T);
-    if (w.blind && r() * 100 < w.blind) ctl('blind', 'blind', BLIND_T);
-    if (w.freeze[0] && r() * 100 < w.freeze[0])
+    /* 0.1.99 命中觸發的控制、異常用偽隨機（每把武器各自記） */
+    if (w.weak && prd(w, 'weak', w.weak)) ctl('weak', 'weak', WEAK_T);
+    if (w.blind && prd(w, 'blindC', w.blind)) ctl('blind', 'blind', BLIND_T);
+    if (w.freeze[0] && prd(w, 'freeze', w.freeze[0]))
       freezeIt(
         t,
         di,
         rndIt(d, o => !(o.fz > 0)),
         ai
       );
-    if (w.chill && r() * 100 < w.chill)
+    if (w.chill && prd(w, 'chill', w.chill))
       chillIt(
         t,
         di,
@@ -792,12 +833,12 @@ function simulate(FA, FB, seed) {
         ai
       );
     /* 0.1.51 彈射（連鎖）的那幾下不會暈眩 */
-    if (w.stun[0] && !o.ch && r() * 100 < w.stun[0]) stunIt(t, ai, d, w.stun[1]);
+    if (w.stun[0] && !o.ch && prd(w, 'stun', w.stun[0])) stunIt(t, ai, d, w.stun[1]);
     /* 0.1.37 墮落蛇、別西卜：命中衰老、腐蝕 N 秒 */
     if (w.age) ctl('age', 'age', w.age);
     /* 0.1.53 四兇 */
     if (w.gorge && !self) w.gb = Math.min(GORGE_MAX, (w.gb || 0) + w.gorge);
-    if (w.sealHit && !self && r() * 100 < w.sealHit[0]) {
+    if (w.sealHit && !self && prd(w, 'seal', w.sealHit[0])) {
       const x = rndIt(d, o => d.w.includes(o) && !(o.seal > 0));
       if (x) (x.seal = Math.max(x.seal || 0, w.sealHit[1])), log(t, ai, 'seal', w.sealHit[1], { u: w.u, tu: x.u });
     }
@@ -969,7 +1010,7 @@ function simulate(FA, FB, seed) {
         }
       }
     }
-  /* 0.1.37 陷阱：放進對方背包（1 格或 2 格，整個背包隨機、含空格）；怪物沒有背包，掛在隨機一把武器上 */
+  /* 0.1.37 陷阱：放進對方背包（1 格或 2 格；0.1.99 起第一格一定壓在道具上）；怪物沒有背包，掛在隨機一把武器上 */
   for (let i = 0; i < 2; i++)
     for (const tp of S[i].F.traps || []) {
       const d = S[1 - i],
@@ -978,8 +1019,9 @@ function simulate(FA, FB, seed) {
         let cells = [],
           us = new Set();
         if (G && G.w && G.h) {
-          const x = fl(r() * G.w),
-            y = fl(r() * G.h);
+          /* 0.1.99 第一格一定壓在道具上（之前整個背包隨機，丟在空格等於白費；docs/設計原則.md 第 3 節） */
+          const occ = Object.values(G.at || {}).flat(),
+            [x, y] = occ.length ? occ[fl(r() * occ.length)] : [fl(r() * G.w), fl(r() * G.h)];
           cells.push([x, y]);
           if (tp.sz > 1) {
             const dir = [
@@ -1201,7 +1243,7 @@ function simulate(FA, FB, seed) {
           w.tt -= w.cd;
           /* 0.1.51 靜電場（敵人的）：機率觸電，這次落空、電荷 +1 */
           const so = S[1 - i];
-          if (so.F.static && r() * 100 < so.F.static) {
+          if (so.F.static && prd(so, 'static', so.F.static)) {
             log(t, 1 - i, 'static', 0, { tu: w.u });
             addCharge(t, 1 - i, a, 1);
             tr(so, 'static');
@@ -1219,7 +1261,7 @@ function simulate(FA, FB, seed) {
           fire(t, a, i, w);
           relay(t, a, i, w);
           /* 0.1.96 星河・雙子（機率再出手一次）、水瓶（下一把武器充能） */
-          if (w.zdbl && r() * 100 < w.zdbl && S[1 - i].hp > 0) fire(t, a, i, w);
+          if (w.zdbl && S[1 - i].hp > 0 && prd(w, 'zdbl', w.zdbl)) fire(t, a, i, w);
           if (w.zaq) {
             const nx = a.w[(a.w.indexOf(w) + 1) % a.w.length];
             if (nx && nx !== w && !(nx.seal > 0)) nx.tt = Math.min(nx.cd * 0.99, nx.tt + (nx.cd * w.zaq) / 100);
@@ -1269,12 +1311,13 @@ function simulate(FA, FB, seed) {
           /* 0.1.10 連擊：有機率馬上再打一次；0.1.33 連珠箭：開戰 openDbl 秒內必定連擊；0.1.28 質變的連鎖（這一件自己的機率）；
              0.1.35 連鎖追擊（triple：再打兩下）、雙手大師（這一件自己的連擊機率 dbl） */
           const dc = (a.F.double || 0) + (w.dbl || 0);
-          if (S[1 - i].hp > 0 && a.F.triple && r() * 100 < a.F.triple)
+          if (S[1 - i].hp > 0 && a.F.triple && prd(w, 'triple', a.F.triple))
             for (let c = 0; c < 2 && S[1 - i].hp > 0; c++) fire(t, a, i, w);
-          else if (S[1 - i].hp > 0 && ((a.F.openDbl && t <= a.F.openDbl) || (dc && r() * 100 < dc))) fire(t, a, i, w);
+          else if (S[1 - i].hp > 0 && ((a.F.openDbl && t <= a.F.openDbl) || (dc && prd(w, 'dbl', dc))))
+            fire(t, a, i, w);
           /* 0.1.33 閃電鏈：連鎖 N（每次攻擊多打 N 下） */
           for (let c = 0; c < (w.chainN || 0) && S[1 - i].hp > 0; c++) attack(t, a, i, w, CHAIN_DMG / 100, { ch: 1 });
-          if (w.chain && S[1 - i].hp > 0 && r() * 100 < w.chain) attack(t, a, i, w);
+          if (w.chain && S[1 - i].hp > 0 && prd(w, 'chain', w.chain)) attack(t, a, i, w);
         }
       }
       for (const s of a.s) {
@@ -1556,6 +1599,12 @@ function simulate(FA, FB, seed) {
     /* 0.1.35 金錢標花掉的金幣；0.1.37 各自觸發的凍結＋冰緩次數（寒冰之心） */
     spent: [S[0].spent, S[1].spent],
     ice: [S[0].iceN, S[1].iceN],
+    /* 0.1.99 不在格子上的攻擊者（戰鬥畫面的支援單位列）：幻影 [u, 道具代號]、戰狼 [u, 第幾隻, 幾秒後加入] */
+    sup: S.map(x =>
+      x.w
+        .filter(w => w.u.startsWith('tm') || w.vw)
+        .map(w => (w.vw ? [w.u, 'wolf', w.vw, w.vw * WOLF_T] : [w.u, w.id, 0, 0]))
+    ),
     /* 0.1.40 每件道具觸發了幾次：角色加成的觸發＋有標道具的事件（攻擊、格擋、喝藥水、開戰效果、陷阱） */
     trig: S.map((x, i) => {
       const o = { ...x.trig };

@@ -404,6 +404,13 @@ button.gold{border:0;background:none;padding:6px 0;margin:-6px 0;cursor:pointer;
 .lgb span>i>i{display:block;height:100%;background:var(--accent)}
 .lgb em{font-style:normal;font-family:var(--f-pix);font-size:var(--fs-btn);color:var(--gold)}
 .lgd .bagwrap{justify-self:center}
+/* 0.1.99 戰報分頁：三個切換鈕、可以點的傷害長條（點了在背包亮出那件）、全部場次裡這一場標出來 */
+.lbt.lgtab{grid-template-columns:repeat(3,1fr);margin:var(--sp-2) 0 0}
+.lgbars{display:grid;gap:var(--sp-1)}
+button.lgb{width:100%;min-height:40px;padding:2px var(--sp-1);border:0;border-radius:var(--r-sm);background:none;color:var(--ink);font:inherit;text-align:left}
+button.lgb:disabled{opacity:1}
+.lgb em{display:grid;justify-items:end;line-height:1.1}.lgb em small{font-family:var(--f-ui);font-size:var(--fs-cap);color:var(--dim)}
+.lgr.on{box-shadow:0 0 0 2px var(--gold)}
 .rb[data-act]{cursor:pointer}
 
 /* 0.1.12 戰鬥特效 */
@@ -820,7 +827,14 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .it.out .c{border-color:var(--bad)!important;box-shadow:inset 0 0 0 1px var(--bad)}
 .it.out img{opacity:.75}
 .ghost.out i{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 18%,transparent)}
-.bagwrap .stgall{display:block;margin:var(--sp-1) auto 0;color:var(--bad)}
+/* 0.1.99 支援單位（戰狼、幻影）：沒加入的戰狼半透明、幻影虛線框 */
+.supr{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:2px}
+.supr .smit{overflow:visible}
+.supr .smit em{position:absolute;right:-6px;bottom:-5px;padding:0 2px;border-radius:4px;background:var(--card);color:var(--dim);font-size:9px;font-style:normal;line-height:12px;box-shadow:0 0 0 1px var(--line)}
+.smit.wait{opacity:.4;filter:grayscale(.6)}
+.smit.ph{opacity:.7;outline:1.5px dashed var(--s4);outline-offset:1px}
+/* 0.1.99 商店保底的那一格：金色外框 */
+.shop .sc.pity{box-shadow:0 0 0 2px var(--gold),var(--shadow)}
 /* 0.1.97 戰鬥：連動光線、機關城計數點 */
 .bag .beam{position:absolute;z-index:4;height:3px;margin-top:-1.5px;border-radius:2px;background:var(--bc);box-shadow:0 0 6px var(--bc);transform-origin:0 50%;pointer-events:none}
 .it .nkp{position:absolute;left:0;right:0;bottom:1px;z-index:2;display:flex;justify-content:center;gap:2px;pointer-events:none}
