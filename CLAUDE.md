@@ -1,6 +1,8 @@
 # 塞令老師 — 給 Claude 的專案說明
 
-**每次新對話開始**：先用 Skill 啟動 `ponytail`（最小完整改動）和 `grill-me`（先把計畫問清楚再動手）。**做 UI／UX 設計或動畫時**再啟動 `apple-design`，**做動畫時**也啟動 `animate`（跟 `docs/設計規範.md` 衝突時以規範為準）。
+**每次新對話開始**：先用 Skill 啟動 `ponytail`（最小完整改動）和 `grill-me`（先把計畫問清楚再動手）。
+
+**只要動到 UI／UX（不管新對話或小調整）：一定先啟動 skill `ui-design` 並照它的流程做**，它會先啟動 `apple-design`（有動畫再加 `animate`）。設計判斷以 `apple-design` 為主，`docs/設計規範.md` 提供數值、元件與技術限制為輔；改完要在手機 375×667、375×812 與電腦尺寸截圖對照、跑 audit。UI／UX 包括：畫面、版面、互動（點擊、拖曳、手勢）、動畫、提示、說明文字的排版、CSS。
 
 4 人一場的背包自動對戰（0.1.0 從「漫步勇者」走路地圖 RPG 轉型）。設計在 `docs/企劃書.md`，舊版企劃在 `docs/舊企劃書_漫步勇者.md`。
 
@@ -9,7 +11,7 @@
 - 版本號：目前是 0.1.x（0.1.0 是轉型；使用者指定的版本號為準）。改版本一律用 `python3 tools/setver.py 新版本`，會同時改 `js/data.js` 的 `VER` 和 `index.html` 裡 JS／CSS 網址的 `?v=`（避免手機用到快取的舊檔）；再更新 `CHANGELOG.md` 與 `README.md`；有遊戲功能變化的話，也在 `js/news.js` 的 `NEWS` 最上面加一筆給玩家看的更新紀錄（只寫遊戲功能，不寫開發細節）。
 - 流程：先改、先測，確認 OK 後再一次 commit + push 到 GitHub（push 前先問使用者）。
 - 企劃書：`docs/企劃書.md`（線上版在 Claude Docs）。規則或數值改了要同步更新。
-- 介面：照 `docs/設計規範.md`（字級、顏色變數、間距、元件、資訊量規則）；改介面用 skill `ui-design`，改完在手機尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
+- 介面：任何 UI／UX 改動都走 skill `ui-design`（apple-design 為主、`docs/設計規範.md` 的字級、顏色變數、間距、元件、資訊量規則為輔），改完在手機與電腦尺寸截圖並跑 `.claude/skills/ui-design/audit.js`。
 - 圖：道具圖示的 PixelLab 提示詞在 `docs/圖示提示詞.md`（只留還沒產的；做完的在 `docs/提示詞封存.md`），怪物在 `docs/怪物提示詞.md`，玩家選的頭像（4×4 大圖、每格 64×64）在 `docs/頭像圖表.md`，塔羅牌卡圖（64×64）在 `docs/塔羅牌圖表.md`；新增圖用 skill `pixel-art`。
 - 說明文字：新增或修改道具、核心、職業、異常、機制後用 skill `item-text`：照規則改產生器（`items.js` 的 `MODN`／`PREN`／`itemDesc`）、百科（`ui.js` 的 `CX_AIL`／`CX_STAT`），跑 `node .claude/skills/item-text/audit.js` 沒有問題才交差。
 - 圖示：新增道具或借用圖示（`ic`）後用 skill `icon-check`：`python3 tools/icon_check.py` 產生 `docs/圖示對照.md`（名字 ↔ 圖示原本畫的東西），對不上就換圖示或改名字。

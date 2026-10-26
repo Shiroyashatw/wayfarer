@@ -4,7 +4,7 @@ description: Apple's approach to interface design and fluid, physical motion, tr
 ---
 
 > 來源：[emilkowalski/skills](https://github.com/emilkowalski/skills/tree/2d228630ba1446365f614a108cb8252f1feda202/skills/apple-design)（MIT，見 `LICENSE`），內容照原文。
-> **在塞令老師專案裡**：`docs/設計規範.md` 優先（字級、顏色變數、第一屏預算、手遊守則），介面改動照 skill `ui-design` 的流程與 audit。跟規範衝突的地方：**不用 `backdrop-filter` 或大面積模糊**（規範第 6 節，電腦版很卡），第 12 節的半透明材質改用半透明底色；動效照規範第 10 節（150～250ms、不擋操作）。拖曳、按下回饋、可中斷、彈簧、減少動態這些原則直接拿來用（背包拖曳 `pointerdown`／`pointermove`／`dropEnd` 在 `js/ui.js`）。
+> **在塞令老師專案裡**：任何動到 UI／UX 的工作都走 skill `ui-design` 的流程（它會先啟動這份）。**設計判斷以這份為主**；`docs/設計規範.md` 為輔，提供專案的數值與元件（字級、顏色變數、間距、尺寸表、第一屏預算、畫面藍圖）和技術限制。體驗原則衝突時照這份、改規範；技術限制照規範。目前的技術限制：**不用 `backdrop-filter` 或大面積模糊**（規範第 6 節，電腦版很卡），第 12 節的半透明材質改用半透明底色；動效照規範第 10 節（150～250ms、不擋操作）。拖曳、按下回饋、可中斷、彈簧、減少動態這些原則直接拿來用（背包拖曳 `pointerdown`／`pointermove`／`dropEnd` 在 `js/ui.js`）。
 
 # Apple Design
 

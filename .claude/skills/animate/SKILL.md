@@ -4,7 +4,7 @@ description: Build an animation from scratch, making the decisions in the order 
 ---
 
 > 來源：[emilkowalski/skills](https://github.com/emilkowalski/skills/tree/2d228630ba1446365f614a108cb8252f1feda202/skills/animate)（MIT，見 `LICENSE`），內容照原文。
-> **在塞令老師專案裡**：`docs/設計規範.md` 第 10 節優先，介面改動照 skill `ui-design` 的流程與 audit。專案是純 JS、沒有 React、不裝動畫套件：Hard Rule 3 的「沿用現有 token」就是 `js/ui.js`「0.1.87 動效」區段的彈簧 `spr(el, keyframes, bounce)`（`SPRING`／`SPRING_B`）、減少動態 `calm()`、按鈕操作動畫表 `FXA`、數字滾動 `tick`、音效＋震動 `snd`／`HAPT`；Framer Motion、React 的段落跳過。不用 `backdrop-filter` 或大面積模糊；道具不做待機浮動、閃光（只在玩家操作或規則觸發時動）。
+> **在塞令老師專案裡**：動畫屬於 UI／UX，走 skill `ui-design` 的流程（apple-design 為主、`docs/設計規範.md` 第 10 節的數值與限制為輔），介面改動照 skill `ui-design` 的流程與 audit。專案是純 JS、沒有 React、不裝動畫套件：Hard Rule 3 的「沿用現有 token」就是 `js/ui.js`「0.1.87 動效」區段的彈簧 `spr(el, keyframes, bounce)`（`SPRING`／`SPRING_B`）、減少動態 `calm()`、按鈕操作動畫表 `FXA`、數字滾動 `tick`、音效＋震動 `snd`／`HAPT`；Framer Motion、React 的段落跳過。不用 `backdrop-filter` 或大面積模糊；道具不做待機浮動、閃光（只在玩家操作或規則觸發時動）。
 
 # Building Animations
 

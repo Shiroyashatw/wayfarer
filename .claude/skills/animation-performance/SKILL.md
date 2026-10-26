@@ -4,7 +4,7 @@ description: Keep web animations inside the frame budget — animate composite-o
 ---
 
 > 來源：[emilkowalski/skills](https://github.com/emilkowalski/skills/tree/2d228630ba1446365f614a108cb8252f1feda202/skills/animation-performance)（MIT，見 `LICENSE`），內容照原文。
-> **在塞令老師專案裡**：`docs/設計規範.md` 優先（規範第 6 節：不用 `backdrop-filter`，電腦版很卡）。純 JS、沒有 React，React 與 Framer Motion 的段落跳過；動畫走 WAAPI（`js/ui.js` 的 `spr()`）和 `css/style.css` 的 `@keyframes`。最重的地方是戰鬥播放（`ui.js`），背包連線、範圍提示會在拖曳時每格重算（`dragLit`）。
+> **在塞令老師專案裡**：屬於 UI／UX 的工作，走 skill `ui-design` 的流程（apple-design 為主、`docs/設計規範.md` 的數值與技術限制為輔）（規範第 6 節：不用 `backdrop-filter`，電腦版很卡）。純 JS、沒有 React，React 與 Framer Motion 的段落跳過；動畫走 WAAPI（`js/ui.js` 的 `spr()`）和 `css/style.css` 的 `@keyframes`。最重的地方是戰鬥播放（`ui.js`），背包連線、範圍提示會在拖曳時每格重算（`dragLit`）。
 
 # Animation Performance
 

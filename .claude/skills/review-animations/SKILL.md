@@ -5,7 +5,7 @@ disable-model-invocation: true
 ---
 
 > 來源：[emilkowalski/skills](https://github.com/emilkowalski/skills/tree/2d228630ba1446365f614a108cb8252f1feda202/skills/review-animations)（MIT，見 `LICENSE`），內容照原文。只有使用者打 `/review-animations` 才會啟動。
-> **在塞令老師專案裡**：`docs/設計規範.md` 第 10 節優先。專案的彈簧 `spr()` 用 CSS `linear()` 曲線、總長 500～600ms（彈簧的收尾，不算「超過 300ms」的違規），不要求改成 cubic-bezier；標準 9 的「進出不對稱」指時間長短，跟規範的「進出走同一條路」（方向）不衝突。標準 8 的 hover 動畫：手機優先，規範本來就不靠 hover 傳達資訊。戰鬥播放的特效數量多，審查時特別看掉格（搭配 `animation-performance`）。
+> **在塞令老師專案裡**：動畫屬於 UI／UX，走 skill `ui-design` 的流程（apple-design 為主、`docs/設計規範.md` 第 10 節的數值與限制為輔）。專案的彈簧 `spr()` 用 CSS `linear()` 曲線、總長 500～600ms（彈簧的收尾，不算「超過 300ms」的違規），不要求改成 cubic-bezier；標準 9 的「進出不對稱」指時間長短，跟規範的「進出走同一條路」（方向）不衝突。標準 8 的 hover 動畫：手機優先，規範本來就不靠 hover 傳達資訊。戰鬥播放的特效數量多，審查時特別看掉格（搭配 `animation-performance`）。
 
 # Reviewing Animations
 
