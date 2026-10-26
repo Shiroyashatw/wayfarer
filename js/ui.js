@@ -1985,6 +1985,26 @@ function resumeFight() {
     last: performance.now()
   };
 }
+/* 0.1.97 手機的戰鬥畫面要一屏放得下（背包變大時「跳過」被擠到下面）：雙方的小背包一定並排、用同一個格子大小，
+   照螢幕寬（兩個背包加起來）和高（扣掉上方、角色、按鈕、紀錄最少 56px）算，最小 14px */
+function bMiniCs(bags) {
+  const w = Math.min(innerWidth, 480) - 32 - 16 * (bags.length - 1) - 18 * bags.length,
+    h = innerHeight - 456,
+    sw = bags.reduce((n, b) => n + b.w, 0),
+    gw = bags.reduce((n, b) => n + (b.w - 1) * GAP, 0),
+    mh = Math.max(...bags.map(b => b.h));
+  return Math.max(14, Math.min(30, fl((w - gw) / sw), fl((h - (mh - 1) * GAP) / mh)));
+}
+/* 戰鬥紀錄吃剩下的高度：按鈕一直在螢幕最下面（電腦版另外排） */
+function bFit() {
+  const lg = $('blog');
+  if (!lg || DESK()) return;
+  lg.style.height = '';
+  const ctl = document.querySelector('.bctl'),
+    pad = parseFloat(getComputedStyle($('app')).paddingBottom) || 0,
+    free = innerHeight - pad - ctl.getBoundingClientRect().bottom;
+  lg.style.height = Math.max(56, lg.offsetHeight + free) + 'px';
+}
 /* 0.1.35 怪物的圖本來就朝左，不翻；對戰的對手是玩家頭像（朝右）才左右翻 */
 function renderBattle() {
   if (!B) resumeFight();
@@ -2005,20 +2025,21 @@ function renderBattle() {
             )
           )
       ),
-    cs = dw ? Math.max(24, dw) : Math.min(30, fl(cellSize(run.bag.w) * 0.6));
+    cs = dw ? Math.max(24, dw) : bMiniCs([run.bag, ob].filter(Boolean));
   $('app').innerHTML = `<div class="bt${ob ? '' : ' nob'}">
     <div class="btop"><small>${fb.r.id}・${RTYPE[fb.r.type]}</small><b id="btime">0.0 秒</b>${sfxBtn()}</div>
     <div class="arena"><div class="fr"><i class="sp" id="sp0">${avCv(S.av, 'big')}</i><b>${esc(S.name)}</b><i class="hpb big"><i id="hp0"></i><i class="bk" id="bk0"></i><i class="kline" id="kl0" hidden></i><em id="hpt0"></em></i><div class="sts" id="sts0"></div><div class="trp" id="trp0"></div>${smnHTML(0)}<i class="sunb" id="sun0" hidden></i></div>
     <div class="vs">VS</div>
     <div class="fr"><i class="sp" id="sp1">${fb.opp.kind === 'pvp' ? avCv(fb.opp.spr.slice(2), 'big flip') : sprCv(fb.opp.spr, 'big')}</i><b>${esc(fb.opp.n)}</b><i class="hpb big"><i id="hp1"></i><i class="bk" id="bk1"></i><i class="kline" id="kl1" hidden></i><em id="hpt1"></em></i><div class="sts" id="sts1"></div><div class="trp" id="trp1"></div>${smnHTML(1)}<i class="sunb" id="sun1" hidden></i></div>
     <div class="fx" id="fx"></div></div>
-    <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, dw ? cs : Math.min(cs, 26), { mini: 1, id: 'bb1' })}</div>` : ''}</div>
+    <div class="bbags"><div><small>你的背包</small>${bagHTML(run.bag, cs, { mini: 1, id: 'bb0' })}</div>${ob ? `<div><small>對手的背包</small>${bagHTML(ob, cs, { mini: 1, id: 'bb1' })}</div>` : ''}</div>
     <div class="blog" id="blog" aria-live="off"></div>
     <div class="bctl"><button class="btn" data-act="spd">×${S.speed || 1}</button><button class="btn" data-act="skip">跳過</button></div>
   </div>`;
   paintSprites();
   bPots();
   bShow();
+  bFit();
   clearInterval(renderBattle.iv);
   renderBattle.iv = setInterval(bTick, 33);
 }

@@ -257,7 +257,7 @@ button.gold{border:0;background:none;padding:6px 0;margin:-6px 0;cursor:pointer;
 .pop{position:absolute;transform:translateX(-50%);font-family:var(--f-pix);font-size:var(--fs-title);-webkit-text-stroke:3px #1a140f;paint-order:stroke fill;white-space:nowrap;animation:popup .9s ease-out forwards}
 .pop.big{font-size:24px}
 @keyframes popup{0%{opacity:0;transform:translate(-50%,8px) scale(.8)}15%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-36px)}}
-.bbags{display:flex;gap:var(--sp-4);justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.bbags{display:flex;gap:var(--sp-4);justify-content:center;align-items:flex-start}
 .bbags>div{display:grid;gap:var(--sp-1);justify-items:center;background:var(--tray);border-radius:var(--r-md);padding:var(--sp-2);border:1px solid var(--tray-line)}
 .bbags small{color:var(--dim)}
 .bctl{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
