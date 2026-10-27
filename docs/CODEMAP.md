@@ -37,7 +37,7 @@
 | 戰鬥連動事件（0.1.95）：機關城計數點、齒輪／連鎖／棋子光線 | `js/sim.js`、`js/ui.js`、`css/style.css` | `simulate` 的 `mech` 事件（`nk`／`gear`／`drv`，只給畫面）（sim）；`bMech`、`bBeam`、`bPcBeam`、`B.pcm`（ui）；`.beam`、`.nkp` |
 | 手機準備畫面一屏放得下、道具四個角統一（0.1.86） | `js/ui.js`、`css/style.css` | `fitBag`、`FIT_MIN`、`V.fitH`、`cellSize`；`.srow`、`.rnx`；角標 `brHTML`（`.cbr` 右下一排）、`cnr`（`.cn` 放在道具真的有的那一格） |
 | 動效與手感（0.1.87，skill `apple-design`）：彈簧、按下回饋、拖曳落點、說明卡滑上滑下、對話框進出、提示、震動 | `js/ui.js`、`css/style.css` | `SPRING`、`SPRING_B`、`spr`、`calm`、`land`、`posOf`、`elOf`、`sheetIn`、`sheetOut`、`rubber`、`dlgIn`、`ovlFx`、`HAPT`／`snd`、`toast`（`.on`）、`dropEnd`／`dropDo`；CSS「0.1.87 動效與手感」 |
-| 手機說明卡放上方或底部、點外面關閉、小橫槓（0.1.104） | `js/ui.js`、`css/style.css` | `sheetIn`（量 `.prep .sel`）、`sheetDir`、`sheetOut`、點外面關的 click 監聽；`.det.up`、`.det::before` |
+| 手機說明卡：點外面關閉、小橫槓（0.1.104）、回到底部＋前幾次提示往下滑（0.1.107） | `js/ui.js`、`css/style.css` | `sheetIn`（`SWH_N`、`S.seen.swh`、`V.swh`）、`sheetOut`、點外面關的 click 監聽；`.det::before`、`.det.swh::after` |
 | 排版整理（0.1.88）：投降確認、標題列拿掉音效外觀、怎麼玩摺疊、設定打勾、對話框 ✕ | `js/ui.js`、`css/style.css` | `A.menu`、`showDlg`（按鈕第三個值是 class）、`dlgX`、`helpHTML`（`details.more`、`.hl`）、`pickHTMLs`（`.pkb[aria-pressed]`）、`.btn.danger`、`.dlgx` |
 | 準備畫面減少雜訊、電腦版首頁／戰鬥／結束／設定（0.1.89） | `js/ui.js`、`css/style.css` | `stageDots`（`.sdots`）、`infoRowHTML` 的 `.sinfo`（`.sgc.z`）、商店 `.sc` 的 `aria-label`、`.home.endp`、`.page.set`；CSS「0.1.89」那幾段 |
 | 道具動畫、數字滾動、商店價格顏色（0.1.90） | `js/ui.js`、`css/style.css` | `fxSnap`、`itemFx`、`flyImg`、`pop`、`goldEl`、`FXA`（`click` 分派裡呼叫）、`tick`（`V.num`）、`land` 的賣掉飛進金幣；CSS `.fly`、`.sc b` |
