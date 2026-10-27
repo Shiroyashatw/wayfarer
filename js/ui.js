@@ -5205,8 +5205,10 @@ function dropShop(run, d, ev) {
   render();
 }
 document.addEventListener('pointerup', dropEnd);
+/* 0.1.114 沒在拖曳就不重畫：手指捲動遺產列、說明時瀏覽器也會送 pointercancel，之前每次都重畫，橫捲被重建、捲動歸零（滑不動） */
 document.addEventListener('pointercancel', () => {
   const d = V.drag;
+  if (!d) return;
   V.drag = null;
   render();
   /* 被系統打斷（來電、捲動）：影子飛回原位 */

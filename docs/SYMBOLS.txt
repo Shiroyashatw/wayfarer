@@ -775,7 +775,7 @@ autoFit js/ui.js:5075 [拖曳擺放]
 dropEnd js/ui.js:5084 [拖曳擺放]
 dropDo js/ui.js:5096 [拖曳擺放]
 dropShop js/ui.js:5170 [拖曳擺放]
-fitZoom js/ui.js:5222 [拖曳擺放]
+fitZoom js/ui.js:5224 [拖曳擺放]
 newGame js/main.js:4
 load js/main.js:25
 save js/main.js:33
