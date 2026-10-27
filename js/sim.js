@@ -319,6 +319,13 @@ function simulate(FA, FB, seed) {
       for (const w of o.w) if (isS(w, 'envy') && !(w.seal > 0)) w.tt = Math.min(w.cd * 0.99, w.tt + w.cd * 0.15);
   };
   const hurt = (t, d, def, src, k, extra) => {
+    /* 0.1.105 護盾也擋攻擊以外的傷害（持續傷害、反彈、陷阱、放電、隕石、疲勞…）；攻擊在 attack 裡已經擋過，焚盡是斬殺不擋 */
+    if (def.block > 0 && d > 0 && k !== 'hit' && k !== 'crit' && k !== 'burnout') {
+      const ab = Math.min(def.block, d);
+      def.block -= ab;
+      d -= ab;
+      extra = { ...extra, ab: Math.round(ab) };
+    }
     def.hp -= d;
     /* 0.1.74 不死之怒：第一次受到致命傷留 1 生命，UNDY_T 秒內不會死 */
     if (def.hp < 1 && t < def.undT) def.hp = 1;
@@ -784,7 +791,8 @@ function simulate(FA, FB, seed) {
       inGd = 0;
     }
     if (!self) {
-      if (d.F.thornsF && v > 0 && !noTh) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {}), tr(d, 'thornsF');
+      /* 0.1.105 被護盾擋下的攻擊也反彈 */
+      if (d.F.thornsF && (v > 0 || ab > 0) && !noTh) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {}), tr(d, 'thornsF');
       /* 0.1.69 塔羅・正義：受到的傷害反彈一部分 */
       if (d.F.tarRefl && v > 0 && !noTh) hurt(t, Math.max(1, (v * d.F.tarRefl) / 100), a, 1 - ai, 'thorns', {});
       /* 0.1.37 毒刺皮膚：被打中時讓攻擊者中毒 */

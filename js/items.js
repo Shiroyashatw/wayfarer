@@ -3615,10 +3615,10 @@ function genThemeW() {
 }
 /* 0.1.103 料理（docs/料理.md）：7 種食材（商店每格 20% 機率出現），拖到另一個食材上合成：
    不同的＝混合料理（兩個特性 ×1.25）、相同的＝半成品（×1.25，帶招牌效果）；兩個不同的半成品＝2 格大料理（數值相加、兩個招牌都發動）。
-   食物只加角色本身（開戰時吃下），不升階、不吃也不給相鄰加成；同一道只算一份 */
+   食物只加角色本身（常駐，放在背包就有效），不升階、不吃也不給相鄰加成；同一道只算一份 */
 const FOOD_HPOF = { ing: 8, mix: 20, semi: 20, big: 40 };
 const FOOD_K = ['meat', 'bread', 'fish', 'honey', 'mint', 'coffee', 'lemon'];
-/* 一份的數值：hpP 生命 %、dr 受到的命中傷害 -%、dodge 閃避、regP 每秒回復生命上限 %、rDot 抗持續傷害 %、rCtl 抗限制行動 %、cln 淨化次數 */
+/* 一份的數值：hpP 生命 %、dr 受到的攻擊傷害 -%、dodge 閃避、regP 每秒回復生命上限 %、rDot 抗持續傷害 %、rCtl 抗限制行動 %、cln 淨化次數 */
 const FOOD_V = {
   meat: { hpP: 8 },
   bread: { dr: 5 },
@@ -5034,7 +5034,7 @@ const MODN = {
   ramp: v => `每 5 秒攻速 +${pct(v)}（最多 5 次）`,
   startBlock: v => `開戰時有 ${v} 護盾`,
   double: v => `${pct(v)} 機率連擊`,
-  thornsF: v => `被攻擊打中時反彈 ${v} 固定傷害`,
+  thornsF: v => `被攻擊時反彈 ${v} 固定傷害（被護盾擋下也算）`,
   critHeal: v => `暴擊時回復 ${v} 生命`,
   /* 0.1.28 質變與反制寵物 */
   pierce: v => `無視 ${pct(Math.min(PIERCE_MAX, v))} 護甲與格擋`,
@@ -5409,29 +5409,34 @@ function preTxt(id, t = 1) {
   const p = ITEMI[id].pre;
   return p ? PREN[preKey(p)](preVal(id, t)) : '';
 }
-/* 0.1.103 料理的說明：開戰時吃下的數值、招牌效果（半成品寫「做成大料理時」）、怎麼合成 */
+/* 0.1.103 料理的說明（0.1.105 改寫）：自帶的數值寫「常駐」（放在背包就有效，不用吃）；招牌效果寫「開戰時發動」，
+   蜂巢、醃檸檬的招牌是有條件的常駐效果，跟數值寫在一起；半成品寫「招牌（做成大料理才有）」 */
 const FOOD_SG = {
-  meat: '開戰時獲得護盾（生命上限的 10%）',
-  bread: '前 3 次受到的命中傷害減半',
-  fish: '前 2 次被攻擊必定閃避',
-  honey: '生命低於 30% 時回復加倍',
-  mint: '開戰 3 秒內不會受到持續傷害',
-  coffee: '開戰 3 秒內不會被限制行動',
-  lemon: '每次淨化回復 5% 生命'
+  meat: [1, '獲得護盾（生命上限的 10%）'],
+  bread: [1, '前 3 次受到的攻擊傷害減半'],
+  fish: [1, '前 2 次被攻擊必定閃避'],
+  honey: [0, '生命低於 30% 時回復加倍'],
+  mint: [1, '3 秒內不會受到持續傷害'],
+  coffee: [1, '3 秒內不會被限制行動'],
+  lemon: [0, '每次淨化時回復 5% 生命']
 };
 function foodDesc(it) {
   const f = it.fd,
-    v = [];
+    v = [],
+    sg = it.fk === 'big' ? it.sg : [];
   if (f.hp) v.push(`生命 +${f.hp}${f.hpP ? `，再 +${f.hpP}%` : ''}`);
-  if (f.dr) v.push(`受到的命中傷害 -${f.dr}%`);
+  if (f.dr) v.push(`受到的攻擊傷害 -${f.dr}%`);
   if (f.dodge) v.push(`閃避 +${f.dodge}%`);
   if (f.regP) v.push(`每秒回復 ${f.regP}% 生命`);
   if (f.rDot) v.push(`受到的持續傷害（燃燒、中毒、流血類）-${f.rDot}%`);
   if (f.rCtl) v.push(`被限制行動（凍結、暈眩、虛弱、致盲類）的時間 -${f.rCtl}%`);
   if (f.cln) v.push(`每 ${CLEANSE_T} 秒淨化 1 種異常，共 ${f.cln} 次`);
-  const out = [`開戰時吃下：${v.join('、')}`];
-  if (it.fk === 'semi') out.push(`做成大料理時：${FOOD_SG[it.sg]}`);
-  if (it.fk === 'big') out.push(`招牌：${it.sg.map(k => FOOD_SG[k]).join('、')}`);
+  for (const k of sg) if (!FOOD_SG[k][0]) v.push(FOOD_SG[k][1]);
+  const out = [`常駐：${v.join('、')}`],
+    op = sg.filter(k => FOOD_SG[k][0]).map(k => FOOD_SG[k][1]);
+  if (op.length) out.push(`開戰時發動：${op.join('、')}`);
+  if (it.fk === 'semi')
+    out.push(`招牌（做成大料理才有）：${FOOD_SG[it.sg][0] ? '開戰時發動，' : ''}${FOOD_SG[it.sg][1]}`);
   out.push(
     it.fk === 'ing'
       ? '拖到另一個食材上合成料理（相同的變半成品）'

@@ -1199,7 +1199,7 @@ function compileBag(bag, extra = {}) {
   F.hp = Math.max(1, F.hp);
   return F;
 }
-/* 0.1.103 料理：開戰時吃下。同一道只算一份；抗性同一類最多 FOOD_RES、淨化最多 FOOD_CLN 次；招牌效果只有大料理才發動 */
+/* 0.1.103 料理：放在背包就有效（常駐）。同一道只算一份；抗性同一類最多 FOOD_RES、淨化最多 FOOD_CLN 次；招牌效果只有大料理才發動 */
 const FOOD_RES = 50,
   FOOD_CLN = 4;
 function foodF(F, items) {
