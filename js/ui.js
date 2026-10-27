@@ -74,7 +74,8 @@ const rfSnap = run => ({
   riv: rivers(run.bag).map(R => R.a.u + R.b.u),
   pity: run.shop.map((x, i) => (x && x.pity ? i + x.id : '')).join(''),
   pn: run.pityNote ? run.pityNote.id + run.pityNote.k : '',
-  gnt: (petFx(run.bag) || {}).giant
+  gnt: (petFx(run.bag) || {}).giant,
+  fd: run.shop.findIndex(x => x && ITEMI[x.id].fk === 'ing')
 });
 function ruleFx(run) {
   const was = V.rf,
@@ -85,6 +86,9 @@ function ruleFx(run) {
     const i = run.shop.findIndex(x => x && x.pity);
     hint($q(`.shop .sc[data-sk="${i}"]`), `保底：差 1 件就合成的${ITEMI[run.shop[i].id].n}`, 'pity');
   }
+  /* 0.1.103 料理教學：商店出現食材時，在那張卡旁邊提示怎麼煮（每局前 2 次） */
+  if (now.fd >= 0 && (now.fd !== was.fd || now.shop !== was.shop))
+    hint($q(`.shop .sc[data-sk="${now.fd}"]`), '食材：拖到另一個食材上就能煮成料理', 'food');
   if (now.pn && now.pn !== was.pn) {
     const P = run.pityNote,
       n = ITEMI[P.id].n;
