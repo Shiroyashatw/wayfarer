@@ -446,7 +446,7 @@ button.lgb:disabled{opacity:1}
 .sp.frz canvas{filter:drop-shadow(0 0 6px #8fd8ff) hue-rotate(160deg) saturate(.6) brightness(1.2)}
 .sp.psn canvas{filter:drop-shadow(0 0 6px #9be36b)}
 /* 0.1.106 刺客潛行：半透明（減少動態也一樣，不是動畫） */
-.sp.stl canvas{opacity:.45}
+.sp.stl>*{opacity:.45}
 .sp.brn canvas{filter:drop-shadow(0 0 6px #ff9a5a)}
 .arena.shake{animation:ashake .3s}
 @keyframes ashake{20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,0)}}
