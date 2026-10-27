@@ -517,11 +517,13 @@ function botPower(F, P = BOT_P) {
   if (F.sd) {
     const blk = F.shields.reduce((n, s) => n + s.block / Math.max(0.6, s.cd), 0),
       cap = SD_CAP + (F.sdCap || 0),
-      L = Math.min(cap, (F.sdStart || 0) + (blk * 12 + (F.startBlock || 0)) / (F.sdStep15 ? SD_STEP2 : SD_STEP)) * 0.6,
+      /* 0.1.108 一場約 15 秒，對戰時護盾幾乎都會被吃滿 */
+      L = Math.min(cap, (F.sdStart || 0) + (blk * 15 + (F.startBlock || 0)) / (F.sdStep15 ? SD_STEP2 : SD_STEP)) * 0.8,
       shRate = F.shields.reduce((n, s) => n + 1 / Math.max(0.6, s.cd), 0);
     dps *= 1 + (L * (SD_DMG + (F.sdDmg || 0))) / 100;
     dps += L * (F.sdBash || 0) * shRate + L * (F.sdTh ? 0.8 : 0);
-    ehp += L * (F.sdHp || 0) + (F.shLow ? F.shields.reduce((n, s) => n + s.block, 0) : 0);
+    /* 盾對騎士是雙份價值（擋傷害＋累積盾勢），格擋再算一次 */
+    ehp += L * (F.sdHp || 0) + (F.shLow ? F.shields.reduce((n, s) => n + s.block, 0) : 0) + blk * 9 * BOT_KN_SHW;
     const arm = (F.sdArm5 ? fl(L / 5) * F.sdArm5 : 0) + (F.sdArm2 ? fl(L / 2) * F.sdArm2 : 0);
     if (arm) (ehp *= 1 + arm / 50), F.armDmg && (dps *= 1 + arm / 20);
     if (F.sdEndu) ehp /= 1 - (Math.min(3, fl(L / 5)) * ENDU_DR) / 100;
@@ -698,10 +700,14 @@ const botBump = (cx, bagToo = true) => {
 };
 /* ex：0.1.59 這件身上的形狀（七十二變）、詛咒（{ sh, cu }），沒給就照這局的形狀表、沒有詛咒 */
 const botEx = o => (o && (o.cu || o.bl) ? { sh: o.sh, cu: o.cu, bl: o.bl } : null);
+const BOT_KN_SH = 0.12,
+  BOT_KN_SHW = 1;
 function botValue(run, id, t, P, cx = {}, ex = null) {
   const key = id + '|' + t + (ex && ex.cu ? '|c' + ex.cu.join('.') : '') + (ex && ex.bl ? '|b' + ex.bl.join('.') : '');
   if (cx.val && cx.val.has(key)) return cx.val.get(key);
   const v = botValue0(run, id, t, P, cx, ex);
+  /* 0.1.108 騎士：盾是盾勢的來源（護盾吃傷害才累積），戰力公式只算到一部分，買盾的優先級大幅提高 */
+  if (run.bag.cls === 'knight' && ITEMI[id].block && v.gain > -1) v.gain = v.gain * 1.5 + BOT_KN_SH;
   /* 0.1.59 詛咒・吸金：每回合少的錢（戰力算不到） */
   if (ex && ex.cu && CURSES[ex.cu[0]] && CURSES[ex.cu[0]].k === 'drain')
     v.gain -= 0.05 * cuV({ id, cu: ex.cu }) * (Math.max(0, ROUNDS.length - run.ri) / ROUNDS.length);
