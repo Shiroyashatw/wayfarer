@@ -56,6 +56,10 @@ function simSide(F) {
     hp: F.hp,
     max: F.hp,
     block: F.startBlock || 0,
+    /* 0.1.103 料理：淨化剩幾次、麵團減半與魚漿閃避剩幾下 */
+    clnL: F.fdCl || 0,
+    fdHalf: F.fdHalf || 0,
+    fdDg: F.fdDg || 0,
     burn: 0,
     poison: 0,
     stun: 0,
@@ -387,13 +391,18 @@ function simulate(FA, FB, seed) {
     weak: 'rWeak',
     age: 'rWeak',
     blind: 'rBlind',
-    confuse: 'rBlind'
+    confuse: 'rBlind',
+    corrode: 'rPoison'
   };
+  /* 0.1.103 料理的開場免疫：薄荷醬（持續傷害）、咖啡豆（限制行動） */
+  const DOTK = new Set(['burn', 'ignite', 'poison', 'venom', 'bleed', 'rend', 'corrode']),
+    CTLK = new Set(['frozen', 'chill', 'stun', 'para', 'weak', 'age', 'blind', 'confuse', 'sunder']);
   const res = (d, k, t) => {
     if (d.F.immAll) return tr(d, 'immAll'), 0;
     if ((k === 'frozen' || k === 'chill') && d.F.immFz) return tr(d, 'immFz'), 0;
     if ((k === 'poison' || k === 'venom') && t < (d.F.poisonImm || 0)) return tr(d, 'poisonImm'), 0;
     if (t < (d.F.immT || 0)) return 0;
+    if ((DOTK.has(k) && t < (d.F.fdDotT || 0)) || (CTLK.has(k) && t < (d.F.fdCtlT || 0))) return tr(d, 'food'), 0;
     if ((d.valk || d.ragT > t) && (k === 'stun' || k === 'frozen' || k === 'chill' || k === 'para')) return 0;
     const v = Math.min(RES_MAX, d.F[RK[k]] || 0);
     if (v > 0) tr(d, RK[k]);
@@ -607,7 +616,8 @@ function simulate(FA, FB, seed) {
       di = S.indexOf(d);
     /* 0.1.50 風之箭（sure）不會被閃避、招架；閃避成功：游擊充能、迴避反擊；沒打中連珠箭歸零 */
     /* 0.1.99 閃避、致盲落空用偽隨機（風之箭、打自己不會落空） */
-    const dodged = !self && !w.sure && prd(d, 'dodge', d.F.dodge),
+    /* 0.1.103 魚漿：前 2 次被攻擊必定閃避 */
+    const dodged = !self && !w.sure && (d.fdDg > 0 ? (d.fdDg--, tr(d, 'food'), true) : prd(d, 'dodge', d.F.dodge)),
       blinded = !dodged && !self && !w.sure && a.blind > 0 && prd(a, 'blind', BLIND_MISS);
     /* 0.1.69 塔羅・月亮逆位：敵人的第一次攻擊打到幻影 */
     if (!self && d.tmiss > 0) {
@@ -681,6 +691,8 @@ function simulate(FA, FB, seed) {
     /* 0.1.53 饕餮吞噬（這場累積）、檮杌（你受到的攻擊傷害 -%） */
     if (w.gb) v *= 1 + w.gb / 100;
     if (d.F.dr) v *= Math.max(0.2, 1 - d.F.dr / 100);
+    /* 0.1.103 麵團：前 3 次受到的命中傷害減半 */
+    if (!self && d.fdHalf > 0) (v *= 0.5), d.fdHalf--, tr(d, 'food');
     /* 0.1.96 七宗罪：暴怒暴走（4 件 +25%）、怠惰每圈累加、暴食每 50 脂肪、王冠（階數總和 × 2%）、貪婪 10 件（每組 +15%）、魅惑打自己（8 件 ×1.5） */
     if (a.rmpT > t && isS(w, 'wrath') && L(a, 'wrath') >= 2) v *= 1.25;
     if (a.slothB && isS(w, 'sloth')) v *= 1 + a.slothB / 100;
@@ -1613,7 +1625,8 @@ function simulate(FA, FB, seed) {
           if (v > 0) a.corrode = Math.max(a.corrode, v);
         }
         /* 0.1.29 淨化：每 CLEANSE_T 秒清掉最嚴重的 N 種異常（持續傷害先清） */
-        if (a.F.cleanse && sec % CLEANSE_T === 0) {
+        /* 0.1.103 料理的淨化（檸檬）：每次清 1 種、有次數；醃檸檬每次淨化回血 */
+        if ((a.F.cleanse || a.clnL > 0) && sec % CLEANSE_T === 0) {
           const ks = [
             'venom',
             'poison',
@@ -1629,12 +1642,19 @@ function simulate(FA, FB, seed) {
             'confuse',
             'sunder'
           ].filter(k => a[k] > 0);
-          for (const k of ks.slice(0, a.F.cleanse)) a[k] = 0;
+          const cn = (a.F.cleanse || 0) + (a.clnL > 0 ? 1 : 0);
+          for (const k of ks.slice(0, cn)) a[k] = 0;
+          if (ks.length && a.clnL > 0) {
+            a.clnL--;
+            if (a.F.fdClH) heal(t, a, i, (a.max * a.F.fdClH) / 100, {});
+          }
           /* 0.1.96 淨化也解除魅惑 */
           for (const w of a.w) w.chm = 0;
-          if (ks.length) log(t, i, 'cleanse', Math.min(ks.length, a.F.cleanse), { self: 1 }), tr(a, 'cleanse');
+          if (ks.length) log(t, i, 'cleanse', Math.min(ks.length, cn), { self: 1 }), tr(a, 'cleanse');
         }
-        if (a.F.regen && a.hp > 0 && a.hp < a.max) heal(t, a, i, a.F.regen, { regen: 1 }), tr(a, 'regen');
+        /* 0.1.103 蜂巢：生命低於 30% 時回復加倍 */
+        if (a.F.regen && a.hp > 0 && a.hp < a.max)
+          heal(t, a, i, a.F.regen * (a.F.fdLow && a.hp < a.max * 0.3 ? 2 : 1), { regen: 1 }), tr(a, 'regen');
         if (sec >= FATIGUE_T) hurt(t, 2 * (sec - FATIGUE_T + 1), a, 1 - i, 'fatigue', {});
       }
     }

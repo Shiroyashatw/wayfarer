@@ -644,7 +644,7 @@ function rvDetHTML(o) {
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
-  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}${I.core ? '' : `・${shapeO(o).length} 格`}</small></div></div><p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${mdLineHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
+  return `<div class="rvdet s${I.star}"><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${I.fk ? 'var(--food)' : STARC[I.star]}">${esc(fuName(o))}${tierTxt(o.t)}</b><small>${I.fk ? FKN[I.fk] : stars(I.star)}・${tags}${I.core ? '' : `・${shapeO(o).length} 格`}</small></div></div><p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${mdLineHTML(o)}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ 融合了${ITEMI[o.f].n}${tierTxt(o.ft || 1)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, o.ft || 1))].filter(Boolean).join('、')}</p>` : ''}</div>`;
 }
 /* 0.1.32 點對手：看他上一回合的背包（準備時看上一回合；打完結算時看剛打完的這回合，你已經看過了）。不給看這回合的，跟機器人一樣；
    0.1.38 點清單或背包裡的道具看詳細（sel 是選中的道具） */
@@ -781,6 +781,9 @@ function tutHTML() {
   ][S.tut];
   return `<div class="tut">💡 ${t}</div>`;
 }
+/* 0.1.103 食物的框（自己的顏色，大料理加星星邊框） */
+const FKN = { ing: '食材', mix: '料理', semi: '半成品', big: '大料理' };
+const fdc = id => (ITEMI[id].fk ? (ITEMI[id].fk === 'big' ? ' fd fdb' : ' fd') : '');
 function bagHTML(bag, cs, opt = {}) {
   /* 0.1.96 準備畫面（opt.stage）畫到最大背包：還沒開的格子是整理區（虛線），放在那裡的道具紅框 */
   const gw = opt.stage ? STG_W : bag.w,
@@ -827,7 +830,7 @@ function bagHTML(bag, cs, opt = {}) {
       buf = mods && mods.get(o.u) && mods.get(o.u).length,
       tfd = buf && mods.get(o.u).some(x => x.w === 'tf'),
       bt = opt.mini ? '' : bufTag(bag, o, mods);
-    h += `<div class="it s${I.star}${st.has(o.u) ? ' out' : ''}${V.sel === o.u ? ' sel' : ''}${lit.has(o.u) ? ' lit' : ''}${src.has(o.u) ? ' src' : ''}${I.core ? ' core' : ''}" data-u="${o.u}" style="left:${mx * (cs + GAP)}px;top:${my * (cs + GAP)}px;width:${bw}px;height:${bh}px">${cs0
+    h += `<div class="it s${I.star}${fdc(o.id)}${st.has(o.u) ? ' out' : ''}${V.sel === o.u ? ' sel' : ''}${lit.has(o.u) ? ' lit' : ''}${src.has(o.u) ? ' src' : ''}${I.core ? ' core' : ''}" data-u="${o.u}" style="left:${mx * (cs + GAP)}px;top:${my * (cs + GAP)}px;width:${bw}px;height:${bh}px">${cs0
       .map(([x, y]) => {
         /* 同一件的格子連在一起：相鄰那一邊補滿間隙、不畫框線與圓角 */
         const has = (a, b) => cs0.some(p => p[0] === a && p[1] === b),
@@ -1085,6 +1088,17 @@ function dragLit(d) {
   const bag = $('bag');
   if (!bag) return;
   bag.querySelectorAll('.it.pv').forEach(e => e.classList.remove('pv'));
+  /* 0.1.103 拖食物：能合成的先標虛線框；停在上面時，那件上方預覽會變成什麼 */
+  bag.querySelectorAll('.ckn').forEach(e => e.remove());
+  if (ITEMI[d.o.id].fk) {
+    const itE = q => bag.querySelector(`.it[data-u="${q.u}"]`);
+    if (!d.ck) {
+      d.ck = 1;
+      for (const q of run.bag.items) if (cookOf(d.o, q) && itE(q)) itE(q).classList.add('ck');
+    }
+    if (d.fuse && itE(d.fuse))
+      itE(d.fuse).insertAdjacentHTML('beforeend', `<b class="ckn">${ITEMI[cookOf(d.o, d.fuse)].n}</b>`);
+  }
   const on = q => {
     const e = bag.querySelector(`.it[data-u="${q.u}"]`);
     if (e) e.classList.add('pv');
@@ -1291,14 +1305,14 @@ function prepHTML(run) {
     <div class="benchrow"><span class="lbl">暫存</span><div class="bench" id="bench">${run.bench
       .map((o, i) =>
         o
-          ? `<div class="bs s${ITEMI[o.id].star}${V.sel === o.u ? ' sel' : ''}${fuCls(o)}" data-bu="${o.u}" data-bi="${i}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt="${fuName(o)}">${o.f && ITEMI[o.f] ? `<img class="fui" src="${itemIcon(o.f)}" alt="">` : ''}${shapeMini(o.id, o.r || 0, o.sm, o.sh)}${tierBadge(o.t)}${brHTML(o)}</div>`
+          ? `<div class="bs s${ITEMI[o.id].star}${fdc(o.id)}${V.sel === o.u ? ' sel' : ''}${fuCls(o)}" data-bu="${o.u}" data-bi="${i}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt="${fuName(o)}">${o.f && ITEMI[o.f] ? `<img class="fui" src="${itemIcon(o.f)}" alt="">` : ''}${shapeMini(o.id, o.r || 0, o.sm, o.sh)}${tierBadge(o.t)}${brHTML(o)}</div>`
           : `<div class="bs emp" data-bi="${i}"></div>`
       )
       .join('')}</div></div></div>
     <div class="pcol pc">${modeUI(run).panel ? modeUI(run).panel(run) : ''}<div class="shop" id="shop">${run.shop
       .map((s, k) =>
         s
-          ? `<button class="sc s${ITEMI[s.id].star}${s.pity ? ' pity' : ''}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}" aria-label="${ITEMI[s.id].n}${s.pity ? '（保底）' : ''}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${brHTML(s)}${shapeMini(s.id, 0, 0, s.sh)}<b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金${priceOff(run, s)}</b></button>`
+          ? `<button class="sc s${ITEMI[s.id].star}${fdc(s.id)}${s.pity ? ' pity' : ''}${V.sel === 'shop' + k ? ' sel' : ''}" data-act="shopSel" data-k="${k}" data-sk="${k}" aria-label="${ITEMI[s.id].n}${s.pity ? '（保底）' : ''}"><img src="${itemIcon(s.id)}" alt="">${tierBadge(s.t || 1)}${brHTML(s)}${shapeMini(s.id, 0, 0, s.sh)}<b class="${run.gold < slotPrice(run, s) ? 'c-bad' : s.p != null ? 'c-gold' : ''}">${slotPrice(run, s)} 金${priceOff(run, s)}</b></button>`
           : `<div class="sc sold">已買</div>`
       )
       .join('')}</div>
@@ -1373,7 +1387,7 @@ function detailHTML(run) {
         .filter(t => t !== 'weapon')
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
-  return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0, o.sm, o.sh)} ${shapeO(o).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div>${oddsHTML(run, o.id)}<button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
+  return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${I.fk ? 'var(--food)' : STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${I.fk ? FKN[I.fk] : stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0, o.sm, o.sh)} ${shapeO(o).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div>${oddsHTML(run, o.id)}<button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
     <p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${modeUI(run).det ? modeUI(run).det(run, o) : ''}${sinLineHTML(run, o)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${mdLineHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
@@ -2937,7 +2951,8 @@ const CX_TABS = [
   ['ail', '異常'],
   ['stat', '屬性'],
   ['mode', '賽制'],
-  ['pool', '道具池']
+  ['pool', '主題'],
+  ['food', '料理']
 ];
 /* 0.1.85 百科改成用到才產生：分頁點到才產生、分組展開才產生內容（CXG）、圖示捲到才產生（cxIcons）。
    之前一打開就把 6 個分頁、1800 張圖示一次做完（2.9 MB），每載好一張大圖又整個重畫，會卡好幾秒 */
@@ -3028,6 +3043,24 @@ const cxModeHTML = () =>
         m.n + ' ' + m.d.join(' ')
       )
     )
+    .join('');
+/* 0.1.103 百科的料理分頁：食材、半成品（招牌）、混合料理、大料理各一組 */
+const cxFoodHTML = () =>
+  [
+    ['ing', '食材', '商店每格 20% 出現'],
+    ['semi', '半成品', '兩個相同食材'],
+    ['mix', '料理', '兩個不同食材'],
+    ['big', '大料理', '兩種半成品・2 格']
+  ]
+    .map(([k, n, sub]) => {
+      const its = ITEMS.filter(i => i.fk === k);
+      return cxGroup(
+        'cxf_' + k,
+        `<img class="cxgi" ${cxIt(its[0].id)} alt="">${n}<small>${its.length} 種・${sub}</small>`,
+        () => its.map(i => cxRow('cxf_' + i.id, cxIt(i.id), i.n, FKN[k], dsc(itemDesc(i.id)), ' fd')).join(''),
+        its.map(i => i.n).join(' ')
+      );
+    })
     .join('');
 /* 0.1.75 百科的道具池分頁：每個主題一組（機制＋專屬的飾品、輔助；武器列名字） */
 const cxPoolHTML = () =>
@@ -3288,7 +3321,14 @@ const CX_SEC = {
         .join('')
   ],
   mode: ['賽制讓每局不一樣：開場轉盤（外圈）抽一個，整局改變規則。點賽制展開看規則。', cxModeHTML],
-  pool: ['道具池決定這局商店賣哪一套道具：開場轉盤（內圈）抽一個，圍繞它的機制構築。點主題展開看專屬道具。', cxPoolHTML]
+  pool: [
+    '道具池決定這局商店賣哪一套道具：開場轉盤（內圈）抽一個，圍繞它的機制構築。點主題展開看專屬道具。',
+    cxPoolHTML
+  ],
+  food: [
+    '食物開戰時吃下，只加你自己。食材＋食材＝料理，相同的是半成品；半成品＋半成品＝大料理，兩個招牌都發動。',
+    cxFoodHTML
+  ]
 };
 const cxSecHTML = k =>
   `<section class="cxsec" data-tab="${k}"><p class="sub">${CX_SEC[k][0]}</p><div class="cxl">${CX_SEC[k][1]()}</div></section>`;
@@ -4565,14 +4605,68 @@ document.addEventListener('touchstart', () => {}, { passive: true });
 /* ================= 拖曳擺放 ================= */
 /* 0.1.28 融合好的提示 */
 function fuseToast(l) {
+  /* 0.1.103 料理：一般料理小彈一下，大料理放大招（cookFx） */
+  const fd = (l || []).filter(o => ITEMI[o.id].fk);
+  if (fd.length) {
+    const big = fd.some(o => ITEMI[o.id].fk === 'big');
+    snd(big ? 'level' : 'select');
+    toast(`${big ? '大料理' : '料理'}完成！${fd.map(o => ITEMI[o.id].n).join('、')}`);
+    requestAnimationFrame(() => fd.forEach(o => cookFx(o.u, ITEMI[o.id].fk === 'big')));
+    l = l.filter(o => !ITEMI[o.id].fk);
+  }
   if (l && l.length) {
     snd('level');
     toast(`融合！${l.map(fuName).join('、')}`);
   }
 }
+/* 0.1.103 合成料理的回饋：彈一下；大料理再加一圈金光擴散和星星往外飛（很少發生，給足眼睛回饋）；減少動態時只彈（spr 自己變淡入） */
+function cookFx(u, big) {
+  const el = elOf(u);
+  if (!el) return;
+  pop(el.querySelector('img') || el);
+  if (!big || calm()) return;
+  const r = el.getBoundingClientRect(),
+    z = V.z || 1,
+    cx = (r.left + r.width / 2) / z,
+    cy = (r.top + r.height / 2) / z,
+    E = 'cubic-bezier(.23,1,.32,1)',
+    add = (cls, css, txt) => {
+      const e = document.createElement('div');
+      e.className = cls;
+      if (txt) e.textContent = txt;
+      Object.assign(e.style, { zoom: 'var(--z,1)', ...css });
+      document.body.appendChild(e);
+      return e;
+    },
+    ring = add('fdr', {
+      left: cx - r.width / z / 2 + 'px',
+      top: cy - r.height / z / 2 + 'px',
+      width: r.width / z + 'px',
+      height: r.height / z + 'px'
+    });
+  ring.animate(
+    [
+      { transform: 'scale(.6)', opacity: 1 },
+      { transform: 'scale(1.9)', opacity: 0 }
+    ],
+    { duration: 550, easing: E }
+  ).onfinish = () => ring.remove();
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2,
+      d = 46 + (i % 3) * 14,
+      p = add('fdp', { left: cx + 'px', top: cy + 'px' }, '★');
+    p.animate(
+      [
+        { transform: 'translate(0,0) scale(.4)', opacity: 1 },
+        { transform: `translate(${Math.cos(a) * d}px,${Math.sin(a) * d}px) scale(1)`, opacity: 0 }
+      ],
+      { duration: 600 + (i % 3) * 80, easing: E }
+    ).onfinish = () => p.remove();
+  }
+}
 /* 輔助 o 拖到哪一格：那格是能融合的道具就回傳它；0.1.100 巨人國的工具也一樣（鑿子看是哪一格） */
 function fuseAt(run, o, c) {
-  if (!c || !(ITEMI[o.id].tf || ITEMI[o.id].mod)) return null;
+  if (!c || !(ITEMI[o.id].tf || ITEMI[o.id].mod || ITEMI[o.id].fk)) return null;
   const g = bagGrid(run.bag),
     u = g[c[1]] && g[c[1]][c[0]],
     q = u != null && run.bag.items.find(x => x.u === u);
@@ -4724,7 +4818,7 @@ document.addEventListener(
       const bag = $('bag');
       d.cs = bag ? parseFloat(bag.style.getPropertyValue('--cs')) : 44;
       d.el = document.createElement('div');
-      d.el.className = 'ghost s' + ITEMI[d.o.id].star;
+      d.el.className = 'ghost s' + ITEMI[d.o.id].star + fdc(d.o.id);
       document.body.appendChild(d.el);
       /* 拿起來：稍微放大、影子變深（.ghost 的 lift 動畫） */
       document.querySelectorAll('.it.press').forEach(e => e.classList.remove('press'));

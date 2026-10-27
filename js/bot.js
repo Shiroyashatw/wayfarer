@@ -605,8 +605,15 @@ function botPower(F, P = BOT_P) {
     Math.min(1, (F.immT || 0) / 15) *
       (er.burn + er.poison + er.bleed + er.sunder + er.frozen + er.stun + er.weak + er.blind) +
     (F.cleanse || 0) * 0.04 * (er.burn + er.poison + er.bleed + er.frozen + er.stun + 0.5) +
+    /* 0.1.103 料理：有次數的淨化、開場 3 秒免持續傷害／限制行動 */
+    (F.fdCl || 0) * 0.015 * (er.burn + er.poison + er.bleed + er.frozen + er.stun + 0.5) +
+    ((F.fdDotT || 0) / 15) * (er.burn + er.poison + er.bleed) +
+    ((F.fdCtlT || 0) / 15) * (er.sunder + er.frozen + er.stun + er.weak + er.blind) +
     rv('critRes') * er.crit;
   pre *= Math.pow(1 / (1 - Math.min(0.75, red * (P.resW ?? 1))), P.ehpW);
+  /* 0.1.103 料理的招牌：麵團前幾下減半、魚漿前幾下閃避、蜂巢低血回復加倍、醃檸檬淨化回血（大約） */
+  pre *=
+    1 + 0.02 * (F.fdHalf || 0) + 0.03 * (F.fdDg || 0) + (F.fdLow ? 0.03 : 0) + (F.fdClH ? 0.01 * (F.fdCl || 0) : 0);
   dps *= 1 + rv('healCut') * er.heal * 1.5;
   /* 0.1.74 羈絆的進度：還沒到下一個門檻的件數也算一點（每一系照「湊到下一級的幾成」× synW），
      不然機器人只看已經開的門檻，差 1 件的那件買不下去、星座的相鄰也不會去湊 */
@@ -727,6 +734,7 @@ function botEcon(run, d) {
 function botValue1(run, id, t, P, cx, bag, base, o) {
   /* P.noMod：不用工具（測巨人國的改造值不值得：tools/mod_ab.js） */
   if (ITEMI[id].mod) return P.noMod ? { gain: -1, how: 'none' } : botModBest(run, { ...o }, P, base);
+  if (ITEMI[id].fk) return botFoodBest(run, o, P, base, cx);
   /* 湊滿 3 件：當成背包那件直接升一階 */
   if (wouldMerge(run, id, t)) {
     const inBag = bag.items.find(q => q.id === id && q.t === t);
@@ -753,6 +761,50 @@ function botValue1(run, id, t, P, cx, bag, base, o) {
   if ([...bag.items, ...run.bench].some(q => q && q.id === id && q.t === t))
     best.gain = Math.max(best.gain, P.mergeBonus * 0.5);
   return best;
+}
+/* 0.1.103 食物 s：直接放、或拖到背包裡能合成的食物上（每個都試），回傳戰力最高的 { gain, how: 'cook', q }；
+   暫存區或背包有配對的（還沒合成）也算一點，才會先買食材等配對 */
+function botFoodBest(run, s, P, base, cx) {
+  const tr = botTry(run.bag, s, P);
+  let best = tr ? { gain: tr.pow / base - 1, how: 'place' } : { gain: -1, how: 'none' };
+  for (const q of run.bag.items) {
+    if (!cookOf(s, q)) continue;
+    const t = { ...run, bag: { ...run.bag, items: run.bag.items.map(x => ({ ...x })) }, bench: [...run.bench] },
+      tq = t.bag.items.find(x => x.u === q.u);
+    cookInto(t, { ...s }, tq);
+    /* 做出半成品：背包已經有另一種半成品（差一步就是大料理）加更多 */
+    const semi = ITEMI[tq.id].fk === 'semi',
+      pair = semi && t.bag.items.some(x => x !== tq && ITEMI[x.id].fk === 'semi' && x.id !== tq.id),
+      g =
+        (t.bag.items.includes(tq) ? botPowerOf(t.bag, P) : base) / base -
+        1 +
+        (semi ? P.mergeBonus * (pair ? 1 : 0.3) : 0);
+    if (g > best.gain) best = { gain: g, how: 'cook', q: q.u };
+  }
+  if (run.bench.some(q => q && cookOf(s, q))) best.gain = Math.max(best.gain, P.mergeBonus * 0.5);
+  return best;
+}
+/* 0.1.103 背包裡兩件食物合成會更強（例如兩個半成品變大料理）就合 */
+function botCookAll(run, P) {
+  for (let g = 0; g < 6; g++) {
+    const base = botPowerOf(run.bag, P);
+    let best = null;
+    for (const a of run.bag.items)
+      for (const q of run.bag.items) {
+        if (!cookOf(a, q)) continue;
+        const t = { ...run, bag: { ...run.bag, items: run.bag.items.map(x => ({ ...x })) }, bench: [...run.bench] },
+          tq = t.bag.items.find(x => x.u === q.u);
+        cookInto(
+          t,
+          t.bag.items.find(x => x.u === a.u),
+          tq
+        );
+        const pw = t.bag.items.includes(tq) ? botPowerOf(t.bag, P) : 0;
+        if (pw > base && (!best || pw > best.pw)) best = { a, q, pw };
+      }
+    if (!best) return;
+    cookInto(run, best.a, best.q);
+  }
 }
 /* 0.1.100 巨人國的工具 s：每件道具（鑿子再試每一格）套用看看，縮小、放大的再找一次位置，鑿子試著把小道具塞進新凹口；
    回傳戰力最高的 { gain, how: 'mod', q（道具 u）, c（鑿子的格子） }。縮小空出的格子背包快滿時另外算一點 */
@@ -914,6 +966,13 @@ function botPlace(run, o, P, cx = {}) {
     botBump(cx);
     for (const u of ev.sell || []) sellItem(run, u);
     modInto(run, o, q, ev.c || cellsOf(q)[0]);
+    return true;
+  }
+  if (ev.how === 'cook') {
+    const q = run.bag.items.find(x => x.u === ev.q);
+    if (!q || ev.gain <= 0 || !cookOf(o, q)) return false;
+    botBump(cx);
+    cookInto(run, o, q);
     return true;
   }
   if (ev.how !== 'place' && ev.how !== 'swap') return false;
@@ -1264,10 +1323,13 @@ function botAct(run, theme, q = 0.7, P = BOT_P) {
   for (const o of run.bench) if (o) botPlace(run, o, P, cx);
   for (const o of run.bench) {
     if (!o) continue;
-    const pair = [...run.bag.items, ...run.bench].filter(q => q && q !== o && q.id === o.id && q.t === o.t).length;
+    const pair = [...run.bag.items, ...run.bench].filter(
+      q => q && q !== o && ((q.id === o.id && q.t === o.t) || cookOf(o, q))
+    ).length;
     if (!pair && ITEMI[o.id].star < 3) sellItem(run, o.u);
   }
   mergeAll(run, runR(run));
+  botCookAll(run, P);
   /* 0.1.72 買完、擺完：整理一次位置（看位置的加成）；P.plain 是 0.1.71 的擺法（bot_train.js --vs-plain 比較用） */
   if (!P.plain && r01(run) < q) botRelayout(run, P);
 }

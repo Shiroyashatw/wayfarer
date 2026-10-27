@@ -674,6 +674,16 @@ function wpick(run, arr, w) {
   return arr[arr.length - 1];
 }
 /* 商店的一格：照背包等級的機率抽星級，同星級照「池子剩幾件 × 職業偏好」加權；那個星級抽光了就往下找 */
+/* 0.1.103 料理：商店每一格（1-1 以外）有 FOOD_P 機率是食材（不照星級，7 種照池子剩的份數抽） */
+const FOOD_P = 0.2;
+function rollFood(run, used) {
+  const it = wpick(
+    run,
+    ITEMS.filter(it => it.fk === 'ing' && poolOK(run, it)),
+    it => Math.max(0, poolOf(it.id) - (used.get(it.id) || 0))
+  );
+  return it ? it.id : null;
+}
 function rollItem(run, lotto, used = poolUsed(run), filt = () => true) {
   const od = lotto ? lottoOdds(shopOdds(run)) : shopOdds(run);
   let x = r01(run) * 100,
@@ -692,12 +702,12 @@ function rollItem(run, lotto, used = poolUsed(run), filt = () => true) {
   for (const s of [st, ...[5, 4, 3, 2, 1].filter(v => v !== st)]) {
     const it = wpick(
       run,
-      ITEMS.filter(it => it.star === s && poolOK(run, it) && filt(it)),
+      ITEMS.filter(it => it.star === s && !it.fk && poolOK(run, it) && filt(it)),
       w
     );
     if (it) return it.id;
   }
-  const c = ITEMS.filter(it => it.star === 1 && poolOK(run, it) && filt(it));
+  const c = ITEMS.filter(it => it.star === 1 && !it.fk && poolOK(run, it) && filt(it));
   return c.length ? pick(run, c).id : null;
 }
 /* 0.1.35 六合彩：1～2★ 的機率挪六成給 3～5★（2：4：4） */
@@ -723,13 +733,14 @@ function rollShop(run, lotto) {
               ITEMS.filter(i => i.star === 1 && poolOK(run, i) && (k >= 2 || i.dmg)),
               i => Math.max(0.01, poolOf(i.id) - (used.get(i.id) || 0))
             ).id
-          : rollItem(run, lotto, used),
-      /* Ⅱ 階要池子還有 3 件 */
-      t2 = run.ri > 0 && r01(run) * 100 < (BAGLV[run.lv].t2 || 0) && poolOf(id) - (used.get(id) || 0) >= 3;
+          : (r01(run) < FOOD_P && rollFood(run, used)) || rollItem(run, lotto, used),
+      fd = !!ITEMI[id].fk,
+      /* Ⅱ 階要池子還有 3 件；食物沒有階 */
+      t2 = !fd && run.ri > 0 && r01(run) * 100 < (BAGLV[run.lv].t2 || 0) && poolOf(id) - (used.get(id) || 0) >= 3;
     /* 賽制：詛咒寶藏換成高一星、印記、七十二變的形狀 */
     const s = { id, t: t2 ? 2 : 1 },
       H = modeH(run);
-    if (H.slot) H.slot(run, s, used);
+    if (H.slot && !fd) H.slot(run, s, used);
     poolAdd(used, s.id, s.t);
     return s;
   });

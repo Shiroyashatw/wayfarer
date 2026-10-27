@@ -150,6 +150,8 @@ const SH = {
 };
 /* 標籤的中文 */
 const TAGN = {
+  /* 0.1.103 料理 */
+  food: '食物',
   weapon: '武器',
   sword: '劍',
   dagger: '匕首',
@@ -3611,13 +3613,143 @@ function genThemeW() {
     }
   return out;
 }
-ITEMS.push(...THEME_ITEMS, ...genThemeW());
+/* 0.1.103 料理（docs/料理.md）：7 種食材（商店每格 20% 機率出現），拖到另一個食材上合成：
+   不同的＝混合料理（兩個特性 ×1.25）、相同的＝半成品（×1.25，帶招牌效果）；兩個不同的半成品＝2 格大料理（數值相加、兩個招牌都發動）。
+   食物只加角色本身（開戰時吃下），不升階、不吃也不給相鄰加成；同一道只算一份 */
+const FOOD_K = ['meat', 'bread', 'fish', 'honey', 'mint', 'coffee', 'lemon'];
+/* 一份的數值：hpP 生命 %、dr 受到的命中傷害 -%、dodge 閃避、regP 每秒回復生命上限 %、rDot 抗持續傷害 %、rCtl 抗限制行動 %、cln 淨化次數 */
+const FOOD_V = {
+  meat: { hpP: 8 },
+  bread: { dr: 5 },
+  fish: { dodge: 4 },
+  honey: { regP: 0.5 },
+  mint: { rDot: 12 },
+  coffee: { rCtl: 12 },
+  lemon: { cln: 1 }
+};
+const FOOD_N = { meat: '肉', bread: '麵包', fish: '魚', honey: '蜂蜜', mint: '薄荷', coffee: '咖啡', lemon: '檸檬' },
+  FOOD_MIX = {
+    meat_bread: '漢堡',
+    meat_fish: '海陸燒烤',
+    meat_honey: '蜜汁烤肉',
+    meat_mint: '薄荷羊排',
+    meat_coffee: '咖啡燉肉',
+    meat_lemon: '檸檬雞',
+    bread_fish: '魚排三明治',
+    bread_honey: '蜂蜜吐司',
+    bread_mint: '香草麵包',
+    bread_coffee: '早餐套餐',
+    bread_lemon: '檸檬塔',
+    fish_honey: '蜜汁烤魚',
+    fish_mint: '香草烤魚',
+    fish_coffee: '提神魚排',
+    fish_lemon: '檸檬魚',
+    honey_mint: '草本茶',
+    honey_coffee: '蜂蜜拿鐵',
+    honey_lemon: '蜂蜜檸檬水',
+    mint_coffee: '薄荷摩卡',
+    mint_lemon: '薄荷檸檬氣泡飲',
+    coffee_lemon: '冰檸檬咖啡'
+  },
+  FOOD_SEMI = {
+    meat: '絞肉',
+    bread: '麵團',
+    fish: '魚漿',
+    honey: '蜂巢',
+    mint: '薄荷醬',
+    coffee: '咖啡豆',
+    lemon: '醃檸檬'
+  },
+  FOOD_BIG = {
+    meat_bread: '大漢堡',
+    meat_fish: '海陸大餐',
+    meat_honey: '蜜汁肉丸',
+    meat_mint: '香草肉捲',
+    meat_coffee: '摩卡牛排',
+    meat_lemon: '檸香烤全雞',
+    bread_fish: '魚排堡',
+    bread_honey: '蜂蜜鬆餅塔',
+    bread_mint: '香草佛卡夏',
+    bread_coffee: '提拉米蘇',
+    bread_lemon: '檸檬奶油派',
+    fish_honey: '照燒魚定食',
+    fish_mint: '薄荷烤鮭魚',
+    fish_coffee: '咖啡烤鰻魚',
+    fish_lemon: '檸檬奶油鮭魚',
+    honey_mint: '蜂蜜薄荷茶凍',
+    honey_coffee: '蜂蜜拿鐵蛋糕',
+    honey_lemon: '蜂蜜檸檬塔',
+    mint_coffee: '薄荷摩卡聖代',
+    mint_lemon: '薄荷檸檬雪酪',
+    coffee_lemon: '檸檬咖啡蛋糕'
+  };
+/* 數值相加；k 倍（淨化次數不乘） */
+const fdAdd = (...l) => {
+  const o = {};
+  for (const x of l) for (const k in x) o[k] = (o[k] || 0) + x[k];
+  return o;
+};
+const fdMul = (x, k) =>
+  Object.fromEntries(Object.entries(x).map(([a, v]) => [a, a === 'cln' ? v : Math.round(v * k * 100) / 100]));
+function genFood() {
+  const out = [],
+    it = (id, n, fk, fd, x) =>
+      out.push({
+        id,
+        n,
+        star: 2,
+        sh: fk === 'big' ? 'h2' : 's1',
+        tags: ['food'],
+        fk,
+        fd,
+        ic: 'it_herb',
+        ...(fk === 'ing' ? { pool: 18, th: 'b' } : { ns: 1 }),
+        ...x
+      });
+  for (const k of FOOD_K) it('fd_' + k, FOOD_N[k], 'ing', fdMul(FOOD_V[k], 0.5), { fa: [k] });
+  FOOD_K.forEach((a, i) =>
+    FOOD_K.slice(i + 1).forEach(b =>
+      it(`fm_${a}_${b}`, FOOD_MIX[a + '_' + b], 'mix', fdMul(fdAdd(FOOD_V[a], FOOD_V[b]), 1.25), { fa: [a, b] })
+    )
+  );
+  /* 半成品：檸檬（醃檸檬）是淨化 2 次 */
+  for (const k of FOOD_K)
+    it('fs_' + k, FOOD_SEMI[k], 'semi', k === 'lemon' ? { cln: 2 } : fdMul(FOOD_V[k], 2.5), { fa: [k, k], sg: k });
+  FOOD_K.forEach((a, i) =>
+    FOOD_K.slice(i + 1).forEach(b =>
+      it(
+        `fb_${a}_${b}`,
+        FOOD_BIG[a + '_' + b],
+        'big',
+        fdAdd(out.find(x => x.id === 'fs_' + a).fd, out.find(x => x.id === 'fs_' + b).fd),
+        {
+          fa: [a, a, b, b],
+          sg: [a, b]
+        }
+      )
+    )
+  );
+  return out;
+}
+/* 兩件食物 a、b（物件）合成出什麼；不能合回傳 null */
+function cookOf(a, b) {
+  const A = ITEMI[a.id],
+    B = ITEMI[b.id];
+  if (!A || !B || !A.fk || !B.fk || a === b) return null;
+  const [x, y] = [A.fa[0], B.fa[0]].sort((p, q) => FOOD_K.indexOf(p) - FOOD_K.indexOf(q));
+  if (A.fk === 'ing' && B.fk === 'ing') return x === y ? 'fs_' + x : `fm_${x}_${y}`;
+  if (A.fk === 'semi' && B.fk === 'semi' && x !== y) return `fb_${x}_${y}`;
+  return null;
+}
+ITEMS.push(...THEME_ITEMS, ...genThemeW(), ...genFood());
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
 /* 0.1.62 道具池：每件道具在哪幾個池（b 基本池＝每局都有；g 巨人國、f 共生森林、m 機關城、c 棋盤王國、z 黃道十二宮＝主題池，開場內圈轉一個）。
    主題專屬的新道具寫在道具的 th；這張表是舊道具的分配（tools/pools.js 產生：照標籤、形狀排每個主題的合適度，從最不合的拿掉，
    拿掉後每個主題、每類職業武器的 1～5★ 都還要有）。沒寫到的道具三個主題都有 */
 const POOLS = {
-  b: 'beastbell bigpotion boots bugnet bugspray cape cleansebell cursedbandage elixir fireproof gasmask handwarmer herb hunterbadge ironhelm ironskin leatherarmor leathercap lightningrod phoenixdown potion purse rivetvest sunglasses thickhide tourniquet whetstone',
+  /* 0.1.103 基本池：食材（genFood 的 th: 'b'）＋金幣堆＋藥水＋詛咒繃帶；基本防具、抗異常、剋寵物、淨化之鈴、磨刀石退出（x） */
+  b: 'bigpotion bugspray cursedbandage elixir herb ironskin phoenixdown potion purse',
+  x: 'beastbell boots bugnet cape cleansebell fireproof gasmask handwarmer hunterbadge ironhelm leatherarmor leathercap lightningrod rivetvest sunglasses thickhide tourniquet whetstone',
   fg: 'holycollar holymirror holyoil holysigil iceheart',
   /* 0.1.69 原本 f、m 共用的飾品分一半給棋盤王國（c）、黃道十二宮（z）：每件還是兩個主題 */
   fc: 'acidflask beasttotem cloak echostone fireorb frostgem giantblood hexdoll piercerune shadowflower spellbook sunderstone toxinvial venomking weaponrack',
@@ -3634,6 +3766,8 @@ for (const k in POOLS) for (const id of POOLS[k].split(' ')) ITEM_TH[id] = k;
 /* 0.1.69 主題池的武器全部是主題專屬的：舊武器（POOLS 裡分給 g／f／m 的）退出商店（x：不在任何池），
    只當起手道具、核心送的、舊快照用；那三個主題缺的武器由 genThemeW 補 */
 for (const id in ITEM_TH) if (ITEM_TH[id] !== 'b' && ITEMI[id] && (ITEMI[id].dmg || ITEMI[id].block)) ITEM_TH[id] = 'x';
+/* 0.1.103 通用融合（tf）退出商店，由料理取代（docs/料理.md） */
+for (const id in ITEM_TH) if (ITEMI[id] && ITEMI[id].tf) ITEM_TH[id] = 'x';
 const thOf = it => it.th || ITEM_TH[it.id] || 'fgm';
 /* 這件在主題 th 的局裡會不會出現（th 沒給＝不分主題，例如舊存檔） */
 const thOK = (th, it) => !th || thOf(it) === 'b' || thOf(it).includes(th);
@@ -4700,7 +4834,9 @@ function onT(it, t = 1) {
 const STARC = ['', 'var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
 /* 價格：星級；賣出：退一半（升階的照材料數） */
 const priceOf = id => ITEMI[id].star;
-const sellOf = (id, t = 1) => Math.max(1, Math.ceil((ITEMI[id].star * 3 ** (t - 1)) / 2));
+/* 0.1.103 食物：賣價＝用了幾個食材（食材 1 金、料理 2 金、大料理 4 金），買了馬上賣不會賺 */
+const sellOf = (id, t = 1) =>
+  ITEMI[id].fk ? ITEMI[id].fa.length : Math.max(1, Math.ceil((ITEMI[id].star * 3 ** (t - 1)) / 2));
 /* 形狀旋轉 r 次（90°），回傳從 0 開始的格子 */
 /* 0.1.20 形狀算過就記住（機器人評估時一回合要算上千次）；回傳的陣列大家共用，不要改它 */
 const SHC = new Map();
@@ -5271,10 +5407,43 @@ function preTxt(id, t = 1) {
   const p = ITEMI[id].pre;
   return p ? PREN[preKey(p)](preVal(id, t)) : '';
 }
+/* 0.1.103 料理的說明：開戰時吃下的數值、招牌效果（半成品寫「做成大料理時」）、怎麼合成 */
+const FOOD_SG = {
+  meat: '開戰時獲得護盾（生命上限的 10%）',
+  bread: '前 3 次受到的命中傷害減半',
+  fish: '前 2 次被攻擊必定閃避',
+  honey: '生命低於 30% 時回復加倍',
+  mint: '開戰 3 秒內不會受到持續傷害',
+  coffee: '開戰 3 秒內不會被限制行動',
+  lemon: '每次淨化回復 5% 生命'
+};
+function foodDesc(it) {
+  const f = it.fd,
+    v = [];
+  if (f.hpP) v.push(`生命 +${f.hpP}%`);
+  if (f.dr) v.push(`受到的命中傷害 -${f.dr}%`);
+  if (f.dodge) v.push(`閃避 +${f.dodge}%`);
+  if (f.regP) v.push(`每秒回復 ${f.regP}% 生命`);
+  if (f.rDot) v.push(`受到的持續傷害（燃燒、中毒、流血類）-${f.rDot}%`);
+  if (f.rCtl) v.push(`被限制行動（凍結、暈眩、虛弱、致盲類）的時間 -${f.rCtl}%`);
+  if (f.cln) v.push(`每 ${CLEANSE_T} 秒淨化 1 種異常，共 ${f.cln} 次`);
+  const out = [`開戰時吃下：${v.join('、')}`];
+  if (it.fk === 'semi') out.push(`做成大料理時：${FOOD_SG[it.sg]}`);
+  if (it.fk === 'big') out.push(`招牌：${it.sg.map(k => FOOD_SG[k]).join('、')}`);
+  out.push(
+    it.fk === 'ing'
+      ? '拖到另一個食材上合成料理（相同的變半成品）'
+      : it.fk === 'semi'
+        ? '拖到另一種半成品上合成大料理'
+        : '同一道只算一份'
+  );
+  return out.join('；');
+}
 function itemDesc(id, t = 1) {
   const it = ITEMI[id],
     k = TIERM[t],
     out = [];
+  if (it.fk) return foodDesc(it);
   if (it.d) return [it.d, preTxt(id, t)].filter(Boolean).join('；');
   /* 0.1.101 覺醒、質變：先說會取代哪個核心（覺醒／質變的標記在三選一、圖鑑） */
   if (it.vof) out.push(`取代原本的「${ITEMI[it.vof].n.split('・')[1]}」`);

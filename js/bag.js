@@ -140,6 +140,7 @@ const canFuse = (s, q, c) => {
   const T = ITEMI[s.id].tf,
     Q = ITEMI[q.id];
   if (ITEMI[s.id].mod) return canMod(s, q, c);
+  if (ITEMI[s.id].fk) return !!cookOf(s, q);
   return !!T && q !== s && !Q.tf && !q.f && Q.tags.includes(T.tag);
 };
 function tfOf(its, adjQ = adjacent) {
@@ -157,12 +158,21 @@ function tfOf(its, adjQ = adjacent) {
 /* 把輔助 s（背包或暫存區）融合進 q；0.1.100 巨人國的工具改用 modInto（c 是鑿子挖的那格） */
 function fuseInto(run, s, q, c) {
   if (ITEMI[s.id].mod) return modInto(run, s, q, c);
+  if (ITEMI[s.id].fk) return cookInto(run, s, q);
   q.f = s.id;
   q.ft = s.t;
   run.bag.items = run.bag.items.filter(x => x !== s);
   const i = run.bench.indexOf(s);
   if (i >= 0) run.bench[i] = null;
   return q;
+}
+/* 0.1.103 料理：食物 s 拖到食物 q 上，q 變成合成出來的那道（大料理 2 格：原位放不下就找別的位置，再不行收回暫存區），s 消失 */
+function cookInto(run, s, q) {
+  q.id = cookOf(s, q);
+  run.bag.items = run.bag.items.filter(x => x !== s);
+  const i = run.bench.indexOf(s);
+  if (i >= 0) run.bench[i] = null;
+  return mdSet(run, q, q.md, q.sh);
 }
 /* 0.1.100 巨人國的改造：工具 s 能不能用在 q（c 是背包座標，鑿子要；暫存區的道具只能縮小、放大） */
 function canMod(s, q, c) {
@@ -408,7 +418,8 @@ function mergeAll(run, r) {
     for (const [w, o] of all) (key[o.id + '|' + o.t] = key[o.id + '|' + o.t] || []).push([w, o]);
     const m2 = run.bag.tar === 'magician' ? '*' : merge2Of([...all.map(([, o]) => o), run.bag.core]),
       need = id => mergeNeed(null, id, m2),
-      hit = Object.values(key).find(l => l.length >= need(l[0][1].id) && l[0][1].t < TIER_MAX);
+      /* 0.1.103 食物不升階 */
+      hit = Object.values(key).find(l => l.length >= need(l[0][1].id) && l[0][1].t < TIER_MAX && !ITEMI[l[0][1].id].fk);
     if (!hit) break;
     const use = hit.slice(0, need(hit[0][1].id)),
       keep = use.find(([w]) => w === 'bag') || use[0],
@@ -1182,10 +1193,47 @@ function compileBag(bag, extra = {}) {
   if (cv('armTh')) (F.thornsF += Math.round((F.arm * cv('armTh')) / 100)), (F.arm = 0);
   if (F.armDmg && F.arm > 0) for (const w of F.weapons) w.dmg = w.dmg.map(v => v + F.arm);
   if (F.potMul || F.potUse) F.pots.forEach(p => ((p.v = Math.round(p.v * (1 + F.potMul / 100))), (p.n += F.potUse)));
+  foodF(F, bag.items);
   F.dodge = Math.min(40, F.dodge);
   /* 0.1.59 詛咒・虛弱疊太多：生命至少 1 */
   F.hp = Math.max(1, F.hp);
   return F;
+}
+/* 0.1.103 料理：開戰時吃下。同一道只算一份；抗性同一類最多 FOOD_RES、淨化最多 FOOD_CLN 次；招牌效果只有大料理才發動 */
+const FOOD_RES = 50,
+  FOOD_CLN = 4;
+function foodF(F, items) {
+  const seen = new Set(),
+    s = {},
+    sg = new Set();
+  for (const o of items) {
+    const I = ITEMI[o.id];
+    if (!I.fk || seen.has(o.id)) continue;
+    seen.add(o.id);
+    for (const k in I.fd) s[k] = (s[k] || 0) + I.fd[k];
+    if (I.fk === 'big') for (const k of I.sg) sg.add(k);
+  }
+  if (!seen.size) return;
+  /* 觸發次數算到食物上（道具詳細的「上一場觸發 N 次」） */
+  const us = items.filter(o => ITEMI[o.id].fk).map(o => o.u),
+    src = (F.src = F.src || {});
+  for (const k of ['food', 'cleanse', 'rBurn', 'rPoison', 'rBleed', 'rFreeze', 'rStun', 'rWeak', 'rBlind', 'rSunder'])
+    src[k] = [...(src[k] || []), ...us];
+  if (s.hpP) F.hp = Math.round(F.hp * (1 + s.hpP / 100));
+  if (s.dr) F.dr = (F.dr || 0) + s.dr;
+  if (s.dodge) F.dodge += s.dodge;
+  if (s.regP) F.regen += Math.round(F.hp * s.regP) / 100;
+  if (s.rDot) for (const k of ['rBurn', 'rPoison', 'rBleed']) F[k] += Math.min(FOOD_RES, s.rDot);
+  if (s.rCtl) for (const k of ['rFreeze', 'rStun', 'rWeak', 'rBlind', 'rSunder']) F[k] += Math.min(FOOD_RES, s.rCtl);
+  if (s.cln) F.fdCl = Math.min(FOOD_CLN, s.cln);
+  /* 招牌：絞肉護盾、麵團前 3 下減半、魚漿前 2 下閃避、蜂巢低血回復加倍、薄荷醬／咖啡豆開場免疫、醃檸檬淨化回血 */
+  if (sg.has('meat')) F.startBlock += Math.round(F.hp * 0.1);
+  if (sg.has('bread')) F.fdHalf = 3;
+  if (sg.has('fish')) F.fdDg = 2;
+  if (sg.has('honey')) F.fdLow = 1;
+  if (sg.has('mint')) F.fdDotT = 3;
+  if (sg.has('coffee')) F.fdCtlT = 3;
+  if (sg.has('lemon')) F.fdClH = 5;
 }
 /* 0.1.69 塔羅牌陣：武器算好之後才套的（倍率、帶動、開戰效果）；只看背包上的 bag.tar（快照對手也算） */
 function tarotF(F, bag, TK, towerU) {
