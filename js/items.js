@@ -3702,7 +3702,7 @@ function genFood() {
         tags: ['food'],
         fk,
         fd,
-        ic: 'it_herb',
+        ic: 'it_' + id,
         ...(fk === 'ing' ? { pool: 18, th: 'b' } : { ns: 1 }),
         ...x
       });
