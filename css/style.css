@@ -177,6 +177,7 @@ button.gold{border:0;background:none;padding:6px 0;margin:-6px 0;cursor:pointer;
 .it.fdb::before,.it.fdb::after,.bs.fdb::before,.sc.fdb::before{content:'★';position:absolute;z-index:2;font-size:12px;line-height:1;color:var(--s5);text-shadow:0 0 2px #000a;pointer-events:none}
 .it.fdb::before,.bs.fdb::before,.sc.fdb::before{left:2px;top:1px}.it.fdb::after{right:2px;bottom:1px}
 .it.ck .c{border-style:dashed;border-color:var(--food)}
+.it.ck.cko .c{border-color:var(--danger)}.ckn.cko{background:var(--danger);color:#fff}
 .ckn{position:absolute;left:50%;top:-4px;z-index:6;transform:translate(-50%,-100%);padding:2px 6px;border-radius:999px;background:var(--food);color:#fff;font-size:var(--fs-sm);font-weight:700;white-space:nowrap;pointer-events:none;box-shadow:var(--shadow)}
 .fdp{position:fixed;z-index:60;width:8px;height:8px;margin:-4px 0 0 -4px;pointer-events:none;color:var(--s5);font-size:14px;line-height:8px;text-shadow:0 0 4px #ffd76a}
 .fdr{position:fixed;z-index:59;border-radius:50%;border:3px solid var(--s5);pointer-events:none;box-shadow:0 0 12px #ffd76a}
@@ -495,6 +496,10 @@ button.lgb:disabled{opacity:1}
 .matchd>p{margin:0;text-align:center}
 .matchd h4{margin:var(--sp-2) 0 0;font-size:var(--fs-btn)}
 .matchd .bagwrap{justify-self:center}
+/* 0.1.113 最近對局的核心 */
+.mcores{display:flex;flex-wrap:wrap;gap:var(--sp-1)}
+.mcores span{display:inline-flex;align-items:center;gap:var(--sp-1);padding:2px var(--sp-2) 2px 2px;border-radius:999px;background:var(--fill);border:1px solid var(--s5);font-size:var(--fs-sm)}
+.mcores img{width:24px;height:24px;image-rendering:pixelated}
 .matchd .lgl{max-height:none}
 /* 0.1.25 遮罩不用 backdrop-filter:blur（全螢幕模糊在電腦版大畫面、背後有戰鬥動畫時很卡），改深一點的半透明底色 */
 /* 0.1.25 準備畫面分三塊：手機照原本順序排（display:contents），電腦版左邊背包＋暫存、右邊資訊＋商店＋按鈕 */
@@ -713,6 +718,8 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .leg{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-2)}
 .leg .lbl{font-size:var(--fs-cap);color:var(--dim);writing-mode:vertical-rl;letter-spacing:.2em;flex:none}
 .legs{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 4 * var(--sp-1)) / 5);gap:var(--sp-1);overflow-x:auto;flex:1;min-width:0;padding:2px}
+/* 0.1.113 遺產不能拖（點了才買），卡片上也要能左右滑（.sc 給商店拖曳用的是 touch-action:none） */
+.legs .sc{touch-action:pan-x}
 /* 0.1.59 開場賽制轉盤：一塊一個賽制（大小照機率），指針在上面 */
 .wbtn{border:0;padding:0;background:none}
 .wheel{position:relative;width:220px;height:220px;margin:var(--sp-2) auto}

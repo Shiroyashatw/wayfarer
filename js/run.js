@@ -1443,7 +1443,10 @@ function endRun(run, place) {
       .slice(0, 12),
     log: (run.log || []).map(({ ob, mb, ...l }) => l),
     /* 0.1.44 核心三選一紀錄 */
-    cl: run.coreLog || []
+    cl: run.coreLog || [],
+    /* 0.1.113 賽制、道具池（首頁最近對局的詳細顯示） */
+    mode: run.mode || 'std',
+    th: run.theme || null
   };
   S.hist = [{ at: Date.now(), place, d, r: curRound(run) ? curRound(run).id : 'end', ...full }, ...(S.hist || [])]
     .slice(0, 30)

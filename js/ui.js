@@ -1099,13 +1099,19 @@ function dragLit(d) {
   /* 0.1.103 拖食物：能合成的先標虛線框；停在上面時，那件上方預覽會變成什麼 */
   bag.querySelectorAll('.ckn').forEach(e => e.remove());
   if (ITEMI[d.o.id].fk) {
-    const itE = q => bag.querySelector(`.it[data-u="${q.u}"]`);
+    const itE = q => bag.querySelector(`.it[data-u="${q.u}"]`),
+      /* 0.1.113 合成出來的那道背包裡已經有（同一道只算一份）：提醒色＋「已擁有」 */
+      own = q => run.bag.items.some(x => x !== q && x !== d.o && x.id === cookOf(d.o, q));
     if (!d.ck) {
       d.ck = 1;
-      for (const q of run.bag.items) if (cookOf(d.o, q) && itE(q)) itE(q).classList.add('ck');
+      for (const q of run.bag.items)
+        if (cookOf(d.o, q) && itE(q)) itE(q).classList.add('ck', ...(own(q) ? ['cko'] : []));
     }
     if (d.fuse && itE(d.fuse))
-      itE(d.fuse).insertAdjacentHTML('beforeend', `<b class="ckn">${ITEMI[cookOf(d.o, d.fuse)].n}</b>`);
+      itE(d.fuse).insertAdjacentHTML(
+        'beforeend',
+        `<b class="ckn${own(d.fuse) ? ' cko' : ''}">${ITEMI[cookOf(d.o, d.fuse)].n}${own(d.fuse) ? '（已擁有）' : ''}</b>`
+      );
   }
   const on = q => {
     const e = bag.querySelector(`.it[data-u="${q.u}"]`);
@@ -4284,8 +4290,17 @@ function showMatch(hi) {
     tot = (H.dmg || []).reduce((a, x) => a + x[2], 0),
     row = l =>
       `<button class="lgr ${l.win ? 'w' : 'l'}" data-lg="${l.id}">${sprCv(l.spr || 'a_' + S.av)}<span><b>${l.id}・${esc(l.opp)}</b><small>${RTYPE[l.type]}${l.t ? `・${l.t} 秒` : ''}${l.dealt != null ? `・造成 ${l.dealt}` : ''}</small></span><em>${l.win ? '勝' : `敗 -${l.loss}`}</em></button>`;
-  const C = CLSI[H.cls];
-  m.innerHTML = `<div class="dlg2 matchd"><b>第 ${H.place} 名・打到 ${H.r}</b><p class="c-dim">${C ? C.n + '・' : ''}${new Date(H.at).toLocaleDateString()}</p>
+  const C = CLSI[H.cls],
+    /* 0.1.113 核心從最後的背包找（舊紀錄沒有賽制、道具池就不寫） */
+    cores = unpackBag(H.bag).items.filter(o => ITEMI[o.id] && ITEMI[o.id].core),
+    mt = [H.mode && MODEI[H.mode] && MODEI[H.mode].n, H.th && POOLTHI[H.th] && POOLTHI[H.th].n]
+      .filter(Boolean)
+      .join('・');
+  m.innerHTML = `<div class="dlg2 matchd">${dlgX('data-lgc="1"')}<b>第 ${H.place} 名・打到 ${H.r}</b><p class="c-dim">${C ? C.n + '・' : ''}${mt ? mt + '・' : ''}${new Date(H.at).toLocaleDateString()}</p>${
+    cores.length
+      ? `<h4>核心</h4><div class="mcores">${cores.map(o => `<span><img src="${itemIcon(o.id)}" data-iid="${o.id}" alt="">${esc(ITEMI[o.id].n)}</span>`).join('')}</div>`
+      : ''
+  }
     <h4>最後的背包</h4><div class="bagwrap">${bagHTML(unpackBag(H.bag), 26, { mini: 1, id: 'hbag' })}</div>
     ${
       (H.dmg || []).length
