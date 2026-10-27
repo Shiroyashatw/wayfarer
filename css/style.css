@@ -943,6 +943,8 @@ body:has(.ovl,#modal:not([hidden])) #toast{top:auto;bottom:calc(24px + var(--sab
 @media (prefers-reduced-motion:reduce){.cspot{animation:none}}
 /* 0.1.93 道具說明一個效果一行 */
 .dls>span{display:block}
+/* 0.1.111 說明的重點：數字金色、條件與括號補充淡色（dsc） */
+.dn{color:var(--gold);font-weight:700}.dl,.dp{color:var(--dim)}
 .dls>span+span{margin-top:2px}
 /* 0.1.89 結束畫面、設定不要拉滿寬螢幕 */
 .home.endp{max-width:520px;margin:0 auto;width:100%}

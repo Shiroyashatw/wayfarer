@@ -1903,9 +1903,41 @@ const kwImg = (ic, w) => {
   return u ? `<img class="kw" src="${u}" alt="">${w}` : w;
 };
 function dsc(t) {
-  return String(t || '')
-    .replace(KW_RE, w => kwImg(KW_IC.find(k => k[0] === w)[1], w))
-    .replace(ST_RE, (w, pre) => (pre ? pre + kwImg(ST_IC.傷害, '傷害') : kwImg(ST_IC[w], w)));
+  return dscHi(
+    String(t || '')
+      .replace(DL_RE, '$1\uE000$2\uE001')
+      .replace(KW_RE, w => kwImg(KW_IC.find(k => k[0] === w)[1], w))
+      .replace(ST_RE, (w, pre) => (pre ? pre + kwImg(ST_IC.傷害, '傷害') : kwImg(ST_IC[w], w)))
+  );
+}
+/* 0.1.111 說明的重點上色：數字金色（.dn）、行首條件（命中時：、常駐：⋯）和括號裡的補充說明淡色（.dl、.dp），
+   括號裡的數字不上色；只處理標籤外的文字（圖示的 <img> 不動） */
+const DL_RE = /(^|；)([^：；，、（）\d]{1,12}：)/g,
+  DN_RE = /（|）|[+\-×]?\d+(?:\.\d+)?(?:～\d+(?:\.\d+)?)?%?/g;
+function dscHi(h) {
+  let d = 0;
+  return h
+    .split(/(<[^>]+>)/)
+    .map(x =>
+      x[0] === '<'
+        ? x
+        : x.replace(DN_RE, m =>
+            m === '（'
+              ? d++
+                ? m
+                : '<span class="dp">（'
+              : m === '）'
+                ? d && !--d
+                  ? '）</span>'
+                  : m
+                : d
+                  ? m
+                  : `<b class="dn">${m}</b>`
+          )
+    )
+    .join('')
+    .replace(/\uE000/g, '<span class="dl">')
+    .replace(/\uE001/g, '</span>');
 }
 /* 0.1.35 魔劍正宗吸收的數值 */
 function abHTML(o) {
