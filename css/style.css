@@ -862,6 +862,10 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 #toast{transition:opacity .2s ease-out,transform .25s ease-out}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 .det{touch-action:pan-x}
+/* 0.1.103 說明卡放上方（點的道具在畫面下半部）＋可以滑動關閉的小橫槓（朝畫面外那一邊的相反側） */
+.det.up{bottom:auto;box-shadow:0 4px 30px #0003,0 0 0 1px var(--line)}
+.det::before{content:'';position:absolute;left:50%;top:6px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--line)}
+.det.up::before{top:auto;bottom:6px}
 @media (prefers-reduced-motion:reduce){
   .ghost{animation:none;transform:none}
   #toast{transform:translateX(-50%)!important}
@@ -959,6 +963,7 @@ body:has(.ovl,#modal:not([hidden])) #toast{top:auto;bottom:calc(24px + var(--sab
   .pc .acts .btn{min-height:52px}
   .prep>.det,.prep>.detph{grid-area:d;position:static;transform:none;width:auto;max-height:100%;overflow:auto;box-shadow:0 0 0 1px var(--line);align-self:stretch}
   .prep>.det{align-self:start}
+  .prep>.det::before{display:none}
   .prep>.detph{display:grid;place-items:center;min-height:120px;border-radius:var(--r-lg);border:1.5px dashed var(--line);color:var(--faint);font-size:var(--fs-body)}
   /* 戰鬥：左＝你的背包、中＝場地＋紀錄＋速度、右＝對手的背包（打野怪沒有背包：右邊放戰鬥紀錄） */
   .bt{grid-template-columns:minmax(0,1fr) minmax(460px,600px) minmax(0,1fr);grid-template-areas:"top top top" "b0 arena b1" "b0 log b1" "b0 ctl b1";gap:var(--sp-4) var(--sp-5);min-height:calc(var(--vh,100vh) - 32px);align-content:center;align-items:start}

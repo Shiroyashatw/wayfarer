@@ -4426,12 +4426,24 @@ function tick(sel, v, k) {
     };
   requestAnimationFrame(f);
 }
-/* 底部的道具說明（手機）：從下面滑上來；往下滑可以關（手指拖多少就跟多少，往上拉有阻力，放開看速度決定關或彈回）；關的時候滑回下面 */
+/* 道具說明卡（手機）：點的道具在畫面下半部（商店、暫存區）就放上方（頂部列下面）、從上面滑下來，不然放底部、從下面滑上來；
+   往畫面外滑可以關（手指拖多少就跟多少，往回拉有阻力，放開看速度決定關或彈回）；點卡片外的空白處也會關；關的時候從來的方向滑回去 */
 const rubber = (x, dim, c = 0.55) => (x * dim * c) / (dim + c * Math.abs(x));
 const sheetOn = () => !DESK() && document.querySelector('.prep>.det');
+const sheetDir = det => (det.classList.contains('up') ? -1 : 1);
 function sheetIn() {
   const det = sheetOn();
-  if (det && !V.detOn) spr(det, [{ transform: 'translate(-50%,110%)' }, { transform: 'translate(-50%,0)' }]);
+  if (det) {
+    const sel = app.querySelector('.prep .sel'),
+      r = sel && sel.getBoundingClientRect(),
+      top = !!r && r.top + r.height / 2 > innerHeight / 2,
+      bar = app.querySelector('.prep .top');
+    det.classList.toggle('up', top);
+    det.style.top = top && bar ? bar.getBoundingClientRect().bottom + 8 + 'px' : '';
+    if (!V.detOn || V.detTop !== top)
+      spr(det, [{ transform: `translate(-50%,${110 * sheetDir(det)}%)` }, { transform: 'translate(-50%,0)' }]);
+    V.detTop = top;
+  }
   V.detOn = !!det;
 }
 function sheetOut(from = 0, bounce = 0) {
@@ -4441,20 +4453,31 @@ function sheetOut(from = 0, bounce = 0) {
       render();
     };
   if (!det) return done();
-  const a = spr(det, [{ transform: `translate(-50%,${from}px)` }, { transform: 'translate(-50%,110%)' }], bounce);
+  const a = spr(
+    det,
+    [{ transform: `translate(-50%,${from}px)` }, { transform: `translate(-50%,${110 * sheetDir(det)}%)` }],
+    bounce
+  );
   if (!a) return done();
   det.style.pointerEvents = 'none';
   a.onfinish = done;
 }
+/* 點卡片外的空白處關掉；點到別的道具、按鈕照常（直接換成那件的說明） */
+document.addEventListener('click', ev => {
+  if (V.noClick || !V.sel || V.scr !== 'run' || !sheetOn()) return;
+  if (ev.target.closest('.det, button, a, input, select, label, details, [data-act], [data-u], [data-bu]')) return;
+  sheetOut();
+});
 document.addEventListener('pointerdown', ev => {
   const det = ev.target.closest('.prep>.det');
   if (!det || DESK() || ev.target.closest('button, a, select, details')) return;
-  const sw = { det, y0: ev.clientY, h: [[ev.clientY, performance.now()]], dy: 0 };
+  const sw = { det, y0: ev.clientY, h: [[ev.clientY, performance.now()]], dy: 0 },
+    k = sheetDir(det);
   const mv = e => {
     sw.dy = e.clientY - sw.y0;
     sw.h.push([e.clientY, performance.now()]);
     if (sw.h.length > 5) sw.h.shift();
-    const y = sw.dy > 0 ? sw.dy : rubber(sw.dy, det.offsetHeight);
+    const y = sw.dy * k > 0 ? sw.dy : rubber(sw.dy, det.offsetHeight);
     det.style.transform = `translate(-50%,${y}px)`;
   };
   const up = () => {
@@ -4468,9 +4491,9 @@ document.addEventListener('pointerdown', ev => {
       v = b[1] > a[1] ? ((b[0] - a[0]) / (b[1] - a[1])) * 1000 : 0,
       /* Apple 的動量投影：放開的速度推算會停在哪裡，過一半就關 */
       end = sw.dy + ((v / 1000) * 0.998) / (1 - 0.998),
-      y = sw.dy > 0 ? sw.dy : rubber(sw.dy, det.offsetHeight);
+      y = sw.dy * k > 0 ? sw.dy : rubber(sw.dy, det.offsetHeight);
     det.style.transform = '';
-    if (end > det.offsetHeight / 2) return sheetOut(y, 1);
+    if (end * k > det.offsetHeight / 2) return sheetOut(y, 1);
     spr(det, [{ transform: `translate(-50%,${y}px)` }, { transform: 'translate(-50%,0)' }], 1);
   };
   addEventListener('pointermove', mv);
