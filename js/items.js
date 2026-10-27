@@ -3616,6 +3616,7 @@ function genThemeW() {
 /* 0.1.103 料理（docs/料理.md）：7 種食材（商店每格 20% 機率出現），拖到另一個食材上合成：
    不同的＝混合料理（兩個特性 ×1.25）、相同的＝半成品（×1.25，帶招牌效果）；兩個不同的半成品＝2 格大料理（數值相加、兩個招牌都發動）。
    食物只加角色本身（開戰時吃下），不升階、不吃也不給相鄰加成；同一道只算一份 */
+const FOOD_HPOF = { ing: 8, mix: 20, semi: 20, big: 40 };
 const FOOD_K = ['meat', 'bread', 'fish', 'honey', 'mint', 'coffee', 'lemon'];
 /* 一份的數值：hpP 生命 %、dr 受到的命中傷害 -%、dodge 閃避、regP 每秒回復生命上限 %、rDot 抗持續傷害 %、rCtl 抗限制行動 %、cln 淨化次數 */
 const FOOD_V = {
@@ -3701,9 +3702,10 @@ function genFood() {
         sh: fk === 'big' ? 'h2' : 's1',
         tags: ['food'],
         fk,
-        fd,
+        /* 飽足感：每個食材 +FOOD_HP 生命（料理、半成品 ×1.25 取整到 10、大料理再加倍），食物是主要的防禦來源 */
+        fd: { hp: FOOD_HPOF[fk], ...fd },
         ic: 'it_' + id,
-        ...(fk === 'ing' ? { pool: 18, th: 'b' } : { ns: 1 }),
+        ...(fk === 'ing' ? { pool: 14, th: 'b' } : { ns: 1 }),
         ...x
       });
   for (const k of FOOD_K) it('fd_' + k, FOOD_N[k], 'ing', fdMul(FOOD_V[k], 0.5), { fa: [k] });
@@ -5420,7 +5422,7 @@ const FOOD_SG = {
 function foodDesc(it) {
   const f = it.fd,
     v = [];
-  if (f.hpP) v.push(`生命 +${f.hpP}%`);
+  if (f.hp) v.push(`生命 +${f.hp}${f.hpP ? `，再 +${f.hpP}%` : ''}`);
   if (f.dr) v.push(`受到的命中傷害 -${f.dr}%`);
   if (f.dodge) v.push(`閃避 +${f.dodge}%`);
   if (f.regP) v.push(`每秒回復 ${f.regP}% 生命`);

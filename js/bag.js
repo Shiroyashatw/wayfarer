@@ -1219,6 +1219,7 @@ function foodF(F, items) {
     src = (F.src = F.src || {});
   for (const k of ['food', 'cleanse', 'rBurn', 'rPoison', 'rBleed', 'rFreeze', 'rStun', 'rWeak', 'rBlind', 'rSunder'])
     src[k] = [...(src[k] || []), ...us];
+  if (s.hp) F.hp += s.hp;
   if (s.hpP) F.hp = Math.round(F.hp * (1 + s.hpP / 100));
   if (s.dr) F.dr = (F.dr || 0) + s.dr;
   if (s.dodge) F.dodge += s.dodge;
