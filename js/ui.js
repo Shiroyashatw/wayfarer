@@ -1184,14 +1184,13 @@ function stageDots(run) {
 function mdLineHTML(o) {
   if (!o.md) return '';
   const hm = !ITEMI[o.id].hole && holeMod(o);
-  return `<p class="c-tf">✦ ${MD_N[o.md]}過：${MD_D[o.md]}${hm ? `；凹口裡的${HOLE_N[hm.tag]}：${modTxt(scaleMod(hm, o.t))}` : ''}</p>`;
+  return `<p class="c-tf">✦ ${MD_N[o.md]}過：${MD_D[o.md](o.mt || 1)}${hm ? `；凹口裡的${HOLE_N[hm.tag]}：${modTxt(scaleMod(hm, o.t))}` : ''}</p>`;
 }
 /* 0.1.100 合成時三件的巨人國改造不一樣：選要保留哪一種 */
 const MD_D = {
-  0: '原本的形狀',
-  shrink: `1 格、數值 ×${MD_K.shrink * 100}%`,
-  grow: `數值 ×${MD_K.grow * 100}%、有凹口`,
-  chisel: '少 1 格、多 1 個凹口'
+  shrink: t => `1 格、數值 ×${MD_K.shrink[t - 1]}%`,
+  grow: t => `數值 ×${MD_K.grow[t - 1]}%、有凹口`,
+  chisel: t => `少 1 格、多 1 個凹口${t > 1 ? `、數值 ×${MD_K.chisel[t - 1]}%` : ''}`
 };
 function mdPickHTML(run) {
   while (run.mdq && run.mdq.length && !findU(run, run.mdq[0].u)) run.mdq.shift();
@@ -1201,7 +1200,7 @@ function mdPickHTML(run) {
   return `<div class="ovl"><div class="dlg2"><b>合成：選要保留的改造</b><div class="dh"><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${STARC[ITEMI[o.id].star]}">${esc(ITEMI[o.id].n)}${tierTxt(o.t)}</b><small>三件的改造不一樣</small></div></div><div class="sgopts">${q.o
     .map(
       (m, k) =>
-        `<button class="btn sgo" data-act="mdPick" data-k="${k}">${shapeMini(o.id, 0, 0, m.sh || ITEMI[o.id].sh)}<span><b>${m.md ? MD_N[m.md] : '不改造'}</b><small>${MD_D[m.md || 0]}</small></span></button>`
+        `<button class="btn sgo" data-act="mdPick" data-k="${k}">${shapeMini(o.id, 0, 0, m.sh || ITEMI[o.id].sh)}<span><b>${m.md ? MD_N[m.md] + tierTxt(m.mt) : '不改造'}</b><small>${m.md ? MD_D[m.md](m.mt) : '原本的形狀'}</small></span></button>`
     )
     .join('')}</div></div></div>`;
 }
@@ -3239,7 +3238,7 @@ const CX_STAT = () => [
   ],
   [
     '改造',
-    `巨人國的工具拖到道具上：縮小藥變成 1 格、數值 ×${MD_K.shrink * 100}%；巨大藥變大、數值 ×${MD_K.grow * 100}%、長出凹口；鑿子把拖到的那一格挖成凹口。每件道具只能改造一次，職業核心不能改造；合成時三件的改造不一樣可以選要留哪一種。`
+    `巨人國的工具拖到道具上：縮小藥變成 1 格、數值 ×${MD_K.shrink.join('／')}%；巨大藥變大、數值 ×${MD_K.grow.join('／')}%、長出凹口；鑿子把拖到的那一格挖成凹口、數值 ×${MD_K.chisel.join('／')}%（照工具的階 Ⅰ／Ⅱ／Ⅲ）。每件道具只能改造一次，職業核心不能改造；合成時三件的改造不一樣可以選要留哪一種。`
   ],
   [
     '融合',
@@ -3799,7 +3798,7 @@ const A = {
       m = q && q.o[+d.k];
     if (o && m) {
       V.mdFx = { u: o.u, md: m.md === 'grow' ? 'grow' : 'shrink', r: elOf(o.u) && elOf(o.u).getBoundingClientRect() };
-      mdSet(run, o, m.md, m.sh);
+      mdSet(run, o, m.md, m.sh, 0, m.mt);
       requestAnimationFrame(modFx);
     }
     snd('tap');

@@ -4911,8 +4911,9 @@ function holeOf(o) {
 }
 /* 0.1.100 巨人國的改造（o.md）：縮小變 1 格、數值 ×0.6；放大照格數換成有凹口的大形狀、數值 ×2（×0.5／×1.6 時巨大藥幾乎沒人買）；
    鑿子挖掉一格變凹口（形狀代號 k:原形狀:第幾格，用到時才登記進 SH／SHHOLE，快照存的就是這個代號） */
-const MD_K = { shrink: 0.6, grow: 2 };
-const mdK = o => MD_K[o.md] || 1;
+/* 0.1.110 改造工具升階：數值倍率照工具的階（o.mt，Ⅰ～Ⅲ），鑿子Ⅱ階起也加數值（之前工具升階沒有差別） */
+const MD_K = { shrink: [60, 80, 100], grow: [200, 250, 300], chisel: [100, 120, 140] };
+const mdK = o => (MD_K[o.md] ? MD_K[o.md][(o.mt || 1) - 1] / 100 : 1);
 const growSh = n => (n <= 2 ? 'u5' : n <= 4 ? 'h7' : 'o8');
 function shReg(k) {
   if (SH[k] || typeof k !== 'string' || !k.startsWith('k:')) return SH[k];
@@ -5004,9 +5005,11 @@ const pct = v => Math.round(v) + '%';
 /* 正數加 +，負數本來就有 -（不要變成「+-10%」） */
 const sg = v => (v < 0 ? '' : '+');
 const MOD_TXT = {
-  shrink: `拖到道具上：變成 1 格、數值 ×${MD_K.shrink * 100}%`,
-  grow: `拖到道具上：變大、數值 ×${MD_K.grow * 100}%，長出凹口（1～2 格變 U 形、3～4 格變 H 形、5 格以上變口字形）`,
-  chisel: '拖到道具的某一格上：那格挖成凹口，少佔 1 格、數值不變；不能挖到剩 1 格或斷成兩塊'
+  shrink: t => `拖到道具上：變成 1 格、數值 ×${MD_K.shrink[t - 1]}%`,
+  grow: t =>
+    `拖到道具上：變大、數值 ×${MD_K.grow[t - 1]}%，長出凹口（1～2 格變 U 形、3～4 格變 H 形、5 格以上變口字形）`,
+  chisel: t =>
+    `拖到道具的某一格上：那格挖成凹口，少佔 1 格、${t > 1 ? `數值 ×${MD_K.chisel[t - 1]}%` : '數值不變'}；不能挖到剩 1 格或斷成兩塊`
 };
 /* 0.1.100 凹口吃得到的類別（holeMod 的 tag） */
 const HOLE_N = { weapon: '武器', def: '防具或盾', '*': '道具' };
@@ -5574,7 +5577,7 @@ function itemDesc(id, t = 1) {
   }
   if (it.tf) out.push(tfTxt(it.tf, t));
   /* 0.1.100 巨人國的改造工具 */
-  if (it.mod) out.push(MOD_TXT[it.mod], '每件道具只能改造一次');
+  if (it.mod) out.push(MOD_TXT[it.mod](t), '每件道具只能改造一次');
   /* 0.1.62 主題池的專屬道具 */
   /* 0.1.93 只加在這件身上的都寫「這件：（條件，）效果」；前面已經有「命中時：」，這裡不再寫一次 */
   const selfT = m => modTxt(scaleMod(m, t)).replace(/(^|、)命中時/g, '$1');

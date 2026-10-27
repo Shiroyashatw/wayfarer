@@ -209,11 +209,14 @@ function canMod(s, q, c) {
 }
 /* 把改造 md（形狀 sh）套到 q 上；在背包裡的照原位放，放不下找別的位置，再不行收回暫存區（再不行賣掉，跟長柄大師一樣）。
    at：縮小後留在哪一格（沒給就是原本的第一格）、鑿子挖掉的那格 */
-function mdSet(run, q, md, sh, at) {
+function mdSet(run, q, md, sh, at, mt) {
   const inBag = run.bag.items.includes(q),
     c0 = inBag ? cellsOf(q) : null;
   if (md) q.md = md;
   else delete q.md;
+  /* 0.1.110 工具的階（mdK 的倍率） */
+  if (md && mt > 1) q.mt = mt;
+  else delete q.mt;
   if (sh) q.sh = sh;
   else delete q.sh;
   q.sm = 0;
@@ -240,11 +243,11 @@ function mdSet(run, q, md, sh, at) {
 function modInto(run, s, q, c) {
   const M = ITEMI[s.id].mod;
   useUp(run, s);
-  if (M === 'shrink') return mdSet(run, q, 'shrink', 's1', c);
-  if (M === 'grow') return mdSet(run, q, 'grow', growSh(shapeO(q).length));
+  if (M === 'shrink') return mdSet(run, q, 'shrink', 's1', c, s.t);
+  if (M === 'grow') return mdSet(run, q, 'grow', growSh(shapeO(q).length), 0, s.t);
   const k = 'k:' + (q.sh || ITEMI[q.id].sh) + ':' + chiselIdx(q, c);
   shReg(k);
-  return mdSet(run, q, 'chisel', k, c);
+  return mdSet(run, q, 'chisel', k, c, s.t);
 }
 /* 背包裡貼在一起的輔助與道具自動融合；回傳融合好的道具 */
 function fuseAll(run) {
@@ -482,7 +485,12 @@ function mergeAll(run, r) {
     if (fu) (o.f = fu.f), (o.ft = fu.ft);
     /* 0.1.100 巨人國的改造：三件不一樣時玩家選（run.mdq 排隊，畫面跳出來選，沒改造也是一個選項），機器人直接選戰力最高的 */
     const mds = [
-      ...new Map(use.map(([, q]) => [(q.md || '') + '|' + (q.sh || ''), { md: q.md || 0, sh: q.sh || 0 }])).values()
+      ...new Map(
+        use.map(([, q]) => [
+          (q.md || '') + '|' + (q.sh || '') + '|' + (q.mt || 1),
+          { md: q.md || 0, sh: q.sh || 0, mt: q.mt || 1 }
+        ])
+      ).values()
     ];
     if (mds.length > 1) {
       if (run.auto) {
@@ -494,11 +502,11 @@ function mergeAll(run, r) {
                 bench: [...run.bench]
               },
               c = t.bag.items.find(q => q.u === o.u);
-            if (c) mdSet(t, c, m.md, m.sh);
+            if (c) mdSet(t, c, m.md, m.sh, 0, m.mt);
             return botPowerOf(t.bag, P);
           },
           best = mds.map(m => [m, pw(m)]).sort((x, y) => y[1] - x[1])[0][0];
-        mdSet(run, o, best.md, best.sh);
+        mdSet(run, o, best.md, best.sh, 0, best.mt);
       } else (run.mdq = run.mdq || []).push({ u: o.u, o: mds });
     }
     /* 0.1.53 馴獸師的成長：留三件裡最高的 */
@@ -1418,7 +1426,7 @@ function bagMods(bag) {
 }
 /* 快照用的精簡格式：[id, 階, x, y, 旋轉, 詞綴, 5★ 詞綴, 第二條詞綴, 融合的輔助, 輔助的階, 融入的核心, 少 1 格, 魔劍吸收的數值, 終極藥劑的效果, 寒冰之心的生命, 封印過了幾回合]；
    後面是預設值的就不存。gp：0.1.35 開戰時的金幣（鈔能力、金錢標） */
-const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const PACK_DEF = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const packIt = o => {
   const a = [o.id, o.t, o.x, o.y, o.r, o.a || 0, o.m || 0],
     /* 0.1.52 最後一格是印記（+1，0 是沒有） */
@@ -1439,8 +1447,9 @@ const packIt = o => {
       o.cu || 0,
       /* 0.1.60 祝福 [祝福, 層數] */
       o.bl || 0,
-      /* 0.1.100 巨人國的改造 */
-      o.md || 0
+      /* 0.1.100 巨人國的改造；0.1.110 工具的階 */
+      o.md || 0,
+      o.mt || 0
     ];
   while (t.length && t[t.length - 1] === PACK_DEF[t.length - 1]) t.pop();
   return [...a, ...t];
@@ -1488,7 +1497,8 @@ const unpackIt = (a, u) => ({
   ...(a[18] && shReg(a[18]) ? { sh: a[18] } : {}),
   ...(a[19] && CURSES[a[19][0]] ? { cu: [a[19][0], a[19][1] || 1] } : {}),
   ...(a[20] && BLESS[a[20][0]] ? { bl: [a[20][0], a[20][1] || 1] } : {}),
-  ...(MD_K[a[21]] || a[21] === 'chisel' ? { md: a[21] } : {})
+  ...(MD_K[a[21]] ? { md: a[21] } : {}),
+  ...(MD_K[a[21]] && a[22] > 1 ? { mt: a[22] } : {})
 });
 const unpackBag = p => ({
   w: p.w,
