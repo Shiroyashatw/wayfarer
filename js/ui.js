@@ -787,7 +787,11 @@ function tutHTML() {
 }
 /* 0.1.103 食物的框（自己的顏色，大料理加星星邊框） */
 const FKN = { ing: '食材', mix: '料理', semi: '半成品', big: '大料理' };
-const fdc = id => (ITEMI[id].fk ? (ITEMI[id].fk === 'big' ? ' fd fdb' : ' fd') : '');
+/* 0.1.108 還能往上合的（食材、半成品）青色雙框；不能再合的料理橘色；大料理金框＋星星 */
+const fdc = id => {
+  const k = ITEMI[id].fk;
+  return k ? (k === 'big' ? ' fd fdb' : k === 'ing' || k === 'semi' ? ' fd fdu' : ' fd') : '';
+};
 function bagHTML(bag, cs, opt = {}) {
   /* 0.1.96 準備畫面（opt.stage）畫到最大背包：還沒開的格子是整理區（虛線），放在那裡的道具紅框 */
   const gw = opt.stage ? STG_W : bag.w,
@@ -3363,7 +3367,7 @@ const CX_SEC = {
     cxPoolHTML
   ],
   food: [
-    '食物放在背包裡就有效（常駐），只加你自己。食材＋食材＝料理，相同的是半成品；半成品＋半成品＝大料理，兩個招牌都會發動。',
+    '食物放在背包裡就有效（常駐），只加你自己。食材＋食材＝料理，相同的是半成品；半成品＋半成品＝大料理，兩個招牌都會發動。青色框的還能再合。',
     cxFoodHTML
   ]
 };
@@ -4795,7 +4799,13 @@ function modFx() {
   else sh.remove();
 }
 /* 拖到道具上：工具改造、輔助融合 */
-const fuseDo = (run, s, q, c) => (ITEMI[s.id].mod ? modDo(run, s, q, c) : fuseToast([fuseInto(run, s, q)]));
+const fuseDo = (run, s, q, c) => {
+  if (ITEMI[s.id].mod) return modDo(run, s, q, c);
+  const r = fuseInto(run, s, q);
+  /* 0.1.108 大料理放不下：不合成（之前會被賣掉） */
+  if (!r) return snd('nope'), toast('背包和暫存區都放不下大料理');
+  fuseToast([r]);
+};
 function placeFromBench(run, i, x, y, r) {
   const o = run.bench[i];
   Object.assign(o, { x, y, r });
@@ -5116,7 +5126,7 @@ function dropShop(run, d, ev) {
     res = buyItem(run, d.sk);
     const o = typeof res === 'object' && run.bench.find(q => q && !before.has(q.u) && q.id === d.o.id);
     if (o && ITEMI[o.id].mod && canFuse(o, d.fuse, d.fc)) modDo(run, o, d.fuse, d.fc);
-    else if (o && canFuse(o, d.fuse)) res.merged.fused = [fuseInto(run, o, d.fuse)];
+    else if (o && canFuse(o, d.fuse)) res.merged.fused = [fuseInto(run, o, d.fuse)].filter(Boolean);
   } else if (d.ok || (d.swap && d.swap.toBench)) res = buyToBag(run, d.sk, d.tgt[0], d.tgt[1], d.r, d.swap && d.swap.B);
   else if (
     inside($('bench'), ev.clientX, ev.clientY) ||

@@ -807,7 +807,7 @@ function botFoodBest(run, s, P, base, cx) {
     if (!cookOf(s, q)) continue;
     const t = { ...run, bag: { ...run.bag, items: run.bag.items.map(x => ({ ...x })) }, bench: [...run.bench] },
       tq = t.bag.items.find(x => x.u === q.u);
-    cookInto(t, { ...s }, tq);
+    if (!cookInto(t, { ...s }, tq)) continue;
     /* 做出半成品：背包已經有另一種半成品（差一步就是大料理）加更多 */
     const semi = ITEMI[tq.id].fk === 'semi',
       pair = semi && t.bag.items.some(x => x !== tq && ITEMI[x.id].fk === 'semi' && x.id !== tq.id),
@@ -830,11 +830,14 @@ function botCookAll(run, P) {
         if (!cookOf(a, q)) continue;
         const t = { ...run, bag: { ...run.bag, items: run.bag.items.map(x => ({ ...x })) }, bench: [...run.bench] },
           tq = t.bag.items.find(x => x.u === q.u);
-        cookInto(
-          t,
-          t.bag.items.find(x => x.u === a.u),
-          tq
-        );
+        if (
+          !cookInto(
+            t,
+            t.bag.items.find(x => x.u === a.u),
+            tq
+          )
+        )
+          continue;
         const pw = t.bag.items.includes(tq) ? botPowerOf(t.bag, P) : 0;
         if (pw > base && (!best || pw > best.pw)) best = { a, q, pw };
       }
@@ -1007,8 +1010,8 @@ function botPlace(run, o, P, cx = {}) {
   if (ev.how === 'cook') {
     const q = run.bag.items.find(x => x.u === ev.q);
     if (!q || ev.gain <= 0 || !cookOf(o, q)) return false;
+    if (!cookInto(run, o, q)) return false;
     botBump(cx);
-    cookInto(run, o, q);
     return true;
   }
   if (ev.how !== 'place' && ev.how !== 'swap') return false;

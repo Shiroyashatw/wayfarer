@@ -167,12 +167,32 @@ function fuseInto(run, s, q, c) {
   return q;
 }
 /* 0.1.103 料理：食物 s 拖到食物 q 上，q 變成合成出來的那道（大料理 2 格：原位放不下就找別的位置，再不行收回暫存區），s 消失 */
+/* 0.1.108 修正：大料理（2 格）之前放不下就收回暫存區、暫存區也滿就被賣掉（看起來像飛走消失）。
+   現在先試原本兩件的位置（被合成的那格、拖過來那件空出來的格子，兩個方向），再找空位，再收回暫存區；
+   都放不下就不合成，回傳 null（畫面提示），不會賣掉 */
 function cookInto(run, s, q) {
-  q.id = cookOf(s, q);
+  const id = cookOf(s, q);
+  if (!id) return null;
+  const sIn = run.bag.items.includes(s),
+    si = run.bench.indexOf(s),
+    rest = { ...run.bag, items: run.bag.items.filter(x => x !== s && x !== q) },
+    t = { ...q, id, sh: undefined, md: undefined, sm: 0 };
+  let sp = null;
+  for (const [x, y] of [[q.x, q.y], ...(sIn ? [[s.x, s.y]] : [])])
+    for (const r of [q.r || 0, 0, 1, 2, 3]) if (!sp && canPlace(rest, t, x, y, r)) sp = { x, y, r };
+  sp = sp || findSpot(rest, t, true);
+  const fi = run.bench.findIndex((o, k) => !o || k === si);
+  if (!sp && fi < 0) return null;
+  q.id = id;
+  delete q.sh;
+  delete q.md;
+  q.sm = 0;
   run.bag.items = run.bag.items.filter(x => x !== s);
-  const i = run.bench.indexOf(s);
-  if (i >= 0) run.bench[i] = null;
-  return mdSet(run, q, q.md, q.sh);
+  if (si >= 0) run.bench[si] = null;
+  if (sp) return Object.assign(q, { x: sp.x, y: sp.y, r: sp.r });
+  run.bag.items = run.bag.items.filter(x => x !== q);
+  run.bench[run.bench.indexOf(null)] = q;
+  return q;
 }
 /* 0.1.100 巨人國的改造：工具 s 能不能用在 q（c 是背包座標，鑿子要；暫存區的道具只能縮小、放大） */
 function canMod(s, q, c) {
