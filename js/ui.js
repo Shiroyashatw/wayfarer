@@ -1912,7 +1912,8 @@ function dsc(t) {
   );
 }
 /* 0.1.111 說明的重點上色：數字金色（.dn）、行首條件（命中時：、常駐：⋯）和括號裡的補充說明淡色（.dl、.dp），
-   括號裡的數字不上色；只處理標籤外的文字（圖示的 <img> 不動） */
+   括號裡的數字不上色；只處理標籤外的文字（圖示的 <img> 不動）。
+   用自訂標籤 <x-h>（預設 inline）：很多面板有「.xx span{display:grid}」這種規則，用 span／b 會被拆成一行一行（0.1.112 修正） */
 const DL_RE = /(^|；)([^：；，、（）\d]{1,12}：)/g,
   /* 規則限制（只算一份、只能一次）用提醒色（.dw） */
   DW_RE = /同一道只算一份|每件道具只能改造一次/g,
@@ -1928,20 +1929,20 @@ function dscHi(h) {
             m === '（'
               ? d++
                 ? m
-                : '<span class="dp">（'
+                : '<x-h class="dp">（'
               : m === '）'
                 ? d && !--d
-                  ? '）</span>'
+                  ? '）</x-h>'
                   : m
                 : d
                   ? m
-                  : `<b class="dn">${m}</b>`
+                  : `<x-h class="dn">${m}</x-h>`
           )
     )
     .join('')
-    .replace(/\uE000/g, '<span class="dl">')
-    .replace(/\uE001|\uE003/g, '</span>')
-    .replace(/\uE002/g, '<span class="dw">');
+    .replace(/\uE000/g, '<x-h class="dl">')
+    .replace(/\uE001|\uE003/g, '</x-h>')
+    .replace(/\uE002/g, '<x-h class="dw">');
 }
 /* 0.1.35 魔劍正宗吸收的數值 */
 function abHTML(o) {
