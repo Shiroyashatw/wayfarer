@@ -62,6 +62,8 @@ GROUPS = [
     ('item', '道具', 'backpack items for an auto-battler, chunky readable silhouettes, natural material colors'),
     # 0.1.38 每個職業核心一張（it_c_職業_編號）：像一枚徽章，主體清楚
     ('core', '職業核心', 'class core emblems for an auto-battler, one bold central symbol each, rich saturated colors with a thin gold rim'),
+    # 0.1.103 料理：食材、混合料理、半成品、大料理（it_fd_／it_fm_／it_fs_／it_fb_）
+    ('food', '料理', 'cozy fantasy food, warm appetizing colors, simple shapes; dishes shown from a three-quarter top view'),
 ]
 GN = {k: n for k, n, _ in GROUPS}
 GH = {k: h for k, _, h in GROUPS}
@@ -74,6 +76,7 @@ SUPER = [
     ('asc', ['asc']),
     ('item', ['item']),
     ('core', ['core']),
+    ('food', ['food']),
 ]
 
 
@@ -93,6 +96,8 @@ def rows_of(src_only=False):
 def group_of(f, kind, p):
     if f.startswith('it_c_'):
         return 'core'
+    if re.match(r'it_f[dmsb]_', f):
+        return 'food'
     if f.startswith('it_'):
         return 'item'
     if f.startswith('gear_'):
