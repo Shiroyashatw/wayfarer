@@ -3613,7 +3613,7 @@ function genThemeW() {
     }
   return out;
 }
-/* 0.1.103 料理（docs/料理.md）：7 種食材（商店每格 20% 機率出現），拖到另一個食材上合成：
+/* 0.1.103 料理（docs/料理.md）：7 種食材（商店每格 15% 機率出現），拖到另一個食材上合成：
    不同的＝混合料理（兩個特性 ×1.25）、相同的＝半成品（×1.25，帶招牌效果）；兩個不同的半成品＝2 格大料理（數值相加、兩個招牌都發動）。
    食物只加角色本身（常駐，放在背包就有效），不升階、不吃也不給相鄰加成；同一道只算一份 */
 const FOOD_HPOF = { ing: 8, mix: 20, semi: 20, big: 40 };
@@ -3621,9 +3621,9 @@ const FOOD_K = ['meat', 'bread', 'fish', 'honey', 'mint', 'coffee', 'lemon'];
 /* 一份的數值：hpP 生命 %、dr 受到的攻擊傷害 -%、dodge 閃避、regP 每秒回復生命上限 %、rDot 抗持續傷害 %、rCtl 抗限制行動 %、cln 淨化次數 */
 const FOOD_V = {
   meat: { hpP: 8 },
-  bread: { dr: 5 },
+  bread: { dr: 4 },
   fish: { dodge: 4 },
-  honey: { regP: 0.5 },
+  honey: { regP: 0.4 },
   mint: { rDot: 12 },
   coffee: { rCtl: 12 },
   lemon: { cln: 1 }
@@ -3684,14 +3684,19 @@ const FOOD_N = { meat: '肉', bread: '麵包', fish: '魚', honey: '蜂蜜', min
     mint_lemon: '薄荷檸檬雪酪',
     coffee_lemon: '檸檬咖啡蛋糕'
   };
-/* 數值相加；k 倍（淨化次數不乘） */
+/* 數值相加；k 倍（淨化次數不乘；取整，每秒回復取到 0.1%，說明不出現 6.25% 這種數字） */
 const fdAdd = (...l) => {
   const o = {};
   for (const x of l) for (const k in x) o[k] = (o[k] || 0) + x[k];
   return o;
 };
 const fdMul = (x, k) =>
-  Object.fromEntries(Object.entries(x).map(([a, v]) => [a, a === 'cln' ? v : Math.round(v * k * 100) / 100]));
+  Object.fromEntries(
+    Object.entries(x).map(([a, v]) => [
+      a,
+      a === 'cln' ? v : a === 'regP' ? Math.round(v * k * 10) / 10 : Math.round(v * k)
+    ])
+  );
 function genFood() {
   const out = [],
     it = (id, n, fk, fd, x) =>
@@ -5474,16 +5479,17 @@ const FOOD_SG = {
   honey: [0, '生命低於 30% 時回復加倍'],
   mint: [1, '3 秒內不會受到持續傷害'],
   coffee: [1, '3 秒內不會被限制行動'],
-  lemon: [0, '每次淨化時回復 5% 生命']
+  lemon: [0, '每次淨化時回復生命上限的 5%']
 };
 function foodDesc(it) {
   const f = it.fd,
     v = [],
     sg = it.fk === 'big' ? it.sg : [];
-  if (f.hp) v.push(`生命 +${f.hp}${f.hpP ? `，再 +${f.hpP}%` : ''}`);
+  if (f.hp) v.push(`生命 +${f.hp}`);
+  if (f.hpP) v.push(`生命上限 +${f.hpP}%`);
   if (f.dr) v.push(`受到的攻擊傷害 -${f.dr}%`);
   if (f.dodge) v.push(`閃避 +${f.dodge}%`);
-  if (f.regP) v.push(`每秒回復 ${f.regP}% 生命`);
+  if (f.regP) v.push(`每秒回復生命上限的 ${f.regP}%`);
   if (f.rDot) v.push(`受到的持續傷害（燃燒、中毒、流血類）-${f.rDot}%`);
   if (f.rCtl) v.push(`被限制行動（凍結、暈眩、虛弱、致盲類）的時間 -${f.rCtl}%`);
   if (f.cln) v.push(`每 ${CLEANSE_T} 秒淨化 1 種異常，共 ${f.cln} 次`);

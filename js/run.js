@@ -675,7 +675,7 @@ function wpick(run, arr, w) {
 }
 /* 商店的一格：照背包等級的機率抽星級，同星級照「池子剩幾件 × 職業偏好」加權；那個星級抽光了就往下找 */
 /* 0.1.103 料理：商店每一格（1-1 以外）有 FOOD_P 機率是食材（不照星級，7 種照池子剩的份數抽） */
-const FOOD_P = 0.2;
+const FOOD_P = 0.15;
 function rollFood(run, used) {
   const it = wpick(
     run,
