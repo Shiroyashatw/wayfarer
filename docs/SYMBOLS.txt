@@ -65,8 +65,8 @@ ZODS js/data.js:680 [一局]
 zodMul js/data.js:695 [一局]
 WRATH_MAX js/data.js:697 [一局]
 LEGACY_RC js/data.js:702 [一局]
-GVER js/data.js:716 [一局]
-VER js/data.js:717 [一局]
+GVER js/data.js:717 [一局]
+VER js/data.js:718 [一局]
 ICONS js/sprites.js:4
 ICOPAL js/sprites.js:7
 SPC js/sprites.js:8
