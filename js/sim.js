@@ -305,7 +305,14 @@ function simulate(FA, FB, seed) {
         x.pin,
         /* 0.1.51 電荷、麻痺 */
         x.chg,
-        Math.ceil(x.para)
+        Math.ceil(x.para),
+        /* 0.1.106 騎士：盾勢、耐力球 */
+        x.sd || 0,
+        x.endu || 0,
+        /* 0.1.106 刺客：身上被疊的印記（對手的 mk）、爆擊球、潛行中 */
+        S[1 - S.indexOf(x)].mk || 0,
+        x.orb || 0,
+        +(x.stlT > t)
       ]),
       /* 0.1.35 雙方的護盾（格擋量），戰鬥畫面的白色護盾條用 */
       bk: [Math.round(S[0].block), Math.round(S[1].block)],
@@ -325,6 +332,7 @@ function simulate(FA, FB, seed) {
       def.block -= ab;
       d -= ab;
       extra = { ...extra, ab: Math.round(ab) };
+      sdGain(t, def, ab);
     }
     def.hp -= d;
     /* 0.1.74 不死之怒：第一次受到致命傷留 1 生命，UNDY_T 秒內不會死 */
@@ -563,6 +571,31 @@ function simulate(FA, FB, seed) {
     if (a.F.avatar) (a.avatarOn = 1), log(t, ai, 'avatar', 1, { self: 1 }), tr(a, 'avatar');
   };
   /* 0.1.51 暈眩（ai 暈 d）：雷鳴（暈到敵人時你所有武器充能） */
+  /* 0.1.106 騎士的盾勢：護盾吃掉傷害時累積（只加不減）；每升 1 層套用核心的效果 */
+  const sdUp = (t, x) => {
+    const xi = S.indexOf(x);
+    x.sd = (x.sd || 0) + 1;
+    if (x.F.sdHp) (x.max += x.F.sdHp), (x.hp += x.F.sdHp);
+    if (x.F.sdArm5 && x.sd % 5 === 0) x.sdArm = (x.sdArm || 0) + x.F.sdArm5;
+    if (x.F.sdArm2 && x.sd % 2 === 0) x.sdArm = (x.sdArm || 0) + x.F.sdArm2;
+    if (x.F.sdEndu && x.sd % 5 === 0 && (x.endu || 0) < 3) (x.endu = (x.endu || 0) + 1), tr(x, 'sdEndu');
+    if (x.F.sdStun && (x.sd === 10 || x.sd === 20)) stunIt(t, xi, S[1 - xi], x.F.sdStun / 10), tr(x, 'sdStun');
+    tr(x, 'sd');
+  };
+  const sdGain = (t, x, v) => {
+    if (!x.F.sd || !(v > 0)) return;
+    const step = x.F.sdStep15 ? SD_STEP2 : SD_STEP,
+      cap = SD_CAP + x.F.sdCap;
+    x.sdAcc = (x.sdAcc || 0) + v;
+    while (x.sdAcc >= step && (x.sd || 0) < cap) (x.sdAcc -= step), sdUp(t, x);
+  };
+  /* 盾格擋一次（0.1.106 抽出來：聖盾低血時所有盾立刻格擋也用）；盾擊：格擋時打出盾勢層數 ×N 固定傷害 */
+  const shBlock = (t, a, i, s) => {
+    if (!gainBlock(t, a, i, s.block, s.u)) return;
+    log(t, i, 'block', s.block, { u: s.u }), counter(t, i);
+    if (a.F.sdBash && a.sd && S[1 - i].hp > 0)
+      hurt(t, a.sd * a.F.sdBash, S[1 - i], i, 'cv', { x: 'sdbash', u: s.u }), tr(a, 'sdBash');
+  };
   const stunIt = (t, ai, d, sec) => {
     const v = Math.round(sec * res(d, 'stun', t) * 100) / 100;
     if (v <= 0) return;
@@ -624,7 +657,9 @@ function simulate(FA, FB, seed) {
     /* 0.1.50 風之箭（sure）不會被閃避、招架；閃避成功：游擊充能、迴避反擊；沒打中連珠箭歸零 */
     /* 0.1.99 閃避、致盲落空用偽隨機（風之箭、打自己不會落空） */
     /* 0.1.103 魚漿：前 2 次被攻擊必定閃避 */
-    const dodged = !self && !w.sure && (d.fdDg > 0 ? (d.fdDg--, tr(d, 'food'), true) : prd(d, 'dodge', d.F.dodge)),
+    /* 0.1.106 刺客的潛行：潛行中閃避 +% */
+    const stlD = d.F.mk && d.stlT > t ? STL_DG[d.F.stlLong ? 1 : 0] : 0,
+      dodged = !self && !w.sure && (d.fdDg > 0 ? (d.fdDg--, tr(d, 'food'), true) : prd(d, 'dodge', d.F.dodge + stlD)),
       blinded = !dodged && !self && !w.sure && a.blind > 0 && prd(a, 'blind', BLIND_MISS);
     /* 0.1.69 塔羅・月亮逆位：敵人的第一次攻擊打到幻影 */
     if (!self && d.tmiss > 0) {
@@ -637,6 +672,8 @@ function simulate(FA, FB, seed) {
       if (d.F.dodge) tr(d, 'dodge');
       log(t, ai, 'miss', 0, { u: w.u });
       if (dodged) {
+        /* 0.1.106 刺客：閃避成功時進入潛行 */
+        if (d.F.mk) d.stlT = t + STL_T[d.F.stlLong ? 1 : 0];
         if (d.F.kite) for (const x of d.w) x.tt = Math.min(x.cd * 0.99, x.tt + (x.cd * d.F.kite) / 100);
         counter(t, di);
       }
@@ -657,17 +694,35 @@ function simulate(FA, FB, seed) {
     }
     const ph = phaseOf(a.F, t);
     let v = (w.dmg[0] + r() * (w.dmg[1] - w.dmg[0])) * mul;
+    /* 0.1.106 審判：盾勢給的護甲也加到武器傷害 */
+    if (a.F.armDmg && a.sdArm) v += a.sdArm * mul;
+    /* 0.1.106 刺客：印記疊滿（致命 5、暗殺收尾 4）的那一下消耗全部印記；不然刀陣有爆擊球就消耗 1 顆背刺 */
+    let mkUse = 0,
+      stab = 0;
+    if (a.F.mk && !self) {
+      const cap = a.F.mkExec && d.hp < d.max * 0.3 ? MK_EXEC : a.F.mkCap5 ? MK_CAP2 : MK_CAP;
+      if ((a.mk || 0) >= cap) (mkUse = a.mk), (a.mk = 0);
+      else if (a.F.kOrb && a.orb > 0) a.orb--, (stab = 1);
+    }
     /* 0.1.37 衰老：不能暴擊 */
     /* 0.1.50 狙擊（必定暴擊）、血獵（敵人撕裂中暴擊率提升）、鷹眼（敵人每支箭暴擊傷害提升） */
     const crit =
         !(a.age > 0) &&
         (o.force ||
+          mkUse > 0 ||
+          stab ||
           prd(
             w,
             'crit',
-            w.crit + ph.crit + (a.F.huntCrit && d.rend > 0 ? a.F.huntCrit : 0) + (a.undB > t ? UNDY_CRIT : 0)
+            w.crit +
+              ph.crit +
+              (a.F.huntCrit && d.rend > 0 ? a.F.huntCrit : 0) +
+              (a.undB > t ? UNDY_CRIT : 0) +
+              (a.orb || 0) * ORB_CRIT
           )),
-      cm = a.F.critMul + (a.F.critArrow || 0) * d.arrow;
+      cm = a.F.critMul + (a.F.critArrow || 0) * d.arrow + (a.orb || 0) * ORB_CM;
+    if (mkUse) v *= 1 + (mkUse * MK_DMG) / 100;
+    if (stab) v *= 1 + STAB / 100;
     /* 0.1.29 厚皮：暴擊多出來的傷害減少 */
     if (crit) v *= 1 + (cm / 100 - 1) * (1 - Math.min(RES_MAX, d.F.critRes || 0) / 100);
     if (crit && d.F.critRes) tr(d, 'critRes');
@@ -698,6 +753,9 @@ function simulate(FA, FB, seed) {
     /* 0.1.53 饕餮吞噬（這場累積）、檮杌（你受到的攻擊傷害 -%） */
     if (w.gb) v *= 1 + w.gb / 100;
     if (d.F.dr) v *= Math.max(0.2, 1 - d.F.dr / 100);
+    /* 0.1.106 騎士：盾勢每層武器傷害 +%（騎士精神再加）、耐力球減傷 */
+    if (a.sd) v *= 1 + (a.sd * (SD_DMG + a.F.sdDmg)) / 100;
+    if (d.endu) v *= 1 - (d.endu * ENDU_DR) / 100;
     /* 0.1.103 麵團：前 3 次受到的命中傷害減半 */
     if (!self && d.fdHalf > 0) (v *= 0.5), d.fdHalf--, tr(d, 'food');
     /* 0.1.96 七宗罪：暴怒暴走（4 件 +25%）、怠惰每圈累加、暴食每 50 脂肪、王冠（階數總和 × 2%）、貪婪 10 件（每組 +15%）、魅惑打自己（8 件 ×1.5） */
@@ -713,7 +771,7 @@ function simulate(FA, FB, seed) {
     if (a.F.tarStrR) (v *= 1 + (w.sk || 0) * 0.02), (w.sk = (w.sk || 0) + 1);
     /* 0.1.28 穿甲：無視一部分護甲，那部分傷害也不會被格擋吃掉 */
     const pc = o.force ? 1 : (w.pierce || 0) / 100;
-    const arm = d.F.arm + d.parA - d.sunder;
+    const arm = d.F.arm + (d.sdArm || 0) + d.parA - d.sunder;
     v *= 50 / (50 + Math.max(-10, arm * (arm > 0 ? 1 - pc : 1)));
     v *= 1 + d.F.take / 100;
     /* 0.1.53 護主：被打時機率由寵物擋下一半，那隻寵物反咬 */
@@ -728,6 +786,7 @@ function simulate(FA, FB, seed) {
       ab = Math.min(d.block, v * (1 - pc) * (1 - (w.shPierce || 0) / 100));
       d.block -= ab;
       v -= ab;
+      sdGain(t, d, ab);
     }
     v = Math.max(ab > 0 ? 0 : 1, v);
     hurt(t, v, d, ai, crit ? 'crit' : 'hit', {
@@ -741,6 +800,22 @@ function simulate(FA, FB, seed) {
       ...(o.hv ? { hv: 1 } : {})
     });
     a.dmgDone += v;
+    /* 0.1.106 刺客：消耗印記 → 爆擊球、割喉、煙霧彈；沒消耗就疊印記（潛行中影襲 +2）、毒刃；暴擊時連擊、嗜血刃 */
+    if (a.F.mk && !self) {
+      if (mkUse) {
+        const oc = ORB_CAP + a.F.orbCap;
+        if ((a.orb || 0) < oc) a.orb = (a.orb || 0) + 1;
+        if (a.F.mkBleed) d.bleed += mkUse * a.F.mkBleed * res(d, 'bleed', t);
+        if (a.F.stlAfter) a.stlT = t + STL_T[a.F.stlLong ? 1 : 0];
+        log(t, ai, 'mkx', mkUse, {}), tr(a, 'mk');
+      } else {
+        const n = a.F.stlMk && a.stlT > t ? a.F.stlMk : 1;
+        a.mk = Math.min(MK_CAP, (a.mk || 0) + n);
+        if (a.F.mkPoi) addPoison(a, d, n * a.F.mkPoi, t);
+      }
+      if (crit && a.F.critChg) for (const x of a.w) x.tt = Math.min(x.cd * 0.99, x.tt + (x.cd * a.F.critChg) / 100);
+      if (crit && a.F.critHealOrb && a.orb && a.hp > 0) heal(t, a, ai, (a.max * a.orb) / 100);
+    }
     /* 0.1.96 七宗罪的命中效果 */
     if (chm && L(S[1 - ai], 'lust') >= 4 && S[1 - ai].hp > 0) heal(t, S[1 - ai], 1 - ai, v * 0.3);
     if (!self && v > 0 && L(d, 'wrath')) wrathHit(t, di, v);
@@ -793,6 +868,8 @@ function simulate(FA, FB, seed) {
     if (!self) {
       /* 0.1.105 被護盾擋下的攻擊也反彈 */
       if (d.F.thornsF && (v > 0 || ab > 0) && !noTh) hurt(t, d.F.thornsF, a, 1 - ai, 'thorns', {}), tr(d, 'thornsF');
+      /* 0.1.106 復仇：反彈盾勢層數 */
+      if (d.F.sdTh && d.sd && !noTh) hurt(t, d.sd, a, 1 - ai, 'thorns', {}), tr(d, 'sdTh');
       /* 0.1.69 塔羅・正義：受到的傷害反彈一部分 */
       if (d.F.tarRefl && v > 0 && !noTh) hurt(t, Math.max(1, (v * d.F.tarRefl) / 100), a, 1 - ai, 'thorns', {});
       /* 0.1.37 毒刺皮膚：被打中時讓攻擊者中毒 */
@@ -987,6 +1064,14 @@ function simulate(FA, FB, seed) {
       tr(a, 'summon');
     }
   }
+  /* 0.1.106 刺客：開戰的爆擊球（暗影之心、刀陣＝匕首數量，可以超過上限）、影襲的潛行 */
+  for (const x of S)
+    if (x.F.mk) {
+      x.orb = x.F.orbStart + (x.F.kOrb ? x.w.filter(w => w.kind === 'dagger' && !w.vw).length : 0);
+      if (x.F.stlStart) x.stlT = STL_T[x.F.stlLong ? 1 : 0];
+    }
+  /* 0.1.106 堡壘：開戰時盾勢 +N 層 */
+  for (const x of S) for (let k = 0; x.F.sd && k < x.F.sdStart && (x.sd || 0) < SD_CAP + x.F.sdCap; k++) sdUp(0, x);
   /* 0.1.28 反制寵物：驅獸（敵人寵物傷害 -%）、獵人（敵人每隻寵物，自己武器傷害 +%） */
   for (let i = 0; i < 2; i++) {
     const a = S[i],
@@ -1253,6 +1338,8 @@ function simulate(FA, FB, seed) {
           /* 0.1.74 諸神黃昏、不死之怒 */
           (a.ragT > t ? 1 + RAGNA_SPD / 100 : 1) *
           (a.undB > t ? 1 + UNDY_SPD / 100 : 1) *
+          /* 0.1.106 疾影：潛行中攻速 */
+          (a.F.stlSpd && a.stlT > t ? 1 + a.F.stlSpd / 100 : 1) *
           (S[1 - i].F.heat ? Math.max(0.4, 1 - (fl(a.burn / 5) * S[1 - i].F.heat) / 100) : 1),
         night = a.F.sunmoon && !isDay(t);
       if (a.F.sunmoon && +!night !== a.sunP) (a.sunP = +!night), log(t, i, 'sun', a.sunP, { self: 1 });
@@ -1374,11 +1461,12 @@ function simulate(FA, FB, seed) {
         }
       }
       for (const s of a.s) {
-        s.tt += SIM_DT * rate * ice(s);
+        /* 0.1.106 守護誓約：每層盾勢盾的攻速 +% */
+        s.tt += SIM_DT * rate * ice(s) * (1 + ((a.sd || 0) * a.F.sdShSpd) / 100);
         if (s.tt >= s.cd) {
           s.tt -= s.cd;
           if (trapFire(t, i, s.u)) continue;
-          if (gainBlock(t, a, i, s.block, s.u)) log(t, i, 'block', s.block, { u: s.u }), counter(t, i);
+          shBlock(t, a, i, s);
           /* 0.1.28 尖刺（質變）：格擋時順便撞敵人（吃護甲） */
           if (s.bash) {
             const d = S[1 - i];
@@ -1514,6 +1602,12 @@ function simulate(FA, FB, seed) {
         addPoison(a, o, 3, t);
         log(t, i, 'cv', 0, { x: 'molt', self: 1 });
         tr(a, 'molt');
+      }
+      /* 0.1.106 聖盾：生命第一次低於 30% 時，所有盾立刻格擋一次 */
+      if (a.F.shLow && !a.shL && a.hp > 0 && a.hp < a.max * 0.3) {
+        a.shL = 1;
+        for (const s of a.s) shBlock(t, a, i, s);
+        tr(a, 'shLow');
       }
       /* 0.1.101 不滅之火：第二次涅槃在 15%，每次涅槃後所有武器傷害 +phx2%（整場） */
       if (

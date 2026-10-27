@@ -513,6 +513,36 @@ function botPower(F, P = BOT_P) {
   /* 0.1.74 狂戰士：諸神黃昏、不死之怒、血祭（少的生命；免異常算在 immT）、血泉、嗜血護甲、處刑看撕裂、擲斧 */
   if (F.ragna) (ehp *= 1.15), (dps *= 1.15);
   if (F.undying) (ehp *= 1.25), (dps *= 1.1);
+  /* 0.1.106 騎士的盾勢（大約）：護盾每秒能擋多少 → 一場平均累積幾層（整場平均算一半），照層數加武器傷害、生命、護甲、耐力球、盾擊、復仇 */
+  if (F.sd) {
+    const blk = F.shields.reduce((n, s) => n + s.block / Math.max(0.6, s.cd), 0),
+      cap = SD_CAP + (F.sdCap || 0),
+      L = Math.min(cap, (F.sdStart || 0) + (blk * 12 + (F.startBlock || 0)) / (F.sdStep15 ? SD_STEP2 : SD_STEP)) * 0.6,
+      shRate = F.shields.reduce((n, s) => n + 1 / Math.max(0.6, s.cd), 0);
+    dps *= 1 + (L * (SD_DMG + (F.sdDmg || 0))) / 100;
+    dps += L * (F.sdBash || 0) * shRate + L * (F.sdTh ? 0.8 : 0);
+    ehp += L * (F.sdHp || 0) + (F.shLow ? F.shields.reduce((n, s) => n + s.block, 0) : 0);
+    const arm = (F.sdArm5 ? fl(L / 5) * F.sdArm5 : 0) + (F.sdArm2 ? fl(L / 2) * F.sdArm2 : 0);
+    if (arm) (ehp *= 1 + arm / 50), F.armDmg && (dps *= 1 + arm / 20);
+    if (F.sdEndu) ehp /= 1 - (Math.min(3, fl(L / 5)) * ENDU_DR) / 100;
+    if (F.sdStun && L >= 10) dps *= 1.04;
+  }
+  /* 0.1.106 刺客（大約）：每 cap+1 下有一下必定暴擊（每層 +5%）；一場平均 2～3 顆爆擊球；核心各加一點 */
+  if (F.mk) {
+    const cap = F.mkCap5 ? MK_CAP2 : MK_CAP,
+      orbs = Math.min(ORB_CAP + (F.orbCap || 0), (F.orbStart || 0) + 2.5),
+      ca = (orbs * ORB_CRIT) / 100 + 1 / (cap + 1);
+    dps *= 1 + ca * (cm - 1 + (orbs * ORB_CM) / 100) + (cap * MK_DMG) / 100 / (cap + 1);
+    if (F.mkPoi) dps *= 1 + 0.15 * F.mkPoi * P.dotW;
+    if (F.mkBleed) dps *= 1 + 0.04 * F.mkBleed * P.dotW;
+    if (F.mkExec) dps *= 1.04;
+    if (F.critChg) dps *= 1 + F.critChg / 300;
+    if (F.kOrb) dps *= 1 + 0.03 * F.weapons.filter(w => w.kind === 'dagger').length;
+    if (F.stlSpd) dps *= 1 + ((F.stlSpd / 100) * Math.min(40, (F.dodge || 0) + 10)) / 100;
+    if (F.stlStart) dps *= F.stlMk ? 1.06 : 1.02;
+    if (F.stlAfter || F.stlLong) ehp *= 1 + (F.stlLong ? 0.06 : 0.03);
+    if (F.critHealOrb) ehp *= 1.05;
+  }
   if (F.selfCut) ehp *= 1 - F.selfCut / 200;
   if (F.rendLeech && rendSrc) ehp *= 1 + F.rendLeech / 300;
   if (F.lsShield && (F.ls || F.weapons.some(w => w.ls || (w.bz && F.blood)))) ehp *= 1.06;

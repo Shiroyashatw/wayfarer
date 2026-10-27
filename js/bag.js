@@ -674,6 +674,39 @@ function compileBag(bag, extra = {}) {
       potThrow: 0,
       potAdj: null,
       valhalla: 0,
+      /* 0.1.106 刺客：印記、爆擊球、潛行與核心 */
+      mk: 0,
+      stlStart: 0,
+      stlMk: 0,
+      mkPoi: 0,
+      mkCap5: 0,
+      mkExec: 0,
+      stlLong: 0,
+      critChg: 0,
+      mkBleed: 0,
+      stlAfter: 0,
+      critHealOrb: 0,
+      kOrb: 0,
+      orbStart: 0,
+      orbCap: 0,
+      stlSpd: 0,
+      /* 0.1.106 騎士：盾勢與核心 */
+      sd: 0,
+      sdStart: 0,
+      sdHp: 0,
+      sdBash: 0,
+      sdArm5: 0,
+      sdArm2: 0,
+      sdEndu: 0,
+      sdCap: 0,
+      sdShSpd: 0,
+      sdTh: 0,
+      sdDmg: 0,
+      sdStun: 0,
+      sdStep15: 0,
+      holyBlk: 0,
+      shLow: 0,
+      heavyBlk: 0,
       /* 0.1.37 格子：每件道具佔哪幾格（敵人的陷阱放在格子上） */
       grid: { w: bag.w, h: bag.h, at: Object.fromEntries(bag.items.map(o => [o.u, cellsOf(o)])) },
       /* 0.1.40 角色加成的來源：{ 加成: [道具 u…] } */
@@ -1194,6 +1227,9 @@ function compileBag(bag, extra = {}) {
   if (F.armDmg && F.arm > 0) for (const w of F.weapons) w.dmg = w.dmg.map(v => v + F.arm);
   if (F.potMul || F.potUse) F.pots.forEach(p => ((p.v = Math.round(p.v * (1 + F.potMul / 100))), (p.n += F.potUse)));
   foodF(F, bag.items);
+  /* 0.1.106 騎士：聖盾（生命 %）、重裝衝鋒（護甲 ×N）的開戰護盾，照最後的生命、護甲算 */
+  if (F.holyBlk) F.startBlock += Math.round((F.hp * F.holyBlk) / 100);
+  if (F.heavyBlk) F.startBlock += Math.round(Math.max(0, F.arm) * F.heavyBlk);
   F.dodge = Math.min(40, F.dodge);
   /* 0.1.59 詛咒・虛弱疊太多：生命至少 1 */
   F.hp = Math.max(1, F.hp);

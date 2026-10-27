@@ -3838,8 +3838,8 @@ const CLASSES = [
     n: '刺客',
     ic: 'sk_backstab',
     th: 'dagger',
-    m: [{ tag: 'dagger', crit: 20 }],
-    F: { critMul: 60 }
+    /* 0.1.106 刺客重製（docs/騎士與刺客重製.md）：職業特性改成印記、爆擊球、潛行（取代匕首暴擊率 +20%、暴擊傷害 +60%） */
+    F: { mk: 1 }
   },
   {
     id: 'pyro',
@@ -3904,10 +3904,8 @@ const CLASSES = [
     n: '騎士',
     ic: 'sk_shieldwall',
     th: 'shield',
-    /* 0.1.29 6 人一場騎士墊底：格擋 40% → 60%、生命 20 → 40、被打中反彈 2 */
-    m: [{ tag: 'shield', blockPct: 60 }],
-    /* 0.1.33 生命 40 → 50、反彈 2 → 3 */
-    F: { hp: 50, thornsF: 3 }
+    /* 0.1.106 騎士重製（docs/騎士與刺客重製.md）：職業特性改成盾勢（取代盾格擋 +60%、反彈 3）；生命 +50 保留 */
+    F: { hp: 50, sd: 1 }
   },
   {
     id: 'alchemist',
@@ -4005,19 +4003,20 @@ const CORE_MAIN = {
     ['部落之盾', { all: [...onP(P, { guard: 35 }), { tag: 'shield', blockPct: 40 }], ic: 'asc_valkyrie_b2' }],
     ['浴血戰姬', { fx: { fury: 3, rendX: 2 }, ic: 'sk_bloodhowl' }]
   ],
+  /* 0.1.106 刺客重製：印記（疊滿消耗、必定暴擊）、爆擊球、潛行；機率型的效果都拿掉。核心 id 照順序（c_assassin_N），虛弱毒 → 暗影之心 */
   assassin: P => [
-    ['影襲', { all: onP(P, { crit: 15 }), fx: { opener: 100 } }],
-    ['毒刃', { all: onP(P, { poison: 2, dmgPct: 10 }) }],
-    ['致命', { all: onP(P, { crit: 25 }), fx: { critMul: 50 } }],
-    ['暗殺', { all: onP(P, { dmgPct: 10 }), fx: { execute: 80 } }],
-    ['殘影', { all: onP(P, { spd: 10 }), fx: { dodge: 18 } }],
-    ['連擊', { all: onP(P, { dmgPct: 10 }), fx: { double: 25 } }],
-    ['割喉', { all: onP(P, { bleed: 2, dmgPct: 10 }) }],
-    ['煙霧彈', { fx: { dodge: 8 }, pre: { blind: 4 } }],
-    ['嗜血刃', { all: onP(P, { crit: 10 }), fx: { critHeal: 5 } }],
-    ['刀陣', { all: onP(P, { dmgPct: 10, per: 'dagger' }) }],
-    ['虛弱毒', { all: onP(P, { weakCh: 25 }) }],
-    ['疾影', { all: onP(P, { spd: 30 }) }]
+    ['影襲', { fx: { stlStart: 1, stlMk: 2 } }],
+    ['毒刃', { fx: { mkPoi: 1 } }],
+    ['致命', { fx: { mkCap5: 1 } }],
+    ['暗殺', { fx: { mkExec: 1 } }],
+    ['殘影', { fx: { stlLong: 1 } }],
+    ['連擊', { fx: { critChg: 25 } }],
+    ['割喉', { fx: { mkBleed: 2 } }],
+    ['煙霧彈', { fx: { stlAfter: 1 } }],
+    ['嗜血刃', { fx: { critHealOrb: 1 } }],
+    ['刀陣', { fx: { kOrb: 1 } }],
+    ['暗影之心', { fx: { orbStart: 3, orbCap: 3 } }],
+    ['疾影', { fx: { stlSpd: 50 } }]
   ],
   /* 0.1.51 火法師重製（點燃）：星星之火（會蔓延的火苗陷阱）、爆燃、流星火雨、焚盡（斬殺線）、自焚、火之化身、引火、炎爆、灼命、熱浪、火焰護體、鳳凰涅槃 */
   pyro: P => [
@@ -4095,21 +4094,21 @@ const CORE_MAIN = {
     ['共生', { fx: { symHeal: 1 }, fxPer: [{ tag: 'pet', hp: 12 }], ic: 'asc_tamer_b2' }],
     ['四兇召來', { give: 'vessel', ic: 'it_cauldron' }]
   ],
+  /* 0.1.106 騎士重製：盾勢（只累積、不消耗）；保留鐵甲戰士、審判（審判拿掉暈眩機率、改成跟盾勢連動）。核心 id 照順序（c_knight_N），起手盾 → 重裝衝鋒 */
   knight: P => [
-    ['聖盾', { all: [{ tag: 'shield', blockPct: 60 }] }],
-    ['堡壘', { all: [{ tag: 'shield', block: 10 }], fx: { hp: 40 } }],
-    ['盾擊', { fx: { thornsF: 6, arm: 4 } }],
-    ['起手盾', { fx: { startBlock: 40 } }],
-    ['鐵壁', { fx: { arm: 14 } }],
-    ['聖光', { all: onP(P, { blindCh: 15 }), fx: { regen: 2 } }],
+    ['聖盾', { fx: { holyBlk: 20, shLow: 1 } }],
+    ['堡壘', { fx: { sdStart: 6, sdHp: 5 } }],
+    ['盾擊', { fx: { sdBash: 3 } }],
+    ['重裝衝鋒', { fx: { heavyBlk: 5 } }],
+    ['鐵壁', { fx: { arm: 10, sdArm5: 3 } }],
+    ['聖光', { fx: { sdEndu: 1 } }],
     /* 0.1.33 不動如山 → 鐵甲戰士：防具、盾的效果 ×1.5 */
     ['鐵甲戰士', { defX: 1.5 }],
-    /* 0.1.33 護甲變成每把武器的傷害、每把武器暈眩 +10% */
-    ['審判', { all: onP(P, { stunCh: 10 }), fx: { armDmg: 1 } }],
-    ['守護誓約', { all: [{ tag: 'shield', spd: 30 }] }],
-    ['復仇', { fx: { rage: 40, thornsF: 3 } }],
-    ['騎士精神', { all: onP(P, { dmgPct: 20, spd: 10 }) }],
-    ['盾牆', { all: [{ tag: 'shield', blockPct: 15, per: 'shield' }] }]
+    ['審判', { fx: { armDmg: 1, sdArm2: 1 } }],
+    ['守護誓約', { fx: { sdCap: 10, sdShSpd: 1 } }],
+    ['復仇', { fx: { sdTh: 1 } }],
+    ['騎士精神', { fx: { sdDmg: 1, sdStun: 15 } }],
+    ['盾牆', { fx: { sdStep15: 1 }, fxPer: [{ tag: 'shield', sdCap: 3 }] }]
   ],
   /* 0.1.37 鍊金重製：煉成（三次三選一做終極藥劑）、萬能藥、開戰的多重效果（pres）、陷阱（點燃、藥劑炸彈）、狂暴藥劑（時段）、賢者之石 */
   alchemist: P => [
@@ -4192,8 +4191,10 @@ const CORE_VAR = {
       t: ['女武神之槍', { fx: { valkAt: 60 }, all: [{ tag: 'spear', rend: 1, dmgPct: 30 }], ic: 'asc_valkyrie_c1' }]
     }
   }),
+  /* 0.1.106 刺客、騎士重製後，連擊、鐵壁的變體對不上新的效果：先暫停（off：資料留著給舊紀錄，4-4 不出、圖鑑不列），下一版重做 */
   assassin: P => ({
     連擊: {
+      off: 1,
       d: ['淬毒連擊', { all: onP(P, { dmgPct: 20 }), fx: { double: 30, dblDot: 1 } }],
       t: ['刀陣輪舞', { all: onP(P, { dmgPct: 60 }), bladeDrv: 1 }]
     }
@@ -4230,6 +4231,7 @@ const CORE_VAR = {
   }),
   knight: () => ({
     鐵壁: {
+      off: 1,
       d: ['不動如山', { fx: { arm: 18 }, armPer: 4 }],
       t: ['荊棘鐵壁', { fx: { thornsF: 10 }, armTh: 70 }]
     }
@@ -4254,7 +4256,7 @@ const CORE_VAR = {
   })
 };
 /* 0.1.101 這個核心的覺醒、質變（沒有就是空的） */
-const coreVars = id => ITEMS.filter(i => i.vof === id).map(i => i.id);
+const coreVars = id => ITEMS.filter(i => i.vof === id && !i.vOff).map(i => i.id);
 function genCores() {
   const out = [];
   for (const C of CLASSES) {
@@ -4287,6 +4289,7 @@ function genCores() {
             n: `${C.n}・${vn}`,
             vof: base.id,
             vk,
+            ...(V[n].off ? { vOff: 1 } : {}),
             ic: vd.ic || base.ic,
             ...(vd.ic || base.icx ? { icx: 1 } : {})
           });
@@ -5035,6 +5038,41 @@ const MODN = {
   startBlock: v => `開戰時有 ${v} 護盾`,
   double: v => `${pct(v)} 機率連擊`,
   thornsF: v => `被攻擊時反彈 ${v} 固定傷害（被護盾擋下也算）`,
+  /* 0.1.106 刺客：印記、爆擊球、潛行 */
+  mk: () =>
+    `印記：命中時敵人 +1 層印記（最多 ${MK_CAP} 層）；疊滿時下一次攻擊消耗全部印記：必定暴擊、每層傷害 +${MK_DMG}%，並得到 1 顆爆擊球（每顆暴擊率 +${ORB_CRIT}%、暴擊傷害 +${ORB_CM}%，最多 ${ORB_CAP} 顆）；閃避成功時潛行 ${STL_T[0]} 秒：閃避 +${STL_DG[0]}%`,
+  stlStart: () => '開戰時進入潛行',
+  stlMk: v => `潛行時每次命中印記 +${v} 層`,
+  mkPoi: v => `每疊 1 層印記，敵人中毒 +${v} 層`,
+  mkCap5: () => `印記上限 ${MK_CAP} → ${MK_CAP2} 層`,
+  mkExec: () => `敵人生命低於 30% 時，印記上限變成 ${MK_EXEC} 層`,
+  stlLong: () => `潛行 ${STL_T[0]} → ${STL_T[1]} 秒、潛行時閃避 +${STL_DG[0]}% → +${STL_DG[1]}%`,
+  critChg: v => `暴擊時所有武器充能 +${v}%`,
+  mkBleed: v => `消耗印記時，敵人流血 +「消耗的層數 ×${v}」層`,
+  stlAfter: () => '消耗印記後進入潛行',
+  critHealOrb: () => '暴擊時回復「爆擊球數 ×1%」生命',
+  kOrb: () => `開戰時得到「背包裡匕首數量」顆爆擊球（可以超過上限）；每次攻擊消耗 1 顆：必定暴擊、傷害 +${STAB}%`,
+  orbStart: v => `開戰時就有 ${v} 顆爆擊球`,
+  orbCap: v => `爆擊球上限 +${v}`,
+  stlSpd: v => `潛行中所有武器攻速 +${v}%`,
+  /* 0.1.106 騎士：盾勢 */
+  sd: () =>
+    `盾勢：護盾每吃掉 ${SD_STEP} 點傷害，盾勢 +1 層（最多 ${SD_CAP} 層，整場累積、不會消耗）；每層所有武器傷害 +${SD_DMG}%`,
+  holyBlk: v => `開戰時獲得「生命 ${v}%」的護盾`,
+  shLow: () => '生命第一次低於 30% 時，背包裡所有盾立刻格擋一次',
+  sdStart: v => `開戰時盾勢 +${v} 層`,
+  sdHp: v => `每層盾勢：生命 +${v}`,
+  sdBash: v => `盾每次格擋時，對敵人造成「盾勢層數 ×${v}」固定傷害`,
+  heavyBlk: v => `開戰時獲得「護甲 ×${v}」的護盾`,
+  sdArm5: v => `每 5 層盾勢，護甲 +${v}`,
+  sdEndu: () => `盾勢到 5、10、15 層時，各得到 1 顆耐力球：每顆受到的攻擊傷害 -${ENDU_DR}%（最多 3 顆）`,
+  sdArm2: v => `每 2 層盾勢，護甲 +${v}`,
+  sdCap: v => `盾勢上限 +${v}`,
+  sdShSpd: v => `每層盾勢：盾的攻速 +${v}%`,
+  sdTh: () => '被攻擊時反彈「盾勢層數」的固定傷害（被護盾擋下也算）',
+  sdDmg: v => `每層盾勢的武器傷害再 +${v}%`,
+  sdStun: v => `盾勢第一次到 10 層、20 層時，各暈眩敵人 ${v / 10} 秒`,
+  sdStep15: () => `護盾每吃掉 ${SD_STEP2} 點傷害就 +1 層盾勢（原本 ${SD_STEP}）`,
   critHeal: v => `暴擊時回復 ${v} 生命`,
   /* 0.1.28 質變與反制寵物 */
   pierce: v => `無視 ${pct(Math.min(PIERCE_MAX, v))} 護甲與格擋`,
@@ -5238,6 +5276,24 @@ const RICHCN = [
 /* 0.1.35 財源滾滾：這個階段每回合幾金 */
 const goldStOf = (G, st) => (G.filter(([s]) => st >= s).pop() || [0, 0])[1];
 /* 0.1.29 抗異常最多 -80%、淨化每 5 秒一次 */
+/* 0.1.106 騎士的盾勢：護盾每吃掉 SD_STEP 點傷害 +1 層（盾牆 SD_STEP2），上限 SD_CAP，每層武器傷害 +SD_DMG%；聖光的耐力球每顆減傷 ENDU_DR% */
+const SD_STEP = 20,
+  SD_STEP2 = 15,
+  SD_CAP = 20,
+  SD_DMG = 2,
+  ENDU_DR = 4;
+/* 0.1.106 刺客：印記上限（致命 5、暗殺收尾 4）、每層傷害 +MK_DMG%；爆擊球上限、每顆暴擊率 +ORB_CRIT、暴擊傷害 +ORB_CM；
+   潛行秒數與閃避（殘影 6 秒、+20%）；刀陣的背刺傷害 +STAB% */
+const MK_CAP = 8,
+  MK_CAP2 = 5,
+  MK_EXEC = 4,
+  MK_DMG = 5,
+  ORB_CAP = 5,
+  ORB_CRIT = 5,
+  ORB_CM = 10,
+  STL_T = [4, 6],
+  STL_DG = [10, 20],
+  STAB = 50;
 const RES_MAX = 80,
   CLEANSE_T = 5,
   /* 0.1.33 閃電鏈的連鎖：最多多打 2 下、多打的那幾下傷害 50% */

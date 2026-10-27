@@ -1976,8 +1976,8 @@ function resultHTML(run) {
   return `<div class="ovl"><div class="dlg2 ${l.win ? 'win' : 'lose'}"><b class="big">${l.win ? '勝利！' : '落敗'}</b><p>${esc(l.opp)}</p>${l.loss ? `<p class="c-bad">生命 -${l.loss}（剩 ${run.hp}）</p>` : ''}${l.hit ? `<p class="c-good">${l.ko ? '對手淘汰！' : `對手生命 -${l.hit}`}</p>` : ''}${l.gold ? `<p class="c-gold">+${l.gold} 金${l.luck ? '（幸運 +2）' : ''}</p>` : ''}${l.capture && ITEMI[l.capture] ? `<p class="c-good">捕獲了${ITEMI[l.capture].n}！（放進暫存區）</p>` : ''}${l.spent ? `<p class="c-dim">金錢標花了 ${l.spent} 金</p>` : ''}<div class="g2"><button class="btn" data-act="log" data-k="${run.log.length ? run.log[run.log.length - 1].id : ''}">詳細</button><button class="btn pri" data-act="afterRes">繼續</button></div></div></div>`;
 }
 /* 0.1.101 覺醒／質變的戰鬥事件（sim 的 'cv'，x 是哪一種） */
-const CVTXT = { valk: '女武神之槍！', valh: '英靈殿', bird: '火鳥', molt: '蛻皮', pthrow: '投擲藥劑' },
-  CVCOL = { valk: '#ffe9a0', valh: '#ffe9a0', bird: '#ff9a5a', molt: '#9be27a', pthrow: '#9be27a' };
+const CVTXT = { valk: '女武神之槍！', valh: '英靈殿', bird: '火鳥', molt: '蛻皮', pthrow: '投擲藥劑', sdbash: '盾擊' },
+  CVCOL = { valk: '#ffe9a0', valh: '#ffe9a0', bird: '#ff9a5a', molt: '#9be27a', pthrow: '#9be27a', sdbash: '#cfe0ff' };
 function pickHTML(run) {
   const p = run.pend;
   const t = p.tier || 1;
@@ -2300,7 +2300,14 @@ const STN = {
     pin: '插矛',
     /* 0.1.51 電荷、麻痺 */
     chg: '電荷',
-    para: '麻痺'
+    para: '麻痺',
+    /* 0.1.106 騎士：盾勢、耐力球（自己身上的增益） */
+    sd: '盾勢',
+    endu: '耐力球',
+    /* 0.1.106 刺客：印記（被疊的那一方身上）、爆擊球、潛行 */
+    mk: '印記',
+    orb: '爆擊球',
+    stl: '潛行'
   },
   /* 0.1.37 陷阱的名字 */
   TRAPN = {
@@ -2345,7 +2352,12 @@ const STN = {
     ['rend', 'asc_valkyrie_c0', 1],
     ['pin', icN('ail_n_pin', 'sk_javelin'), 1],
     ['chg', 'sk_spark', 1],
-    ['para', 'asc_storm_b1', 1]
+    ['para', 'asc_storm_b1', 1],
+    ['sd', 'sk_shieldwall', 1],
+    ['endu', 'msk_harden', 1],
+    ['mk', 'sk_backstab', 1],
+    ['orb', 'asc_s_spark', 1],
+    ['stl', 'sk_smokebomb', 0]
   ];
 function bSts() {
   if (!B.st) return;
@@ -2359,6 +2371,8 @@ function bSts() {
     if (sp) {
       sp.classList.toggle('frz', B.st[s][4] > 0);
       sp.classList.toggle('psn', B.st[s][1] > 0 && !(B.st[s][4] > 0));
+      /* 0.1.106 刺客潛行：半透明 */
+      sp.classList.toggle('stl', B.st[s][23] > 0);
       sp.classList.toggle('brn', B.st[s][0] > 0 && !(B.st[s][4] > 0) && !(B.st[s][1] > 0));
     }
     el.innerHTML = STI.map(([k, ic, n], i) =>
@@ -2454,6 +2468,7 @@ function bLog(e, tg) {
   else if (e.k === 'whip') t = `${by(e.s, e.u)} 被鞭策出手`;
   else if (e.k === 'petGuard') t = `${by(e.s, e.u)} 護主反咬`;
   else if (e.k === 'fatigue') t = `${who(tg)} 疲勞 -${e.v}`;
+  else if (e.k === 'mkx') t = `${who(e.s)} 引爆 ${e.v} 層印記：必定暴擊`;
   else if (e.k === 'cleanse') t = `${who(e.s)} 淨化了 ${e.v} 種異常`;
   else if (e.k === 'sealAll') t = `${by(e.s, e.u)} 封鎖了${who(1 - e.s)}所有武器 ${e.v} 秒`;
   else if (e.k === 'seal')
@@ -2838,6 +2853,10 @@ function bTick() {
     } else if (e.k === 'pinOut') {
       bPop(tg, '拔矛・撕裂', '#ff3a5a', 1);
       bBurst(tg, '#ff3a5a', 8);
+    } else if (e.k === 'mkx') {
+      /* 0.1.106 刺客：消耗印記（必定暴擊） */
+      bPop(tg, `印記引爆 ×${e.v}`, '#ff5a7a', 1);
+      bBurst(tg, '#ff5a7a', 10);
     } else if (e.k === 'cv') {
       /* 0.1.101 覺醒／質變：自己身上的（女武神、蛻皮）跳在自己，打人的跳在對手 */
       const on = e.self ? e.s : tg;
@@ -3185,6 +3204,20 @@ const CX_STAT = () => [
     '被攻擊時反彈固定傷害給攻擊者，被護盾擋下也算；不吃他的護甲，但他有護盾時先被護盾擋。被閃避、招架時不反彈。盾的「格擋時反彈」是護盾吃到傷害時才反彈。'
   ],
   ['受到的攻擊傷害 +%', '缺點類效果：受到的攻擊傷害變多（持續傷害、固定傷害不變）。'],
+  [
+    '盾勢',
+    `騎士的職業特性：護盾每吃掉 ${SD_STEP} 點傷害（攻擊、持續傷害、固定傷害都算），盾勢 +1 層，最多 ${SD_CAP} 層；整場累積、不會消耗。每層所有武器傷害 +${SD_DMG}%，騎士的核心也照層數加強。`
+  ],
+  [
+    '印記',
+    `刺客的職業特性：命中時敵人 +1 層印記（最多 ${MK_CAP} 層，淨化清不掉）；疊滿時下一次攻擊消耗全部印記：必定暴擊、每層傷害 +${MK_DMG}%，並得到 1 顆爆擊球。`
+  ],
+  [
+    '爆擊球',
+    `刺客每次消耗印記得到 1 顆（整場累積，最多 ${ORB_CAP} 顆）：每顆暴擊率 +${ORB_CRIT}%、暴擊傷害 +${ORB_CM}%。刀陣會在出手時消耗它換背刺。`
+  ],
+  ['潛行', `刺客閃避成功時潛行 ${STL_T[0]} 秒：閃避 +${STL_DG[0]}%；角色變半透明。`],
+  ['耐力球', `騎士核心「聖光」：盾勢到 5、10、15 層時各得到 1 顆，每顆受到的攻擊傷害 -${ENDU_DR}%，最多 3 顆。`],
   ['連擊／連鎖', '連擊：有機率馬上再打一下；連鎖：每次攻擊多打幾下，多打的傷害打折。'],
   ['穿甲', `無視一部分護甲與護盾，最多 ${PIERCE_MAX}%。`],
   ['處決／背水', '處決：敵人生命低於 30% 時傷害提高；背水：自己生命低於 50% 時傷害（或攻速）提高。'],
@@ -3294,7 +3327,7 @@ const CX_SEC = {
           'cx_' + C.id,
           `${cxgi(C.ic)}${C.n}<small>${dsc(clsDesc(C.id))}</small>`,
           () =>
-            `<div class="cxl">${ITEMS.filter(i => i.cls === C.id && i.core === 1)
+            `<div class="cxl">${ITEMS.filter(i => i.cls === C.id && i.core === 1 && !i.vOff)
               .map(i =>
                 cxRow(
                   'cxc_' + i.id,
@@ -4107,6 +4140,7 @@ const LGX = {
   bird: ['火鳥', 'sk_phoenix'],
   valh: ['英靈殿', 'asc_s_flame'],
   pthrow: ['投擲藥劑', 'asc_s_potion'],
+  sdbash: ['盾擊', 'sk_shieldwall'],
   fatigue: ['疲勞', 'it_hourglass'],
   hit: ['其他攻擊', 'sk_spark']
 };
