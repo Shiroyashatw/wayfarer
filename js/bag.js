@@ -155,15 +155,20 @@ function tfOf(its, adjQ = adjacent) {
   }
   return out;
 }
+/* 融合、合成、改造用掉的那件從背包、暫存區、整理區拿掉（0.1.109 修正：之前漏了整理區，可以無限合成） */
+function useUp(run, s) {
+  run.bag.items = run.bag.items.filter(x => x !== s);
+  const i = run.bench.indexOf(s);
+  if (i >= 0) run.bench[i] = null;
+  if (run.bag.st) run.bag.st = run.bag.st.filter(x => x !== s);
+}
 /* 把輔助 s（背包或暫存區）融合進 q；0.1.100 巨人國的工具改用 modInto（c 是鑿子挖的那格） */
 function fuseInto(run, s, q, c) {
   if (ITEMI[s.id].mod) return modInto(run, s, q, c);
   if (ITEMI[s.id].fk) return cookInto(run, s, q);
   q.f = s.id;
   q.ft = s.t;
-  run.bag.items = run.bag.items.filter(x => x !== s);
-  const i = run.bench.indexOf(s);
-  if (i >= 0) run.bench[i] = null;
+  useUp(run, s);
   return q;
 }
 /* 0.1.103 料理：食物 s 拖到食物 q 上，q 變成合成出來的那道（大料理 2 格：原位放不下就找別的位置，再不行收回暫存區），s 消失 */
@@ -187,8 +192,7 @@ function cookInto(run, s, q) {
   delete q.sh;
   delete q.md;
   q.sm = 0;
-  run.bag.items = run.bag.items.filter(x => x !== s);
-  if (si >= 0) run.bench[si] = null;
+  useUp(run, s);
   if (sp) return Object.assign(q, { x: sp.x, y: sp.y, r: sp.r });
   run.bag.items = run.bag.items.filter(x => x !== q);
   run.bench[run.bench.indexOf(null)] = q;
@@ -235,9 +239,7 @@ function mdSet(run, q, md, sh, at) {
 }
 function modInto(run, s, q, c) {
   const M = ITEMI[s.id].mod;
-  run.bag.items = run.bag.items.filter(x => x !== s);
-  const i = run.bench.indexOf(s);
-  if (i >= 0) run.bench[i] = null;
+  useUp(run, s);
   if (M === 'shrink') return mdSet(run, q, 'shrink', 's1', c);
   if (M === 'grow') return mdSet(run, q, 'grow', growSh(shapeO(q).length));
   const k = 'k:' + (q.sh || ITEMI[q.id].sh) + ':' + chiselIdx(q, c);
