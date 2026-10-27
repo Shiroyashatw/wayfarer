@@ -1395,7 +1395,7 @@ function detailHTML(run) {
         .map(t => TAGN[t])
         .join('・') || (I.dmg ? '武器' : '道具');
   return `<div class="det" id="det"><div class="dh${fuCls(o)}"${fuSty(o)}><img src="${itemIcon(o.id)}" alt=""><div><b style="color:${I.fk ? 'var(--food)' : STARC[I.star]}">${T ? T.n + '・' : ''}${I.n}${tierTxt(o.t)}</b><small>${I.fk ? FKN[I.fk] : stars(I.star)}・${tags}・${shapeMini(o.id, o.r || 0, o.sm, o.sh)} ${shapeO(o).length} 格${I.core ? '・一個背包最多 1 個' : ''}</small></div>${oddsHTML(run, o.id)}<button class="iconbtn" data-act="desel" aria-label="關閉">✕</button></div>
-    <p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${modeUI(run).det ? modeUI(run).det(run, o) : ''}${sinLineHTML(run, o)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${mdLineHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
+    <p class="dls">${descLines(itemDesc(o.id, o.t))}</p>${I.fk && run.bag.items.some(q => q !== o && q.id === o.id) ? `<p class="c-warn">背包裡已經有一份${esc(I.n)}，這份不會再加</p>` : ''}${modeUI(run).det ? modeUI(run).det(run, o) : ''}${sinLineHTML(run, o)}${cuLineHTML(o)}${o.m ? mod5HTML(o.m) : ''}${o.m2 ? mod5HTML(o.m2) : ''}${aff ? `<p class="c-gold">升階詞綴：${aff.n}</p>` : ''}${abHTML(o)}${mdLineHTML(o)}${trigHTML(run, o, where)}${I.sacrifice ? `<p class="c-tf">✦ 已獻祭 ${o.sv || 0}／${VESSEL_N} 星</p>` : ''}${o.gw && CLSI[run.bag.cls] && CLSI[run.bag.cls].F && CLSI[run.bag.cls].F.petGrow ? `<p class="c-tf">✦ 成長 ${o.gw} 層：傷害 +${o.gw * CLSI[run.bag.cls].F.petGrow}%</p>` : ''}${o.ex ? `<p class="c-tf">✦ 煉成：${dsc(brewTxt(o.ex))}</p>` : ''}${o.hh ? `<p class="c-tf">✦ 已經累積生命 +${o.hh}</p>` : ''}${I.hatch ? `<p class="c-tf">✦ 再 ${SEAL_RC - (o.rc || 0)} 回合解開封印</p>` : ''}${o.z ? '<p class="c-dim">回扣送的：賣價 0 金</p>' : ''}${o.sc && ITEMI[o.sc] ? `<p class="c-tf">✦ 融入了${ITEMI[o.sc].n}：${dsc(itemDesc(o.sc))}</p>` : ''}${T ? `<p class="c-tf">✦ ${by.u ? '會跟' : '融合了'}${ITEMI[by.id].n}${tierTxt(by.t)}：${[T.add && `變成${T.add.map(x => TAGN[x]).join('、')}系`, modTxt(scaleMod(T.m, by.t))].filter(Boolean).join('、')}</p>` : ''}${Object.entries(
       tot
     )
       .filter(([, m]) => modTxt(m))
@@ -1906,6 +1906,7 @@ function dsc(t) {
   return dscHi(
     String(t || '')
       .replace(DL_RE, '$1\uE000$2\uE001')
+      .replace(DW_RE, '\uE002$&\uE003')
       .replace(KW_RE, w => kwImg(KW_IC.find(k => k[0] === w)[1], w))
       .replace(ST_RE, (w, pre) => (pre ? pre + kwImg(ST_IC.傷害, '傷害') : kwImg(ST_IC[w], w)))
   );
@@ -1913,6 +1914,8 @@ function dsc(t) {
 /* 0.1.111 說明的重點上色：數字金色（.dn）、行首條件（命中時：、常駐：⋯）和括號裡的補充說明淡色（.dl、.dp），
    括號裡的數字不上色；只處理標籤外的文字（圖示的 <img> 不動） */
 const DL_RE = /(^|；)([^：；，、（）\d]{1,12}：)/g,
+  /* 規則限制（只算一份、只能一次）用提醒色（.dw） */
+  DW_RE = /同一道只算一份|每件道具只能改造一次/g,
   DN_RE = /（|）|[+\-×]?\d+(?:\.\d+)?(?:～\d+(?:\.\d+)?)?%?/g;
 function dscHi(h) {
   let d = 0;
@@ -1937,7 +1940,8 @@ function dscHi(h) {
     )
     .join('')
     .replace(/\uE000/g, '<span class="dl">')
-    .replace(/\uE001/g, '</span>');
+    .replace(/\uE001|\uE003/g, '</span>')
+    .replace(/\uE002/g, '<span class="dw">');
 }
 /* 0.1.35 魔劍正宗吸收的數值 */
 function abHTML(o) {

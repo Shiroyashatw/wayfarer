@@ -59,7 +59,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 h3{font-size:var(--fs-btn);color:var(--dim);margin:var(--sp-5) 0 var(--sp-2);font-weight:700;letter-spacing:.04em}
 p{margin:var(--sp-2) 0;line-height:1.5;font-size:var(--fs-body)}
 .sub{color:var(--dim);font-size:var(--fs-sm)}
-.c-gold{color:var(--gold)}.c-good{color:var(--good)}.c-bad{color:var(--bad)}.c-dim{color:var(--dim)}
+.c-gold{color:var(--gold)}.c-good{color:var(--good)}.c-warn{color:var(--warn)}.c-bad{color:var(--bad)}.c-dim{color:var(--dim)}
 #app{max-width:480px;margin:0 auto;min-height:100%;padding:calc(var(--sp-3) + var(--sat)) var(--sp-5) calc(var(--sp-5) + var(--sab))}
 #toast{position:fixed;left:50%;top:calc(70px + var(--sat));transform:translate(-50%,-10px);opacity:0;z-index:60;background:#201b17ee;color:#fff;border-radius:999px;padding:8px 16px;font-size:var(--fs-btn);max-width:88vw;text-align:center;pointer-events:none;transition:opacity .3s;box-shadow:var(--shadow)}
 /* ---------- 元件 ---------- */
@@ -944,7 +944,7 @@ body:has(.ovl,#modal:not([hidden])) #toast{top:auto;bottom:calc(24px + var(--sab
 /* 0.1.93 道具說明一個效果一行 */
 .dls>span{display:block}
 /* 0.1.111 說明的重點：數字金色、條件與括號補充淡色（dsc） */
-.dn{color:var(--gold);font-weight:700}.dl,.dp{color:var(--dim)}
+.dn{color:var(--gold);font-weight:700}.dl,.dp{color:var(--dim)}.dw{color:var(--warn)}
 .dls>span+span{margin-top:2px}
 /* 0.1.89 結束畫面、設定不要拉滿寬螢幕 */
 .home.endp{max-width:520px;margin:0 auto;width:100%}
