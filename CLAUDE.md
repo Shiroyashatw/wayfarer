@@ -89,7 +89,7 @@ python3 tools/build_artifact.py   # 產生 dist/wayfarer_artifact.html
 - 快照對戰：`public.runs`（`ver` 存的是快照版本 `GVER`，不是遊戲版本；回合表或道具改到舊快照不能用時才換 `GVER`）、`public.snaps`（大家可讀、只能寫自己的）、RPC `pick_rivals`；SQL 在 `supabase/migrations/20261022000000_serling_ghosts.sql`。資料表不存在時遊戲自動改用機器人對手（`GHOST.off`）。舊的開服種子（0.1.101 起不再上傳；`seedGhosts()` 留著但不要再跑）： 648 局機器人對局（0.1.92 標準賽制加回後；全部是最高牌階 2100 的機器人，54 種賽制 × 主題各 2 場、13 個職業輪流；分數相近的快照不夠時配對會用 2100 再找一次）上傳成 `runs.seed = true`；配對只配同一個賽制＋主題（0.1.69，`runs.mode`／`theme`、RPC `pick_rivals_mt`，SQL 在 `supabase/migrations/20261025000000_serling_mode_theme.sql`，要在 SQL Editor 跑過），真人優先，真人夠多後可用 `delete from public.runs where seed;` 刪掉。
 - 排行榜（0.1.29）：`runs.cls`、`runs.rating_end`、RPC `leaderboard`／`class_stats`，SQL 在 `supabase/migrations/20261023000000_serling_leaderboard.sql`（要在 SQL Editor 跑過才有資料；沒跑時首頁職業勝率改用自己的對局）。
 - 核心統計（0.1.45）：`runs.core1`／`core2`／`core_log`（首領核心三選一紀錄）、RPC `core_stats`／`core_combo_stats`，SQL 在 `supabase/migrations/20261024000000_serling_core_stats.sql`（要在 SQL Editor 跑過才會存）；瀏覽器主控台 `await coreStatsCloud()` 看真人的選擇率與組合（`coreStatsCloud(true)` 連種子一起算）。
-- 詳細統計（0.1.77）：RPC `class_stats_mt`、`core_stats_mt`（照賽制、道具池篩選），SQL 在 `supabase/migrations/20261026000000_serling_mode_stats.sql`（已套用）。
+- 詳細統計（0.1.77）：RPC `class_stats_mt`、`core_stats_mt`（照賽制、道具池篩選），SQL 在 `supabase/migrations/20261026000000_serling_mode_stats.sql`（已套用）。 0.1.115 多 `p_mine`（只看自己的帳號），SQL 在 `supabase/migrations/20261028000000_serling_stats_mine.sql`。
 - 前端只放 anon key。**絕對不要使用或要求 service_role key。**
 - 合併規則：本機與雲端各有 `savedAt`，啟動時取較新的那份。
 

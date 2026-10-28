@@ -189,22 +189,29 @@ async function ghostBoard(force = false) {
 /* STAT[篩選鍵] = { c: 職業列, k: 核心列, seed: 有沒有連種子一起算, at }；真人不到 STAT_MIN 局就連種子（機器人對局）一起算 */
 const STAT = {},
   STAT_MIN = 40;
-async function ghostStats(mode, theme) {
-  const key = (mode || '*') + '|' + (theme || '*'),
+/* 0.1.115 mine：只看這個帳號（全部歷史、不連種子） */
+async function ghostStats(mode, theme, mine = false) {
+  const key = (mode || '*') + '|' + (theme || '*') + (mine ? '|me' : ''),
     o = STAT[key];
   if (!ghostOK()) return null;
   if (o && (o.busy || Date.now() - o.at < 60000)) return o;
   const x = (STAT[key] = { ...(o || {}), busy: true });
   try {
-    const ask = seed =>
-      Promise.all([
-        CLOUD.sb.rpc('class_stats_mt', { p_seed: seed, p_days: 30, p_mode: mode || null, p_theme: theme || null }),
-        CLOUD.sb.rpc('core_stats_mt', { p_seed: seed, p_days: 30, p_mode: mode || null, p_theme: theme || null })
-      ]);
+    const q = {
+        p_days: mine ? 36500 : 30,
+        p_mode: mode || null,
+        p_theme: theme || null,
+        ...(mine ? { p_mine: true } : {})
+      },
+      ask = seed =>
+        Promise.all([
+          CLOUD.sb.rpc('class_stats_mt', { ...q, p_seed: seed }),
+          CLOUD.sb.rpc('core_stats_mt', { ...q, p_seed: seed })
+        ]);
     let [a, b] = await ask(false),
       seed = false;
     if (a.error || b.error) throw a.error || b.error;
-    if ((a.data || []).reduce((n, r) => n + r.games, 0) < STAT_MIN) {
+    if (!mine && (a.data || []).reduce((n, r) => n + r.games, 0) < STAT_MIN) {
       const [a2, b2] = await ask(true);
       if (!a2.error && !b2.error) (a = a2), (b = b2), (seed = true);
     }

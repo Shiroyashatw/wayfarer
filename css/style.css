@@ -563,7 +563,7 @@ img.kw{display:inline-block;width:1.15em;height:1.15em;vertical-align:-0.22em;ma
 .pkb{display:flex;align-items:center;justify-content:center;gap:var(--sp-1);padding:0 var(--sp-1)}
 .pkb img{width:24px;height:24px;image-rendering:pixelated;flex:none}
 .pkb[aria-pressed="false"] img{opacity:.45;filter:grayscale(1)}
-.mstf{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-1);margin:0 0 var(--sp-2)}
+.mstf{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-1);margin:0 0 var(--sp-2)}
 .page select.inp{min-height:44px;margin-bottom:var(--sp-2)}
 .cxtab button{min-height:44px;border-radius:var(--r-md);background:var(--card);border:1.5px solid var(--line);color:var(--dim);font-size:var(--fs-sm)}
 .cxtab button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-weight:600}

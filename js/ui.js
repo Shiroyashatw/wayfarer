@@ -520,17 +520,24 @@ function boardHTML() {
 }
 /* 0.1.77 統計頁：照賽制、道具池（可以兩個都選）篩選，看各職業的勝率、各職業核心的選擇率（雲端的對局；真人少時連電腦對局） */
 function mstatHTML() {
-  const f = (V.mst = V.mst || { m: '', t: '', tab: 'c', cls: CLASSES[0].id }),
-    key = (f.m || '*') + '|' + (f.t || '*'),
+  const f = (V.mst = V.mst || { m: '', t: '', tab: 'c', cls: CLASSES[0].id, me: '' }),
+    key = (f.m || '*') + '|' + (f.t || '*') + (f.me ? '|me' : ''),
     D = STAT[key];
   if (ghostOK() && (!D || (!D.busy && Date.now() - D.at > 60000)))
-    ghostStats(f.m, f.t).then(() => V.scr === 'mstat' && render());
+    ghostStats(f.m, f.t, !!f.me).then(() => V.scr === 'mstat' && render());
   const opt = (k, list, v) =>
       `<select class="inp" data-chg="mst" data-k="${k}">${list.map(([c, n]) => `<option value="${c}"${c === v ? ' selected' : ''}>${n}</option>`).join('')}</select>`,
     filt = `<div class="mstf">${opt('m', [['', '全部賽制'], ...MODES.filter(m => m.w > 0).map(m => [m.k, m.n])], f.m)}${opt(
       't',
       [['', '全部道具池'], ...POOLTH.map(x => [x.k, x.n])],
       f.t
+    )}${opt(
+      'me',
+      [
+        ['', '全部玩家'],
+        ['1', '只看我']
+      ],
+      f.me || ''
     )}</div>`,
     tabs = `<div class="lbt"><button class="btn sm" data-act="mstTab" data-k="c" aria-pressed="${f.tab === 'c'}">職業勝率</button><button class="btn sm" data-act="mstTab" data-k="k" aria-pressed="${f.tab === 'k'}">核心選擇率</button></div>`;
   let body;
@@ -546,7 +553,7 @@ function mstatHTML() {
               `<div class="lbr"><b class="no p${i + 1}">${i + 1}</b><img src="${artIconURL(CLSI[x.cls].ic) || iconURL('star')}" alt=""><span><b>${CLSI[x.cls].n}</b><small>${x.games} 場・平均第 ${(+x.avg_place).toFixed(2)} 名</small></span><b class="v">${Math.round((x.wins / x.games) * 100)}%<small>第 1 名</small></b></div>`
           )
           .join('')}</div>`
-      : '<p class="empty">這個組合還沒有對局</p>';
+      : `<p class="empty">${f.me ? '你還沒有這個組合的對局' : '這個組合還沒有對局'}</p>`;
   } else {
     const rows = (D.k || [])
       .filter(x => x.cls === f.cls && ITEMI[x.core])
@@ -567,7 +574,7 @@ function mstatHTML() {
     }`;
   }
   return `<div class="page"><div class="ptop"><button class="iconbtn" data-act="home" aria-label="返回">‹</button><b>詳細統計</b></div>
-    ${filt}${tabs}${body}<p class="sub">最近 30 天打完的對局${D && D.seed ? '・真人還不多，含電腦對局' : ''}；局數少的時候差距大多是運氣</p></div>`;
+    ${filt}${tabs}${body}<p class="sub">${f.me ? '這個帳號打完的所有對局' : `最近 30 天打完的對局${D && D.seed ? '・真人還不多，含電腦對局' : ''}`}；局數少的時候差距大多是運氣</p></div>`;
 }
 async function startRun() {
   audioOn();
