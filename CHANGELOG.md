@@ -1,6 +1,6 @@
 # 更新紀錄
 
-## v0.1.115（開發中）
+## v0.1.115
 - **詳細統計「只看我」**：篩選多一個「全部玩家／只看我」，只看我＝這個帳號打完的所有對局（不限 30 天、不連電腦對局；`ghostStats(mode, theme, mine)`）。資料庫的 `class_stats_mt`、`core_stats_mt` 多一個 `p_mine`（`supabase/migrations/20261028000000_serling_stats_mine.sql`，舊網頁不傳照樣能用）
 
 ## v0.1.114
