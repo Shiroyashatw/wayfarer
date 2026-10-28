@@ -495,10 +495,12 @@ const RELICS = [
   { k: 'sand', n: '沙之沙漏', ic: 'ail_slow', d: '開戰 8 秒後，所有武器攻速 +35%' }
 ];
 const RELICI = Object.fromEntries(RELICS.map(x => [x.k, x]));
-/* 0.1.62 道具池的主題（開場內圈轉盤，機率一樣；0.1.69 五個）；MODE_TH_BAN：賽制 × 主題衝突的不會一起抽到 */
-const POOLTH = [
+/* 0.1.62 道具池的主題（開場內圈轉盤，機率一樣；0.1.69 五個）；MODE_TH_BAN：賽制 × 主題衝突的不會一起抽到
+   0.1.116 off：下架（轉盤、設定、圖鑑都沒有；POOLTHI 留著給舊紀錄顯示名字） */
+const POOLTH_ALL = [
   {
     k: 'g',
+    off: 1,
     n: '巨人國',
     s: '把道具變大變小；縮小的塞進凹口有加成',
     ic: 'sk_bonecrush',
@@ -544,14 +546,15 @@ const POOLTH = [
     ]
   }
 ];
-const POOLTHI = Object.fromEntries(POOLTH.map(x => [x.k, x]));
-const MODE_TH_BAN = { shape: ['g'] };
+const POOLTH = POOLTH_ALL.filter(x => !x.off);
+const POOLTHI = Object.fromEntries(POOLTH_ALL.map(x => [x.k, x]));
+const MODE_TH_BAN = {};
 /* 0.1.92 玩家等級：每場照名次給經驗，升級解鎖賽制、道具池（解鎖後先關著，玩家到設定自己打開）。
-   新玩家（和 0.1.92 前的存檔）只有標準＋巨人國。
+   新玩家（和 0.1.92 前的存檔）只有標準＋共生森林（0.1.116 前是巨人國）。
    0.1.94 好記的規則：每 5 級開一個賽制、每 10 級開一個道具池（Lv10～Lv40）；0.1.96 印記賽制拿掉，9 個賽制 Lv5～Lv45 */
 const XP_PLACE = [0, 100, 70, 50, 40, 35, 30];
 const lvNeed = lv => 40 + lv; // 從 lv 升到 lv + 1 要的經驗
-const DEF_PICK = { m: ['std'], t: ['g'] };
+const DEF_PICK = { m: ['std'], t: ['f'] };
 /* 0.1.96 先不鎖：賽制、道具池全部一開始就能選（UNLOCK 空的），等級照樣升 */
 const UNLOCK = [];
 /* 經驗 → { lv, cur（這一級已經有的）, need（這一級要的） } */
@@ -715,4 +718,4 @@ const LEGACY_RC = 2;
 /* 0.1.103 s32：料理（食物在快照裡）、基本池 42 件退出商店，舊快照的對手會帶新玩家買不到的道具 */
 /* 0.1.106 s33：騎士、刺客重製（同一個核心編號換了效果、職業特性換掉） */
 const GVER = 's33';
-const VER = '0.1.115';
+const VER = '0.1.116';

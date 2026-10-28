@@ -707,12 +707,12 @@ function nextRival(run) {
   return (al.find(([, i]) => i >= run.rp % run.rivals.length) || al[0])[1];
 }
 /* ================= 0.1.92 教學關 =================
-   標準＋巨人國、沒有對手，打 1-1～1-3 三場野怪：選職業 → 把送的道具拖進背包 → 買一件一樣的 → 開戰 →
+   標準＋預設道具池（DEF_PICK）、沒有對手，打 1-1～1-3 三場野怪：選職業 → 把送的道具拖進背包 → 買一件一樣的 → 開戰 →
    1-2 再買一件（3 件一樣合成 Ⅱ 階）→ 1-3 升級背包 → 到 1-4 就完成。每一步把要按的地方框起來（coachStep／coachFx），
    商店第一格固定放職業送的那件（tutPrep）。不建快照、不算分、不給經驗；隨時可以跳過 */
 function tutStart() {
   const keep = S.pick;
-  S.pick = { m: ['std'], t: ['g'] };
+  S.pick = { m: ['std'], t: DEF_PICK.t };
   const run = newRun([]);
   S.pick = keep;
   Object.assign(run, { tutor: 1, ver: VER, mseen: 1, mstep: 1, phase: 'cls' });

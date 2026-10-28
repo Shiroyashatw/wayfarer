@@ -61,6 +61,8 @@ function migrate(s) {
   /* 0.1.96 印記賽制換成七宗罪：設定裡選了印記的改成七宗罪（等級解鎖照新的表） */
   if (o.pick && o.pick.m)
     o.pick.m = [...new Set(o.pick.m.map(k => (k === 'sigil' ? 'sins' : k)))].filter(k => MODEI[k]);
+  /* 0.1.116 巨人國下架：從選的道具池拿掉，沒剩就回到預設（pickNow 看到空的會用 DEF_PICK） */
+  if (o.pick && o.pick.t) o.pick.t = o.pick.t.filter(k => POOLTH.some(x => x.k === k));
   /* 0.1.17 頭像換成新的一批：舊的（鍾馗、門神…）不在清單裡就換成第一個 */
   if (!AVATARS.some(x => x[0] === o.av)) o.av = AVATARS[0][0];
   return o;
