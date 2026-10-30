@@ -36,7 +36,8 @@ function mkFoe(def, tier, L, heat, r, aff = []) {
 const MAFFK = Object.keys(MAFF);
 function foesFor(t, L, heat, r, d) {
   if (t === 'fight') {
-    const n = r() < 0.35 ? 1 : r() < 0.7 ? 2 : 3;
+    /* 第一層最多 2 隻（新手的第一場不會是打不贏的 3 隻） */
+    const n = r() < 0.35 ? 1 : r() < 0.7 || L < 2 ? 2 : 3;
     return Array.from({ length: n }, () => mkFoe(pick(MOBS, r), 'mob', L, heat, r)).map(f => ({
       ...f,
       mhp: Math.round(f.mhp * (n === 1 ? 1.3 : n === 3 ? 0.75 : 1))

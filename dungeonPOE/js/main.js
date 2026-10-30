@@ -31,12 +31,14 @@ function migrate(s) {
   return o;
 }
 function start() {
-  document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   S = migrate(load());
+  applyTheme();
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => !S.theme && (applyTheme(), render()));
   if (S.run) V.scr = 'run';
   cloudInit().then(remote => {
     if (remote && remote.v && (remote.savedAt || 0) > (S.savedAt || 0)) {
       S = migrate(remote);
+      applyTheme();
       V.scr = S.run ? 'run' : 'town';
       save();
       render();

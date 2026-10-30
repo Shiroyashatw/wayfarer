@@ -19,6 +19,8 @@ function newGame() {
     shop: null,
     st: { runs: 0, esc: 0, dead: 0, best: 0 },
     sfx: true,
+    theme: null,
+    tips: {},
     tut: 0,
     savedAt: 0
   };

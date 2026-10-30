@@ -101,7 +101,9 @@ function closeDlg() {
       m.hidden = true;
       m.innerHTML = '';
     }
+    coachSoon();
   };
+  coachSoon();
   if (a) a.onfinish = done;
   else done();
 }
@@ -176,15 +178,27 @@ function editorHTML() {
   const c = ctx(),
     P = compile(c.bag, S.run ? S.run.hero : heroOf(S, S.cls)),
     dps = P.weapons.reduce((s, w) => s + (((w.dmg[0] + w.dmg[1]) / 2 + w.flat) * w.mul) / w.cd, 0);
-  return `<div class="bagw"><div class="lbl"><span>${esc(BAGI[c.bag.t].n)}</span><span>生命 <b>${P.mhp}</b>・每秒 <b>${dps.toFixed(1)}</b>・護甲 <b>${P.arm}</b></span></div>${gridHTML(c.bag, 'bag')}</div>
-  <div class="row" style="align-items:flex-start;margin-top:var(--sp-3);gap:var(--sp-3)">
+  /* 照《塞令老師》的暫存區：撿到的（地上）／倉庫緊貼在背包下面、一排 6 格，黑盒放最後 */
+  return `<div class="bagw bagtop"><div class="lbl"><span>${esc(BAGI[c.bag.t].n)}</span><span>生命 <b>${P.mhp}</b>・每秒 <b>${dps.toFixed(1)}</b>・護甲 <b>${P.arm}</b></span></div>${gridHTML(c.bag, 'bag')}</div>
+  <div class="bagw" style="margin-top:var(--sp-2)"><div class="lbl"><span>${c.tn}${c.town ? '' : '（走開就不見）'}</span><span>${c.tray.length} 件</span></div>${trayHTML(c.tray, c.tn)}</div>
+  <div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3)">
     <div class="bagw" style="flex:none"><div class="lbl"><span>黑盒</span></div>${gridHTML(c.box, 'box')}</div>
-    <div class="bagw" style="flex:1;min-width:0"><div class="lbl"><span>${c.tn}</span><span>${c.tray.length}</span></div>${trayHTML(c.tray, c.tn)}</div>
-  </div>
-  <p class="sub">拖曳搬動，點一下看說明。黑盒裡的東西不參與戰鬥，死了也會留下。</p>`;
+    <p class="sub" style="margin:var(--sp-4) 0 0">拖曳搬動，點一下看說明、旋轉。黑盒裡的東西不參與戰鬥，死了也會留下。</p>
+  </div>`;
 }
 /* ---------- 拖曳（跟手、抓哪裡就跟哪裡，放開從現在的位置彈到結果） ---------- */
-let DR = null;
+let DR = null,
+  eatClick = false;
+document.addEventListener(
+  'click',
+  e => {
+    if (!eatClick) return;
+    eatClick = false;
+    e.stopPropagation();
+    e.preventDefault();
+  },
+  true
+);
 document.addEventListener('pointerdown', e => {
   const el = e.target.closest('.part,.tray .slot-g');
   if (!el || e.button > 0 || el.closest('.fgrid')) return;
@@ -217,6 +231,7 @@ document.addEventListener('pointermove', e => {
     document.body.appendChild(DR.gh);
     DR.gh.firstChild.style.filter = 'drop-shadow(0 8px 16px #0006)';
     DR.host.style.opacity = '.25';
+    document.querySelector('.coach')?.remove();
     try {
       DR.el.setPointerCapture(e.pointerId);
     } catch (er) {}
@@ -266,7 +281,13 @@ document.addEventListener('pointerup', e => {
   if (!DR || e.pointerId !== DR.id) return;
   const d = DR;
   DR = null;
-  if (!d.on) return itemDlg(d.u);
+  if (!d.on) {
+    /* 放開就打開說明；瀏覽器接著補送的 click 會落在新卡片外的暗處把它關掉，吃掉那一下 */
+    eatClick = true;
+    setTimeout(() => (eatClick = false), 500);
+    return itemDlg(d.u);
+  }
+  coachSoon();
   const t = target(e.clientX, e.clientY, d),
     c = ctx();
   let ok = false;
@@ -365,8 +386,16 @@ function miniHTML(m) {
     .map(ch => `<i${ch === 'x' ? '' : ' class="o"'}></i>`)
     .join('')}</span>`;
 }
+/* 主題：沒選過就跟系統；右上角一按就切換並記住 */
+const curTheme = () => S.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+function applyTheme() {
+  const t = curTheme();
+  document.documentElement.dataset.theme = t;
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.content = t === 'dark' ? '#1d1b21' : '#f2eee7';
+}
 function topHTML(t) {
-  return `<div class="top"><span class="ttl">${t}</span><span class="gold">${GOLDI()}${S.gold}</span><button class="iconbtn" data-act="sfx" aria-label="音效">${S.sfx ? '🔊' : '🔇'}</button></div>`;
+  return `<div class="top"><span class="ttl">${t}</span><span class="gold">${GOLDI()}${S.gold}</span><button class="iconbtn" data-act="theme" aria-label="切換亮色／深色">${curTheme() === 'dark' ? '🌙' : '☀️'}</button><button class="iconbtn" data-act="sfx" aria-label="音效">${S.sfx ? '🔊' : '🔇'}</button></div>`;
 }
 function prepHTML() {
   const c = S.cls,
@@ -874,6 +903,97 @@ function render() {
   if (V.scr === 'run' && !S.run) V.scr = 'town';
   app.innerHTML =
     V.scr === 'run' ? runHTML() : V.scr === 'fight' ? fightHTML() : V.scr === 'res' ? resHTML() : townHTML();
+  coachSoon();
+}
+/* ================= 新手教學（框起要按的地方，其他變暗但不擋點擊；做了那個動作就換下一步） ================= */
+/* s：要框的東西（null＝現在不適用）；ok：要按「知道了」的說明（其他的做了動作就算完成） */
+const TIPS = [
+  {
+    k: 'go',
+    s: () => V.scr === 'town' && V.tab === 'prep' && !V.dlg && '[data-act="go"]',
+    t: '背包裡已經有桃木劍和皮甲。先下地城看看！'
+  },
+  { k: 'card', s: r => r && !V.dlg && !r.mp && r.hand.length && '.hand', t: '點手牌拿移動點：大數字就是能走幾步' },
+  { k: 'move', s: r => r && !V.dlg && '.node.go', t: '點亮起來的格子走過去。「?」要走到旁邊才知道是什麼' },
+  {
+    k: 'enc',
+    s: r => r && V.dlg && r.pend && r.pend.k === 'fight' && '.odds',
+    t: '開打前先看勝率。打不贏可以跑：退回上一格、熱度 +5'
+  },
+  {
+    k: 'loot',
+    s: r => r && V.dlg && r.pend && r.pend.k === 'loot' && '[data-act="bagFromLoot"]',
+    t: '東西掉在地上，要放進背包才帶得走'
+  },
+  {
+    k: 'bag',
+    s: r => r && V.dlg && V.dlg.bag && '#modal .grid[data-g="bag"]',
+    t: '把地上的東西拖進背包。黑盒不參與戰鬥，但死了裡面的東西會留下',
+    ok: 1
+  },
+  {
+    k: 'end',
+    s: r => r && !V.dlg && !r.hand.length && '[data-act="end"]',
+    t: '手牌用完就結束回合：再抽 5 張，熱度 +1'
+  },
+  {
+    k: 'heat',
+    s: r => r && !V.dlg && r.turn >= 3 && '.heat',
+    t: '熱度一直漲，滿了墮落十二生肖會來追殺你。帶著東西走到 🚪 撤離',
+    ok: 1
+  },
+  {
+    k: 'exit',
+    s: r => r && V.dlg && r.pend && r.pend.k === 'exit' && '[data-act="extract"]',
+    t: '撤離就把背包帶回城鎮；死在地城只剩黑盒',
+    ok: 1
+  },
+  {
+    k: 'tree',
+    s: () =>
+      V.scr === 'town' && !V.dlg && V.tab !== 'tree' && tPoints(S, S.cls) > 0 && '[data-act="tab"][data-t="tree"]',
+    t: '升級拿到天賦點：去天賦解鎖新的核心'
+  }
+];
+function tip(k) {
+  if (!S.tips[k]) {
+    S.tips[k] = 1;
+    save();
+    coachSoon();
+  }
+}
+let coachT;
+const coachSoon = () => {
+  cancelAnimationFrame(coachT);
+  coachT = requestAnimationFrame(coach);
+};
+function coach() {
+  const old = document.querySelector('.coach'),
+    run = V.scr === 'run' ? S.run : null,
+    c = !S.tips.skip && !DR && V.scr !== 'fight' && V.scr !== 'res' ? TIPS.find(x => !S.tips[x.k] && x.s(run)) : null,
+    el = c && document.querySelector(c.s(run));
+  if (!el) return old && old.remove();
+  const r = el.getBoundingClientRect(),
+    /* 說明卡開著時泡泡放最上面，不蓋到卡片裡的按鈕 */
+    up = !V.dlg && r.top > innerHeight / 2,
+    same = old && old.dataset.k === c.k,
+    w = same ? old : document.createElement('div');
+  w.className = 'coach';
+  w.dataset.k = c.k;
+  w.innerHTML = `<i class="cspot" style="left:${r.left - 4}px;top:${r.top - 4}px;width:${r.width + 8}px;height:${r.height + 8}px"></i><div class="cbub" style="${V.dlg ? 'top:calc(12px + var(--sat))' : up ? `bottom:${innerHeight - r.top + 14}px` : `top:${r.bottom + 14}px`}"><p>${c.t}</p>${c.ok ? `<button class="btn sm" data-act="tipOk" data-k="${c.k}">知道了</button>` : '<button class="btn sm" data-act="tipSkip">跳過教學</button>'}</div>`;
+  if (!same) {
+    old && old.remove();
+    document.body.appendChild(w);
+    /* 從框住的東西長出來 */
+    spr(
+      w.lastChild,
+      [
+        { opacity: 0, transform: `translateX(-50%) translateY(${up ? 8 : -8}px)` },
+        { opacity: 1, transform: 'translateX(-50%)' }
+      ],
+      300
+    );
+  }
 }
 let lastMove = null;
 const A = {
@@ -888,6 +1008,14 @@ const A = {
     closeDlg();
     if (S.run) render();
   },
+  theme: () => {
+    S.theme = curTheme() === 'dark' ? 'light' : 'dark';
+    applyTheme();
+    save();
+    render();
+  },
+  tipOk: el => tip(el.dataset.k),
+  tipSkip: () => tip('skip'),
   sfx: () => {
     S.sfx = !S.sfx;
     save();
@@ -895,6 +1023,7 @@ const A = {
   },
   tab: el => {
     V.tab = el.dataset.t;
+    if (V.tab === 'tree') tip('tree');
     render();
     scrollTo(0, 0);
   },
@@ -1020,6 +1149,7 @@ const A = {
     }
   },
   go: () => {
+    tip('go');
     const c = ctx();
     if (!c.bag.items.some(o => baseOf(o).k === 'w')) return toast('背包裡沒有武器：從倉庫拖一把進去');
     depart(S, (Math.random() * 2 ** 31) | 0);
@@ -1029,6 +1159,7 @@ const A = {
     render();
   },
   card: el => {
+    tip('card');
     const run = S.run,
       i = +el.dataset.i,
       r = el.getBoundingClientRect(),
@@ -1053,13 +1184,14 @@ const A = {
         ],
         380
       );
-      if (a) a.onfinish = () => fly.remove();
-      else fly.remove();
+      /* 動畫被打斷或分頁在背景時 onfinish 不一定會來：時間到一定拿掉 */
+      setTimeout(() => fly.remove(), a ? 600 : 0);
       spr(mp, [{ transform: 'scale(1.25)' }, { transform: 'none' }], 400);
     }
     if (run.pend) pendDlg();
   },
   move: el => {
+    tip('move');
     const run = S.run,
       to = +el.dataset.n,
       from = run.map.N[run.pos];
@@ -1106,6 +1238,7 @@ const A = {
     );
   },
   end: () => {
+    tip('end');
     const run = S.run,
       before = run.zs.length;
     endTurn(run);
@@ -1120,18 +1253,21 @@ const A = {
   },
   bag: () => bagDlg(),
   bagFromLoot: () => {
+    tip('loot');
     S.run.pend = null;
     save();
     bagDlg();
   },
   lootInfo: el => itemDlg(el.dataset.u),
   okPend: () => {
+    if (S.run.pend) tip({ loot: 'loot', exit: 'exit' }[S.run.pend.k] || 'x');
     S.run.pend = null;
     save();
     closeDlg();
     render();
   },
   fight: () => {
+    tip('enc');
     const run = S.run,
       foes = run.pend.foes,
       res = fightNow(run);
@@ -1139,6 +1275,7 @@ const A = {
     startFightView(res, foes);
   },
   flee: () => {
+    tip('enc');
     if (flee(S.run)) {
       snd('nope');
       save();
@@ -1177,6 +1314,7 @@ const A = {
     }
   },
   extract: () => {
+    tip('exit');
     const res = finishRun(S, true);
     snd('win');
     save();
@@ -1229,3 +1367,4 @@ addEventListener('resize', () => {
   clearTimeout(rpT);
   rpT = setTimeout(() => V.scr !== 'fight' && render(), 150);
 });
+addEventListener('scroll', coachSoon, { passive: true });
