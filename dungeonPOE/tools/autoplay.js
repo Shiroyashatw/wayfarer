@@ -36,6 +36,11 @@ function pack(S) {
 }
 function town(S) {
   G.ensureStarter(S);
+  /* 寶物全部賣掉（寶物只能拿來賣） */
+  for (const o of G.allItems(S).filter(o => G.baseOf(o).k === 't')) {
+    for (const g of [...S.bags, S.box]) if (g.items.includes(o)) g.items.splice(g.items.indexOf(o), 1), S.wh.push(o);
+    G.sellItem(S, o.u);
+  }
   /* 背包：買得起比較大的就買（留 20 金） */
   const cur = S.bags.find(b => b.u === S.sel),
     cn = G.cellCount(cur);
@@ -55,6 +60,15 @@ function town(S) {
     const i = S.shop.findIndex(s => !s.sold && s.o.id === 'potion');
     if (i >= 0) G.buyShop(S, i);
   }
+  /* 商店的白裝：比背包裡最差的那件好就買（留 30 金） */
+  const mine = G.allItems(S)
+      .filter(o => 'was'.includes(G.baseOf(o).k))
+      .map(score),
+    worst = mine.length ? Math.min(...mine) : 0;
+  S.shop.forEach((s, i) => {
+    if (!s.sold && 'was'.includes(G.baseOf(s.o).k) && score(s.o) > worst && S.gold - G.itemPrice(s.o) >= 30)
+      G.buyShop(S, i);
+  });
   for (const n of G.TNODES) G.takeNode(S, S.cls, n.id);
   const cs = G.coresOf(S, S.cls);
   S.eq[S.cls] = cs.slice(-2);
@@ -138,8 +152,15 @@ function dungeon(S) {
         continue;
       }
       if (p.k === 'stairs') {
-        if (leave) run.pend = null;
-        else G.goDown(run);
+        /* 第 3 層沒有撤離點（打倒王才開）：熱度還低、而且打得過王才下去 */
+        const bossOK = () => {
+          const boss = G.foesFor('boss', G.lvOf(run.d, 3), G.heatLv(run), G.rng(run.turn), run.d).foes;
+          return G.predict(G.P_of(run), G.P_of(run).mhp, boss, 7).win >= (GREED ? 0.4 : 0.6);
+        };
+        if (leave || (run.f === 2 && (run.heat >= G.HEAT.lv[1] + 10 || !bossOK()))) {
+          leave = true;
+          run.pend = null;
+        } else G.goDown(run);
         continue;
       }
       if (p.k === 'exit') {
@@ -160,7 +181,12 @@ function dungeon(S) {
     }
     /* 要不要撤 */
     const hpR = run.hp / P.mhp;
-    leave = run.boss || (run.hot && run.f < 3) || run.heat >= (GREED ? 75 : 60) || (run.hearts <= 1 && hpR < 0.5);
+    leave =
+      leave ||
+      run.boss ||
+      (run.hot && run.f < 3) ||
+      run.heat >= (GREED ? 60 : G.HEAT.lv[1]) ||
+      (run.hearts <= 1 && hpR < 0.5);
     /* 選目標 */
     let tgt;
     if (leave) tgt = nearest(run, n => n.t === 'exit');
@@ -173,7 +199,7 @@ function dungeon(S) {
             (n.t === 'rest' && hpR < 0.7) ||
             (n.t === 'fight' && n.rv && G.predict(P, run.hp, n.foes, n.id).win >= 0.8))
       );
-    if (!tgt) tgt = nearest(run, n => n.t === (run.f === 3 ? 'boss' : 'stairs'));
+    if (!tgt && !(leave && run.f < 3)) tgt = nearest(run, n => n.t === (run.f === 3 ? 'boss' : 'stairs'));
     if (!tgt) tgt = nearest(run, n => n.t === 'exit');
     if (!tgt || !G.moveTo(run, tgt.p[1])) break;
   }

@@ -1,6 +1,6 @@
 /* dungeonPOE · 遊戲表格：道具、詞綴、背包、手牌、怪物、生肖、職業與核心、天賦（設計見 docs/企劃書.md） */
 'use strict';
-const VER = '0.1.6',
+const VER = '0.1.7',
   KEY = 'dungeonpoe_v1',
   SLOT = new URLSearchParams(location.search).get('p') || '';
 /* ================= 道具（原始 16 把武器＋9 件防具，《塞令老師》0.4.0） ================= */
@@ -239,14 +239,24 @@ const ITEMS = [
   },
   /* 寵物蛋：地城裡撿的帶出地城才孵化（死了只有黑盒裡的會孵）；商店買的當場開 */
   { id: 'egg', n: '寵物蛋', k: 'x', star: 1, sh: 's1', ic: 'p:ic_egg', price: 45 },
+  /* 寶物（k: 't'）：只能拿來賣，佔背包格子；val 是第 1 層的價值，越深撿到越值錢（o.L） */
+  { id: 'tr_ring', n: '金戒指', k: 't', star: 1, sh: 's1', val: 10, ic: 'gear_ring_0' },
+  { id: 'tr_jade', n: '翡翠戒指', k: 't', star: 1, sh: 's1', val: 14, ic: 'gear_ring_5' },
+  { id: 'tr_amulet', n: '護身符', k: 't', star: 2, sh: 's1', val: 18, ic: 'gear_amulet_2' },
+  { id: 'tr_mirror', n: '古銅鏡', k: 't', star: 2, sh: 'v2', val: 32, ic: 'astro_mirror' },
+  { id: 'tr_tablet', n: '古碑拓片', k: 't', star: 2, sh: 'h2', val: 36, ic: 'mat_tablet' },
+  { id: 'tr_crown', n: '王冠', k: 't', star: 3, sh: 'h2', val: 60, ic: 'it_kingcrown' },
+  { id: 'tr_toad', n: '金蟾像', k: 't', star: 4, sh: 'sq', val: 90, ic: 'a:m_goldtoad' },
+  { id: 'tr_idol', n: '驕傲神像', k: 't', star: 4, sh: 'sq', val: 110, ic: 'sin_pride_idol' },
   /* 消耗品與錢袋（不掉詞綴） */
   { id: 'potion', n: '生命藥水', k: 'p', star: 1, sh: 's1', pot: 40, ic: 'p:ic_potion', price: 15 },
   { id: 'purse', n: '錢袋', k: 'g', star: 1, sh: 's1', cap: 150, ic: 'mat_gold', price: 30 }
 ];
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
 const GEAR = ITEMS.filter(it => 'was'.includes(it.k)),
+  TREAS = ITEMS.filter(it => it.k === 't'),
   PETS = ITEMS.filter(it => it.k === 'e');
-const KINDN = { w: '武器', a: '防具', s: '盾', e: '寵物', x: '寵物蛋', p: '藥水', g: '錢袋' };
+const KINDN = { w: '武器', a: '防具', s: '盾', e: '寵物', x: '寵物蛋', t: '寶物', p: '藥水', g: '錢袋' };
 /* ================= 詞綴：T12～T1（T1 最強；D2：藍裝 1～2 條、黃裝 3～6 條，前綴、後綴各最多 3 條） ================= */
 /* r：[T12 最低, T1 最高]，切成 12 段（越高段越寬）；k：能出現在哪一類（w 武器、a 防具、s 盾） */
 const T12 = ([lo, hi], dec) => {
@@ -305,24 +315,24 @@ const RES_CAP = 75,
   resPen = d => Math.min(60, (d - 1) * 15);
 const AFFI = Object.fromEntries(AFF.map(a => [a.id, a]));
 /* ================= 背包（工坊買；死了會失去）與黑盒 ================= */
-/* m：形狀（x 是格子）；p：價格 */
+/* m：形狀（x 是格子）；p：價格；d：地城等級（maxD）到了才開放（打倒地城 d-1 的王） */
 const BAGS = [
-  { id: 'b33', n: '新手包', m: ['xxx', 'xxx', 'xxx'], p: 5 },
-  { id: 'b44', n: '方包', m: ['xxxx', 'xxxx', 'xxxx', 'xxxx'], p: 20 },
-  { id: 'b35', n: '直筒包', m: ['xxx', 'xxx', 'xxx', 'xxx', 'xxx'], p: 30 },
-  { id: 'b53', n: '腰包', m: ['xxxxx', 'xxxxx', 'xxxxx'], p: 30 },
-  { id: 'b63', n: '長條包', m: ['xxxxxx', 'xxxxxx', 'xxxxxx'], p: 70 },
-  { id: 'b45', n: '登山包', m: ['xxxx', 'xxxx', 'xxxx', 'xxxx', 'xxxx'], p: 90 },
-  { id: 'b54', n: '方形包', m: ['xxxxx', 'xxxxx', 'xxxxx', 'xxxxx'], p: 90 },
-  { id: 'bL', n: 'L 形包', m: ['xxx..', 'xxx..', 'xxx..', 'xxxxx', 'xxxxx'], p: 120 },
-  { id: 'bT', n: 'T 字包', m: ['xxxxxx', 'xxxxxx', '.xxxx.', '.xxxx.'], p: 140 },
-  { id: 'b46', n: '行軍包', m: ['xxxx', 'xxxx', 'xxxx', 'xxxx', 'xxxx', 'xxxx'], p: 200 },
-  { id: 'b64', n: '寬口包', m: ['xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx'], p: 200 },
-  { id: 'bX', n: '十字包', m: ['.xxx.', 'xxxxx', 'xxxxx', 'xxxxx', '.xxx.'], p: 160 },
-  { id: 'bO', n: '環形包', m: ['xxxxx', 'xxxxx', 'xx.xx', 'xxxxx', 'xxxxx'], p: 220 },
-  { id: 'b55', n: '大方包', m: ['xxxxx', 'xxxxx', 'xxxxx', 'xxxxx', 'xxxxx'], p: 300 },
-  { id: 'b65', n: '遠征包', m: ['xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx'], p: 480 },
-  { id: 'b66', n: '傳說行囊', m: ['xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx'], p: 750 }
+  { id: 'b33', n: '新手包', m: ['xxx', 'xxx', 'xxx'], p: 5, d: 1 },
+  { id: 'b44', n: '方包', m: ['xxxx', 'xxxx', 'xxxx', 'xxxx'], p: 20, d: 1 },
+  { id: 'b35', n: '直筒包', m: ['xxx', 'xxx', 'xxx', 'xxx', 'xxx'], p: 30, d: 1 },
+  { id: 'b53', n: '腰包', m: ['xxxxx', 'xxxxx', 'xxxxx'], p: 30, d: 1 },
+  { id: 'b63', n: '長條包', m: ['xxxxxx', 'xxxxxx', 'xxxxxx'], p: 70, d: 2 },
+  { id: 'b45', n: '登山包', m: ['xxxx', 'xxxx', 'xxxx', 'xxxx', 'xxxx'], p: 90, d: 2 },
+  { id: 'b54', n: '方形包', m: ['xxxxx', 'xxxxx', 'xxxxx', 'xxxxx'], p: 90, d: 2 },
+  { id: 'bL', n: 'L 形包', m: ['xxx..', 'xxx..', 'xxx..', 'xxxxx', 'xxxxx'], p: 120, d: 3 },
+  { id: 'bT', n: 'T 字包', m: ['xxxxxx', 'xxxxxx', '.xxxx.', '.xxxx.'], p: 140, d: 3 },
+  { id: 'b46', n: '行軍包', m: ['xxxx', 'xxxx', 'xxxx', 'xxxx', 'xxxx', 'xxxx'], p: 200, d: 4 },
+  { id: 'b64', n: '寬口包', m: ['xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx'], p: 200, d: 4 },
+  { id: 'bX', n: '十字包', m: ['.xxx.', 'xxxxx', 'xxxxx', 'xxxxx', '.xxx.'], p: 160, d: 3 },
+  { id: 'bO', n: '環形包', m: ['xxxxx', 'xxxxx', 'xx.xx', 'xxxxx', 'xxxxx'], p: 220, d: 4 },
+  { id: 'b55', n: '大方包', m: ['xxxxx', 'xxxxx', 'xxxxx', 'xxxxx', 'xxxxx'], p: 300, d: 5 },
+  { id: 'b65', n: '遠征包', m: ['xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx'], p: 480, d: 5 },
+  { id: 'b66', n: '傳說行囊', m: ['xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx', 'xxxxxx'], p: 750, d: 6 }
 ];
 const BAGI = Object.fromEntries(BAGS.map(b => [b.id, b]));
 const BOX = { id: 'box', n: '黑盒', m: ['xxx', 'xxx', 'xxx'] };
@@ -366,7 +376,7 @@ const AVATARS = [
 ];
 /* ================= 熱度（漫步勇者的狩獵） ================= */
 /* 每走一步 +1（險路 2 步）；滿了不會再降，之後每 zodEvery 步生一隻生肖 */
-const HEAT = { step: 1, fight: 3, chest: 2, flee: 5, max: 75, lv: [0, 35, 75], mul: [0, 0.25, 0.5], zodEvery: 4 };
+const HEAT = { step: 1, fight: 2, chest: 1, flee: 5, max: 75, lv: [0, 35, 75], mul: [0, 0.25, 0.5], zodEvery: 4 };
 /* ================= 怪物（台灣妖怪；sp 是 art 的圖名） ================= */
 /* hp／atk 是倍率（乘上這一層的基準），cd 秒，on：命中時的異常 */
 const MOBS = [
@@ -427,8 +437,8 @@ const ZODIAC = [
 /* 這一層的基準：L = (地城 - 1) × 3 + 層 */
 const lvOf = (d, f) => (d - 1) * 3 + f;
 const mobBase = L => ({ hp: Math.round(26 * Math.pow(1.3, L - 1)), atk: 3.2 * Math.pow(1.24, L - 1) });
-/* 怪物等級的倍率：菁英 ×3、王 ×10、生肖 ×4.5（企劃書第 9 節） */
-const TIERM = { mob: 1, elite: 3, boss: 10, zod: 4.5 };
+/* 怪物等級的倍率：菁英 ×3、王 ×7、生肖 ×4.5（企劃書第 9 節） */
+const TIERM = { mob: 1, elite: 3, boss: 7, zod: 4.5 };
 /* ================= 職業、核心、天賦 ================= */
 /* 主機制不看武器標籤（設計原則第 7 節）；核心 v 是 [原本, 強化後] */
 const CLASSES = [

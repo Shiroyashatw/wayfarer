@@ -867,7 +867,17 @@ function shopHTML() {
           ['wh', '放進倉庫']
         ])}${(V.shopTo || 'bag') === 'bag' ? `<div class="bagw">${gridHTML(ctx().bag, 'bag')}</div>` : `<div class="bagw">${trayHTML(S.wh)}</div>`}
       <p class="sub">把商品拖進上面就買下來（點一下看說明再買）。白裝，最高 ${shopStar(S)}★。</p><div class="shopg">${S.shop.map((s, i) => scHTML(s.o, itemPrice(s.o), 'shopSel', `data-i="${i}"`, s.sold)).join('')}</div>`
-      : `<p class="sub">死了背包會一起失去。越大越貴，前期便宜的先用。</p>${BAGS.map(b => `<div class="rowx">${miniHTML(b.m)}<div class="t"><b>${esc(b.n)}</b><small>${cellCount({ t: b.id })} 格${own(b.id) ? `・有 ${own(b.id)} 個` : ''}</small></div><button class="btn buy" data-act="buyBag" data-t="${b.id}" ${S.gold < b.p ? 'disabled' : ''}>${b.p} 金</button></div>`).join('')}`
+      : `<p class="sub">死了背包會一起失去。越大越貴，前期便宜的先用。</p>${BAGS.filter(b => b.d <= S.maxD)
+          .map(
+            b =>
+              `<div class="rowx">${miniHTML(b.m)}<div class="t"><b>${esc(b.n)}</b><small>${cellCount({ t: b.id })} 格${own(b.id) ? `・有 ${own(b.id)} 個` : ''}</small></div><button class="btn buy" data-act="buyBag" data-t="${b.id}" ${S.gold < b.p ? 'disabled' : ''}>${b.p} 金</button></div>`
+          )
+          .join('')}${(() => {
+          const lock = BAGS.filter(b => b.d > S.maxD);
+          return lock.length
+            ? `<p class="sub">還有 ${lock.length} 款背包：打倒地城 ${S.maxD} 的王解鎖下一批。</p>`
+            : '';
+        })()}`
   }`;
 }
 function mkHTML() {
@@ -1743,9 +1753,14 @@ const A = {
     tip('move');
     const run = S.run,
       to = +el.dataset.n,
-      from = run.map.N[run.pos];
+      from = run.map.N[run.pos],
+      hot0 = run.hot,
+      z0 = run.zs.length;
     if (!moveTo(run, to)) return;
     run.lootFrom = null;
+    if (run.hot && !hot0) toast('熱度滿了：撤離點只剩一個！');
+    else if (run.zs.length > z0) toast(`${run.log[run.log.length - 1].zod} 出現了`);
+    if (run.zs.length > z0) snd('encounter');
     snd('tap', 'select');
     save();
     render();

@@ -142,7 +142,7 @@ function sellItem(S, u) {
 }
 function buyBag(S, t) {
   const b = BAGI[t];
-  if (!b || S.gold < b.p) return false;
+  if (!b || S.gold < b.p || S.maxD < b.d) return false;
   S.gold -= b.p;
   const g = newBag(t);
   S.bags.push(g);

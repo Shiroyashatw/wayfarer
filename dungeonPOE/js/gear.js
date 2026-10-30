@@ -86,8 +86,11 @@ const itemPrice = o => {
   if (b.price) return b.price;
   return Math.round(8 * Math.pow(b.star, 1.5));
 };
+/* 寶物：越深撿到越值錢 */
+const treasureVal = o => Math.round(baseOf(o).val * (1 + 0.35 * ((o.L || 1) - 1)));
 const sellPrice = o => {
   const b = baseOf(o);
+  if (b.k === 't') return treasureVal(o);
   if (b.price) return fl(b.price / 3);
   return Math.round(2 * b.star + o.a.reduce((s, x) => s + (13 - x.t) * 2, 0));
 };
@@ -204,7 +207,7 @@ function compile(g, hero) {
       P.pots.push({ u: o.u, heal: b.pot });
       continue;
     }
-    if (b.k === 'g' || b.k === 'x') continue;
+    if (b.k === 'g' || b.k === 'x' || b.k === 't') continue;
     P.mhp += ((b.hp || 0) + affV(o, 'hp')) * pm;
     P.arm += ((b.arm || 0) + affV(o, 'arm')) * pm;
     P.dodge += ((b.dodge || 0) + affV(o, 'dodge')) * pm;
@@ -270,6 +273,7 @@ function baseLines(b) {
   if (b.thorns) L.push(`被打時反彈 ${b.thorns}`);
   if (b.heal) L.push(`格擋時回 ${b.heal} 生命`);
   if (b.pot) L.push(`戰鬥中生命低於 40%：回 ${b.pot}% 生命（用完就沒了）`);
+  if (b.k === 't') L.push(`寶物：只能拿來賣（第 1 層撿到 ${b.val} 金，越深越值錢）`);
   if (b.k === 'x') L.push('帶出地城就會孵化（死掉的話只有黑盒裡的會孵），孵出 1～3 條詞綴的寵物');
   if (b.cap) L.push(`放在黑盒裡：死了也保住這趟最多 ${b.cap} 金幣`);
   return L;

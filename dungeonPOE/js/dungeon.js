@@ -6,7 +6,7 @@ const pick = (a, r) => a[fl(r() * a.length)];
 function mkFoe(def, tier, L, heat, r, aff = []) {
   const b = mobBase(L),
     hm = 1 + HEAT.mul[heat],
-    atkM = { mob: 1, elite: 1.6, boss: 2.4, zod: 1.8 }[tier];
+    atkM = { mob: 1, elite: 1.6, boss: 2, zod: 1.8 }[tier];
   let mhp = b.hp * (def.hp || 1) * TIERM[tier] * hm,
     atk = b.atk * (def.atk || 1) * atkM * hm,
     cd = def.cd || 1.6,
@@ -62,25 +62,25 @@ function lootBag(t, L, heat, r) {
     egg = p => r() < p && put(Object.assign(mkItem('egg'), { L })),
     gear = (blue, rare, bonus) => put(rollGear(L, heat, r, rollCount(r, blue + hb, rare + hb / 2), bonus));
   if (t === 'fight') {
-    gear(0.3, 0.04);
-    if (r() < 0.35) gear(0.3, 0.04);
+    gear(0.3, 0.02);
+    if (r() < 0.35) gear(0.3, 0.02);
     if (r() < 0.12) put(mkItem('potion'));
     egg(0.02);
   } else if (t === 'chest') {
-    gear(0.45, 0.1);
-    if (r() < 0.4) gear(0.3, 0.05);
+    gear(0.45, 0.05);
+    if (r() < 0.4) gear(0.3, 0.025);
     if (r() < 0.15) put(mkItem('potion'));
     egg(0.08);
   } else if (t === 'elite') {
-    gear(0.65, 0.35);
-    gear(0.35, 0.08);
-    if (r() < 0.5) gear(0.35, 0.08);
+    gear(0.65, 0.18);
+    gear(0.35, 0.04);
+    if (r() < 0.5) gear(0.35, 0.04);
     egg(0.15);
   } else if (t === 'boss') {
     put(rollGear(L, heat, r, 3 + fl(r() * 3), 1));
-    gear(0.6, 0.4, 1);
-    gear(0.5, 0.15);
-    gear(0.4, 0.1);
+    gear(0.6, 0.2, 1);
+    gear(0.5, 0.08);
+    gear(0.4, 0.05);
     put(mkItem('potion'));
     egg(0.45);
   } else if (t === 'zod') {
@@ -93,10 +93,16 @@ function lootBag(t, L, heat, r) {
       }
     });
     put(o);
-    gear(0.6, 0.15);
+    gear(0.6, 0.08);
     egg(0.3);
   }
   return g;
+}
+/* 寶物：照深度抽（越深越可能抽到大件的），記著撿到的深度（越深越值錢） */
+function rollTreasure(L, r) {
+  const mx = Math.min(4, 1 + fl(L / 2)),
+    pool = TREAS.filter(b => b.star <= mx);
+  return Object.assign(mkItem(pick(pool, r).id), { L });
 }
 /* 帶頭的怪拿著背包裡的裝備：武器各自出手、防具加生命護甲；本身的數值打 7 折（裝備補回來） */
 function equipFoe(f, g) {
@@ -201,7 +207,7 @@ function genMap(seed, d, f, heat) {
   const goal = pick(top, r);
   goal.t = f === 3 ? 'boss' : 'stairs';
   const mid = N.filter(n => n.row >= 2 && n.row <= 4),
-    nx = 1 + (r() < 0.5 ? 1 : 0);
+    nx = f === 1 ? 2 : f === 2 ? 1 : 0;
   for (let k = 0; k < nx; k++) {
     const c = mid.filter(n => n.t === 'empty' && !mid.some(m => m.t === 'exit' && m.row === n.row));
     if (c.length) pick(c, r).t = 'exit';
@@ -240,7 +246,7 @@ function dists(map, from) {
   }
   return D;
 }
-const ALWAYS = 'in exit stairs boss';
+const ALWAYS = 'in stairs boss';
 function reveal(run, k = 1) {
   const D = dists(run.map, run.pos);
   run.map.N.forEach((n, i) => {
@@ -302,6 +308,7 @@ function enterFloor(run) {
   run.pos = run.prev = 0;
   run.zs = [];
   run.ground = emptyGround();
+  if (run.hot) closeExits(run);
   reveal(run);
 }
 function addHeat(run, v) {
@@ -309,8 +316,16 @@ function addHeat(run, v) {
   run.heat = Math.max(0, Math.min(HEAT.max, run.heat + v));
   if (run.heat >= HEAT.max && !run.hot) {
     run.hot = run.turn;
+    closeExits(run);
     spawnZod(run);
   }
+}
+/* 熱度滿了：撤離點只留一個（隨機），其他的關閉（打倒王開的撤離點不會關） */
+function closeExits(run) {
+  const ex = run.map.N.filter(n => n.t === 'exit' && !n.boss);
+  if (ex.length < 2) return;
+  const keep = ex[fl(rr(run, 12)() * ex.length)];
+  for (const n of ex) if (n !== keep) n.t = 'closed';
 }
 /* ================= 移動（點相鄰的格子就走，像殺戮尖塔） ================= */
 const canMove = (run, to) => !run.pend && moves(run.map, run.pos).find(m => m.to === to);
@@ -350,7 +365,9 @@ function arrive(run) {
     n.done = 1;
     addHeat(run, HEAT.chest);
     run.ground = n.bag;
-    const gold = Math.round((6 + rr(run, 8)() * 8) * (1 + 0.35 * (runL(run) - 1)));
+    const rc = rr(run, 8);
+    if (rc() < 0.6) autoPlace(n.bag, rollTreasure(runL(run), rc));
+    const gold = Math.round((2 + rc() * 3) * (1 + 0.35 * (runL(run) - 1)));
     run.gold += gold;
     run.pend = { k: 'loot', chest: 1, gold };
   } else if (n.t === 'rest') {
@@ -409,6 +426,7 @@ function fightNow(run) {
       if (n.t === 'boss') {
         run.boss = 1;
         n.t = 'exit';
+        n.boss = 1;
         n.done = 0;
       }
     }
@@ -435,11 +453,21 @@ function flee(run) {
 }
 /* ================= 戰利品：打贏了，怪物的背包攤在地上 ================= */
 const lootItem = (run, r, n, bonus = 0) => rollGear(runL(run), heatLv(run), r, n, bonus);
+/* 打贏了：牠背包裡的每件照機率掉下來（至少一件），另外隨機掉寶物；金幣只有一點（錢主要靠把寶物帶出去賣） */
+const DROP = { fight: [0.35, 0.3, 1], elite: [0.45, 0.5, 1], boss: [0.6, 1, 2], zod: [0.6, 0.8, 2] };
 function lootFor(run, t, bag) {
-  const gm = 1 + 0.35 * (runL(run) - 1),
-    gold = Math.round({ fight: 6, elite: 16, boss: 60, zod: 45 }[t] * gm * (0.8 + rr(run, 7)() * 0.4));
+  const r = rr(run, 7),
+    L = runL(run),
+    [pd, pt, nt] = DROP[t],
+    gold = Math.round({ fight: 2, elite: 5, boss: 18, zod: 12 }[t] * (1 + 0.35 * (L - 1)) * (0.8 + r() * 0.4)),
+    src = (bag || emptyGround()).items,
+    keep = src.filter(() => r() < pd),
+    g = { t: bag && bag.t[0] === 'm' && bag.t !== 'm33' ? bag.t : 'm44', items: [] };
+  if (!keep.length && src.length) keep.push(src[fl(r() * src.length)]);
+  for (const o of keep) autoPlace(g, o);
+  for (let k = 0; k < nt; k++) if (r() < pt) autoPlace(g, rollTreasure(L, r));
   run.gold += gold;
-  run.ground = bag || emptyGround();
+  run.ground = g;
   return { gold };
 }
 /* ================= 地城商人 ================= */

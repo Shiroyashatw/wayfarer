@@ -30,7 +30,8 @@ const sp = [
 const miss = sp.filter(k => !has(k));
 miss.length ? fail('找不到圖：' + miss.join(' ')) : ok(`圖名 ${sp.length} 個都在`);
 /* 買了馬上賣不會賺 */
-const earn = G.ITEMS.filter(b => G.sellPrice(G.mkItem(b.id)) >= G.itemPrice(G.mkItem(b.id)));
+/* 寶物商店不賣，只能撿：不算 */
+const earn = G.ITEMS.filter(b => b.k !== 't' && G.sellPrice(G.mkItem(b.id)) >= G.itemPrice(G.mkItem(b.id)));
 earn.length ? fail('買了馬上賣會賺：' + earn.map(b => b.id).join(' ')) : ok('買了馬上賣不會賺');
 /* 地圖：每一格從入口都走得到、從每一格都走得到樓梯或王 */
 let mapBad = 0;

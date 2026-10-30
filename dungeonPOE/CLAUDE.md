@@ -25,10 +25,10 @@
 | 檔案 | 內容 |
 | --- | --- |
 | `js/core.js` | `$`、`fl`、固定亂數 `h`／`rng`、`esc` |
-| `js/data.js` | 表格：道具 `ITEMS`（含寵物 `PETS`、寵物蛋）、會動的頭像 `AVANIM`、詞綴 `AFF`（T12～T1，`T12` 切段）、稀有度 `RARN`、抗性 `RESK`／`RES_CAP`／`resPen`、背包 `BAGS`／黑盒 `BOX`／地上與怪物背包 `MBAGS`、頭像 `AVATARS`、熱度 `HEAT`、怪物 `MOBS`／菁英詞綴 `MAFF`／王 `BOSSES`／生肖 `ZODIAC`、職業與核心 `CLASSES`、天賦 `TREE`、`VER`、存檔鍵 `KEY` |
+| `js/data.js` | 表格：道具 `ITEMS`（含寵物 `PETS`、寵物蛋、寶物 `TREAS`）、會動的頭像 `AVANIM`、詞綴 `AFF`（T12～T1，`T12` 切段）、稀有度 `RARN`、抗性 `RESK`／`RES_CAP`／`resPen`、背包 `BAGS`（`d`＝幾號地城解鎖）／黑盒 `BOX`／地上與怪物背包 `MBAGS`、頭像 `AVATARS`、熱度 `HEAT`、怪物 `MOBS`／菁英詞綴 `MAFF`／王 `BOSSES`／生肖 `ZODIAC`、職業與核心 `CLASSES`、天賦 `TREE`、`VER`、存檔鍵 `KEY` |
 | `js/gear.js` | 道具實例、擲詞綴 `rollItem`、檢查別人的道具 `cleanItem`、寵物 `rollPet`／孵蛋 `hatch`、形狀與擺放 `cellsOf`／`fits`／`autoPlace`、位置詞綴、把背包算成戰鬥數值 `compile`（含抗性 `res`、武器屬性 `el`／`add`）、扣懲罰後的抗性 `finalRes`、說明文字 `baseLines`／`affLine` |
 | `js/sim.js` | 自動戰鬥 `simulate`（純計算、偽隨機 `prd`、輸出事件時間軸，含哪件道具發動；怪物用背包裡的武器 `wps`）、預估 `predict`、危險等級 `danger`／`DANGER` |
-| `js/dungeon.js` | 一趟地城：怪物 `mkFoe`／`foesFor`、怪物與寶箱的背包 `lootBag`／`equipFoe`、地圖 `genMap`、`newRun`、移動 `moveTo`／`step`／`arrive`、熱度與生肖 `addHeat`／`spawnZod`、打或跑 `fightNow`／`flee`、戰利品 `lootFor`、地城商人、事件 `EVENTS`、下樓 `goDown`、結算 `runResult` |
+| `js/dungeon.js` | 一趟地城：怪物 `mkFoe`／`foesFor`、怪物與寶箱的背包 `lootBag`／`equipFoe`、地圖 `genMap`、`newRun`、移動 `moveTo`／`step`／`arrive`、熱度與生肖 `addHeat`／`spawnZod`、熱度滿只留一個撤離點 `closeExits`、打或跑 `fightNow`／`flee`、戰利品 `lootFor`（隨機掉落 `DROP`、寶物 `rollTreasure`）、地城商人、事件 `EVENTS`、下樓 `goDown`、結算 `runResult` |
 | `js/meta.js` | 存檔結構 `newGame`、職業等級與天賦 `clLv`／`takeNode`／`coresOf`／`heroOf`、城鎮（商店 `buyShop`、賣 `sellItem`、買背包 `buyBag`）、跑刀 `ensureStarter`、出發 `depart`、結算 `finishRun`（帶出來的蛋 `hatchAll`） |
 | `js/sprites.js`、`js/art.js`、`img/` | 從《塞令老師》複製的像素圖大圖（`art.js` 是產生的，不要手改） |
 | `js/audio.js` | Web Audio 合成音效 |
