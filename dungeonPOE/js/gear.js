@@ -26,7 +26,7 @@ function rollAff(b, type, tb, r, has) {
 function rollItem(id, n, tb, r) {
   const b = ITEMI[id],
     a = [];
-  if (n && 'was'.includes(b.k)) {
+  if (n && 'wase'.includes(b.k)) {
     for (let k = 0; k < n; k++) {
       const np = a.filter(x => AFFI[x.id].t === 'P').length,
         ns = a.length - np,
@@ -40,6 +40,19 @@ function rollItem(id, n, tb, r) {
   const o = mkItem(id, a);
   if (a.length >= 3) o.nm = RARE_A[fl(r() * RARE_A.length)] + RARE_B[fl(r() * RARE_B.length)];
   return o;
+}
+/* 寵物：1～3 條詞綴，佔的格子越多越容易多條、T 越好（cells - 1 當作多深幾級） */
+function rollPet(id, L, heat, r) {
+  const c = SH[ITEMI[id].sh].length,
+    n = Math.min(3, 1 + (r() < 0.15 + 0.12 * c ? 1 : 0) + (r() < 0.04 + 0.08 * c ? 1 : 0));
+  return rollItem(id, n, bestTier(L, heat, (c - 1) / 2), r);
+}
+/* 孵蛋：照蛋的深度（o.L）抽一隻寵物 */
+function hatch(egg, r) {
+  const L = egg.L || 1,
+    mx = Math.min(4, 1 + fl(L / 2)),
+    pool = PETS.filter(b => b.star <= mx);
+  return rollPet(pool[fl(r() * pool.length)].id, L, 0, r);
 }
 /* 掉幾條詞綴：p＝[藍的機率, 黃的機率] */
 const rollCount = (r, blue, rare) => {
@@ -191,7 +204,7 @@ function compile(g, hero) {
       P.pots.push({ u: o.u, heal: b.pot });
       continue;
     }
-    if (b.k === 'g') continue;
+    if (b.k === 'g' || b.k === 'x') continue;
     P.mhp += ((b.hp || 0) + affV(o, 'hp')) * pm;
     P.arm += ((b.arm || 0) + affV(o, 'arm')) * pm;
     P.dodge += ((b.dodge || 0) + affV(o, 'dodge')) * pm;
@@ -200,7 +213,7 @@ function compile(g, hero) {
     for (const k of RESK) P.res[k] += (affV(o, 'res' + k[0].toUpperCase() + k.slice(1)) + affV(o, 'resAll')) * pm;
     if (b.k === 's')
       P.shields.push({ u: o.u, cd: b.cd, block: b.block * (1 + affV(o, 'blockPct') / 100) * pm, heal: b.heal || 0 });
-    if (b.k === 'w') {
+    if (b.k === 'w' || b.k === 'e') {
       const rowSpd = affV(o, 'row')
           ? affV(o, 'row') *
             g.items.filter(n => n !== o && baseOf(n).k === 'w' && cellsOf(n).some(([, cy]) => n.y + cy === o.y)).length
@@ -212,7 +225,9 @@ function compile(g, hero) {
         n: b.n,
         dmg: b.dmg,
         flat: affV(o, 'flat'),
-        mul: pm * (1 + affV(o, 'dmgPct') / 100),
+        /* 馴獸師的寵物傷害 +30% */
+        mul: pm * (1 + affV(o, 'dmgPct') / 100) * (b.k === 'e' && hero.cls === 'tamer' ? 1.3 : 1),
+        pet: b.k === 'e' ? 1 : 0,
         cd: b.cd / (1 + (affV(o, 'spd') + rowSpd) / 100),
         crit: (b.crit || 0) + affV(o, 'crit'),
         ls: (b.ls || 0) + affV(o, 'ls'),
@@ -242,7 +257,7 @@ const coreV = (P, id) => (P.cores.includes(id) ? COREI[id].v[P.clv[id] ? 1 : 0] 
 const AILN = { burn: '燃燒', poison: '中毒', bleed: '流血', freeze: '凍結', shock: '感電' };
 function baseLines(b) {
   const L = [];
-  if (b.k === 'w') {
+  if (b.k === 'w' || b.k === 'e') {
     L.push(`${b.el ? ELN[b.el] : ''}傷害 ${b.dmg[0]}～${b.dmg[1]}・每 ${b.cd} 秒`);
     if (b.crit) L.push(`暴擊率 ${b.crit}%`);
     if (b.ls) L.push(`吸血 ${b.ls}%`);
@@ -255,6 +270,7 @@ function baseLines(b) {
   if (b.thorns) L.push(`被打時反彈 ${b.thorns}`);
   if (b.heal) L.push(`格擋時回 ${b.heal} 生命`);
   if (b.pot) L.push(`戰鬥中生命低於 40%：回 ${b.pot}% 生命（用完就沒了）`);
+  if (b.k === 'x') L.push('帶出地城就會孵化（死掉的話只有黑盒裡的會孵），孵出 1～3 條詞綴的寵物');
   if (b.cap) L.push(`放在黑盒裡：死了也保住這趟最多 ${b.cap} 金幣`);
   return L;
 }

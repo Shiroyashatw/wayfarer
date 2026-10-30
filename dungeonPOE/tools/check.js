@@ -11,7 +11,15 @@ const ok = m => console.log('✅ ' + m);
 const art = fs.readFileSync(path.join(__dirname, '../js/art.js'), 'utf8'),
   has = k => new RegExp('^  ' + k + ':', 'm').test(art);
 const sp = [
-  ...G.ITEMS.filter(i => !i.ic.startsWith('p:')).map(i => i.ic),
+  ...G.ITEMS.filter(i => !i.ic.startsWith('p:')).map(i => i.ic.replace(/^a:/, '')),
+  ...G.CLASSES.flatMap(c => c.cores.map((k, i) => 'it_c_' + c.ic.slice(4) + '_' + i)),
+  'asc_s_heart',
+  'asc_s_sword',
+  'sk_haste',
+  'asc_s_shield',
+  'sk_summongod',
+  'mengpo',
+  'm_stinkytofu',
   ...G.MOBS.map(m => m.sp),
   ...G.BOSSES.map(m => m.sp),
   ...G.ZODIAC.map(m => m.sp),

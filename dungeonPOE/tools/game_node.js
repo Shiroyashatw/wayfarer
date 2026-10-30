@@ -26,6 +26,6 @@ const EXPORTS = (
   'mkItem baseOf rollItem cellsOf fits autoPlace occ compile coreV simulate predict danger mkFoe foesFor lootBag equipFoe genMap moves dists newRun ' +
   'canMove moveTo fightNow flee lootFor goDown eventPick shopBuy shopPrice EVENTS runResult heatLv runL P_of ' +
   'newGame heroOf depart finishRun takeNode canTake coresOf toggleCore buyBag buyShop sellItem ensureStarter clLv tPoints ' +
-  'itemPrice sellPrice cellCount newBag allItems eqOf'
+  'itemPrice sellPrice cellCount newBag allItems eqOf hatch rollPet PETS'
 ).split(' ');
 module.exports = { load };

@@ -189,7 +189,8 @@ details.more>div{padding:0 var(--sp-3) var(--sp-3)}
 .heat>em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-style:normal;font-family:var(--f-pix);font-size:var(--fs-cap);color:var(--ink);text-shadow:0 0 3px var(--card),0 0 2px var(--card)}
 .heat>u{position:absolute;top:0;bottom:0;width:2px;background:#fff8}
 .heat.hot{box-shadow:0 0 0 2px var(--zod)}
-.map{position:relative;width:100%;aspect-ratio:1/1.02;background:radial-gradient(ellipse at 50% 100%,var(--arena-b),var(--arena-a));border-radius:var(--r-lg);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
+.runv{display:flex;flex-direction:column;min-height:calc(100dvh - var(--sp-3) - var(--sp-5) - var(--sat) - var(--sab))}
+.map{position:relative;width:100%;flex:1;min-height:320px;background:radial-gradient(ellipse at 50% 100%,var(--arena-b),var(--arena-a));border-radius:var(--r-lg);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
 .map svg{position:absolute;inset:0;width:100%;height:100%}
 .map line{stroke:var(--faint);stroke-width:2.5;vector-effect:non-scaling-stroke}
 .map line.c2{stroke:var(--warn);stroke-dasharray:5 4}
@@ -257,9 +258,9 @@ details.more>div{padding:0 var(--sp-3) var(--sp-3)}
 .blog span{overflow-wrap:anywhere}
 /* 結算 */
 .res{text-align:center;padding-top:var(--sp-5)}
-.res .big{font-family:var(--f-pix);font-size:36px}
-.res.ok .big{color:var(--gold)}
-.res.no .big{color:var(--bad)}
+.res .rbig{font-family:var(--f-pix);font-size:36px}
+.res.ok .rbig{color:var(--gold)}
+.res.no .rbig{color:var(--bad)}
 .det{position:fixed;left:50%;bottom:calc(8px + var(--sab));transform:none;margin-left:calc(min(464px,calc(100% - 16px)) / -2);width:min(464px,calc(100% - 16px));z-index:60;background:var(--card);border-radius:var(--r-lg);padding:var(--sp-3) var(--sp-4) var(--sp-4);box-shadow:0 -4px 30px #0004,0 0 0 1px var(--line);max-height:70vh;overflow:auto}
 .det.dtop{bottom:auto;top:calc(8px + var(--sat));max-height:42vh}
 .det .x{position:absolute;top:var(--sp-1);right:var(--sp-1);width:44px;height:44px;border:0;background:transparent;font-size:20px;color:var(--dim)}
@@ -285,6 +286,18 @@ details.more>div{padding:0 var(--sp-3) var(--sp-3)}
 .slot-g.on{box-shadow:0 0 0 2px var(--gold)}
 .seg{display:flex;gap:var(--sp-2);margin-bottom:var(--sp-2)}
 .seg .chipb{flex:1;justify-content:center}
+.minibags{display:flex;gap:var(--sp-3);align-items:flex-start;justify-content:center;border:0;background:var(--card);border-radius:var(--r-md);padding:var(--sp-3);box-shadow:var(--shadow);width:100%;margin-bottom:var(--sp-2)}
+.minibags .grid{pointer-events:none}
+.tn{position:relative;gap:1px}
+.tn img{width:28px;height:28px}
+.tn .tup{position:absolute;top:3px;right:5px;font-style:normal;font-size:10px;color:var(--gold)}
+.coreb{display:flex;gap:var(--sp-2);align-items:center}
+.coreb img{width:32px;height:32px;flex:none}
+.coreb span{min-width:0}
+.evhead{display:flex;gap:var(--sp-3);align-items:center;margin-bottom:var(--sp-3);padding-right:40px}
+.evhead img{width:88px;height:88px;flex:none;background:radial-gradient(circle,var(--accent-soft),transparent 70%);border-radius:var(--r-lg)}
+.xpc b{font-size:var(--fs-btn)}
+.res .xpc{text-align:left}
 /* 新手教學：框起要按的地方，其他變暗但不擋點擊 */
 .coach{position:fixed;inset:0;z-index:55;pointer-events:none}
 .cspot{position:fixed;border-radius:var(--r-md);box-shadow:0 0 0 200vmax #0008,0 0 0 3px var(--accent);transition:left .25s var(--ease),top .25s var(--ease),width .25s var(--ease),height .25s var(--ease)}

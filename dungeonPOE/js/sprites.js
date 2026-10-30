@@ -96,6 +96,10 @@ function paintIcon(c, n) {
 }
 /* ================= 程式像素圖（道具 ic: 'p:鍵'） ================= */
 const PIX = {
+  ic_egg: {
+    r: ['...ww...', '..wwww..', '.wwkwww.', '.wwwwkw.', 'wkwwwwww', 'wwwwkwww', '.wwwwww.', '..wwww..'],
+    p: { w: '#f3ead8', k: '#6fa86a' }
+  },
   ic_potion: {
     r: ['..kk....', '..ww....', '.wrrw...', 'wrrrrw..', 'wrwrrw..', 'wrrrrw..', '.wwww...', '........'],
     p: { r: '#e5484d', w: '#e8e2d4', k: '#8a5a2f' }

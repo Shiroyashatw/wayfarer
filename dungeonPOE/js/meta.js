@@ -100,15 +100,38 @@ function refreshShop(S) {
   const r = rng(h(Date.now() & 0xffffff, S.st.runs, 3)),
     pool = GEAR.filter(b => b.star <= shopStar(S));
   S.shop = Array.from({ length: 6 }, () => ({ o: mkItem(pick(pool, r).id) }));
-  S.shop.push({ o: mkItem('potion') }, { o: mkItem('purse') });
+  S.shop.push(
+    { o: mkItem('potion') },
+    { o: mkItem('purse') },
+    { o: Object.assign(mkItem('egg'), { L: lvOf(S.maxD, 2) }) }
+  );
 }
+/* 買：放進倉庫；蛋當場孵化（回傳 { pet }） */
 function buyShop(S, i) {
   const s = S.shop[i];
   if (!s || s.sold || S.gold < itemPrice(s.o)) return false;
   S.gold -= itemPrice(s.o);
   s.sold = 1;
+  if (s.o.id === 'egg') {
+    const pet = hatch(s.o, rng(h(Date.now() & 0xffffff, i, 13)));
+    S.wh.push(pet);
+    return { pet };
+  }
   S.wh.push(s.o);
   return true;
+}
+/* 帶出地城的蛋孵化：從容器拿掉，寵物放進倉庫 */
+function hatchAll(S, conts, seed) {
+  const r = rng(seed),
+    out = [];
+  for (const g of conts)
+    for (const o of g.items.filter(x => x.id === 'egg')) {
+      g.items.splice(g.items.indexOf(o), 1);
+      const pet = hatch(o, r);
+      S.wh.push(pet);
+      out.push(pet);
+    }
+  return out;
 }
 function sellItem(S, u) {
   const i = S.wh.findIndex(o => o.u === u);
@@ -142,12 +165,18 @@ function finishRun(S, ok) {
   const run = S.run,
     res = runResult(run, ok),
     cl = clOf(S, run.hero.cls),
-    lv0 = clLv(cl.xp).lv;
+    lv0 = clLv(cl.xp).lv,
+    before = clLv(cl.xp);
   if (ok) S.bags.push(run.bag);
   S.box = run.box;
+  /* 帶出來的蛋孵化（死了只有黑盒裡的） */
+  res.hatched = hatchAll(S, ok ? [run.bag, run.box] : [run.box], h(run.seed, run.turn, 21));
   S.gold += res.gold;
   cl.xp += res.xp;
   res.lvUp = clLv(cl.xp).lv - lv0;
+  /* 結算畫面的經驗條：之前、之後 */
+  res.lv0 = before;
+  res.lv1 = clLv(cl.xp);
   if (run.boss) S.maxD = Math.max(S.maxD, run.d + 1);
   if (ok) S.st.esc++;
   else S.st.dead++;

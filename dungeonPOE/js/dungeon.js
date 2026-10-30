@@ -59,25 +59,30 @@ function lootBag(t, L, heat, r) {
   const hb = 0.1 * heat,
     g = { t: { fight: 'm33', chest: 'm33', elite: 'm44', zod: 'm44', boss: 'm55' }[t], items: [] },
     put = o => autoPlace(g, o),
+    egg = p => r() < p && put(Object.assign(mkItem('egg'), { L })),
     gear = (blue, rare, bonus) => put(rollGear(L, heat, r, rollCount(r, blue + hb, rare + hb / 2), bonus));
   if (t === 'fight') {
     gear(0.3, 0.04);
     if (r() < 0.35) gear(0.3, 0.04);
     if (r() < 0.12) put(mkItem('potion'));
+    egg(0.02);
   } else if (t === 'chest') {
     gear(0.45, 0.1);
     if (r() < 0.4) gear(0.3, 0.05);
     if (r() < 0.15) put(mkItem('potion'));
+    egg(0.08);
   } else if (t === 'elite') {
     gear(0.65, 0.35);
     gear(0.35, 0.08);
     if (r() < 0.5) gear(0.35, 0.08);
+    egg(0.15);
   } else if (t === 'boss') {
     put(rollGear(L, heat, r, 3 + fl(r() * 3), 1));
     gear(0.6, 0.4, 1);
     gear(0.5, 0.15);
     gear(0.4, 0.1);
     put(mkItem('potion'));
+    egg(0.45);
   } else if (t === 'zod') {
     const o = rollGear(L, heat, r, 3 + fl(r() * 2), 1);
     o.a.forEach(x => {
@@ -89,6 +94,7 @@ function lootBag(t, L, heat, r) {
     });
     put(o);
     gear(0.6, 0.15);
+    egg(0.3);
   }
   return g;
 }
@@ -465,6 +471,7 @@ const EVENTS = [
   {
     n: '土地公廟',
     ic: '🏮',
+    img: 'sk_summongod',
     d: '香火還在燒，旁邊有個功德箱。',
     o: [
       { n: '投 20 金：回滿生命', need: 20, f: run => ((run.gold -= 20), (run.hp = P_of(run).mhp), '生命回滿了') },
@@ -474,6 +481,7 @@ const EVENTS = [
   {
     n: '地上的紅包',
     ic: '🧧',
+    img: 'mat_gold',
     d: '撿起來就會有人來找你。',
     o: [
       {
@@ -491,6 +499,7 @@ const EVENTS = [
   {
     n: '夜市攤販',
     ic: '🍢',
+    img: 'm_stinkytofu',
     d: '老闆在賣自己熬的藥。',
     o: [
       {
@@ -508,6 +517,7 @@ const EVENTS = [
   {
     n: '孟婆湯',
     ic: '🍵',
+    img: 'mengpo',
     d: '喝了會忘記一些事，也讓追你的東西忘了你。',
     o: [
       {
