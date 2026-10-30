@@ -3,7 +3,8 @@
 const newBag = t => ({ u: newUid(), t, items: [] });
 function newGame() {
   const S = {
-    v: 1,
+    v: 2,
+    name: '冒險者' + (100 + fl(Math.random() * 900)),
     gold: 20,
     bags: [newBag('b33')],
     av: 'av_kojiro',
@@ -114,14 +115,6 @@ function sellItem(S, u) {
   if (i < 0) return false;
   S.gold += sellPrice(S.wh[i]);
   S.wh.splice(i, 1);
-  return true;
-}
-const smithCost = (o, i) => 10 + baseOf(o).star * 8 + (7 - o.a[i].t) * 4;
-function smith(S, u, i) {
-  const o = allItems(S).find(x => x.u === u);
-  if (!o || !o.a[i] || S.gold < smithCost(o, i)) return false;
-  S.gold -= smithCost(o, i);
-  rerollAff(o, i, rng(h(Date.now() & 0xffffff, i, 5)));
   return true;
 }
 function buyBag(S, t) {

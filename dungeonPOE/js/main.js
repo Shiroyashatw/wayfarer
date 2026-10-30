@@ -18,10 +18,20 @@ function save() {
   }
   if (typeof CLOUD !== 'undefined') CLOUD.dirty = true;
 }
-/* 存檔版本 S.v：1 是 0.1.0；進行中的一局記著遊戲版本，版本不同就算撤離（東西不會不見） */
+/* 存檔版本 S.v：1 是 0.1.0、2 是 0.1.3；進行中的一局記著遊戲版本，版本不同就算撤離（東西不會不見） */
 function migrate(s) {
   if (!s || !s.v) return newGame();
   const o = { ...newGame(), ...s };
+  /* 存檔 2（0.1.3）：新手包是 3×3。0.1.2 以前的 4×4 新手包換回 3×3，放不下的放倉庫；鐵匠拿掉 */
+  if (s.v < 2) {
+    for (const b of o.bags)
+      if (b.t === 'b44') {
+        const its = b.items.splice(0);
+        b.t = 'b33';
+        for (const x of its) if (!autoPlace(b, x)) o.wh.push(x);
+      }
+    o.v = 2;
+  }
   if (o.run && o.run.ver !== VER) {
     finishRun(o, true);
     o.last = null;

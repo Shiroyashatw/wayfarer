@@ -91,6 +91,7 @@ function openDlg(f, c, keep) {
 }
 function closeDlg() {
   const m = $('modal');
+  if (V.sel && V.sel.src === 'own' && S.run) detClose();
   if (m.hidden) return;
   const c = V.dlg && V.dlg.c;
   V.dlg = null;
@@ -173,34 +174,53 @@ function itemHTML(o, cs, left, top, cls = 'it') {
     is = Math.min(44, cs * 0.8);
   return `<div class="${cls}" data-u="${o.u}" style="left:${left}px;top:${top}px;width:${w * cs}px;height:${hh * cs}px;border:0;background:none;pointer-events:none">${parts}<img class="ic" data-ic="${baseOf(o).ic}" src="${itIc(o)}" alt="${esc(baseOf(o).n)}" style="position:absolute;left:${icx - is / 2}px;top:${icy - is / 2}px;width:${is}px;height:${is}px"></div>`;
 }
+/* 小格子圖示：框色＝稀有度（白／藍）、左上 ★ 等級、右上形狀（佔幾格） */
+function shapeMini(o) {
+  const c = cellsOf(o),
+    [w, hh] = sizeOf(o);
+  return `<i class="shp" style="--w:${w};--h:${hh}" aria-label="${c.length} 格">${c.map(([x, y]) => `<i style="grid-area:${y + 1}/${x + 1}"></i>`).join('')}</i>`;
+}
+const slotIn = o =>
+  `<img class="ic" src="${itIc(o)}" alt="${esc(baseOf(o).n)}"><i class="badge">${baseOf(o).star}★</i>${shapeMini(o)}`;
+const WHF = [
+  ['all', '全部'],
+  ['w', '武器'],
+  ['a', '防具'],
+  ['s', '盾'],
+  ['o', '其他']
+];
+const whMatch = o => !V.whf || V.whf === 'all' || (V.whf === 'o' ? 'pg'.includes(baseOf(o).k) : baseOf(o).k === V.whf);
 function trayHTML(list) {
+  const its = list.filter(whMatch);
   return `<div class="tray" data-g="tray">${
-    list.length
-      ? list
+    its.length
+      ? its
           .map(
             o =>
-              `<button class="slot-g${rarity(o) ? ' r1' : ''}" data-u="${o.u}"><img class="ic" src="${itIc(o)}" alt="">${o.a.length ? `<i class="badge">T${Math.min(...o.a.map(x => x.t))}</i>` : ''}</button>`
+              `<button class="slot-g${rarity(o) ? ' r1' : ''}${V.sel && V.sel.u === o.u ? ' on' : ''}" data-u="${o.u}">${slotIn(o)}</button>`
           )
           .join('')
-      : `<div class="empty">倉庫是空的：去商店買裝備</div>`
+      : `<div class="empty">${list.length ? '這一類沒有東西' : '倉庫是空的：去商店買裝備，或下地城撿'}</div>`
   }</div>`;
 }
-function editorHTML() {
+/* where：'prep' 整備（背包＋黑盒）、'wh' 倉庫頁（多倉庫）、地城（多戰利品） */
+function editorHTML(where) {
   const c = ctx(),
     P = compile(c.bag, S.run ? S.run.hero : heroOf(S, S.cls)),
     dps = P.weapons.reduce((s, w) => s + (((w.dmg[0] + w.dmg[1]) / 2 + w.flat) * w.mul) / w.cd, 0),
     head = `<div class="bagw bagtop"><div class="lbl"><span>${esc(BAGI[c.bag.t].n)}</span><span>生命 <b>${P.mhp}</b>・每秒 <b>${dps.toFixed(1)}</b>・護甲 <b>${P.arm}</b></span></div>${gridHTML(c.bag, 'bag')}</div>`,
-    box = `<div class="bagw" style="flex:none"><div class="lbl"><span>黑盒</span></div>${gridHTML(c.box, 'box')}</div>`;
-  /* 地城：戰利品（怪物的背包）攤在背包下面，想拿的拖進來；城鎮：倉庫照《塞令老師》的暫存區，一排 6 格 */
+    box = `<div class="bagw" style="flex:none"><div class="lbl"><span>黑盒</span></div>${gridHTML(c.box, 'box')}</div>`,
+    note =
+      '<p class="sub" style="margin:var(--sp-4) 0 0">拖曳搬動，點一下看說明。黑盒不參與戰鬥，死了裡面的東西會留下。</p>';
+  /* 地城：戰利品（怪物的背包）攤在背包下面，想拿的拖進來 */
   if (!c.town)
     return `${head}<div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3);flex-wrap:wrap">
-    <div class="bagw" style="flex:none"><div class="lbl"><span>${esc(grName())}<small class="c-warn">・走開就沒了</small></span></div>${gridHTML(c.gr, 'gr')}</div>${box}</div>
-    <p class="sub">拖曳搬動，點一下看說明、旋轉。黑盒不參與戰鬥，死了裡面的東西會留下。</p>`;
-  return `${head}
-  <div class="bagw" style="margin-top:var(--sp-2)"><div class="lbl"><span>倉庫</span><span>${c.tray.length} 件</span></div>${trayHTML(c.tray)}</div>
-  <div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3)">${box}
-    <p class="sub" style="margin:var(--sp-4) 0 0">拖曳搬動，點一下看說明、旋轉。黑盒不參與戰鬥，死了裡面的東西會留下。</p>
-  </div>`;
+    <div class="bagw" style="flex:none"><div class="lbl"><span>${esc(grName())}<small class="c-warn">・走開就沒了</small></span></div>${gridHTML(c.gr, 'gr')}</div>${box}</div>`;
+  if (where === 'wh')
+    return `${head}<div class="bagw" style="margin-top:var(--sp-2)"><div class="lbl"><span>倉庫 ${c.tray.length} 件</span></div>
+    <div class="chips" style="margin-bottom:var(--sp-1)">${WHF.map(([k, n]) => `<button class="chipb" data-act="whf" data-k="${k}" aria-pressed="${(V.whf || 'all') === k}">${n}</button>`).join('')}</div>${trayHTML(c.tray)}</div>
+    <div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3)">${box}${note}</div>`;
+  return `${head}<div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3)">${box}<div style="flex:1;min-width:0;display:grid;gap:var(--sp-2);margin-top:var(--sp-4)"><button class="rowx" data-act="tab" data-t="wh" style="margin:0"><div class="t"><b>🗄️ 倉庫</b><small>${c.tray.length} 件・去倉庫拿裝備</small></div><span class="c-dim">›</span></button></div></div>`;
 }
 /* ---------- 拖曳（跟手、抓哪裡就跟哪裡，放開從現在的位置彈到結果） ---------- */
 let DR = null,
@@ -301,7 +321,7 @@ document.addEventListener('pointerup', e => {
     /* 放開就打開說明；瀏覽器接著補送的 click 會落在新卡片外的暗處把它關掉，吃掉那一下 */
     eatClick = true;
     setTimeout(() => (eatClick = false), 500);
-    return itemDlg(d.u);
+    return detOpen({ u: d.u, src: 'own' });
   }
   coachSoon();
   const t = target(e.clientX, e.clientY, d),
@@ -350,9 +370,12 @@ document.addEventListener('pointercancel', () => {
 });
 /* 背包內容變了：城鎮重畫整頁，地城只重畫說明卡 */
 function rerenderBag() {
-  if (V.dlg && V.dlg.bag) return openDlg(V.dlg.f, V.dlg.c, true);
-  render();
-  if (V.dlg) redlg();
+  if (V.dlg && V.dlg.bag) openDlg(V.dlg.f, V.dlg.c, true);
+  else {
+    render();
+    if (V.dlg) redlg();
+  }
+  if (V.sel) detRender();
 }
 /* ---------- 道具說明 ---------- */
 function itemLines(o) {
@@ -366,33 +389,113 @@ function itemLines(o) {
     })
     .join('')}</ul>`;
 }
-function itemDlg(u) {
-  const o = findIt(u);
-  if (!o) return;
-  const keepBag = V.dlg && V.dlg.bag;
-  openDlg(() => {
-    const o = findIt(u);
-    if (!o) return '<p class="sub">這件已經不在了</p>';
-    const b = baseOf(o),
-      w = where(u),
-      c = ctx(),
-      acts = [];
-    if (w !== 'tray' && b.sh !== 's1') acts.push(`<button class="btn" data-act="rot" data-u="${u}">旋轉</button>`);
-    if (w === 'tray' || w === 'gr') {
-      acts.push(`<button class="btn" data-act="toBag" data-u="${u}">放進背包</button>`);
-      acts.push(`<button class="btn" data-act="toBox" data-u="${u}">放進黑盒</button>`);
-      if (c.town) acts.push(`<button class="btn" data-act="sell" data-u="${u}">賣出 +${sellPrice(o)}</button>`);
-    } else
-      acts.push(`<button class="btn" data-act="toTray" data-u="${u}">${c.town ? '放回倉庫' : '放到地上'}</button>`);
-    return `<div class="dh"><div class="slot-g${rarity(o) ? ' r1' : ''}"><img class="ic" src="${itIc(o)}" alt=""></div><div><b class="${rarity(o) ? 'n1' : ''}">${esc(itName(o))}</b><small>${KINDN[b.k]}・${'★'.repeat(b.star)}${o.a.length ? `・${o.a.length} 條詞綴` : ''}</small></div></div>${itemLines(o)}<div class="acts">${acts.join('')}</div>${keepBag ? `<button class="btn" style="width:100%;margin-top:var(--sp-2)" data-act="bag">← 背包</button>` : ''}`;
-  });
+/* V.sel：{ u, src }；src：own 自己的（背包、黑盒、倉庫、地上）、shop 商店、mk 市集、mine 我上架的 */
+const itemDlg = u => detOpen({ u, src: 'own' });
+function selItem() {
+  const v = V.sel;
+  if (!v) return null;
+  if (v.src === 'own') return findIt(v.u);
+  if (v.src === 'shop') return S.shop[v.i] && S.shop[v.i].o;
+  const r = (v.src === 'mk' ? MK.list : MK.mine).find(x => x.id === v.id);
+  return r && r.o;
 }
+function detHTML() {
+  const v = V.sel,
+    o = selItem();
+  if (!o) return '';
+  const b = baseOf(o),
+    acts = [];
+  let extra = '';
+  if (v.src === 'own') {
+    const w = where(o.u),
+      c = ctx();
+    if (w !== 'tray' && b.sh !== 's1') acts.push(`<button class="btn" data-act="rot" data-u="${o.u}">旋轉</button>`);
+    if (w === 'tray' || w === 'gr') {
+      acts.push(
+        `<button class="btn" data-act="toBag" data-u="${o.u}">放進背包</button>`,
+        `<button class="btn" data-act="toBox" data-u="${o.u}">放進黑盒</button>`
+      );
+      if (c.town)
+        acts.push(
+          `<button class="btn" data-act="sell" data-u="${o.u}">賣出 +${sellPrice(o)}</button>`,
+          `<button class="btn" data-act="mkSell" data-u="${o.u}">上架市集</button>`
+        );
+    } else
+      acts.push(`<button class="btn" data-act="toTray" data-u="${o.u}">${c.town ? '放回倉庫' : '放到地上'}</button>`);
+  } else if (v.src === 'shop') {
+    const s = S.shop[v.i],
+      p = itemPrice(o);
+    acts.push(
+      s.sold
+        ? '<button class="btn" disabled>已買</button>'
+        : `<button class="btn pri" data-act="buy" data-i="${v.i}" ${S.gold < p ? 'disabled' : ''}>買 ${p} 金${S.gold < p ? '<span class="bnote">金幣不夠</span>' : ''}</button>`
+    );
+  } else if (v.src === 'mk') {
+    const r = MK.list.find(x => x.id === v.id);
+    extra = `<p class="sub">賣家：${esc(r.seller_name || '冒險者')}</p>`;
+    acts.push(
+      `<button class="btn pri" data-act="mkBuy" data-id="${r.id}" ${S.gold < r.price ? 'disabled' : ''}>買 ${r.price} 金${S.gold < r.price ? '<span class="bnote">金幣不夠</span>' : ''}</button>`
+    );
+  } else if (v.src === 'mine') {
+    const r = MK.mine.find(x => x.id === v.id);
+    acts.push(
+      r.status === 'sold'
+        ? '<button class="btn" disabled>賣掉了：去領錢</button>'
+        : `<button class="btn" data-act="mkCancel" data-id="${r.id}">下架（${r.price} 金）</button>`
+    );
+  }
+  return `<button class="x" data-act="detX" aria-label="關閉">✕</button><div class="dh"><div class="slot-g${rarity(o) ? ' r1' : ''}">${slotIn(o)}</div><div><b class="${rarity(o) ? 'n1' : ''}">${esc(itName(o))}</b><small>${rarity(o) ? '魔法' : '普通'}・${KINDN[b.k]}・${b.star}★・${cellsOf(o).length} 格</small></div></div>${itemLines(o)}${extra}<div class="acts">${acts.join('')}</div>`;
+}
+function detOpen(sel) {
+  const fresh = !V.sel || V.sel.u !== sel.u || V.sel.id !== sel.id || V.sel.i !== sel.i;
+  V.sel = sel;
+  detRender(fresh);
+}
+/* 從底部升上來；換一件只換內容不重播 */
+function detRender(anim) {
+  let d = $('det');
+  const html = V.sel ? detHTML() : '';
+  if (!html) {
+    if (d && !d.hidden) {
+      const a = spr(
+        d,
+        [{ transform: 'none' }, { transform: d.classList.contains('dtop') ? 'translateY(-110%)' : 'translateY(110%)' }],
+        300
+      );
+      const end = () => (d.hidden = true);
+      if (a) a.onfinish = end;
+      else end();
+    }
+    V.sel = null;
+    return;
+  }
+  if (!d) {
+    d = document.createElement('aside');
+    d.id = 'det';
+    d.className = 'det';
+    document.body.appendChild(d);
+    anim = true;
+  }
+  /* 說明卡（背包）開著時，道具說明改從頂端降下來，才不會蓋住下面的戰利品、黑盒 */
+  const was = d.hidden,
+    top = !$('modal').hidden,
+    off = top ? 'translateY(-110%)' : 'translateY(110%)';
+  d.innerHTML = html;
+  d.classList.toggle('dtop', top);
+  d.hidden = false;
+  if (anim || was) spr(d, [{ transform: off }, { transform: 'none' }]);
+  document.querySelectorAll('.on[data-u],.sc.on').forEach(x => x.classList.remove('on'));
+}
+const detClose = () => {
+  V.sel = null;
+  detRender();
+};
 /* ================= 城鎮 ================= */
 const TABS = [
-  ['prep', '🎒', '出發'],
+  ['prep', '🎒', '整備'],
+  ['wh', '🗄️', '倉庫'],
+  ['mk', '⚖️', '市集'],
   ['shop', '🏪', '商店'],
-  ['smith', '⚒️', '鐵匠'],
-  ['bags', '🧵', '工坊'],
   ['tree', '✨', '職業']
 ];
 function miniHTML(m) {
@@ -416,7 +519,7 @@ function topHTML(t) {
 /* 設定：頭像、亮色／深色、音效 */
 function settingsDlg() {
   openDlg(
-    () => `<h2>設定</h2><h3>頭像</h3><div class="avs">${AVATARS.map(([k, n]) => `<button class="slot-g" data-act="av" data-k="${k}" aria-pressed="${S.av === k}" aria-label="${n}"><img class="ic" data-sp="${k}" src="${spURL(k)}" alt=""></button>`).join('')}</div>
+    () => `<h2>設定</h2><h3>名字</h3><input class="inp" id="nm" maxlength="12" value="${esc(S.name || '')}" placeholder="冒險者" autocomplete="off"><h3>頭像</h3><div class="avs">${AVATARS.map(([k, n]) => `<button class="slot-g" data-act="av" data-k="${k}" aria-pressed="${S.av === k}" aria-label="${n}"><img class="ic" data-sp="${k}" src="${spURL(k)}" alt=""></button>`).join('')}</div>
     <h3>主題</h3><div class="g3">${[
       [null, '跟系統'],
       ['light', '☀️ 亮色'],
@@ -449,38 +552,66 @@ function prepHTML() {
   <div class="two"><div class="pcol">
   ${dsel}
   <button class="rowx" data-act="tab" data-t="tree"><img class="ic" src="${spURL(S.av)}" data-sp="${S.av}" alt="" style="width:40px;height:40px"><div class="t"><b>${cl.n} Lv${lv}<span class="c-dim" style="font-weight:400">・${cl.m}</span></b><small>核心：${eq.map(id => COREI[id].n).join('、')}</small></div><span class="c-dim">換 ›</span></button>
-  </div><div class="pcol"><h3>背包 <small>死了會失去</small></h3><div class="chips" style="margin-bottom:var(--sp-2)">${bagSel}</div>${editorHTML()}
+  </div><div class="pcol"><h3>背包 <small>死了會失去</small></h3><div class="chips" style="margin-bottom:var(--sp-2)">${bagSel}</div>${editorHTML('prep')}
   <details class="more"><summary>怎麼玩</summary><div><p class="sub">① 把倉庫的裝備拖進背包（背包就是你的戰鬥力）。② 下地城點相鄰的格子走過去，打怪、開寶箱，怪物背包裡的東西打贏就能拿。③ 每走一步熱度 +1，滿了墮落十二生肖會來追你，記得走到撤離點 🚪。④ 3 顆愛心全碎就死在地城：背包和裡面的東西全部失去，只有黑盒裡的會留下。</p></div></details></div></div>`;
 }
+function whHTML() {
+  return `${topHTML('倉庫')}<div class="chips" style="margin-bottom:var(--sp-2)">${S.bags.map(b => `<button class="chipb bagopt" data-act="selBag" data-u="${b.u}" aria-pressed="${b.u === S.sel}">${miniHTML(BAGI[b.t].m)}${esc(BAGI[b.t].n)}</button>`).join('')}</div>${editorHTML('wh')}`;
+}
+/* 格子卡片（商店、市集）：框色＝稀有度、★ 等級、形狀、價格 */
+const scHTML = (o, price, act, data, sold) =>
+  sold
+    ? '<div class="sc sold">已賣出</div>'
+    : `<button class="sc${rarity(o) ? ' r1' : ''}" data-act="${act}" ${data}><img class="ic" src="${itIc(o)}" alt="${esc(baseOf(o).n)}"><i class="badge">${baseOf(o).star}★</i>${shapeMini(o)}<b class="${S.gold < price ? 'c-bad' : ''}">${price} 金</b></button>`;
+const segHTML = (k, opts) =>
+  `<div class="seg">${opts.map(([v, n]) => `<button class="chipb" data-act="seg" data-k="${k}" data-v="${v}" aria-pressed="${(V[k] || opts[0][0]) === v}">${n}</button>`).join('')}</div>`;
 function shopHTML() {
-  return `${topHTML('商店')}<p class="sub">白裝，最高 ${'★'.repeat(shopStar(S))}・打倒王會進更好的貨</p>${S.shop
-    .map((s, i) => {
-      const b = baseOf(s.o);
-      return `<div class="rowx${s.sold ? ' off' : ''}"><button class="slot-g" style="width:44px;height:44px" data-act="shopInfo" data-i="${i}"><img class="ic" src="${itIc(s.o)}" alt="" style="width:32px;height:32px"></button><div class="t"><b>${esc(b.n)}</b><small>${baseLines(b)[0]}</small></div>${s.sold ? '<span class="sub">已買</span>' : `<button class="btn buy" data-act="buy" data-i="${i}" ${S.gold < itemPrice(s.o) ? 'disabled' : ''}>${itemPrice(s.o)} 金</button>`}</div>`;
-    })
-    .join('')}<p class="sub">要賣東西：在「出發」頁點倉庫裡的道具。</p>`;
+  const t = V.shopT || 'gear',
+    own = id => S.bags.filter(b => b.t === id).length;
+  return `${topHTML('商店')}${segHTML('shopT', [
+    ['gear', '裝備'],
+    ['bags', '背包']
+  ])}${
+    t === 'gear'
+      ? `<p class="sub">白裝，最高 ${shopStar(S)}★・打倒王會進更好的貨。點一下看說明再買。</p><div class="shopg">${S.shop.map((s, i) => scHTML(s.o, itemPrice(s.o), 'shopSel', `data-i="${i}"`, s.sold)).join('')}</div>`
+      : `<p class="sub">死了背包會一起失去。越大越貴，前期便宜的先用。</p>${BAGS.map(b => `<div class="rowx">${miniHTML(b.m)}<div class="t"><b>${esc(b.n)}</b><small>${cellCount({ t: b.id })} 格${own(b.id) ? `・有 ${own(b.id)} 個` : ''}</small></div><button class="btn buy" data-act="buyBag" data-t="${b.id}" ${S.gold < b.p ? 'disabled' : ''}>${b.p} 金</button></div>`).join('')}`
+  }`;
 }
-function smithHTML() {
-  const its = allItems(S).filter(o => o.a.length);
-  return `${topHTML('鐵匠')}<p class="sub">花金幣重骰一條詞綴（同一個位置，T 級上限看底材 ★）。</p>${its.length ? `<div class="slots">${its.map(o => `<button class="slot-g r1" data-act="smithOpen" data-u="${o.u}"><img class="ic" src="${itIc(o)}" alt=""><i class="badge">T${Math.min(...o.a.map(x => x.t))}</i></button>`).join('')}</div>` : '<div class="empty">還沒有帶詞綴的裝備：去地城撿藍色的裝備</div>'}`;
+function mkHTML() {
+  const t = V.mkT || 'buy';
+  if (!MK.at && !MK.busy && !MK.err) mkLoad().then(() => V.tab === 'mk' && render());
+  const kf = r => !V.mkf || V.mkf === 'all' || (V.mkf === 'o' ? 'pg'.includes(r.kind) : r.kind === V.mkf);
+  let body;
+  if (MK.err) body = `<div class="empty">${esc(MK.err)}</div>`;
+  else if (!MK.at) body = '<div class="empty">讀取中…</div>';
+  else if (t === 'buy') {
+    const L = MK.list.filter(kf);
+    body = `<div class="chips" style="margin-bottom:var(--sp-2)">${WHF.map(([k, n]) => `<button class="chipb" data-act="mkf" data-k="${k}" aria-pressed="${(V.mkf || 'all') === k}">${n}</button>`).join('')}</div>${L.length ? `<div class="shopg">${L.map(r => scHTML(r.o, r.price, 'mkSel', `data-id="${r.id}"`)).join('')}</div>` : '<div class="empty">還沒有人上架這一類的東西</div>'}`;
+  } else
+    body = `${MK.owed ? `<div class="card row" style="justify-content:space-between"><span>賣掉了，可以領 <b class="c-gold">${MK.owed} 金</b><small class="c-dim">（已扣 10% 手續費）</small></span><button class="btn pri" data-act="mkClaim">領錢</button></div>` : ''}${
+      MK.mine.filter(r => r.status === 'open').length
+        ? `<div class="shopg">${MK.mine
+            .filter(r => r.status === 'open')
+            .map(r => scHTML(r.o, r.price, 'mineSel', `data-id="${r.id}"`))
+            .join('')}</div>`
+        : '<div class="empty">還沒有上架：到倉庫點道具「上架市集」</div>'
+    }<p class="sub">最多同時上架 20 件。賣掉的錢扣 10% 手續費，回來這裡領。</p>`;
+  return `${topHTML('市集')}<div class="row" style="justify-content:space-between">${segHTML('mkT', [
+    ['buy', '購買'],
+    ['mine', '我的上架']
+  ])}<button class="btn sm" data-act="mkLoad" ${MK.busy ? 'disabled' : ''}>重新整理</button></div>${body}`;
 }
-function smithDlg(u) {
-  openDlg(() => {
-    const o = allItems(S).find(x => x.u === u);
-    return `<div class="dh"><div class="slot-g r1"><img class="ic" src="${itIc(o)}" alt=""></div><div><b class="n1">${esc(itName(o))}</b><small>${'★'.repeat(baseOf(o).star)}</small></div></div>${itemLines(o)}<div class="acts">${o.a
-      .map(
-        (x, i) =>
-          `<button class="btn" data-act="reroll" data-u="${u}" data-i="${i}" ${S.gold < smithCost(o, i) ? 'disabled' : ''}>重骰${AFFI[x.id].t === 'P' ? '前綴' : '後綴'}<span class="bnote">${smithCost(o, i)} 金</span></button>`
-      )
-      .join('')}</div>`;
-  });
-}
-function bagsHTML() {
-  const own = t => S.bags.filter(b => b.t === t).length;
-  return `${topHTML('背包工坊')}<p class="sub">死了背包會一起失去。越大越貴，前期便宜的先用。</p>${BAGS.map(
-    b =>
-      `<div class="rowx">${miniHTML(b.m)}<div class="t"><b>${esc(b.n)}</b><small>${cellCount({ t: b.id })} 格${own(b.id) ? `・有 ${own(b.id)} 個` : ''}</small></div><button class="btn buy" data-act="buyBag" data-t="${b.id}" ${S.gold < b.p ? 'disabled' : ''}>${b.p} 金</button></div>`
-  ).join('')}`;
+function mkSellDlg(u) {
+  const o = S.wh.find(x => x.u === u),
+    ref = Math.max(10, sellPrice(o) * 3);
+  openDlg(
+    () =>
+      `<h2>上架市集</h2><div class="dh"><div class="slot-g${rarity(o) ? ' r1' : ''}">${slotIn(o)}</div><div><b class="${rarity(o) ? 'n1' : ''}">${esc(itName(o))}</b><small>賣給商店只有 ${sellPrice(o)} 金</small></div></div>
+      <label class="sub" for="mkp">價格（1～99999 金，賣掉扣 10%）</label><input class="inp" id="mkp" type="number" inputmode="numeric" min="1" max="99999" value="${ref}">
+      <div class="g3" style="margin-bottom:var(--sp-3)">${[1, 2, 4].map(k => `<button class="btn sm" data-act="mkp" data-v="${ref * k}">${ref * k}</button>`).join('')}</div>
+      <button class="btn pri big" data-act="mkSellGo" data-u="${u}">上架</button>`,
+    1
+  );
 }
 function nodeTxt(c, n) {
   const cs = CLSI[c].cores;
@@ -556,7 +687,7 @@ function coreDlg() {
   });
 }
 function townHTML() {
-  const body = { prep: prepHTML, shop: shopHTML, smith: smithHTML, bags: bagsHTML, tree: treeHTML }[V.tab]();
+  const body = ({ prep: prepHTML, wh: whHTML, mk: mkHTML, shop: shopHTML, tree: treeHTML }[V.tab] || prepHTML)();
   const d = Math.min(S.d, S.maxD),
     dock =
       V.tab === 'prep'
@@ -950,6 +1081,7 @@ function render() {
   if (V.scr === 'run' && !S.run) V.scr = 'town';
   app.innerHTML =
     V.scr === 'run' ? runHTML() : V.scr === 'fight' ? fightHTML() : V.scr === 'res' ? resHTML() : townHTML();
+  if (V.sel) detRender();
   coachSoon();
 }
 /* ================= 新手教學（框起要按的地方，其他變暗但不擋點擊；做了那個動作就換下一步） ================= */
@@ -1083,6 +1215,7 @@ const A = {
     redlg();
   },
   tab: el => {
+    detClose();
     V.tab = el.dataset.t;
     if (V.tab === 'tree') tip('tree');
     render();
@@ -1130,16 +1263,80 @@ const A = {
     if (buyShop(S, +el.dataset.i)) {
       snd('coin', 'coin');
       save();
+      detClose();
       render();
       toast('放進倉庫了');
     }
   },
-  shopInfo: el => {
-    const o = S.shop[+el.dataset.i].o;
-    openDlg(
-      () =>
-        `<div class="dh"><div class="slot-g"><img class="ic" src="${itIc(o)}" alt=""></div><div><b>${esc(baseOf(o).n)}</b><small>${KINDN[baseOf(o).k]}・${'★'.repeat(baseOf(o).star)}</small></div></div>${itemLines(o)}`
-    );
+  detX: () => detClose(),
+  whf: el => {
+    V.whf = el.dataset.k;
+    render();
+  },
+  mkf: el => {
+    V.mkf = el.dataset.k;
+    render();
+  },
+  seg: el => {
+    V[el.dataset.k] = el.dataset.v;
+    detClose();
+    render();
+  },
+  shopSel: el => detOpen({ src: 'shop', i: +el.dataset.i }),
+  mkSel: el => detOpen({ src: 'mk', id: el.dataset.id }),
+  mineSel: el => detOpen({ src: 'mine', id: el.dataset.id }),
+  mkLoad: async () => {
+    MK.at = 0;
+    const p = mkLoad();
+    render();
+    await p;
+    render();
+  },
+  mkBuy: async el => {
+    el.disabled = true;
+    const o = await mkBuy(el.dataset.id);
+    detClose();
+    render();
+    if (o) {
+      snd('coin', 'coin');
+      toast(`買到了 ${baseOf(o).n}：放進倉庫`);
+    } else toast(MK.err || '晚了一步：被別人買走或下架了');
+  },
+  mkCancel: async el => {
+    el.disabled = true;
+    const ok = await mkCancel(el.dataset.id);
+    detClose();
+    render();
+    toast(ok ? '下架了：放回倉庫' : MK.err || '已經賣掉了');
+  },
+  mkClaim: async () => {
+    const g = await mkClaim();
+    render();
+    if (g) {
+      snd('coin', 'coin');
+      toast(`+${g} 金`);
+    }
+  },
+  mkSell: el => {
+    const u = el.dataset.u;
+    detClose();
+    mkSellDlg(u);
+  },
+  mkp: el => ($('mkp').value = el.dataset.v),
+  mkSellGo: async el => {
+    const v = Math.round(+$('mkp').value);
+    if (!(v >= 1 && v <= 99999)) return toast('價格要在 1～99999 之間');
+    el.disabled = true;
+    const ok = await mkSell(el.dataset.u, v);
+    closeDlg();
+    if (ok) {
+      snd('coin', 'coin');
+      toast('上架了');
+      MK.at = 0;
+      V.tab = 'mk';
+      V.mkT = 'mine';
+    } else toast(MK.err || '上架失敗');
+    render();
   },
   buyBag: el => {
     if (buyBag(S, el.dataset.t)) {
@@ -1148,24 +1345,6 @@ const A = {
       V.tab = 'prep';
       render();
       toast('換上新背包了：把倉庫的裝備拖進去');
-    }
-  },
-  smithOpen: el => smithDlg(el.dataset.u),
-  reroll: el => {
-    if (smith(S, el.dataset.u, +el.dataset.i)) {
-      snd('coin', 'coin');
-      save();
-      render();
-      redlg();
-      const af = document.querySelectorAll('.sheet .lines li.af')[+el.dataset.i];
-      spr(
-        af,
-        [
-          { opacity: 0, transform: 'translateY(4px)' },
-          { opacity: 1, transform: 'none' }
-        ],
-        300
-      );
     }
   },
   rot: el => {
@@ -1192,9 +1371,7 @@ const A = {
     c.tray.push(take(el.dataset.u));
     save();
     snd('tap', 'select');
-    if (V.dlg && V.dlg.bag) bagDlg();
-    else closeDlg();
-    render();
+    rerenderBag();
   },
   sell: el => {
     const o = findIt(el.dataset.u),
@@ -1202,7 +1379,7 @@ const A = {
     if (sellItem(S, el.dataset.u)) {
       snd('coin', 'coin');
       save();
-      closeDlg();
+      detClose();
       render();
       toast(`+${p} 金`);
     }
@@ -1367,10 +1544,7 @@ function moveAuto(u, k) {
   }
   snd('select', 'select');
   save();
-  if (V.dlg && V.dlg.bag) bagDlg();
-  else if (S.run) bagDlg();
-  else closeDlg();
-  render();
+  rerenderBag();
 }
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -1388,3 +1562,13 @@ addEventListener('resize', () => {
   rpT = setTimeout(() => V.scr !== 'fight' && render(), 150);
 });
 addEventListener('scroll', coachSoon, { passive: true });
+document.addEventListener('change', e => {
+  if (e.target.id !== 'nm') return;
+  S.name = e.target.value.trim().slice(0, 12) || '冒險者';
+  save();
+  toast('名字改好了');
+});
+/* 點說明卡以外的地方（不是道具、不是按鈕）就收起來 */
+document.addEventListener('pointerdown', e => {
+  if (V.sel && !e.target.closest('#det,.part,.tray .slot-g,.sc,[data-act],#modal')) detClose();
+});

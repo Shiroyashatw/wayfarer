@@ -35,13 +35,19 @@ function rollItem(id, n, tb, r) {
   }
   return mkItem(id, a);
 }
-/* 鐵匠：重骰一個詞綴（同一個位置、同一類），T 級照這件的底材 ★ 決定上限 */
-function rerollAff(o, i, r) {
-  const b = baseOf(o),
-    old = o.a[i],
-    x = rollAff(b, AFFI[old.id].t, Math.max(1, 6 - b.star), r, old.id);
-  if (x) o.a[i] = x;
-  return o;
+/* 從市集（別人的存檔）來的道具：底材、詞綴、T 級、數值範圍都要對得上表，不對就不收 */
+function cleanItem(x) {
+  const b = x && ITEMI[x.id];
+  if (!b || !Array.isArray(x.a) || x.a.length > 2) return null;
+  const a = [];
+  for (const y of x.a) {
+    const af = AFFI[y && y.id],
+      tr = af && af.tiers[(y.t | 0) - 1];
+    if (!tr || !affFits(af, b) || typeof y.v !== 'number' || y.v < tr[0] || y.v > tr[1]) return null;
+    if (a.some(z => AFFI[z.id].t === af.t)) return null;
+    a.push({ id: y.id, t: y.t | 0, v: y.v });
+  }
+  return mkItem(x.id, a);
 }
 const rarity = o => (o.a.length ? 1 : 0);
 const itemPrice = o => {
