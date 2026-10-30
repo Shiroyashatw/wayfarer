@@ -111,11 +111,16 @@ function openDlg(f, c, keep) {
     again = !m.hidden && keep;
   /* 重畫同一張卡（keep）時保留「這是背包卡」的標記 */
   V.dlg = { f, c, bag: keep && V.dlg ? V.dlg.bag : 0 };
+  const tall = keep && V.dlg.bag;
   m.className = c ? 'center' : '';
   /* 遭遇一定要選打或跑，不給關 */
   const noX = S.run && S.run.pend && ['fight', 'dead'].includes(S.run.pend.k) && !(V.dlg && V.dlg.bag);
-  m.innerHTML = `<div class="sheet">${c ? '' : '<div class="grab"></div>'}${noX ? '' : '<button class="x" data-act="close" aria-label="關閉">✕</button>'}${f()}</div>`;
+  /* 重畫時保留捲動位置（拖曳後重畫不要跳回最上面） */
+  const sc = again && m.firstChild ? m.firstChild.scrollTop : 0;
+  m.innerHTML = `<div class="sheet${tall ? ' tall' : ''}">${c ? '' : '<div class="grab"></div>'}${noX ? '' : '<button class="x" data-act="close" aria-label="關閉">✕</button>'}${f()}</div>`;
   m.hidden = false;
+  if (sc) m.firstChild.scrollTop = sc;
+  if (tall) padSheet();
   if (!again) {
     spr(m, [{ opacity: 0 }, { opacity: 1 }], 250);
     spr(
@@ -204,8 +209,8 @@ function itemHTML(o, cs, left, top, cls = 'it') {
     [w, hh] = sizeOf(o),
     first = c.reduce((a, p) => (p[1] < a[1] || (p[1] === a[1] && p[0] < a[0]) ? p : a));
   let parts = '';
-  for (const [x, y] of c)
-    parts += `<i class="part" data-u="${o.u}" style="position:absolute;left:${x * cs}px;top:${y * cs}px;width:${cs}px;height:${cs}px;border-radius:5px;background:var(--card2);box-shadow:inset 0 0 0 2px var(--r${rarity(o)});pointer-events:auto"></i>`;
+  for (const [k, [x, y]] of c.entries())
+    parts += `<i class="part" data-u="${o.u}" data-k="${k}" style="position:absolute;left:${x * cs}px;top:${y * cs}px;width:${cs}px;height:${cs}px;border-radius:5px;background:var(--card2);box-shadow:inset 0 0 0 2px var(--r${rarity(o)});pointer-events:auto"></i>`;
   const icx =
       c.length > 1 && (w > 1 || hh > 1)
         ? (c.reduce((s, p) => s + p[0], 0) / c.length + 0.5) * cs
@@ -275,7 +280,7 @@ function editorHTML(where) {
     <div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3)">${box}${note}</div>`;
   return `${head}<div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3)">${box}<div style="flex:1;min-width:0;display:grid;gap:var(--sp-2);margin-top:var(--sp-4)"><button class="rowx" data-act="tab" data-t="wh" style="margin:0"><div class="t"><b>🗄️ 倉庫</b><small>${c.tray.length} 件・去倉庫拿裝備</small></div><span class="c-dim">›</span></button></div></div>`;
 }
-/* ---------- 拖曳（跟手、抓哪裡就跟哪裡，放開從現在的位置彈到結果） ---------- */
+/* ---------- 拖曳（照《塞令老師》：抓哪格跟哪格、放不下自動轉向、擋到一件就交換、拖曳中可以旋轉、拖到商店賣掉） ---------- */
 let DR = null,
   eatClick = false;
 document.addEventListener(
@@ -288,163 +293,350 @@ document.addEventListener(
   },
   true
 );
+const eat = () => {
+  eatClick = true;
+  setTimeout(() => (eatClick = false), 500);
+};
+const withR = (o, r) => ({ ...o, r });
+const root = () => ($('modal').hidden ? '#app ' : '#modal ');
+/* 一個格子容器的 key：bag 背包、box 黑盒、gr 地上；tray 倉庫（清單） */
+const gridOf = k => ctx()[k];
+/* 在格子容器 g 裡，o 換到 (tx,ty) 時擋到的道具（不算自己） */
+function hitIn(g, o, tx, ty) {
+  const m = occ(
+      g,
+      g.items.find(x => x.u === o.u)
+    ),
+    hit = new Set();
+  for (const [cx, cy] of cellsOf(o)) {
+    const b = m.get(tx + cx + ',' + (ty + cy));
+    if (b) hit.add(b);
+  }
+  return [...hit];
+}
+/* 被換掉的那件（B）要去哪：同一個容器就放到 o 原本的位置（會試四個方向）、從別的容器來就放回那個容器 o 原本的位置；從倉庫或商店來就收進倉庫 */
+function swapDest(d, gk, g, B, tx, ty, rO) {
+  if (d.src === 'tray' || d.src === 'shop') return ctx().tray ? { tray: 1 } : null;
+  const G2 = gridOf(d.src),
+    same = d.src === gk,
+    base = (same ? g : G2).items.filter(x => x !== B && x.u !== d.o.u),
+    tmp = { t: (same ? g : G2).t, items: same ? [...base, { ...d.o, r: rO, x: tx, y: ty }] : base };
+  for (let k = 0; k < 4; k++) {
+    const r = ((B.r || 0) + k) & 3;
+    if (fits(tmp, withR(B, r), d.o.x, d.o.y, null)) return { x: d.o.x, y: d.o.y, r };
+  }
+  /* 原位放不下：那個容器裡任何空位都行（會試四個方向） */
+  for (let k = 0; k < 4; k++) {
+    const r = ((B.r || 0) + k) & 3;
+    for (let y = 0; y < gridH(tmp); y++)
+      for (let x = 0; x < gridW(tmp); x++) if (fits(tmp, withR(B, r), x, y, null)) return { x, y, r };
+  }
+  return null;
+}
+/* 手指在 (px,py)：算出放下會怎樣 */
+function plan(d, px, py) {
+  const r0 = ((d.o.r || 0) + d.rot) & 3,
+    els = [
+      ...document.querySelectorAll(
+        root() + '.grid[data-g],' + root() + '.tray,' + (d.src !== 'shop' && S && !S.run ? '#app .shopg' : '#none')
+      )
+    ],
+    el = els.find(e => {
+      const r = e.getBoundingClientRect();
+      return px >= r.left && px <= r.right && py >= r.top && py <= r.bottom;
+    });
+  if (!el) return { r: r0, gi: d.gi };
+  if (el.classList.contains('shopg')) return d.src === 'shop' ? { r: r0, gi: d.gi } : { sell: 1, r: r0, gi: d.gi, el };
+  if (el.classList.contains('tray')) return d.src === 'tray' ? { r: r0, gi: d.gi } : { tray: 1, r: r0, gi: d.gi, el };
+  const gk = el.dataset.g,
+    g = gridOf(gk),
+    cs = cellPx(g),
+    rc = el.getBoundingClientRect(),
+    c = [fl((px - rc.left - 4) / cs), fl((py - rc.top - 4) / cs)],
+    base = { gk, g, el, cs, c };
+  /* 1. 原本的方向放得下；2. 放不下就換個方向（手指底下那格還是道具的一部分） */
+  for (let k = 0; k < 4; k++) {
+    const r = (r0 + k) & 3,
+      cells = cellsOf(withR(d.o, r)),
+      order = k ? cells.keys() : [d.gi];
+    for (const gi of order) {
+      const [gx, gy] = cells[gi],
+        tx = c[0] - gx,
+        ty = c[1] - gy;
+      if (
+        fits(
+          g,
+          withR(d.o, r),
+          tx,
+          ty,
+          g.items.find(x => x.u === d.o.u)
+        )
+      )
+        return { ...base, ok: 1, r, gi, x: tx, y: ty };
+    }
+  }
+  /* 3. 剛好擋到一件、換得過去：交換（也會試其他方向） */
+  for (let k = 0; k < 4; k++) {
+    const r = (r0 + k) & 3,
+      cells = cellsOf(withR(d.o, r)),
+      order = k ? [...cells.keys()] : [d.gi];
+    for (const gi of order) {
+      const tx = c[0] - cells[gi][0],
+        ty = c[1] - cells[gi][1],
+        hit = hitIn(g, withR(d.o, r), tx, ty);
+      if (hit.length !== 1) continue;
+      const B = hit[0],
+        rest = { t: g.t, items: g.items.filter(x => x !== B && x.u !== d.o.u) };
+      if (!fits(rest, withR(d.o, r), tx, ty, null)) continue;
+      const to = swapDest(d, gk, g, B, tx, ty, r);
+      if (to) return { ...base, swap: { B, to }, r, gi, x: tx, y: ty };
+    }
+  }
+  const cells = cellsOf(withR(d.o, r0));
+  return { ...base, bad: 1, r: r0, gi: d.gi, x: c[0] - cells[d.gi][0], y: c[1] - cells[d.gi][1] };
+}
 document.addEventListener('pointerdown', e => {
+  /* 拖曳中另一隻手指點一下：旋轉（手機） */
+  if (DR && DR.on && e.pointerId !== DR.id) {
+    e.preventDefault();
+    return dragRot();
+  }
   const el = e.target.closest('.part,.tray .slot-g,.shopg .sc[data-i]');
-  if (!el || e.button > 0 || el.closest('.fgrid')) return;
+  if (!el || el.closest('.fgrid,.ebag')) return;
   const shop = el.dataset.i != null ? +el.dataset.i : null,
     u = shop != null ? null : el.dataset.u,
     o = shop != null ? S.shop[shop] && !S.shop[shop].sold && S.shop[shop].o : findIt(u);
   if (!o) return;
-  const fromTray = el.classList.contains('slot-g') || shop != null,
-    g = fromTray ? null : el.closest('.grid'),
-    gk = g && g.dataset.g,
-    cs = gk ? cellPx(ctx()[gk]) : cellPx(ctx().bag),
-    host = fromTray ? el : el.parentElement,
-    rc = host.getBoundingClientRect();
-  DR = { u: u || o.u, o, shop, x0: e.clientX, y0: e.clientY, el, host, on: false, cs, fromTray, id: e.pointerId };
-  /* 從托盤拿起：抓第一格的中間；從格子拿起：照抓的那格 */
-  DR.ox = fromTray ? cs / 2 : e.clientX - rc.left;
-  DR.oy = fromTray ? cs / 2 : e.clientY - rc.top;
-});
-document.addEventListener('pointermove', e => {
-  if (!DR || e.pointerId !== DR.id) return;
-  const dx = e.clientX - DR.x0,
-    dy = e.clientY - DR.y0;
-  if (!DR.on) {
-    if (Math.hypot(dx, dy) < 8) return;
-    DR.on = true;
-    const cs = DR.cs;
-    DR.gh = document.createElement('div');
-    DR.gh.className = 'ghost-wrap';
-    DR.gh.style.cssText = 'position:fixed;z-index:70;pointer-events:none;left:0;top:0';
-    DR.gh.innerHTML = itemHTML(DR.o, cs, 0, 0, 'it ghostit');
-    document.body.appendChild(DR.gh);
-    DR.gh.firstChild.style.filter = 'drop-shadow(0 8px 16px #0006)';
-    DR.host.style.opacity = '.25';
-    document.querySelector('.coach')?.remove();
-    try {
-      DR.el.setPointerCapture(e.pointerId);
-    } catch (er) {}
-    snd('tap', 'select');
+  /* 右鍵：直接旋轉（不拖曳） */
+  if (e.button === 2) {
+    if (shop == null && el.classList.contains('part')) rotIt(o);
+    return;
   }
-  e.preventDefault();
-  DR.lx = e.clientX - DR.ox;
-  DR.ly = e.clientY - DR.oy;
-  DR.gh.style.transform = `translate(${DR.lx}px,${DR.ly}px)`;
-  hover(e.clientX, e.clientY);
+  if (e.button > 0) return;
+  const src = shop != null ? 'shop' : where(u),
+    fromList = src === 'tray' || src === 'shop',
+    cs = fromList ? cellPx(ctx().bag) : cellPx(gridOf(src)),
+    rc = el.getBoundingClientRect(),
+    host = fromList ? el : el.closest('.it');
+  if (host) host.classList.add('press');
+  DR = {
+    o,
+    u: o.u,
+    src,
+    shop,
+    gi: fromList ? 0 : +el.dataset.k || 0,
+    rot: 0,
+    x0: e.clientX,
+    y0: e.clientY,
+    el,
+    host,
+    on: false,
+    cs,
+    /* 抓在那一格的哪裡（從清單拿起：抓中間） */
+    ox: fromList ? cs / 2 : ((e.clientX - rc.left) / rc.width) * cs,
+    oy: fromList ? cs / 2 : ((e.clientY - rc.top) / rc.height) * cs,
+    id: e.pointerId
+  };
 });
-/* 用道具第一格的中心判斷落點（不看手指底下的元素：底部按鈕蓋住格子也放得下） */
-function target(cx, cy, d = DR) {
-  const px = d.lx + d.cs / 2,
-    py = d.ly + d.cs / 2,
-    inR = (el, x, y) => {
-      const r = el.getBoundingClientRect();
-      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-    },
-    els = [
-      ...document.querySelectorAll(
-        ($('modal').hidden ? '#app ' : '#modal ') + '.grid,' + ($('modal').hidden ? '#app ' : '#modal ') + '.tray'
-      )
-    ],
-    g = els.find(el => inR(el, px, py)) || els.find(el => el.classList.contains('tray') && inR(el, cx, cy));
-  if (!g) return null;
-  const k = g.dataset.g;
-  if (k === 'tray') return { k };
-  const grid = ctx()[k],
-    cs = cellPx(grid),
-    r = g.getBoundingClientRect();
-  return { k, grid, el: g, x: Math.round((d.lx - r.left - 4) / cs), y: Math.round((d.ly - r.top - 4) / cs) };
-}
-function hover(cx, cy) {
+document.addEventListener(
+  'pointermove',
+  e => {
+    if (!DR || e.pointerId !== DR.id) return;
+    if (!DR.on) {
+      if (Math.hypot(e.clientX - DR.x0, e.clientY - DR.y0) < 8) return;
+      DR.on = true;
+      DR.gh = document.createElement('div');
+      DR.gh.className = 'ghost';
+      document.body.appendChild(DR.gh);
+      if (DR.host) DR.host.classList.remove('press'), DR.host.classList.add('lift');
+      document.querySelector('.coach')?.remove();
+      try {
+        DR.el.setPointerCapture(e.pointerId);
+      } catch (er) {}
+      snd('tap', 'select');
+    }
+    e.preventDefault();
+    DR.px = e.clientX;
+    DR.py = e.clientY;
+    dragMove(DR);
+  },
+  { passive: false }
+);
+function dragMove(d) {
+  const p = (d.p = plan(d, d.px, d.py)),
+    cs = p.cs || d.cs,
+    cells = cellsOf(withR(d.o, p.r)),
+    [gx, gy] = cells[p.gi] || cells[0],
+    key = p.r + '|' + cs;
+  /* 影子：方向或格子大小變了才重畫 */
+  if (d.shown !== key) {
+    d.shown = key;
+    const [w, hh] = sizeOf(withR(d.o, p.r));
+    d.gh.style.width = w * cs + 'px';
+    d.gh.style.height = hh * cs + 'px';
+    d.gh.innerHTML =
+      cells.map(([x, y]) => `<i style="left:${x * cs}px;top:${y * cs}px;width:${cs}px;height:${cs}px"></i>`).join('') +
+      `<img class="ic" src="${itIc(d.o)}" alt="" style="left:${gx * cs + cs * 0.12}px;top:${gy * cs + cs * 0.12}px;width:${cs * 0.76}px;height:${cs * 0.76}px">`;
+  }
+  const sc = cs / d.cs;
+  d.lx = d.px - gx * cs - d.ox * sc;
+  d.ly = d.py - gy * cs - d.oy * sc;
+  d.gh.style.transform = `translate(${d.lx}px,${d.ly}px)`;
+  d.gh.className =
+    'ghost r' + rarity(d.o) + (p.ok || p.tray ? ' good' : p.swap ? ' swap' : p.sell ? ' sell' : p.bad ? ' bad' : '');
+  /* 格子上：放下會佔哪幾格（綠）、放不下（紅）、要交換的那件（框起來） */
   document.querySelectorAll('.cell.ok,.cell.no').forEach(c => c.classList.remove('ok', 'no'));
-  document.querySelectorAll('.tray.hot').forEach(c => c.classList.remove('hot'));
-  const t = target(cx, cy);
-  if (!t) return;
-  if (t.k === 'tray') return document.querySelector('.tray').classList.add('hot');
-  const ok = fits(t.grid, DR.o, t.x, t.y);
-  for (const [cx2, cy2] of cellsOf(DR.o)) {
-    const c = t.el.querySelector(`.cell[data-c="${t.x + cx2},${t.y + cy2}"]`);
-    if (c) c.classList.add(ok ? 'ok' : 'no');
+  document
+    .querySelectorAll('.swapt,.tray.hot,.shopg.sellhot')
+    .forEach(c => c.classList.remove('swapt', 'hot', 'sellhot'));
+  if (p.el && (p.ok || p.swap || p.bad))
+    for (const [cx, cy] of cells) {
+      const c = p.el.querySelector(`.cell[data-c="${p.x + cx},${p.y + cy}"]`);
+      if (c) c.classList.add(p.bad ? 'no' : 'ok');
+    }
+  if (p.swap) p.el.querySelector(`.it[data-u="${p.swap.B.u}"]`)?.classList.add('swapt');
+  if (p.tray) p.el.classList.add('hot');
+  if (p.sell) p.el.classList.add('sellhot');
+}
+/* 拖曳中旋轉：R 鍵、空白鍵、滑鼠右鍵、滾輪、另一隻手指點一下 */
+function dragRot(k = 1) {
+  const d = DR;
+  if (!d || !d.on || cellsOf(d.o).length < 2) return false;
+  d.rot = (d.rot + k + 4) & 3;
+  snd('tap');
+  dragMove(d);
+  return true;
+}
+document.addEventListener('keydown', e => {
+  if ((e.key === 'r' || e.key === 'R' || e.key === ' ') && dragRot()) e.preventDefault();
+});
+document.addEventListener('contextmenu', e => {
+  if ((DR && DR.on) || e.target.closest('.grid,.tray,.shopg')) e.preventDefault();
+});
+let wheelAt = 0;
+document.addEventListener(
+  'wheel',
+  e => {
+    if (!DR || !DR.on) return;
+    e.preventDefault();
+    if (Date.now() - wheelAt < 150) return;
+    wheelAt = Date.now();
+    dragRot(e.deltaY > 0 ? 1 : -1);
+  },
+  { passive: false }
+);
+document.addEventListener('pointermove', e => {
+  if (DR && DR.on && e.pointerId === DR.id && e.buttons & 2 && !DR.b2) dragRot();
+  if (DR) DR.b2 = !!(e.buttons & 2);
+});
+/* 原地旋轉（右鍵、說明卡的旋轉鈕）：照順時針試下一個放得下的方向 */
+function rotIt(o) {
+  const k = where(o.u);
+  if (!k || k === 'tray' || cellsOf(o).length < 2) return;
+  const g = gridOf(k);
+  for (let i = 1; i <= 3; i++) {
+    const r = ((o.r || 0) + i) & 3;
+    if (fits(g, withR(o, r), o.x, o.y, o)) {
+      o.r = r;
+      snd('tap', 'select');
+      save();
+      return rerenderBag();
+    }
   }
+  snd('nope', 'nope');
+  toast('轉了放不下：先挪到空一點的地方');
+}
+function dragEnd() {
+  document.querySelectorAll('.cell.ok,.cell.no').forEach(c => c.classList.remove('ok', 'no'));
+  document
+    .querySelectorAll('.swapt,.tray.hot,.shopg.sellhot,.press,.lift')
+    .forEach(c => c.classList.remove('swapt', 'hot', 'sellhot', 'press', 'lift'));
 }
 document.addEventListener('pointerup', e => {
   if (!DR || e.pointerId !== DR.id) return;
   const d = DR;
   DR = null;
-  if (!d.on && d.shop != null) {
-    eatClick = true;
-    setTimeout(() => (eatClick = false), 500);
-    return detOpen({ src: 'shop', i: d.shop });
-  }
+  dragEnd();
   if (!d.on) {
-    /* 放開就打開說明；瀏覽器接著補送的 click 會落在新卡片外的暗處把它關掉，吃掉那一下 */
-    eatClick = true;
-    setTimeout(() => (eatClick = false), 500);
-    return detOpen({ u: d.u, src: 'own' });
+    /* 點一下：打開說明（瀏覽器接著補送的 click 會落在新卡片外的暗處把它關掉，吃掉那一下） */
+    eat();
+    return detOpen(d.shop != null ? { src: 'shop', i: d.shop } : { u: d.u, src: 'own' });
   }
   coachSoon();
-  const t = target(e.clientX, e.clientY, d),
+  const p = d.p || {},
     c = ctx();
-  let ok = false;
-  /* 商店的商品：放得下才付錢（先買進倉庫，再搬到放下的格子） */
-  if (d.shop != null) {
-    const price = itemPrice(d.o),
-      can = t && (t.k === 'tray' || (t.grid && fits(t.grid, d.o, t.x, t.y)));
-    const bought = can && S.gold >= price && buyShop(S, d.shop);
-    if (can && S.gold < price) toast('金幣不夠');
-    else if (bought && bought.pet) {
-      ok = true;
+  let ok = false,
+    msg = '';
+  /* 商店的商品：放得下（或換得過去）才付錢，先買進倉庫，再當作從倉庫拖過去 */
+  if (d.src === 'shop' && (p.ok || p.swap || p.tray)) {
+    if (S.gold < itemPrice(d.o)) msg = '金幣不夠';
+    else {
+      const b = buyShop(S, d.shop);
       snd('coin', 'coin');
-      setTimeout(() => hatchDlg(bought.pet), 50);
-    } else if (bought) {
-      if (t.k !== 'tray') {
-        const o = take(d.o.u);
-        o.x = t.x;
-        o.y = t.y;
-        t.grid.items.push(o);
-      }
-      ok = true;
-      snd('coin', 'coin');
+      if (b && b.pet) {
+        setTimeout(() => hatchDlg(b.pet), 50);
+        p.ok = p.swap = p.tray = 0;
+        ok = true;
+      } else d.src = 'tray';
     }
-  } else if (t && t.k === 'tray' && where(d.u) !== 'tray') {
+  }
+  if (!msg && (p.ok || p.swap)) {
+    const o = take(d.u);
+    if (p.swap) {
+      const { B, to } = p.swap;
+      p.g.items.splice(p.g.items.indexOf(B), 1);
+      if (to.tray) c.tray.push(B);
+      else gridOf(d.src === 'tray' ? p.gk : d.src).items.push(Object.assign(B, { x: to.x, y: to.y, r: to.r }));
+    }
+    Object.assign(o, { x: p.x, y: p.y, r: p.r });
+    p.g.items.push(o);
+    ok = true;
+  } else if (!msg && p.tray) {
     c.tray.push(take(d.u));
     ok = true;
-  } else if (t && t.grid && fits(t.grid, d.o, t.x, t.y)) {
-    const o = take(d.u);
-    o.x = t.x;
-    o.y = t.y;
-    t.grid.items.push(o);
+  } else if (!msg && p.sell) {
+    const o = take(d.u),
+      v = sellPrice(o);
+    S.gold += v;
+    msg = `賣了 ${v} 金`;
+    snd('coin', 'coin');
     ok = true;
   }
   if (!ok) {
     /* 放不下：從現在的位置飛回原位 */
-    const r = d.host.getBoundingClientRect(),
+    const r = (d.host || d.el).getBoundingClientRect(),
       gh = d.gh,
-      a = spr(gh, [{ transform: gh.style.transform }, { transform: `translate(${r.left}px,${r.top}px)` }], 350);
+      a = spr(
+        gh,
+        [
+          { transform: gh.style.transform, opacity: 1 },
+          { transform: `translate(${r.left}px,${r.top}px)`, opacity: 0.4 }
+        ],
+        320
+      );
     snd('nope', 'nope');
-    const end = () => {
-      gh.remove();
-      d.host.style.opacity = '';
-    };
+    if (msg || p.bad) toast(msg || '這裡放不下');
+    const end = () => gh.remove();
     if (a) a.onfinish = end;
     else end();
-    document.querySelectorAll('.cell.ok,.cell.no,.tray.hot').forEach(x => x.classList.remove('ok', 'no', 'hot'));
     return;
   }
-  snd('select', 'select');
+  if (msg) toast(msg);
+  else snd('select', 'select');
   save();
   rerenderBag();
-  const nel = document.querySelector(`.it[data-u="${d.u}"],.tray .slot-g[data-u="${d.u}"]`);
+  /* 道具從影子現在的位置彈進新位置 */
+  const nel = document.querySelector(`${root()}.it[data-u="${d.u}"],${root()}.tray .slot-g[data-u="${d.u}"]`);
   if (nel) {
     const r = nel.getBoundingClientRect();
     spr(nel, [{ transform: `translate(${d.lx - r.left}px,${d.ly - r.top}px)` }, { transform: 'none' }], 400);
   }
   d.gh.remove();
 });
-document.addEventListener('pointercancel', () => {
-  if (!DR) return;
+document.addEventListener('pointercancel', e => {
+  if (!DR || e.pointerId !== DR.id) return;
   if (DR.gh) DR.gh.remove();
-  if (DR.host) DR.host.style.opacity = '';
+  dragEnd();
   DR = null;
 });
 /* 背包內容變了：城鎮重畫整頁，地城只重畫說明卡 */
@@ -542,7 +734,10 @@ function detRender(anim) {
         [{ transform: 'none' }, { transform: d.classList.contains('dtop') ? 'translateY(-110%)' : 'translateY(110%)' }],
         300
       );
-      const end = () => (d.hidden = true);
+      const end = () => {
+        d.hidden = true;
+        padSheet();
+      };
       if (a) a.onfinish = end;
       else end();
     }
@@ -557,14 +752,19 @@ function detRender(anim) {
     anim = true;
   }
   /* 說明卡（背包）開著時，道具說明改從頂端降下來，才不會蓋住下面的戰利品、黑盒 */
+  /* 道具說明固定在最下面；背包說明卡開著時，卡片底部留出說明的高度（內容可以往上捲，不被擋住） */
   const was = d.hidden,
-    top = !$('modal').hidden,
-    off = top ? 'translateY(-110%)' : 'translateY(110%)';
+    off = 'translateY(110%)';
   d.innerHTML = html;
-  d.classList.toggle('dtop', top);
   d.hidden = false;
+  padSheet();
   if (anim || was) spr(d, [{ transform: off }, { transform: 'none' }]);
   document.querySelectorAll('.on[data-u],.sc.on').forEach(x => x.classList.remove('on'));
+}
+function padSheet() {
+  const sh = document.querySelector('#modal .sheet.tall'),
+    d = $('det');
+  if (sh) sh.style.paddingBottom = d && !d.hidden && V.sel ? d.offsetHeight + 16 + 'px' : '';
 }
 const detClose = () => {
   V.sel = null;
@@ -874,6 +1074,8 @@ function bagDlg(head = '') {
   V.dlg = null;
   openDlg(() => head + editorHTML());
   V.dlg.bag = 1;
+  $('modal').firstChild.classList.add('tall');
+  padSheet();
 }
 /* 遭遇與待辦（打或跑、戰利品、商人、事件、撤離、下樓） */
 function foeHTML(f) {
@@ -1503,20 +1705,8 @@ const A = {
     }
   },
   rot: el => {
-    const u = el.dataset.u,
-      o = findIt(u),
-      k = where(u),
-      g = ctx()[k],
-      r0 = o.r;
-    o.r = (o.r + 1) % 4;
-    if (!fits(g, o, o.x, o.y)) {
-      o.r = r0;
-      snd('nope', 'nope');
-      return toast('轉了放不下：先挪出空間');
-    }
-    snd('tap', 'select');
-    save();
-    rerenderBag();
+    const o = findIt(el.dataset.u);
+    if (o) rotIt(o);
   },
   toBag: el => moveAuto(el.dataset.u, 'bag'),
   toBox: el => moveAuto(el.dataset.u, 'box'),

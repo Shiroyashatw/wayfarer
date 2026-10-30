@@ -1,6 +1,6 @@
 /* dungeonPOE · 遊戲表格：道具、詞綴、背包、手牌、怪物、生肖、職業與核心、天賦（設計見 docs/企劃書.md） */
 'use strict';
-const VER = '0.1.5',
+const VER = '0.1.6',
   KEY = 'dungeonpoe_v1',
   SLOT = new URLSearchParams(location.search).get('p') || '';
 /* ================= 道具（原始 16 把武器＋9 件防具，《塞令老師》0.4.0） ================= */

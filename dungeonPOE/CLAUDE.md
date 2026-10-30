@@ -34,7 +34,7 @@
 | `js/audio.js` | Web Audio 合成音效 |
 | `js/cloud.js` | Supabase 匿名登入＋雲端存檔（表 `dungeon_saves`） |
 | `js/market.js` | 市集（真人交易，表 `dungeon_market`）：`mkLoad`、上架 `mkSell`、`mkBuy`、下架 `mkCancel`、領錢 `mkClaim` |
-| `js/ui.js` | 所有畫面：城鎮五個分頁（整備、倉庫 `whHTML`、市集 `mkHTML`、商店 `shopHTML`、職業 `treeHTML`）、格子卡片 `scHTML`、道具說明卡 `detOpen`／`detRender`、背包拖曳（`pointerdown`／`pointermove`／`pointerup`、`target`、`hover`）、說明卡 `openDlg`／`closeDlg`、設定 `settingsDlg`、地城 `runHTML`／`mapHTML`、待辦 `pendDlg`（遭遇的怪物背包 `ebagHTML`）、新手教學 `TIPS`／`coach`、戰鬥播放（`startFightView`、`bTick`、背包運作 `fightBagHTML`／`itemFire`、訊息 `logEv`）、結算、動作表 `A` |
+| `js/ui.js` | 所有畫面：城鎮五個分頁（整備、倉庫 `whHTML`、市集 `mkHTML`、商店 `shopHTML`、職業 `treeHTML`）、格子卡片 `scHTML`、道具說明卡 `detOpen`／`detRender`、背包拖曳（`pointerdown`／`pointermove`／`pointerup`、落點判斷 `plan`（自動轉向、交換 `swapDest`）、`dragMove`、旋轉 `dragRot`／`rotIt`）、說明卡 `openDlg`／`closeDlg`、設定 `settingsDlg`、地城 `runHTML`／`mapHTML`、待辦 `pendDlg`（遭遇的怪物背包 `ebagHTML`）、新手教學 `TIPS`／`coach`、戰鬥播放（`startFightView`、`bTick`、背包運作 `fightBagHTML`／`itemFire`、訊息 `logEv`）、結算、動作表 `A` |
 | `js/main.js` | `load`／`save`／`migrate`／`start` |
 | `tools/game_node.js` | 在 Node 載入純邏輯 |
 | `tools/check.js` | 固定檢查 |
