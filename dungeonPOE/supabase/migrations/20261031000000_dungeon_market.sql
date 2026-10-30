@@ -57,4 +57,5 @@ begin
   ) select coalesce(sum(floor(price * 0.9)), 0) into total from c;
   return total;
 end $$;
+revoke execute on function public.market_buy(uuid), public.market_cancel(uuid), public.market_claim() from public, anon;
 grant execute on function public.market_buy(uuid), public.market_cancel(uuid), public.market_claim() to authenticated;
