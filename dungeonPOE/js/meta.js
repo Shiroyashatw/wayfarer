@@ -3,7 +3,7 @@
 const newBag = t => ({ u: newUid(), t, items: [] });
 function newGame() {
   const S = {
-    v: 2,
+    v: 3,
     name: '冒險者' + (100 + fl(Math.random() * 900)),
     gold: 20,
     bags: [newBag('b33')],

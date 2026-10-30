@@ -4,7 +4,7 @@
 const G = require('./game_node.js').load();
 const score = o => {
   const b = G.baseOf(o);
-  const a = o.a.reduce((s, x) => s + (7 - x.t) * 2, 0);
+  const a = o.a.reduce((s, x) => s + (13 - x.t) * 1.5, 0);
   if (b.k === 'w') return ((b.dmg[0] + b.dmg[1]) / 2 / b.cd) * 10 + a;
   if (b.k === 's') return (b.block / b.cd) * 6 + a;
   if (b.k === 'a') return (b.hp || 0) / 3 + (b.arm || 0) * 4 + (b.dodge || 0) + a;

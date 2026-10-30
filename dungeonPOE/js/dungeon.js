@@ -10,15 +10,22 @@ function mkFoe(def, tier, L, heat, r, aff = []) {
   let mhp = b.hp * (def.hp || 1) * TIERM[tier] * hm,
     atk = b.atk * (def.atk || 1) * atkM * hm,
     cd = def.cd || 1.6,
-    arm = 0;
-  const on = { ...(def.on || {}) };
+    arm = 0,
+    el = def.el || 'phys';
+  const on = { ...(def.on || {}) },
+    res = { ...(def.res || {}) };
   for (const a of aff) {
     if (a === 'fast') cd /= 1.4;
     if (a === 'tough') mhp *= 1.5;
     if (a === 'iron') arm += 3;
-    if (a === 'fire') on.burn = (on.burn || 0) + 50;
-    if (a === 'frost') on.freeze = (on.freeze || 0) + 25;
-    if (a === 'storm') on.shock = (on.shock || 0) + 50;
+    /* 攻擊屬性：本身有就用本身的，沒有才用第一個元素詞綴 */
+    const ae = { fire: 'fire', frost: 'cold', storm: 'light' }[a];
+    if (ae) {
+      on[{ fire: 'burn', cold: 'freeze', light: 'shock' }[ae]] =
+        (on[{ fire: 'burn', cold: 'freeze', light: 'shock' }[ae]] || 0) + (ae === 'cold' ? 25 : 50);
+      res[ae] = (res[ae] || 0) + 40;
+      if (el === 'phys') el = ae;
+    }
   }
   return {
     n: def.n,
@@ -30,46 +37,58 @@ function mkFoe(def, tier, L, heat, r, aff = []) {
     arm,
     on,
     aff,
+    el,
+    res,
     sk: def.sk || null
   };
 }
 const MAFFK = Object.keys(MAFF);
-/* 隨機一件道具（照這一層的深度與熱度；bonus 是多深幾級） */
+/* 隨機一件道具（照這一層的深度與熱度；n 是詞綴數；bonus 是多深幾級）。
+   T 級：第 1 層最好 T12～T11，越深越好（第三座地城才看得到 T1、T2） */
+const bestTier = (L, heat, bonus = 0) =>
+  Math.max(1, Math.min(12, 12 - fl((L - 1) * 1.25) - (heat ? 1 : 0) - bonus * 2));
 function rollGear(L, heat, r, n, bonus = 0) {
   const LL = L + bonus,
     mx = Math.min(5, 1 + fl(LL / 2)),
-    pool = GEAR.filter(b => b.star <= mx && b.star >= Math.max(1, mx - 2)),
-    tb = Math.max(1, Math.min(6, 6 - fl((L - 1) / 1.5) - (heat ? 1 : 0) - bonus));
-  return rollItem(pick(pool, r).id, n, tb, r);
+    pool = GEAR.filter(b => b.star <= mx && b.star >= Math.max(1, mx - 2));
+  return rollItem(pick(pool, r).id, n, bestTier(L, heat, bonus), r);
 }
-/* 怪物（或寶箱）的背包：裡面的裝備讓帶頭的怪變強，打贏了就是戰利品 */
+/* 怪物（或寶箱）的背包：裡面的裝備讓帶頭的怪變強，打贏了就是戰利品。
+   稀有度照 D2：白 0 條、藍 1～2 條、黃 3～6 條（rollCount 的兩個數字是藍、黃的機率） */
 function lootBag(t, L, heat, r) {
-  const blue = () => (r() < 0.25 + 0.15 * heat ? 1 : 0),
+  const hb = 0.1 * heat,
     g = { t: { fight: 'm33', chest: 'm33', elite: 'm44', zod: 'm44', boss: 'm55' }[t], items: [] },
-    put = o => autoPlace(g, o);
+    put = o => autoPlace(g, o),
+    gear = (blue, rare, bonus) => put(rollGear(L, heat, r, rollCount(r, blue + hb, rare + hb / 2), bonus));
   if (t === 'fight') {
-    put(rollGear(L, heat, r, blue()));
-    if (r() < 0.35) put(rollGear(L, heat, r, blue()));
+    gear(0.3, 0.04);
+    if (r() < 0.35) gear(0.3, 0.04);
     if (r() < 0.12) put(mkItem('potion'));
   } else if (t === 'chest') {
-    put(rollGear(L, heat, r, r() < 0.4 + 0.15 * heat ? 1 : 0));
-    if (r() < 0.4) put(rollGear(L, heat, r, blue()));
+    gear(0.45, 0.1);
+    if (r() < 0.4) gear(0.3, 0.05);
     if (r() < 0.15) put(mkItem('potion'));
   } else if (t === 'elite') {
-    put(rollGear(L, heat, r, r() < 0.4 ? 2 : 1));
-    put(rollGear(L, heat, r, blue()));
-    if (r() < 0.5) put(rollGear(L, heat, r, blue()));
+    gear(0.65, 0.35);
+    gear(0.35, 0.08);
+    if (r() < 0.5) gear(0.35, 0.08);
   } else if (t === 'boss') {
-    put(rollGear(L, heat, r, 2, 1));
-    put(rollGear(L, heat, r, 1, 1));
-    put(rollGear(L, heat, r, 1));
-    put(rollGear(L, heat, r, blue()));
+    put(rollGear(L, heat, r, 3 + fl(r() * 3), 1));
+    gear(0.6, 0.4, 1);
+    gear(0.5, 0.15);
+    gear(0.4, 0.1);
     put(mkItem('potion'));
   } else if (t === 'zod') {
-    const o = rollGear(L, heat, r, 2, 2);
-    o.a.forEach(x => (x.t = Math.min(x.t, 2)));
+    const o = rollGear(L, heat, r, 3 + fl(r() * 2), 1);
+    o.a.forEach(x => {
+      if (x.t > 3) {
+        x.t = 3;
+        const [lo, hi] = AFFI[x.id].tiers[2];
+        x.v = Math.max(lo, Math.min(hi, x.v));
+      }
+    });
     put(o);
-    put(rollGear(L, heat, r, 1, 1));
+    gear(0.6, 0.15);
   }
   return g;
 }
@@ -266,7 +285,12 @@ function shuffle(a, r) {
 const rr = (run, k) => rng(h(run.seed, run.f * 1000 + run.turn * 7 + (run.ctr = (run.ctr || 0) + 1), k));
 const heatLv = run => (run.heat >= HEAT.lv[2] ? 2 : run.heat >= HEAT.lv[1] ? 1 : 0);
 const runL = run => lvOf(run.d, run.f);
-const P_of = run => compile(run.bag, run.hero);
+/* 戰鬥用的數值：抗性扣掉這座地城的懲罰 */
+const P_of = run => {
+  const P = compile(run.bag, run.hero);
+  P.rf = finalRes(P, run.d);
+  return P;
+};
 function enterFloor(run) {
   run.map = genMap(h(run.seed, run.f), run.d, run.f, heatLv(run));
   run.pos = run.prev = 0;

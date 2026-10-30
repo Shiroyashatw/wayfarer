@@ -25,8 +25,8 @@
 | 檔案 | 內容 |
 | --- | --- |
 | `js/core.js` | `$`、`fl`、固定亂數 `h`／`rng`、`esc` |
-| `js/data.js` | 表格：道具 `ITEMS`、詞綴 `AFF`（T1～T6）、背包 `BAGS`／黑盒 `BOX`／地上與怪物背包 `MBAGS`、頭像 `AVATARS`、熱度 `HEAT`、怪物 `MOBS`／菁英詞綴 `MAFF`／王 `BOSSES`／生肖 `ZODIAC`、職業與核心 `CLASSES`、天賦 `TREE`、`VER`、存檔鍵 `KEY` |
-| `js/gear.js` | 道具實例、擲詞綴 `rollItem`、檢查別人的道具 `cleanItem`、形狀與擺放 `cellsOf`／`fits`／`autoPlace`、位置詞綴、把背包算成戰鬥數值 `compile`、說明文字 `baseLines`／`affLine` |
+| `js/data.js` | 表格：道具 `ITEMS`、詞綴 `AFF`（T12～T1，`T12` 切段）、稀有度 `RARN`、抗性 `RESK`／`RES_CAP`／`resPen`、背包 `BAGS`／黑盒 `BOX`／地上與怪物背包 `MBAGS`、頭像 `AVATARS`、熱度 `HEAT`、怪物 `MOBS`／菁英詞綴 `MAFF`／王 `BOSSES`／生肖 `ZODIAC`、職業與核心 `CLASSES`、天賦 `TREE`、`VER`、存檔鍵 `KEY` |
+| `js/gear.js` | 道具實例、擲詞綴 `rollItem`、檢查別人的道具 `cleanItem`、形狀與擺放 `cellsOf`／`fits`／`autoPlace`、位置詞綴、把背包算成戰鬥數值 `compile`（含抗性 `res`、武器屬性 `el`／`add`）、扣懲罰後的抗性 `finalRes`、說明文字 `baseLines`／`affLine` |
 | `js/sim.js` | 自動戰鬥 `simulate`（純計算、偽隨機 `prd`、輸出事件時間軸，含哪件道具發動；怪物用背包裡的武器 `wps`）、預估 `predict`、危險等級 `danger`／`DANGER` |
 | `js/dungeon.js` | 一趟地城：怪物 `mkFoe`／`foesFor`、怪物與寶箱的背包 `lootBag`／`equipFoe`、地圖 `genMap`、`newRun`、移動 `moveTo`／`step`／`arrive`、熱度與生肖 `addHeat`／`spawnZod`、打或跑 `fightNow`／`flee`、戰利品 `lootFor`、地城商人、事件 `EVENTS`、下樓 `goDown`、結算 `runResult` |
 | `js/meta.js` | 存檔結構 `newGame`、職業等級與天賦 `clLv`／`takeNode`／`coresOf`／`heroOf`、城鎮（商店 `buyShop`、賣 `sellItem`、買背包 `buyBag`）、跑刀 `ensureStarter`、出發 `depart`、結算 `finishRun` |
@@ -45,7 +45,7 @@
 ```bash
 python3 -m http.server 8000   # 在 dungeonPOE/ 底下，開 http://localhost:8000
 ```
-存檔在 localStorage（鍵 `dungeonpoe_v1`，網址加 `?p=2` 用另一份）。存檔版本 `S.v`（0.1.0 是 1、0.1.3 是 2），改格式要在 `main.js` 的 `migrate()` 補轉換；進行中的一局記著 `S.run.ver`，版本不同會直接當作撤離（東西不會不見）。
+存檔在 localStorage（鍵 `dungeonpoe_v1`，網址加 `?p=2` 用另一份）。存檔版本 `S.v`（0.1.0 是 1、0.1.3 是 2、0.1.4 是 3），改格式要在 `main.js` 的 `migrate()` 補轉換；進行中的一局記著 `S.run.ver`，版本不同會直接當作撤離（東西不會不見）。
 
 ## Supabase
 同一個專案（ref `eugkdfhkoaxvqhztvptc`），表 `public.dungeon_saves`（跟《塞令老師》的 `saves` 分開，RLS 只允許本人）。前端只放 anon key，**絕對不要使用或要求 service_role key**。表不存在時只存本機。

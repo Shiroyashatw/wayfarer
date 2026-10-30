@@ -1,6 +1,6 @@
 /* dungeonPOE · 遊戲表格：道具、詞綴、背包、手牌、怪物、生肖、職業與核心、天賦（設計見 docs/企劃書.md） */
 'use strict';
-const VER = '0.1.3',
+const VER = '0.1.4',
   KEY = 'dungeonpoe_v1',
   SLOT = new URLSearchParams(location.search).get('p') || '';
 /* ================= 道具（原始 16 把武器＋9 件防具，《塞令老師》0.4.0） ================= */
@@ -51,9 +51,21 @@ const ITEMS = [
   { id: 'huntbow', n: '獵弓', k: 'w', star: 1, sh: 'v3', cd: 1.6, dmg: [3, 5], ic: 'gear_weapon_3' },
   { id: 'club', n: '單手錘', k: 'w', star: 1, sh: 'v2', cd: 1.8, dmg: [3, 6], on: { shock: 15 }, ic: 'gear_weapon_8' },
   { id: 'ironsword', n: '長劍', k: 'w', star: 2, sh: 'v2', cd: 1.2, dmg: [4, 6], ic: 'gear_weapon_1' },
-  { id: 'firestaff', n: '火球法杖', k: 'w', star: 2, sh: 'v3', cd: 1.7, dmg: [3, 5], on: { burn: 60 }, ic: 'sk_fire' },
+  {
+    id: 'firestaff',
+    el: 'fire',
+    n: '火球法杖',
+    k: 'w',
+    star: 2,
+    sh: 'v3',
+    cd: 1.7,
+    dmg: [3, 5],
+    on: { burn: 60 },
+    ic: 'sk_fire'
+  },
   {
     id: 'icestaff',
+    el: 'cold',
     n: '冰錐法杖',
     k: 'w',
     star: 2,
@@ -65,6 +77,7 @@ const ITEMS = [
   },
   {
     id: 'venomknife',
+    el: 'chaos',
     n: '毒匕首',
     k: 'w',
     star: 2,
@@ -88,6 +101,7 @@ const ITEMS = [
   },
   {
     id: 'thunderhammer',
+    el: 'light',
     n: '雷霆錘',
     k: 'w',
     star: 3,
@@ -103,6 +117,7 @@ const ITEMS = [
   { id: 'dragonslayer', n: '斬鐵大劍', k: 'w', star: 4, sh: 'big', cd: 2, dmg: [12, 18], crit: 10, ic: 'sk_slash2' },
   {
     id: 'phoenixbow',
+    el: 'fire',
     n: '火焰弓',
     k: 'w',
     star: 4,
@@ -114,6 +129,7 @@ const ITEMS = [
   },
   {
     id: 'skythunder',
+    el: 'light',
     n: '天雷',
     k: 'w',
     star: 5,
@@ -139,310 +155,62 @@ const ITEMS = [
 const ITEMI = Object.fromEntries(ITEMS.map(it => [it.id, it]));
 const GEAR = ITEMS.filter(it => 'was'.includes(it.k));
 const KINDN = { w: '武器', a: '防具', s: '盾', p: '藥水', g: '錢袋' };
-/* ================= 詞綴：T1～T6（T1 最強），每件最多一個前綴（P，數值）、一個後綴（S，機制） ================= */
-/* tiers[0] 是 T1；k：能出現在哪一類（w 武器、a 防具、s 盾） */
-const AFF = [
-  {
-    id: 'dmgPct',
-    t: 'P',
-    n: '鋒利',
-    k: 'w',
-    tiers: [
-      [40, 50],
-      [32, 39],
-      [24, 31],
-      [17, 23],
-      [10, 16],
-      [5, 9]
-    ],
-    f: v => `傷害 +${v}%`
-  },
-  {
-    id: 'flat',
-    t: 'P',
-    n: '沉重',
-    k: 'w',
-    tiers: [
-      [7, 9],
-      [5, 6],
-      [4, 4],
-      [3, 3],
-      [2, 2],
-      [1, 1]
-    ],
-    f: v => `每下傷害 +${v}`
-  },
-  {
-    id: 'hp',
-    t: 'P',
-    n: '健壯',
-    k: 'as',
-    tiers: [
-      [40, 50],
-      [31, 39],
-      [23, 30],
-      [16, 22],
-      [10, 15],
-      [5, 9]
-    ],
-    f: v => `生命 +${v}`
-  },
-  {
-    id: 'arm',
-    t: 'P',
-    n: '堅固',
-    k: 'a',
-    tiers: [
-      [6, 7],
-      [5, 5],
-      [4, 4],
-      [3, 3],
-      [2, 2],
-      [1, 1]
-    ],
-    f: v => `護甲 +${v}`
-  },
-  {
-    id: 'dodge',
-    t: 'P',
-    n: '靈巧',
-    k: 'a',
-    tiers: [
-      [9, 10],
-      [7, 8],
-      [6, 6],
-      [5, 5],
-      [3, 4],
-      [2, 2]
-    ],
-    f: v => `閃避 +${v}%`
-  },
-  {
-    id: 'blockPct',
-    t: 'P',
-    n: '厚實',
-    k: 's',
-    tiers: [
-      [60, 75],
-      [46, 59],
-      [34, 45],
-      [24, 33],
-      [15, 23],
-      [8, 14]
-    ],
-    f: v => `格擋 +${v}%`
-  },
-  {
-    id: 'spd',
-    t: 'S',
-    n: '迅捷',
-    k: 'w',
-    tiers: [
-      [25, 30],
-      [20, 24],
-      [15, 19],
-      [11, 14],
-      [7, 10],
-      [4, 6]
-    ],
-    f: v => `攻速 +${v}%`
-  },
-  {
-    id: 'crit',
-    t: 'S',
-    n: '精準',
-    k: 'w',
-    tiers: [
-      [15, 18],
-      [12, 14],
-      [9, 11],
-      [7, 8],
-      [5, 6],
-      [3, 4]
-    ],
-    f: v => `暴擊率 +${v}%`
-  },
-  {
-    id: 'ls',
-    t: 'S',
-    n: '吸血',
-    k: 'w',
-    tiers: [
-      [10, 12],
-      [8, 9],
-      [6, 7],
-      [5, 5],
-      [3, 4],
-      [2, 2]
-    ],
-    f: v => `吸血 ${v}%`
-  },
-  {
-    id: 'burn',
-    t: 'S',
-    n: '灼燒',
-    k: 'w',
-    tiers: [
-      [60, 70],
-      [48, 59],
-      [38, 47],
-      [29, 37],
-      [21, 28],
-      [14, 20]
-    ],
-    f: v => `命中 ${v}% 燃燒`
-  },
-  {
-    id: 'poison',
-    t: 'S',
-    n: '劇毒',
-    k: 'w',
-    tiers: [
-      [60, 70],
-      [48, 59],
-      [38, 47],
-      [29, 37],
-      [21, 28],
-      [14, 20]
-    ],
-    f: v => `命中 ${v}% 中毒`
-  },
-  {
-    id: 'bleed',
-    t: 'S',
-    n: '撕裂',
-    k: 'w',
-    tiers: [
-      [50, 60],
-      [40, 49],
-      [31, 39],
-      [24, 30],
-      [17, 23],
-      [10, 16]
-    ],
-    f: v => `命中 ${v}% 流血`
-  },
-  {
-    id: 'freeze',
-    t: 'S',
-    n: '霜凍',
-    k: 'w',
-    tiers: [
-      [30, 35],
-      [25, 29],
-      [20, 24],
-      [16, 19],
-      [12, 15],
-      [8, 11]
-    ],
-    f: v => `命中 ${v}% 凍結`
-  },
-  {
-    id: 'shock',
-    t: 'S',
-    n: '雷擊',
-    k: 'w',
-    tiers: [
-      [50, 60],
-      [40, 49],
-      [31, 39],
-      [24, 30],
-      [17, 23],
-      [10, 16]
-    ],
-    f: v => `命中 ${v}% 感電`
-  },
-  {
-    id: 'adjW',
-    t: 'S',
-    n: '共鳴',
-    k: 'was',
-    tiers: [
-      [16, 20],
-      [13, 15],
-      [10, 12],
-      [8, 9],
-      [6, 7],
-      [4, 5]
-    ],
-    f: v => `相鄰每件武器：這件 +${v}%`
-  },
-  {
-    id: 'lone',
-    t: 'S',
-    n: '孤狼',
-    k: 'was',
-    tiers: [
-      [45, 55],
-      [36, 44],
-      [28, 35],
-      [21, 27],
-      [15, 20],
-      [10, 14]
-    ],
-    f: v => `旁邊沒有道具：這件 +${v}%`
-  },
-  {
-    id: 'corner',
-    t: 'S',
-    n: '據角',
-    k: 'was',
-    tiers: [
-      [35, 40],
-      [28, 34],
-      [22, 27],
-      [16, 21],
-      [11, 15],
-      [7, 10]
-    ],
-    f: v => `放在背包角落：這件 +${v}%`
-  },
-  {
-    id: 'row',
-    t: 'S',
-    n: '列陣',
-    k: 'w',
-    tiers: [
-      [10, 12],
-      [8, 9],
-      [6, 7],
-      [5, 5],
-      [3, 4],
-      [2, 2]
-    ],
-    f: v => `同一排每件其他武器：攻速 +${v}%`
-  },
-  {
-    id: 'regen',
-    t: 'S',
-    n: '再生',
-    k: 'as',
-    tiers: [
-      [2.5, 3],
-      [2, 2.4],
-      [1.5, 1.9],
-      [1.1, 1.4],
-      [0.7, 1],
-      [0.4, 0.6]
-    ],
-    f: v => `每秒回 ${v} 生命`
-  },
-  {
-    id: 'thorns',
-    t: 'S',
-    n: '荊棘',
-    k: 'as',
-    tiers: [
-      [7, 8],
-      [5, 6],
-      [4, 4],
-      [3, 3],
-      [2, 2],
-      [1, 1]
-    ],
-    f: v => `被打時反彈 ${v}`
+/* ================= 詞綴：T12～T1（T1 最強；D2：藍裝 1～2 條、黃裝 3～6 條，前綴、後綴各最多 3 條） ================= */
+/* r：[T12 最低, T1 最高]，切成 12 段（越高段越寬）；k：能出現在哪一類（w 武器、a 防具、s 盾） */
+const T12 = ([lo, hi], dec) => {
+  const e = k => lo + (hi - lo) * Math.pow(k / 12, 1.35),
+    rd = v => (dec ? Math.round(v * 10) / 10 : Math.round(v)),
+    r1 = v => Math.round(v * 10) / 10,
+    out = [];
+  for (let t = 1; t <= 12; t++) {
+    const a = rd(e(12 - t)),
+      b = dec ? r1(Math.max(a, rd(e(13 - t)) - 0.1)) : Math.max(a, rd(e(13 - t)) - 1);
+    out.push([a, Math.max(a, b)]);
   }
+  out[0][1] = hi;
+  return out;
+};
+const ELN = { phys: '物理', fire: '火焰', cold: '冰冷', light: '閃電', chaos: '混沌' };
+const RESK = ['fire', 'cold', 'light', 'chaos'];
+const AFF = [
+  { id: 'dmgPct', t: 'P', n: '鋒利', k: 'w', r: [5, 80], f: v => `傷害 +${v}%` },
+  { id: 'flat', t: 'P', n: '沉重', k: 'w', r: [1, 12], f: v => `每下物理傷害 +${v}` },
+  { id: 'addFire', t: 'P', n: '灼熱', k: 'w', r: [1, 14], f: v => `每下附加 ${v} 火焰傷害` },
+  { id: 'addCold', t: 'P', n: '冰寒', k: 'w', r: [1, 14], f: v => `每下附加 ${v} 冰冷傷害` },
+  { id: 'addLight', t: 'P', n: '雷鳴', k: 'w', r: [1, 16], f: v => `每下附加 ${v} 閃電傷害` },
+  { id: 'addChaos', t: 'P', n: '腐蝕', k: 'w', r: [1, 10], f: v => `每下附加 ${v} 混沌傷害` },
+  { id: 'hp', t: 'P', n: '健壯', k: 'as', r: [5, 80], f: v => `生命 +${v}` },
+  { id: 'arm', t: 'P', n: '堅固', k: 'as', r: [1, 12], f: v => `護甲 +${v}` },
+  { id: 'dodge', t: 'P', n: '靈巧', k: 'a', r: [2, 16], f: v => `閃避 +${v}%` },
+  { id: 'blockPct', t: 'P', n: '厚實', k: 's', r: [8, 100], f: v => `格擋 +${v}%` },
+  { id: 'spd', t: 'S', n: '迅捷', k: 'w', r: [3, 40], f: v => `攻速 +${v}%` },
+  { id: 'crit', t: 'S', n: '精準', k: 'w', r: [3, 25], f: v => `暴擊率 +${v}%` },
+  { id: 'ls', t: 'S', n: '吸血', k: 'w', r: [2, 15], f: v => `吸血 ${v}%` },
+  { id: 'burn', t: 'S', n: '灼燒', k: 'w', r: [10, 90], f: v => `命中 ${v}% 燃燒` },
+  { id: 'poison', t: 'S', n: '劇毒', k: 'w', r: [10, 90], f: v => `命中 ${v}% 中毒` },
+  { id: 'bleed', t: 'S', n: '撕裂', k: 'w', r: [8, 75], f: v => `命中 ${v}% 流血` },
+  { id: 'freeze', t: 'S', n: '霜凍', k: 'w', r: [6, 45], f: v => `命中 ${v}% 凍結` },
+  { id: 'shock', t: 'S', n: '雷擊', k: 'w', r: [8, 75], f: v => `命中 ${v}% 感電` },
+  { id: 'adjW', t: 'S', n: '共鳴', k: 'was', r: [3, 25], f: v => `相鄰每件武器：這件 +${v}%` },
+  { id: 'lone', t: 'S', n: '孤狼', k: 'was', r: [8, 70], f: v => `旁邊沒有道具：這件 +${v}%` },
+  { id: 'corner', t: 'S', n: '據角', k: 'was', r: [6, 50], f: v => `放在背包角落：這件 +${v}%` },
+  { id: 'row', t: 'S', n: '列陣', k: 'w', r: [2, 15], f: v => `同一排每件其他武器：攻速 +${v}%` },
+  { id: 'regen', t: 'S', n: '再生', k: 'as', r: [0.3, 4], dec: 1, f: v => `每秒回 ${v} 生命` },
+  { id: 'thorns', t: 'S', n: '荊棘', k: 'as', r: [1, 12], f: v => `被打時反彈 ${v}` },
+  { id: 'resFire', t: 'S', n: '抗火', k: 'was', r: [4, 45], f: v => `火焰抗性 +${v}%` },
+  { id: 'resCold', t: 'S', n: '抗寒', k: 'was', r: [4, 45], f: v => `冰冷抗性 +${v}%` },
+  { id: 'resLight', t: 'S', n: '抗雷', k: 'was', r: [4, 45], f: v => `閃電抗性 +${v}%` },
+  { id: 'resChaos', t: 'S', n: '抗毒', k: 'was', r: [3, 35], f: v => `混沌抗性 +${v}%` },
+  { id: 'resAll', t: 'S', n: '稜鏡', k: 'as', r: [2, 18], f: v => `全部抗性 +${v}%` }
 ];
+AFF.forEach(a => (a.tiers = T12(a.r, a.dec)));
+/* 稀有度：0 白、1 藍（1～2 條）、2 黃（3～6 條，有隨機名字） */
+const RARN = ['普通', '魔法', '稀有'];
+const RARE_A = ['血', '鴉', '霜', '雷', '屍', '魂', '龍', '狼', '影', '骨', '焰', '夜', '鬼', '蛇', '鐵', '星'];
+const RARE_B = ['之牙', '之爪', '之握', '之心', '之怒', '之歌', '之嚎', '之印', '之刃', '之殼', '之眼', '之息'];
+/* 抗性：上限 75%；第二座地城起每座 -15%（PoE 每過一幕扣抗性） */
+const RES_CAP = 75,
+  resPen = d => Math.min(60, (d - 1) * 15);
 const AFFI = Object.fromEntries(AFF.map(a => [a.id, a]));
 /* ================= 背包（工坊買；死了會失去）與黑盒 ================= */
 /* m：形狀（x 是格子）；p：價格 */
@@ -498,15 +266,15 @@ const MOBS = [
   { n: '綠史萊姆', sp: 'm_slime_green', hp: 1, atk: 0.9, cd: 1.6 },
   { n: '蝙蝠', sp: 'm_bat', hp: 0.7, atk: 0.7, cd: 1.1 },
   { n: '流浪狗', sp: 'm_straydog', hp: 0.9, atk: 1, cd: 1.4 },
-  { n: '鬼火', sp: 'm_ghostfire', hp: 0.8, atk: 0.8, cd: 1.5, on: { burn: 40 } },
-  { n: '毒菇', sp: 'm_mushroom', hp: 1.1, atk: 0.7, cd: 1.7, on: { poison: 50 } },
+  { n: '鬼火', sp: 'm_ghostfire', hp: 0.8, atk: 0.8, cd: 1.5, on: { burn: 40 }, el: 'fire', res: { fire: 50 } },
+  { n: '毒菇', sp: 'm_mushroom', hp: 1.1, atk: 0.7, cd: 1.7, on: { poison: 50 }, el: 'chaos', res: { chaos: 40 } },
   { n: '稻草人', sp: 'm_scarecrow', hp: 1.3, atk: 0.8, cd: 1.8 },
   { n: '紙紮人', sp: 'm_paperdoll', hp: 0.9, atk: 1.1, cd: 1.5 },
-  { n: '燈籠妖', sp: 'm_lantern', hp: 1, atk: 0.9, cd: 1.6, on: { burn: 30 } },
-  { n: '雷蝠', sp: 'm_thunderbat', hp: 0.8, atk: 0.9, cd: 1.2, on: { shock: 30 } },
+  { n: '燈籠妖', sp: 'm_lantern', hp: 1, atk: 0.9, cd: 1.6, on: { burn: 30 }, el: 'fire', res: { fire: 30 } },
+  { n: '雷蝠', sp: 'm_thunderbat', hp: 0.8, atk: 0.9, cd: 1.2, on: { shock: 30 }, el: 'light', res: { light: 40 } },
   { n: '黑熊', sp: 'm_blackbear', hp: 1.6, atk: 1.3, cd: 2.2 },
-  { n: '雪原狼', sp: 'm_snowwolf', hp: 1.1, atk: 1.1, cd: 1.3, on: { freeze: 15 } },
-  { n: '百步蛇', sp: 'm_hundredpace', hp: 1, atk: 1, cd: 1.4, on: { poison: 60 } }
+  { n: '雪原狼', sp: 'm_snowwolf', hp: 1.1, atk: 1.1, cd: 1.3, on: { freeze: 15 }, el: 'cold', res: { cold: 40 } },
+  { n: '百步蛇', sp: 'm_hundredpace', hp: 1, atk: 1, cd: 1.4, on: { poison: 60 }, el: 'chaos', res: { chaos: 30 } }
 ];
 /* 菁英、生肖的詞綴 */
 const MAFF = {
@@ -515,31 +283,38 @@ const MAFF = {
   vamp: { n: '吸血', d: '吸血 30%' },
   rage: { n: '狂暴', d: '生命低於一半：傷害 +50%' },
   iron: { n: '鐵甲', d: '護甲 +3' },
-  fire: { n: '烈焰', d: '命中 50% 燃燒' },
-  frost: { n: '冰霜', d: '命中 25% 凍結' },
-  storm: { n: '雷暴', d: '命中 50% 感電' }
+  fire: { n: '烈焰', d: '打火焰傷害、命中 50% 燃燒、火焰抗性 +40%' },
+  frost: { n: '冰霜', d: '打冰冷傷害、命中 25% 凍結、冰冷抗性 +40%' },
+  storm: { n: '雷暴', d: '打閃電傷害、命中 50% 感電、閃電抗性 +40%' }
 };
 /* 王（每座地城第 3 層最深處）：sk 是專屬技能 */
 const BOSSES = [
-  { n: '魔神仔', sp: 'mosina', sk: 'summon', skd: '每 7 秒叫出一隻迷途小鬼' },
+  { n: '魔神仔', sp: 'mosina', el: 'chaos', res: { chaos: 40 }, sk: 'summon', skd: '每 7 秒叫出一隻迷途小鬼' },
   { n: '虎姑婆', sp: 'hugupo', sk: 'enrage', skd: '每 9 秒狂暴 3 秒：攻速 ×2' },
-  { n: '林投姐', sp: 'lintoujie', sk: 'curse', skd: '每 6 秒詛咒：你受到的傷害 +15%（疊加）' },
-  { n: '陳守娘', sp: 'chenshouniang', sk: 'enrage', skd: '每 9 秒狂暴 3 秒：攻速 ×2' },
-  { n: '牛頭', sp: 'oxhead', sk: 'summon', skd: '每 7 秒叫出一隻迷途小鬼' }
+  {
+    n: '林投姐',
+    sp: 'lintoujie',
+    el: 'cold',
+    res: { cold: 40, chaos: 20 },
+    sk: 'curse',
+    skd: '每 6 秒詛咒：你受到的傷害 +15%（疊加）'
+  },
+  { n: '陳守娘', sp: 'chenshouniang', el: 'chaos', res: { chaos: 30 }, sk: 'enrage', skd: '每 9 秒狂暴 3 秒：攻速 ×2' },
+  { n: '牛頭', sp: 'oxhead', el: 'fire', res: { fire: 40 }, sk: 'summon', skd: '每 7 秒叫出一隻迷途小鬼' }
 ];
 /* 墮落十二生肖：熱度滿了每 2 回合生一隻，越生越近，不能逃 */
 const ZODIAC = [
-  { n: '瘟噬鼠皇', sp: 'z_rat', a: 'fast' },
+  { n: '瘟噬鼠皇', sp: 'z_rat', a: 'fast', el: 'chaos' },
   { n: '獄鎖魔牛', sp: 'z_ox', a: 'iron' },
   { n: '血牙虎煞', sp: 'z_tiger', a: 'rage' },
   { n: '月蝕狂兔', sp: 'z_rabbit', a: 'fast' },
-  { n: '天墜邪龍', sp: 'z_dragon', a: 'tough' },
-  { n: '毒涎蛇姬', sp: 'z_snake', a: 'vamp' },
+  { n: '天墜邪龍', sp: 'z_dragon', a: 'tough', el: 'fire' },
+  { n: '毒涎蛇姬', sp: 'z_snake', a: 'vamp', el: 'chaos' },
   { n: '焚魂夢魘', sp: 'z_horse', a: 'fire' },
   { n: '魔羊祭司', sp: 'z_goat', a: 'frost' },
   { n: '雷魘猴王', sp: 'z_monkey', a: 'storm' },
   { n: '業火冥雞', sp: 'z_rooster', a: 'fire' },
-  { n: '冥府獄犬', sp: 'z_dog', a: 'vamp' },
+  { n: '冥府獄犬', sp: 'z_dog', a: 'vamp', el: 'fire' },
   { n: '屠野魔豬', sp: 'z_pig', a: 'tough' }
 ];
 /* 這一層的基準：L = (地城 - 1) × 3 + 層 */

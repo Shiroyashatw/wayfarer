@@ -6,7 +6,7 @@
   --hp:#e5484d; --hp-track:#eee6dc; --shield:#9aa9b8; --good:#2f9e44; --warn:#d9822b; --bad:#d93838;
   --tray:#e4ddd1; --tray-line:#d3cabb; --cell:#fbf9f5; --cell-line:#cbc1b1;
   --s1:#8f877a; --s2:#3f9a4a; --s3:#2f7fd8; --s4:#8f55d6; --s5:#d48a06;
-  --r0:#8f877a; --r1:#2f7fd8;
+  --r0:#8f877a; --r1:#2f7fd8; --r2:#b8860b;
   --heat:#e0561c; --heat2:#b3202a; --zod:#c0283a;
   --arena-a:#dfe9f6; --arena-b:#f3ece0;
   --fs-cap:11px; --fs-sm:12px; --fs-body:13px; --fs-btn:14px; --fs-title:16px; --fs-num:20px; --fs-hero:26px;
@@ -24,7 +24,7 @@
   --hp:#ef5257; --hp-track:#433d48; --shield:#f4f1ea; --good:#6cd17f; --warn:#ffb15a; --bad:#ff8a8a;
   --tray:#25222a; --tray-line:#3a3640; --cell:#3a3641; --cell-line:#5a5463;
   --s1:#a59d91; --s2:#5fc46b; --s3:#5aa2f5; --s4:#b384f0; --s5:#f2ad2e;
-  --r0:#a59d91; --r1:#5aa2f5;
+  --r0:#a59d91; --r1:#5aa2f5; --r2:#f2c94c;
   --heat:#ff7a3d; --heat2:#ff4d5a; --zod:#ff5a6a;
   --arena-a:#2d3550; --arena-b:#2b2530;
   color-scheme:dark;
@@ -85,7 +85,7 @@ details.more>div{padding:0 var(--sp-3) var(--sp-3)}
 .hpb.big em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-style:normal;font-family:var(--f-pix);font-size:var(--fs-sm);line-height:1;color:#fff;text-shadow:0 1px 0 #0009,0 0 3px #0008}
 .tb{display:inline-block;font-family:var(--f-pix);font-size:var(--fs-cap);padding:0 5px;border-radius:4px;background:var(--fill);color:var(--dim);margin-right:var(--sp-1)}
 .tb.t1,.tb.t2{background:var(--accent-soft);color:var(--gold)}
-.n1{color:var(--r1)}
+.n1{color:var(--r1)}.n2{color:var(--r2)}
 /* 按下回饋（apple-design：按下就有反應，放開才執行） */
 .btn,.iconbtn,.chipb,.rowx,.node,.sc,.slot-g,.tab,.tn{transition:transform .1s ease-out,background-color .12s,opacity .15s}
 .btn:active,.iconbtn:active,.chipb:active,.rowx:active,.sc:active,.slot-g:active,.tab:active,.tn:active{transform:scale(.97)}
@@ -94,7 +94,7 @@ details.more>div{padding:0 var(--sp-3) var(--sp-3)}
 /* ---------- 圖示 ---------- */
 .ic{image-rendering:pixelated;display:block}
 .slot-g{width:56px;height:56px;border-radius:var(--r-md);border:2px solid var(--r0);background:var(--card2);display:grid;place-items:center;position:relative;padding:0}
-.slot-g.r1{border-color:var(--r1)}
+.slot-g.r1{border-color:var(--r1)}.slot-g.r2{border-color:var(--r2)}
 .slot-g img{width:40px;height:40px}
 .slot-g i.badge{position:absolute;top:2px;left:3px;font-style:normal;font-family:var(--f-pix);font-size:10px;color:var(--dim)}
 .slots{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
@@ -135,6 +135,8 @@ details.more>div{padding:0 var(--sp-3) var(--sp-3)}
 .dh small{color:var(--dim);font-size:var(--fs-sm)}
 .lines{margin:0 0 var(--sp-3);padding:0;list-style:none;font-size:var(--fs-body);line-height:1.7}
 .lines li.af{color:var(--r1)}
+.res4{display:flex;gap:var(--sp-2);font-size:var(--fs-sm);color:var(--dim);flex-wrap:wrap}
+.res4 b.c-bad{color:var(--bad)}
 .acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:var(--sp-2)}
 /* ---------- 城鎮 ---------- */
 .top{display:flex;align-items:center;gap:var(--sp-2);min-height:44px;margin-bottom:var(--sp-2)}
@@ -264,9 +266,14 @@ details.more>div{padding:0 var(--sp-3) var(--sp-3)}
 .det .lines{margin-bottom:var(--sp-2)}
 .town .det+*{margin-bottom:0}
 /* 格子卡片：框色＝稀有度、左上 ★ 等級、右上形狀 */
+.shopg .sc{touch-action:none}
+.home{display:grid;gap:0}
+.rowx .res4{margin-top:2px}
+.rowx .t .res4 b,.res4 b{display:inline;font-size:inherit}
 .shopg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--sp-2);margin-bottom:var(--sp-2)}
 .sc{position:relative;min-width:0;display:grid;justify-items:center;gap:2px;padding:var(--sp-3) 2px var(--sp-2);border-radius:var(--r-md);border:2px solid var(--r0);background:var(--card);font-size:var(--fs-sm);box-shadow:var(--shadow)}
 .sc.r1{border-color:var(--r1);background:color-mix(in srgb,var(--r1) 8%,var(--card))}
+.sc.r2{border-color:var(--r2);background:color-mix(in srgb,var(--r2) 12%,var(--card))}
 .sc img{width:40px;height:40px}
 .sc b{font-family:var(--f-pix);font-weight:400;color:var(--gold)}
 .sc b.c-bad{color:var(--bad)}

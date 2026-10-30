@@ -7,49 +7,67 @@ const mkItem = (id, a = []) => ({ u: newUid(), id, r: 0, a });
 const baseOf = o => ITEMI[o.id];
 /* ---------- 詞綴 ---------- */
 const affFits = (af, b) => af.k.includes(b.k);
-/* T 級的機率：最好的 T 機率最低（tb＝這裡能出現的最好 T） */
+/* T 級的機率：越好的 T 越少見（tb＝這裡能出現的最好 T，T12 最差） */
 function rollTier(tb, r) {
   const ts = [];
-  for (let t = tb; t <= 6; t++) for (let w = 0; w < t - tb + 1; w++) ts.push(t);
+  for (let t = tb; t <= 12; t++) for (let w = 0; w < t - tb + 1; w++) ts.push(t);
   return ts[fl(r() * ts.length)];
 }
-function rollAff(b, type, tb, r, not) {
-  const pool = AFF.filter(af => af.t === type && affFits(af, b) && af.id !== not);
+function rollAff(b, type, tb, r, has) {
+  const pool = AFF.filter(af => af.t === type && affFits(af, b) && !has.some(x => x.id === af.id));
   if (!pool.length) return null;
   const af = pool[fl(r() * pool.length)],
     t = rollTier(tb, r),
     [lo, hi] = af.tiers[t - 1],
-    v = lo % 1 || hi % 1 ? Math.round((lo + r() * (hi - lo)) * 10) / 10 : lo + fl(r() * (hi - lo + 1));
+    v = af.dec ? Math.round((lo + r() * (hi - lo)) * 10) / 10 : lo + fl(r() * (hi - lo + 1));
   return { id: af.id, t, v };
 }
-/* n：詞綴數（0 白、1 或 2 藍）；tb：最好的 T */
+/* n：詞綴數（0 白、1～2 藍、3～6 黃；前綴、後綴各最多 3 條）；tb：最好的 T */
 function rollItem(id, n, tb, r) {
   const b = ITEMI[id],
     a = [];
   if (n && 'was'.includes(b.k)) {
-    const types = n >= 2 ? ['P', 'S'] : [r() < 0.5 ? 'P' : 'S'];
-    for (const t of types) {
-      const x = rollAff(b, t, tb, r);
+    for (let k = 0; k < n; k++) {
+      const np = a.filter(x => AFFI[x.id].t === 'P').length,
+        ns = a.length - np,
+        ok = [np < (n <= 2 ? 1 : 3) && 'P', ns < (n <= 2 ? 1 : 3) && 'S'].filter(Boolean);
+      if (!ok.length) break;
+      const x =
+        rollAff(b, ok[fl(r() * ok.length)], tb, r, a) || rollAff(b, ok.find(t => t) === 'P' ? 'S' : 'P', tb, r, a);
       if (x) a.push(x);
     }
   }
-  return mkItem(id, a);
+  const o = mkItem(id, a);
+  if (a.length >= 3) o.nm = RARE_A[fl(r() * RARE_A.length)] + RARE_B[fl(r() * RARE_B.length)];
+  return o;
 }
+/* 掉幾條詞綴：p＝[藍的機率, 黃的機率] */
+const rollCount = (r, blue, rare) => {
+  const x = r();
+  return x < rare
+    ? 3 + (r() < 0.5 ? 0 : r() < 0.6 ? 1 : r() < 0.6 ? 2 : 3)
+    : x < rare + blue
+      ? 1 + (r() < 0.45 ? 1 : 0)
+      : 0;
+};
 /* 從市集（別人的存檔）來的道具：底材、詞綴、T 級、數值範圍都要對得上表，不對就不收 */
 function cleanItem(x) {
   const b = x && ITEMI[x.id];
-  if (!b || !Array.isArray(x.a) || x.a.length > 2) return null;
+  if (!b || !Array.isArray(x.a) || x.a.length > 6) return null;
   const a = [];
   for (const y of x.a) {
     const af = AFFI[y && y.id],
       tr = af && af.tiers[(y.t | 0) - 1];
     if (!tr || !affFits(af, b) || typeof y.v !== 'number' || y.v < tr[0] || y.v > tr[1]) return null;
-    if (a.some(z => AFFI[z.id].t === af.t)) return null;
+    if (a.some(z => z.id === af.id) || a.filter(z => AFFI[z.id].t === af.t).length >= 3) return null;
     a.push({ id: y.id, t: y.t | 0, v: y.v });
   }
-  return mkItem(x.id, a);
+  if (a.length <= 2 && a.filter(z => AFFI[z.id].t === 'P').length > 1) return null;
+  const o = mkItem(x.id, a);
+  if (a.length >= 3) o.nm = typeof x.nm === 'string' && /^.{1,4}之.{1}$/.test(x.nm) ? x.nm : RARE_A[0] + RARE_B[0];
+  return o;
 }
-const rarity = o => (o.a.length ? 1 : 0);
+const rarity = o => (o.a.length >= 3 ? 2 : o.a.length ? 1 : 0);
 const itemPrice = o => {
   const b = baseOf(o);
   if (b.price) return b.price;
@@ -58,7 +76,7 @@ const itemPrice = o => {
 const sellPrice = o => {
   const b = baseOf(o);
   if (b.price) return fl(b.price / 3);
-  return Math.round(2 * b.star + o.a.reduce((s, x) => s + (7 - x.t) * 3, 0));
+  return Math.round(2 * b.star + o.a.reduce((s, x) => s + (13 - x.t) * 2, 0));
 };
 /* ---------- 形狀與格子 ---------- */
 /* 旋轉 r 次（順時針），再平移回 (0,0) */
@@ -162,7 +180,8 @@ function compile(g, hero) {
       shields: [],
       pots: [],
       dmgPct: tal.dmg || 0,
-      spdPct: tal.spd || 0
+      spdPct: tal.spd || 0,
+      res: { fire: 0, cold: 0, light: 0, chaos: 0 }
     };
   let hpPct = tal.hp || 0;
   for (const o of g.items) {
@@ -178,6 +197,7 @@ function compile(g, hero) {
     P.dodge += ((b.dodge || 0) + affV(o, 'dodge')) * pm;
     P.regen += affV(o, 'regen') * pm;
     P.thorns += ((b.thorns || 0) + affV(o, 'thorns')) * pm;
+    for (const k of RESK) P.res[k] += (affV(o, 'res' + k[0].toUpperCase() + k.slice(1)) + affV(o, 'resAll')) * pm;
     if (b.k === 's')
       P.shields.push({ u: o.u, cd: b.cd, block: b.block * (1 + affV(o, 'blockPct') / 100) * pm, heal: b.heal || 0 });
     if (b.k === 'w') {
@@ -196,6 +216,13 @@ function compile(g, hero) {
         cd: b.cd / (1 + (affV(o, 'spd') + rowSpd) / 100),
         crit: (b.crit || 0) + affV(o, 'crit'),
         ls: (b.ls || 0) + affV(o, 'ls'),
+        el: b.el || 'phys',
+        add: {
+          fire: affV(o, 'addFire'),
+          cold: affV(o, 'addCold'),
+          light: affV(o, 'addLight'),
+          chaos: affV(o, 'addChaos')
+        },
         on
       });
     }
@@ -203,6 +230,7 @@ function compile(g, hero) {
   P.mhp = Math.round(P.mhp * (1 + hpPct / 100));
   P.arm = Math.round(P.arm);
   P.dodge = Math.min(60, P.dodge);
+  for (const k of RESK) P.res[k] = Math.round(P.res[k]);
   P.cls = hero.cls;
   P.cores = hero.cores || [];
   P.clv = hero.clv || {};
@@ -215,7 +243,7 @@ const AILN = { burn: '燃燒', poison: '中毒', bleed: '流血', freeze: '凍�
 function baseLines(b) {
   const L = [];
   if (b.k === 'w') {
-    L.push(`傷害 ${b.dmg[0]}～${b.dmg[1]}・每 ${b.cd} 秒`);
+    L.push(`${b.el ? ELN[b.el] : ''}傷害 ${b.dmg[0]}～${b.dmg[1]}・每 ${b.cd} 秒`);
     if (b.crit) L.push(`暴擊率 ${b.crit}%`);
     if (b.ls) L.push(`吸血 ${b.ls}%`);
     for (const k in b.on || {}) L.push(`命中 ${b.on[k]}% ${AILN[k]}`);
@@ -230,4 +258,6 @@ function baseLines(b) {
   if (b.cap) L.push(`放在黑盒裡：死了也保住這趟最多 ${b.cap} 金幣`);
   return L;
 }
+/* 抗性：扣掉地城的懲罰，上限 75%（可以是負的） */
+const finalRes = (P, d) => Object.fromEntries(RESK.map(k => [k, Math.min(RES_CAP, P.res[k] - resPen(d))]));
 const affLine = x => ({ t: x.t, n: AFFI[x.id].n, d: AFFI[x.id].f(x.v), p: AFFI[x.id].t });

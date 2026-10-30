@@ -18,7 +18,7 @@ function save() {
   }
   if (typeof CLOUD !== 'undefined') CLOUD.dirty = true;
 }
-/* 存檔版本 S.v：1 是 0.1.0、2 是 0.1.3；進行中的一局記著遊戲版本，版本不同就算撤離（東西不會不見） */
+/* 存檔版本 S.v：1 是 0.1.0、2 是 0.1.3、3 是 0.1.4；進行中的一局記著遊戲版本，版本不同就算撤離（東西不會不見） */
 function migrate(s) {
   if (!s || !s.v) return newGame();
   const o = { ...newGame(), ...s };
@@ -31,6 +31,16 @@ function migrate(s) {
         for (const x of its) if (!autoPlace(b, x)) o.wh.push(x);
       }
     o.v = 2;
+  }
+  /* 存檔 3（0.1.4）：詞綴從 T6～T1 拉寬成 T12～T1，舊的 T 乘 2，數值夾進新的範圍 */
+  if (o.v < 3) {
+    for (const x of allItems(o))
+      for (const a of x.a) {
+        a.t = Math.min(12, a.t * 2);
+        const [lo, hi] = AFFI[a.id].tiers[a.t - 1];
+        a.v = Math.max(lo, Math.min(hi, a.v));
+      }
+    o.v = 3;
   }
   if (o.run && o.run.ver !== VER) {
     finishRun(o, true);

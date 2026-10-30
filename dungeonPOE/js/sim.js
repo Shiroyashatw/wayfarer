@@ -37,7 +37,18 @@ function simulate(P, hp, foes, seed, opt = {}) {
     W = P.weapons.map(w => ({ ...w, t: w.cd * 0.4 })),
     S = P.shields.map(s => ({ ...s, t: s.cd })),
     pots = P.pots.map(p => ({ ...p })),
-    used = [];
+    used = [],
+    RF = P.rf || finalRes(P, 1),
+    fr = (f, k) => Math.min(RES_CAP, (f.res && f.res[k]) || 0),
+    /* 各屬性的傷害 × 倍率：物理扣護甲、元素照抗性 */
+    mit = (f, comp, M) =>
+      Math.max(
+        1,
+        Object.keys(comp).reduce(
+          (s, k) => s + (k === 'phys' ? Math.max(0, comp[k] * M - (f.arm || 0)) : comp[k] * M * (1 - fr(f, k) / 100)),
+          0
+        )
+      );
   let t = 0,
     curse = opt.curse || 0,
     stance = cls === 'ronin' ? cv('r_draw') : 0,
@@ -113,13 +124,22 @@ function simulate(P, hp, foes, seed, opt = {}) {
       const v = f.st.burn * cv('p_burst');
       f.st.burn = 0;
       log('fx', { g: f.i, n: '爆燃' });
-      hurt(f, v, 'burst');
+      hurt(f, v * (1 - fr(f, 'fire') / 100), 'burst');
     }
   }
   function swing(w, extra = 1) {
     const f = front();
     if (!f) return;
-    let v = (w.dmg[0] + r() * (w.dmg[1] - w.dmg[0]) + w.flat) * w.mul * (1 + (P.dmgPct + (opt.amb || 0)) / 100) * extra;
+    const comp = {
+      phys: w.flat,
+      fire: 0,
+      cold: 0,
+      light: 0,
+      chaos: 0,
+      ...Object.fromEntries(RESK.map(k => [k, (w.add && w.add[k]) || 0]))
+    };
+    comp[w.el || 'phys'] += w.dmg[0] + r() * (w.dmg[1] - w.dmg[0]);
+    let v = w.mul * (1 + (P.dmgPct + (opt.amb || 0)) / 100) * extra;
     let crit = ok('c' + w.u, w.crit),
       cd = 1.5 + (cls === 'assassin' ? cv('a_kill') / 100 : 0);
     if (cls === 'ronin') {
@@ -143,7 +163,7 @@ function simulate(P, hp, foes, seed, opt = {}) {
       } else f.st.mark++;
     }
     if (crit) v *= cd;
-    v = Math.max(1, v - (f.arm || 0));
+    v = mit(f, comp, v);
     if (w.ls) heal((v * w.ls) / 100);
     hurt(f, v, w.u, crit);
     if (!f.dead) {
@@ -166,6 +186,7 @@ function simulate(P, hp, foes, seed, opt = {}) {
   /* w：怪物背包裡的武器（沒有就是牠自己的攻擊） */
   function strike(f, w) {
     let v = w ? (w.dmg[0] + r() * (w.dmg[1] - w.dmg[0]) + w.flat) * w.mul : f.atk[0] + r() * (f.atk[1] - f.atk[0]);
+    const el = (w ? w.el : f.el) || 'phys';
     if (w && ok('mc' + w.u, w.crit)) v *= 1.5;
     if (f.aff.includes('rage') && f.hp < f.mhp / 2) v *= 1.5;
     const dodge = P.dodge + (cls === 'ronin' ? stance * cv('r_eye') : 0) + (shadowT > 0 ? 40 : 0);
@@ -173,7 +194,7 @@ function simulate(P, hp, foes, seed, opt = {}) {
       log('miss', { s: f.i });
       return;
     }
-    v = Math.max(1, v - P.arm);
+    v = el === 'phys' ? Math.max(1, v - P.arm) : Math.max(1, v * (1 - RF[el] / 100));
     let red = 0;
     if (cls === 'knight') red += Math.min(40, guard * cv('k_firm'));
     if (cls === 'tamer') red += wolves * cv('t_guard');
@@ -269,10 +290,14 @@ function simulate(P, hp, foes, seed, opt = {}) {
       dotT += 1;
       dotN++;
       for (const f of alive()) {
-        const d = f.st.burn + f.st.poison + f.st.bleed * 2 + (cls === 'assassin' ? f.st.mark * cv('a_venom') : 0);
+        const d =
+          f.st.burn * (1 - fr(f, 'fire') / 100) +
+          f.st.poison * (1 - fr(f, 'chaos') / 100) +
+          f.st.bleed * 2 +
+          (cls === 'assassin' ? f.st.mark * cv('a_venom') : 0);
         if (d > 0) {
           if (cls === 'pyro' && cv('p_life') && f.st.burn) heal((f.st.burn * cv('p_life')) / 100);
-          hurt(f, d, 'dot');
+          if (d >= 0.5) hurt(f, d, 'dot');
         }
         /* 燃燒每 2 秒少 1 層（火法師才疊得起來） */
         if (f.st.burn && dotN % 2) f.st.burn--;
@@ -280,7 +305,7 @@ function simulate(P, hp, foes, seed, opt = {}) {
         if (f.st.shock && r() < 0.5) f.st.shock--;
         if (f.st.poison && r() < 0.34) f.st.poison--;
       }
-      const md = me.st.burn + me.st.poison + me.st.bleed * 2;
+      const md = Math.round(me.st.burn * (1 - RF.fire / 100) + me.st.poison * (1 - RF.chaos / 100) + me.st.bleed * 2);
       if (md > 0) {
         me.hp -= md;
         log('hurt', { s: -1, v: md, dot: 1 });

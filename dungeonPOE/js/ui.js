@@ -45,7 +45,9 @@ function spURL(sp) {
 const icURL = ic => (ic.startsWith('p:') ? pixURL(ic.slice(2)) : artIconURL(ic) || iconURL('star'));
 const itIc = o => icURL(baseOf(o).ic);
 const GOLDI = () => `<img class="ic" src="${icURL('mat_gold')}" alt="">`;
+/* 名字：黃裝是隨機名字（D2），藍裝是「前綴的底材」 */
 const itName = o => {
+  if (o.nm) return o.nm;
   const p = o.a.find(x => AFFI[x.id].t === 'P');
   return (p ? AFFI[p.id].n + '的' : '') + baseOf(o).n;
 };
@@ -165,7 +167,7 @@ function itemHTML(o, cs, left, top, cls = 'it') {
     first = c.reduce((a, p) => (p[1] < a[1] || (p[1] === a[1] && p[0] < a[0]) ? p : a));
   let parts = '';
   for (const [x, y] of c)
-    parts += `<i class="part" data-u="${o.u}" style="position:absolute;left:${x * cs}px;top:${y * cs}px;width:${cs}px;height:${cs}px;border-radius:5px;background:var(--card2);box-shadow:inset 0 0 0 2px var(--${rarity(o) ? 'r1' : 'r0'});pointer-events:auto"></i>`;
+    parts += `<i class="part" data-u="${o.u}" style="position:absolute;left:${x * cs}px;top:${y * cs}px;width:${cs}px;height:${cs}px;border-radius:5px;background:var(--card2);box-shadow:inset 0 0 0 2px var(--r${rarity(o)});pointer-events:auto"></i>`;
   const icx =
       c.length > 1 && (w > 1 || hh > 1)
         ? (c.reduce((s, p) => s + p[0], 0) / c.length + 0.5) * cs
@@ -197,18 +199,31 @@ function trayHTML(list) {
       ? its
           .map(
             o =>
-              `<button class="slot-g${rarity(o) ? ' r1' : ''}${V.sel && V.sel.u === o.u ? ' on' : ''}" data-u="${o.u}">${slotIn(o)}</button>`
+              `<button class="slot-g${' r' + rarity(o)}${V.sel && V.sel.u === o.u ? ' on' : ''}" data-u="${o.u}">${slotIn(o)}</button>`
           )
           .join('')
       : `<div class="empty">${list.length ? '這一類沒有東西' : '倉庫是空的：去商店買裝備，或下地城撿'}</div>`
   }</div>`;
 }
 /* where：'prep' 整備（背包＋黑盒）、'wh' 倉庫頁（多倉庫）、地城（多戰利品） */
+/* 四種抗性（已扣掉這座地城的懲罰；負的紅字） */
+const RESI = { fire: '🔥', cold: '❄️', light: '⚡', chaos: '☠️' };
+function resLine(rf, d) {
+  return `<div class="res4">${RESK.map(k => `<span title="${ELN[k]}抗性">${RESI[k]} <b class="${rf[k] < 0 ? 'c-bad' : rf[k] >= RES_CAP ? 'c-good' : ''}">${rf[k]}%</b></span>`).join('')}${resPen(d) ? `<small class="c-dim">（地城 ${d}：-${resPen(d)}%）</small>` : ''}</div>`;
+}
+const bagStats = g => {
+  const P = compile(g, S.run ? S.run.hero : heroOf(S, S.cls)),
+    d = S.run ? S.run.d : Math.min(S.d, S.maxD),
+    dps = P.weapons.reduce(
+      (s, w) => s + (((w.dmg[0] + w.dmg[1]) / 2 + w.flat + RESK.reduce((a, k) => a + w.add[k], 0)) * w.mul) / w.cd,
+      0
+    );
+  return { P, d, dps, rf: finalRes(P, d) };
+};
 function editorHTML(where) {
   const c = ctx(),
-    P = compile(c.bag, S.run ? S.run.hero : heroOf(S, S.cls)),
-    dps = P.weapons.reduce((s, w) => s + (((w.dmg[0] + w.dmg[1]) / 2 + w.flat) * w.mul) / w.cd, 0),
-    head = `<div class="bagw bagtop"><div class="lbl"><span>${esc(BAGI[c.bag.t].n)}</span><span>生命 <b>${P.mhp}</b>・每秒 <b>${dps.toFixed(1)}</b>・護甲 <b>${P.arm}</b></span></div>${gridHTML(c.bag, 'bag')}</div>`,
+    { P, d, dps, rf } = bagStats(c.bag),
+    head = `<div class="bagw bagtop"><div class="lbl"><span>${esc(BAGI[c.bag.t].n)}</span><span>生命 <b>${P.mhp}</b>・每秒 <b>${dps.toFixed(1)}</b>・護甲 <b>${P.arm}</b></span></div>${resLine(rf, d)}${gridHTML(c.bag, 'bag')}</div>`,
     box = `<div class="bagw" style="flex:none"><div class="lbl"><span>黑盒</span></div>${gridHTML(c.box, 'box')}</div>`,
     note =
       '<p class="sub" style="margin:var(--sp-4) 0 0">拖曳搬動，點一下看說明。黑盒不參與戰鬥，死了裡面的東西會留下。</p>';
@@ -236,18 +251,19 @@ document.addEventListener(
   true
 );
 document.addEventListener('pointerdown', e => {
-  const el = e.target.closest('.part,.tray .slot-g');
+  const el = e.target.closest('.part,.tray .slot-g,.shopg .sc[data-i]');
   if (!el || e.button > 0 || el.closest('.fgrid')) return;
-  const u = el.dataset.u,
-    o = findIt(u);
+  const shop = el.dataset.i != null ? +el.dataset.i : null,
+    u = shop != null ? null : el.dataset.u,
+    o = shop != null ? S.shop[shop] && !S.shop[shop].sold && S.shop[shop].o : findIt(u);
   if (!o) return;
-  const fromTray = el.classList.contains('slot-g'),
+  const fromTray = el.classList.contains('slot-g') || shop != null,
     g = fromTray ? null : el.closest('.grid'),
     gk = g && g.dataset.g,
     cs = gk ? cellPx(ctx()[gk]) : cellPx(ctx().bag),
     host = fromTray ? el : el.parentElement,
     rc = host.getBoundingClientRect();
-  DR = { u, o, x0: e.clientX, y0: e.clientY, el, host, on: false, cs, fromTray, id: e.pointerId };
+  DR = { u: u || o.u, o, shop, x0: e.clientX, y0: e.clientY, el, host, on: false, cs, fromTray, id: e.pointerId };
   /* 從托盤拿起：抓第一格的中間；從格子拿起：照抓的那格 */
   DR.ox = fromTray ? cs / 2 : e.clientX - rc.left;
   DR.oy = fromTray ? cs / 2 : e.clientY - rc.top;
@@ -317,6 +333,11 @@ document.addEventListener('pointerup', e => {
   if (!DR || e.pointerId !== DR.id) return;
   const d = DR;
   DR = null;
+  if (!d.on && d.shop != null) {
+    eatClick = true;
+    setTimeout(() => (eatClick = false), 500);
+    return detOpen({ src: 'shop', i: d.shop });
+  }
   if (!d.on) {
     /* 放開就打開說明；瀏覽器接著補送的 click 會落在新卡片外的暗處把它關掉，吃掉那一下 */
     eatClick = true;
@@ -327,7 +348,22 @@ document.addEventListener('pointerup', e => {
   const t = target(e.clientX, e.clientY, d),
     c = ctx();
   let ok = false;
-  if (t && t.k === 'tray' && where(d.u) !== 'tray') {
+  /* 商店的商品：放得下才付錢（先買進倉庫，再搬到放下的格子） */
+  if (d.shop != null) {
+    const price = itemPrice(d.o),
+      can = t && (t.k === 'tray' || (t.grid && fits(t.grid, d.o, t.x, t.y)));
+    if (can && S.gold < price) toast('金幣不夠');
+    else if (can && buyShop(S, d.shop)) {
+      if (t.k !== 'tray') {
+        const o = take(d.o.u);
+        o.x = t.x;
+        o.y = t.y;
+        t.grid.items.push(o);
+      }
+      ok = true;
+      snd('coin', 'coin');
+    }
+  } else if (t && t.k === 'tray' && where(d.u) !== 'tray') {
     c.tray.push(take(d.u));
     ok = true;
   } else if (t && t.grid && fits(t.grid, d.o, t.x, t.y)) {
@@ -382,7 +418,8 @@ function itemLines(o) {
   const b = baseOf(o);
   return `<ul class="lines">${baseLines(b)
     .map(l => `<li>${l}</li>`)
-    .join('')}${o.a
+    .join('')}${[...o.a]
+    .sort((a, b) => (AFFI[a.id].t < AFFI[b.id].t ? -1 : AFFI[a.id].t > AFFI[b.id].t ? 1 : 0))
     .map(x => {
       const l = affLine(x);
       return `<li class="af"><span class="tb t${l.t}">T${l.t}</span>${l.n}：${l.d}</li>`;
@@ -444,7 +481,7 @@ function detHTML() {
         : `<button class="btn" data-act="mkCancel" data-id="${r.id}">下架（${r.price} 金）</button>`
     );
   }
-  return `<button class="x" data-act="detX" aria-label="關閉">✕</button><div class="dh"><div class="slot-g${rarity(o) ? ' r1' : ''}">${slotIn(o)}</div><div><b class="${rarity(o) ? 'n1' : ''}">${esc(itName(o))}</b><small>${rarity(o) ? '魔法' : '普通'}・${KINDN[b.k]}・${b.star}★・${cellsOf(o).length} 格</small></div></div>${itemLines(o)}${extra}<div class="acts">${acts.join('')}</div>`;
+  return `<button class="x" data-act="detX" aria-label="關閉">✕</button><div class="dh"><div class="slot-g${' r' + rarity(o)}">${slotIn(o)}</div><div><b class="n${rarity(o)}">${esc(itName(o))}</b><small>${RARN[rarity(o)]}${o.nm ? '・' + b.n : ''}・${KINDN[b.k]}・${b.star}★・${cellsOf(o).length} 格</small></div></div>${itemLines(o)}${extra}<div class="acts">${acts.join('')}</div>`;
 }
 function detOpen(sel) {
   const fresh = !V.sel || V.sel.u !== sel.u || V.sel.id !== sel.id || V.sel.i !== sel.i;
@@ -492,8 +529,8 @@ const detClose = () => {
 };
 /* ================= 城鎮 ================= */
 const TABS = [
-  ['prep', '🎒', '整備'],
-  ['wh', '🗄️', '倉庫'],
+  ['prep', '🏠', '出發'],
+  ['wh', '🎒', '整備'],
   ['mk', '⚖️', '市集'],
   ['shop', '🏪', '商店'],
   ['tree', '✨', '職業']
@@ -538,31 +575,27 @@ function prepHTML() {
     cl = CLSI[c],
     eq = eqOf(S, c),
     lv = clLv(clOf(S, c).xp).lv;
-  const bagSel = S.bags
-    .map(
-      b =>
-        `<button class="chipb bagopt" data-act="selBag" data-u="${b.u}" aria-pressed="${b.u === S.sel}">${miniHTML(BAGI[b.t].m)}${esc(BAGI[b.t].n)}</button>`
-    )
-    .join('');
-  const dsel =
-    S.maxD > 1
-      ? `<div class="chips" style="margin-bottom:var(--sp-2)">${Array.from({ length: S.maxD }, (_, i) => `<button class="chipb" data-act="selD" data-d="${i + 1}" aria-pressed="${S.d === i + 1}">地城 ${i + 1}</button>`).join('')}</div>`
-      : '';
+  const g = S.bags.find(b => b.u === S.sel),
+    st = bagStats(g),
+    dsel =
+      S.maxD > 1
+        ? `<div class="chips" style="margin-bottom:var(--sp-2)">${Array.from({ length: S.maxD }, (_, i) => `<button class="chipb" data-act="selD" data-d="${i + 1}" aria-pressed="${S.d === i + 1}">地城 ${i + 1}</button>`).join('')}</div>`
+        : '';
   return `${topHTML('dungeonPOE')}
-  <div class="two"><div class="pcol">
+  <div class="home">
   ${dsel}
   <button class="rowx" data-act="tab" data-t="tree"><img class="ic" src="${spURL(S.av)}" data-sp="${S.av}" alt="" style="width:40px;height:40px"><div class="t"><b>${cl.n} Lv${lv}<span class="c-dim" style="font-weight:400">・${cl.m}</span></b><small>核心：${eq.map(id => COREI[id].n).join('、')}</small></div><span class="c-dim">換 ›</span></button>
-  </div><div class="pcol"><h3>背包 <small>死了會失去</small></h3><div class="chips" style="margin-bottom:var(--sp-2)">${bagSel}</div>${editorHTML('prep')}
-  <details class="more"><summary>怎麼玩</summary><div><p class="sub">① 把倉庫的裝備拖進背包（背包就是你的戰鬥力）。② 下地城點相鄰的格子走過去，打怪、開寶箱，怪物背包裡的東西打贏就能拿。③ 每走一步熱度 +1，滿了墮落十二生肖會來追你，記得走到撤離點 🚪。④ 3 顆愛心全碎就死在地城：背包和裡面的東西全部失去，只有黑盒裡的會留下。</p></div></details></div></div>`;
+  <button class="rowx" data-act="tab" data-t="wh">${miniHTML(BAGI[g.t].m)}<div class="t"><b>整備：${esc(BAGI[g.t].n)}・${g.items.length} 件</b><small>生命 ${st.P.mhp}・每秒 ${st.dps.toFixed(1)}・護甲 ${st.P.arm}</small>${resLine(st.rf, st.d)}</div><span class="c-dim">›</span></button>
+  <details class="more"><summary>怎麼玩</summary><div><p class="sub">① 到「整備」把倉庫的裝備拖進背包（背包就是你的戰鬥力）。② 下地城點相鄰的格子走過去，打怪、開寶箱，怪物背包裡的東西打贏就能拿。③ 每走一步熱度 +1，滿了墮落十二生肖會來追你，記得走到撤離點 🚪。④ 3 顆愛心全碎就死在地城：背包和裡面的東西全部失去，只有黑盒裡的會留下。⑤ 越深的地城抗性扣越多：🔥❄️⚡☠️ 要靠裝備補回來。</p></div></details></div>`;
 }
 function whHTML() {
-  return `${topHTML('倉庫')}<div class="chips" style="margin-bottom:var(--sp-2)">${S.bags.map(b => `<button class="chipb bagopt" data-act="selBag" data-u="${b.u}" aria-pressed="${b.u === S.sel}">${miniHTML(BAGI[b.t].m)}${esc(BAGI[b.t].n)}</button>`).join('')}</div>${editorHTML('wh')}`;
+  return `${topHTML('整備')}<div class="chips" style="margin-bottom:var(--sp-2)">${S.bags.map(b => `<button class="chipb bagopt" data-act="selBag" data-u="${b.u}" aria-pressed="${b.u === S.sel}">${miniHTML(BAGI[b.t].m)}${esc(BAGI[b.t].n)}</button>`).join('')}</div>${editorHTML('wh')}`;
 }
 /* 格子卡片（商店、市集）：框色＝稀有度、★ 等級、形狀、價格 */
 const scHTML = (o, price, act, data, sold) =>
   sold
     ? '<div class="sc sold">已賣出</div>'
-    : `<button class="sc${rarity(o) ? ' r1' : ''}" data-act="${act}" ${data}><img class="ic" src="${itIc(o)}" alt="${esc(baseOf(o).n)}"><i class="badge">${baseOf(o).star}★</i>${shapeMini(o)}<b class="${S.gold < price ? 'c-bad' : ''}">${price} 金</b></button>`;
+    : `<button class="sc${' r' + rarity(o)}" data-act="${act}" ${data}><img class="ic" src="${itIc(o)}" alt="${esc(baseOf(o).n)}"><i class="badge">${baseOf(o).star}★</i>${shapeMini(o)}<b class="${S.gold < price ? 'c-bad' : ''}">${price} 金</b></button>`;
 const segHTML = (k, opts) =>
   `<div class="seg">${opts.map(([v, n]) => `<button class="chipb" data-act="seg" data-k="${k}" data-v="${v}" aria-pressed="${(V[k] || opts[0][0]) === v}">${n}</button>`).join('')}</div>`;
 function shopHTML() {
@@ -573,7 +606,11 @@ function shopHTML() {
     ['bags', '背包']
   ])}${
     t === 'gear'
-      ? `<p class="sub">白裝，最高 ${shopStar(S)}★・打倒王會進更好的貨。點一下看說明再買。</p><div class="shopg">${S.shop.map((s, i) => scHTML(s.o, itemPrice(s.o), 'shopSel', `data-i="${i}"`, s.sold)).join('')}</div>`
+      ? `${segHTML('shopTo', [
+          ['bag', '放進背包'],
+          ['wh', '放進倉庫']
+        ])}${(V.shopTo || 'bag') === 'bag' ? `<div class="bagw">${gridHTML(ctx().bag, 'bag')}</div>` : `<div class="bagw">${trayHTML(S.wh)}</div>`}
+      <p class="sub">把商品拖進上面就買下來（點一下看說明再買）。白裝，最高 ${shopStar(S)}★。</p><div class="shopg">${S.shop.map((s, i) => scHTML(s.o, itemPrice(s.o), 'shopSel', `data-i="${i}"`, s.sold)).join('')}</div>`
       : `<p class="sub">死了背包會一起失去。越大越貴，前期便宜的先用。</p>${BAGS.map(b => `<div class="rowx">${miniHTML(b.m)}<div class="t"><b>${esc(b.n)}</b><small>${cellCount({ t: b.id })} 格${own(b.id) ? `・有 ${own(b.id)} 個` : ''}</small></div><button class="btn buy" data-act="buyBag" data-t="${b.id}" ${S.gold < b.p ? 'disabled' : ''}>${b.p} 金</button></div>`).join('')}`
   }`;
 }
@@ -606,7 +643,7 @@ function mkSellDlg(u) {
     ref = Math.max(10, sellPrice(o) * 3);
   openDlg(
     () =>
-      `<h2>上架市集</h2><div class="dh"><div class="slot-g${rarity(o) ? ' r1' : ''}">${slotIn(o)}</div><div><b class="${rarity(o) ? 'n1' : ''}">${esc(itName(o))}</b><small>賣給商店只有 ${sellPrice(o)} 金</small></div></div>
+      `<h2>上架市集</h2><div class="dh"><div class="slot-g${' r' + rarity(o)}">${slotIn(o)}</div><div><b class="n${rarity(o)}">${esc(itName(o))}</b><small>賣給商店只有 ${sellPrice(o)} 金</small></div></div>
       <label class="sub" for="mkp">價格（1～99999 金，賣掉扣 10%）</label><input class="inp" id="mkp" type="number" inputmode="numeric" min="1" max="99999" value="${ref}">
       <div class="g3" style="margin-bottom:var(--sp-3)">${[1, 2, 4].map(k => `<button class="btn sm" data-act="mkp" data-v="${ref * k}">${ref * k}</button>`).join('')}</div>
       <button class="btn pri big" data-act="mkSellGo" data-u="${u}">上架</button>`,
@@ -776,7 +813,13 @@ function bagDlg(head = '') {
 /* 遭遇與待辦（打或跑、戰利品、商人、事件、撤離、下樓） */
 function foeHTML(f) {
   const tn = { elite: '菁英', boss: '王', zod: '生肖' }[f.tier];
-  return `<div class="foe"><img class="ic" data-sp="${f.sp}" src="${spURL(f.sp)}" alt=""><div class="t"><b>${esc(f.n)}</b>${tn ? `<span class="tier ${f.tier}">${tn}</span>` : ''}<small>生命 ${f.mhp}・攻擊 ${f.atk[0]}～${f.atk[1]}／${f.cd} 秒${f.arm ? `・護甲 ${f.arm}` : ''}</small>${f.aff.length ? `<small class="c-warn">${f.aff.map(a => MAFF[a].n + '（' + MAFF[a].d + '）').join('、')}</small>` : ''}${f.sk ? `<small class="c-bad">${BOSSES.find(b => b.n === f.n).skd}</small>` : ''}</div></div>`;
+  return `<div class="foe"><img class="ic" data-sp="${f.sp}" src="${spURL(f.sp)}" alt=""><div class="t"><b>${esc(f.n)}</b>${tn ? `<span class="tier ${f.tier}">${tn}</span>` : ''}<small>生命 ${f.mhp}・${f.el && f.el !== 'phys' ? `<span class="c-warn">${ELN[f.el]}</span>` : ''}攻擊 ${f.atk[0]}～${f.atk[1]}／${f.cd} 秒${f.arm ? `・護甲 ${f.arm}` : ''}</small>${
+    RESK.some(k => (f.res || {})[k])
+      ? `<small>抗性：${RESK.filter(k => f.res[k])
+          .map(k => `${RESI[k]}${f.res[k]}%`)
+          .join(' ')}</small>`
+      : ''
+  }${f.aff.length ? `<small class="c-warn">${f.aff.map(a => MAFF[a].n + '（' + MAFF[a].d + '）').join('、')}</small>` : ''}${f.sk ? `<small class="c-bad">${BOSSES.find(b => b.n === f.n).skd}</small>` : ''}</div></div>`;
 }
 /* 怪物的背包（只能看，點道具看說明）：裡面的裝備讓帶頭的怪變強，打贏就是你的 */
 function ebagHTML(g) {
@@ -820,7 +863,7 @@ function pendDlg() {
           const pr = shopPrice(run, s),
             nm = s.item ? ITEMI[s.item].n : itName(s.o),
             d = s.item ? baseLines(ITEMI[s.item])[0] : baseLines(baseOf(s.o))[0];
-          return `<div class="rowx${s.sold ? ' off' : ''}"><div class="t"><b class="${s.o && rarity(s.o) ? 'n1' : ''}">${esc(nm)}</b><small>${d}</small></div>${s.sold ? '<span class="sub">已買</span>' : `<button class="btn buy" data-act="sbuy" data-i="${i}" ${run.gold < pr ? 'disabled' : ''}>${pr} 金</button>`}</div>`;
+          return `<div class="rowx${s.sold ? ' off' : ''}"><div class="t"><b class="${s.o ? 'n' + rarity(s.o) : ''}">${esc(nm)}</b><small>${d}</small></div>${s.sold ? '<span class="sub">已買</span>' : `<button class="btn buy" data-act="sbuy" data-i="${i}" ${run.gold < pr ? 'disabled' : ''}>${pr} 金</button>`}</div>`;
         })
         .join(
           ''
@@ -1187,7 +1230,7 @@ const A = {
     if (!o) return;
     openDlg(
       () =>
-        `<div class="dh"><div class="slot-g${rarity(o) ? ' r1' : ''}"><img class="ic" src="${itIc(o)}" alt=""></div><div><b class="${rarity(o) ? 'n1' : ''}">${esc(itName(o))}</b><small>${KINDN[baseOf(o).k]}・${'★'.repeat(baseOf(o).star)}</small></div></div>${itemLines(o)}<button class="btn" style="width:100%" data-act="pendBack">← 回到遭遇</button>`,
+        `<div class="dh"><div class="slot-g${' r' + rarity(o)}"><img class="ic" src="${itIc(o)}" alt=""></div><div><b class="n${rarity(o)}">${esc(itName(o))}</b><small>${KINDN[baseOf(o).k]}・${'★'.repeat(baseOf(o).star)}</small></div></div>${itemLines(o)}<button class="btn" style="width:100%" data-act="pendBack">← 回到遭遇</button>`,
       1
     );
   },
