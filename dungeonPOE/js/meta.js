@@ -5,7 +5,8 @@ function newGame() {
   const S = {
     v: 1,
     gold: 20,
-    bags: [newBag('b44')],
+    bags: [newBag('b33')],
+    av: 'av_kojiro',
     sel: null,
     wh: [],
     box: { t: 'box', items: [] },
@@ -87,7 +88,7 @@ function heroOf(S, c) {
 const allItems = S => [...S.wh, ...S.box.items, ...S.bags.flatMap(b => b.items)];
 /* 跑刀：沒有背包就送新手包；完全沒有武器（或防具）就送桃木劍（皮甲） */
 function ensureStarter(S) {
-  if (!S.bags.length) S.bags.push(newBag('b44'));
+  if (!S.bags.length) S.bags.push(newBag('b33'));
   if (!S.bags.some(b => b.u === S.sel)) S.sel = S.bags[0].u;
   const has = k => allItems(S).some(o => baseOf(o).k === k);
   if (!has('w')) S.wh.push(mkItem('woodsword'));

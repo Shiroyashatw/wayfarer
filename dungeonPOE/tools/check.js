@@ -73,7 +73,7 @@ for (let k = 0; k < N; k++) {
           nan++;
       } else if (p.k === 'dead') G.finishRun(S, false);
       else if (p.k === 'loot') {
-        for (const o of run.ground.splice(0)) G.autoPlace(run.bag, o) || G.autoPlace(run.box, o);
+        for (const o of run.ground.items.splice(0)) G.autoPlace(run.bag, o) || G.autoPlace(run.box, o);
         run.pend = null;
       } else if (p.k === 'event') G.eventPick(run, 0) || G.eventPick(run, 1);
       else if (p.k === 'stairs') G.goDown(run);
@@ -81,10 +81,8 @@ for (let k = 0; k < N; k++) {
       else run.pend = null;
       continue;
     }
-    while (run.hand.length) G.playCard(run, 0);
-    const m = G.moves(run.map, run.pos, run.fx.detour).filter(m => m.c <= run.mp);
-    if (m.length) G.moveTo(run, m[(t * 31) % m.length].to);
-    else G.endTurn(run);
+    const m = G.moves(run.map, run.pos);
+    G.moveTo(run, m[(t * 31) % m.length].to);
     if (k === 0 && t === 20) {
       const a = JSON.stringify(S),
         b = JSON.stringify(JSON.parse(a));
@@ -94,6 +92,7 @@ for (let k = 0; k < N; k++) {
   if (S.run) G.finishRun(S, true);
   done++;
   for (const g of [...S.bags, S.box]) if (overlap(g)) ov++;
+
   if (!Number.isFinite(S.gold)) nan++;
 }
 nan ? fail(`${nan} 次出現 NaN`) : ok(`${done} 趟：沒有 NaN`);

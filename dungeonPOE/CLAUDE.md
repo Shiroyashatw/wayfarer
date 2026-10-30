@@ -6,7 +6,7 @@
 
 **只要動到 UI／UX：一定先啟動 skill `ui-design`**（它會先啟動 `apple-design`，有動畫再加 `animate`）。skill 裡寫的檔名是《塞令老師》的，在這裡對應：畫面 `js/ui.js`、樣式 `css/style.css`、規範 `docs/設計規範.md`、audit `.claude/skills/ui-design/audit.js`。改完在 375×667、375×812、1440×900 截圖並跑 audit。
 
-撤離＋背包構築＋手牌移動的單人 PvE：背著背包下地城，用手牌走隨機地圖、自動戰鬥，熱度滿了墮落十二生肖會追殺，帶著寶物撤離；死了只留黑盒。前作《塞令老師》（同一個 repo 的根目錄）。
+撤離＋背包構築的單人 PvE：背著背包下地城，點格子走隨機地圖、自動戰鬥（怪物也有背包，打贏就是戰利品），熱度滿了墮落十二生肖會追殺，帶著寶物撤離；死了只留黑盒。前作《塞令老師》（同一個 repo 的根目錄）。
 
 ## 溝通規則
 - **一律用繁體中文回覆**（包含 commit 訊息）。
@@ -25,15 +25,15 @@
 | 檔案 | 內容 |
 | --- | --- |
 | `js/core.js` | `$`、`fl`、固定亂數 `h`／`rng`、`esc` |
-| `js/data.js` | 表格：道具 `ITEMS`、詞綴 `AFF`（T1～T6）、背包 `BAGS`／黑盒 `BOX`、手牌 `CARDS`、熱度 `HEAT`、怪物 `MOBS`／菁英詞綴 `MAFF`／王 `BOSSES`／生肖 `ZODIAC`、職業與核心 `CLASSES`、天賦 `TREE`、`VER`、存檔鍵 `KEY` |
+| `js/data.js` | 表格：道具 `ITEMS`、詞綴 `AFF`（T1～T6）、背包 `BAGS`／黑盒 `BOX`／地上與怪物背包 `MBAGS`、頭像 `AVATARS`、熱度 `HEAT`、怪物 `MOBS`／菁英詞綴 `MAFF`／王 `BOSSES`／生肖 `ZODIAC`、職業與核心 `CLASSES`、天賦 `TREE`、`VER`、存檔鍵 `KEY` |
 | `js/gear.js` | 道具實例、擲詞綴 `rollItem`、重骰 `rerollAff`、形狀與擺放 `cellsOf`／`fits`／`autoPlace`、位置詞綴、把背包算成戰鬥數值 `compile`、說明文字 `baseLines`／`affLine` |
-| `js/sim.js` | 自動戰鬥 `simulate`（純計算、偽隨機 `prd`、輸出事件時間軸，含哪件道具發動）、開打前的勝率 `predict` |
-| `js/dungeon.js` | 一趟地城：怪物 `mkFoe`／`foesFor`、地圖 `genMap`、`newRun`、手牌 `playCard`、移動 `moveTo`／`arrive`、`endTurn`、熱度與生肖 `addHeat`／`spawnZod`、打或跑 `fightNow`／`flee`、掉寶 `lootFor`、地城商人、事件 `EVENTS`、下樓 `goDown`、結算 `runResult` |
+| `js/sim.js` | 自動戰鬥 `simulate`（純計算、偽隨機 `prd`、輸出事件時間軸，含哪件道具發動；怪物用背包裡的武器 `wps`）、預估 `predict`、危險等級 `danger`／`DANGER` |
+| `js/dungeon.js` | 一趟地城：怪物 `mkFoe`／`foesFor`、怪物與寶箱的背包 `lootBag`／`equipFoe`、地圖 `genMap`、`newRun`、移動 `moveTo`／`step`／`arrive`、熱度與生肖 `addHeat`／`spawnZod`、打或跑 `fightNow`／`flee`、戰利品 `lootFor`、地城商人、事件 `EVENTS`、下樓 `goDown`、結算 `runResult` |
 | `js/meta.js` | 存檔結構 `newGame`、職業等級與天賦 `clLv`／`takeNode`／`coresOf`／`heroOf`、城鎮（商店、賣、鐵匠 `smith`、工坊 `buyBag`）、跑刀 `ensureStarter`、出發 `depart`、結算 `finishRun` |
 | `js/sprites.js`、`js/art.js`、`img/` | 從《塞令老師》複製的像素圖大圖（`art.js` 是產生的，不要手改） |
 | `js/audio.js` | Web Audio 合成音效 |
 | `js/cloud.js` | Supabase 匿名登入＋雲端存檔（表 `dungeon_saves`） |
-| `js/ui.js` | 所有畫面：城鎮五個分頁、背包拖曳（`pointerdown`／`pointermove`／`pointerup`、`target`、`hover`）、說明卡 `openDlg`／`closeDlg`、地城 `runHTML`／`mapHTML`、待辦 `pendDlg`、戰鬥播放（`startFightView`、`bTick`、背包運作 `fightBagHTML`／`itemFire`、訊息 `logEv`）、結算、動作表 `A` |
+| `js/ui.js` | 所有畫面：城鎮五個分頁、背包拖曳（`pointerdown`／`pointermove`／`pointerup`、`target`、`hover`）、說明卡 `openDlg`／`closeDlg`、設定 `settingsDlg`、地城 `runHTML`／`mapHTML`、待辦 `pendDlg`（遭遇的怪物背包 `ebagHTML`）、新手教學 `TIPS`／`coach`、戰鬥播放（`startFightView`、`bTick`、背包運作 `fightBagHTML`／`itemFire`、訊息 `logEv`）、結算、動作表 `A` |
 | `js/main.js` | `load`／`save`／`migrate`／`start` |
 | `tools/game_node.js` | 在 Node 載入純邏輯 |
 | `tools/check.js` | 固定檢查 |

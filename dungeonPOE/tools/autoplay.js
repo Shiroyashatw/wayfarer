@@ -71,7 +71,7 @@ function path(run, goal) {
   while (q.length) {
     q.sort((a, b) => D[a] - D[b]);
     const a = q.shift();
-    for (const m of G.moves(run.map, a, run.fx.detour))
+    for (const m of G.moves(run.map, a))
       if (D[a] + m.c < D[m.to]) {
         D[m.to] = D[a] + m.c;
         from[m.to] = a;
@@ -121,14 +121,14 @@ function dungeon(S) {
       }
       if (p.k === 'dead') return G.finishRun(S, false);
       if (p.k === 'loot') {
-        for (const o of run.ground.splice(0)) if (!G.autoPlace(run.bag, o)) G.autoPlace(run.box, o);
+        for (const o of run.ground.items.splice(0)) if (!G.autoPlace(run.bag, o)) G.autoPlace(run.box, o);
         run.pend = null;
         continue;
       }
       if (p.k === 'shop') {
         const st = run.map.N[run.pos].stock;
         st.forEach((s, i) => s.item === 'potion' && run.gold >= 15 && G.shopBuy(run, i));
-        for (const o of run.ground.splice(0)) G.autoPlace(run.bag, o);
+        for (const o of run.ground.items.splice(0)) G.autoPlace(run.bag, o);
         run.map.N[run.pos].done = 1;
         run.pend = null;
         continue;
@@ -160,12 +160,7 @@ function dungeon(S) {
     }
     /* 要不要撤 */
     const hpR = run.hp / P.mhp;
-    leave = run.boss || (run.hot && run.f < 3) || run.heat >= (GREED ? 40 : 34) || (run.hearts <= 1 && hpR < 0.5);
-    /* 出牌：先出移動牌；生命低才喘息 */
-    for (let i = run.hand.length - 1; i >= 0; i--) {
-      const c = G.CARDS[run.hand[i]];
-      if (c.mv || c.scout || c.ambush || c.detour || c.pick || c.heat || (c.heal && hpR < 0.7)) G.playCard(run, i);
-    }
+    leave = run.boss || (run.hot && run.f < 3) || run.heat >= (GREED ? 75 : 60) || (run.hearts <= 1 && hpR < 0.5);
     /* 選目標 */
     let tgt;
     if (leave) tgt = nearest(run, n => n.t === 'exit');
@@ -180,13 +175,7 @@ function dungeon(S) {
       );
     if (!tgt) tgt = nearest(run, n => n.t === (run.f === 3 ? 'boss' : 'stairs'));
     if (!tgt) tgt = nearest(run, n => n.t === 'exit');
-    let moved = false;
-    if (tgt) {
-      const nx = tgt.p[1],
-        m = G.canMove(run, nx);
-      if (m) moved = G.moveTo(run, nx);
-    }
-    if (!moved) G.endTurn(run);
+    if (!tgt || !G.moveTo(run, tgt.p[1])) break;
   }
   return G.finishRun(S, false);
 }

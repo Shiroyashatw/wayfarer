@@ -1,7 +1,7 @@
 /* dungeonPOE · 畫面：城鎮（出發、商店、鐵匠、工坊、天賦）、背包拖曳、地城地圖與手牌、遭遇、戰鬥播放、結算 */
 'use strict';
 let S = null;
-const V = { scr: 'town', tab: 'prep', dlg: null, tcls: null };
+const V = { scr: 'town', tab: 'prep', dlg: null };
 /* ================= 小工具 ================= */
 const HAPT = { select: 8, coin: 12, nope: [10, 40, 10], hit: 6 };
 function snd(n, hp) {
@@ -69,7 +69,8 @@ function artRepaint() {
 function openDlg(f, c, keep) {
   const m = $('modal'),
     again = !m.hidden && keep;
-  V.dlg = { f, c };
+  /* 重畫同一張卡（keep）時保留「這是背包卡」的標記 */
+  V.dlg = { f, c, bag: keep && V.dlg ? V.dlg.bag : 0 };
   m.className = c ? 'center' : '';
   /* 遭遇一定要選打或跑，不給關 */
   const noX = S.run && S.run.pend && ['fight', 'dead'].includes(S.run.pend.k) && !(V.dlg && V.dlg.bag);
@@ -109,19 +110,19 @@ function closeDlg() {
 }
 const redlg = () => V.dlg && openDlg(V.dlg.f, V.dlg.c, true);
 /* ================= 背包格子 ================= */
-/* 現在的三個容器：背包、黑盒、托盤（城鎮是倉庫，地城是地上） */
+/* 現在的容器：背包、黑盒；城鎮多一個倉庫（tray，清單），地城多一個地上（gr，格子：怪物或寶箱的背包就攤在這裡） */
 function ctx() {
-  if (S.run) return { bag: S.run.bag, box: S.run.box, tray: S.run.ground, tn: '地上', town: 0 };
+  if (S.run) return { bag: S.run.bag, box: S.run.box, gr: S.run.ground, tray: null, town: 0 };
   return { bag: S.bags.find(b => b.u === S.sel), box: S.box, tray: S.wh, tn: '倉庫', town: 1 };
 }
 function where(u) {
   const c = ctx();
-  for (const k of ['bag', 'box']) if (c[k] && c[k].items.some(o => o.u === u)) return k;
-  return c.tray.some(o => o.u === u) ? 'tray' : null;
+  for (const k of ['bag', 'box', 'gr']) if (c[k] && c[k].items.some(o => o.u === u)) return k;
+  return c.tray && c.tray.some(o => o.u === u) ? 'tray' : null;
 }
 function findIt(u) {
   const c = ctx();
-  return [...c.bag.items, ...c.box.items, ...c.tray].find(o => o.u === u);
+  return [...c.bag.items, ...c.box.items, ...(c.gr ? c.gr.items : []), ...(c.tray || [])].find(o => o.u === u);
 }
 function take(u) {
   const c = ctx(),
@@ -131,8 +132,18 @@ function take(u) {
     i = list.findIndex(o => o.u === u);
   return list.splice(i, 1)[0];
 }
+/* 地上那一格叫什麼：打贏了是「戰利品」，寶箱是「寶箱」 */
+const grName = () => {
+  const p = S.run && S.run.lootFrom;
+  return p || '地上';
+};
 const cellPx = g =>
-  g.t === 'box' ? 40 : Math.min(52, fl((Math.min(innerWidth - 32, DESK() ? 560 : 448) - 8) / gridW(g)));
+  g.t === 'box'
+    ? 40
+    : Math.min(
+        g.t === 'g' || g.t[0] === 'm' ? 44 : 52,
+        fl((Math.min(innerWidth - 32, DESK() ? 560 : 448) - 8) / gridW(g))
+      );
 function gridHTML(g, key) {
   const cs = cellPx(g),
     m = maskOf(g);
@@ -162,7 +173,7 @@ function itemHTML(o, cs, left, top, cls = 'it') {
     is = Math.min(44, cs * 0.8);
   return `<div class="${cls}" data-u="${o.u}" style="left:${left}px;top:${top}px;width:${w * cs}px;height:${hh * cs}px;border:0;background:none;pointer-events:none">${parts}<img class="ic" data-ic="${baseOf(o).ic}" src="${itIc(o)}" alt="${esc(baseOf(o).n)}" style="position:absolute;left:${icx - is / 2}px;top:${icy - is / 2}px;width:${is}px;height:${is}px"></div>`;
 }
-function trayHTML(list, tn) {
+function trayHTML(list) {
   return `<div class="tray" data-g="tray">${
     list.length
       ? list
@@ -171,19 +182,24 @@ function trayHTML(list, tn) {
               `<button class="slot-g${rarity(o) ? ' r1' : ''}" data-u="${o.u}"><img class="ic" src="${itIc(o)}" alt="">${o.a.length ? `<i class="badge">T${Math.min(...o.a.map(x => x.t))}</i>` : ''}</button>`
           )
           .join('')
-      : `<div class="empty">${tn === '倉庫' ? '倉庫是空的：去商店買裝備' : '把不要的拖到這裡丟掉'}</div>`
+      : `<div class="empty">倉庫是空的：去商店買裝備</div>`
   }</div>`;
 }
 function editorHTML() {
   const c = ctx(),
     P = compile(c.bag, S.run ? S.run.hero : heroOf(S, S.cls)),
-    dps = P.weapons.reduce((s, w) => s + (((w.dmg[0] + w.dmg[1]) / 2 + w.flat) * w.mul) / w.cd, 0);
-  /* 照《塞令老師》的暫存區：撿到的（地上）／倉庫緊貼在背包下面、一排 6 格，黑盒放最後 */
-  return `<div class="bagw bagtop"><div class="lbl"><span>${esc(BAGI[c.bag.t].n)}</span><span>生命 <b>${P.mhp}</b>・每秒 <b>${dps.toFixed(1)}</b>・護甲 <b>${P.arm}</b></span></div>${gridHTML(c.bag, 'bag')}</div>
-  <div class="bagw" style="margin-top:var(--sp-2)"><div class="lbl"><span>${c.tn}${c.town ? '' : '（走開就不見）'}</span><span>${c.tray.length} 件</span></div>${trayHTML(c.tray, c.tn)}</div>
-  <div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3)">
-    <div class="bagw" style="flex:none"><div class="lbl"><span>黑盒</span></div>${gridHTML(c.box, 'box')}</div>
-    <p class="sub" style="margin:var(--sp-4) 0 0">拖曳搬動，點一下看說明、旋轉。黑盒裡的東西不參與戰鬥，死了也會留下。</p>
+    dps = P.weapons.reduce((s, w) => s + (((w.dmg[0] + w.dmg[1]) / 2 + w.flat) * w.mul) / w.cd, 0),
+    head = `<div class="bagw bagtop"><div class="lbl"><span>${esc(BAGI[c.bag.t].n)}</span><span>生命 <b>${P.mhp}</b>・每秒 <b>${dps.toFixed(1)}</b>・護甲 <b>${P.arm}</b></span></div>${gridHTML(c.bag, 'bag')}</div>`,
+    box = `<div class="bagw" style="flex:none"><div class="lbl"><span>黑盒</span></div>${gridHTML(c.box, 'box')}</div>`;
+  /* 地城：戰利品（怪物的背包）攤在背包下面，想拿的拖進來；城鎮：倉庫照《塞令老師》的暫存區，一排 6 格 */
+  if (!c.town)
+    return `${head}<div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3);flex-wrap:wrap">
+    <div class="bagw" style="flex:none"><div class="lbl"><span>${esc(grName())}<small class="c-warn">・走開就沒了</small></span></div>${gridHTML(c.gr, 'gr')}</div>${box}</div>
+    <p class="sub">拖曳搬動，點一下看說明、旋轉。黑盒不參與戰鬥，死了裡面的東西會留下。</p>`;
+  return `${head}
+  <div class="bagw" style="margin-top:var(--sp-2)"><div class="lbl"><span>倉庫</span><span>${c.tray.length} 件</span></div>${trayHTML(c.tray)}</div>
+  <div class="row" style="align-items:flex-start;margin-top:var(--sp-2);gap:var(--sp-3)">${box}
+    <p class="sub" style="margin:var(--sp-4) 0 0">拖曳搬動，點一下看說明、旋轉。黑盒不參與戰鬥，死了裡面的東西會留下。</p>
   </div>`;
 }
 /* ---------- 拖曳（跟手、抓哪裡就跟哪裡，放開從現在的位置彈到結果） ---------- */
@@ -362,12 +378,12 @@ function itemDlg(u) {
       c = ctx(),
       acts = [];
     if (w !== 'tray' && b.sh !== 's1') acts.push(`<button class="btn" data-act="rot" data-u="${u}">旋轉</button>`);
-    if (w === 'tray') {
+    if (w === 'tray' || w === 'gr') {
       acts.push(`<button class="btn" data-act="toBag" data-u="${u}">放進背包</button>`);
       acts.push(`<button class="btn" data-act="toBox" data-u="${u}">放進黑盒</button>`);
       if (c.town) acts.push(`<button class="btn" data-act="sell" data-u="${u}">賣出 +${sellPrice(o)}</button>`);
     } else
-      acts.push(`<button class="btn" data-act="toTray" data-u="${u}">${c.town ? '放回倉庫' : '丟到地上'}</button>`);
+      acts.push(`<button class="btn" data-act="toTray" data-u="${u}">${c.town ? '放回倉庫' : '放到地上'}</button>`);
     return `<div class="dh"><div class="slot-g${rarity(o) ? ' r1' : ''}"><img class="ic" src="${itIc(o)}" alt=""></div><div><b class="${rarity(o) ? 'n1' : ''}">${esc(itName(o))}</b><small>${KINDN[b.k]}・${'★'.repeat(b.star)}${o.a.length ? `・${o.a.length} 條詞綴` : ''}</small></div></div>${itemLines(o)}<div class="acts">${acts.join('')}</div>${keepBag ? `<button class="btn" style="width:100%;margin-top:var(--sp-2)" data-act="bag">← 背包</button>` : ''}`;
   });
 }
@@ -377,7 +393,7 @@ const TABS = [
   ['shop', '🏪', '商店'],
   ['smith', '⚒️', '鐵匠'],
   ['bags', '🧵', '工坊'],
-  ['tree', '✨', '天賦']
+  ['tree', '✨', '職業']
 ];
 function miniHTML(m) {
   return `<span class="mini" style="grid-template-columns:repeat(${m[0].length},7px)">${m
@@ -395,7 +411,24 @@ function applyTheme() {
   if (m) m.content = t === 'dark' ? '#1d1b21' : '#f2eee7';
 }
 function topHTML(t) {
-  return `<div class="top"><span class="ttl">${t}</span><span class="gold">${GOLDI()}${S.gold}</span><button class="iconbtn" data-act="theme" aria-label="切換亮色／深色">${curTheme() === 'dark' ? '🌙' : '☀️'}</button><button class="iconbtn" data-act="sfx" aria-label="音效">${S.sfx ? '🔊' : '🔇'}</button></div>`;
+  return `<div class="top"><span class="ttl">${t}</span><span class="gold">${GOLDI()}${S.gold}</span><button class="iconbtn" data-act="settings" aria-label="設定">⚙️</button></div>`;
+}
+/* 設定：頭像、亮色／深色、音效 */
+function settingsDlg() {
+  openDlg(
+    () => `<h2>設定</h2><h3>頭像</h3><div class="avs">${AVATARS.map(([k, n]) => `<button class="slot-g" data-act="av" data-k="${k}" aria-pressed="${S.av === k}" aria-label="${n}"><img class="ic" data-sp="${k}" src="${spURL(k)}" alt=""></button>`).join('')}</div>
+    <h3>主題</h3><div class="g3">${[
+      [null, '跟系統'],
+      ['light', '☀️ 亮色'],
+      ['dark', '🌙 深色']
+    ]
+      .map(
+        ([k, n]) =>
+          `<button class="btn" data-act="theme" data-k="${k || ''}" aria-pressed="${(S.theme || null) === k}">${n}</button>`
+      )
+      .join('')}</div>
+    <h3>音效</h3><button class="btn" style="width:100%" data-act="sfx" aria-pressed="${S.sfx}">${S.sfx ? '🔊 開' : '🔇 關'}</button>`
+  );
 }
 function prepHTML() {
   const c = S.cls,
@@ -415,18 +448,9 @@ function prepHTML() {
   return `${topHTML('dungeonPOE')}
   <div class="two"><div class="pcol">
   ${dsel}
-  <div class="clsrow">${CLASSES.map(k => `<button class="clsb" data-act="selCls" data-c="${k.id}" aria-pressed="${k.id === c}"><img class="ic" src="${icURL(k.ic)}" alt="">${k.n}<small>Lv${clLv(clOf(S, k.id).xp).lv}</small></button>`).join('')}</div>
-  <div class="card" style="margin-top:var(--sp-2)"><b>${cl.n}・${cl.m}</b> <small class="c-dim">Lv${lv}</small><p class="sub" style="margin:2px 0 0">${cl.md}</p>
-  <div class="cores2">${[0, 1]
-    .map(i => {
-      const id = eq[i];
-      return id
-        ? `<button class="coreb" data-act="cores"><b>${COREI[id].n}</b><small>${COREI[id].d(COREI[id].v[heroOf(S, c).clv[id] ? 1 : 0])}</small></button>`
-        : `<button class="coreb add" data-act="cores">＋ 核心<small>${coresOf(S, c).length > 1 ? '點選裝備' : '天賦解鎖更多核心'}</small></button>`;
-    })
-    .join('')}</div></div>
+  <button class="rowx" data-act="tab" data-t="tree"><img class="ic" src="${spURL(S.av)}" data-sp="${S.av}" alt="" style="width:40px;height:40px"><div class="t"><b>${cl.n} Lv${lv}<span class="c-dim" style="font-weight:400">・${cl.m}</span></b><small>核心：${eq.map(id => COREI[id].n).join('、')}</small></div><span class="c-dim">換 ›</span></button>
   </div><div class="pcol"><h3>背包 <small>死了會失去</small></h3><div class="chips" style="margin-bottom:var(--sp-2)">${bagSel}</div>${editorHTML()}
-  <details class="more"><summary>怎麼玩</summary><div><p class="sub">① 把倉庫的裝備拖進背包（背包就是你的戰鬥力）。② 下地城用手牌走格子、打怪、撿東西。③ 熱度越來越高，滿了墮落十二生肖會來追你，記得走到撤離點 🚪。④ 3 顆愛心全碎就死在地城：背包和裡面的東西全部失去，只有黑盒裡的會留下。</p></div></details></div></div>`;
+  <details class="more"><summary>怎麼玩</summary><div><p class="sub">① 把倉庫的裝備拖進背包（背包就是你的戰鬥力）。② 下地城點相鄰的格子走過去，打怪、開寶箱，怪物背包裡的東西打贏就能拿。③ 每走一步熱度 +1，滿了墮落十二生肖會來追你，記得走到撤離點 🚪。④ 3 顆愛心全碎就死在地城：背包和裡面的東西全部失去，只有黑盒裡的會留下。</p></div></details></div></div>`;
 }
 function shopHTML() {
   return `${topHTML('商店')}<p class="sub">白裝，最高 ${'★'.repeat(shopStar(S))}・打倒王會進更好的貨</p>${S.shop
@@ -467,12 +491,24 @@ function nodeTxt(c, n) {
   return { ic: '', t: s[0], n: `+${s[1] * (n.x || 1)}${s[2]}`, d: `${s[0]} +${s[1] * (n.x || 1)}${s[2]}` };
 }
 function treeHTML() {
-  const c = V.tcls || S.cls,
+  const c = S.cls,
     cl = clOf(S, c),
     L = clLv(cl.xp),
     pts = tPoints(S, c);
-  return `${topHTML('天賦')}<div class="clsrow">${CLASSES.map(k => `<button class="clsb" data-act="tcls" data-c="${k.id}" aria-pressed="${k.id === c}"><img class="ic" src="${icURL(k.ic)}" alt="">${k.n}<small>Lv${clLv(clOf(S, k.id).xp).lv}</small></button>`).join('')}</div>
-  <div class="card" style="margin-top:var(--sp-2)"><div class="row" style="justify-content:space-between"><b>${CLSI[c].n} Lv${L.lv}</b><span class="sub">可點 <b class="c-gold">${pts}</b> 點</span></div><span class="hpb" style="margin-top:var(--sp-2)"><i style="width:${(L.xp / L.need) * 100}%;background:var(--accent)"></i></span><small class="sub">經驗 ${L.xp}/${L.need}・出地城就拿（死了也有）</small></div>
+  const k = CLSI[c],
+    eq = eqOf(S, c),
+    hv = heroOf(S, c);
+  return `${topHTML('職業')}<div class="clsrow">${CLASSES.map(k => `<button class="clsb" data-act="selCls" data-c="${k.id}" aria-pressed="${k.id === c}"><img class="ic" src="${icURL(k.ic)}" alt="">${k.n}<small>Lv${clLv(clOf(S, k.id).xp).lv}</small></button>`).join('')}</div>
+  <div class="card" style="margin-top:var(--sp-2)"><b>${k.n}・${k.m}</b><p class="sub" style="margin:2px 0 0">${k.md}</p>
+  <div class="cores2">${[0, 1]
+    .map(i => {
+      const id = eq[i];
+      return id
+        ? `<button class="coreb" data-act="cores"><b>${COREI[id].n}${hv.clv[id] ? ' ▲' : ''}</b><small>${COREI[id].d(COREI[id].v[hv.clv[id] ? 1 : 0])}</small></button>`
+        : `<button class="coreb add" data-act="cores">＋ 核心<small>${coresOf(S, c).length > 1 ? '點選裝備' : '點天賦解鎖更多核心'}</small></button>`;
+    })
+    .join('')}</div></div>
+  <div class="card"><div class="row" style="justify-content:space-between"><b>Lv${L.lv}</b><span class="sub">可點 <b class="c-gold">${pts}</b> 點</span></div><span class="hpb" style="margin-top:var(--sp-2)"><i style="width:${(L.xp / L.need) * 100}%;background:var(--accent)"></i></span><small class="sub">經驗 ${L.xp}/${L.need}・出地城就拿（死了也有）</small></div>
   <div class="tree">${TREE.map((row, r) => {
     const lock = cl.pts.length < rowNeed(r);
     return `<div class="trow${lock ? ' lock' : ''}">${row
@@ -488,7 +524,7 @@ function treeHTML() {
   <button class="btn" style="width:100%" data-act="resetTree">免費重點</button>`;
 }
 function nodeDlg(id) {
-  const c = V.tcls || S.cls;
+  const c = S.cls;
   openDlg(() => {
     const n = TNODES.find(x => x.id === id),
       tx = nodeTxt(c, n),
@@ -546,21 +582,21 @@ function hudHTML(run) {
   const P = P_of(run),
     hl = heatLv(run),
     zd = zodInfo(run);
-  return `<div class="hud"><span class="fl">地城 ${run.d}・第 ${run.f} 層 <span class="c-dim">回合 ${run.turn}</span></span><span class="hearts">${'❤️'.repeat(run.hearts)}${'<span class="x">❤️</span>'.repeat(HEARTS - run.hearts)}</span>
+  return `<div class="hud"><span class="fl">地城 ${run.d}・第 ${run.f} 層</span><span class="hearts">${'❤️'.repeat(run.hearts)}${'<span class="x">❤️</span>'.repeat(HEARTS - run.hearts)}</span>
   <span class="hpb big" style="grid-column:1/-1"><i style="width:${(run.hp / P.mhp) * 100}%"></i><em>生命 ${run.hp}/${P.mhp}</em></span>
-  <div class="heat${run.hot ? ' hot' : ''}"><i style="width:${(run.heat / HEAT.max) * 100}%"></i><u style="left:50%"></u><em>${run.hot ? '熱度滿了・生肖出沒' : `熱度 ${run.heat}/${HEAT.max}${hl ? '・怪物 +' + HEAT.mul[hl] * 100 + '%' : ''}`}</em></div>
+  <div class="heat${run.hot ? ' hot' : ''}"><i style="width:${(run.heat / HEAT.max) * 100}%"></i><u style="left:${(HEAT.lv[1] / HEAT.max) * 100}%"></u><em>${run.hot ? '熱度滿了・生肖出沒' : `熱度 ${run.heat}/${HEAT.max}${hl ? '・怪物 +' + HEAT.mul[hl] * 100 + '%' : ''}`}</em></div>
   ${zd ? `<span class="sub c-bad" style="grid-column:1/-1">${zd}</span>` : ''}</div>`;
 }
 function zodInfo(run) {
   if (!run.hot) return '';
   const D = dists(run.map, run.pos),
     near = run.zs.length ? Math.min(...run.zs.map(z => D[z.pos])) : null,
-    nx = 2 - ((run.turn - run.hot) % 2);
-  return `${near != null ? `最近的生肖離你 ${near} 步（每回合走 2 步）・` : ''}下一隻 ${nx} 回合後出現`;
+    nx = HEAT.zodEvery - ((run.turn - run.hot) % HEAT.zodEvery);
+  return `${near != null ? `最近的生肖離你 ${near} 格（你走 2 步牠走 1 格）・` : ''}再走 ${nx} 步出現下一隻`;
 }
 function mapHTML(run) {
   const M = run.map,
-    mv = run.pend ? [] : moves(M, run.pos, run.fx.detour).filter(m => m.c <= run.mp),
+    mv = run.pend ? [] : moves(M, run.pos),
     go = new Set(mv.map(m => m.to));
   let svg = '';
   for (const e of M.E) {
@@ -587,39 +623,43 @@ function mapHTML(run) {
   const zs = run.zs
     .map(
       z =>
-        `<div class="zt" style="left:${M.N[z.pos].x * 100}%;top:${M.N[z.pos].y * 100}%"><img class="ic" src="${spURL(z.foe.sp)}" alt="" style="width:34px;height:34px"><b>${D[z.pos]}</b></div>`
+        `<div class="zt" style="left:${M.N[z.pos].x * 100}%;top:${M.N[z.pos].y * 100}%"><img class="ic" data-sp="${z.foes[0].sp}" src="${spURL(z.foes[0].sp)}" alt="" style="width:34px;height:34px"><b>${D[z.pos]}</b></div>`
     )
     .join('');
-  const tok = `<img class="tok ic" id="tok" src="${spURL(CLSI[run.hero.cls].av)}" alt="你" style="left:${M.N[run.pos].x * 100}%;top:${M.N[run.pos].y * 100}%">`;
+  const tok = `<img class="tok ic" id="tok" data-sp="${S.av}" src="${spURL(S.av)}" alt="你" style="left:${M.N[run.pos].x * 100}%;top:${M.N[run.pos].y * 100}%">`;
   return `<div class="map" id="map"><svg viewBox="0 0 100 100" preserveAspectRatio="none">${svg}</svg>${nodes}${zs}${tok}</div>`;
 }
-function handHTML(run) {
-  return `<div class="hand">${
-    run.hand
-      .map((k, i) => {
-        const c = CARDS[k];
-        return `<button class="cardh${START_DECK.includes(k) ? '' : ' loot'}" data-act="card" data-i="${i}">${c.mv ? `<span class="mv">${c.mv}</span>` : ''}<b>${c.n}</b>${c.mv && !c.heat && !c.detour && !c.pick ? '' : `<small>${c.d.replace(/^移動 \d・?/, '')}</small>`}</button>`;
-      })
-      .join('') || '<p class="sub" style="align-self:center">手牌用完了：結束回合再抽 5 張</p>'
-  }</div>`;
-}
 function runHTML() {
-  const run = S.run;
-  return `<div class="runv"><div class="pcol">${hudHTML(run)}${mapHTML(run)}</div><div class="pcol">${handHTML(run)}
-  <div class="runbar"><button class="iconbtn" data-act="bag" aria-label="背包" style="position:relative">🎒${run.ground.length ? `<span class="cost" style="position:absolute;right:-4px;top:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--gold);color:var(--on-accent);font-size:11px;display:grid;place-items:center">${run.ground.length}</span>` : ''}</button>
-  <div class="row" style="justify-content:center;gap:var(--sp-4)"><div class="mp"><b>${run.mp}</b>移動點</div><div class="pile">牌堆 ${run.draw.length}<br>棄牌 ${run.disc.length}</div><span class="gold">${GOLDI()}${run.gold}</span></div>
-  <button class="btn pri" data-act="end">結束回合</button></div>
-  ${run.ground.length ? `<p class="sub c-warn" style="text-align:center">地上有 ${run.ground.length} 件東西：走開就不見了</p>` : ''}</div></div>`;
+  const run = S.run,
+    gn = run.ground.items.length;
+  return `<div class="runv"><div class="pcol">${hudHTML(run)}${mapHTML(run)}</div><div class="pcol">
+  <div class="runbar"><button class="btn" data-act="bag" style="position:relative;padding:0 var(--sp-4)">🎒 背包${gn ? `<span class="cost" style="position:absolute;right:-6px;top:-6px;min-width:20px;height:20px;border-radius:10px;background:var(--gold);color:var(--on-accent);font-size:11px;display:grid;place-items:center">${gn}</span>` : ''}</button>
+  <p class="sub" style="margin:0;text-align:center">${gn ? `<span class="c-warn">地上有 ${gn} 件：走開就沒了</span>` : !run.pend && moves(run.map, run.pos).some(m => m.c > 1) ? '虛線是險路：走過去算 2 步' : '點亮起來的格子走過去'}</p>
+  <span class="gold">${GOLDI()}${run.gold}</span></div></div></div>`;
 }
-function bagDlg() {
+function bagDlg(head = '') {
   V.dlg = null;
-  openDlg(() => editorHTML());
+  openDlg(() => head + editorHTML());
   V.dlg.bag = 1;
 }
-/* 遭遇與待辦（打或跑、撿東西、商人、事件、撤離、下樓） */
+/* 遭遇與待辦（打或跑、戰利品、商人、事件、撤離、下樓） */
 function foeHTML(f) {
   const tn = { elite: '菁英', boss: '王', zod: '生肖' }[f.tier];
-  return `<div class="foe"><img class="ic" src="${spURL(f.sp)}" alt=""><div class="t"><b>${esc(f.n)}</b>${tn ? `<span class="tier ${f.tier}">${tn}</span>` : ''}<small>生命 ${f.mhp}・攻擊 ${f.atk[0]}～${f.atk[1]}／${f.cd} 秒${f.arm ? `・護甲 ${f.arm}` : ''}</small>${f.aff.length ? `<small class="c-warn">${f.aff.map(a => MAFF[a].n + '（' + MAFF[a].d + '）').join('、')}</small>` : ''}${f.sk ? `<small class="c-bad">${BOSSES.find(b => b.n === f.n).skd}</small>` : ''}</div></div>`;
+  return `<div class="foe"><img class="ic" data-sp="${f.sp}" src="${spURL(f.sp)}" alt=""><div class="t"><b>${esc(f.n)}</b>${tn ? `<span class="tier ${f.tier}">${tn}</span>` : ''}<small>生命 ${f.mhp}・攻擊 ${f.atk[0]}～${f.atk[1]}／${f.cd} 秒${f.arm ? `・護甲 ${f.arm}` : ''}</small>${f.aff.length ? `<small class="c-warn">${f.aff.map(a => MAFF[a].n + '（' + MAFF[a].d + '）').join('、')}</small>` : ''}${f.sk ? `<small class="c-bad">${BOSSES.find(b => b.n === f.n).skd}</small>` : ''}</div></div>`;
+}
+/* 怪物的背包（只能看，點道具看說明）：裡面的裝備讓帶頭的怪變強，打贏就是你的 */
+function ebagHTML(g) {
+  const cs = 30;
+  let h = '';
+  maskOf(g).forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      if (ch === 'x')
+        h += `<i class="cell" style="left:${4 + x * cs + 1}px;top:${4 + y * cs + 1}px;width:${cs - 2}px;height:${cs - 2}px"></i>`;
+    })
+  );
+  for (const o of g.items)
+    h += itemHTML(o, cs, 4 + o.x * cs, 4 + o.y * cs).replace(/class="part"/g, 'class="part" data-act="ebInfo"');
+  return `<div class="grid ebag" style="width:${gridW(g) * cs + 8}px;height:${gridH(g) * cs + 8}px">${h}</div>`;
 }
 function pendDlg() {
   const run = S.run,
@@ -627,27 +667,33 @@ function pendDlg() {
   if (!p) return closeDlg();
   if (p.k === 'fight')
     return openDlg(() => {
-      const pr = predict(P_of(run), run.hp, p.foes, h(run.seed, run.pos, 3), { amb: run.fx.amb || 0 }),
-        col = pr.win >= 0.8 ? 'c-good' : pr.win >= 0.4 ? 'c-warn' : 'c-bad',
-        z = p.zod != null;
-      return `<h2>${z ? '墮落十二生肖追上你了' : run.map.N[run.pos].t === 'boss' ? '王' : '遭遇'}</h2><div class="foes">${p.foes.map(foeHTML).join('')}</div><div class="odds"><span class="sub">勝率</span><b class="${col}">${Math.round(pr.win * 100)}%</b><span class="sub">贏了大約剩 ${pr.left} 生命</span></div><div class="g2"><button class="btn" data-act="flee" ${z ? 'disabled' : ''}>${z ? '生肖不能跑' : '跑'}${z ? '' : `<span class="bnote">退回上一格・熱度 +${HEAT.flee}・棄 1 張手牌</span>`}</button><button class="btn pri" data-act="fight">打</button></div>`;
+      const P = P_of(run),
+        dg = DANGER[danger(predict(P, run.hp, p.foes, h(run.seed, run.pos, 3)), P.mhp)],
+        z = p.zod != null,
+        lead = p.foes[0];
+      return `<h2>${z ? '墮落十二生肖追上你了' : run.map.N[run.pos].t === 'boss' ? '王' : '遭遇'}</h2><div class="foes">${p.foes.map(foeHTML).join('')}</div>
+      <div class="row" style="align-items:flex-start;gap:var(--sp-3);margin-bottom:var(--sp-3)">${ebagHTML(p.bag)}<div style="flex:1;min-width:0"><p class="sub" style="margin:0">${esc(lead.n)}的背包：${p.bag.items.length} 件。牠拿著這些裝備打你，打贏就是你的。</p><div class="danger c-${dg.c}"><b>${dg.n}</b><small>${dg.d}</small></div></div></div>
+      <div class="g2"><button class="btn" data-act="flee" ${z ? 'disabled' : ''}>${z ? '生肖不能跑' : '跑'}${z ? '' : `<span class="bnote">退回上一格・熱度 +${HEAT.flee}</span>`}</button><button class="btn pri" data-act="fight">打</button></div>`;
     }, 1);
-  if (p.k === 'loot')
-    return openDlg(() => {
-      const items = run.ground.filter(o => (p.items || []).includes(o.u));
-      return `<h2>${p.chest ? '📦 寶箱' : '勝利'}</h2>${p.gold ? `<p class="gold">${GOLDI()}+${p.gold}</p>` : ''}${p.card ? `<p>拿到一張牌「<b>${CARDS[p.card].n}</b>」：${CARDS[p.card].d}（進了棄牌堆）</p>` : ''}${items.length ? `<div class="slots" style="margin:var(--sp-2) 0">${items.map(o => `<button class="slot-g${rarity(o) ? ' r1' : ''}" data-act="lootInfo" data-u="${o.u}"><img class="ic" src="${itIc(o)}" alt=""></button>`).join('')}</div><p class="sub">東西在地上，放進背包或黑盒才帶得走。</p>` : !p.gold && !p.card ? '<p class="sub">什麼都沒有。</p>' : ''}<div class="g2">${items.length ? '<button class="btn" data-act="okPend">先不管</button><button class="btn pri" data-act="bagFromLoot">整理背包</button>' : '<button class="btn pri" data-act="okPend" style="grid-column:1/-1">繼續</button>'}</div>`;
-    }, 1);
+  if (p.k === 'loot') {
+    run.lootFrom = p.chest ? '寶箱' : run.lootFrom || '戰利品';
+    return bagDlg(
+      `<h2>${p.chest ? '📦 寶箱' : '🏆 戰利品'}${p.gold ? ` <span class="gold" style="display:inline-flex">${GOLDI()}+${p.gold}</span>` : ''}</h2>`
+    );
+  }
   if (p.k === 'shop')
     return openDlg(() => {
       const st = run.map.N[run.pos].stock;
       return `<h2>🛒 地城商人</h2><p class="gold">${GOLDI()}${run.gold}</p>${st
         .map((s, i) => {
           const pr = shopPrice(run, s),
-            nm = s.card ? `牌「${CARDS[s.card].n}」` : s.item ? ITEMI[s.item].n : itName(s.o),
-            d = s.card ? CARDS[s.card].d : s.item ? baseLines(ITEMI[s.item])[0] : baseLines(baseOf(s.o))[0];
+            nm = s.item ? ITEMI[s.item].n : itName(s.o),
+            d = s.item ? baseLines(ITEMI[s.item])[0] : baseLines(baseOf(s.o))[0];
           return `<div class="rowx${s.sold ? ' off' : ''}"><div class="t"><b class="${s.o && rarity(s.o) ? 'n1' : ''}">${esc(nm)}</b><small>${d}</small></div>${s.sold ? '<span class="sub">已買</span>' : `<button class="btn buy" data-act="sbuy" data-i="${i}" ${run.gold < pr ? 'disabled' : ''}>${pr} 金</button>`}</div>`;
         })
-        .join('')}<button class="btn pri big" data-act="leaveShop">離開</button>`;
+        .join(
+          ''
+        )}<p class="sub">買的東西放在地上，離開時再放進背包。</p><button class="btn pri big" data-act="leaveShop">離開</button>`;
     }, 1);
   if (p.k === 'event')
     return openDlg(() => {
@@ -667,7 +713,7 @@ function pendDlg() {
   if (p.k === 'stairs')
     return openDlg(
       () =>
-        `<h2>🪜 往下一層</h2><p>第 ${run.f + 1} 層的怪物更強、寶物更好。生命、熱度會延續，牌組重洗。</p><div class="g2"><button class="btn" data-act="okPend">留在這層</button><button class="btn pri" data-act="down">下樓</button></div>`,
+        `<h2>🪜 往下一層</h2><p>第 ${run.f + 1} 層的怪物更強、寶物更好。生命、熱度會延續。</p><div class="g2"><button class="btn" data-act="okPend">留在這層</button><button class="btn pri" data-act="down">下樓</button></div>`,
       1
     );
   if (p.k === 'lost')
@@ -687,7 +733,7 @@ function pendDlg() {
 }
 /* ================= 戰鬥播放 ================= */
 let B = null;
-function startFightView(res, foes) {
+function startFightView(res, foes, fbag) {
   /* 喝掉的藥水已經從背包拿掉了，訊息還要叫得出名字 */
   const gone = Object.fromEntries(res.used.map(u => [u, { id: 'potion' }]));
   B = {
@@ -699,7 +745,8 @@ function startFightView(res, foes) {
     sp: Math.max(2, res.t / 8),
     wolves: 0,
     log: [],
-    gone
+    gone,
+    fbag
   };
   V.scr = 'fight';
   closeDlg();
@@ -711,7 +758,7 @@ function fightHTML() {
     P = P_of(run),
     e = B.res.ev[Math.max(0, B.i - 1)] || { h: run.hp, sh: 0 };
   return `<div class="fightv"><div class="hud"><span class="fl">戰鬥</span><button class="btn sm" data-act="skip">跳過</button></div>
-  <div class="arena"><div class="unit" id="u-1"><img data-sp="${CLSI[run.hero.cls].av}" src="${spURL(CLSI[run.hero.cls].av)}" alt="" style="width:${DESK() ? 128 : 80}px;height:${DESK() ? 128 : 80}px"><span class="nm">${CLSI[run.hero.cls].n}</span><span class="hpb big" style="width:100%"><i id="mhp" style="width:${(e.h / P.mhp) * 100}%"></i><i class="bk" id="msh" style="width:${Math.min(100, (e.sh / P.mhp) * 100)}%"></i><em id="mtx">${e.h}</em></span><span class="wolves" id="wolves"></span></div>
+  <div class="arena"><div class="unit" id="u-1"><img data-sp="${S.av}" src="${spURL(S.av)}" alt="" style="width:${DESK() ? 128 : 80}px;height:${DESK() ? 128 : 80}px"><span class="nm">${CLSI[run.hero.cls].n}</span><span class="hpb big" style="width:100%"><i id="mhp" style="width:${(e.h / P.mhp) * 100}%"></i><i class="bk" id="msh" style="width:${Math.min(100, (e.sh / P.mhp) * 100)}%"></i><em id="mtx">${e.h}</em></span><span class="wolves" id="wolves"></span></div>
   <div class="foecol" id="foecol">${B.foes.map((f, i) => unitHTML(f, i)).join('')}</div></div>
   <div class="fbot">${fightBagHTML(run.bag)}<div class="blog" id="blog" aria-live="polite">${B.log.slice(-6).join('')}</div></div></div>`;
 }
@@ -761,7 +808,7 @@ function logEv(e, P) {
   const run = S.run,
     fn = i => esc((B.foes[i] || {}).n || '敵人'),
     itn = u => {
-      const o = run.bag.items.find(x => x.u === u) || B.gone[u];
+      const o = run.bag.items.find(x => x.u === u) || B.gone[u] || (B.fbag && B.fbag.items.find(x => x.u === u));
       return o ? esc(baseOf(o).n) : '';
     },
     cdOf = u => {
@@ -777,7 +824,7 @@ function logEv(e, P) {
   } else if (e.k === 'hurt')
     t = e.dot
       ? `<span class="c-dim">持續傷害 <b class="c-bad">-${e.v}</b></span>`
-      : `<span>${fn(e.s)} → 你 ${e.v ? `<b class="c-bad">-${e.v}</b>` : '<span class="c-dim">護盾擋下</span>'}</span>`;
+      : `<span>${fn(e.s)}${e.u ? '的' + itn(e.u) : ''} → 你 ${e.v ? `<b class="c-bad">-${e.v}</b>` : '<span class="c-dim">護盾擋下</span>'}</span>`;
   else if (e.k === 'miss') t = `<span class="c-dim">閃過 ${fn(e.s)} 的攻擊</span>`;
   else if (e.k === 'shield') {
     if (e.u) itemFire(e.u, cdOf(e.u));
@@ -913,32 +960,25 @@ const TIPS = [
     s: () => V.scr === 'town' && V.tab === 'prep' && !V.dlg && '[data-act="go"]',
     t: '背包裡已經有桃木劍和皮甲。先下地城看看！'
   },
-  { k: 'card', s: r => r && !V.dlg && !r.mp && r.hand.length && '.hand', t: '點手牌拿移動點：大數字就是能走幾步' },
-  { k: 'move', s: r => r && !V.dlg && '.node.go', t: '點亮起來的格子走過去。「?」要走到旁邊才知道是什麼' },
+  {
+    k: 'move',
+    s: r => r && !V.dlg && '.node.go',
+    t: '點亮起來的格子就走過去。「?」要走到旁邊才知道是什麼，每走一步熱度 +1'
+  },
   {
     k: 'enc',
-    s: r => r && V.dlg && r.pend && r.pend.k === 'fight' && '.odds',
-    t: '開打前先看勝率。打不贏可以跑：退回上一格、熱度 +5'
+    s: r => r && V.dlg && r.pend && r.pend.k === 'fight' && '#modal .danger',
+    t: '看危險等級和牠背包裡的裝備再決定。打不過可以跑：退回上一格、熱度 +5'
   },
   {
     k: 'loot',
-    s: r => r && V.dlg && r.pend && r.pend.k === 'loot' && '[data-act="bagFromLoot"]',
-    t: '東西掉在地上，要放進背包才帶得走'
-  },
-  {
-    k: 'bag',
-    s: r => r && V.dlg && V.dlg.bag && '#modal .grid[data-g="bag"]',
-    t: '把地上的東西拖進背包。黑盒不參與戰鬥，但死了裡面的東西會留下',
+    s: r => r && V.dlg && V.dlg.bag && r.ground.items.length && '#modal .grid[data-g="gr"]',
+    t: '牠的背包攤在地上了：想要的拖進你的背包（或黑盒），走開就沒了',
     ok: 1
   },
   {
-    k: 'end',
-    s: r => r && !V.dlg && !r.hand.length && '[data-act="end"]',
-    t: '手牌用完就結束回合：再抽 5 張，熱度 +1'
-  },
-  {
     k: 'heat',
-    s: r => r && !V.dlg && r.turn >= 3 && '.heat',
+    s: r => r && !V.dlg && r.turn >= 6 && '.heat',
     t: '熱度一直漲，滿了墮落十二生肖會來追殺你。帶著東西走到 🚪 撤離',
     ok: 1
   },
@@ -952,7 +992,7 @@ const TIPS = [
     k: 'tree',
     s: () =>
       V.scr === 'town' && !V.dlg && V.tab !== 'tree' && tPoints(S, S.cls) > 0 && '[data-act="tab"][data-t="tree"]',
-    t: '升級拿到天賦點：去天賦解鎖新的核心'
+    t: '升級拿到天賦點：去「職業」解鎖新的核心'
   }
 ];
 function tip(k) {
@@ -1008,11 +1048,31 @@ const A = {
     closeDlg();
     if (S.run) render();
   },
-  theme: () => {
-    S.theme = curTheme() === 'dark' ? 'light' : 'dark';
+  settings: () => settingsDlg(),
+  ebInfo: el => {
+    const p = S.run.pend,
+      o = p && p.bag && p.bag.items.find(x => x.u === el.dataset.u);
+    if (!o) return;
+    openDlg(
+      () =>
+        `<div class="dh"><div class="slot-g${rarity(o) ? ' r1' : ''}"><img class="ic" src="${itIc(o)}" alt=""></div><div><b class="${rarity(o) ? 'n1' : ''}">${esc(itName(o))}</b><small>${KINDN[baseOf(o).k]}・${'★'.repeat(baseOf(o).star)}</small></div></div>${itemLines(o)}<button class="btn" style="width:100%" data-act="pendBack">← 回到遭遇</button>`,
+      1
+    );
+  },
+  pendBack: () => pendDlg(),
+  theme: el => {
+    S.theme = el.dataset.k || null;
     applyTheme();
     save();
     render();
+    redlg();
+  },
+  av: el => {
+    S.av = el.dataset.k;
+    snd('select', 'select');
+    save();
+    render();
+    redlg();
   },
   tipOk: el => tip(el.dataset.k),
   tipSkip: () => tip('skip'),
@@ -1020,6 +1080,7 @@ const A = {
     S.sfx = !S.sfx;
     save();
     render();
+    redlg();
   },
   tab: el => {
     V.tab = el.dataset.t;
@@ -1030,10 +1091,6 @@ const A = {
   selCls: el => {
     S.cls = el.dataset.c;
     save();
-    render();
-  },
-  tcls: el => {
-    V.tcls = el.dataset.c;
     render();
   },
   selBag: el => {
@@ -1055,7 +1112,7 @@ const A = {
   },
   node: el => nodeDlg(+el.dataset.id),
   take: el => {
-    const c = V.tcls || S.cls;
+    const c = S.cls;
     if (takeNode(S, c, +el.dataset.id)) {
       snd('level', 'coin');
       save();
@@ -1064,7 +1121,7 @@ const A = {
     }
   },
   resetTree: () => {
-    resetTree(S, V.tcls || S.cls);
+    resetTree(S, S.cls);
     save();
     render();
     toast('天賦點數全部退回了');
@@ -1130,7 +1187,9 @@ const A = {
   toBag: el => moveAuto(el.dataset.u, 'bag'),
   toBox: el => moveAuto(el.dataset.u, 'box'),
   toTray: el => {
-    ctx().tray.push(take(el.dataset.u));
+    const c = ctx();
+    if (!c.town) return moveAuto(el.dataset.u, 'gr');
+    c.tray.push(take(el.dataset.u));
     save();
     snd('tap', 'select');
     if (V.dlg && V.dlg.bag) bagDlg();
@@ -1158,44 +1217,13 @@ const A = {
     V.scr = 'run';
     render();
   },
-  card: el => {
-    tip('card');
-    const run = S.run,
-      i = +el.dataset.i,
-      r = el.getBoundingClientRect(),
-      c = playCard(run, i);
-    if (!c) return;
-    snd('tap', 'select');
-    save();
-    render();
-    const mp = document.querySelector('.mp b');
-    if (mp && c.mv) {
-      const m = mp.getBoundingClientRect(),
-        fly = document.createElement('div');
-      fly.className = 'cardh';
-      fly.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;z-index:40;pointer-events:none`;
-      fly.innerHTML = `<span class="mv">${c.mv}</span>`;
-      document.body.appendChild(fly);
-      const a = spr(
-        fly,
-        [
-          { transform: 'none', opacity: 1 },
-          { transform: `translate(${m.left - r.left - 20}px,${m.top - r.top - 30}px) scale(.4)`, opacity: 0 }
-        ],
-        380
-      );
-      /* 動畫被打斷或分頁在背景時 onfinish 不一定會來：時間到一定拿掉 */
-      setTimeout(() => fly.remove(), a ? 600 : 0);
-      spr(mp, [{ transform: 'scale(1.25)' }, { transform: 'none' }], 400);
-    }
-    if (run.pend) pendDlg();
-  },
   move: el => {
     tip('move');
     const run = S.run,
       to = +el.dataset.n,
       from = run.map.N[run.pos];
     if (!moveTo(run, to)) return;
+    run.lootFrom = null;
     snd('tap', 'select');
     save();
     render();
@@ -1237,20 +1265,6 @@ const A = {
       1
     );
   },
-  end: () => {
-    tip('end');
-    const run = S.run,
-      before = run.zs.length;
-    endTurn(run);
-    snd('tap', 'select');
-    save();
-    render();
-    if (run.zs.length > before) {
-      snd('encounter');
-      toast(`${run.log[run.log.length - 1].zod} 出現了`);
-    }
-    if (run.pend) pendDlg();
-  },
   bag: () => bagDlg(),
   bagFromLoot: () => {
     tip('loot');
@@ -1270,9 +1284,11 @@ const A = {
     tip('enc');
     const run = S.run,
       foes = run.pend.foes,
-      res = fightNow(run);
+      bag = run.pend.bag;
+    run.lootFrom = `${foes[0].n}的背包`;
+    const res = fightNow(run);
     save();
-    startFightView(res, foes);
+    startFightView(res, foes, bag);
   },
   flee: () => {
     tip('enc');
@@ -1301,7 +1317,7 @@ const A = {
     S.run.map.N[S.run.pos].done = 1;
     S.run.pend = null;
     save();
-    if (S.run.ground.length) bagDlg();
+    if (S.run.ground.items.length) bagDlg();
     else closeDlg();
     render();
   },
@@ -1337,13 +1353,17 @@ const A = {
     scrollTo(0, 0);
   }
 };
+/* 自動找位置放；放不下就放回原位 */
 function moveAuto(u, k) {
   const c = ctx(),
-    o = take(u);
+    from = where(u),
+    o = take(u),
+    back = { x: o.x, y: o.y, r: o.r };
   if (!autoPlace(c[k], o)) {
-    c.tray.push(o);
+    Object.assign(o, back);
+    (from === 'tray' ? c.tray : c[from].items).push(o);
     snd('nope', 'nope');
-    return toast(k === 'bag' ? '背包放不下：先拿出別的東西' : '黑盒放不下');
+    return toast({ bag: '背包放不下：先拿出別的東西', box: '黑盒放不下', gr: '地上放不下' }[k]);
   }
   snd('select', 'select');
   save();

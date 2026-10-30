@@ -1,4 +1,4 @@
-/* dungeonPOE · 一趟地城：隨機地圖、手牌移動、熱度與生肖、遭遇、掉寶、逃跑、愛心、撤離與死亡（純邏輯） */
+/* dungeonPOE · 一趟地城：隨機地圖、點了就走、熱度與生肖、遭遇（怪物有背包）、戰利品、逃跑、愛心、撤離與死亡（純邏輯） */
 'use strict';
 /* ================= 怪物 ================= */
 const pick = (a, r) => a[fl(r() * a.length)];
@@ -34,16 +34,76 @@ function mkFoe(def, tier, L, heat, r, aff = []) {
   };
 }
 const MAFFK = Object.keys(MAFF);
+/* 隨機一件道具（照這一層的深度與熱度；bonus 是多深幾級） */
+function rollGear(L, heat, r, n, bonus = 0) {
+  const LL = L + bonus,
+    mx = Math.min(5, 1 + fl(LL / 2)),
+    pool = GEAR.filter(b => b.star <= mx && b.star >= Math.max(1, mx - 2)),
+    tb = Math.max(1, Math.min(6, 6 - fl((L - 1) / 1.5) - (heat ? 1 : 0) - bonus));
+  return rollItem(pick(pool, r).id, n, tb, r);
+}
+/* 怪物（或寶箱）的背包：裡面的裝備讓帶頭的怪變強，打贏了就是戰利品 */
+function lootBag(t, L, heat, r) {
+  const blue = () => (r() < 0.25 + 0.15 * heat ? 1 : 0),
+    g = { t: { fight: 'm33', chest: 'm33', elite: 'm44', zod: 'm44', boss: 'm55' }[t], items: [] },
+    put = o => autoPlace(g, o);
+  if (t === 'fight') {
+    put(rollGear(L, heat, r, blue()));
+    if (r() < 0.35) put(rollGear(L, heat, r, blue()));
+    if (r() < 0.12) put(mkItem('potion'));
+  } else if (t === 'chest') {
+    put(rollGear(L, heat, r, r() < 0.4 + 0.15 * heat ? 1 : 0));
+    if (r() < 0.4) put(rollGear(L, heat, r, blue()));
+    if (r() < 0.15) put(mkItem('potion'));
+  } else if (t === 'elite') {
+    put(rollGear(L, heat, r, r() < 0.4 ? 2 : 1));
+    put(rollGear(L, heat, r, blue()));
+    if (r() < 0.5) put(rollGear(L, heat, r, blue()));
+  } else if (t === 'boss') {
+    put(rollGear(L, heat, r, 2, 1));
+    put(rollGear(L, heat, r, 1, 1));
+    put(rollGear(L, heat, r, 1));
+    put(rollGear(L, heat, r, blue()));
+    put(mkItem('potion'));
+  } else if (t === 'zod') {
+    const o = rollGear(L, heat, r, 2, 2);
+    o.a.forEach(x => (x.t = Math.min(x.t, 2)));
+    put(o);
+    put(rollGear(L, heat, r, 1, 1));
+  }
+  return g;
+}
+/* 帶頭的怪拿著背包裡的裝備：武器各自出手、防具加生命護甲；本身的數值打 7 折（裝備補回來） */
+function equipFoe(f, g) {
+  const P = compile(g, { cls: null, cores: [], clv: {}, tal: {} }),
+    out = {
+      ...f,
+      mhp: Math.round(f.mhp * 0.75 + (P.mhp - BASE_HP) * 2 + P.shields.reduce((s, x) => s + x.block * 2, 0)),
+      arm: f.arm + P.arm
+    };
+  out.atk = f.atk.map(v => Math.max(1, Math.round(v * 0.7)));
+  out.wps = P.weapons.map(w => ({
+    dmg: w.dmg,
+    flat: w.flat,
+    mul: w.mul,
+    cd: w.cd,
+    crit: w.crit,
+    on: w.on,
+    n: w.n,
+    u: w.u
+  }));
+  return out;
+}
 function foesFor(t, L, heat, r, d) {
+  let foes = [];
   if (t === 'fight') {
     /* 第一層最多 2 隻（新手的第一場不會是打不贏的 3 隻） */
     const n = r() < 0.35 ? 1 : r() < 0.7 || L < 2 ? 2 : 3;
-    return Array.from({ length: n }, () => mkFoe(pick(MOBS, r), 'mob', L, heat, r)).map(f => ({
+    foes = Array.from({ length: n }, () => mkFoe(pick(MOBS, r), 'mob', L, heat, r)).map(f => ({
       ...f,
       mhp: Math.round(f.mhp * (n === 1 ? 1.3 : n === 3 ? 0.75 : 1))
     }));
-  }
-  if (t === 'elite') {
+  } else if (t === 'elite') {
     const a = [pick(MAFFK, r)];
     if (L >= 4 && r() < 0.5)
       a.push(
@@ -52,16 +112,16 @@ function foesFor(t, L, heat, r, d) {
           r
         )
       );
-    const out = [mkFoe(pick(MOBS, r), 'elite', L, heat, r, a)];
-    if (r() < 0.5) out.push(mkFoe(pick(MOBS, r), 'mob', L, heat, r));
-    return out;
-  }
-  if (t === 'boss')
-    return [mkFoe(BOSSES[(d - 1) % BOSSES.length], 'boss', L, heat, r, d > BOSSES.length ? ['tough'] : [])];
-  return [];
+    foes = [mkFoe(pick(MOBS, r), 'elite', L, heat, r, a)];
+    if (r() < 0.5) foes.push(mkFoe(pick(MOBS, r), 'mob', L, heat, r));
+  } else if (t === 'boss')
+    foes = [mkFoe(BOSSES[(d - 1) % BOSSES.length], 'boss', L, heat, r, d > BOSSES.length ? ['tough'] : [])];
+  const bag = lootBag(t, L, heat, r);
+  foes[0] = equipFoe(foes[0], bag);
+  return { foes, bag };
 }
 /* ================= 地圖 ================= */
-/* 每層 6 排、15～20 格：第 0 排是入口，最上排有樓梯（第 3 層是王）；邊 c 是移動點、o 是單行道（只能往上） */
+/* 每層 6 排、15～20 格：第 0 排是入口，最上排有樓梯（第 3 層是王）；邊 c 是步數（險路 2 步）、o 是單行道（只能往上） */
 const CELLW = [
   ['fight', 40],
   ['elite', 9],
@@ -123,17 +183,18 @@ function genMap(seed, d, f, heat) {
   }
   for (const n of N) if (n.t === 'empty' && n.id) n.t = wpick(CELLW, r);
   for (const n of N) {
-    if ('fight elite boss'.includes(n.t)) n.foes = foesFor(n.t, L, heat, r, d);
+    if ('fight elite boss'.includes(n.t)) Object.assign(n, foesFor(n.t, L, heat, r, d));
+    if (n.t === 'chest') n.bag = lootBag('chest', L, heat, r);
     if (n.t === 'shop') n.stock = shopStock(L, r);
   }
   return { N, E, seed };
 }
-/* 從 a 能走到的邊（考慮單行道；繞道時無視） */
-function moves(map, a, detour) {
+/* 從 a 能走到的邊（考慮單行道；any＝不管方向，生肖用） */
+function moves(map, a, any) {
   const out = [];
   for (const e of map.E) {
-    if (e.a === a) out.push({ to: e.b, c: detour ? 1 : e.c });
-    else if (e.b === a && (!e.o || detour)) out.push({ to: e.a, c: detour ? 1 : e.c });
+    if (e.a === a) out.push({ to: e.b, c: e.c });
+    else if (e.b === a && (!e.o || any)) out.push({ to: e.a, c: e.c });
   }
   return out;
 }
@@ -164,6 +225,7 @@ function reveal(run, k = 1) {
 const visible = n => n.rv || ALWAYS.includes(n.t);
 /* ================= 一趟的狀態 ================= */
 /* hero：heroOf(S, 職業)；bag：帶下去的背包（實例，死了就沒了）；box：黑盒 */
+const emptyGround = () => ({ t: 'g', items: [] });
 function newRun(seed, d, hero, bag, box) {
   const run = {
     seed,
@@ -178,17 +240,11 @@ function newRun(seed, d, hero, bag, box) {
     hero,
     bag,
     box,
-    ground: [],
+    ground: emptyGround(),
     hp: 0,
     hearts: HEARTS,
     gold: 0,
     kills: 0,
-    deck: [...START_DECK],
-    draw: [],
-    hand: [],
-    disc: [],
-    mp: 0,
-    fx: {},
     pos: 0,
     prev: 0,
     pend: null,
@@ -215,24 +271,8 @@ function enterFloor(run) {
   run.map = genMap(h(run.seed, run.f), run.d, run.f, heatLv(run));
   run.pos = run.prev = 0;
   run.zs = [];
-  run.draw = shuffle([...run.deck], rr(run, 1));
-  run.hand = [];
-  run.disc = [];
-  run.mp = 0;
-  run.fx = {};
+  run.ground = emptyGround();
   reveal(run);
-  drawHand(run);
-}
-function drawHand(run) {
-  const r = rr(run, 2);
-  while (run.hand.length < HAND) {
-    if (!run.draw.length) {
-      if (!run.disc.length) break;
-      run.draw = shuffle(run.disc, r);
-      run.disc = [];
-    }
-    run.hand.push(run.draw.pop());
-  }
 }
 function addHeat(run, v) {
   if (run.hot && v < 0) return;
@@ -242,48 +282,50 @@ function addHeat(run, v) {
     spawnZod(run);
   }
 }
-/* ================= 手牌與移動 ================= */
-function playCard(run, i) {
-  const k = run.hand[i],
-    c = CARDS[k];
-  if (!c || run.pend) return null;
-  run.hand.splice(i, 1);
-  if (!c.once) run.disc.push(k);
-  else run.deck.splice(run.deck.indexOf(k), 1);
-  run.mp += c.mv;
-  if (c.heal) run.hp = Math.min(P_of(run).mhp, run.hp + Math.round((P_of(run).mhp * c.heal) / 100));
-  if (c.heat) addHeat(run, c.heat);
-  if (c.scout) reveal(run, c.scout);
-  if (c.detour) run.fx.detour = 1;
-  if (c.ambush) run.fx.amb = c.ambush;
-  if (c.pick) run.fx.pick = 1;
-  return c;
-}
-function canMove(run, to) {
-  return moves(run.map, run.pos, run.fx.detour).find(m => m.to === to && m.c <= run.mp);
-}
-/* 走到 to：撿的東西沒放進背包就留在原地（不見）；走到的格子交給 arrive 處理 */
+/* ================= 移動（點相鄰的格子就走，像殺戮尖塔） ================= */
+const canMove = (run, to) => !run.pend && moves(run.map, run.pos).find(m => m.to === to);
+/* 走一格：每步熱度 +1（險路 2 步）；生肖每 2 步追 1 格；熱度滿了每 4 步生一隻。地上沒撿的東西走開就不見 */
 function moveTo(run, to) {
-  const m = !run.pend && canMove(run, to);
+  const m = canMove(run, to);
   if (!m) return false;
-  run.mp -= m.c;
   run.prev = run.pos;
   run.pos = to;
-  run.ground = [];
+  run.ground = emptyGround();
+  for (let k = 0; k < m.c; k++) step(run);
   reveal(run);
-  arrive(run);
+  if (!run.pend) arrive(run);
   return true;
+}
+function step(run) {
+  run.turn++;
+  addHeat(run, HEAT.step);
+  if (run.turn % 2 === 0)
+    for (const z of run.zs) {
+      if (z.pos === run.pos) continue;
+      const D = dists(run.map, run.pos),
+        nb = moves(run.map, z.pos, 1).map(m => m.to);
+      z.pos = nb.reduce((b, x) => (D[x] < D[b] ? x : b), z.pos);
+    }
+  if (run.hot && run.turn > run.hot && (run.turn - run.hot) % HEAT.zodEvery === 0) spawnZod(run);
+  const z = run.zs.find(z => z.pos === run.pos);
+  if (z) run.pend = { k: 'fight', zod: z.id, foes: z.foes, bag: z.bag, forced: 1 };
 }
 function arrive(run) {
   const n = run.map.N[run.pos],
     z = run.zs.find(z => z.pos === run.pos);
-  if (z) return (run.pend = { k: 'fight', zod: z.id, foes: [z.foe] });
+  if (z) return (run.pend = { k: 'fight', zod: z.id, foes: z.foes, bag: z.bag });
   if (n.done) return null;
-  if ('fight elite boss'.includes(n.t)) run.pend = { k: 'fight', foes: n.foes };
-  else if (n.t === 'chest') openChest(run, n);
-  else if (n.t === 'rest') {
+  if ('fight elite boss'.includes(n.t)) run.pend = { k: 'fight', foes: n.foes, bag: n.bag };
+  else if (n.t === 'chest') {
+    n.done = 1;
+    addHeat(run, HEAT.chest);
+    run.ground = n.bag;
+    const gold = Math.round((6 + rr(run, 8)() * 8) * (1 + 0.35 * (runL(run) - 1)));
+    run.gold += gold;
+    run.pend = { k: 'loot', chest: 1, gold };
+  } else if (n.t === 'rest') {
     const P = P_of(run),
-      v = Math.round(P.mhp * 0.3);
+      v = Math.round(P.mhp * 0.35);
     run.hp = Math.min(P.mhp, run.hp + v);
     n.done = 1;
     run.pend = { k: 'msg', ic: '🏕️', t: '休息', d: `回 ${v} 生命` };
@@ -292,26 +334,6 @@ function arrive(run) {
   else if (n.t === 'exit') run.pend = { k: 'exit' };
   else if (n.t === 'stairs') run.pend = { k: 'stairs' };
   return run.pend;
-}
-function endTurn(run) {
-  if (run.pend) return;
-  run.disc.push(...run.hand);
-  run.hand = [];
-  run.mp = 0;
-  run.fx = {};
-  run.turn++;
-  addHeat(run, HEAT.turn);
-  /* 生肖每回合往你走 2 格 */
-  for (const z of run.zs)
-    for (let s = 0; s < 2 && z.pos !== run.pos; s++) {
-      const D = dists(run.map, run.pos),
-        nb = moves(run.map, z.pos, 1).map(m => m.to);
-      z.pos = nb.reduce((b, x) => (D[x] < D[b] ? x : b), z.pos);
-    }
-  if (run.hot && (run.turn - run.hot) % 2 === 0) spawnZod(run);
-  drawHand(run);
-  const z = run.zs.find(z => z.pos === run.pos);
-  if (z) run.pend = { k: 'fight', zod: z.id, foes: [z.foe], forced: 1 };
 }
 /* 第 k 隻生肖生在離你「最遠距離 - 2k」的地方（越生越近，最後生在旁邊） */
 function spawnZod(run) {
@@ -329,8 +351,9 @@ function spawnZod(run) {
         MAFFK.filter(k => k !== def.a),
         r
       )
-    ];
-  run.zs.push({ id: run.zN, pos: best.id, foe: mkFoe(def, 'zod', runL(run), 2, r, aff) });
+    ],
+    bag = lootBag('zod', runL(run), 2, r);
+  run.zs.push({ id: run.zN, pos: best.id, foes: [equipFoe(mkFoe(def, 'zod', runL(run), 2, r, aff), bag)], bag });
   run.zN++;
   run.log.push({ zod: def.n });
 }
@@ -339,8 +362,7 @@ function fightNow(run) {
   const p = run.pend;
   if (!p || p.k !== 'fight') return null;
   const P = P_of(run),
-    res = simulate(P, run.hp, p.foes, h(run.seed, run.turn * 31 + run.pos, run.f), { amb: run.fx.amb || 0 });
-  run.fx.amb = 0;
+    res = simulate(P, run.hp, p.foes, h(run.seed, run.turn * 31 + run.pos, run.f));
   addHeat(run, HEAT.fight);
   for (const u of res.used) {
     const i = run.bag.items.findIndex(o => o.u === u);
@@ -350,7 +372,7 @@ function fightNow(run) {
   if (res.win) {
     run.hp = res.hp;
     run.kills += res.foes.length;
-    const loot = lootFor(run, p.zod != null ? 'zod' : n.t);
+    const loot = lootFor(run, p.zod != null ? 'zod' : n.t, p.bag);
     if (p.zod != null) run.zs = run.zs.filter(z => z.id !== p.zod);
     else {
       n.done = 1;
@@ -378,84 +400,38 @@ function flee(run) {
   if (!p || p.k !== 'fight' || p.zod != null) return false;
   run.pos = run.prev;
   addHeat(run, HEAT.flee);
-  if (run.hand.length) run.disc.push(...run.hand.splice(fl(rr(run, 6)() * run.hand.length), 1));
   run.pend = null;
   return true;
 }
-/* ================= 掉寶 ================= */
-const bestT = (run, bonus = 0) =>
-  Math.max(1, Math.min(6, 6 - fl((runL(run) - 1) / 1.5) - (heatLv(run) ? 1 : 0) - bonus));
-function lootItem(run, r, n, bonus = 0) {
-  const L = runL(run) + bonus,
-    mx = Math.min(5, 1 + fl(L / 2)),
-    pool = GEAR.filter(b => b.star <= mx && b.star >= Math.max(1, mx - 2));
-  return rollItem(pick(pool, r).id, n, bestT(run, bonus), r);
-}
-function lootFor(run, t) {
-  const r = rr(run, 7),
-    L = runL(run),
-    gm = 1 + 0.35 * (L - 1),
-    items = [];
-  let gold = 0;
-  const blue = 0.25 + 0.15 * heatLv(run);
-  if (t === 'fight') {
-    gold = Math.round((4 + r() * 4) * gm);
-    if (r() < 0.35) items.push(lootItem(run, r, r() < blue ? 1 : 0));
-    if (r() < 0.06) items.push(mkItem('potion'));
-  } else if (t === 'elite') {
-    gold = Math.round(16 * gm);
-    items.push(lootItem(run, r, r() < 0.4 ? 2 : 1));
-  } else if (t === 'boss') {
-    gold = Math.round(60 * gm);
-    items.push(lootItem(run, r, 2, 1), lootItem(run, r, 1));
-  } else if (t === 'zod') {
-    gold = Math.round(45 * gm);
-    const o = lootItem(run, r, 2, 2);
-    o.a.forEach(x => (x.t = Math.min(x.t, 2)));
-    items.push(o);
-  }
+/* ================= 戰利品：打贏了，怪物的背包攤在地上 ================= */
+const lootItem = (run, r, n, bonus = 0) => rollGear(runL(run), heatLv(run), r, n, bonus);
+function lootFor(run, t, bag) {
+  const gm = 1 + 0.35 * (runL(run) - 1),
+    gold = Math.round({ fight: 6, elite: 16, boss: 60, zod: 45 }[t] * gm * (0.8 + rr(run, 7)() * 0.4));
   run.gold += gold;
-  run.ground.push(...items);
-  return { gold, items: items.map(o => o.u) };
-}
-function openChest(run, n) {
-  const r = rr(run, 8);
-  n.done = 1;
-  addHeat(run, HEAT.chest);
-  const items = [],
-    k = r();
-  let gold = 0,
-    card = null;
-  if (k < 0.3) {
-    card = pick(LOOT_CARDS, r);
-    run.deck.push(card);
-    run.disc.push(card);
-  } else if (k < 0.5) gold = Math.round((12 + r() * 10) * (1 + 0.35 * (runL(run) - 1)));
-  else items.push(lootItem(run, r, r() < 0.4 + 0.15 * heatLv(run) ? 1 : 0));
-  if (run.fx.pick) items.push(lootItem(run, r, 1));
-  if (r() < 0.12) items.push(mkItem('potion'));
-  run.gold += gold;
-  run.ground.push(...items);
-  run.pend = { k: 'loot', chest: 1, gold, card, items: items.map(o => o.u) };
+  run.ground = bag || emptyGround();
+  return { gold };
 }
 /* ================= 地城商人 ================= */
 function shopStock(L, r) {
-  const cards = shuffle([...LOOT_CARDS], r).slice(0, 2);
-  return [...cards.map(c => ({ card: c, p: 12 })), { item: 'potion', p: 15 }, { gear: 1, p: 0 }];
+  return [
+    { item: 'potion', p: 15 },
+    { item: 'purse', p: 30 },
+    { gear: 1, p: 0 },
+    { gear: 2, p: 0 }
+  ];
 }
+/* 買的東西放到地上（要自己拖進背包） */
 function shopBuy(run, i) {
   const n = run.map.N[run.pos],
     s = n.stock && n.stock[i];
   if (!s || s.sold) return false;
-  const o = s.gear ? (s.o = s.o || lootItem(run, rr(run, 9), 1)) : null,
-    p = s.gear ? Math.round(itemPrice(o) * 1.5 + 6) : s.p;
+  const p = shopPrice(run, s);
   if (run.gold < p) return false;
+  const o = s.gear ? s.o : mkItem(s.item);
+  if (!autoPlace(run.ground, o)) return false;
   run.gold -= p;
   s.sold = 1;
-  if (s.card) {
-    run.deck.push(s.card);
-    run.disc.push(s.card);
-  } else run.ground.push(s.item ? mkItem(s.item) : o);
   return true;
 }
 const shopPrice = (run, s) =>
@@ -491,17 +467,15 @@ const EVENTS = [
   {
     n: '夜市攤販',
     ic: '🍢',
-    d: '老闆塞了一張奇怪的牌給你。',
+    d: '老闆在賣自己熬的藥。',
     o: [
       {
-        n: '花 10 金：拿一張牌',
+        n: '花 10 金：買一瓶藥水（放在地上）',
         need: 10,
         f: run => {
-          const c = pick(LOOT_CARDS, rr(run, 11));
           run.gold -= 10;
-          run.deck.push(c);
-          run.disc.push(c);
-          return `拿到「${CARDS[c].n}」`;
+          autoPlace(run.ground, mkItem('potion'));
+          return '藥水放在地上了：記得放進背包';
         }
       },
       { n: '離開', f: () => '你繼續往前走' }
@@ -535,12 +509,11 @@ function eventPick(run, j) {
   run.pend = { k: 'msg', ic: EVENTS[p.e].ic, t: EVENTS[p.e].n, d: msg };
   return msg;
 }
-/* 下樓：生命與熱度延續，牌組重洗 */
+/* 下樓：生命與熱度延續 */
 function goDown(run) {
   if (!run.pend || run.pend.k !== 'stairs') return false;
   run.f++;
   run.pend = null;
-  run.ground = [];
   enterFloor(run);
   return true;
 }

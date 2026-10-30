@@ -154,6 +154,11 @@ details.more>div{padding:0 var(--sp-3) var(--sp-3)}
 .clsb img{width:36px;height:36px}
 .clsb small{font-size:var(--fs-cap);color:var(--dim)}
 .clsb[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--gold),var(--shadow);color:var(--gold)}
+.avs{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:var(--sp-2)}
+.avs .slot-g{width:auto;height:auto;aspect-ratio:1}
+.avs .slot-g img{width:80%;height:80%}
+.slot-g[aria-pressed="true"]{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2)}
 .cores2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-top:var(--sp-2)}
 .coreb{border:0;border-radius:var(--r-md);background:var(--card);box-shadow:var(--shadow);padding:var(--sp-2) var(--sp-3);text-align:left;min-height:52px}
 .coreb b{display:block;font-size:var(--fs-btn)}
@@ -218,6 +223,11 @@ details.more>div{padding:0 var(--sp-3) var(--sp-3)}
 .tier{font-size:var(--fs-cap);font-weight:700;padding:1px 6px;border-radius:999px;margin-left:var(--sp-1);vertical-align:1px}
 .tier.elite{background:var(--accent-soft);color:var(--gold)}
 .tier.boss,.tier.zod{background:color-mix(in srgb,var(--zod) 22%,transparent);color:var(--zod)}
+.danger{display:flex;align-items:baseline;gap:var(--sp-2);margin-top:var(--sp-2);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-md);background:var(--card2);box-shadow:inset 0 0 0 2px currentColor}
+.danger b{font-size:var(--fs-num)}
+.danger small{color:var(--dim);font-size:var(--fs-sm)}
+.c-heat{color:var(--heat)}
+.ebag .part{cursor:pointer}
 .odds{display:flex;align-items:baseline;gap:var(--sp-2);justify-content:center;margin:var(--sp-2) 0 var(--sp-3)}
 .odds b{font-family:var(--f-pix);font-size:32px;font-weight:400}
 /* 戰鬥 */

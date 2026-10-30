@@ -1,6 +1,6 @@
 /* dungeonPOE · 遊戲表格：道具、詞綴、背包、手牌、怪物、生肖、職業與核心、天賦（設計見 docs/企劃書.md） */
 'use strict';
-const VER = '0.1.1',
+const VER = '0.1.2',
   KEY = 'dungeonpoe_v1',
   SLOT = new URLSearchParams(location.search).get('p') || '';
 /* ================= 道具（原始 16 把武器＋9 件防具，《塞令老師》0.4.0） ================= */
@@ -447,7 +447,8 @@ const AFFI = Object.fromEntries(AFF.map(a => [a.id, a]));
 /* ================= 背包（工坊買；死了會失去）與黑盒 ================= */
 /* m：形狀（x 是格子）；p：價格 */
 const BAGS = [
-  { id: 'b44', n: '新手包', m: ['xxxx', 'xxxx', 'xxxx', 'xxxx'], p: 10 },
+  { id: 'b33', n: '新手包', m: ['xxx', 'xxx', 'xxx'], p: 5 },
+  { id: 'b44', n: '方包', m: ['xxxx', 'xxxx', 'xxxx', 'xxxx'], p: 20 },
   { id: 'b35', n: '直筒包', m: ['xxx', 'xxx', 'xxx', 'xxx', 'xxx'], p: 30 },
   { id: 'b53', n: '腰包', m: ['xxxxx', 'xxxxx', 'xxxxx'], p: 30 },
   { id: 'b63', n: '長條包', m: ['xxxxxx', 'xxxxxx', 'xxxxxx'], p: 70 },
@@ -465,25 +466,32 @@ const BAGS = [
 ];
 const BAGI = Object.fromEntries(BAGS.map(b => [b.id, b]));
 const BOX = { id: 'box', n: '黑盒', m: ['xxx', 'xxx', 'xxx'] };
-/* ================= 手牌（只管地圖上的選擇） ================= */
-/* mv：移動點；其他欄位是效果（見 dungeon.js 的 playCard） */
-const CARDS = {
-  m1: { n: '移動', mv: 1, d: '移動 1' },
-  m2: { n: '疾行', mv: 2, d: '移動 2' },
-  scout: { n: '偵查', mv: 0, scout: 2, d: '看 2 步內的格子' },
-  breath: { n: '喘息', mv: 0, heal: 15, d: '回 15% 生命' },
-  m3: { n: '大步', mv: 3, d: '移動 3' },
-  sneak: { n: '潛行', mv: 1, heat: -3, d: '移動 1・熱度 -3' },
-  detour: { n: '繞道', mv: 1, detour: 1, d: '移動 1・這回合無視單行道、險路' },
-  ambush: { n: '伏擊', mv: 0, ambush: 30, d: '下一場傷害 +30%' },
-  pick: { n: '撬鎖', mv: 1, pick: 1, d: '移動 1・這回合寶箱多一件' },
-  far: { n: '遠望', mv: 0, scout: 99, d: '看整層的格子' },
-  aid: { n: '急救', mv: 0, heal: 35, once: 1, d: '回 35% 生命・用完移出牌組' }
+/* 地上（6×2）、怪物與寶箱的背包（打贏了就是戰利品） */
+const MBAGS = {
+  g: { n: '地上', m: ['xxxxxx', 'xxxxxx'] },
+  m33: { n: '小背包', m: ['xxx', 'xxx', 'xxx'] },
+  m44: { n: '背包', m: ['xxxx', 'xxxx', 'xxxx', 'xxxx'] },
+  m55: { n: '大背包', m: ['xxxxx', 'xxxxx', 'xxxxx', 'xxxxx', 'xxxxx'] }
 };
-const START_DECK = ['m1', 'm1', 'm1', 'm1', 'm1', 'm2', 'm2', 'm2', 'scout', 'breath'];
-const LOOT_CARDS = ['m3', 'sneak', 'detour', 'ambush', 'pick', 'far', 'aid'];
+/* 頭像（地圖與戰鬥裡的你；設定裡換） */
+const AVATARS = [
+  ['av_kojiro', '佐佐木小次郎'],
+  ['av_musashi', '宮本武藏'],
+  ['av_zhaoyun', '趙雲'],
+  ['av_lubu', '呂布'],
+  ['av_knight', '騎士'],
+  ['av_pirate', '海盜船長'],
+  ['av_diaochan', '貂蟬'],
+  ['av_xishi', '西施'],
+  ['av_guifei', '楊貴妃'],
+  ['av_zhaojun', '王昭君'],
+  ['av_elf', '精靈弓手'],
+  ['av_fox', '狐妖'],
+  ['av_idol', '偶像歌手']
+];
 /* ================= 熱度（漫步勇者的狩獵） ================= */
-const HEAT = { turn: 1, fight: 3, chest: 2, flee: 5, max: 40, lv: [0, 20, 40], mul: [0, 0.25, 0.5] };
+/* 每走一步 +1（險路 2 步）；滿了不會再降，之後每 zodEvery 步生一隻生肖 */
+const HEAT = { step: 1, fight: 3, chest: 2, flee: 5, max: 75, lv: [0, 35, 75], mul: [0, 0.25, 0.5], zodEvery: 4 };
 /* ================= 怪物（台灣妖怪；sp 是 art 的圖名） ================= */
 /* hp／atk 是倍率（乘上這一層的基準），cd 秒，on：命中時的異常 */
 const MOBS = [
@@ -641,5 +649,4 @@ const TNODES = TREE.flatMap((row, r) => row.map((nd, i) => ({ ...nd, r, id: r * 
 /* 等級：升到下一級要的經驗 */
 const xpNeed = lv => Math.round(40 * Math.pow(lv, 1.35));
 const BASE_HP = 50,
-  HEARTS = 3,
-  HAND = 5;
+  HEARTS = 3;

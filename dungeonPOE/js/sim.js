@@ -17,6 +17,7 @@ const prd = r => {
 /* 怪物實例（戰鬥用）：base 是 mkFoe 產生的資料 */
 const unitOf = f => ({
   ...f,
+  wps: (f.wps || []).map(w => ({ ...w })),
   hp: f.mhp,
   t: f.cd * (0.5 + (f.i || 0) * 0.15),
   st: { burn: 0, poison: 0, bleed: 0, shock: 0, mark: 0 },
@@ -162,8 +163,10 @@ function simulate(P, hp, foes, seed, opt = {}) {
     log('heal', { v });
   }
   /* 怪物打你 */
-  function strike(f) {
-    let v = f.atk[0] + r() * (f.atk[1] - f.atk[0]);
+  /* w：怪物背包裡的武器（沒有就是牠自己的攻擊） */
+  function strike(f, w) {
+    let v = w ? (w.dmg[0] + r() * (w.dmg[1] - w.dmg[0]) + w.flat) * w.mul : f.atk[0] + r() * (f.atk[1] - f.atk[0]);
+    if (w && ok('mc' + w.u, w.crit)) v *= 1.5;
     if (f.aff.includes('rage') && f.hp < f.mhp / 2) v *= 1.5;
     const dodge = P.dodge + (cls === 'ronin' ? stance * cv('r_eye') : 0) + (shadowT > 0 ? 40 : 0);
     if (ok('dodge', Math.min(75, dodge))) {
@@ -189,10 +192,11 @@ function simulate(P, hp, foes, seed, opt = {}) {
       }
     }
     me.hp -= v;
-    log('hurt', { s: f.i, v });
+    log('hurt', { s: f.i, v, u: w && w.u });
     if (f.aff.includes('vamp')) f.hp = Math.min(f.mhp, f.hp + v * 0.3);
-    for (const k in f.on || {})
-      if (ok('m' + f.i + k, f.on[k])) {
+    const on = w ? w.on : f.on || {};
+    for (const k in on)
+      if (ok('m' + f.i + (w ? w.u : '') + k, on[k])) {
         if (k === 'freeze') W.forEach(w => (w.t += 0.8));
         else me.st[k] += k === 'burn' ? 2 : 1;
         log('ail', { g: -1, a: k });
@@ -295,6 +299,14 @@ function simulate(P, hp, foes, seed, opt = {}) {
         strike(f);
         if (me.hp <= 0) break;
       }
+      for (const w of f.wps || []) {
+        w.t = (w.t ?? w.cd * 0.6) - DT;
+        if (w.t <= 0 && me.hp > 0) {
+          w.t += w.cd;
+          strike(f, w);
+        }
+      }
+      if (me.hp <= 0) break;
     }
     /* 王的技能 */
     const boss = alive().find(f => f.sk);
@@ -334,14 +346,27 @@ function simulate(P, hp, foes, seed, opt = {}) {
   log('end', { win: win ? 1 : 0 });
   return { win, hp: me.hp, t, ev, used, foes: F.map(f => ({ n: f.n, sp: f.sp, mhp: f.mhp, tier: f.tier })) };
 }
-/* 開打前的預估：同一場用 5 個種子跑，勝率與平均剩下的生命 */
+/* 開打前的預估：同一場用 8 個種子跑，勝率與平均剩下的生命 */
 function predict(P, hp, foes, seed, opt) {
   let w = 0,
     left = 0;
-  for (let k = 0; k < 5; k++) {
+  for (let k = 0; k < 8; k++) {
     const s = simulate(P, hp, foes, h(seed, k, 77), opt);
     if (s.win) w++;
     left += s.hp;
   }
-  return { win: w / 5, left: Math.round(left / 5) };
+  return { win: w / 8, left: Math.round(left / 8) };
+}
+/* 危險等級（不給玩家看勝率數字：90% 輸了會很賭爛）：0 安全、1 小心、2 危險、3 致命 */
+const DANGER = [
+  { n: '安全', c: 'good', d: '輕鬆打贏' },
+  { n: '小心', c: 'warn', d: '打得贏，但會掉不少血' },
+  { n: '危險', c: 'heat', d: '可能會輸' },
+  { n: '致命', c: 'bad', d: '很可能會輸' }
+];
+function danger(pr, mhp) {
+  if (pr.win >= 0.95 && pr.left >= mhp * 0.5) return 0;
+  if (pr.win >= 0.8) return 1;
+  if (pr.win >= 0.4) return 2;
+  return 3;
 }

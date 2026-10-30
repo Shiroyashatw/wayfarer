@@ -68,7 +68,7 @@ const sizeOf = o => {
   return [Math.max(...c.map(p => p[0])) + 1, Math.max(...c.map(p => p[1])) + 1];
 };
 /* 背包（或黑盒）：{ t: 背包種類, items: [] }；mask：t 的形狀 */
-const maskOf = g => (g.t === 'box' ? BOX : BAGI[g.t]).m;
+const maskOf = g => (g.t === 'box' ? BOX : BAGI[g.t] || MBAGS[g.t]).m;
 const gridW = g => maskOf(g)[0].length,
   gridH = g => maskOf(g).length;
 const inMask = (g, x, y) => y >= 0 && y < gridH(g) && x >= 0 && x < gridW(g) && maskOf(g)[y][x] === 'x';

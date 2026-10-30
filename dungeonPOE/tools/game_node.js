@@ -22,9 +22,9 @@ function load() {
   return ctx.G;
 }
 const EXPORTS = (
-  'h rng fl ITEMS ITEMI GEAR AFF AFFI BAGS BAGI BOX CARDS HEAT MOBS BOSSES ZODIAC CLASSES CLSI COREI TNODES lvOf mobBase ' +
-  'mkItem baseOf rollItem cellsOf fits autoPlace occ compile coreV simulate predict mkFoe genMap moves dists newRun playCard ' +
-  'canMove moveTo endTurn fightNow flee lootFor goDown eventPick shopBuy shopPrice EVENTS runResult heatLv runL P_of ' +
+  'h rng fl ITEMS ITEMI GEAR AFF AFFI BAGS BAGI BOX MBAGS AVATARS HEAT MOBS BOSSES ZODIAC CLASSES CLSI COREI TNODES lvOf mobBase ' +
+  'mkItem baseOf rollItem cellsOf fits autoPlace occ compile coreV simulate predict danger mkFoe foesFor lootBag equipFoe genMap moves dists newRun ' +
+  'canMove moveTo fightNow flee lootFor goDown eventPick shopBuy shopPrice EVENTS runResult heatLv runL P_of ' +
   'newGame heroOf depart finishRun takeNode canTake coresOf toggleCore buyBag buyShop sellItem smith ensureStarter clLv tPoints ' +
   'itemPrice sellPrice cellCount newBag allItems eqOf'
 ).split(' ');
