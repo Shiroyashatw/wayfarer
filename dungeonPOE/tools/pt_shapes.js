@@ -7,7 +7,7 @@
 'use strict';
 const fs = require('fs'),
   path = require('path');
-const COUNT = 125;
+const COUNT = 260;
 const seenSk = new Map();
 function gen(SEED, TRIES) {
   let seed = SEED;
@@ -304,7 +304,7 @@ function gen(SEED, TRIES) {
       ];
     let tips = MOT[root](S, A, at(0, 0, 0)),
       used = root;
-    const extra = rnd() < 0.25 ? 0 : rnd() < 0.7 ? 1 : 2;
+    const extra = rnd() < 0.2 ? 0 : rnd() < 0.55 ? 1 : rnd() < 0.8 ? 2 : 3;
     for (let k = 0; k < extra; k++) {
       const t = tips[ri(0, tips.length - 1)],
         [x, y] = S.p[t],
@@ -343,7 +343,7 @@ function gen(SEED, TRIES) {
   function ok(S) {
     const P = S.p,
       n = P.length;
-    if (n < 4 || n > 10) return false;
+    if (n < 4 || n > 12) return false;
     /* 緊湊：一路串下去（只有 2 條線）的點最多 3 個、不能太細長 */
     const dg = Array(n).fill(0);
     for (const [a, b] of S.e) dg[a]++, dg[b]++;
