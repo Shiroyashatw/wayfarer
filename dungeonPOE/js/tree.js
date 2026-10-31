@@ -80,10 +80,9 @@ function treeRender() {
     ah = new Set(S.at);
   const line = (A, B, on, near, cls = '') =>
     `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" class="${on ? 'on' : near ? 'near' : ''} ${cls}"/>`;
-  /* 同一圈的連線畫成弧（PoE 的軌道），其他是直線 */
-  const arc = (A, B, cls) => {
-    const r = Math.hypot(A.x, A.y),
-      cw = A.x * B.y - A.y * B.x > 0 ? 1 : 0;
+  /* 軌道拼塊的連線畫成弧（PTREE.ARC：圓心、半徑），其他是直線 */
+  const arc = (A, B, [cx, cy, r], cls) => {
+    const cw = (A.x - cx) * (B.y - cy) - (A.y - cy) * (B.x - cx) > 0 ? 1 : 0;
     return `<path d="M${A.x.toFixed(1)} ${A.y.toFixed(1)} A${r.toFixed(1)} ${r.toFixed(1)} 0 0 ${cw} ${B.x.toFixed(1)} ${B.y.toFixed(1)}" class="${cls}"/>`;
   };
   let html = PTREE.E.map(([a, b]) => {
@@ -91,7 +90,8 @@ function treeRender() {
       B = PTREE.I[b],
       on = have.has(a) && have.has(b),
       near = have.has(a) || have.has(b);
-    return A.orb && A.orb === B.orb ? arc(A, B, on ? 'on' : near ? 'near' : '') : line(A, B, on, near);
+    const c = PTREE.ARC[a + '|' + b];
+    return c ? arc(A, B, c, on ? 'on' : near ? 'near' : '') : line(A, B, on, near);
   }).join('');
   html += PTREE.N.map(n => {
     const r = n.big === 2 ? 30 : n.gate ? 20 : n.big ? 19 : 10,
@@ -120,7 +120,7 @@ function treeRender() {
     <button class="btn" data-ta="areset" ${S.at.length > 1 ? '' : 'disabled'}>重置昇華</button>
     <button class="x" data-ta="close">✕</button></div>
   <svg id="tsvg"><g id="tg">${html}</g></svg>
-  <p class="thelp">照 PoE2：中間是起點的 6 個門，交叉點用長直線連成格網，將近一百塊形狀都不一樣的拼塊掛在格網上（有的是死路、有的兩頭都接）。方向大致是：上方生命護甲、右上近戰矛攻速、右邊身法棍投射物陷阱、下方暴擊圖騰召喚、左下元素法術、左上能量護盾精魄魔力；越外面的大點越強，帶代價的是強力大點。點亮著的點＝點下去，再點一次＝退回。拖曳移動、滾輪縮放。</p>`;
+  <p class="thelp">照 PoE2：中間是起點的 6 個門，交叉點用長直線連成格網，將近一百塊形狀都不一樣、有大有小的拼塊（大多是圓弧軌道）掛在格網上（有的是死路、有的兩頭都接）。方向大致是：上方生命護甲、右上近戰矛攻速、右邊身法棍投射物陷阱、下方暴擊圖騰召喚、左下元素法術、左上能量護盾精魄魔力；越外面的大點越強，帶代價的是強力大點。點亮著的點＝點下去，再點一次＝退回。拖曳移動、滾輪縮放。</p>`;
   treeView();
 }
 function treeView() {

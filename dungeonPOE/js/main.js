@@ -44,6 +44,8 @@ function migrate(s) {
     o.auras = Array(AURA_SLOTS).fill(null);
     o.v = 13;
   }
+  /* 天賦樹的形狀換過（點的編號對不上）就把點數全部退回 */
+  if (o.pt.some(id => !PTREE.I[id])) o.pt = [...PT_START];
   /* 道具編號接著存檔裡最大的往下編 */
   for (const it of [
     ...Object.values(o.eq),
