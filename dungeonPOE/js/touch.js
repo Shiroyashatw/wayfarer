@@ -10,6 +10,7 @@ function setTouch(on) {
   if (TOUCH.on === on) return;
   TOUCH.on = on;
   document.body.classList.toggle('touch', on);
+  fsBtn();
   resize();
   hideTip();
   hudPanels();
@@ -60,6 +61,32 @@ function drawAim() {
   CX.beginPath();
   CX.arc(w.x, w.y, 22, 0, Math.PI * 2);
   CX.fill();
+}
+/* ---------- 全螢幕：Android 用網頁全螢幕（第一次碰螢幕自動進、鎖橫向）；
+   iPhone 的 Safari 不支援，教玩家「加入主畫面」（從主畫面打開沒有網址列，manifest.webmanifest） ---------- */
+const fsOK = () => !!(document.fullscreenEnabled || document.webkitFullscreenEnabled),
+  fsOn = () => !!(document.fullscreenElement || document.webkitFullscreenElement),
+  inApp = () => matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+function fsEnter() {
+  const el = document.documentElement,
+    rq = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!rq) return;
+  Promise.resolve(rq.call(el, { navigationUI: 'hide' }))
+    .then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'))
+    .catch(() => {});
+}
+function fsClick() {
+  if (fsOK()) return fsEnter();
+  showTip(
+    `<b>全螢幕</b><p>iPhone 的 Safari 不能讓網頁全螢幕。<br>按下方的<span class="c-gold">分享</span>按鈕 →「加入主畫面」，之後從主畫面的圖示打開，就沒有網址列了。</p>`,
+    innerWidth / 2 - 160,
+    innerHeight / 2
+  );
+  $('tip').classList.add('act');
+}
+function fsBtn() {
+  const b = $('tfs');
+  if (b) b.hidden = !TOUCH.on || inApp() || fsOn();
 }
 /* 在地圖裡按兩次才回家（這張地圖會結束） */
 let tHome = 0;
@@ -220,6 +247,7 @@ function touchInit() {
     const m = e.target.closest('[data-tm]');
     if (m) {
       const k = m.dataset.tm;
+      if (k === 'fs') return fsClick();
       if (k === 'inv') PANEL.inv && !PANEL.stash && !PANEL.skill ? closePanels() : openPanel('inv');
       else if (k === 'skill') PANEL.skill ? closePanels() : openPanel('skill');
       else if (k === 'tree') treeOpen('pt');
@@ -241,5 +269,15 @@ function touchInit() {
   document.addEventListener('pointerdown', e => {
     if (TOUCH.on && !$('tip').hidden && !e.target.closest('#tip') && !e.target.closest('.it[data-id]')) hideTip();
   });
+  /* 第一次用觸控點螢幕：自動進全螢幕（要在手指放開時才算玩家的操作，瀏覽器才允許） */
+  let fsAuto = false;
+  addEventListener('pointerup', e => {
+    if (fsAuto || e.pointerType !== 'touch' || !fsOK() || inApp() || fsOn()) return;
+    fsAuto = true;
+    fsEnter();
+  });
+  document.addEventListener('fullscreenchange', fsBtn);
+  document.addEventListener('webkitfullscreenchange', fsBtn);
   setTouch(matchMedia('(pointer: coarse)').matches);
+  fsBtn();
 }

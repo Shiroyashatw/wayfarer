@@ -266,7 +266,7 @@ body.touch .bottom { left: calc(10px + env(safe-area-inset-left)); top: calc(8px
 body.touch .orb { width: 56px; height: 56px; }
 body.touch .orb span { font-size: 10px; }
 body.touch .mid { width: 110px; margin: 0; padding-top: 6px; }
-body.touch .top { left: calc(270px + env(safe-area-inset-left)); right: 240px; top: calc(10px + env(safe-area-inset-top)); }
+body.touch .top { left: calc(10px + env(safe-area-inset-left)); right: calc(10px + env(safe-area-inset-right)); top: calc(72px + env(safe-area-inset-top)); }
 body.touch #area { font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.touch #warn { bottom: auto; top: 30%; }
 /* 右下技能鍵：大的是普攻，4 個技能排成弧形，外圈翻滾、藥水、互動 */
@@ -291,7 +291,7 @@ body.touch #stick.on { opacity: 1; transform: none; }
 #stick i { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(232, 226, 214, 0.32); border: 2px solid rgba(232, 226, 214, 0.5); }
 /* 右上選單 */
 body.touch .tmenu { display: flex; gap: 6px; position: fixed; top: calc(8px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); pointer-events: auto; }
-.tmenu button { min-width: 50px; min-height: 44px; padding: 0 10px; font: 700 var(--fs-s) var(--font); color: var(--tx); background: rgba(12, 10, 9, 0.8); border: 1px solid var(--line); border-radius: var(--rad); }
+.tmenu button { min-width: 48px; min-height: 44px; padding: 0 10px; font: 700 var(--fs-s) var(--font); color: var(--tx); background: rgba(12, 10, 9, 0.8); border: 1px solid var(--line); border-radius: var(--rad); }
 .tmenu button:active { scale: 0.94; border-color: var(--gold); }
 .tmenu button[hidden] { display: none; }
 /* 直拿手機：請橫過來 */

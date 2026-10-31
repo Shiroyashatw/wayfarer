@@ -34,7 +34,7 @@ function hudInit() {
   <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 技能 左鍵／右鍵／Q／E／R · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · G 技能寶石 · P 天賦與昇華 · T 回藏身處 · H 隱藏</div>
   <div id="warn"></div>
   <div class="tonly" id="stick"><i></i></div>
-  <div class="tonly tmenu"><button data-tm="inv">背包</button><button data-tm="skill">技能</button><button data-tm="tree">天賦</button><button data-tm="home" id="thome">回家</button></div>
+  <div class="tonly tmenu"><button data-tm="fs" id="tfs">全螢幕</button><button data-tm="inv">背包</button><button data-tm="skill">技能</button><button data-tm="tree">天賦</button><button data-tm="home" id="thome">回家</button></div>
   <div class="tonly" id="rot">把手機橫過來玩</div>`;
   hudBar();
   hudState();
