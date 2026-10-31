@@ -25,12 +25,12 @@
 | 檔案 | 內容 |
 | --- | --- |
 | `js/core.js` | `$`（getElementById）、`fl`、固定亂數 `h`／`rng`、`esc` |
-| `js/data.js` | 表格：`VER`、`KEY`、`SLOT`、主角 `HERO`、等級經驗 `xpNeed`、技能寶石 `SKILLS`／輔助 `SUPPORTS`／`GEM_MAX`／`gemNeed`、光環 `AURAS`／`AURA_SLOTS`／`SPIRIT0`、天賦樹 `PTREE`（產生器：20 個主題 `PT_THEME`、拼塊表 `PT_SHAPES`／`PT_LIB`（260 塊都不一樣，`tools/pt_shapes.js` 產生）、凹凸外框裡全部填滿＋相鄰直接相連的擺法（`ROUT`）、大點 `notableOf`、挖空半徑 `PT_R0`、起點 `PT_START`、`STATN`、`ptPoints`）、武器種類 `WTN`、昇華 `ASC`（職業→分支：圖案 `pos`／`edges`、小點 `small`、大點 `big.fx`）／`ascNodes`／`ascPoints`、翻滾與見切 `ROLL`、藥水 `FLASK`、地圖階級 `TMAX`／`mapCost`／`tierMul`／`tierIlvl`、抗性 `RESK`／`ELN`／`ELC`、裝備欄 `EQS`、種類 `KINDS`（大小、可出現的詞綴）、底材 `BASES`、詞綴 `AFF`（`tierRange` T12～T1、`bestTier`）、怪物 `MOBS`／`PACKS`／`ELITE`、王 `BOSSES`／`bossOf` |
+| `js/data.js` | 表格：`VER`、`KEY`、`SLOT`、主角 `HERO`、等級經驗 `xpNeed`、技能寶石 `SKILLS`／輔助 `SUPPORTS`／`GEM_MAX`／`gemNeed`、光環 `AURAS`／`AURA_SLOTS`／`SPIRIT0`、天賦樹 `PTREE`（產生器：20 個主題 `PT_THEME`、拼塊表 `PT_SHAPES`／`PT_LIB`（260 塊都不一樣，`tools/pt_shapes.js` 產生）、凹凸外框裡全部填滿＋相鄰直接相連的擺法（`ROUT`）、大點 `notableOf`、挖空半徑 `PT_R0`、起點 `PT_START`、`STATN`、`ptPoints`）、天賦圖示 `PT_ICONS`／`PT_STAT_IC`、武器種類 `WTN`（8 種）／雙手 `WT2`／隱性詞名稱 `IMPN`、副手欄能放什麼 `eqTakes`、昇華 `ASC`（職業→分支：圖案 `pos`／`edges`、小點 `small`、大點 `big.fx`）／`ascNodes`／`ascPoints`、翻滾與見切 `ROLL`、藥水 `FLASK`、地圖階級 `TMAX`／`mapCost`／`tierMul`／`tierIlvl`、抗性 `RESK`／`ELN`／`ELC`、裝備欄 `EQS`、種類 `KINDS`（大小、可出現的詞綴）、底材 `BASES`、詞綴 `AFF`（`tierRange` T12～T1、`bestTier`）、怪物 `MOBS`／`PACKS`／`ELITE`、王 `BOSSES`／`bossOf` |
 | `js/sprites.js`、`js/art.js`、`img/` | 像素圖大圖（`art.js` 是產生的，不要手改）；`artImg`（canvas 用）、`artSprite`（白色閃光版）、`artIconURL`（面板圖示） |
-| `js/items.js` | 寶石道具 `mkGem`／`dropGem`／`gemOf`／`isSup`／`isAura`、昇華效果 `ascV`（舊介面 `coreV`／`hasCls` 也讀昇華）、裝備產生 `mkItem`／`dropItem`／`rollRarity`、名字與說明 `itemName`／`affText`／`baseText`、賣價 `sellPrice`、格子背包 `gridFree`／`gridHits`／`gridAuto`、角色數值 `stats`（含天賦樹、昇華、能量護盾、精魄與光環 `auraOn`）、`dps` |
+| `js/items.js` | 寶石道具 `mkGem`／`dropGem`／`gemOf`／`isSup`／`isAura`、昇華效果 `ascV`（舊介面 `coreV`／`hasCls` 也讀昇華）、裝備產生 `mkItem`／`dropItem`／`rollRarity`、底材三層（品質 `rollQ`／`qBand`、孔數 `rollSock`／`SOCK_MAX`、潛能 `rollPot`、說明 `baseLayers`）、副手合不合規 `offOK`、名字與說明 `itemName`／`affText`／`baseText`、賣價 `sellPrice`、格子背包 `gridFree`／`gridHits`／`gridAuto`、角色數值 `stats`（含天賦樹、昇華、能量護盾、精魄與光環 `auraOn`）、`dps` |
 | `js/audio.js` | Web Audio 合成音效 `sfx` |
 | `js/game.js` | 存檔結構 `newGame`、場景（藏身處 `enterHideout`、開圖 `openMap`、方塊房間地圖 `enterMap`（`TS`、`CHUNK`、牆 `isWall`、找地板 `floorIn`／`floorNear`）、首領進度 `addProg`、回家 `goHome`）、碰撞 `moveBody`／`pushTiles`、玩家與技能 `useSkill`／`actHit`／`updPlayer`、翻滾 `doRoll`、受傷與見切 `hurtPlayer`、死亡 `die`、打怪 `hitMob`／`killMob`（掉落、碎片）、打倒王 `bossDown`（開放下一階、不跳視窗）、傳送門下一把 `mapAgain`、撿東西 `pickup`、互動 `interact`／`useProp`、怪物 AI `updMobs`／`mobStrike`、王 `bossAI`、主迴圈 `frame` |
-| `js/skills.js` | 技能欄 `NSLOT`／`SLOTKEY`、一格的實際數值 `slotCfg`（輔助 `supOK`）、放技能 `useSlot`／`skillTick`／`actHit`、傷害 `rollDmg`、打中 `hitMob`、燃燒 `addBurn`／`mobTick`、寶石經驗 `gemXp`、騎士 `wardMax`／`coreHurt`／`coreBlock`、狼 `callWolf`／`updAllies`、毒刃雨與隕石 `updPools`、`skillsEnter`、劍士昇華效果（出手速度 `speedMul`、移速 `moveMul`、見切 `onMikiri`、格擋 `onBlock`、殺怪 `onKill`、不死 `tryUndying`）、魔劍士（附魔 `P.ench`、劍氣）、能量護盾回充、場上單位 `placeUnit`／`unitFire`／`updUnits`（`UNIT_MAX`） |
+| `js/skills.js` | 技能欄 `NSLOT`／`SLOTKEY`、一格的實際數值 `slotCfg`（輔助 `supOK`）、放技能 `useSlot`／`skillTick`／`actHit`、傷害 `rollDmg`（法術用寶石傷害 `spellDmg`）、技能限定武器 `wtOK`／`wtNeed`、冰緩與感電（`m.chillT`／`m.shockT`）、力量球 `P.pc`、打中 `hitMob`、燃燒 `addBurn`／`mobTick`、寶石經驗 `gemXp`、騎士 `wardMax`／`coreHurt`／`coreBlock`、狼 `callWolf`／`updAllies`、毒刃雨與隕石 `updPools`、`skillsEnter`、劍士昇華效果（出手速度 `speedMul`、移速 `moveMul`、見切 `onMikiri`、格擋 `onBlock`、殺怪 `onKill`、不死 `tryUndying`）、魔劍士（附魔 `P.ench`、劍氣）、能量護盾回充、場上單位 `placeUnit`／`unitFire`／`updUnits`（`UNIT_MAX`） |
 | `js/touch.js` | 手機操作（`TOUCH`、`setTouch` 切模式）：全螢幕 `fsEnter`／`fsClick`（iPhone 教加入主畫面，`manifest.webmanifest`）、浮動搖桿、技能鍵手勢（點＝自動瞄準 `autoTarget`、拖＝手動瞄準 `touchAim`／地上的線 `drawAim`、拖回取消）、右上選單、點道具出現說明＋動作 `tapItem`、回家要按兩次 `homeAsk` |
 | `js/tree.js` | 天賦樹盤面 `TREE`／`treeOpen`／`treeRender`／`treeToggle`（有弧的拼塊照 `PTREE.ARC` 畫成弧線、中間挖空畫昇華；能不能點 `treeCan`、能不能退 `treeCanRefund`、昇華 4 小 4 大 `ascFeasible`）、說明 `treeTip` |
 | `js/render.js` | canvas 畫面 `draw`：藏身處 `drawHideout`、互動提示 `drawPrompts`、預警、怪物、牆 `drawWalls`、主角（`img/hero.png` 九列動作的 `heroCell`、技能對應動作 `ACT_ROW`、方向 `dirCol`）、特效、跳數字、掉落標籤 `LABELS`、光照、小地圖 |
@@ -38,7 +38,7 @@
 | `js/cloud.js` | Supabase 匿名登入＋雲端存檔（表 `dungeon_saves`） |
 | `js/market.js` | 0.1 的市集（還沒接回 0.2，`index.html` 沒有載入） |
 | `js/main.js` | `load`／`save`／`migrate`／`start` |
-| `tools/check.js` | 固定檢查 |
+| `tools/check.js` | 固定檢查（含底材三層的範圍、雙手與箭袋規則、每種武器的數值不是 NaN） |
 | `tools/touch_check.js` | 手機操作測試（Playwright 模擬觸控，送真的觸控事件）：搖桿、普攻連打、技能點／拖／取消、翻滾、按鈕不重疊、面板不出畫面、點道具的動作、天賦樹點兩次與兩指縮放；`node tools/touch_check.js 寬 高 [網址]` |
 | `tools/pt_shapes.js` | 天賦樹拼塊表：產生候選、比樣子挑最不像的，`--write` 寫進 `data.js` 的 `PT_SHAPES`、`--png` 畫總表、`--drop 編號` 剔掉像的（記在 `tools/pt_shapes_ban.json`） |
 | `supabase/migrations/` | `dungeon_saves` 表、`dungeon_market` 市集表與函式 |

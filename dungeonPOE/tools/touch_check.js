@@ -74,7 +74,7 @@ let fail = 0;
   await touch('touchStart', [r0]);
   await p.waitForTimeout(900);
   ok('普攻按住會自動打最近的怪', await p.evaluate(() => _m.hp < _hp || !G.mobs.includes(_m)));
-  const face = await p.evaluate(() => Math.cos(P.face));
+  const face = await p.evaluate(() => Math.cos(P.face - Math.atan2(_m.y - P.y, _m.x - P.x)));
   ok('朝向怪物', face > 0.7, face.toFixed(2));
   await touch('touchEnd', []);
   /* 技能鍵拖曳：畫瞄準線，拖回按鈕取消 */

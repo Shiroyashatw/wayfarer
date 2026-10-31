@@ -32,10 +32,57 @@ function pickBase(ilvl, kind) {
   for (let i = 0; i < pool.length; i++) if ((r -= w[i]) <= 0) return pool[i];
   return pool[pool.length - 1];
 }
+/* 底材三層（0.2.6，企劃書 5.2）：品質 q（0～0.4，只靠掉落）、孔數 so（各部位有上限）、潛能 pot（還能鍛造幾次） */
+const SOCK_MAX = {
+  weapon: 3,
+  shield: 2,
+  quiver: 2,
+  helm: 2,
+  chest: 4,
+  gloves: 2,
+  boots: 2,
+  belt: 1,
+  ring: 1,
+  amulet: 1
+};
+function rollQ(t) {
+  /* 地圖階級越高，高區間越常見；35～40% 只在階級 10 以上 */
+  const k = 1 + t / 16,
+    r = Math.random(),
+    p35 = t >= 10 ? 0.001 * (1 + (t - 10) * 0.3) : 0,
+    p30 = 0.009 * k,
+    p20 = 0.06 * k;
+  const band = r < p35 ? [35, 40] : r < p35 + p30 ? [30, 35] : r < p35 + p30 + p20 ? [20, 30] : [0, 20];
+  /* 每段上限不含（30～35 不會變成 35），最高那段含 40 */
+  return (band[1] === 40 ? Math.round(rnd(35, 40)) : Math.floor(rnd(band[0], band[1]))) / 100;
+}
+function rollPot() {
+  const w = [
+      [3, 30],
+      [4, 30],
+      [5, 25],
+      [6, 9],
+      [7, 4],
+      [8, 1.5],
+      [9, 0.4],
+      [10, 0.1]
+    ],
+    tot = w.reduce((a, b) => a + b[1], 0);
+  let r = Math.random() * tot;
+  for (const [v, p] of w) if ((r -= p) <= 0) return v;
+  return 3;
+}
+function rollSock(k) {
+  let n = 0;
+  while (n < (SOCK_MAX[k] || 1) && Math.random() < 0.45) n++;
+  return n;
+}
+/* 品質的區間與顏色 */
+const qBand = q => (q >= 0.35 ? 3 : q >= 0.3 ? 2 : q >= 0.2 ? 1 : 0);
 function mkItem(baseId, ilvl, rar) {
   const B = BASEI[baseId],
     K = KINDS[B.k],
-    it = { id: ++IID, b: baseId, L: ilvl, r: rar, a: [] };
+    it = { id: ++IID, b: baseId, L: ilvl, r: rar, a: [], q: rollQ(ilvl), so: rollSock(B.k), pot: rollPot() };
   if (rar === 0) return it;
   /* 魔法 1～2 條（前、後綴各最多 1）；稀有 3～6 條（各最多 3） */
   const n = rar === 1 ? irnd(1, 2) : irnd(3, 6),
@@ -79,24 +126,53 @@ const itemIc = it => (it.gem ? gemOf(it).ic : baseOf(it).ic);
 const itemName = it =>
   it.gem ? gemOf(it).n : it.nm ? it.nm + ' ' + baseOf(it).n : (it.r === 1 ? '魔法' : '') + baseOf(it).n;
 const affText = a => AFF[a.k].n.replace('{}', Array.isArray(a.v) ? a.v[0] + '～' + a.v[1] : a.v);
-/* 底材的固定數值說明 */
+/* 底材的數值（品質放大）＋隱性詞 */
+const qMul = it => 1 + (it.q || 0);
+const DEFK = ['armor', 'ev', 'es'];
 function baseText(it) {
-  const b = baseOf(it).b,
+  const B = baseOf(it),
+    b = B.b,
+    m = qMul(it),
     o = [];
   if (b.dmg) {
-    const wt = baseOf(it).wt || 'sword';
-    o.push(`${WTN[wt]} · 物理傷害 ${b.dmg[0]}～${b.dmg[1]}`, `每秒攻擊 ${b.as}`);
+    const wt = B.wt || 'sword';
+    o.push(
+      `${WTN[wt]}${WT2.has(wt) ? '（雙手）' : ''} · 物理傷害 ${Math.round(b.dmg[0] * m)}～${Math.round(b.dmg[1] * m)}`,
+      `每秒攻擊 ${b.as}`
+    );
     if (wt === 'spear') o.push('近戰距離 +25%');
     if (wt === 'staff') o.push('打中回 1 點魔力');
   }
-  if (b.armor) o.push(`護甲 ${b.armor}`);
+  const dn = { armor: '護甲', ev: '閃避', es: '能量護盾' };
+  for (const k of DEFK) if (b[k]) o.push(`${dn[k]} ${Math.round(b[k] * m)}`);
   if (b.block) o.push(`格擋 ${b.block}%`);
-  for (const k of ['life', 'resF', 'resC', 'resL', 'regen', 'crit']) if (b[k]) o.push(affText({ k, v: b[k] }));
+  if (B.k === 'quiver') o.push('只有拿弓才能用');
+  for (const k in b)
+    if (!['dmg', 'as', 'block', ...DEFK].includes(k))
+      o.push(AFF[k] ? affText({ k, v: b[k] }) : (IMPN[k] || k + ' {}').replace('{}', b[k]));
   return o;
+}
+/* 品質、孔數、潛能（說明框用；舊存檔的裝備沒有就不顯示） */
+const Q_N = ['', '稀有', '非常稀有', '超級稀有'];
+function baseLayers(it) {
+  if (it.gem || it.q == null) return '';
+  const qb = qBand(it.q);
+  return `品質 <span class="qb${qb}">${Math.round(it.q * 100)}%${qb ? '（' + Q_N[qb] + '）' : ''}</span> · 孔 ${'○'.repeat(it.so || 0) || '無'} · 潛能 ${it.pot}`;
 }
 /* 賣價：越高階、詞綴越多越貴 */
 const sellPrice = it =>
-  it.gem ? 2 + it.lv : Math.round((1 + it.a.length * 2 + (it.r === 2 ? 4 : 0)) * (1 + it.L * 0.4));
+  it.gem
+    ? 2 + it.lv
+    : Math.round(
+        (1 + it.a.length * 2 + (it.r === 2 ? 4 : 0)) * (1 + it.L * 0.4) * (1 + Math.max(0, (it.q || 0) - 0.2) * 5)
+      );
+/* 副手合不合規：雙手武器不能拿副手；箭袋只有拿弓才能用 */
+function offOK(w, off) {
+  if (!off) return true;
+  const wt = (w && baseOf(w).wt) || 'sword';
+  if (baseOf(off).k === 'quiver') return !!w && wt === 'bow';
+  return !(w && WT2.has(wt));
+}
 
 /* ---------- 格子背包：g = { w, h, items: [道具（含 x, y）] } ---------- */
 function gridFree(g, x, y, w, h, skip) {
@@ -188,10 +264,14 @@ function stats(s = S) {
     closeP: 0,
     farP: 0,
     killHeal: 0,
-    lowHpRed: 0
+    lowHpRed: 0,
+    ev: 0,
+    spellLv: 0,
+    castP: 0
   };
   const w = s.eq.weapon,
-    wb = w ? baseOf(w).b : { dmg: HERO.dmg, as: 1.1 };
+    wb0 = w ? baseOf(w).b : { dmg: HERO.dmg, as: 1.1 },
+    wb = w ? { ...wb0, dmg: wb0.dmg.map(v => v * qMul(w)) } : wb0;
   const put = (k, v) => {
     if (k === 'life') o.hp += v;
     else if (k === 'resF') o.res.fire += v;
@@ -206,9 +286,9 @@ function stats(s = S) {
   };
   for (const e of EQS) {
     const it = s.eq[e.k];
-    if (!it) continue;
+    if (!it || (e.k === 'off' && !offOK(w, it))) continue;
     const b = baseOf(it).b;
-    for (const k in b) if (k !== 'dmg' && k !== 'as') put(k, b[k]);
+    for (const k in b) if (k !== 'dmg' && k !== 'as') put(k, DEFK.includes(k) ? Math.round(b[k] * qMul(it)) : b[k]);
     for (const a of it.a) put(a.k, a.v);
   }
   /* 天賦樹 */
@@ -248,7 +328,8 @@ function stats(s = S) {
   o.es = Math.round(o.es * (1 + o.esP / 100));
   /* 持武器的加成 */
   o.wt = (w && baseOf(w).wt) || 'sword';
-  pt.dmgA += o[o.wt + 'P'];
+  /* 天賦「持劍／持矛／持棍時傷害」：野太刀也算劍；其他武器種類還沒有對應的天賦 */
+  pt.dmgA += o[{ sword: 'swordP', nodachi: 'swordP', spear: 'spearP', staff: 'staffP' }[o.wt]] || 0;
   /* 昇華大點的數值效果 */
   const aura = ascV(s, 'ronin.aura');
   if (aura) (o.meleeP += 15), (o.aoe += aura);

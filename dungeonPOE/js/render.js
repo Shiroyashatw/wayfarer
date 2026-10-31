@@ -36,6 +36,11 @@ const ACT_ROW = {
   quake: 4,
   whirl: 8,
   storm: 8,
+  thrust: 3,
+  combo: 8,
+  split: 5,
+  frostbolt: 5,
+  arc: 5,
   nova: 5,
   blade: 5,
   fireball: 5,
@@ -258,6 +263,17 @@ function draw() {
       CX.globalAlpha = 1;
       continue;
     }
+    if (s.cold) {
+      CX.fillStyle = 'rgba(143,214,255,0.3)';
+      CX.beginPath();
+      CX.arc(s.x, s.y, 16, 0, TAU);
+      CX.fill();
+      CX.fillStyle = '#e6f7ff';
+      CX.beginPath();
+      CX.arc(s.x, s.y, 7, 0, TAU);
+      CX.fill();
+      continue;
+    }
     if (s.fire) {
       CX.fillStyle = 'rgba(255,138,76,0.3)';
       CX.beginPath();
@@ -313,7 +329,8 @@ function draw() {
       hurt: ['#ff5a5a', 17],
       gold: ['#ffd166', 14],
       lv: ['#9df29d', 20],
-      mikiri: ['#8fe0ff', 26]
+      mikiri: ['#8fe0ff', 26],
+      ev: ['#b8f0c8', 18]
     }[n.c];
     CX.globalAlpha = 1 - Math.max(0, f - 0.6) / 0.4;
     CX.font = `700 ${Math.round(st[1] * pop)}px "Noto Sans TC", sans-serif`;
@@ -328,7 +345,9 @@ function draw() {
               ? '升級！Lv ' + n.v
               : n.c === 'mikiri'
                 ? '見切'
-                : n.v;
+                : n.c === 'ev'
+                  ? '閃避'
+                  : n.v;
     CX.lineWidth = 4;
     CX.strokeStyle = 'rgba(0,0,0,0.8)';
     CX.strokeText(txt, n.x, y);
@@ -544,6 +563,23 @@ function drawFx() {
         CX.arc(o.x, o.y - 20, o.r * (0.75 + i * 0.1), o.ang - 0.7 + i * 0.1, o.ang + 0.7 + i * 0.1);
         CX.stroke();
       }
+    } else if (o.k === 'zap') {
+      /* 電弧：兩點之間鋸齒狀的閃電 */
+      CX.globalAlpha = 1 - f;
+      CX.strokeStyle = '#ffe066';
+      CX.lineWidth = 3;
+      CX.beginPath();
+      CX.moveTo(o.x, o.y);
+      for (let i = 1; i < 6; i++) {
+        const t = i / 6;
+        CX.lineTo(
+          o.x + (o.x2 - o.x) * t + (Math.random() - 0.5) * 22,
+          o.y + (o.y2 - o.y) * t + (Math.random() - 0.5) * 22
+        );
+      }
+      CX.lineTo(o.x2, o.y2);
+      CX.stroke();
+      CX.globalAlpha = 1;
     } else if (o.k === 'ring') {
       CX.globalAlpha = (1 - f) * 0.9;
       CX.strokeStyle = o.col || '#fff3d6';

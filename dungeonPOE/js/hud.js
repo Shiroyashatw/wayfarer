@@ -61,7 +61,7 @@ function tipOf(b) {
   if (b.slot == null) return `${b.n}\n${b.d}`;
   const c = slotCfg(b.slot);
   if (!c) return `${b.key}：空的\n按 G 打開技能寶石，把技能寶石放進來`;
-  return `${c.D.n} Lv ${c.lv}\n${c.D.d}${c.mp ? `\n魔力 ${c.mp}` : ''}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}`;
+  return `${c.D.n} Lv ${c.lv}${c.D.wt ? `（${wtNeed(c.D)}）` : ''}\n${c.D.d}${c.mp ? `\n魔力 ${c.mp}` : ''}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}`;
 }
 let warnT;
 function hudWarn(t) {
@@ -105,7 +105,7 @@ function hudTick() {
     }
     setV(el, 'cd' + k, cd.toFixed(2));
     setT(el.querySelector('u'), 't' + k, txt);
-    const no = (c && P.mp < c.mp) || G.scene === 'hide';
+    const no = (c && (P.mp < c.mp || !wtOK(c.D))) || G.scene === 'hide';
     if (HV['n' + k] !== no) el.classList.toggle('no', (HV['n' + k] = no));
   }
   const wm = wardMax();
@@ -117,7 +117,8 @@ function hudTick() {
     hasCls(S, 'knight') ? `盾勢 ${P.guard}` : '',
     G.allies && G.allies.length ? `狼 ${G.allies.length}` : '',
     G.units && G.units.length ? `場上 ${G.units.length}` : '',
-    ST.auraOn.length ? `精魄 ${ST.spiritUsed}/${ST.spirit}` : ''
+    ST.auraOn.length ? `精魄 ${ST.spiritUsed}/${ST.spirit}` : '',
+    P.pcT > G.t && P.pc ? `力量球 ${P.pc}` : ''
   ]
     .filter(Boolean)
     .join(' · ');
@@ -338,7 +339,11 @@ function slotSet(src, key, it) {
 }
 const slotFits = (src, key, it) =>
   src === 'eq'
-    ? EQS.find(q => q.k === key).t === kindOf(it)
+    ? eqTakes(
+        EQS.find(q => q.k === key),
+        kindOf(it)
+      ) &&
+      (key !== 'off' || offOK(S.eq.weapon, it))
     : !!it.gem && (key[0] === 'A' ? isAura(it) : key.endsWith(':a') ? !isSup(it) && !isAura(it) : isSup(it));
 function findItem(src, id, eqk) {
   if (isSlot(src)) return slotGet(src, eqk);
@@ -365,6 +370,12 @@ function putBack(src, it, eqk, ox, oy) {
   return gridAuto(g, it);
 }
 function changed() {
+  /* 換上雙手武器（或換掉弓）：不合規的副手收進背包 */
+  if (!offOK(S.eq.weapon, S.eq.off)) {
+    const off = S.eq.off;
+    if (gridAuto(S.inv, off)) (S.eq.off = null), hudWarn('雙手武器不能拿副手：副手收進背包');
+    else hudWarn('背包滿了：副手沒有作用（雙手武器不能拿副手）');
+  }
   const hpF = P.hp / ST.hp;
   ST = stats();
   P.hp = Math.min(ST.hp, Math.max(1, hpF * ST.hp));
@@ -394,9 +405,11 @@ function quickMove(src, it, eqk) {
     if (!gridAuto(S.stash, it)) return gridAuto(S.inv, it), hudWarn('倉庫滿了');
   } else {
     const k = kindOf(it),
-      slots = EQS.filter(e => e.t === k),
+      slots = EQS.filter(e => eqTakes(e, k)),
       e = slots.find(e => !S.eq[e.k]) || slots[0];
     if (!e) return;
+    if (e.k === 'off' && !offOK(S.eq.weapon, it))
+      return hudWarn(k === 'quiver' ? '箭袋只有拿弓才能用' : '拿雙手武器時不能拿副手');
     const old = S.eq[e.k],
       ox = it.x,
       oy = it.y;
@@ -572,7 +585,7 @@ function gemTip(it) {
   } else if (sup)
     html += `<p class="base">${D.need.length ? '要有標籤：' + D.need.map(t => TAGN[t]).join('、') : '所有技能都能用'}</p>`;
   else if (!isAura(it))
-    html += `<p class="base">標籤：${D.tags.map(t => TAGN[t]).join('、')}${D.mp ? ` · 魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}<br>傷害 ×${(D.m * Math.pow(1.06, it.lv - 1)).toFixed(2)}${D.el ? `（全部是${ELN[D.el]}）` : ''}</p>`;
+    html += `${D.wt ? `<p class="${wtOK(D) ? 'base' : 'c-bad'}">${wtNeed(D)}</p>` : ''}<p class="base">標籤：${D.tags.map(t => TAGN[t]).join('、')}${D.mp ? ` · 魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}<br>傷害 ×${(D.m * Math.pow(1.06, it.lv - 1)).toFixed(2)}${D.el ? `（全部是${ELN[D.el]}）` : ''}</p>`;
   if (bad) html += `<p class="c-bad">跟這個技能不相容，沒有效果</p>`;
   html += `<p class="hint">經驗 ${it.lv >= GEM_MAX ? '滿級' : `${Math.floor(it.xp)} / ${gemNeed(it.lv)}`}（不能超過角色等級）</p>`;
   return html;
@@ -581,10 +594,12 @@ function itemTip(it, cmp) {
   if (it.gem) return gemTip(it);
   const B = baseOf(it);
   let html = `<b class="rc${it.r}">${esc(itemName(it))}</b><small>${RARN[it.r]} ${KINDS[B.k].n} · 物品等級 ${it.L}</small>`;
+  const lay = baseLayers(it);
+  if (lay) html += `<p class="lay">${lay}</p>`;
   html += `<p class="base">${baseText(it).join('<br>')}</p>`;
   if (it.a.length) html += `<p class="aff">${it.a.map(a => `${affText(a)} <i>T${a.T}</i>`).join('<br>')}</p>`;
   if (cmp) {
-    const slots = EQS.filter(e => e.t === B.k),
+    const slots = EQS.filter(e => eqTakes(e, B.k)),
       e = slots.find(e => !S.eq[e.k]) || slots[0],
       cur = S.eq[e.k],
       a = ST;

@@ -55,6 +55,15 @@ function migrate(s) {
     ...o.auras
   ])
     if (it && it.id > IID) IID = it.id;
+  /* 0.2.6：舊裝備補上品質 0、孔 0、潛能 3（不重骰，免得讀檔洗出好底材） */
+  for (const it of [...Object.values(o.eq), ...o.inv.items, ...o.stash.items])
+    if (it && !it.gem && it.q == null) Object.assign(it, { q: 0, so: 0, pot: 3 });
+  /* 飛刃、千本櫻改成要拿短刀：裝著這兩招的，送一把短刀到背包（只送一次） */
+  if (!o.gotDagger && o.skills.some(k => k.a && ['blade', 'storm'].includes(k.a.gem))) {
+    o.gotDagger = 1;
+    const d = mkItem('w_short', 1, 0);
+    if (!gridAuto(o.inv, d)) gridAuto(o.stash, d);
+  }
   return o;
 }
 let NARROW = false;

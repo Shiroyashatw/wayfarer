@@ -27,7 +27,7 @@ function newGame() {
   /* 技能欄：左鍵斬擊、右鍵飛刃、Q 旋風斬；其他從怪物身上掉 */
   s.skills = Array.from({ length: NSLOT }, () => ({ a: null, s: [null, null] }));
   s.skills[0].a = mkGem('slash');
-  s.skills[1].a = mkGem('blade');
+  s.skills[1].a = mkGem('swallow');
   s.skills[2].a = mkGem('whirl');
   s.pt = [...PT_START];
   s.asc = null;
@@ -465,7 +465,10 @@ function drinkFlask() {
   sfx('drink');
 }
 /* 受傷：見切 → 無敵 → 格擋 → 護甲（物理）／抗性（元素） */
-function hurtPlayer(d, src, el = 'phys') {
+/* 閃避（0.2.6）：閃避值越高越容易完全躲開攻擊，怪物越高階越難躲；最多 70% */
+const evadeOf = ev => (ev > 0 ? Math.min(0.7, ev / (ev + 120 + 30 * (G.mapT || 1))) : 0);
+/* noEv：躲不掉的（王的大範圍、地上的陷阱）；其他攻擊可以被閃避躲開 */
+function hurtPlayer(d, src, el = 'phys', noEv) {
   if (G.state !== 'play') return;
   if (P.roll && P.roll.t < ROLL.perfect) {
     if (!G.slow) {
@@ -479,6 +482,7 @@ function hurtPlayer(d, src, el = 'phys') {
     return;
   }
   if (G.t < P.iuntil) return;
+  if (!noEv && Math.random() < evadeOf(ST.ev)) return num(P.x, P.y - 60, 0, 'ev');
   if (Math.random() * 100 < ST.block) {
     num(P.x, P.y - 60, 0, 'block');
     sfx('block');
@@ -682,7 +686,7 @@ function updMobs(dt) {
           vy += ((m.y - o.y) / dd) * 0.9;
         }
       }
-      moveBody(m, vx * D.spd * dt, vy * D.spd * dt);
+      moveBody(m, vx * D.spd * (m.chillT > G.t ? 0.65 : 1) * dt, vy * D.spd * (m.chillT > G.t ? 0.65 : 1) * dt);
       m.mv = want !== 0;
       if (m.cd <= 0 && dP < D.reach + P.r + 4) {
         m.st = 'wind';
@@ -740,7 +744,7 @@ function mobStrike(m) {
       y = m.y + Math.sin(m.ang) * 55;
     fx({ k: 'ring', x, y, r: 95, dur: 0.3, col: '#ff8a5b' });
     shake(0.3);
-    if (Math.hypot(P.x - x, P.y - y) < 95 + P.r) hurtPlayer(m.dmg, m, m.el);
+    if (Math.hypot(P.x - x, P.y - y) < 95 + P.r) hurtPlayer(m.dmg, m, m.el, true);
     recover(m, 0.6);
   }
 }
@@ -755,7 +759,10 @@ function bossAI(m, dt, dP) {
   if (m.st === 'idle' || m.st === 'move') {
     m.st = 'move';
     const a = angTo(m, P);
-    if (dP > 90) moveBody(m, Math.cos(a) * m.D.spd * (rage < 1 ? 1.25 : 1) * dt, Math.sin(a) * m.D.spd * dt);
+    if (dP > 90) {
+      const cs = m.chillT > G.t ? 0.65 : 1;
+      moveBody(m, Math.cos(a) * m.D.spd * cs * (rage < 1 ? 1.25 : 1) * dt, Math.sin(a) * m.D.spd * cs * dt);
+    }
     m.mv = dP > 90;
     if (m.cd <= 0) {
       m.pat = pick(dP < 140 ? ['swipe', 'swipe', 'slam'] : ['charge', 'slam', 'charge', 'summon']);
@@ -839,7 +846,11 @@ function updShots(dt) {
             s.life = 0;
             break;
           }
-          hitMob(m, s.c, s.ang, 120 * s.c.kb, { a: s.a });
+          /* 冰霜彈：越遠越弱（飛到底剩 40%） */
+          hitMob(m, s.c, s.ang, 120 * s.c.kb, {
+            a: s.a,
+            mult: s.decay ? s.c.mult * (0.4 + 0.6 * (s.life / s.life0)) : 0
+          });
           if (s.pierce-- <= 0) {
             s.life = 0;
             break;
@@ -861,7 +872,7 @@ function updShots(dt) {
       fx({ k: 'ring', x: t.x, y: t.y, r: t.r, dur: 0.3, col: '#ff8a5b' });
       shake(0.2);
       sfx('slam');
-      if (Math.hypot(P.x - t.x, P.y - t.y) < t.r + P.r) hurtPlayer(t.dmg, t.src, t.el);
+      if (Math.hypot(P.x - t.x, P.y - t.y) < t.r + P.r) hurtPlayer(t.dmg, t.src, t.el, true);
     }
   }
   G.tele = G.tele.filter(t => !t.done);

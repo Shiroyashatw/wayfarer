@@ -326,3 +326,9 @@ body.touch .tbar { flex-wrap: wrap; gap: 6px 10px; padding: calc(6px + env(safe-
 body.touch .tbar > span { font-size: var(--fs-s); }
 body.touch .thelp { display: none; }
 .nd.sel circle { stroke: #fff; stroke-width: 6; }
+
+/* ---------- 0.2.6 底材三層：品質的區間顏色 ---------- */
+#tip .lay { color: var(--dim); font-size: var(--fs-s); }
+.qb1 { color: var(--blue); }
+.qb2 { color: var(--gold); }
+.qb3 { color: var(--bad); }

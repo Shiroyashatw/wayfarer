@@ -8,7 +8,7 @@ vm.createContext(ctx);
 for (const f of ['data.js', 'items.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 const G = vm.runInContext(
-  '({ BASES, KINDS, AFF, EQS, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, ASC, ascNodes, ascPoints, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
+  '({ BASES, BASEI, KINDS, AFF, EQS, eqTakes, offOK, SOCK_MAX, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, ASC, ascNodes, ascPoints, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
   ctx
 );
 let bad = 0;
@@ -25,8 +25,41 @@ const miss = [...G.BASES.map(b => b.ic), ...Object.values(G.MOBS).map(m => m.sp)
 ok('底材、怪物、王的圖都在', !miss.length, miss.join(','));
 ok(
   '底材種類都有裝備欄',
-  G.BASES.every(b => G.KINDS[b.k] && G.EQS.some(e => e.t === b.k))
+  G.BASES.every(b => G.KINDS[b.k] && G.EQS.some(e => G.eqTakes(e, b.k)))
 );
+/* 0.2.6：底材三層的範圍、雙手武器與箭袋的規則 */
+{
+  const bad = [];
+  for (let i = 0; i < 3000; i++) {
+    const it = G.dropItem(1 + (i % 16), 0.5),
+      k = G.BASEI[it.b].k;
+    if (!(it.q >= 0 && it.q <= 0.4)) bad.push('品質 ' + it.q);
+    if (it.q >= 0.35 && it.L < 10) bad.push('階級 ' + it.L + ' 出了 ' + it.q);
+    if (!(it.so >= 0 && it.so <= G.SOCK_MAX[k])) bad.push(k + ' 孔 ' + it.so);
+    if (!(it.pot >= 3 && it.pot <= 10)) bad.push('潛能 ' + it.pot);
+  }
+  ok('品質 0～40%（35% 以上只在階級 10 以上）、孔數不超過上限、潛能 3～10', !bad.length, bad.slice(0, 4).join('、'));
+  const mk = id => G.mkItem(id, 10, 0),
+    rules = [
+      [mk('w_nodachi'), mk('s_wood'), false],
+      [mk('w_katana'), mk('s_wood'), true],
+      [mk('w_bow'), mk('q_bamboo'), true],
+      [mk('w_katana'), mk('q_bamboo'), false],
+      [mk('w_bow'), mk('s_wood'), false],
+      [mk('w_charm'), mk('s_orb'), true]
+    ].filter(([w, o, want]) => G.offOK(w, o) !== want);
+  /* 每種武器都拿一次：所有數值都要是數字（新武器種類查不到天賦加成會變 NaN） */
+  const nan = [];
+  for (const B of G.BASES.filter(b => b.k === 'weapon')) {
+    const s = { lv: 20, eq: Object.fromEntries(G.EQS.map(e => [e.k, null])), pt: [], at: [], auras: [] };
+    s.eq.weapon = G.mkItem(B.id, 10, 2);
+    const o = G.stats(s),
+      badK = Object.keys(o).filter(k => typeof o[k] === 'number' && !Number.isFinite(o[k]));
+    if (badK.length || o.dmg.some(v => !Number.isFinite(v))) nan.push(B.n + '：' + badK.join(','));
+  }
+  ok('每種武器的數值都不是 NaN', !nan.length, nan.join('；'));
+  ok('雙手武器不能拿副手、箭袋只有弓能用', !rules.length, rules.map(([w, o]) => w.b + '+' + o.b).join('、'));
+}
 /* 2. 產生 3000 件：詞綴數、前後綴上限、不重複、數值在那一階的範圍 */
 const err = [];
 for (let i = 0; i < 3000; i++) {

@@ -16,14 +16,16 @@ function slotCfg(i) {
     g = sl && sl.a;
   if (!g) return null;
   const D = SKILLS[g.gem],
+    /* 法杖：法術技能等級 +1 */
+    lv = g.lv + (D.tags.includes('spell') ? ST.spellLv : 0),
     c = {
       i,
       k: g.gem,
       D,
-      lv: g.lv,
-      mult: D.m * Math.pow(1.06, g.lv - 1),
+      lv,
+      mult: D.m * Math.pow(1.06, lv - 1),
       aoe: 1,
-      speed: 1,
+      speed: D.tags.includes('spell') ? 1 + ST.castP / 100 : 1,
       mp: D.mp,
       cd: (D.cd || 0) * (1 - ST.cdr / 100),
       crit: 0,
@@ -61,10 +63,14 @@ function slotCfg(i) {
   return c;
 }
 /* 按下技能鍵 */
+/* 武器技能要拿對的武器（照 PoE2） */
+const wtOK = D => !D.wt || D.wt.includes(ST.wt);
+const wtNeed = D => '要拿' + D.wt.map(w => WTN[w]).join('或');
 function useSlot(i) {
   if (P.act || P.roll || G.state !== 'play' || G.scene !== 'map') return false;
   const c = slotCfg(i);
   if (!c) return false;
+  if (!wtOK(c.D)) return hudWarn(c.D.n + '：' + wtNeed(c.D)), false;
   if ((P.cds['s' + i] || 0) > 0) return false;
   if (ST.blood) {
     /* 血祭／血之代價：用生命施放 */
@@ -94,7 +100,7 @@ function useSlot(i) {
     t: 0,
     dur: D.t / ST.asM / c.speed / speedMul(),
     ang,
-    hits: c.k === 'swallow' ? [0.3, 0.7] : [0.42],
+    hits: D.hits || (c.k === 'swallow' ? [0.3, 0.7] : [0.42]),
     n: 0,
     tx: w.x,
     ty: w.y
@@ -174,6 +180,65 @@ function actHit(a, idx) {
     fx({ k: 'slash', x: P.x, y: P.y, ang, r: R, arc: D.arc, dur: 0.18, flipArc: idx === 1 });
     const n = hitArc(ang, D.arc, R, 170 * c.kb);
     if (D.gain && n) P.mp = Math.min(ST.mp, P.mp + D.gain * n);
+  } else if (a.k === 'thrust' || a.k === 'combo') {
+    /* 突刺：前兩下窄、最後一下打穿一整排；連打：左右左，第 3 下得到力量球 */
+    const last = idx === a.hits.length - 1,
+      ang = a.ang + (a.k === 'combo' ? [-0.3, 0.3, 0][idx] : last ? 0 : idx ? 0.1 : -0.1);
+    let n = 0;
+    if (a.k === 'thrust' && last) {
+      const L = R * 1.9;
+      fx({ k: 'slash', x: P.x, y: P.y, ang, r: L, arc: 0.3, dur: 0.16 });
+      for (const m of G.mobs) {
+        if (m.hp <= 0) continue;
+        const dx = m.x - P.x,
+          dy = m.y - P.y,
+          along = dx * Math.cos(ang) + dy * Math.sin(ang),
+          side = Math.abs(-dx * Math.sin(ang) + dy * Math.cos(ang));
+        if (along > 0 && along < L + m.r && side < 28 + m.r) hitMob(m, c, ang, 220 * c.kb, { a }), n++;
+      }
+    } else {
+      fx({ k: 'slash', x: P.x, y: P.y, ang, r: R, arc: D.arc, dur: 0.15, flipArc: idx === 1 });
+      n = hitArc(ang, D.arc, R, (a.k === 'combo' && last ? 200 : 90) * c.kb);
+    }
+    if (D.gain && n) P.mp = Math.min(ST.mp, P.mp + D.gain * n);
+    if (a.k === 'combo' && last && n) {
+      P.pc = Math.min(3, (P.pcT > G.t ? P.pc : 0) + 1);
+      P.pcT = G.t + 10;
+    }
+  } else if (a.k === 'split') {
+    const n = D.cnt + c.proj - 1;
+    for (let i = 0; i < n; i++) shoot(a.ang + (i - (n - 1) / 2) * 0.22, D.spd, c, a, { life: 0.7 });
+  } else if (a.k === 'frostbolt') {
+    const n = c.proj;
+    for (let i = 0; i < n; i++)
+      shoot(a.ang + (i - (n - 1) / 2) * 0.18, D.spd, c, a, { pierce: 999, life: 0.75, life0: 0.75, decay: 1, cold: 1 });
+  } else if (a.k === 'arc') {
+    /* 先打滑鼠附近（離自己 450 內）最近的，再跳 chain 次（每次 260 內、不重複） */
+    const hit = new Set();
+    let from = { x: P.x, y: P.y - 20 },
+      cur = null,
+      bd = 1e9;
+    for (const m of G.mobs)
+      if (m.hp > 0 && dist(P, m) < 450) {
+        const d = Math.hypot(m.x - a.tx, m.y - a.ty);
+        if (d < bd) (bd = d), (cur = m);
+      }
+    for (let k = 0; cur && k <= D.chain + (c.proj - 1); k++) {
+      fx({ k: 'zap', x: from.x, y: from.y, x2: cur.x, y2: cur.y - cur.sz * 0.4, dur: 0.18 });
+      hit.add(cur);
+      hitMob(cur, c, angTo(from, cur), 60 * c.kb, { a });
+      from = { x: cur.x, y: cur.y - cur.sz * 0.4 };
+      let nx = null,
+        nd = 260;
+      for (const m of G.mobs)
+        if (m.hp > 0 && !hit.has(m)) {
+          const d = Math.hypot(m.x - cur.x, m.y - cur.y);
+          if (d < nd) (nd = d), (nx = m);
+        }
+      cur = nx;
+    }
+    if (!hit.size) fx({ k: 'zap', x: P.x, y: P.y - 20, x2: a.tx, y2: a.ty, dur: 0.15 });
+    sfx('cast');
   } else if (a.k === 'quake') {
     fx({ k: 'quake', x: P.x, y: P.y, ang: a.ang, r: R, arc: D.arc, dur: 0.35 });
     shake(0.3);
@@ -245,13 +310,18 @@ function boom(s) {
 
 /* ---------- 傷害 ---------- */
 /* 一下的傷害：武器的物理＋附加元素；有屬性的技能全部轉成那個屬性；怪物抗自己的屬性 */
+/* 法術的基礎傷害（照 PoE：看寶石等級、每級 +15%，不吃武器；角色等級的加成照算） */
+const SPELL_BASE = [7, 12];
+const spellDmg = lv => rnd(SPELL_BASE[0], SPELL_BASE[1]) * (1 + 0.15 * (lv - 1)) * (1 + (4 * (S.lv - 1)) / 100);
 function rollDmg(c, m, o = {}) {
+  const spell = (c.D.tags || []).includes('spell') && !(c.D.tags || []).includes('attack');
   let el = c.D.el,
-    d = rnd(ST.dmg[0], ST.dmg[1]),
+    d = spell ? spellDmg(c.lv || 1) : rnd(ST.dmg[0], ST.dmg[1]),
     ele = 0,
     big = 'phys',
     bigV = d;
   for (const k in ST.add) {
+    if (spell) break;
     const [lo, hi] = ST.add[k];
     if (!hi) continue;
     const v = rnd(lo, hi);
@@ -288,7 +358,8 @@ function rollDmg(c, m, o = {}) {
   if (m && m.exposeT > G.t) tot *= 1 + ascV(S, 'rapier.expose') / 100;
   tot += tot * (c.fireAdd + ST.fireAdd / 100);
   if (m && m.el === big && big !== 'phys' && !ascV(S, 'spell.pen')) tot *= 0.6;
-  let crit = o.crit || P.critNext || Math.random() * 100 < ST.crit + c.crit;
+  const pc = P.pcT > G.t ? P.pc * 5 : 0;
+  let crit = o.crit || P.critNext || Math.random() * 100 < ST.crit + c.crit + pc;
   if (crit) tot *= ST.critM + c.critX / 100 + (P.critNext ? 0.5 : 0);
   if (!o.keep) P.critNext = 0;
   return { d: tot, crit, el: big };
@@ -314,7 +385,11 @@ function hitMob(m, c, ang, kb, o = {}) {
       fx({ k: 'ring', x: m.x, y: m.y, r: 50, dur: 0.25, col: '#c38bff' });
     } else m.mark = (m.mark || 0) + 1;
   }
+  if (m.shockT > G.t) mult *= 1.15;
   const r = rollDmg(c, m, { mult, crit, minion: o.minion, unit: a.unit });
+  /* 狀態：冰冷打中＝冰緩（移動 −35%），閃電打中＝感電（受到的傷害 +15%），各 2 秒 */
+  if (r.el === 'cold') m.chillT = G.t + 2;
+  else if (r.el === 'light') m.shockT = G.t + 2;
   if (ST.wt === 'staff' && (c.D.tags || []).includes('melee') && !o.quiet) P.mp = Math.min(ST.mp, P.mp + 1);
   /* 魔劍士：魔力之刃回魔、劍氣 */
   if ((c.D.tags || []).includes('melee') && !o.quiet && !a.unit) {
