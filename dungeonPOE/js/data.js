@@ -760,10 +760,25 @@ const PTREE = (() => {
     return { n, s: st, power };
   };
   /* 照 PoE2：沒有大格網。拼塊表裡每塊都不一樣、每塊只用一次（不分區，整棵樹混在一起），轉向、翻面隨機；
-     從裡往外一圈一圈掃，放得下就放，排得很密；相鄰的拼塊直接相連（過路點很少，遠一點的才補） */
+     刻意不對稱：疏密圖（擠的地方拼塊挨在一起、稀的地方空出一片只拉長線）、大小圖（有的區域拼塊大、有的小）、
+     外框隨角度凹凸（有半島、有缺口）；相鄰的拼塊直接相連（過路點很少，遠一點的才補） */
   const hsh = i => ((Math.imul(i + 7, 2654435761) >>> 0) % 1000) / 1000,
     thAt = (x, y) => Math.floor((((Math.atan2(y, x) * 180) / Math.PI + 90 + 360) % 360) / STEP) % NR,
-    SC = 50;
+    /* 平滑的不規則圖：幾個不同方向、不同波長的波疊起來，0～1 */
+    WAVE = {},
+    field = (sd, x, y) => {
+      const W = (WAVE[sd] =
+        WAVE[sd] ||
+        [0, 1, 2, 3].map(k => {
+          const a = hsh(sd + k * 11) * Math.PI * 2,
+            w = 900 + hsh(sd + k * 17) * 1900;
+          return [(Math.cos(a) / w) * Math.PI * 2, (Math.sin(a) / w) * Math.PI * 2, hsh(sd + k * 23) * 9];
+        }));
+      let v = 0;
+      for (const [cx, cy, ph] of W) v += Math.sin(x * cx + y * cy + ph);
+      return Math.min(1, Math.max(0, 0.5 + v / 4.4));
+    },
+    edge = a => 0.7 + 0.6 * field(91, Math.cos(a) * 3000, Math.sin(a) * 3000);
   const par = {},
     find = a => (par[a] === a || par[a] === undefined ? ((par[a] = a), a) : (par[a] = find(par[a]))),
     uni = (a, b) => (par[find(a)] = find(b));
@@ -774,46 +789,58 @@ const PTREE = (() => {
       th = thAt(x, y);
     add({ id: 'g' + g, x, y, n: PT_THEME[th].n + '之門', ic: PT_THEME[th].ic, s: {}, big: 1, gate: 1, th });
   }
-  /* 拼塊：固定順序打散 */
-  const q = PT_LIB.map((p, k) => ({ p, sc: SC, R: SC * Math.max(...p.pts.map(t => Math.hypot(t[0], t[1]))), k })).sort(
+  /* 拼塊：固定順序打散；ext＝單位大小下的半徑 */
+  const q = PT_LIB.map((p, k) => ({ p, ext: Math.max(...p.pts.map(t => Math.hypot(t[0], t[1]))), k })).sort(
     (a, b) => hsh(a.k * 13 + 1) - hsh(b.k * 13 + 1)
   );
-  const cl = [];
-  for (let r = PT_R0 + 110; q.length && r < 6000; r += 26) {
-    const steps = Math.ceil((Math.PI * 2 * r) / 26),
-      off = hsh(r) * Math.PI * 2;
-    for (let k = 0; k < steps && q.length; k++) {
-      const a = off + (k / steps) * Math.PI * 2,
-        x = Math.cos(a) * r,
-        y = Math.sin(a) * r,
-        gap = 34 + hsh(k * 7 + r) * 30;
-      /* 這裡最多放得下多大的拼塊 */
-      let room = Math.min(r - PT_R0 - 60, 330);
-      for (const c of cl) {
-        const dx = c.x - x,
-          dy = c.y - y,
-          lim = room + c.R + 70;
-        if (room <= 0) break;
-        if (dx > lim || dx < -lim || dy > lim || dy < -lim) continue;
-        room = Math.min(room, Math.sqrt(dx * dx + dy * dy) - c.R - Math.max(c.gap, gap));
+  const cl = [],
+    grid = [],
+    CELL = 400;
+  /* 從裡往外掃，外框照 edge 凹凸；放不完就把外框放大再掃一次 */
+  for (let base = 1800, r0 = PT_R0 + 110; q.length && base < 8000; r0 = base * 0.7, base *= 1.12)
+    for (let r = r0; q.length && r < base * 1.3; r += 26) {
+      const steps = Math.ceil((Math.PI * 2 * r) / 26),
+        off = hsh(r) * Math.PI * 2;
+      for (let k = 0; k < steps && q.length; k++) {
+        const a = off + (k / steps) * Math.PI * 2,
+          x = Math.cos(a) * r,
+          y = Math.sin(a) * r;
+        if (r > base * edge(a)) continue;
+        const d = field(7, x, y);
+        /* 最稀的地方空出來（起點附近不空） */
+        if (d < 0.2 && r > PT_R0 + 350) continue;
+        const gap = 24 + (1 - d) ** 2 * 160,
+          sc = 44 + field(53, x, y) * 26;
+        let room = Math.min(r - PT_R0 - 60, 360);
+        /* 只看附近格子裡的拼塊（拼塊半徑＋間距最多約 600） */
+        const gi = Math.floor(x / CELL),
+          gj = Math.floor(y / CELL);
+        for (let di = -2; di <= 2 && room > 0; di++)
+          for (let dj = -2; dj <= 2 && room > 0; dj++)
+            for (const c of grid[(gi + di + 64) * 128 + gj + dj + 64] || []) {
+              const dx = c.x - x,
+                dy = c.y - y;
+              room = Math.min(room, Math.sqrt(dx * dx + dy * dy) - c.R - Math.max(c.gap, gap));
+            }
+        if (room <= 0) continue;
+        const pick = q.slice(0, 8).findIndex(U => U.ext * sc <= room);
+        if (pick < 0) continue;
+        const U = q.splice(pick, 1)[0],
+          gk = (gi + 64) * 128 + gj + 64;
+        (grid[gk] = grid[gk] || []).push({ x, y, R: U.ext * sc, gap });
+        cl.push({
+          x,
+          y,
+          R: U.ext * sc,
+          U: { p: U.p, sc },
+          gap,
+          th: thAt(x, y),
+          mir: hsh(cl.length * 17 + 3) < 0.5 ? -1 : 1,
+          rot: hsh(cl.length * 31 + 5) * Math.PI * 2,
+          id: 'k' + cl.length
+        });
       }
-      if (room <= 0) continue;
-      const pick = q.slice(0, 8).findIndex(U => U.R <= room);
-      if (pick < 0) continue;
-      const U = q.splice(pick, 1)[0];
-      cl.push({
-        x,
-        y,
-        R: U.R,
-        U,
-        gap,
-        th: thAt(x, y),
-        mir: hsh(cl.length * 17 + 3) < 0.5 ? -1 : 1,
-        rot: hsh(cl.length * 31 + 5) * Math.PI * 2,
-        id: 'k' + cl.length
-      });
     }
-  }
   const RMAX = Math.max(...cl.map(c => Math.hypot(c.x, c.y) + c.R));
   /* 拼塊的點 */
   const ARC = {};
@@ -868,7 +895,7 @@ const PTREE = (() => {
       const a = all[i],
         b = all[j],
         d = dc(a, b);
-      if ((a.gate && b.gate) || d > a.R + b.R + 300) continue;
+      if ((a.gate && b.gate) || d > a.R + b.R + 460) continue;
       if (all.some((k, kk) => kk !== i && kk !== j && Math.max(dc(a, k), dc(k, b)) < d)) continue;
       let best = null;
       for (const A of a.nodes)
