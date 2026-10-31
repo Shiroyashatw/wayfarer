@@ -94,11 +94,23 @@ function treeRender() {
     const c = PTREE.ARC[a + '|' + b];
     return c ? arc(A, B, c, on ? 'on' : near ? 'near' : '') : line(A, B, on, near);
   }).join('');
+  /* 圖示：每張只定義一次（<defs>），點用 <use> 引用，一千多個點也不會太重 */
+  const used = new Set(PTREE.N.map(n => n.ic).filter(Boolean)),
+    defs = [...used]
+      .map(ic => [ic, artIconURL(ic)])
+      .filter(([, u]) => u)
+      .map(([ic, u]) => `<image id="ti_${ic}" href="${u}" width="1" height="1"/>`)
+      .join('');
+  html = `<defs>${defs}</defs>` + html;
   html += PTREE.N.map(n => {
     const r = n.big === 2 ? 30 : n.gate ? 20 : n.big ? 19 : 10,
       st = have.has(n.id) ? 'on' : treeCan(n.id) ? 'can' : 'off',
-      u = n.big && artIconURL(n.ic);
-    return `<g class="nd ${st} b${n.big}${TREE.sel === n.id ? ' sel' : ''}" data-n="${n.id}" transform="translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})" style="--c:${PT_THEME[n.th].c}"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.7}" y="${-r * 0.7}" width="${r * 1.4}" height="${r * 1.4}"/>` : ''}</g>`;
+      s = r * (n.big ? 1.4 : 1.3),
+      img =
+        n.ic && artIconURL(n.ic)
+          ? `<use href="#ti_${n.ic}" transform="translate(${-s / 2} ${-s / 2}) scale(${s})"/>`
+          : '';
+    return `<g class="nd ${st} b${n.big}${TREE.sel === n.id ? ' sel' : ''}" data-n="${n.id}" transform="translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})" style="--c:${PT_THEME[n.th].c}"><circle r="${r}"/>${img}</g>`;
   }).join('');
   /* 中間：昇華 */
   html += `<circle class="hollow" r="${PT_R0 - 40}"/>`;

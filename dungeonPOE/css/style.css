@@ -199,13 +199,16 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .nd { cursor: pointer; }
 .nd circle { fill: #15110f; stroke: rgba(232, 226, 214, 0.22); stroke-width: 3; }
 .nd.b0 circle { fill: #1c1714; }
-.nd image { image-rendering: pixelated; opacity: 0.35; pointer-events: none; }
+.nd image, .nd use { image-rendering: pixelated; opacity: 0.35; pointer-events: none; }
 .nd.can circle { stroke: #8ab4ff; stroke-width: 4; }
-.nd.can image { opacity: 0.85; }
-/* 點下去：小點填上那個方向的顏色，大點金框 */
+.nd.can image, .nd.can use { opacity: 0.85; }
+/* 點下去：小點填上那個方向的顏色，大點金框；小點的圖示淡一點 */
+.nd.b0 use { opacity: 0.25; }
+.nd.b0.can use { opacity: 0.6; }
+.nd.b0.on use { opacity: 0.95; }
 .nd.on circle { fill: var(--c, #3a2b12); stroke: #ffd166; stroke-width: 4; }
 .nd.on.b1 circle, .nd.on.b2 circle { fill: #3a2b12; }
-.nd.on image { opacity: 1; }
+.nd.on image, .nd.on use { opacity: 1; }
 .nd.b2 circle { stroke-width: 5; stroke: rgba(255, 209, 102, 0.35); }
 .nd:hover circle { filter: brightness(1.6); }
 .hollow { fill: rgba(40, 20, 10, 0.55); stroke: rgba(255, 159, 67, 0.25); stroke-width: 4; }

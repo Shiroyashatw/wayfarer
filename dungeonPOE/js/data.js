@@ -548,6 +548,72 @@ const PT_THEME = [
     ]
   }
 ];
+/* 天賦樹的圖示：大點照主題輪流挑（同一區的大點不會長一樣），小點照加的數值 */
+const PT_ICONS = (() => {
+  const AF = f => ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'c', 'c0', 'c1', 'c2', 'e'].map(k => `asc_${f}_${k}`);
+  return [
+    ['asc_s_heart', 'asc_s_heartx', 'asc_s_potion', ...AF('peach')],
+    ['asc_s_shield', 'sup_ln_iron', ...AF('phalanx')],
+    ['asc_s_anvil', 'ail_guard', 'ail_shield', ...AF('paladin')],
+    ['asc_s_sword', 'asc_s_fist', 'sup_sp_melee', 'sup_sp_heavy', ...AF('blade'), ...AF('crusher').slice(0, 5)],
+    [...AF('valkyrie'), 'gear_weapon_9'],
+    ['asc_s_wind', 'sup_sp_fastatk', 'sup_sp_combo', 'sup_sp_echo', ...AF('master').slice(0, 6)],
+    ['sup_sp_crit', 'sup_sp_brutal', 'ail_bleed', ...AF('bloodclaw')],
+    ['asc_s_feather', ...AF('shadow')],
+    [...AF('moon'), 'gear_weapon_4'],
+    ['asc_s_bolt', 'sup_sp_proj', 'sup_sp_multi', 'sup_sp_chain', 'sup_sp_pen', 'ail_n_arrow', ...AF('hunter')],
+    ['sup_sp_trap', 'sup_sp_mine', 'sup_sp_deploy', 'sup_sp_deployfast', ...AF('engineer')],
+    ['asc_s_eye', 'sup_sp_exec', 'ail_mark', 'ail_dmark', ...AF('judge')],
+    ['asc_s_rune', 'asc_s_flag', 'sup_sp_totem', ...AF('banner')],
+    ['asc_s_paw', 'sup_sp_pet', 'sup_sp_horde', 'sup_ln_pack', 'sup_ln_legion', ...AF('tamer'), ...AF('bonelord')],
+    [
+      'asc_s_flame',
+      'asc_s_ice',
+      'sup_sp_gfire',
+      'sup_sp_gcold',
+      'sup_sp_glight',
+      ...AF('pyro'),
+      ...AF('frost'),
+      ...AF('storm')
+    ],
+    ['sup_sp_fastcast', 'sup_sp_conc', 'sup_ln_hellfire', ...AF('talisman'), ...AF('bloodmage')],
+    ['asc_s_stars', 'sup_sp_aoe', 'sup_sp_boom', 'sup_sp_ext', ...AF('crusher').slice(5)],
+    ['asc_s_drop', 'sup_ln_soul', 'sup_ln_void', ...AF('medium')],
+    ['asc_s_lotus', 'sup_ln_candle', 'sup_ln_wrath', ...AF('alchemist'), ...AF('curse')],
+    ['asc_s_book', 'sup_sp_cd', 'sup_sp_mpleech', 'sup_sp_eff', ...AF('master').slice(6)]
+  ];
+})();
+const PT_STAT_IC = {
+  hpP: 'asc_s_heart',
+  regen: 'asc_s_potion',
+  armorP: 'asc_s_shield',
+  block: 'asc_s_anvil',
+  meleeP: 'asc_s_sword',
+  swordP: 'asc_s_sword',
+  spearP: 'gear_weapon_9',
+  staffP: 'gear_weapon_4',
+  as: 'asc_s_wind',
+  critX: 'sup_sp_brutal',
+  crit: 'asc_s_eye',
+  ms: 'asc_s_feather',
+  rollCd: 'asc_s_feather',
+  projP: 'sup_sp_proj',
+  unitP: 'sup_sp_trap',
+  minionP: 'asc_s_paw',
+  eleP: 'asc_s_flame',
+  resA: 'sup_ln_iron',
+  spellP: 'sup_sp_fastcast',
+  mpP: 'asc_s_book',
+  mpReg: 'asc_s_book',
+  aoe: 'sup_sp_aoe',
+  dmgA: 'sup_sp_dmg',
+  esP: 'asc_s_drop',
+  es: 'asc_s_drop',
+  esRec: 'asc_s_drop',
+  auraEff: 'asc_s_lotus',
+  spirit: 'sup_ln_candle',
+  cdr: 'sup_sp_cd'
+};
 /* 天賦樹拼塊表（照 PoE2：一百多塊形狀都不一樣，像的就剔掉重挑）：tools/pt_shapes.js 產生。
    一塊一個字串：點「x,y[,1＝大點]」用 ; 分開｜線「a-b」用 , 分開｜弧「線編號:圓心x,圓心y,半徑」；單位是相鄰兩點距離 1 */
 /* PT_SHAPES 開始（tools/pt_shapes.js 產生，不要手改） */
@@ -980,7 +1046,9 @@ const PTREE = (() => {
     }
   const RMAX = Math.max(...cl.map(c => Math.hypot(c.x, c.y) + c.R));
   /* 拼塊的點 */
-  const ARC = {};
+  const ARC = {},
+    icK = {},
+    smIc = o => PT_STAT_IC[Object.keys(o.s)[0]] || PT_THEME[o.th].ic;
   for (const c of cl) {
     const dep = 1 + (Math.hypot(c.x, c.y) / RMAX) * 0.8,
       sc = c.U.sc,
@@ -997,7 +1065,7 @@ const PTREE = (() => {
           x,
           y,
           n: nt.n,
-          ic: PT_THEME[c.th].ic,
+          ic: PT_ICONS[c.th][(icK[c.th] = (icK[c.th] || 0) + 1) % PT_ICONS[c.th].length],
           s: nt.s,
           big: 1,
           power: nt.power,
@@ -1005,7 +1073,7 @@ const PTREE = (() => {
         });
       }
       const o = smallOf(c.th, k + N.length);
-      return add({ id: `${c.id}_${k}`, x, y, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th });
+      return add({ id: `${c.id}_${k}`, x, y, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th, ic: smIc(o) });
     });
     c.U.p.e.forEach(([p, q], k) => {
       const A = c.nodes[p],
@@ -1065,7 +1133,7 @@ const PTREE = (() => {
         y = A.y + (B.y - A.y) * f;
       if (near(x, y, 36)) continue;
       const o = smallOf(A.th, k + N.length),
-        nd = add({ id: 'x' + N.length, x, y, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th });
+        nd = add({ id: 'x' + N.length, x, y, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th, ic: smIc(o) });
       link(prev, nd);
       uni(prev.id, nd.id);
       prev = nd;
