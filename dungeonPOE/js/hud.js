@@ -81,7 +81,7 @@ function hudTick() {
   if (!P) return;
   setV($('ohp'), 'hp', (P.hp / ST.hp).toFixed(3));
   setV($('omp'), 'mp', (P.mp / ST.mp).toFixed(3));
-  setT($('ohp').lastChild, 'ht', Math.ceil(P.hp) + ' / ' + ST.hp);
+  setT($('ohp').lastChild, 'ht', Math.ceil(P.hp) + ' / ' + ST.hp + (ST.es ? `\n盾 ${Math.floor(P.es || 0)}` : ''));
   setT($('omp').lastChild, 'mt', Math.floor(P.mp) + ' / ' + ST.mp);
   setV($('xp'), 'xp', (S.xp / xpNeed(S.lv)).toFixed(3));
   for (const el of document.querySelectorAll('.sk')) {
@@ -103,13 +103,15 @@ function hudTick() {
     if (HV['n' + k] !== no) el.classList.toggle('no', (HV['n' + k] = no));
   }
   const wm = wardMax();
-  const wv = wm ? (P.ward / ST.hp).toFixed(3) : '0';
+  const wv = wm || ST.es ? Math.min(1, ((P.ward || 0) + (P.es || 0)) / ST.hp).toFixed(3) : '0';
   if (HV.ward !== wv) $('ohp').style.setProperty('--w', (HV.ward = wv));
   const mech = [
     hasCls(S, 'ronin') ? `架勢 ${P.stance}/${stanceNeed()}` : '',
     ascV(S, 'berserk.rage') ? `怒氣 ${Math.floor(P.rage || 0)}` : '',
     hasCls(S, 'knight') ? `盾勢 ${P.guard}` : '',
-    G.allies && G.allies.length ? `狼 ${G.allies.length}` : ''
+    G.allies && G.allies.length ? `狼 ${G.allies.length}` : '',
+    G.units && G.units.length ? `場上 ${G.units.length}` : '',
+    ST.auraOn.length ? `精魄 ${ST.spiritUsed}/${ST.spirit}` : ''
   ]
     .filter(Boolean)
     .join(' · ');
@@ -208,7 +210,7 @@ function invHTML() {
   <div class="eqrow"><div class="doll">${eqs}</div>
   <div class="st">
     <span>傷害 <b>${Math.round(s.dmg[0])}–${Math.round(s.dmg[1])}</b></span><span>攻速 <b>${s.aps.toFixed(2)}</b></span><span>暴擊 <b>${Math.min(100, s.crit)}%</b></span>
-    <span>生命 <b>${s.hp}</b></span><span>護甲 <b>${s.armor}</b></span><span>格擋 <b>${s.block}%</b></span>
+    <span>生命 <b>${s.hp}</b></span>${s.es ? `<span>能量護盾 <b>${s.es}</b></span>` : ''}<span>護甲 <b>${s.armor}</b></span><span>格擋 <b>${s.block}%</b></span><span>精魄 <b>${s.spiritUsed}/${s.spirit}</b></span>
     ${res}
   </div></div>
   <div class="ph2">背包 <span>拖曳擺放 · 點一下＝裝備／收起${PANEL.stash ? '／放進倉庫' : ''}</span></div>
@@ -251,7 +253,14 @@ function skillHTML() {
         .map(j => sock(i + ':' + j, sl.s[j], 'sup', '輔助', g && sl.s[j] && !supOK(SKILLS[g.gem], sl.s[j])))
         .join('')}</div><div class="skinfo">${info}</div></div>`;
     })
-    .join('')}`;
+    .join('')}
+  <div class="aurah"><b>光環</b><span>精魄 ${ST.spiritUsed} / ${ST.spirit} · 開著就一直生效，精魄不夠的不會生效</span></div>
+  <div class="aurarow">${S.auras
+    .map((g, j) => {
+      const on = g && ST.auraOn.includes(g.gem);
+      return `<div class="aurac">${sock('A:' + j, g, 'act', '光環', g && !on)}<small>${g ? `${esc(AURAS[g.gem].n)} · ${AURAS[g.gem].sp}` : '空的'}</small></div>`;
+    })
+    .join('')}</div>`;
 }
 /* 昇華石碑：選職業（目前只有劍士）與分支；點數在天賦樹中間點 */
 function ascHTML() {
@@ -300,18 +309,20 @@ const isSlot = src => src === 'eq' || src === 'sock';
 function slotGet(src, key) {
   if (src === 'eq') return S.eq[key];
   const [i, p] = key.split(':');
+  if (i === 'A') return S.auras[+p];
   return p === 'a' ? S.skills[i].a : S.skills[i].s[+p];
 }
 function slotSet(src, key, it) {
   if (src === 'eq') return (S.eq[key] = it);
   const [i, p] = key.split(':');
-  if (p === 'a') S.skills[i].a = it;
+  if (i === 'A') S.auras[+p] = it;
+  else if (p === 'a') S.skills[i].a = it;
   else S.skills[i].s[+p] = it;
 }
 const slotFits = (src, key, it) =>
   src === 'eq'
     ? EQS.find(q => q.k === key).t === kindOf(it)
-    : !!it.gem && (key.endsWith(':a') ? !isSup(it) : isSup(it));
+    : !!it.gem && (key[0] === 'A' ? isAura(it) : key.endsWith(':a') ? !isSup(it) && !isAura(it) : isSup(it));
 function findItem(src, id, eqk) {
   if (isSlot(src)) return slotGet(src, eqk);
   return GRIDS()[src].items.find(o => o.id === +id);
@@ -353,7 +364,8 @@ function quickMove(src, it, eqk) {
   } else if (it.gem && src === 'inv' && !PANEL.stash) {
     /* 寶石：技能放進第一個空的技能欄、輔助放進第一個相容的空插槽 */
     const key = gemSlotFor(it);
-    if (!key) return hudWarn(isSup(it) ? '沒有空的輔助插槽' : '技能欄滿了：拖到想換的那一欄');
+    if (!key)
+      return hudWarn(isAura(it) ? '光環欄滿了' : isSup(it) ? '沒有空的輔助插槽' : '技能欄滿了：拖到想換的那一欄');
     takeOut('inv', it);
     slotSet('sock', key, it);
     if (!PANEL.skill) openPanel('skill');
@@ -383,6 +395,10 @@ function quickMove(src, it, eqk) {
   changed();
 }
 function gemSlotFor(it) {
+  if (isAura(it)) {
+    const j = S.auras.findIndex(g => !g);
+    return j < 0 ? null : 'A:' + j;
+  }
   for (let i = 0; i < NSLOT; i++) {
     const sl = S.skills[i];
     if (!isSup(it) && !sl.a) return i + ':a';
@@ -530,10 +546,15 @@ function gemTip(it) {
     sup = isSup(it),
     sl = S.skills.find(sl => sl.s.includes(it)),
     bad = sl && sl.a && !supOK(SKILLS[sl.a.gem], it);
-  let html = `<b class="rc3">${esc(D.n)}</b><small>${sup ? '輔助寶石' : '技能寶石'} · Lv ${it.lv}</small><p>${esc(D.d)}</p>`;
-  if (sup)
+  let html = `<b class="rc3">${esc(D.n)}</b><small>${isAura(it) ? '光環寶石' : sup ? '輔助寶石' : '技能寶石'} · Lv ${it.lv}</small><p>${esc(D.d)}</p>`;
+  if (isAura(it)) {
+    const on = S.auras.includes(it),
+      act = on && ST.auraOn.includes(it.gem);
+    html += `<p class="base">預留精魄 ${D.sp} · 效果 ×${((1 + 0.03 * (it.lv - 1)) * (1 + ST.auraEff / 100)).toFixed(2)}（等級與光環效果）</p>`;
+    if (on && !act) html += `<p class="c-bad">精魄不夠，沒有生效</p>`;
+  } else if (sup)
     html += `<p class="base">${D.need.length ? '要有標籤：' + D.need.map(t => TAGN[t]).join('、') : '所有技能都能用'}</p>`;
-  else
+  else if (!isAura(it))
     html += `<p class="base">標籤：${D.tags.map(t => TAGN[t]).join('、')}${D.mp ? ` · 魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}<br>傷害 ×${(D.m * Math.pow(1.06, it.lv - 1)).toFixed(2)}${D.el ? `（全部是${ELN[D.el]}）` : ''}</p>`;
   if (bad) html += `<p class="c-bad">跟這個技能不相容，沒有效果</p>`;
   html += `<p class="hint">經驗 ${it.lv >= GEM_MAX ? '滿級' : `${Math.floor(it.xp)} / ${gemNeed(it.lv)}`}（不能超過角色等級）</p>`;

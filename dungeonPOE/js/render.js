@@ -181,6 +181,8 @@ function draw() {
       CX.stroke();
     }
   }
+  /* 陷阱、地雷、砲台、圖騰 */
+  for (const u of G.units || []) drawUnit(u);
   /* 隕石：落點的橘圈越來越滿，球從上面掉下來 */
   for (const o of G.meteors || []) {
     const f = Math.min(1, o.t / o.dur);
@@ -244,6 +246,18 @@ function draw() {
   for (const e of ents) e === P ? drawHero() : e.src ? drawWolf(e) : drawMob(e);
   /* 投射物 */
   for (const s of G.shots) {
+    if (s.wave || s.bolt) {
+      CX.save();
+      CX.translate(s.x, s.y);
+      CX.rotate(s.ang);
+      CX.fillStyle = s.bolt ? '#d9c7a3' : ELC[s.wave];
+      CX.fillRect(-16, -2, 26, 4);
+      CX.globalAlpha = 0.35;
+      CX.fillRect(-34, -4, 22, 8);
+      CX.restore();
+      CX.globalAlpha = 1;
+      continue;
+    }
     if (s.fire) {
       CX.fillStyle = 'rgba(255,138,76,0.3)';
       CX.beginPath();
@@ -468,7 +482,7 @@ function drawHero() {
   if (P.act && P.act.k !== 'iai') {
     /* 出手：照技能播 9 格動畫，往左就鏡像 */
     const f = Math.min(8, Math.floor((P.act.t / P.act.dur) * 9));
-    heroCell(ACT_ROW[P.act.k] || 3, f, P.x, P.y, Math.cos(P.act.ang) < -0.05, a);
+    heroCell(P.act.place ? 5 : ACT_ROW[P.act.k] || 3, f, P.x, P.y, Math.cos(P.act.ang) < -0.05, a);
   } else if (P.mv || (P.act && P.act.k === 'iai')) {
     const dx = P.act ? Math.cos(P.act.ang) : P.mdx,
       dy = P.act ? Math.sin(P.act.ang) : P.mdy,
@@ -712,4 +726,46 @@ function drawWolf(w) {
   CX.stroke();
   const bob = w.mv ? Math.abs(Math.sin(w.ph)) * 0.08 : 0;
   spr('m_snowwolf', w.x, w.y, 36, { flip: (w.face || 0) > 0, sy: 1 + bob });
+}
+
+/* 場上單位：陷阱（地上的齒輪）、地雷（閃紅點）、砲台（弩）、圖騰（柱子）；砲台、圖騰下面的小條是剩下的時間 */
+function drawUnit(u) {
+  const D = u.c.D;
+  shadow(u.x, u.y, 12);
+  if (u.type === 'trap') {
+    CX.strokeStyle = u.t > 0.4 ? '#8fd6ff' : 'rgba(143,214,255,0.4)';
+    CX.lineWidth = 3;
+    CX.beginPath();
+    CX.arc(u.x, u.y - 4, 11, 0, TAU);
+    CX.stroke();
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * TAU + G.t;
+      CX.fillStyle = '#cfe9ff';
+      CX.fillRect(u.x + Math.cos(a) * 14 - 2, u.y - 4 + Math.sin(a) * 14 - 2, 4, 4);
+    }
+  } else if (u.type === 'mine') {
+    CX.fillStyle = '#4a3d33';
+    CX.beginPath();
+    CX.arc(u.x, u.y - 4, 9, 0, TAU);
+    CX.fill();
+    CX.fillStyle = Math.sin(G.t * 14) > 0 ? '#ff5a5a' : '#7a1c1c';
+    CX.fillRect(u.x - 2, u.y - 7, 4, 4);
+  } else if (u.type === 'turret') {
+    CX.fillStyle = '#6b4a2b';
+    CX.fillRect(u.x - 10, u.y - 20, 20, 20);
+    CX.fillStyle = '#c9a46b';
+    CX.fillRect(u.x - 16, u.y - 26, 32, 6);
+  } else {
+    CX.fillStyle = '#5a4d43';
+    CX.fillRect(u.x - 9, u.y - 46, 18, 46);
+    CX.fillStyle = D.el === 'fire' ? '#ff8a4c' : '#c9a46b';
+    CX.fillRect(u.x - 12, u.y - 52, 24, 10);
+    spr(D.ic, u.x, u.y - 22, 18);
+  }
+  if (u.type === 'turret' || u.type === 'totem') {
+    CX.fillStyle = 'rgba(0,0,0,0.6)';
+    CX.fillRect(u.x - 14, u.y + 6, 28, 3);
+    CX.fillStyle = '#cfd8e3';
+    CX.fillRect(u.x - 14, u.y + 6, 28 * Math.max(0, 1 - u.t / u.dur), 3);
+  }
 }

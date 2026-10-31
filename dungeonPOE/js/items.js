@@ -64,10 +64,12 @@ function dropItem(ilvl, bonus) {
 function mkGem(g, lv = 1) {
   return { id: ++IID, gem: g, lv, xp: 0, r: 3, a: [], L: lv };
 }
-const gemOf = it => SKILLS[it.gem] || SUPPORTS[it.gem];
+const gemOf = it => SKILLS[it.gem] || SUPPORTS[it.gem] || AURAS[it.gem];
+const isAura = it => !!AURAS[it.gem];
 const isSup = it => !!SUPPORTS[it.gem];
 function dropGem(t) {
-  const pool = Math.random() < 0.55 ? Object.keys(SKILLS) : Object.keys(SUPPORTS);
+  const r = Math.random(),
+    pool = r < 0.5 ? Object.keys(SKILLS) : r < 0.85 ? Object.keys(SUPPORTS) : Object.keys(AURAS);
   return mkGem(pick(pool), Math.max(1, Math.min(GEM_MAX, irnd(1, 1 + Math.floor(t / 2)))));
 }
 const baseOf = it => BASEI[it.b];
@@ -160,7 +162,16 @@ function stats(s = S) {
     projP: 0,
     spellP: 0,
     minionP: 0,
-    blood: 0
+    blood: 0,
+    es: 0,
+    esP: 0,
+    esRec: 0,
+    spirit: SPIRIT0,
+    auraEff: 0,
+    unitP: 0,
+    units: 0,
+    rollCd: 0,
+    fireAdd: 0
   };
   const w = s.eq.weapon,
     wb = w ? baseOf(w).b : { dmg: HERO.dmg, as: 1.1 };
@@ -195,6 +206,29 @@ function stats(s = S) {
       else o[k] += n.s[k];
     }
   }
+  /* 魔劍士：秘法護盾、元素穿透、魔導之心 */
+  o.esP += ascV(s, 'spell.ward');
+  pt.eleP += ascV(s, 'spell.pen');
+  if (ascV(s, 'spell.heart')) (o.spirit += 30), (o.auraEff += 25);
+  /* 光環：照光環欄的順序預留精魄，精魄不夠的不生效 */
+  o.spiritUsed = 0;
+  o.auraOn = [];
+  for (const g of s.auras || []) {
+    if (!g) continue;
+    const A = AURAS[g.gem];
+    if (o.spiritUsed + A.sp > o.spirit) continue;
+    o.spiritUsed += A.sp;
+    o.auraOn.push(g.gem);
+    const m = (1 + 0.03 * (g.lv - 1)) * (1 + o.auraEff / 100);
+    for (const k in A.fx) {
+      const v = A.fx[k] * m;
+      if (k === 'wolf') o.auraWolf = 1;
+      else if (k === 'resA') for (const r of RESK) o.res[r] += Math.round(v);
+      else if (k in pt) pt[k] += v;
+      else o[k] += v;
+    }
+  }
+  o.es = Math.round(o.es * (1 + o.esP / 100));
   /* 昇華大點的數值效果 */
   const aura = ascV(s, 'ronin.aura');
   if (aura) (o.meleeP += 15), (o.aoe += aura);

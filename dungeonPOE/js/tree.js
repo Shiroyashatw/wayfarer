@@ -80,14 +80,24 @@ function treeRender() {
     ah = new Set(S.at);
   const line = (A, B, on, near, cls = '') =>
     `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" class="${on ? 'on' : near ? 'near' : ''} ${cls}"/>`;
-  let html = PTREE.E.map(([a, b]) =>
-    line(PTREE.I[a], PTREE.I[b], have.has(a) && have.has(b), have.has(a) || have.has(b))
-  ).join('');
+  /* 同一圈的連線畫成弧（PoE 的軌道），其他是直線 */
+  const arc = (A, B, cls) => {
+    const r = Math.hypot(A.x, A.y),
+      cw = A.x * B.y - A.y * B.x > 0 ? 1 : 0;
+    return `<path d="M${A.x.toFixed(1)} ${A.y.toFixed(1)} A${r.toFixed(1)} ${r.toFixed(1)} 0 0 ${cw} ${B.x.toFixed(1)} ${B.y.toFixed(1)}" class="${cls}"/>`;
+  };
+  let html = PTREE.E.map(([a, b]) => {
+    const A = PTREE.I[a],
+      B = PTREE.I[b],
+      on = have.has(a) && have.has(b),
+      near = have.has(a) || have.has(b);
+    return A.orb && A.orb === B.orb ? arc(A, B, on ? 'on' : near ? 'near' : '') : line(A, B, on, near);
+  }).join('');
   html += PTREE.N.map(n => {
     const r = n.big === 2 ? 30 : n.gate ? 20 : n.big ? 19 : 10,
       st = have.has(n.id) ? 'on' : treeCan(n.id) ? 'can' : 'off',
       u = n.big && artIconURL(n.ic);
-    return `<g class="nd ${st} b${n.big}" data-n="${n.id}" transform="translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})" style="--c:${PT_SECT[n.sec].c}"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.7}" y="${-r * 0.7}" width="${r * 1.4}" height="${r * 1.4}"/>` : ''}</g>`;
+    return `<g class="nd ${st} b${n.big}" data-n="${n.id}" transform="translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})" style="--c:${PT_THEME[n.th].c}"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.7}" y="${-r * 0.7}" width="${r * 1.4}" height="${r * 1.4}"/>` : ''}</g>`;
   }).join('');
   /* 中間：昇華 */
   html += `<circle class="hollow" r="${PT_R0 - 40}"/>`;
@@ -110,7 +120,7 @@ function treeRender() {
     <button class="btn" data-ta="areset" ${S.at.length > 1 ? '' : 'disabled'}>重置昇華</button>
     <button class="x" data-ta="close">✕</button></div>
   <svg id="tsvg"><g id="tg">${html}</g></svg>
-  <p class="thelp">中間一圈是起點，往外六個方向：體魄、劍技、身法、必殺、元素、靈識；大點在星團中間，最外面是基石（強但有代價）。點亮著的點＝點下去，再點一次＝退回。拖曳移動、滾輪縮放。</p>`;
+  <p class="thelp">中間一圈是起點，往外 18 條路線，每條的形狀、點數、大點數都不一樣：上方偏生命護甲、右上近戰攻速、右下身法投射物陷阱、下方暴擊圖騰召喚、左下元素法術、左上能量護盾精魄魔力；最外圈是專精群。點亮著的點＝點下去，再點一次＝退回。拖曳移動、滾輪縮放。</p>`;
   treeView();
 }
 function treeView() {

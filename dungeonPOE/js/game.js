@@ -10,7 +10,7 @@ let S;
 /* 存檔版本 10 是 0.2.0（重製：0.1 的存檔不沿用） */
 function newGame() {
   const s = {
-    v: 12,
+    v: 13,
     name: '女忍者',
     lv: 1,
     xp: 0,
@@ -32,6 +32,7 @@ function newGame() {
   s.pt = [...PT_START];
   s.asc = null;
   s.at = [];
+  s.auras = Array(AURA_SLOTS).fill(null);
   s.eq.chest = mkItem('c_leather', 1, 0);
   return s;
 }
@@ -446,7 +447,7 @@ function doRoll() {
   P.act = null;
   P.roll = { t: 0, dx, dy };
   const step = ascV(S, 'rapier.step');
-  P.cds.roll = ROLL.cd * (step ? 0.6 : 1) + ROLL.t;
+  P.cds.roll = ROLL.cd * (step ? 0.6 : 1) * (1 - Math.min(60, ST.rollCd) / 100) + ROLL.t;
   if (step) P.stepT = G.t + ROLL.t + 2;
   P.iuntil = G.t + ROLL.iframe;
   sfx('roll');

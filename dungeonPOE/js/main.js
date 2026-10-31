@@ -36,8 +36,22 @@ function migrate(s) {
     delete o.ct;
     o.v = 12;
   }
+  /* 存檔 13（0.2.4）：天賦樹換成 18 條各不相同的路線（點數退回）；狂魔改成魔劍士、昇華圖案換新（昇華點退回）；光環欄 */
+  if (o.v < 13) {
+    o.pt = [...PT_START];
+    if (o.asc && !ASC.sword.br[o.asc]) o.asc = null;
+    o.at = o.asc ? ['a_st'] : [];
+    o.auras = Array(AURA_SLOTS).fill(null);
+    o.v = 13;
+  }
   /* 道具編號接著存檔裡最大的往下編 */
-  for (const it of [...Object.values(o.eq), ...o.inv.items, ...o.stash.items, ...o.skills.flatMap(k => [k.a, ...k.s])])
+  for (const it of [
+    ...Object.values(o.eq),
+    ...o.inv.items,
+    ...o.stash.items,
+    ...o.skills.flatMap(k => [k.a, ...k.s]),
+    ...o.auras
+  ])
     if (it && it.id > IID) IID = it.id;
   return o;
 }

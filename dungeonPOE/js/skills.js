@@ -5,7 +5,11 @@
 /* ---------- 技能欄 ---------- */
 const NSLOT = 5;
 const SLOTKEY = ['左鍵', '右鍵', 'Q', 'E', 'R'];
-const supOK = (D, sp) => !SUPPORTS[sp.gem].need.length || SUPPORTS[sp.gem].need.some(t => D.tags.includes(t));
+const supOK = (D, sp) => {
+  const U = SUPPORTS[sp.gem];
+  if (U.conv && (D.unit || D.tags.includes('move') || D.tags.includes('minion'))) return false;
+  return !U.need.length || U.need.some(t => D.tags.includes(t));
+};
 /* 一格技能的實際數值（技能等級＋輔助＋天賦冷卻縮減） */
 function slotCfg(i) {
   const sl = S.skills[i],
@@ -47,8 +51,13 @@ function slotCfg(i) {
     else if (k === 'fireadd') c.fireAdd += 0.25;
     else if (k === 'heavy') (c.kb *= 2), (c.mult *= 1.15);
     else if (k === 'pack') (c.wolves += 1), (c.wolfM *= 1.3);
+    else if (SUPPORTS[k].conv && !c.conv) {
+      c.conv = SUPPORTS[k].conv;
+      c.mult *= c.conv === 'trap' ? 1.2 : c.conv === 'totem' ? 0.7 : 1;
+    }
   }
   c.mp = Math.round(c.mp);
+  c.unit = D.unit || c.conv;
   return c;
 }
 /* 按下技能鍵 */
@@ -70,6 +79,15 @@ function useSlot(i) {
     ang = Math.atan2(w.y - P.y, w.x - P.x),
     D = c.D;
   P.face = ang;
+  /* 陷阱、地雷、砲台、圖騰：放在滑鼠位置（最遠 320） */
+  if (c.unit) {
+    placeUnit(c, w);
+    P.act = { k: c.k, c, t: 0, dur: 0.25 / c.speed, ang, hits: [], n: 0, place: 1 };
+    sfx('throw');
+    return true;
+  }
+  /* 魔劍士：放法術後 4 秒，近戰附加那個屬性 */
+  if (D.tags.includes('spell') && ascV(S, 'spell.enchant')) P.ench = { el: D.el || 'light', until: G.t + 4 };
   const a = (P.act = {
     k: c.k,
     c,
@@ -124,7 +142,7 @@ function skillTick(a, dt, mx, my) {
 }
 /* 出手結束：架勢、燕返、明鏡 */
 function endAct(a) {
-  if (!a.any) return;
+  if (!a.any || a.unit) return;
   if (a.iai) {
     const sw = coreV(S, 'ronin', 'swallow'),
       mi = coreV(S, 'ronin', 'mirror');
@@ -240,6 +258,12 @@ function rollDmg(c, m, o = {}) {
     ele += v;
     if (v > bigV) (bigV = v), (big = k);
   }
+  const tg0 = c.D.tags || [];
+  if (tg0.includes('melee') && P.ench && P.ench.until > G.t) {
+    const v = (rnd(ST.dmg[0], ST.dmg[1]) * ascV(S, 'spell.enchant')) / 100;
+    ele += v;
+    if (v > bigV) (bigV = v), (big = P.ench.el);
+  }
   if (el) (ele += d), (d = 0), (big = el);
   const tg = c.D.tags || [],
     inc =
@@ -248,13 +272,15 @@ function rollDmg(c, m, o = {}) {
       (tg.includes('proj') ? ST.projP : 0) +
       (tg.includes('spell') ? ST.spellP : 0) +
       (o.minion ? ST.minionP : 0) +
+      (o.unit ? ST.unitP : 0) +
+      (tg.includes('melee') && ascV(S, 'spell.arcane') ? ST.spellP : 0) +
       (P.rage || 0) +
       ascV(S, 'berserk.blood') +
       ascV(S, 'berserk.last') * (1 - P.hp / ST.hp);
   let tot = (d + ele * (1 + ST.eleP / 100)) * (o.mult || c.mult) * (1 + inc / 100) * (1 + 0.02 * (P.guard || 0));
   if (m && m.exposeT > G.t) tot *= 1 + ascV(S, 'rapier.expose') / 100;
-  tot += tot * c.fireAdd;
-  if (m && m.el === big && big !== 'phys') tot *= 0.6;
+  tot += tot * (c.fireAdd + ST.fireAdd / 100);
+  if (m && m.el === big && big !== 'phys' && !ascV(S, 'spell.pen')) tot *= 0.6;
   let crit = o.crit || P.critNext || Math.random() * 100 < ST.crit + c.crit;
   if (crit) tot *= ST.critM + c.critX / 100 + (P.critNext ? 0.5 : 0);
   if (!o.keep) P.critNext = 0;
@@ -281,7 +307,22 @@ function hitMob(m, c, ang, kb, o = {}) {
       fx({ k: 'ring', x: m.x, y: m.y, r: 50, dur: 0.25, col: '#c38bff' });
     } else m.mark = (m.mark || 0) + 1;
   }
-  const r = rollDmg(c, m, { mult, crit, minion: o.minion });
+  const r = rollDmg(c, m, { mult, crit, minion: o.minion, unit: a.unit });
+  /* 魔劍士：魔力之刃回魔、劍氣 */
+  if ((c.D.tags || []).includes('melee') && !o.quiet && !a.unit) {
+    if (ascV(S, 'spell.arcane')) P.mp = Math.min(ST.mp, P.mp + 1);
+    const wv = ascV(S, 'spell.wave');
+    if (wv && Math.random() * 100 < wv) {
+      const el = (P.ench && P.ench.until > G.t && P.ench.el) || 'light';
+      shoot(
+        angTo(P, m),
+        640,
+        { ...c, D: { ...c.D, el, tags: ['spell', 'proj'] }, mult: c.mult * 0.8, pierce: 1 },
+        {},
+        { life: 0.6, wave: el }
+      );
+    }
+  }
   if (r.crit && ascV(S, 'rapier.expose')) m.exposeT = G.t + 4;
   /* 狂魔：怒氣、嗜血 */
   const rg = ascV(S, 'berserk.rage');
@@ -373,17 +414,16 @@ function coreKill(m) {
 }
 /* 裝著的寶石一起拿經驗；等級不能超過角色等級 */
 function gemXp(v) {
-  for (const sl of S.skills)
-    for (const g of [sl.a, ...sl.s]) {
-      if (!g || g.lv >= Math.min(GEM_MAX, S.lv)) continue;
-      g.xp += v;
-      if (g.xp >= gemNeed(g.lv)) {
-        g.xp = 0;
-        g.lv++;
-        hudWarn(`${gemOf(g).n} 升到 Lv ${g.lv}`);
-        sfx('lvup');
-      }
+  for (const g of [...S.skills.flatMap(sl => [sl.a, ...sl.s]), ...S.auras]) {
+    if (!g || g.lv >= Math.min(GEM_MAX, S.lv)) continue;
+    g.xp += v;
+    if (g.xp >= gemNeed(g.lv)) {
+      g.xp = 0;
+      g.lv++;
+      hudWarn(`${gemOf(g).n} 升到 Lv ${g.lv}`);
+      sfx('lvup');
     }
+  }
 }
 
 /* ---------- 騎士：護盾與盾勢 ---------- */
@@ -395,6 +435,11 @@ function coreHurt(d) {
     Math.min(40, G.allies.length * coreV(S, 'tamer', 'guard'));
   d *= 1 - Math.min(60, red) / 100;
   P.lastHurt = G.t;
+  if (P.es > 0) {
+    const ab = Math.min(P.es, d);
+    P.es -= ab;
+    d -= ab;
+  }
   if (P.ward > 0) {
     const ab = Math.min(P.ward, d);
     P.ward -= ab;
@@ -493,8 +538,16 @@ function updSkills(dt) {
   /* 騎士的護盾：4 秒沒受傷就充滿 */
   const wm = wardMax();
   if (wm && G.t - (P.lastHurt || -9) > 4) P.ward = wm;
+  /* 能量護盾：2 秒沒受傷（秘法護盾 1 秒）開始回充，每秒 25% */
+  if (ST.es && P.es < ST.es && G.t - (P.lastHurt || -9) > (ascV(S, 'spell.ward') ? 1 : 2))
+    P.es = Math.min(ST.es, P.es + ST.es * 0.25 * (1 + ST.esRec / 100) * dt);
+  /* 戰狼精魄光環 */
+  const aw = G.allies.some(w => w.src === 'aura');
+  if (G.scene === 'map' && ST.auraWolf && !aw) callWolf('aura');
+  else if (!ST.auraWolf && aw) G.allies = G.allies.filter(w => w.src !== 'aura');
   updAllies(dt);
   updPools(dt);
+  updUnits(dt);
 }
 /* 進地圖、回藏身處：重設核心的狀態；馴獸師帶狼 */
 function skillsEnter() {
@@ -514,7 +567,9 @@ function skillsEnter() {
     flashT: 0,
     stepT: 0
   });
-  Object.assign(G, { allies: [], pools: [], meteors: [] });
+  Object.assign(G, { allies: [], pools: [], meteors: [], units: [], mineT: 0 });
+  P.es = ST.es;
+  P.ench = null;
   if (G.scene === 'map' && hasCls(S, 'tamer')) for (let i = 1 + coreV(S, 'tamer', 'alpha'); i > 0; i--) callWolf('cls');
 }
 
@@ -570,4 +625,87 @@ function tryUndying() {
   hudWarn('不死！');
   sfx('mikiri');
   return true;
+}
+
+/* ---------- 陷阱、地雷、砲台、圖騰（場上單位） ---------- */
+const UNIT_MAX = { trap: 4, mine: 6, totem: 2, turret: 2 };
+const UNIT_N = { trap: '陷阱', mine: '地雷', totem: '圖騰', turret: '砲台' };
+function placeUnit(c, w) {
+  const d = Math.min(320, Math.hypot(w.x - P.x, w.y - P.y)),
+    a = Math.atan2(w.y - P.y, w.x - P.x);
+  let x = P.x + Math.cos(a) * d,
+    y = P.y + Math.sin(a) * d;
+  if (!open(x, y, 12)) (x = P.x), (y = P.y);
+  const type = c.unit,
+    mine = G.units.filter(u => u.type === type);
+  /* 滿了就收掉最舊的 */
+  if (mine.length >= UNIT_MAX[type] + (ST.units || 0)) G.units.splice(G.units.indexOf(mine[0]), 1);
+  const D = c.D,
+    dur = type === 'trap' || type === 'mine' ? 30 : D.dur || 8,
+    rate = D.rate || Math.max(0.5, D.t * 1.8);
+  G.units.push({ type, x, y, c, t: 0, dur, cd: 0.3, rate });
+  if (type === 'mine') G.mineT = G.t + 1.2;
+  fx({ k: 'ring', x, y, r: 30, dur: 0.25, col: '#cfd8e3' });
+}
+/* 從場上單位施放：本身就是單位的技能（陷阱爆開、地雷爆開、砲台射擊、火焰圖騰）或轉換來的技能 */
+function unitFire(u, tgt, mul = 1) {
+  const c = u.c,
+    D = c.D,
+    ang = tgt ? Math.atan2(tgt.y - u.y, tgt.x - u.x) : 0,
+    a = { k: c.k, c, ang, tx: tgt ? tgt.x : u.x, ty: tgt ? tgt.y : u.y, hits: [0], n: 0, unit: 1, mul };
+  if (D.unit === 'trap' || D.unit === 'mine') {
+    const r = (D.r || 100) * ST.aoeM * c.aoe;
+    fx({ k: 'ring', x: u.x, y: u.y, r, dur: 0.35, col: D.el === 'cold' ? '#8fd6ff' : '#ff8a4c' });
+    shake(0.18);
+    sfx('slam');
+    for (const m of G.mobs)
+      if (m.hp > 0 && Math.hypot(m.x - u.x, m.y - u.y) < r + m.r)
+        hitMob(m, c, Math.atan2(m.y - u.y, m.x - u.x), 140, { a, stun: D.stun });
+    return;
+  }
+  /* 其他：暫時把施放點換成單位的位置，照原本的技能出手（出手完放回來） */
+  const px = P.x,
+    py = P.y,
+    pf = P.face;
+  P.x = u.x;
+  P.y = u.y;
+  if (D.unit === 'turret') shoot(ang, 820, c, a, { life: 0.7, bolt: 1 });
+  else if (D.unit === 'totem') shoot(ang, 520, c, a, { boom: D.r * ST.aoeM, fire: 1, life: 1 });
+  else for (let i = 0; i < (c.k === 'swallow' ? 2 : 1); i++) actHit(a, i);
+  P.x = px;
+  P.y = py;
+  P.face = pf;
+}
+function updUnits(dt) {
+  const near = (u, r) => {
+    let best = null,
+      bd = r;
+    for (const m of G.mobs)
+      if (m.hp > 0 && Math.hypot(m.x - u.x, m.y - u.y) < bd) (bd = Math.hypot(m.x - u.x, m.y - u.y)), (best = m);
+    return best;
+  };
+  const keep = [],
+    boomMines = G.mineT && G.t >= G.mineT;
+  const mines = G.units.filter(u => u.type === 'mine').length;
+  for (const u of G.units) {
+    u.t += dt;
+    if (u.type === 'trap') {
+      const m = u.t > 0.4 && near(u, 70);
+      if (m) {
+        unitFire(u, m);
+        continue;
+      }
+    } else if (u.type === 'mine') {
+      if (boomMines) {
+        unitFire(u, near(u, 400), 1 + 0.1 * (mines - 1));
+        continue;
+      }
+    } else if ((u.cd -= dt) <= 0) {
+      const m = near(u, 480);
+      if (m) (u.cd = u.rate), unitFire(u, m);
+    }
+    if (u.t < u.dur) keep.push(u);
+  }
+  if (boomMines) G.mineT = 0;
+  G.units = keep;
 }

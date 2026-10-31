@@ -101,6 +101,13 @@ ok('技能、輔助、天賦、昇華的圖示都在', !miss2.length, [...new Se
     `${seen.size}/${T.N.length}`
   );
 }
+{
+  const T = G.PTREE;
+  let close = 0;
+  for (let i = 0; i < T.N.length; i++)
+    for (let j = i + 1; j < T.N.length; j++) if (Math.hypot(T.N[i].x - T.N[j].x, T.N[i].y - T.N[j].y) < 30) close++;
+  ok('天賦樹的點沒有疊在一起', !close, close + ' 組');
+}
 /* 昇華：一小一大交錯、6 小 6 大、點得成 4 小 4 大 */
 for (const [b, T] of ascAll) {
   const big = id => T.I[id].big === 1,
