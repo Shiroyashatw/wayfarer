@@ -23,8 +23,16 @@ function save() {
 function migrate(s) {
   if (!s || !s.v || s.v < 10) return newGame();
   const o = { ...newGame(), ...s };
+  /* 存檔 11（0.2.2）：技能寶石、天賦樹、核心樹；0.2.1 以前固定的 5 招換成寶石 */
+  if (s.v < 11) {
+    o.skills = ['slash', 'blade', 'whirl', 'iai', 'storm'].map(g => ({ a: mkGem(g), s: [null, null] }));
+    o.pt = ['c'];
+    o.ct = ['c'];
+    o.v = 11;
+  }
   /* 道具編號接著存檔裡最大的往下編 */
-  for (const it of [...Object.values(o.eq), ...o.inv.items, ...o.stash.items]) if (it && it.id > IID) IID = it.id;
+  for (const it of [...Object.values(o.eq), ...o.inv.items, ...o.stash.items, ...o.skills.flatMap(k => [k.a, ...k.s])])
+    if (it && it.id > IID) IID = it.id;
   return o;
 }
 function resize() {
@@ -38,9 +46,11 @@ function start() {
   resize();
   addEventListener('resize', resize);
   S = migrate(load());
+  ST = stats();
   hudInit();
   enterHideout();
   inputInit();
+  treeInit();
   cloudInit().then(remote => {
     if (remote && remote.v >= 10 && (remote.savedAt || 0) > (S.savedAt || 0)) {
       S = migrate(remote);

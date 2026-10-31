@@ -60,12 +60,22 @@ function mkItem(baseId, ilvl, rar) {
 function dropItem(ilvl, bonus) {
   return mkItem(pickBase(ilvl).id, ilvl, rollRarity(bonus));
 }
+/* 技能／輔助寶石：1×1，r=3（寶石色），lv 等級、xp 經驗 */
+function mkGem(g, lv = 1) {
+  return { id: ++IID, gem: g, lv, xp: 0, r: 3, a: [], L: lv };
+}
+const gemOf = it => SKILLS[it.gem] || SUPPORTS[it.gem];
+const isSup = it => !!SUPPORTS[it.gem];
+function dropGem(t) {
+  const pool = Math.random() < 0.55 ? Object.keys(SKILLS) : Object.keys(SUPPORTS);
+  return mkGem(pick(pool), Math.max(1, Math.min(GEM_MAX, irnd(1, 1 + Math.floor(t / 2)))));
+}
 const baseOf = it => BASEI[it.b];
-const kindOf = it => (it.frag ? 'frag' : baseOf(it).k);
-const itemSize = it => (it.frag ? [1, 1] : KINDS[baseOf(it).k].sz);
-const itemIc = it => (it.frag ? 'mat_frag' : baseOf(it).ic);
+const kindOf = it => (it.gem ? 'gem' : baseOf(it).k);
+const itemSize = it => (it.gem ? [1, 1] : KINDS[baseOf(it).k].sz);
+const itemIc = it => (it.gem ? gemOf(it).ic : baseOf(it).ic);
 const itemName = it =>
-  it.frag ? '地圖碎片' : it.nm ? it.nm + ' ' + baseOf(it).n : (it.r === 1 ? '魔法' : '') + baseOf(it).n;
+  it.gem ? gemOf(it).n : it.nm ? it.nm + ' ' + baseOf(it).n : (it.r === 1 ? '魔法' : '') + baseOf(it).n;
 const affText = a => AFF[a.k].n.replace('{}', Array.isArray(a.v) ? a.v[0] + '～' + a.v[1] : a.v);
 /* 底材的固定數值說明 */
 function baseText(it) {
@@ -78,7 +88,8 @@ function baseText(it) {
   return o;
 }
 /* 賣價：越高階、詞綴越多越貴 */
-const sellPrice = it => (it.frag ? 1 : Math.round((1 + it.a.length * 2 + (it.r === 2 ? 4 : 0)) * (1 + it.L * 0.4)));
+const sellPrice = it =>
+  it.gem ? 2 + it.lv : Math.round((1 + it.a.length * 2 + (it.r === 2 ? 4 : 0)) * (1 + it.L * 0.4));
 
 /* ---------- 格子背包：g = { w, h, items: [道具（含 x, y）] } ---------- */
 function gridFree(g, x, y, w, h, skip) {
@@ -113,6 +124,14 @@ function gridAuto(g, it) {
 }
 
 /* ---------- 角色數值：等級＋穿在身上的裝備 ---------- */
+/* 核心的數值：沒點 0、點了核心 v[0]、點了強化 v[1] */
+function coreV(s, cls, core) {
+  const ct = s.ct || [];
+  if (ct.includes(`${cls}.${core}+`)) return CORE_CLS.find(c => c.id === cls).cores.find(k => k.id === core).v[1];
+  if (ct.includes(`${cls}.${core}`)) return CORE_CLS.find(c => c.id === cls).cores.find(k => k.id === core).v[0];
+  return 0;
+}
+const hasCls = (s, cls) => (s.ct || []).includes(cls);
 function stats(s = S) {
   const o = {
     hp: HERO.hp + 12 * (s.lv - 1),
@@ -153,6 +172,25 @@ function stats(s = S) {
     for (const k in b) if (k !== 'dmg' && k !== 'as') put(k, b[k]);
     for (const a of it.a) put(a.k, a.v);
   }
+  /* 天賦樹 */
+  const pt = { hpP: 0, armorP: 0, mpP: 0, mpReg: 0, cdr: 0, dmgA: 0, eleP: 0 };
+  for (const id of s.pt || []) {
+    const n = PTREE.I[id];
+    if (!n) continue;
+    for (const k in n.s) {
+      if (k in pt) pt[k] += n.s[k];
+      else if (k === 'resA') for (const r of RESK) o.res[r] += n.s[k];
+      else o[k] += n.s[k];
+    }
+  }
+  o.critX += coreV(s, 'assassin', 'kill');
+  o.hp = Math.round(o.hp * (1 + pt.hpP / 100));
+  o.armor = Math.round(o.armor * (1 + pt.armorP / 100));
+  o.mp = Math.round(o.mp * (1 + pt.mpP / 100));
+  o.mpReg = HERO.mpReg * (1 + pt.mpReg / 100);
+  o.cdr = Math.min(60, pt.cdr);
+  o.dmgA = pt.dmgA;
+  o.eleP = pt.eleP;
   const m = 1 + o.dmgP / 100;
   o.dmg = [(wb.dmg[0] + o.flat[0]) * m, (wb.dmg[1] + o.flat[1]) * m];
   o.aps = wb.as * (1 + o.as / 100);

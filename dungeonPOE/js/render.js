@@ -147,6 +147,42 @@ function draw() {
     }
   }
   for (const t of G.tele) teleCircle(t.x, t.y, t.r, t.t / t.dur);
+  /* 毒刃雨：紫色範圍＋落下的刀光 */
+  for (const p of G.pools || []) {
+    const a = Math.min(1, (p.dur - p.t) * 2);
+    CX.fillStyle = `rgba(150,80,220,${0.16 * a})`;
+    CX.beginPath();
+    CX.ellipse(p.x, p.y, p.r, p.r * 0.7, 0, 0, TAU);
+    CX.fill();
+    CX.strokeStyle = `rgba(195,139,255,${0.5 * a})`;
+    CX.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      const k = (G.t * 3 + i * 0.37) % 1,
+        x = p.x + Math.cos(i * 2.1 + p.x) * p.r * 0.6,
+        y = p.y + Math.sin(i * 1.7 + p.y) * p.r * 0.4;
+      CX.beginPath();
+      CX.moveTo(x, y - 60 + k * 50);
+      CX.lineTo(x, y - 48 + k * 50);
+      CX.stroke();
+    }
+  }
+  /* 隕石：落點的橘圈越來越滿，球從上面掉下來 */
+  for (const o of G.meteors || []) {
+    const f = Math.min(1, o.t / o.dur);
+    CX.strokeStyle = 'rgba(255,138,76,0.7)';
+    CX.lineWidth = 2;
+    CX.beginPath();
+    CX.ellipse(o.x, o.y, o.r, o.r * 0.7, 0, 0, TAU);
+    CX.stroke();
+    CX.fillStyle = `rgba(255,107,61,${0.1 + 0.2 * f})`;
+    CX.beginPath();
+    CX.ellipse(o.x, o.y, o.r * f, o.r * 0.7 * f, 0, 0, TAU);
+    CX.fill();
+    CX.fillStyle = '#ffb36b';
+    CX.beginPath();
+    CX.arc(o.x + (1 - f) * 120, o.y - (1 - f) * 360, 14, 0, TAU);
+    CX.fill();
+  }
   /* 傳送門：藏身處的＝進地圖（紫），地圖裡的＝回家（藍） */
   if (G.portal) {
     const p = G.portal;
@@ -188,12 +224,21 @@ function draw() {
     }
   }
   /* 角色們（照 y 排序） */
-  const ents = G.mobs.filter(m => m.hp > 0).concat([P]);
+  const ents = G.mobs.filter(m => m.hp > 0).concat([P], G.allies || []);
   ents.sort((a, b) => a.y - b.y);
-  for (const e of ents) e === P ? drawHero() : drawMob(e);
+  for (const e of ents) e === P ? drawHero() : e.src ? drawWolf(e) : drawMob(e);
   /* 投射物 */
   for (const s of G.shots) {
-    if (s.foe) {
+    if (s.fire) {
+      CX.fillStyle = 'rgba(255,138,76,0.3)';
+      CX.beginPath();
+      CX.arc(s.x, s.y, 20, 0, TAU);
+      CX.fill();
+      CX.fillStyle = '#ffd08a';
+      CX.beginPath();
+      CX.arc(s.x, s.y, 9, 0, TAU);
+      CX.fill();
+    } else if (s.foe) {
       CX.fillStyle = 'rgba(122,208,255,0.25)';
       CX.beginPath();
       CX.arc(s.x, s.y, s.r * 2.2, 0, TAU);
@@ -371,6 +416,17 @@ function drawMob(m) {
     CX.fill();
     CX.globalAlpha = 1;
   }
+  /* 刺客的印記（紫點）、燃燒（橘色的火） */
+  if (m.mark) {
+    CX.fillStyle = '#c38bff';
+    for (let i = 0; i < Math.min(10, m.mark); i++) CX.fillRect(m.x - 18 + i * 4, m.y - fly - m.sz - 16, 3, 3);
+  }
+  if (m.burn) {
+    CX.fillStyle = `rgba(255,120,50,${0.25 + 0.03 * m.burn.n})`;
+    CX.beginPath();
+    CX.ellipse(m.x, m.y - fly - m.sz * 0.4, m.r * 0.9, m.sz * 0.45, 0, 0, TAU);
+    CX.fill();
+  }
   /* 生命條（受傷或菁英、王才顯示） */
   if (m.hp < m.mhp || m.elite) {
     const w = m.boss ? 0 : Math.max(36, m.r * 2.4),
@@ -442,6 +498,14 @@ function drawFx() {
       CX.beginPath();
       CX.arc(o.x, o.y - 20, o.r, a0, a0 + o.arc * Math.min(1, 0.4 + f * 3));
       CX.arc(o.x, o.y - 20, o.r * (0.55 + 0.25 * f), a0 + o.arc * Math.min(1, 0.4 + f * 3), a0, true);
+      CX.closePath();
+      CX.fill();
+    } else if (o.k === 'quake') {
+      CX.globalAlpha = 0.6 * (1 - f);
+      CX.fillStyle = '#c9a27a';
+      CX.beginPath();
+      CX.moveTo(o.x, o.y);
+      CX.arc(o.x, o.y, o.r * (0.5 + 0.5 * f), o.ang - o.arc / 2, o.ang + o.arc / 2);
       CX.closePath();
       CX.fill();
     } else if (o.k === 'claw') {
@@ -614,4 +678,16 @@ function drawWalls(W, H) {
         CX.fillRect(px + TS / 2 - 1, py + TS * 0.45 + 3, 2, TS * 0.55 - 3);
       }
     }
+}
+
+/* 戰狼：跟著你的狼（腳下綠圈） */
+function drawWolf(w) {
+  shadow(w.x, w.y, 13);
+  CX.strokeStyle = 'rgba(157,242,157,0.6)';
+  CX.lineWidth = 1.5;
+  CX.beginPath();
+  CX.ellipse(w.x, w.y, 16, 6, 0, 0, TAU);
+  CX.stroke();
+  const bob = w.mv ? Math.abs(Math.sin(w.ph)) * 0.08 : 0;
+  spr('m_snowwolf', w.x, w.y, 36, { flip: (w.face || 0) > 0, sy: 1 + bob });
 }

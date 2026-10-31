@@ -153,3 +153,54 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 @media (prefers-reduced-motion: reduce) {
   .sk.hit, .panel, #over .card { animation: none; }
 }
+
+/* ---------- 0.2.2 技能寶石、天賦樹、核心樹 ---------- */
+:root { --r3: #4fd1c5; }
+.rc3 { color: var(--r3); }
+.it.r3 { background: rgba(30, 90, 85, 0.35); border-color: rgba(79, 209, 197, 0.6); }
+.eqs.r3 { border-color: rgba(79, 209, 197, 0.7); }
+.sk .empty { font-style: normal; font-size: 20px; color: var(--dim); }
+.mech { min-height: 18px; text-align: center; font-size: var(--fs-s); color: var(--gold); text-shadow: 0 1px 2px #000; }
+/* 騎士的護盾：生命球上的藍白層 */
+.orb .ward { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--w, 0) * 100%); background: rgba(190, 225, 255, 0.35); border-top: 2px solid rgba(220, 240, 255, 0.8); transition: height 120ms ease-out; }
+.orb[style*='--w: 0;'] .ward, .orb:not([style*='--w']) .ward { border-top: none; }
+#pskill { left: 16px; width: 462px; animation: inL 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+.skrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.skrow:last-child { border-bottom: none; }
+.skrow kbd { width: 36px; text-align: center; font: 700 var(--fs-s) var(--font); color: var(--dim); }
+.sock { position: relative; }
+.sock.act { width: 52px; height: 52px; }
+.links { display: flex; gap: 6px; }
+.sock.sup { width: 40px; height: 40px; }
+.sock.bad-link { border-color: var(--bad); box-shadow: inset 0 0 10px rgba(229, 72, 77, 0.35); }
+.skinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.skinfo b { font-size: var(--fs); }
+.skinfo b span { color: var(--dim); font-weight: 500; font-size: var(--fs-s); }
+.skinfo small { color: var(--dim); font-size: var(--fs-s); }
+.gx { display: block; height: 3px; background: rgba(0, 0, 0, 0.6); border-radius: 2px; overflow: hidden; }
+.gx::after { content: ''; display: block; height: 100%; width: calc(var(--v) * 100%); background: var(--r3); }
+/* 天賦樹、核心樹：全螢幕盤面 */
+#ptree { position: fixed; inset: 0; z-index: 10; background: rgba(7, 6, 6, 0.96); display: flex; flex-direction: column; animation: pop 200ms ease-out; }
+#ptree[hidden] { display: none; }
+.tbar { display: flex; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.tbar .tabs { display: flex; gap: 6px; }
+.tbar .tabs button { font: 700 var(--fs) var(--font); color: var(--dim); background: none; border: 1px solid var(--line); border-radius: var(--rad); padding: 8px 14px; min-height: 40px; cursor: pointer; }
+.tbar .tabs button.on { color: var(--tx); border-color: var(--gold); background: rgba(255, 209, 102, 0.08); }
+.tbar .tabs kbd { font: 500 11px var(--font); color: var(--dim); }
+.tbar > span { color: var(--dim); }
+.tbar .btn { margin-left: auto; min-height: 36px; padding: 6px 14px; }
+.tbar .x { width: 36px; height: 36px; background: none; border: 1px solid var(--line); color: var(--tx); border-radius: var(--rad); cursor: pointer; font: inherit; }
+#tsvg { flex: 1; width: 100%; cursor: grab; touch-action: none; }
+#tsvg line { stroke: rgba(232, 226, 214, 0.12); stroke-width: 4; }
+#tsvg line.near { stroke: rgba(232, 226, 214, 0.25); }
+#tsvg line.on { stroke: #c9a227; stroke-width: 5; }
+.nd { cursor: pointer; }
+.nd circle { fill: #15110f; stroke: rgba(232, 226, 214, 0.25); stroke-width: 2; }
+.nd image { image-rendering: pixelated; opacity: 0.35; pointer-events: none; }
+.nd.can circle { stroke: #8ab4ff; stroke-width: 3; }
+.nd.can image { opacity: 0.8; }
+.nd.on circle { fill: #3a2b12; stroke: #ffd166; stroke-width: 3; }
+.nd.on image { opacity: 1; }
+.nd.b2 circle { stroke-width: 4; }
+.nd:hover circle { filter: brightness(1.6); }
+.thelp { margin: 0; padding: 10px 16px; font-size: var(--fs-s); color: var(--dim); border-top: 1px solid var(--line); }

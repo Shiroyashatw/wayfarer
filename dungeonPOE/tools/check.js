@@ -8,7 +8,7 @@ vm.createContext(ctx);
 for (const f of ['data.js', 'items.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 const G = vm.runInContext(
-  '({ BASES, KINDS, AFF, EQS, TMAX, MOBS, BOSSES, mkItem, dropItem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
+  '({ BASES, KINDS, AFF, EQS, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, CTREE, CORE_CLS, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
   ctx
 );
 let bad = 0;
@@ -78,4 +78,51 @@ for (let k = 0; k < 50; k++) {
   }
 }
 ok('格子背包自動擺放不重疊、不出界', !over, over + ' 處');
+/* 5. 技能寶石、天賦樹、核心樹 */
+const miss2 = [...Object.values(G.SKILLS), ...Object.values(G.SUPPORTS), ...G.PTREE.N, ...G.CTREE.N]
+  .map(x => x.ic)
+  .filter(n => !has(n));
+ok('技能、輔助、天賦、核心的圖示都在', !miss2.length, [...new Set(miss2)].join(','));
+for (const [name, T] of [
+  ['天賦樹', G.PTREE],
+  ['核心樹', G.CTREE]
+]) {
+  const bad = T.E.flat().filter(id => !T.I[id]),
+    seen = new Set(['c']),
+    q = ['c'];
+  while (q.length) {
+    const n = q.pop();
+    for (const [a, b] of T.E) {
+      const o = a === n ? b : b === n ? a : null;
+      if (o && !seen.has(o)) seen.add(o), q.push(o);
+    }
+  }
+  ok(
+    `${name}的每個點都從起點連得到`,
+    !bad.length && seen.size === T.N.length,
+    `${bad.join(',')} 連到 ${seen.size}/${T.N.length}`
+  );
+}
+const full = { lv: 60, eq: {}, pt: G.PTREE.N.map(n => n.id), ct: G.CTREE.N.map(n => n.id) },
+  o = G.stats(full),
+  vals = [
+    o.hp,
+    o.mp,
+    o.mpReg,
+    o.cdr,
+    o.dmgA,
+    o.eleP,
+    o.dmg[0],
+    o.aps,
+    o.crit,
+    o.critM,
+    G.dps(o),
+    ...Object.values(o.res)
+  ];
+ok('天賦、核心全點滿數值沒有 NaN', vals.every(Number.isFinite), JSON.stringify(vals));
+const gems = Array.from({ length: 200 }, (_, i) => G.dropGem(1 + (i % 16)));
+ok(
+  '寶石掉落：等級 1～20、大小 1×1、有名字',
+  gems.every(g => g.lv >= 1 && g.lv <= 20 && G.itemSize(g).join() === '1,1' && G.itemName(g))
+);
 process.exit(bad ? 1 : 0);

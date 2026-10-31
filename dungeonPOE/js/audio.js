@@ -72,6 +72,7 @@ function sfx(k) {
       lvup: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, f, 0.3, 0.09, 'triangle', i * 0.08)),
       slam: () => (tone(90, 40, 0.3, 0.35, 'sine'), nz(0.25, 400, 80, 0.3, 'lowpass')),
       die: () => tone(300, 60, 0.8, 0.25, 'sawtooth'),
+      cast: () => (tone(300, 900, 0.18, 0.08, 'sine'), nz(0.15, 1200, 3000, 0.05)),
       portal: () => [330, 440, 660].forEach((f, i) => tone(f, f * 1.5, 0.4, 0.07, 'sine', i * 0.06)),
       block: () => (tone(900, 700, 0.08, 0.12, 'square'), nz(0.06, 3000, 1500, 0.1, 'highpass')),
       boss: () => [392, 523, 659, 784].forEach((f, i) => tone(f, f, 0.5, 0.1, 'triangle', i * 0.12))

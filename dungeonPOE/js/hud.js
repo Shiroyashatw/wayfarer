@@ -8,43 +8,54 @@ const icHTML = (n, cls = '') => {
 /* 圖還沒載好時，載好後補畫面板 */
 function artRepaint() {
   hudPanels();
-  for (const el of document.querySelectorAll('.sk span.ic')) {
-    const b = BAR.find(b => b.k === el.parentNode.dataset.k);
-    el.outerHTML = icHTML(b.ic || SKILLS[b.k].ic);
-  }
+  if (document.querySelector('.sk span.ic')) hudBar();
+  if (TREE.open && document.querySelector('#tg .nd:not(:has(image))')) treeRender();
 }
 
+/* 技能列：1 藥水、5 個技能欄（左鍵、右鍵、Q、E、R）、空白翻滾 */
 const BAR = [
   { k: 'flask', key: '1', ic: 'it_potion', n: '藥水', d: '回復一半生命（1.4 秒內）。殺怪會補充。' },
-  { k: 'slash', key: '左鍵' },
-  { k: 'blade', key: '右鍵' },
-  { k: 'whirl', key: 'Q' },
-  { k: 'iai', key: 'E' },
-  { k: 'storm', key: 'R' },
+  ...SLOTKEY.map((key, i) => ({ k: 's' + i, key, slot: i })),
   { k: 'roll', key: '空白', n: '翻滾', d: '短暫無敵。怪物出手的瞬間翻滾＝見切：時間變慢，下一擊必定暴擊。' }
 ];
 function hudInit() {
   $('hud').innerHTML = `
   <div class="top"><div id="area"></div><div id="bossbar" hidden><b id="bossn"></b><div class="bb"><i></i></div></div><div id="prog" hidden><b>首領進度</b><div class="pb"><i></i></div></div></div>
   <div class="bottom">
-    <div class="orb hp" id="ohp"><i></i><span></span></div>
+    <div class="orb hp" id="ohp"><i></i><b class="ward"></b><span></span></div>
     <div class="mid">
+      <div class="mech" id="mech"></div>
       <div class="xp" id="xp" data-tip="經驗"><i></i></div>
-      <div class="bar">${BAR.map(
-        b =>
-          `<div class="sk" data-k="${b.k}" data-tip="${esc(tipOf(b))}">${b.k === 'roll' ? '<em class="roll">⤳</em>' : icHTML(b.ic || SKILLS[b.k].ic)}<u></u><s></s><kbd>${b.key}</kbd></div>`
-      ).join('')}</div>
+      <div class="bar" id="bar"></div>
     </div>
     <div class="orb mp" id="omp"><i></i><span></span></div>
   </div>
-  <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 左鍵 斬擊 · 右鍵 飛刃 · Q 旋風斬 · E 居合突進 · R 千本櫻 · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · T 回藏身處 · H 隱藏</div>
+  <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 技能 左鍵／右鍵／Q／E／R · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · G 技能寶石 · P 天賦 · O 核心 · T 回藏身處 · H 隱藏</div>
   <div id="warn"></div>`;
+  hudBar();
   hudState();
 }
+/* 技能列的圖示跟著技能欄換（換寶石後重畫） */
+function hudBar() {
+  $('bar').innerHTML = BAR.map(b => {
+    const g = b.slot != null && S.skills[b.slot].a,
+      ic =
+        b.k === 'roll'
+          ? '<em class="roll">⤳</em>'
+          : b.slot != null
+            ? g
+              ? icHTML(SKILLS[g.gem].ic)
+              : '<em class="empty">＋</em>'
+            : icHTML(b.ic);
+    return `<div class="sk" data-k="${b.k}" data-tip="${esc(tipOf(b))}">${ic}<u></u><s></s><kbd>${b.key}</kbd></div>`;
+  }).join('');
+  for (const k in HV) if (/^[tn]s\d|^cds\d/.test(k)) delete HV[k];
+}
 function tipOf(b) {
-  const D = SKILLS[b.k];
-  if (!D) return `${b.n}\n${b.d}`;
-  return `${D.n}\n${D.d}${D.mp ? `\n魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}`;
+  if (b.slot == null) return `${b.n}\n${b.d}`;
+  const c = slotCfg(b.slot);
+  if (!c) return `${b.key}：空的\n按 G 打開技能寶石，把技能寶石放進來`;
+  return `${c.D.n} Lv ${c.lv}\n${c.D.d}${c.mp ? `\n魔力 ${c.mp}` : ''}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}`;
 }
 let warnT;
 function hudWarn(t) {
@@ -75,22 +86,33 @@ function hudTick() {
   setV($('xp'), 'xp', (S.xp / xpNeed(S.lv)).toFixed(3));
   for (const el of document.querySelectorAll('.sk')) {
     const k = el.dataset.k,
-      D = SKILLS[k];
+      c = k[0] === 's' ? slotCfg(+k[1]) : null;
     let cd = 0,
       txt = '';
     if (k === 'flask') {
       cd = P.flask >= 1 ? 0 : 1 - (P.flask % 1);
       txt = Math.floor(P.flask) + '';
     } else if (k === 'roll') cd = (P.cds.roll || 0) / (ROLL.cd + ROLL.t);
-    else if (D.cd) {
-      cd = (P.cds[k] || 0) / D.cd;
+    else if (c && c.cd) {
+      cd = (P.cds[k] || 0) / c.cd;
       if (P.cds[k] > 0) txt = Math.ceil(P.cds[k]) + '';
     }
     setV(el, 'cd' + k, cd.toFixed(2));
     setT(el.querySelector('u'), 't' + k, txt);
-    const no = (D && P.mp < D.mp) || G.scene === 'hide';
+    const no = (c && P.mp < c.mp) || G.scene === 'hide';
     if (HV['n' + k] !== no) el.classList.toggle('no', (HV['n' + k] = no));
   }
+  const wm = wardMax();
+  const wv = wm ? (P.ward / ST.hp).toFixed(3) : '0';
+  if (HV.ward !== wv) $('ohp').style.setProperty('--w', (HV.ward = wv));
+  const mech = [
+    hasCls(S, 'ronin') ? `架勢 ${P.stance}/${stanceNeed()}` : '',
+    hasCls(S, 'knight') ? `盾勢 ${P.guard}` : '',
+    G.allies && G.allies.length ? `狼 ${G.allies.length}` : ''
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  setT($('mech'), 'mech', mech);
   const b = G.mobs.find(m => m.boss),
     show = !!(b && b.aggro);
   if (HV.boss !== show) {
@@ -120,9 +142,10 @@ function hudState() {
 }
 
 /* ---------- 面板 ---------- */
-const PANEL = { inv: false, stash: false, device: false, pick: 1 };
+const PANEL = { inv: false, stash: false, device: false, skill: false, pick: 1 };
 function openPanel(k) {
-  if (k === 'stash') PANEL.inv = PANEL.stash = true;
+  if (k === 'stash') (PANEL.inv = PANEL.stash = true), (PANEL.skill = false);
+  else if (k === 'skill') (PANEL.inv = PANEL.skill = true), (PANEL.stash = false);
   else if (k === 'device') {
     PANEL.device = true;
     PANEL.pick = S.maxT;
@@ -131,7 +154,7 @@ function openPanel(k) {
   hudPanels();
 }
 function closePanels() {
-  PANEL.inv = PANEL.stash = PANEL.device = false;
+  PANEL.inv = PANEL.stash = PANEL.device = PANEL.skill = false;
   hideTip();
   hudPanels();
 }
@@ -140,6 +163,8 @@ function hudPanels() {
   $('pinv').hidden = !PANEL.inv;
   $('pstash').hidden = !PANEL.stash;
   $('pdev').hidden = !PANEL.device;
+  $('pskill').hidden = !PANEL.skill;
+  if (PANEL.skill) $('pskill').innerHTML = skillHTML();
   if (PANEL.inv) $('pinv').innerHTML = invHTML();
   if (PANEL.stash)
     $('pstash').innerHTML =
@@ -185,8 +210,38 @@ function gridHTML(g, src) {
 }
 function itemHTML(it, src, eqk) {
   const [w, h] = itemSize(it),
-    pos = src === 'eq' ? '' : `left:${it.x * C}px;top:${it.y * C}px;width:${w * C}px;height:${h * C}px`;
-  return `<div class="it r${it.r} ${src === 'eq' ? 'full' : ''}" data-src="${src}" data-id="${it.id}" ${eqk ? `data-eqk="${eqk}"` : ''} style="${pos}">${icHTML(itemIc(it))}</div>`;
+    pos = isSlot(src) ? '' : `left:${it.x * C}px;top:${it.y * C}px;width:${w * C}px;height:${h * C}px`;
+  return `<div class="it r${it.r} ${isSlot(src) ? 'full' : ''}" data-src="${src}" data-id="${it.id}" ${eqk ? `data-eqk="${eqk}"` : ''} style="${pos}">${icHTML(itemIc(it))}</div>`;
+}
+/* 技能寶石面板：5 個技能欄，每欄 1 顆技能＋2 顆輔助 */
+const TAGN = {
+  attack: '攻擊',
+  melee: '近戰',
+  proj: '投射物',
+  aoe: '範圍',
+  spell: '法術',
+  cd: '冷卻',
+  minion: '召喚',
+  dot: '持續傷害',
+  move: '位移'
+};
+function skillHTML() {
+  const sock = (key, it, cls, lab, bad) =>
+    `<div class="eqs sock ${cls} ${it ? 'r3' : ''} ${bad ? 'bad-link' : ''}" data-sock="${key}">${it ? itemHTML(it, 'sock', key) : `<small>${lab}</small>`}</div>`;
+  return `<div class="ph"><b>技能寶石</b><span>拖進來或點背包裡的寶石；裝著的寶石殺怪會升級</span><button class="x" data-a="close">✕</button></div>
+  ${S.skills
+    .map((sl, i) => {
+      const c = slotCfg(i),
+        g = sl.a,
+        full = g && g.lv >= Math.min(GEM_MAX, S.lv);
+      const info = c
+        ? `<b>${esc(c.D.n)} <span>Lv ${g.lv}</span></b><small>${c.mp ? `魔力 ${c.mp}` : '不耗魔力'}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}</small><i class="gx" style="--v:${full ? 1 : (g.xp / gemNeed(g.lv)).toFixed(3)}"></i>`
+        : `<small class="c-dim">放一顆技能寶石</small>`;
+      return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', g, 'act', '技能')}<div class="links">${[0, 1]
+        .map(j => sock(i + ':' + j, sl.s[j], 'sup', '輔助', g && sl.s[j] && !supOK(SKILLS[g.gem], sl.s[j])))
+        .join('')}</div><div class="skinfo">${info}</div></div>`;
+    })
+    .join('')}`;
 }
 function devHTML() {
   const t = PANEL.pick,
@@ -211,12 +266,29 @@ function devHTML() {
 
 /* ---------- 找道具、移動道具 ---------- */
 const GRIDS = () => ({ inv: S.inv, stash: S.stash });
+/* 欄位：裝備欄 eq（key＝欄位名）、寶石插槽 sock（key＝「技能欄:a」是技能、「技能欄:0／1」是輔助） */
+const isSlot = src => src === 'eq' || src === 'sock';
+function slotGet(src, key) {
+  if (src === 'eq') return S.eq[key];
+  const [i, p] = key.split(':');
+  return p === 'a' ? S.skills[i].a : S.skills[i].s[+p];
+}
+function slotSet(src, key, it) {
+  if (src === 'eq') return (S.eq[key] = it);
+  const [i, p] = key.split(':');
+  if (p === 'a') S.skills[i].a = it;
+  else S.skills[i].s[+p] = it;
+}
+const slotFits = (src, key, it) =>
+  src === 'eq'
+    ? EQS.find(q => q.k === key).t === kindOf(it)
+    : !!it.gem && (key.endsWith(':a') ? !isSup(it) : isSup(it));
 function findItem(src, id, eqk) {
-  if (src === 'eq') return S.eq[eqk];
+  if (isSlot(src)) return slotGet(src, eqk);
   return GRIDS()[src].items.find(o => o.id === +id);
 }
 function takeOut(src, it, eqk) {
-  if (src === 'eq') S.eq[eqk] = null;
+  if (isSlot(src)) slotSet(src, eqk, null);
   else {
     const g = GRIDS()[src];
     g.items.splice(g.items.indexOf(it), 1);
@@ -224,7 +296,7 @@ function takeOut(src, it, eqk) {
 }
 /* 放回原處（原位放不下就找空位） */
 function putBack(src, it, eqk, ox, oy) {
-  if (src === 'eq') return (S.eq[eqk] = it), true;
+  if (isSlot(src)) return slotSet(src, eqk, it), true;
   const g = GRIDS()[src],
     [w, h] = itemSize(it);
   if (ox != null && gridFree(g, ox, oy, w, h)) {
@@ -242,12 +314,20 @@ function changed() {
   P.mp = Math.min(ST.mp, P.mp);
   save();
   hudPanels();
+  hudBar();
 }
 /* 點一下：背包→裝上、身上→收進背包、倉庫↔背包 */
 function quickMove(src, it, eqk) {
-  if (src === 'eq') {
+  if (isSlot(src)) {
     if (!gridAuto(S.inv, it)) return hudWarn('背包滿了');
-    S.eq[eqk] = null;
+    slotSet(src, eqk, null);
+  } else if (it.gem && src === 'inv' && !PANEL.stash) {
+    /* 寶石：技能放進第一個空的技能欄、輔助放進第一個相容的空插槽 */
+    const key = gemSlotFor(it);
+    if (!key) return hudWarn(isSup(it) ? '沒有空的輔助插槽' : '技能欄滿了：拖到想換的那一欄');
+    takeOut('inv', it);
+    slotSet('sock', key, it);
+    if (!PANEL.skill) openPanel('skill');
   } else if (src === 'stash') {
     takeOut('stash', it);
     if (!gridAuto(S.inv, it)) return gridAuto(S.stash, it), hudWarn('背包滿了');
@@ -273,6 +353,15 @@ function quickMove(src, it, eqk) {
   sfx('equip');
   changed();
 }
+function gemSlotFor(it) {
+  for (let i = 0; i < NSLOT; i++) {
+    const sl = S.skills[i];
+    if (!isSup(it) && !sl.a) return i + ':a';
+    if (isSup(it) && sl.a && supOK(SKILLS[sl.a.gem], it)) for (const j of [0, 1]) if (!sl.s[j]) return i + ':' + j;
+  }
+  if (isSup(it)) for (let i = 0; i < NSLOT; i++) for (const j of [0, 1]) if (!S.skills[i].s[j]) return i + ':' + j;
+  return null;
+}
 function sell(src, it, eqk) {
   takeOut(src, it, eqk);
   const p = sellPrice(it);
@@ -292,8 +381,8 @@ function dragStart(e, el) {
   const r = el.getBoundingClientRect(),
     [w, h] = itemSize(it);
   /* 抓哪一格就跟哪一格 */
-  const gx = src === 'eq' ? Math.floor(w / 2) : Math.min(w - 1, Math.floor((e.clientX - r.left) / C)),
-    gy = src === 'eq' ? Math.floor(h / 2) : Math.min(h - 1, Math.floor((e.clientY - r.top) / C));
+  const gx = isSlot(src) ? Math.floor(w / 2) : Math.min(w - 1, Math.floor((e.clientX - r.left) / C)),
+    gy = isSlot(src) ? Math.floor(h / 2) : Math.min(h - 1, Math.floor((e.clientY - r.top) / C));
   DR = { src, eqk, it, el, w, h, gx, gy, x0: e.clientX, y0: e.clientY, moved: false, ox: it.x, oy: it.y };
   el.setPointerCapture && el.setPointerCapture(e.pointerId);
 }
@@ -320,10 +409,9 @@ function dropTarget(e) {
   const under = document.elementsFromPoint(e.clientX, e.clientY);
   for (const el of under) {
     if (el.dataset.sell) return { k: 'sell', el };
-    if (el.dataset.eq) {
-      const ok = EQS.find(q => q.k === el.dataset.eq).t === kindOf(DR.it);
-      return { k: 'eq', eqk: el.dataset.eq, el, ok };
-    }
+    if (el.dataset.eq) return { k: 'eq', src: 'eq', eqk: el.dataset.eq, el, ok: slotFits('eq', el.dataset.eq, DR.it) };
+    if (el.dataset.sock)
+      return { k: 'eq', src: 'sock', eqk: el.dataset.sock, el, ok: slotFits('sock', el.dataset.sock, DR.it) };
     if (el.dataset.grid) {
       const g = GRIDS()[el.dataset.grid],
         r = el.getBoundingClientRect(),
@@ -371,13 +459,18 @@ function dragEnd(e) {
   if (t.k === 'sell') return G.scene === 'hide' ? sell(d.src, d.it, d.eqk) : hudPanels();
   takeOut(d.src, d.it, d.eqk);
   if (t.k === 'eq') {
-    const old = S.eq[t.eqk];
-    S.eq[t.eqk] = d.it;
-    /* 換下來的放回拿起來的地方 */
-    if (old && !putBack(d.src === 'eq' ? 'inv' : d.src, old, null, d.ox, d.oy)) {
-      S.eq[t.eqk] = old;
+    const old = slotGet(t.src, t.eqk);
+    slotSet(t.src, t.eqk, d.it);
+    /* 換下來的放回拿起來的地方（從另一個欄位拖來的，放得進就互換） */
+    const back =
+      old &&
+      (isSlot(d.src) && slotFits(d.src, d.eqk, old)
+        ? (slotSet(d.src, d.eqk, old), true)
+        : putBack(isSlot(d.src) ? 'inv' : d.src, old, null, d.ox, d.oy));
+    if (old && !back) {
+      slotSet(t.src, t.eqk, old);
       putBack(d.src, d.it, d.eqk, d.ox, d.oy);
-      hudWarn('放不下換下來的裝備');
+      hudWarn('放不下換下來的東西');
     }
   } else {
     const sw = t.swap;
@@ -387,9 +480,9 @@ function dragEnd(e) {
     t.g.items.push(d.it);
     if (
       sw &&
-      !(d.src === 'eq' && kindOf(sw) === EQS.find(q => q.k === d.eqk).t
-        ? ((S.eq[d.eqk] = sw), true)
-        : putBack(d.src === 'eq' ? 'inv' : d.src, sw, null, d.ox, d.oy))
+      !(isSlot(d.src) && slotFits(d.src, d.eqk, sw)
+        ? (slotSet(d.src, d.eqk, sw), true)
+        : putBack(isSlot(d.src) ? 'inv' : d.src, sw, null, d.ox, d.oy))
     ) {
       /* 換不了：還原 */
       t.g.items.splice(t.g.items.indexOf(d.it), 1);
@@ -403,7 +496,22 @@ function dragEnd(e) {
 }
 
 /* ---------- 說明框 ---------- */
+function gemTip(it) {
+  const D = gemOf(it),
+    sup = isSup(it),
+    sl = S.skills.find(sl => sl.s.includes(it)),
+    bad = sl && sl.a && !supOK(SKILLS[sl.a.gem], it);
+  let html = `<b class="rc3">${esc(D.n)}</b><small>${sup ? '輔助寶石' : '技能寶石'} · Lv ${it.lv}</small><p>${esc(D.d)}</p>`;
+  if (sup)
+    html += `<p class="base">${D.need.length ? '要有標籤：' + D.need.map(t => TAGN[t]).join('、') : '所有技能都能用'}</p>`;
+  else
+    html += `<p class="base">標籤：${D.tags.map(t => TAGN[t]).join('、')}${D.mp ? ` · 魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}<br>傷害 ×${(D.m * Math.pow(1.06, it.lv - 1)).toFixed(2)}${D.el ? `（全部是${ELN[D.el]}）` : ''}</p>`;
+  if (bad) html += `<p class="c-bad">跟這個技能不相容，沒有效果</p>`;
+  html += `<p class="hint">經驗 ${it.lv >= GEM_MAX ? '滿級' : `${Math.floor(it.xp)} / ${gemNeed(it.lv)}`}（不能超過角色等級）</p>`;
+  return html;
+}
 function itemTip(it, cmp) {
+  if (it.gem) return gemTip(it);
   const B = baseOf(it);
   let html = `<b class="rc${it.r}">${esc(itemName(it))}</b><small>${RARN[it.r]} ${KINDS[B.k].n} · 物品等級 ${it.L}</small>`;
   html += `<p class="base">${baseText(it).join('<br>')}</p>`;
@@ -453,14 +561,17 @@ function inputInit() {
     if (k === ' ') {
       e.preventDefault();
       doRoll();
-    } else if (k === 'q') useSkill('whirl');
-    else if (k === 'e') useSkill('iai');
-    else if (k === 'r') useSkill('storm');
+    } else if (k === 'q') useSlot(2);
+    else if (k === 'e') useSlot(3);
+    else if (k === 'r') useSlot(4);
+    else if (k === 'g') PANEL.skill ? closePanels() : openPanel('skill');
+    else if (k === 'p') treeOpen('pt');
+    else if (k === 'o') treeOpen('ct');
     else if (k === '1') drinkFlask();
     else if (k === 'f') interact();
     else if (k === 'i' || k === 'b') PANEL.inv ? closePanels() : openPanel('inv');
     else if (k === 'h') $('keys').classList.toggle('off');
-    else if (k === 'escape') closePanels();
+    else if (k === 'escape') TREE.open ? treeClose() : closePanels();
     else if (k === 't' && G.scene === 'map' && G.state === 'play') {
       /* 按兩次才回家（這張地圖會結束） */
       if (performance.now() - tWarn < 2000) goHome();
@@ -494,12 +605,12 @@ function inputInit() {
     }
     if (e.button === 0) {
       M.L = 1;
-      useSkill('slash');
+      useSlot(0);
       pressFx('左鍵');
     }
     if (e.button === 2) {
       M.R = 1;
-      useSkill('blade');
+      useSlot(1);
       pressFx('右鍵');
     }
   });
@@ -534,7 +645,7 @@ function inputInit() {
     if (s.dataset.tip)
       return showTip(`<p class="sktip">${esc(s.dataset.tip).replace(/\n/g, '<br>')}</p>`, r.right - 30, r.top - 40);
     const it = findItem(s.dataset.src, s.dataset.id, s.dataset.eqk);
-    if (it) showTip(itemTip(it, s.dataset.src !== 'eq'), r.right, r.top + r.height / 2);
+    if (it) showTip(itemTip(it, !isSlot(s.dataset.src)), r.right, r.top + r.height / 2);
   });
 }
 /* 滑鼠底下的藏身處物件 */

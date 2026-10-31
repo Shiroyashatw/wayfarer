@@ -10,7 +10,7 @@ let S;
 /* 存檔版本 10 是 0.2.0（重製：0.1 的存檔不沿用） */
 function newGame() {
   const s = {
-    v: 10,
+    v: 11,
     name: '女忍者',
     lv: 1,
     xp: 0,
@@ -24,6 +24,13 @@ function newGame() {
     sfx: 1
   };
   s.eq.weapon = mkItem('w_katana', 1, 0);
+  /* 技能欄：左鍵斬擊、右鍵飛刃、Q 旋風斬；其他從怪物身上掉 */
+  s.skills = Array.from({ length: NSLOT }, () => ({ a: null, s: [null, null] }));
+  s.skills[0].a = mkGem('slash');
+  s.skills[1].a = mkGem('blade');
+  s.skills[2].a = mkGem('whirl');
+  s.pt = ['c'];
+  s.ct = ['c'];
   s.eq.chest = mkItem('c_leather', 1, 0);
   return s;
 }
@@ -108,6 +115,7 @@ function enterHideout() {
   newPlayer(480, 470);
   P.hp = ST.hp;
   P.mp = ST.mp;
+  skillsEnter();
   hudState();
 }
 /* 開地圖：花碎片、地圖台前面出現傳送門 */
@@ -208,6 +216,7 @@ function enterMap(t) {
         pts += elite && j === 0 ? 6 : 1;
       });
     }
+  skillsEnter();
   G.need = Math.ceil(pts / rnd(1.5, 1.6));
   G.prog = 0;
   G.rooms = rooms;
@@ -321,108 +330,10 @@ function sparks(x, y, ang, n, col) {
   }
 }
 
-/* ---------- 玩家 ---------- */
-/* 一下的傷害：物理扣怪物的物理減傷，元素看怪物抗性 */
-function rollDmg(mult, m) {
-  let d = rnd(ST.dmg[0], ST.dmg[1]),
-    big = 'phys',
-    bigV = d;
-  for (const k in ST.add) {
-    const [a, b] = ST.add[k];
-    if (!b) continue;
-    let v = rnd(a, b);
-    if (m && m.el === k) v *= 0.6;
-    d += v;
-    if (v > bigV) (bigV = v), (big = k);
-  }
-  d *= mult;
-  const crit = P.critNext || Math.random() * 100 < ST.crit;
-  if (crit) d *= ST.critM + (P.critNext ? 0.5 : 0);
-  P.critNext = 0;
-  return { d, crit, el: big };
-}
-function useSkill(k) {
-  const D = SKILLS[k];
-  if (P.act || P.roll || G.state !== 'play' || G.scene !== 'map') return false;
-  if ((P.cds[k] || 0) > 0) return false;
-  if (P.mp < D.mp) {
-    hudWarn('魔力不足');
-    return false;
-  }
-  P.mp -= D.mp;
-  if (D.cd) P.cds[k] = D.cd;
-  const w = mouseWorld(),
-    ang = Math.atan2(w.y - P.y, w.x - P.x);
-  P.face = ang;
-  P.act = { k, t: 0, dur: D.t / ST.asM, ang, done: 0 };
-  sfx(k === 'blade' ? 'throw' : 'swing');
-  if (k === 'iai') {
-    const d = Math.min(D.dist, Math.hypot(w.x - P.x, w.y - P.y));
-    Object.assign(P.act, { sx: P.x, sy: P.y, d, hit: new Set() });
-    P.iuntil = G.t + D.t / ST.asM + 0.05;
-  }
-  return true;
-}
-function actHit(a) {
-  const D = SKILLS[a.k];
-  if (a.k === 'slash') {
-    P.x += Math.cos(a.ang) * 10;
-    P.y += Math.sin(a.ang) * 10;
-    const R = D.r * ST.aoeM;
-    fx({ k: 'slash', x: P.x, y: P.y, ang: a.ang, r: R, arc: D.arc, dur: 0.18 });
-    let n = 0;
-    for (const m of G.mobs) {
-      if (m.hp <= 0) continue;
-      const dd = dist(P, m);
-      if (dd < R + m.r && angDiff(angTo(P, m), a.ang) < D.arc / 2 + m.r / Math.max(dd, 1)) {
-        hitMob(m, D.m, angTo(P, m), 170);
-        n++;
-      }
-    }
-    if (n) P.mp = Math.min(ST.mp, P.mp + D.gain * n);
-  } else if (a.k === 'blade') {
-    G.shots.push({
-      x: P.x + Math.cos(a.ang) * 20,
-      y: P.y - 18 + Math.sin(a.ang) * 20,
-      vx: Math.cos(a.ang) * D.spd,
-      vy: Math.sin(a.ang) * D.spd,
-      ang: a.ang,
-      r: 10,
-      pierce: D.pierce,
-      m: D.m,
-      hit: new Set(),
-      life: 0.9
-    });
-  } else if (a.k === 'storm') {
-    /* 千本櫻：一圈飛刃往四面八方 */
-    fx({ k: 'ring', x: P.x, y: P.y, r: 90, dur: 0.3, col: '#ffb3c8' });
-    shake(0.15);
-    for (let i = 0; i < D.cnt; i++) {
-      const g = a.ang + (i / D.cnt) * TAU;
-      G.shots.push({
-        x: P.x,
-        y: P.y - 18,
-        vx: Math.cos(g) * D.spd,
-        vy: Math.sin(g) * D.spd,
-        ang: g,
-        r: 10,
-        pierce: D.pierce,
-        m: D.m,
-        hit: new Set(),
-        life: 0.8,
-        pink: 1
-      });
-    }
-  } else if (a.k === 'whirl') {
-    const R = D.r * ST.aoeM;
-    fx({ k: 'ring', x: P.x, y: P.y, r: R, dur: 0.28 });
-    shake(0.25);
-    for (const m of G.mobs) if (m.hp > 0 && dist(P, m) < R + m.r) hitMob(m, D.m, angTo(P, m), 320);
-  }
-}
+/* ---------- 玩家（技能在 skills.js） ---------- */
 function updPlayer(dt) {
   for (const k in P.cds) P.cds[k] = Math.max(0, P.cds[k] - dt);
-  P.mp = Math.min(ST.mp, P.mp + HERO.mpReg * dt);
+  P.mp = Math.min(ST.mp, P.mp + ST.mpReg * dt);
   if (ST.regen) P.hp = Math.min(ST.hp, P.hp + ST.regen * dt);
   if (P.heal > 0) {
     const h = Math.min(P.heal, ((ST.hp * FLASK.heal) / FLASK.t) * dt);
@@ -446,28 +357,10 @@ function updPlayer(dt) {
   P.mv = ml ? 1 : 0;
   P.mdx = mx;
   P.mdy = my;
+  const spd = ST.spd * (P.shadowT > 0 ? 1 + coreV(S, 'assassin', 'shadow') / 100 : 1);
   if (P.act) {
-    const a = P.act;
-    a.t += dt;
-    if (a.k === 'iai') {
-      const f = Math.min(1, a.t / a.dur),
-        e = 1 - Math.pow(1 - f, 3);
-      moveBody(P, a.sx + Math.cos(a.ang) * a.d * e - P.x, a.sy + Math.sin(a.ang) * a.d * e - P.y);
-      if (Math.random() < 0.8) fx({ k: 'ghost', x: P.x, y: P.y, dur: 0.22, flip: Math.cos(a.ang) < 0 });
-      for (const m of G.mobs)
-        if (m.hp > 0 && !a.hit.has(m) && dist(P, m) < m.r + 40) {
-          a.hit.add(m);
-          hitMob(m, SKILLS.iai.m, a.ang + Math.PI / 2, 220);
-        }
-    } else {
-      moveBody(P, mx * ST.spd * 0.35 * dt, my * ST.spd * 0.35 * dt);
-      if (!a.done && a.t >= a.dur * 0.42) {
-        a.done = 1;
-        actHit(a);
-      }
-    }
-    if (a.t >= a.dur) P.act = null;
-  } else moveBody(P, mx * ST.spd * dt, my * ST.spd * dt);
+    skillTick(P.act, dt, mx, my);
+  } else moveBody(P, mx * spd * dt, my * spd * dt);
   if (P.vx || P.vy) {
     moveBody(P, P.vx * dt, P.vy * dt);
     const f = Math.exp(-dt * 10);
@@ -476,8 +369,8 @@ function updPlayer(dt) {
     if (Math.abs(P.vx) + Math.abs(P.vy) < 5) P.vx = P.vy = 0;
   }
   if (!P.act) {
-    if (M.L) useSkill('slash');
-    else if (M.R) useSkill('blade');
+    if (M.L) useSlot(0);
+    else if (M.R) useSlot(1);
     const w = mouseWorld();
     if (G.scene === 'map' || P.mv)
       P.face = P.mv && G.scene === 'hide' ? Math.atan2(my, mx) : Math.atan2(w.y - P.y, w.x - P.x);
@@ -569,10 +462,13 @@ function hurtPlayer(d, src, el = 'phys') {
   if (Math.random() * 100 < ST.block) {
     num(P.x, P.y - 60, 0, 'block');
     sfx('block');
+    coreBlock();
     return;
   }
   if (el === 'phys') d *= 1 - ST.armor / (ST.armor + 10 * d + 1);
   else d *= 1 - ST.res[el] / 100;
+  d = coreHurt(d);
+  if (d <= 0) return;
   P.hp -= d;
   P.hurtT = 0.35;
   num(P.x, P.y - 60, d, 'hurt');
@@ -598,26 +494,7 @@ function die() {
   hudState();
 }
 
-/* ---------- 打怪 ---------- */
-function hitMob(m, mult, ang, kb) {
-  const { d, crit, el } = rollDmg(mult, m);
-  m.hp -= d;
-  m.flash = 0.09;
-  m.sq = 1;
-  if (!m.boss) {
-    const res = m.elite ? 0.5 : m.D.ai === 'slam' ? 0.4 : 1;
-    m.vx += Math.cos(ang) * kb * res * (crit ? 1.5 : 1);
-    m.vy += Math.sin(ang) * kb * res * (crit ? 1.5 : 1);
-  }
-  aggroPack(m);
-  num(m.x, m.y - m.sz, d, crit ? 'crit' : el);
-  sparks(m.x, m.y - m.sz * 0.4, ang, crit ? 10 : 5, crit ? '#ffd166' : ELC[el]);
-  hitstop(crit ? 0.085 : 0.04);
-  shake(crit ? 0.22 : 0.08);
-  sfx(crit ? 'crit' : 'hit');
-  if (ST.loh) P.hp = Math.min(ST.hp, P.hp + ST.loh);
-  if (m.hp <= 0) killMob(m);
-}
+/* ---------- 打怪（打中 hitMob 在 skills.js） ---------- */
 function aggroPack(m) {
   if (m.aggro) return;
   for (const o of G.mobs) if (o.pack === m.pack) o.aggro = 1;
@@ -649,6 +526,9 @@ function killMob(m) {
         ? 1
         : 0;
   if (fr) dropAt(m.x, m.y, { frag: fr });
+  /* 技能寶石：小怪 2%、菁英 25%、王一定掉 */
+  if (Math.random() < (m.boss ? 1 : m.elite ? 0.25 : 0.02)) dropAt(m.x, m.y, { it: dropGem(t) });
+  coreKill(m);
   addProg(m);
   if (m.boss) bossDown(m);
 }
@@ -742,6 +622,7 @@ function updMobs(dt) {
     m.flash = Math.max(0, m.flash - dt);
     m.sq = Math.max(0, m.sq - dt * 6);
     m.ph += dt * 8;
+    if (mobTick(m, dt)) continue;
     if (m.vx || m.vy) {
       moveBody(m, m.vx * dt, m.vy * dt);
       const f = Math.exp(-dt * 9);
@@ -929,14 +810,22 @@ function updShots(dt) {
         if (m.hp <= 0 || s.hit.has(m)) continue;
         if (Math.hypot(m.x - s.x, m.y - m.sz * 0.4 - s.y) < m.r + s.r + 6) {
           s.hit.add(m);
-          hitMob(m, s.m, s.ang, 120);
+          if (s.boom) {
+            s.x = m.x;
+            s.y = m.y - 18;
+            s.life = 0;
+            break;
+          }
+          hitMob(m, s.c, s.ang, 120 * s.c.kb, { a: s.a });
           if (s.pierce-- <= 0) {
             s.life = 0;
             break;
           }
         }
       }
+    if (s.boom && s.life <= 0) boom(s);
     if (isWall(s.x, s.y)) {
+      if (s.boom) boom(s);
       s.life = 0;
       sparks(s.x, s.y, Math.atan2(-s.vy, -s.vx), 4, '#aaa');
     }
@@ -975,6 +864,7 @@ function frame(now) {
     updPlayer(dt);
     updMobs(dt);
     updShots(dt);
+    updSkills(dt);
     /* 傳送門：地圖裡打倒王後的門＝回家 */
     if (G.portal && G.portal.home && G.state === 'play' && dist(P, G.portal) < 36) return goHome();
     for (const d of G.drops.slice()) {
