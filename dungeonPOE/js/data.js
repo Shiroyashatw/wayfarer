@@ -289,6 +289,9 @@ const STATN = {
   armorP: ['護甲', '%'],
   block: ['格擋', '%'],
   meleeP: ['近戰傷害', '%'],
+  swordP: ['持劍時傷害', '%'],
+  spearP: ['持矛時傷害', '%'],
+  staffP: ['持棍時傷害', '%'],
   as: ['攻速', '%'],
   critX: ['暴擊傷害', '%'],
   crit: ['暴擊率', '%'],
@@ -311,6 +314,15 @@ const STATN = {
   resA: ['全部抗性', '%'],
   dmgA: ['傷害', '%'],
   rollCd: ['翻滾冷卻縮短', '%'],
+  lowHp: ['生命低於一半時傷害', '%'],
+  fullHp: ['生命全滿時傷害', '%'],
+  esUp: ['有能量護盾時傷害', '%'],
+  afterRoll: ['翻滾後 2 秒內傷害', '%'],
+  bossP: ['對王與菁英傷害', '%'],
+  closeP: ['對近身（160 內）的敵人傷害', '%'],
+  farP: ['對遠處（350 外）的敵人傷害', '%'],
+  killHeal: ['擊殺回復生命', ''],
+  lowHpRed: ['生命低於一半時受到的傷害減少', '%'],
   blood: ['技能改用生命施放（不耗魔力）', '']
 };
 /* 18 條路線的主題：sm 小點（輪流）、nt 大點（名字＋效果，全職業通用）；繞一圈，相鄰的主題會混搭 */
@@ -352,11 +364,22 @@ const PT_THEME = [
     n: '近戰',
     c: '#e8a33d',
     ic: 'asc_s_sword',
-    sm: [{ meleeP: 6 }, { meleeP: 4, as: 2 }],
+    sm: [{ meleeP: 6 }, { swordP: 6 }, { meleeP: 4, as: 2 }],
     nt: [
       ['斬鐵', { meleeP: 25, critX: 10 }],
       ['劍意', { meleeP: 20, aoe: 8 }],
       ['破甲', { meleeP: 22, dmgA: 5 }]
+    ]
+  },
+  {
+    n: '矛',
+    c: '#d9a066',
+    ic: 'gear_weapon_9',
+    sm: [{ spearP: 6 }, { spearP: 4, as: 2 }],
+    nt: [
+      ['穿刺', { spearP: 25, critX: 10 }],
+      ['長槍陣', { spearP: 20, aoe: 10 }],
+      ['擲矛', { spearP: 18, projP: 12 }]
     ]
   },
   {
@@ -390,6 +413,17 @@ const PT_THEME = [
       ['輕功', { ms: 8, rollCd: 15 }],
       ['殘影', { ms: 6, as: 6 }],
       ['踏雪', { rollCd: 20, resA: 6 }]
+    ]
+  },
+  {
+    n: '棍',
+    c: '#b5d36b',
+    ic: 'gear_weapon_4',
+    sm: [{ staffP: 6 }, { staffP: 4, ms: 1 }],
+    nt: [
+      ['武僧', { staffP: 22, as: 6 }],
+      ['迴棍', { staffP: 20, aoe: 10 }],
+      ['禪定', { staffP: 15, es: 25, resA: 5 }]
     ]
   },
   {
@@ -514,342 +548,277 @@ const PT_THEME = [
     ]
   }
 ];
-/* 結構：u 往外 0～1、v 左右 -1～1、t 1＝大點；e 連線；i 入口、o 出口 */
-const shp = (pts, e, i, o) => ({ pts, e, i, o });
-const SH_IN = [
-  /* 菱形：兩條邊夾著中間的脊 */ shp(
-    [
-      [0, 0],
-      [0.25, -0.55],
-      [0.5, -0.85, 1],
-      [0.75, -0.55],
-      [0.25, 0.55],
-      [0.5, 0.85],
-      [0.75, 0.55],
-      [0.35, 0],
-      [0.65, 0, 1],
-      [1, 0]
-    ],
-    [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 9],
-      [0, 4],
-      [4, 5],
-      [5, 6],
-      [6, 9],
-      [0, 7],
-      [7, 8],
-      [8, 9]
-    ],
-    0,
-    9
-  ),
-  /* 螺旋：捲進去，中心是大點；另一條路繞過去 */ (() => {
-    const p = [[0, 0]],
-      e = [];
-    for (let k = 1; k <= 7; k++) {
-      const a = k * 0.8,
-        r = 0.95 - k * 0.11;
-      p.push([0.5 + Math.cos(a + Math.PI) * r * 0.5, Math.sin(a + Math.PI) * r, k === 7 ? 1 : 0]);
-      e.push([k - 1, k]);
-    }
-    p.push([0.35, 0.95], [0.75, 0.9], [1, 0]);
-    e.push([0, 8], [8, 9], [9, 10], [4, 10]);
-    return shp(p, e, 0, 10);
-  })(),
-  /* 輪軸：中間大點、外圈 6 個、4 條輻條 */ (() => {
-    const p = [
-        [0, 0],
-        [0.5, 0, 1]
-      ],
-      e = [];
-    for (let k = 0; k < 6; k++)
-      p.push([0.5 + Math.cos((k / 6) * Math.PI * 2 + Math.PI) * 0.38, Math.sin((k / 6) * Math.PI * 2 + Math.PI) * 0.8]);
-    for (let k = 0; k < 6; k++) e.push([2 + k, 2 + ((k + 1) % 6)]);
-    e.push([0, 2], [1, 3], [1, 5], [1, 6], [1, 7]);
-    p.push([1, 0]);
-    e.push([5, 8]);
-    return shp(p, e, 0, 8);
-  })(),
-  /* 雙軌梯子：兩條軌道加橫檔 */ (() => {
-    const p = [[0, 0]],
-      e = [];
-    for (let k = 0; k < 5; k++) p.push([0.1 + k * 0.2, -0.6, k === 4 ? 1 : 0], [0.1 + k * 0.2, 0.6, k === 2 ? 1 : 0]);
-    for (let k = 0; k < 4; k++) e.push([1 + k * 2, 3 + k * 2], [2 + k * 2, 4 + k * 2]);
-    e.push([0, 1], [0, 2], [3, 4], [7, 8]);
-    p.push([1, 0]);
-    e.push([9, 11], [10, 11]);
-    return shp(p, e, 0, 11);
-  })(),
-  /* 分岔樹：一分三、再分岔 */ shp(
-    [
-      [0, 0],
-      [0.25, 0],
-      [0.5, -0.65],
-      [0.5, 0],
-      [0.5, 0.65],
-      [0.8, -0.9, 1],
-      [0.8, -0.4],
-      [0.75, 0.25],
-      [0.8, 0.9, 1],
-      [1, 0]
-    ],
-    [
-      [0, 1],
-      [1, 2],
-      [1, 3],
-      [1, 4],
-      [2, 5],
-      [2, 6],
-      [4, 8],
-      [3, 7],
-      [7, 9],
-      [6, 9]
-    ],
-    0,
-    9
-  ),
-  /* 花：兩片繞回來的花瓣 */ shp(
-    [
-      [0, 0],
-      [0.45, 0, 1],
-      [0.3, -0.55],
-      [0.55, -0.95],
-      [0.8, -0.5, 1],
-      [0.3, 0.55],
-      [0.55, 0.95],
-      [0.8, 0.5],
-      [1, 0]
-    ],
-    [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 4],
-      [4, 1],
-      [1, 5],
-      [5, 6],
-      [6, 7],
-      [7, 1],
-      [1, 8]
-    ],
-    0,
-    8
-  ),
-  /* 沙漏：兩個三角形尖對尖 */ shp(
-    [
-      [0, 0],
-      [0.3, -0.75],
-      [0.3, 0.75, 1],
-      [0.5, 0],
-      [0.7, -0.75, 1],
-      [0.7, 0.75],
-      [1, 0]
-    ],
-    [
-      [0, 1],
-      [0, 2],
-      [1, 3],
-      [2, 3],
-      [3, 4],
-      [3, 5],
-      [4, 6],
-      [5, 6],
-      [1, 2]
-    ],
-    0,
-    6
-  ),
-  /* 新月：一道大弧往旁邊掃過去，中間一條短路 */ (() => {
-    const p = [[0, 0]],
-      e = [];
-    for (let k = 1; k <= 7; k++)
-      p.push([k / 8, -Math.sin((k / 8) * Math.PI) * 0.95, k === 4 ? 1 : 0]), e.push([k - 1, k]);
-    p.push([0.4, 0.25], [0.7, 0.3, 1], [1, 0]);
-    e.push([0, 8], [8, 9], [9, 10], [7, 10]);
-    return shp(p, e, 0, 10);
-  })()
-];
-const SH_OUT = [
-  /* 連環：大小不同的三個環 */ (() => {
-    const p = [[0, 0]],
-      e = [];
-    let last = 0;
-    [
-      [0.2, 0.35],
-      [0.52, 0.55],
-      [0.84, 0.3]
-    ].forEach(([cu, rr], j) => {
-      const b = p.length;
-      for (let k = 0; k < 4; k++)
-        p.push([
-          cu + Math.cos((k * Math.PI) / 2 + Math.PI) * rr * 0.25,
-          Math.sin((k * Math.PI) / 2 + Math.PI) * rr * 1.4,
-          j === 1 && k === 2 ? 1 : 0
-        ]);
-      for (let k = 0; k < 4; k++) e.push([b + k, b + ((k + 1) % 4)]);
-      e.push([last, b]);
-      last = b + 2;
-    });
-    p.push([1, 0, 1]);
-    e.push([last, p.length - 1]);
-    return shp(p, e, 0, p.length - 1);
-  })(),
-  /* 三角框架 */ shp(
-    [
-      [0, 0],
-      [0.33, -0.27],
-      [0.66, -0.55],
-      [1, -0.85, 1],
-      [0.33, 0.27],
-      [0.66, 0.55],
-      [1, 0.85, 1],
-      [1, -0.3],
-      [1, 0.3],
-      [0.55, 0],
-      [1.05, 0]
-    ],
-    [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [0, 4],
-      [4, 5],
-      [5, 6],
-      [3, 7],
-      [7, 10],
-      [6, 8],
-      [8, 10],
-      [0, 9],
-      [9, 10]
-    ],
-    0,
-    10
-  ),
-  /* 扇形：5 條射線散開，末端連成弧 */ (() => {
-    const p = [[0, 0]],
-      e = [];
-    for (let k = 0; k < 5; k++) {
-      const v = -0.9 + k * 0.45;
-      p.push([0.45, v * 0.5], [0.85, v, k % 2 === 0 ? 1 : 0]);
-      e.push([0, 1 + k * 2], [1 + k * 2, 2 + k * 2]);
-      if (k) e.push([k * 2, 2 + k * 2]);
-    }
-    p.push([1.05, 0]);
-    e.push([6, 11]);
-    return shp(p, e, 0, 11);
-  })(),
-  /* 星形墜飾：一條路通到五角星 */ (() => {
-    const p = [
-        [0, 0],
-        [0.3, 0],
-        [0.62, 0, 1]
-      ],
-      e = [
-        [0, 1],
-        [1, 2]
-      ];
-    for (let k = 0; k < 5; k++) {
-      const a = (k / 5) * Math.PI * 2 + Math.PI;
-      p.push([0.62 + Math.cos(a) * 0.28, Math.sin(a) * 0.8, k === 2 || k === 3 ? 1 : 0]);
-      e.push([2, 3 + k], [3 + k, 3 + ((k + 2) % 5)]);
-    }
-    p.push([1.02, 0]);
-    e.push([5, 8], [6, 8]);
-    return shp(p, e, 0, 8);
-  })(),
-  /* 蝴蝶：一大一小的翅膀 */ shp(
-    [
-      [0, 0],
-      [0.5, 0],
-      [0.2, -0.7],
-      [0.45, -0.95, 1],
-      [0.75, -0.75],
-      [0.6, -0.35],
-      [0.35, 0.5],
-      [0.6, 0.65, 1],
-      [0.7, 0.3],
-      [1, 0]
-    ],
-    [
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 4],
-      [4, 5],
-      [5, 1],
-      [1, 6],
-      [6, 7],
-      [7, 8],
-      [8, 1],
-      [1, 9]
-    ],
-    0,
-    9
-  ),
-  /* 皇冠：橫帶伸出三根尖刺 */ shp(
-    [
-      [0, 0],
-      [0.3, -0.8],
-      [0.3, -0.4],
-      [0.3, 0],
-      [0.3, 0.4],
-      [0.3, 0.8],
-      [0.6, -0.75],
-      [0.95, -0.75, 1],
-      [0.65, 0],
-      [1, 0, 1],
-      [0.6, 0.75],
-      [0.95, 0.75, 1]
-    ],
-    [
-      [0, 3],
-      [1, 2],
-      [2, 3],
-      [3, 4],
-      [4, 5],
-      [1, 6],
-      [6, 7],
-      [3, 8],
-      [8, 9],
-      [5, 10],
-      [10, 11]
-    ],
-    0,
-    9
-  ),
-  /* 眼：上下兩道弧夾著瞳孔 */ (() => {
-    const p = [[0, 0]],
-      e = [];
-    for (let k = 1; k <= 3; k++) p.push([k / 4, -Math.sin((k / 4) * Math.PI) * 0.8]), e.push([k - 1, k]);
-    for (let k = 1; k <= 3; k++)
-      p.push([k / 4, Math.sin((k / 4) * Math.PI) * 0.8]), e.push([k === 1 ? 0 : 3 + k - 1, 3 + k]);
-    p.push([0.5, 0, 1], [1, 0]);
-    e.push([2, 7], [5, 7], [3, 8], [6, 8]);
-    return shp(p, e, 0, 8);
-  })(),
-  /* 長路線兩側掛環 */ (() => {
+/* 拼塊庫（照 PoE：四、五十塊形狀都不一樣的拼塊拼起來）：24 種家族 × 2 種參數 = 48 塊，每塊只用一次。
+   座標 u＝往外 0～1、v＝左右 -1～1；第三個值 1＝大點 */
+const PT_PIECES = (() => {
+  const out = [],
+    TAU2 = Math.PI * 2;
+  const mk = f => {
     const p = [],
-      e = [];
-    for (let k = 0; k < 6; k++) p.push([k / 5, 0, k === 5 ? 1 : 0]), k && e.push([k - 1, k]);
-    for (const [at, side] of [
-      [1, -1],
-      [3, 1]
-    ]) {
-      const b = p.length;
-      for (let k = 0; k < 4; k++)
-        p.push([
-          at / 5 + (k < 2 ? -0.06 : 0.06) + (k % 2 ? 0.06 : -0.06) * 0,
-          side * (0.35 + (k === 1 || k === 2 ? 0.45 : 0)),
-          k === 2 ? 1 : 0
-        ]);
-      e.push([at, b], [b, b + 1], [b + 1, b + 2], [b + 2, b + 3], [b + 3, at]);
-    }
-    return shp(p, e, 0, 5);
-  })()
-];
+      e = [],
+      n = (u, v, big = 0) => (p.push([u, v, big]), p.length - 1),
+      l = (a, b) => e.push([a, b]),
+      chain = ids => ids.forEach((id, k) => k && l(ids[k - 1], id)),
+      loop = ids => ids.forEach((id, k) => l(id, ids[(k + 1) % ids.length]));
+    f(n, l, chain, loop);
+    out.push({ pts: p, e });
+  };
+  const ringPts = (n, cu, cv, ru, rv, a0, bigAt = -1) =>
+    Array.from({ length: n }, (_, k) => [
+      cu + Math.cos(a0 + (k / n) * TAU2) * ru,
+      cv + Math.sin(a0 + (k / n) * TAU2) * rv,
+      k === bigAt ? 1 : 0
+    ]);
+  /* 輪子：中間大點、外圈 n 個、幾條輻條 */ for (const [n, spk] of [
+    [6, 3],
+    [8, 4]
+  ])
+    mk((N, l, ch, lp) => {
+      const c = N(0.5, 0, 1),
+        rim = ringPts(n, 0.5, 0, 0.45, 0.9, Math.PI).map(q => N(...q));
+      lp(rim);
+      for (let k = 0; k < n; k += n / spk) l(c, rim[k]);
+    });
+  /* 雙軌梯子 */ for (const r of [3, 5])
+    mk((N, l, ch) => {
+      const L = [],
+        Rr = [];
+      for (let k = 0; k < r; k++)
+        L.push(N(k / (r - 1), -0.6, k === r - 1 ? 1 : 0)), Rr.push(N(k / (r - 1), 0.6, k === 1 ? 1 : 0));
+      ch(L), ch(Rr);
+      for (let k = 0; k < r; k += 2) l(L[k], Rr[k]);
+    });
+  /* 螺旋：捲進中心的大點 */ for (const m of [6, 9])
+    mk((N, l, ch) => {
+      const ids = [];
+      for (let k = 0; k < m; k++) {
+        const a = (k / m) * TAU2 * 1.3 + Math.PI,
+          r = 1 - k / m;
+        ids.push(N(0.5 + Math.cos(a) * r * 0.48, Math.sin(a) * r * 0.95, k === m - 1 ? 1 : 0));
+      }
+      ch(ids);
+    });
+  /* 星形：尖端連到隔一個尖端，中間大點 */ for (const pts of [5, 7])
+    mk((N, l) => {
+      const c = N(0.5, 0, 1),
+        tips = ringPts(pts, 0.5, 0, 0.48, 0.95, -Math.PI / 2, 0).map(q => N(...q));
+      tips.forEach((t, k) => l(t, tips[(k + 2) % pts]));
+      l(c, tips[0]);
+    });
+  /* 扇形：從底部散開，末端連成弧 */ for (const rays of [3, 5])
+    mk((N, l, ch) => {
+      const o = N(0, 0),
+        ends = [];
+      for (let k = 0; k < rays; k++) {
+        const v = rays === 1 ? 0 : -0.9 + (k * 1.8) / (rays - 1),
+          m = N(0.5, v * 0.5),
+          t = N(0.95, v, k % 2 ? 0 : 1);
+        l(o, m), l(m, t), ends.push(t);
+      }
+      ch(ends);
+    });
+  /* 新月：一道大弧，中間一條短路 */ for (const side of [1, -1])
+    mk((N, l, ch) => {
+      const arc = [];
+      for (let k = 0; k <= 6; k++) arc.push(N(k / 6, side * -Math.sin((k / 6) * Math.PI) * 0.95, k === 3 ? 1 : 0));
+      ch(arc);
+      const m = N(0.5, side * 0.2, side > 0 ? 1 : 0);
+      l(arc[0], m), l(m, arc[6]);
+    });
+  /* 連環：k 個小環串在一起 */ for (const k0 of [2, 3])
+    mk((N, l) => {
+      let last = null;
+      for (let j = 0; j < k0; j++) {
+        const cu = (j + 0.5) / k0,
+          rg = ringPts(4, cu, 0, 0.28 / k0, 0.55, Math.PI, j === k0 - 1 ? 2 : -1).map(q => N(...q));
+        rg.forEach((id, k) => l(id, rg[(k + 1) % 4]));
+        if (last !== null) l(last, rg[0]);
+        last = rg[2];
+      }
+    });
+  /* 花：中間大點，幾片繞回來的花瓣 */ for (const pet of [2, 3])
+    mk((N, l) => {
+      const c = N(0.5, 0, 1);
+      for (let j = 0; j < pet; j++) {
+        const a = (j / pet) * TAU2,
+          p1 = N(0.5 + Math.cos(a - 0.4) * 0.3, Math.sin(a - 0.4) * 0.6),
+          p2 = N(0.5 + Math.cos(a) * 0.48, Math.sin(a) * 0.95, j === 0 ? 1 : 0),
+          p3 = N(0.5 + Math.cos(a + 0.4) * 0.3, Math.sin(a + 0.4) * 0.6);
+        l(c, p1), l(p1, p2), l(p2, p3), l(p3, c);
+      }
+    });
+  /* 分岔樹 */ for (const d of [2, 3])
+    mk((N, l) => {
+      const root = N(0, 0);
+      let layer = [root];
+      for (let k = 1; k <= d; k++) {
+        const next = [],
+          w = 2 ** k;
+        for (let j = 0; j < w; j++) next.push(N(k / d, -0.9 + (j * 1.8) / (w - 1), k === d && j % 3 === 0 ? 1 : 0));
+        next.forEach((id, j) => l(layer[Math.floor(j / 2)], id));
+        layer = next;
+      }
+    });
+  /* 鋸齒 */ for (const n of [5, 8])
+    mk((N, l, ch) =>
+      ch(
+        Array.from({ length: n }, (_, k) =>
+          N(k / (n - 1), k % 2 ? 0.7 : -0.7, k === n - 1 || k === Math.floor(n / 2) ? 1 : 0)
+        )
+      )
+    );
+  /* 格子（帶一條斜線） */ for (const [c, r] of [
+    [3, 2],
+    [3, 3]
+  ])
+    mk((N, l) => {
+      const g = [];
+      for (let i = 0; i < c; i++)
+        for (let j = 0; j < r; j++) g.push(N(i / (c - 1), -0.8 + (j * 1.6) / (r - 1), i === c - 1 && j === 0 ? 1 : 0));
+      for (let i = 0; i < c; i++)
+        for (let j = 0; j < r; j++) {
+          if (i < c - 1) l(g[i * r + j], g[(i + 1) * r + j]);
+          if (j < r - 1 && (i + j) % 2 === 0) l(g[i * r + j], g[i * r + j + 1]);
+        }
+      l(g[0], g[r + 1 < g.length ? r + 1 : 1]);
+    });
+  /* 沙漏 */ for (const w of [0.6, 0.9])
+    mk((N, l) => {
+      const a = N(0, 0),
+        b = N(0.3, -w),
+        c = N(0.3, w, 1),
+        m = N(0.5, 0),
+        d = N(0.7, -w, 1),
+        e = N(0.7, w),
+        f = N(1, 0);
+      l(a, b), l(a, c), l(b, m), l(c, m), l(m, d), l(m, e), l(d, f), l(e, f), l(b, c);
+    });
+  /* 眼：上下兩道弧夾著瞳孔 */ for (const k0 of [3, 4])
+    mk((N, l, ch) => {
+      const a = N(0, 0),
+        b = N(1, 0),
+        up = [a],
+        dn = [a];
+      for (let k = 1; k < k0; k++)
+        up.push(N(k / k0, -Math.sin((k / k0) * Math.PI) * 0.85)),
+          dn.push(N(k / k0, Math.sin((k / k0) * Math.PI) * 0.85));
+      up.push(b), dn.push(b);
+      ch(up), ch(dn);
+      const p = N(0.5, 0, 1);
+      l(p, up[1]), l(p, dn[dn.length - 2]);
+    });
+  /* 三角框架 */ for (const k0 of [2, 3])
+    mk((N, l, ch) => {
+      const A = [0, 0],
+        B = [1, -0.9],
+        C = [1, 0.9],
+        side = (P, Q, big) =>
+          Array.from({ length: k0 + 1 }, (_, k) => [
+            P[0] + ((Q[0] - P[0]) * k) / k0,
+            P[1] + ((Q[1] - P[1]) * k) / k0,
+            big && k === k0 ? 1 : 0
+          ]);
+      const s1 = side(A, B, 1).map(q => N(...q)),
+        s2 = side(B, C)
+          .slice(1)
+          .map(q => N(...q)),
+        s3 = side(C, A, 0)
+          .slice(1, -1)
+          .map(q => N(...q));
+      ch([...s1, ...s2, ...s3, s1[0]]);
+    });
+  /* 皇冠：橫帶伸出尖刺 */ for (const sp of [2, 3])
+    mk((N, l, ch) => {
+      const band = [];
+      for (let k = 0; k <= sp * 2; k++) band.push(N(0.3, -0.9 + (k * 1.8) / (sp * 2)));
+      ch(band);
+      for (let k = 0; k <= sp * 2; k += 2) {
+        const a = N(0.65, band.length && -0.9 + (k * 1.8) / (sp * 2)),
+          b = N(1, -0.9 + (k * 1.8) / (sp * 2), 1);
+        l(band[k], a), l(a, b);
+      }
+    });
+  /* 蝴蝶：一大一小的翅膀 */ for (const big of [1, 2])
+    mk((N, l) => {
+      const c = N(0.5, 0),
+        w1 = ringPts(5, 0.5, -0.5 * big * 0.6, 0.3, 0.45 * big * 0.6, 0, 2).map(q => N(...q)),
+        w2 = ringPts(3, 0.5, 0.45, 0.2, 0.3, 0, 1).map(q => N(...q));
+      w1.forEach((id, k) => l(id, w1[(k + 1) % 5])), w2.forEach((id, k) => l(id, w2[(k + 1) % 3]));
+      l(c, w1[0]), l(c, w2[0]);
+    });
+  /* 十字 */ for (const len of [2, 3])
+    mk((N, l, ch) => {
+      const c = N(0.5, 0, 1),
+        arm = (du, dv) =>
+          ch([
+            c,
+            ...Array.from({ length: len }, (_, k) =>
+              N(0.5 + (du * (k + 1)) / len, (dv * (k + 1)) / len, k === len - 1 && dv ? 1 : 0)
+            )
+          ]);
+      arm(0.5, 0), arm(-0.5, 0), arm(0, 0.9), arm(0, -0.9);
+    });
+  /* 多邊形帶一條弦 */ for (const n of [5, 7])
+    mk((N, l) => {
+      const rg = ringPts(n, 0.5, 0, 0.48, 0.92, Math.PI, Math.floor(n / 2)).map(q => N(...q));
+      rg.forEach((id, k) => l(id, rg[(k + 1) % n]));
+      l(rg[1], rg[n - 2]);
+    });
+  /* 彗星：一個環拖著尾巴 */ for (const n of [4, 6])
+    mk((N, l, ch) => {
+      const rg = ringPts(n, 0.72, 0, 0.25, 0.6, Math.PI, Math.floor(n / 2)).map(q => N(...q));
+      rg.forEach((id, k) => l(id, rg[(k + 1) % n]));
+      const tail = [N(0, 0.3), N(0.22, 0.15), rg[0]];
+      ch(tail);
+    });
+  /* 雙輪 */ for (const off of [0.5, 0.75])
+    mk((N, l) => {
+      const a = N(0.28, -0.35 * off, 1),
+        b = N(0.75, 0.4 * off),
+        ra = ringPts(5, 0.28, -0.35 * off, 0.2, 0.42, 0).map(q => N(...q)),
+        rb = ringPts(5, 0.75, 0.4 * off, 0.2, 0.42, 0, 2).map(q => N(...q));
+      ra.forEach((id, k) => l(id, ra[(k + 1) % 5])), rb.forEach((id, k) => l(id, rb[(k + 1) % 5]));
+      l(a, ra[0]), l(b, rb[3]), l(ra[0], rb[3]);
+    });
+  /* 三叉 */ for (const pr of [3, 4])
+    mk((N, l, ch) => {
+      const s = [N(0, 0), N(0.35, 0)];
+      ch(s);
+      const bar = Array.from({ length: pr }, (_, k) => N(0.45, -0.9 + (k * 1.8) / (pr - 1)));
+      ch(bar);
+      l(s[1], bar[Math.floor(pr / 2)]);
+      bar.forEach((b, k) => l(b, N(0.95, -0.9 + (k * 1.8) / (pr - 1), k % 2 ? 0 : 1)));
+    });
+  /* 蛇：S 形 */ for (const n of [7, 10])
+    mk((N, l, ch) =>
+      ch(
+        Array.from({ length: n }, (_, k) =>
+          N(k / (n - 1), Math.sin((k / (n - 1)) * TAU2) * 0.85, k === n - 1 || k === Math.floor(n / 3) ? 1 : 0)
+        )
+      )
+    );
+  /* 箭頭（人字） */ for (const d of [2, 3])
+    mk((N, l, ch) => {
+      const tip = N(1, 0, 1),
+        up = [tip],
+        dn = [tip];
+      for (let k = 1; k <= d; k++) up.push(N(1 - k * 0.3, -k * 0.3)), dn.push(N(1 - k * 0.3, k * 0.3));
+      ch(up), ch(dn);
+      const shaft = [tip];
+      for (let k = 1; k <= d + 1; k++) shaft.push(N(1 - k * 0.28, 0, k === d + 1 ? 1 : 0));
+      ch(shaft);
+    });
+  /* 鑰匙：一個環、桿子、齒 */ for (const t of [2, 3])
+    mk((N, l, ch) => {
+      const rg = ringPts(5, 0.18, 0, 0.17, 0.45, 0, 2).map(q => N(...q));
+      rg.forEach((id, k) => l(id, rg[(k + 1) % 5]));
+      const shaft = [rg[0]];
+      for (let k = 1; k <= 3; k++) shaft.push(N(0.35 + k * 0.2, 0));
+      ch(shaft);
+      for (let k = 0; k < t; k++) l(shaft[3 - k], N(0.95 - k * 0.2, 0.55, k === 0 ? 1 : 0));
+    });
+  return out;
+})();
 const PT_R0 = 470;
 const PTREE = (() => {
   const N = [],
@@ -859,148 +828,161 @@ const PTREE = (() => {
     add = o => ((I[o.id] = o), N.push(o), o),
     link = (a, b) => E.push([a.id, b.id]),
     pol = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
+  const NR = PT_THEME.length,
+    STEP = 360 / NR;
   /* 小點的數值：主題 70%、隔壁主題 30%（每個方向偏重一種體系，但不會全部都是那個） */
   const smallOf = (ti, k) => {
     const T = PT_THEME[ti],
-      side = PT_THEME[(ti + (k % 2 ? 1 : 17)) % 18];
-    return k % 10 < 7
-      ? { s: T.sm[k % T.sm.length], th: ti }
-      : { s: side.sm[k % side.sm.length], th: (ti + (k % 2 ? 1 : 17)) % 18 };
+      sj = (ti + (k % 2 ? 1 : NR - 1)) % NR,
+      side = PT_THEME[sj];
+    return k % 10 < 7 ? { s: T.sm[k % T.sm.length], th: ti } : { s: side.sm[k % side.sm.length], th: sj };
   };
-  let ntN = 0;
-  /* 把一個結構放到路線上：r0～r1、角度 a、寬度跟著半徑變寬 */
-  const place = (sh, id, ti, a, r0, r1, flip) => {
-    const nodes = sh.pts.map(([u, v, big], k) => {
-      const r = r0 + (r1 - r0) * u,
-        w = r * Math.tan(9.5 * deg) * 0.95,
-        [x, y] = pol(a, r),
-        px = -Math.sin(a) * v * w * (flip ? -1 : 1),
-        py = Math.cos(a) * v * w * (flip ? -1 : 1);
-      if (big) {
-        const T = PT_THEME[ti],
-          [n, s] = T.nt[ntN++ % T.nt.length];
-        return add({ id: `${id}_${k}`, x: x + px, y: y + py, n, ic: T.ic, s, big: 1, th: ti });
-      }
-      const o = smallOf(ti, k + ntN);
-      return add({ id: `${id}_${k}`, x: x + px, y: y + py, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th });
-    });
-    for (const [p, q] of sh.e) link(nodes[p], nodes[q]);
-    return [nodes[sh.i], nodes[sh.o]];
+  const near = (x, y, d) => N.some(o => Math.hypot(o.x - x, o.y - y) < d);
+  const SUFFIX = ['之心', '之道', '極意', '奧義', '秘訣', '真髓', '之魂', '心法', '之印', '之誓', '領悟', '妙法'],
+    CONDS = [
+      { lowHp: 30 },
+      { fullHp: 20 },
+      { esUp: 20 },
+      { afterRoll: 25 },
+      { bossP: 20 },
+      { closeP: 20 },
+      { farP: 20 },
+      { killHeal: 8 },
+      { lowHpRed: 12 },
+      { crit: 4 },
+      { as: 6 },
+      { hpP: 8 },
+      { resA: 8 },
+      { ms: 5 },
+      { aoe: 10 },
+      { cdr: 6 },
+      { spirit: 10 },
+      { es: 30 }
+    ],
+    COST = [{ hpP: -8 }, { ms: -6 }, { resA: -8 }, { armorP: -20 }, { mpP: -12 }],
+    used = new Set();
+  let ntK = 0;
+  /* 第一個大點用手寫的（名字有特色），之後的照「主屬性 × 深度＋條件」組出來 */
+  const notableOf = (ti, depth) => {
+    const T = PT_THEME[ti],
+      k = ntK++;
+    if (k % 5 === 0) {
+      const [n, st] = T.nt[(k / 5) % T.nt.length];
+      if (!used.has(n)) return used.add(n), { n, s: st };
+    }
+    const [mk] = Object.keys(T.sm[0]),
+      base = T.sm[0][mk] * 4 * depth,
+      power = k % 4 === 3,
+      st = { [mk]: Math.round(base * (power ? 2.2 : 1)) };
+    const extra = power ? COST[k % COST.length] : CONDS[(k * 7 + ti * 3) % CONDS.length];
+    for (const ck in extra) st[ck] = (st[ck] || 0) + Math.round(extra[ck] * (power ? 1 : depth));
+    const words = [T.n, ...T.nt.map(x => x[0])];
+    let n = '';
+    for (let t = 0; !n || used.has(n); t++)
+      n = words[(k + t) % words.length] + SUFFIX[(k * 5 + t * 3 + ti) % SUFFIX.length];
+    used.add(n);
+    return { n, s: st, power };
   };
-  /* 起點環：6 個門（免費）＋門之間 4 個小點 */
-  const ring = [];
+  /* 起點：6 個門（免費），不連成環 */
   for (let g = 0; g < 6; g++) {
     const a = (g * 60 - 90) * deg,
-      ti = g * 3 + 1,
+      ti = Math.round((g * 60 - STEP / 2) / STEP + NR) % NR,
       [x, y] = pol(a, PT_R0);
-    ring.push(
-      add({
-        id: 'g' + g,
-        x,
-        y,
-        n: PT_THEME[ti].n + '之門',
-        ic: PT_THEME[ti].ic,
-        s: {},
-        big: 1,
-        gate: 1,
-        th: ti,
-        orb: PT_R0
-      })
-    );
-    for (let k = 1; k <= 4; k++) {
-      const [x2, y2] = pol(a + k * 12 * deg, PT_R0),
-        o = smallOf((g * 3 + (k <= 2 ? 2 : 3)) % 18, k);
-      ring.push(add({ id: `r${g}_${k}`, x: x2, y: y2, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th, orb: PT_R0 }));
+    add({ id: 'g' + g, x, y, n: PT_THEME[ti].n + '之門', ic: PT_THEME[ti].ic, s: {}, big: 1, gate: 1, th: ti });
+  }
+  /* 48 塊拼塊放進三圈格子（內 12、中 16、外 20），每塊只用一次；拼塊沿著圓弧彎，越外圈的大點越強 */
+  const RINGS = [
+      { n: 12, r0: 760, r1: 1120, dep: 1 },
+      { n: 16, r0: 1330, r1: 1770, dep: 1.3 },
+      { n: 20, r0: 1960, r1: 2480, dep: 1.6 }
+    ],
+    cells = RINGS.map(() => []);
+  let pi = 0;
+  RINGS.forEach((L, li) => {
+    for (let c = 0; c < L.n; c++) {
+      const ad = ((c + 0.5) * 360) / L.n,
+        ti = Math.round((ad - STEP / 2) / STEP + NR) % NR,
+        sh = PT_PIECES[(pi++ * 29) % PT_PIECES.length],
+        half = (180 / L.n) * 0.72,
+        flip = (c + li) % 2 ? -1 : 1,
+        id = `c${li}_${c}`;
+      const nodes = sh.pts.map(([u, v, big], k) => {
+        const r = L.r0 + (L.r1 - L.r0) * u,
+          a = (ad + v * half * flip - 90) * deg,
+          [x, y] = pol(a, r);
+        if (big) {
+          const nt = notableOf(ti, L.dep);
+          return add({
+            id: `${id}_${k}`,
+            x,
+            y,
+            n: nt.n,
+            ic: PT_THEME[ti].ic,
+            s: nt.s,
+            big: 1,
+            power: nt.power,
+            th: ti,
+            ad: ad + v * half * flip,
+            r
+          });
+        }
+        const o = smallOf(ti, k + c);
+        return add({
+          id: `${id}_${k}`,
+          x,
+          y,
+          n: PT_THEME[o.th].n,
+          s: o.s,
+          big: 0,
+          th: o.th,
+          ad: ad + v * half * flip,
+          r
+        });
+      });
+      for (const [p, q] of sh.e) link(nodes[p], nodes[q]);
+      /* 接口：最裡面、最外面、最左、最右的點 */
+      const by = f => nodes.reduce((b, n) => (f(n) < f(b) ? n : b));
+      cells[li].push({
+        ad,
+        inP: by(n => n.r + Math.abs(n.ad - ad)),
+        outP: by(n => -n.r + Math.abs(n.ad - ad)),
+        lP: by(n => n.ad),
+        rP: by(n => -n.ad)
+      });
     }
-  }
-  ring.forEach((n, i) => link(n, ring[(i + 1) % ring.length]));
-  /* 18 條路線：內段 × 外段的組合都不重複，奇數路線左右鏡像 */
-  const mids = [],
-    outs = [];
-  for (let ti = 0; ti < 18; ti++) {
-    const a = (ti * 20 - 110) * deg,
-      g = Math.floor(((ti + 1) % 18) / 3),
-      [px, py] = pol(a, 640),
-      path = add({ id: `p${ti}`, x: px, y: py, n: PT_THEME[ti].n, s: PT_THEME[ti].sm[0], big: 0, th: ti });
-    link(I['g' + g], path);
-    const [ii, io] = place(SH_IN[ti % 8], `i${ti}`, ti, a, 820, 1460, ti % 2);
-    link(path, ii);
-    const [mx, my] = pol(a, 1600),
-      mid = add({
-        id: `m${ti}`,
-        x: mx,
-        y: my,
-        n: PT_THEME[ti].n,
-        s: PT_THEME[ti].sm[1 % PT_THEME[ti].sm.length],
-        big: 0,
-        th: ti,
-        orb: 1600
-      });
-    link(io, mid);
-    const [oi, oo] = place(SH_OUT[(ti * 3 + Math.floor(ti / 8)) % 8], `o${ti}`, ti, a, 1740, 2560, (ti + 1) % 2);
-    link(mid, oi);
-    const [ox, oy] = pol(a, 2700),
-      out = add({ id: `q${ti}`, x: ox, y: oy, n: PT_THEME[ti].n, s: PT_THEME[ti].sm[0], big: 0, th: ti, orb: 2700 });
-    link(oo, out);
-    mids.push(mid);
-    outs.push(out);
-  }
-  /* 中圈（1600）與外圈（2700）的弧：把相鄰路線接起來；外圈每個縫掛一個專精群 */
-  for (let ti = 0; ti < 18; ti++) {
-    const a = (ti * 20 - 100) * deg,
-      j = (ti + 1) % 18,
-      [x, y] = pol(a, 1600),
-      o = smallOf(ti, 5),
-      m = add({ id: `mm${ti}`, x, y, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th, orb: 1600 });
-    link(mids[ti], m);
-    link(m, mids[j]);
-    const q1 = add({
-        id: `qa${ti}`,
-        ...xy(pol((ti * 20 - 103.5) * deg, 2700)),
-        n: PT_THEME[ti].n,
-        s: smallOf(ti, 3).s,
-        big: 0,
-        th: ti,
-        orb: 2700
-      }),
-      q2 = add({
-        id: `qb${ti}`,
-        ...xy(pol((ti * 20 - 96.5) * deg, 2700)),
-        n: PT_THEME[j].n,
-        s: smallOf(j, 4).s,
-        big: 0,
-        th: j,
-        orb: 2700
-      });
-    link(outs[ti], q1);
-    link(q1, q2);
-    link(q2, outs[j]);
-    /* 專精群：中間大點＋一圈 7 個＋2 個入口 */
-    const ca = (ti * 20 - 100) * deg,
-      [cx, cy] = pol(ca, 2960),
-      th = PT_THEME[ti],
-      big = add({
-        id: `s${ti}`,
-        x: cx,
-        y: cy,
-        n: th.nt[(ti + 1) % 3][0] + '・專精',
-        ic: th.ic,
-        s: Object.fromEntries(Object.entries(th.nt[(ti + 1) % 3][1]).map(([k, v]) => [k, Math.round(v * 1.2)])),
-        big: 1,
-        th: ti
-      });
-    const rg = [];
-    for (let k = 0; k < 7; k++) {
-      const [dx, dy] = pol(ca + (k / 7) * Math.PI * 2, 110),
-        o2 = smallOf(k % 2 ? ti : j, k);
-      rg.push(add({ id: `s${ti}_${k}`, x: cx + dx, y: cy + dy, n: PT_THEME[o2.th].n, s: o2.s, big: 0, th: o2.th }));
-    }
-    rg.forEach((n, k) => link(n, rg[(k + 1) % 7]));
-    link(rg[0], big);
-    link(rg[3], big);
-    const near = rg.reduce((b, n) => (Math.hypot(n.x, n.y) < Math.hypot(b.x, b.y) ? n : b));
-    link(near, q1);
-  }
+  });
+  const angD = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+  const hsh = (a, b) => (a * 97 + b * 61 + 13) % 12;
+  cells.forEach((row, li) =>
+    row.forEach((cl, c) => {
+      /* 往內接：內圈接門，其他接內一圈角度最近的那塊 */
+      if (!li) link(I['g' + (Math.round(cl.ad / 60) % 6)], cl.inP);
+      else {
+        const inner = [...cells[li - 1]].sort((a, b) => angD(a.ad, cl.ad) - angD(b.ad, cl.ad));
+        link(inner[0].outP, cl.inP);
+        /* 斜著再接一塊（有的有、有的沒有） */
+        if (hsh(li, c) % 4 === 0) link(inner[1].outP, cl.lP);
+      }
+      /* 同一圈左右：大約 2/3 有接、1/3 斷開 */
+      if (hsh(c, li) % 3) link(cl.rP, row[(c + 1) % row.length].lP);
+    })
+  );
+  /* 只有最外圈（2700）是環 */
+  const ring = cells[2].map((cl, c) => {
+    const [x, y] = pol((cl.ad - 90) * deg, 2700),
+      o = smallOf(Math.round((cl.ad - STEP / 2) / STEP + NR) % NR, c),
+      q = add({ id: `q${c}`, x, y, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th, orb: 2700 });
+    link(cl.outP, q);
+    return q;
+  });
+  ring.forEach((q, c) => {
+    const nx = ring[(c + 1) % ring.length],
+      [x, y] = pol((cells[2][c].ad + 9 - 90) * deg, 2700),
+      o = smallOf(c % NR, c + 3),
+      m = add({ id: `qm${c}`, x, y, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th, orb: 2700 });
+    link(q, m);
+    link(m, nx);
+  });
   function xy([x, y]) {
     return { x, y };
   }
@@ -1266,6 +1248,8 @@ const tierIlvl = t => t;
 
 /* ---------- 抗性 ---------- */
 const RESK = ['fire', 'cold', 'light', 'chaos'];
+/* 武器種類：矛的近戰距離 +25%、棍打中回 1 魔力 */
+const WTN = { sword: '劍', spear: '矛', staff: '棍' };
 const ELN = { phys: '物理', fire: '火焰', cold: '冰冷', light: '閃電', chaos: '混沌' };
 const ELC = { phys: '#fff3e0', fire: '#ff8a4c', cold: '#8fd6ff', light: '#ffe066', chaos: '#c38bff' };
 const RES_CAP = 75;
@@ -1340,6 +1324,44 @@ const BASES = [
   { id: 'w_kris', k: 'weapon', n: '蛇紋刃', lv: 7, ic: 'gear_weapon_28', b: { dmg: [12, 22], as: 1.35 } },
   { id: 'w_moon', k: 'weapon', n: '月影刀', lv: 10, ic: 'gear_weapon_17', b: { dmg: [24, 42], as: 1.15 } },
   { id: 'w_demon', k: 'weapon', n: '妖刀', lv: 14, ic: 'gear_weapon_20', b: { dmg: [34, 62], as: 1.1 } },
+  { id: 'w_spear', k: 'weapon', n: '短矛', lv: 1, ic: 'gear_weapon_9', wt: 'spear', b: { dmg: [5, 12], as: 1.2 } },
+  {
+    id: 'w_trident',
+    k: 'weapon',
+    n: '三叉戟',
+    lv: 6,
+    ic: 'gear_weapon_29',
+    wt: 'spear',
+    b: { dmg: [12, 26], as: 1.15 }
+  },
+  {
+    id: 'w_glaive',
+    k: 'weapon',
+    n: '偃月矛',
+    lv: 12,
+    ic: 'gear_weapon_30',
+    wt: 'spear',
+    b: { dmg: [26, 48], as: 1.1 }
+  },
+  { id: 'w_staff', k: 'weapon', n: '長棍', lv: 1, ic: 'gear_weapon_4', wt: 'staff', b: { dmg: [6, 12], as: 1.3 } },
+  {
+    id: 'w_ironstaff',
+    k: 'weapon',
+    n: '鐵棍',
+    lv: 6,
+    ic: 'gear_weapon_15',
+    wt: 'staff',
+    b: { dmg: [11, 23], as: 1.3 }
+  },
+  {
+    id: 'w_demonstaff',
+    k: 'weapon',
+    n: '降魔杖',
+    lv: 13,
+    ic: 'gear_weapon_31',
+    wt: 'staff',
+    b: { dmg: [24, 44], as: 1.25 }
+  },
   { id: 's_wood', k: 'shield', n: '木盾', lv: 1, ic: 'gear_offhand_2', b: { armor: 12, block: 10 } },
   { id: 's_iron', k: 'shield', n: '鐵盾', lv: 6, ic: 'gear_offhand_8', b: { armor: 40, block: 14 } },
   { id: 's_orb', k: 'shield', n: '法珠', lv: 4, ic: 'gear_offhand_11', b: { es: 30 } },

@@ -449,6 +449,7 @@ function doRoll() {
   const step = ascV(S, 'rapier.step');
   P.cds.roll = ROLL.cd * (step ? 0.6 : 1) * (1 - Math.min(60, ST.rollCd) / 100) + ROLL.t;
   if (step) P.stepT = G.t + ROLL.t + 2;
+  P.rolledT = G.t + ROLL.t + 2;
   P.iuntil = G.t + ROLL.iframe;
   sfx('roll');
 }

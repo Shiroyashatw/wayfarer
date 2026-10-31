@@ -120,7 +120,7 @@ function treeRender() {
     <button class="btn" data-ta="areset" ${S.at.length > 1 ? '' : 'disabled'}>重置昇華</button>
     <button class="x" data-ta="close">✕</button></div>
   <svg id="tsvg"><g id="tg">${html}</g></svg>
-  <p class="thelp">中間一圈是起點，往外 18 條路線，每條的形狀、點數、大點數都不一樣：上方偏生命護甲、右上近戰攻速、右下身法投射物陷阱、下方暴擊圖騰召喚、左下元素法術、左上能量護盾精魄魔力；最外圈是專精群。點亮著的點＝點下去，再點一次＝退回。拖曳移動、滾輪縮放。</p>`;
+  <p class="thelp">中間是起點的 6 個門。整張樹由 48 塊形狀都不一樣的拼塊組成，有的互相連著、有的要繞路；方向大致是：上方生命護甲、右上近戰矛攻速、右邊身法棍投射物陷阱、下方暴擊圖騰召喚、左下元素法術、左上能量護盾精魄魔力；越外圈的大點越強，帶代價的是強力大點。只有最外圈是環。點亮著的點＝點下去，再點一次＝退回。拖曳移動、滾輪縮放。</p>`;
   treeView();
 }
 function treeView() {

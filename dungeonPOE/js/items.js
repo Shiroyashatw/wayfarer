@@ -83,7 +83,12 @@ const affText = a => AFF[a.k].n.replace('{}', Array.isArray(a.v) ? a.v[0] + '～
 function baseText(it) {
   const b = baseOf(it).b,
     o = [];
-  if (b.dmg) o.push(`物理傷害 ${b.dmg[0]}～${b.dmg[1]}`, `每秒攻擊 ${b.as}`);
+  if (b.dmg) {
+    const wt = baseOf(it).wt || 'sword';
+    o.push(`${WTN[wt]} · 物理傷害 ${b.dmg[0]}～${b.dmg[1]}`, `每秒攻擊 ${b.as}`);
+    if (wt === 'spear') o.push('近戰距離 +25%');
+    if (wt === 'staff') o.push('打中回 1 點魔力');
+  }
   if (b.armor) o.push(`護甲 ${b.armor}`);
   if (b.block) o.push(`格擋 ${b.block}%`);
   for (const k of ['life', 'resF', 'resC', 'resL', 'regen', 'crit']) if (b[k]) o.push(affText({ k, v: b[k] }));
@@ -171,7 +176,19 @@ function stats(s = S) {
     unitP: 0,
     units: 0,
     rollCd: 0,
-    fireAdd: 0
+    fireAdd: 0,
+    swordP: 0,
+    spearP: 0,
+    staffP: 0,
+    lowHp: 0,
+    fullHp: 0,
+    esUp: 0,
+    afterRoll: 0,
+    bossP: 0,
+    closeP: 0,
+    farP: 0,
+    killHeal: 0,
+    lowHpRed: 0
   };
   const w = s.eq.weapon,
     wb = w ? baseOf(w).b : { dmg: HERO.dmg, as: 1.1 };
@@ -229,6 +246,9 @@ function stats(s = S) {
     }
   }
   o.es = Math.round(o.es * (1 + o.esP / 100));
+  /* 持武器的加成 */
+  o.wt = (w && baseOf(w).wt) || 'sword';
+  pt.dmgA += o[o.wt + 'P'];
   /* 昇華大點的數值效果 */
   const aura = ascV(s, 'ronin.aura');
   if (aura) (o.meleeP += 15), (o.aoe += aura);

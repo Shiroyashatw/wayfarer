@@ -156,7 +156,7 @@ const stanceNeed = () => coreV(S, 'ronin', 'gale') || 5;
 function actHit(a, idx) {
   const c = a.c,
     D = c.D,
-    R = (D.r || 0) * ST.aoeM * c.aoe;
+    R = (D.r || 0) * ST.aoeM * c.aoe * (ST.wt === 'spear' && D.tags.includes('melee') ? 1.25 : 1);
   const hitArc = (ang, arc, r, kb, o) => {
     let n = 0;
     for (const m of G.mobs) {
@@ -273,6 +273,13 @@ function rollDmg(c, m, o = {}) {
       (tg.includes('spell') ? ST.spellP : 0) +
       (o.minion ? ST.minionP : 0) +
       (o.unit ? ST.unitP : 0) +
+      (P.hp < ST.hp / 2 ? ST.lowHp : 0) +
+      (P.hp >= ST.hp ? ST.fullHp : 0) +
+      (P.es > 0 ? ST.esUp : 0) +
+      (P.rolledT > G.t ? ST.afterRoll : 0) +
+      (m && (m.boss || m.elite) ? ST.bossP : 0) +
+      (m && dist(P, m) < 160 ? ST.closeP : 0) +
+      (m && dist(P, m) > 350 ? ST.farP : 0) +
       (tg.includes('melee') && ascV(S, 'spell.arcane') ? ST.spellP : 0) +
       (P.rage || 0) +
       ascV(S, 'berserk.blood') +
@@ -308,6 +315,7 @@ function hitMob(m, c, ang, kb, o = {}) {
     } else m.mark = (m.mark || 0) + 1;
   }
   const r = rollDmg(c, m, { mult, crit, minion: o.minion, unit: a.unit });
+  if (ST.wt === 'staff' && (c.D.tags || []).includes('melee') && !o.quiet) P.mp = Math.min(ST.mp, P.mp + 1);
   /* 魔劍士：魔力之刃回魔、劍氣 */
   if ((c.D.tags || []).includes('melee') && !o.quiet && !a.unit) {
     if (ascV(S, 'spell.arcane')) P.mp = Math.min(ST.mp, P.mp + 1);
@@ -435,6 +443,7 @@ function coreHurt(d) {
     Math.min(40, G.allies.length * coreV(S, 'tamer', 'guard'));
   d *= 1 - Math.min(60, red) / 100;
   P.lastHurt = G.t;
+  if (P.hp < ST.hp / 2 && ST.lowHpRed) d *= 1 - Math.min(50, ST.lowHpRed) / 100;
   if (P.es > 0) {
     const ab = Math.min(P.es, d);
     P.es -= ab;
@@ -610,6 +619,7 @@ function onBlock() {
 }
 /* 殺怪：狂亂疊層 */
 function onKill() {
+  if (ST.killHeal) P.hp = Math.min(ST.hp, P.hp + ST.killHeal);
   if (ascV(S, 'berserk.frenzy')) {
     P.frenzy = (P.frenzy || []).filter(t => t > G.t).slice(-2);
     P.frenzy.push(G.t + 3);
