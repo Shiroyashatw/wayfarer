@@ -1,101 +1,80 @@
-/* dungeonPOE · Web Audio 合成音效（0.1.5 拿掉背景音樂） */
+/* dungeonPOE · 合成音效（Web Audio，沒有音檔） */
 'use strict';
-/* ================= audio ================= */
-const AU = { ctx: null, sfx: null, noiseBuf: null };
-function audioInit() {
-  if (!S) return;
-  if (AU.ctx) {
-    if (AU.ctx.state === 'suspended') AU.ctx.resume();
-    return;
-  }
-  const C = window.AudioContext || window.webkitAudioContext;
-  if (!C) return;
-  AU.ctx = new C();
-  const master = AU.ctx.createGain();
-  master.gain.value = 0.6;
-  master.connect(AU.ctx.destination);
-  AU.sfx = AU.ctx.createGain();
-  AU.sfx.gain.value = 0.8;
-  AU.sfx.connect(master);
-  const len = AU.ctx.sampleRate;
-  AU.noiseBuf = AU.ctx.createBuffer(1, len, len);
-  const d = AU.noiseBuf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+let AC;
+function ac() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
 }
-function tone(f, d, type = 'square', v = 0.15, delay = 0, slide = 0, bus) {
-  const c = AU.ctx;
-  if (!c) return;
-  const t = c.currentTime + Math.max(0, delay),
-    o = c.createOscillator(),
-    g = c.createGain();
+let NOISE;
+function noise() {
+  const a = ac();
+  if (NOISE) return NOISE;
+  NOISE = a.createBuffer(1, a.sampleRate * 0.5, a.sampleRate);
+  const d = NOISE.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return NOISE;
+}
+/* 一段噪音（揮刀、打中）或一個音（撿東西、升級） */
+function nz(dur, f0, f1, vol, type = 'bandpass') {
+  const a = ac(),
+    t = a.currentTime,
+    s = a.createBufferSource(),
+    f = a.createBiquadFilter(),
+    g = a.createGain();
+  s.buffer = noise();
+  f.type = type;
+  f.frequency.setValueAtTime(f0, t);
+  f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(f).connect(g).connect(a.destination);
+  s.start(t);
+  s.stop(t + dur);
+}
+function tone(f0, f1, dur, vol, type = 'sine', delay = 0) {
+  const a = ac(),
+    t = a.currentTime + delay,
+    o = a.createOscillator(),
+    g = a.createGain();
   o.type = type;
-  o.frequency.setValueAtTime(f, t);
-  if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d);
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(v, t + 0.006);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-  o.connect(g);
-  g.connect(bus || AU.sfx);
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(a.destination);
   o.start(t);
-  o.stop(t + d + 0.05);
+  o.stop(t + dur);
 }
-function noise(d, v = 0.2, delay = 0, freq = 1200, ft = 'bandpass', bus) {
-  const c = AU.ctx;
-  if (!c) return;
-  const t = c.currentTime + Math.max(0, delay),
-    s = c.createBufferSource(),
-    f = c.createBiquadFilter(),
-    g = c.createGain();
-  s.buffer = AU.noiseBuf;
-  f.type = ft;
-  f.frequency.value = freq;
-  g.gain.setValueAtTime(v, t);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-  s.connect(f);
-  f.connect(g);
-  g.connect(bus || AU.sfx);
-  s.start(t, Math.random() * 0.5);
-  s.stop(t + d + 0.05);
-}
-const SFX = {
-  tap: () => tone(880, 0.04, 'square', 0.05),
-  select: () => {
-    tone(660, 0.05, 'square', 0.07);
-    tone(990, 0.07, 'square', 0.07, 0.05);
-  },
-  hit: () => {
-    noise(0.1, 0.3, 0, 900);
-    tone(160, 0.1, 'square', 0.12, 0, 60);
-  },
-  crit: () => {
-    noise(0.18, 0.4, 0, 1400);
-    tone(520, 0.12, 'square', 0.1, 0, 180);
-    tone(1040, 0.08, 'square', 0.06, 0.04);
-  },
-  encounter: () => {
-    tone(220, 0.35, 'sawtooth', 0.08, 0, 880);
-    tone(330, 0.35, 'square', 0.05, 0.05, 1320);
-    noise(0.4, 0.15, 0, 3000, 'highpass');
-  },
-  win: () =>
-    [
-      [523, 0.1],
-      [659, 0.1],
-      [784, 0.1],
-      [1047, 0.45]
-    ].forEach(([f, d], i) => {
-      tone(f, d, 'square', 0.08, i * 0.11);
-      tone(f / 2, d, 'triangle', 0.1, i * 0.11);
-    }),
-  lose: () => [392, 349, 311, 262].forEach((f, i) => tone(f, 0.3, 'triangle', 0.12, i * 0.25)),
-  level: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.14, 'square', 0.06, i * 0.06)),
-  coin: () => {
-    tone(988, 0.06, 'square', 0.07);
-    tone(1319, 0.14, 'square', 0.07, 0.06);
-  },
-  nope: () => tone(180, 0.12, 'square', 0.06)
-};
-function sfx(n) {
-  /* 0.1.56 沒有這個音效就不播（之前叫到不存在的音效會丟錯，後面的存檔、重畫都沒做：流浪商人、獻祭按了沒反應） */
-  if (AU.ctx && S.sfx && SFX[n]) SFX[n]();
+let lastHit = 0;
+function sfx(k) {
+  try {
+    const now = ac().currentTime;
+    if ((k === 'hit' || k === 'crit') && now - lastHit < 0.03) return;
+    if (k === 'hit' || k === 'crit') lastHit = now;
+    ({
+      swing: () => nz(0.12, 2400, 700, 0.12),
+      throw: () => nz(0.15, 4000, 1500, 0.08),
+      hit: () => (nz(0.08, 900, 200, 0.35, 'lowpass'), tone(160, 60, 0.08, 0.25, 'square')),
+      crit: () => (
+        nz(0.14, 1600, 200, 0.45, 'lowpass'),
+        tone(220, 50, 0.16, 0.3, 'square'),
+        tone(1400, 900, 0.12, 0.08, 'triangle')
+      ),
+      hurt: () => (tone(200, 80, 0.18, 0.25, 'sawtooth'), nz(0.12, 600, 150, 0.25, 'lowpass')),
+      roll: () => nz(0.18, 500, 1400, 0.1),
+      mikiri: () => (tone(1800, 1800, 0.35, 0.12, 'triangle'), tone(2700, 2700, 0.3, 0.06, 'sine', 0.04)),
+      drink: () => tone(500, 900, 0.18, 0.12, 'sine'),
+      coin: () => (tone(1500, 1500, 0.06, 0.08, 'square'), tone(2000, 2000, 0.1, 0.06, 'square', 0.05)),
+      pick: () => tone(700, 1100, 0.1, 0.1, 'triangle'),
+      rare: () => [660, 880, 1320].forEach((f, i) => tone(f, f, 0.25, 0.08, 'triangle', i * 0.07)),
+      equip: () => nz(0.1, 3000, 1200, 0.1, 'highpass'),
+      lvup: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, f, 0.3, 0.09, 'triangle', i * 0.08)),
+      slam: () => (tone(90, 40, 0.3, 0.35, 'sine'), nz(0.25, 400, 80, 0.3, 'lowpass')),
+      die: () => tone(300, 60, 0.8, 0.25, 'sawtooth'),
+      portal: () => [330, 440, 660].forEach((f, i) => tone(f, f * 1.5, 0.4, 0.07, 'sine', i * 0.06)),
+      block: () => (tone(900, 700, 0.08, 0.12, 'square'), nz(0.06, 3000, 1500, 0.1, 'highpass')),
+      boss: () => [392, 523, 659, 784].forEach((f, i) => tone(f, f, 0.5, 0.1, 'triangle', i * 0.12))
+    })[k]();
+  } catch (e) {}
 }
