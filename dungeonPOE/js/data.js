@@ -1,6 +1,6 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.2';
+const VER = '0.2.3';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
@@ -186,51 +186,8 @@ const SUPPORTS = {
 const GEM_MAX = 20;
 const gemNeed = lv => Math.round(30 * lv * lv);
 
-/* ---------- 天賦樹（全員共用一張）：中心起點、6 個方向、每升一級 1 點，要連著點 ---------- */
-const PT_THEMES = [
-  {
-    n: '生命',
-    ic: 'asc_s_heart',
-    s: { hpP: 5 },
-    a: { n: '強健', ic: 'asc_s_heartx', s: { hpP: 12, regen: 3 } },
-    b: { n: '不屈', ic: 'asc_s_heartx', s: { hpP: 18, flask: 30 } }
-  },
-  {
-    n: '護甲',
-    ic: 'asc_s_shield',
-    s: { armorP: 12 },
-    a: { n: '鐵壁', ic: 'asc_s_anvil', s: { armorP: 30, block: 4 } },
-    b: { n: '堡壘', ic: 'asc_s_anvil', s: { armorP: 40, block: 6 } }
-  },
-  {
-    n: '攻速',
-    ic: 'asc_s_wind',
-    s: { as: 3 },
-    a: { n: '疾風', ic: 'asc_s_feather', s: { as: 8, ms: 5 } },
-    b: { n: '連斬', ic: 'asc_s_feather', s: { as: 12, ms: 5 } }
-  },
-  {
-    n: '暴擊',
-    ic: 'asc_s_eye',
-    s: { crit: 2 },
-    a: { n: '精準', ic: 'asc_s_stars', s: { crit: 5, critX: 20 } },
-    b: { n: '致命', ic: 'asc_s_stars', s: { critX: 45 } }
-  },
-  {
-    n: '範圍',
-    ic: 'asc_s_spark',
-    s: { aoe: 4 },
-    a: { n: '擴散', ic: 'asc_s_flame', s: { aoe: 12 } },
-    b: { n: '元素掌握', ic: 'asc_s_flame', s: { eleP: 30, aoe: 8 } }
-  },
-  {
-    n: '魔力',
-    ic: 'asc_s_drop',
-    s: { mpP: 6 },
-    a: { n: '冥想', ic: 'asc_s_lotus', s: { mpP: 15, mpReg: 40 } },
-    b: { n: '迅捷施術', ic: 'asc_s_lotus', s: { cdr: 15, mpP: 10 } }
-  }
-];
+/* ---------- 天賦樹（0.2.3，照 PoE）：一千多個點，中間挖空放昇華；6 個方向，每升一級 1 點 ----------
+   起點是中間的一圈（6 個門，免費），往外三條主幹＋一團一團的「星團」（中間是大點），最外面是基石（強但有代價） */
 const STATN = {
   hpP: ['生命', '%'],
   armorP: ['護甲', '%'],
@@ -242,162 +199,448 @@ const STATN = {
   mpReg: ['魔力回復', '%'],
   cdr: ['冷卻縮減', '%'],
   dmgA: ['傷害', '%'],
+  meleeP: ['近戰傷害', '%'],
+  projP: ['投射物傷害', '%'],
+  spellP: ['法術傷害', '%'],
+  minionP: ['召喚物傷害', '%'],
+  eleP: ['元素傷害', '%'],
   resA: ['全部抗性', '%'],
   regen: ['每秒回復生命', ''],
   flask: ['藥水回復', '%'],
   block: ['格擋', '%'],
   ms: ['移動速度', '%'],
-  eleP: ['元素傷害', '%']
+  blood: ['技能改用生命施放（不耗魔力）', '']
 };
-/* 產生節點：6 條輻線各 6 點（第 3、6 點是大點），第 2、5 圈用中間點把相鄰輻線接起來 */
-const PTREE = (() => {
-  const N = [{ id: 'c', x: 0, y: 0, n: '起點', ic: 'asc_s_stars', s: {}, big: 1 }],
-    E = [];
-  PT_THEMES.forEach((th, i) => {
-    const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
-    for (let r = 1; r <= 6; r++) {
-      const big = r === 3 ? th.a : r === 6 ? th.b : null;
-      N.push({
-        id: `p${i}_${r}`,
-        x: Math.cos(a) * r * 92,
-        y: Math.sin(a) * r * 92,
-        n: big ? big.n : th.n,
-        ic: big ? big.ic : th.ic,
-        s: big ? big.s : th.s,
-        big: big ? 1 : 0
-      });
-      E.push([r === 1 ? 'c' : `p${i}_${r - 1}`, `p${i}_${r}`]);
-    }
-    for (const r of [2, 5]) {
-      const b = a + Math.PI / 6,
-        mid =
-          r === 2 ? { n: '傷害', ic: 'asc_s_sword', s: { dmgA: 6 } } : { n: '抗性', ic: 'asc_s_rune', s: { resA: 6 } };
-      N.push({ id: `m${i}_${r}`, x: Math.cos(b) * r * 92 * 0.95, y: Math.sin(b) * r * 92 * 0.95, ...mid, big: 0 });
-      E.push([`p${i}_${r}`, `m${i}_${r}`], [`m${i}_${r}`, `p${(i + 1) % 6}_${r}`]);
-    }
-  });
-  return { N, E, I: Object.fromEntries(N.map(n => [n.id, n])) };
-})();
-const ptPoints = lv => lv - 1;
-
-/* ---------- 核心昇華樹：0.1 五個職業的機制、核心、強化核心放在同一張樹；每 3 級 1 點 ----------
-   路線：起點 → 職業機制 → 核心 → 強化核心（自己選要走哪些） */
-const CORE_CLS = [
+const PT_SECT = [
   {
-    id: 'ronin',
-    n: '浪人',
-    ic: 'cls_swordsman',
-    ci: 'swordsman',
-    m: '架勢',
-    md: '每次出手打中 +1 層架勢，滿 5 層的下一次出手是「居合」：傷害 ×3、必定暴擊',
-    cores: [
-      { id: 'swallow', n: '燕返', v: [0.5, 1], d: v => `居合之後馬上再砍一次（傷害 ×${v}）` },
-      { id: 'mirror', n: '明鏡', v: [5, 10], d: v => `居合命中：回 ${v}% 生命` },
-      { id: 'gale', n: '疾風', v: [4, 3], d: v => `架勢只要 ${v} 層就能居合` },
-      { id: 'iron', n: '斬鐵', v: [4, 5], d: v => `居合傷害 ×3 → ×${v}` }
-    ]
+    n: '體魄',
+    c: '#d9534f',
+    ic: 'asc_s_heart',
+    sm: [{ hpP: 3 }, { armorP: 6 }, { hpP: 2, regen: 1 }],
+    nt: [
+      { hpP: 10, regen: 3 },
+      { armorP: 25, block: 3 },
+      { hpP: 8, resA: 6 }
+    ],
+    names: [
+      '強健',
+      '鐵骨',
+      '不屈',
+      '磐石',
+      '厚皮',
+      '頑強',
+      '堅韌',
+      '不倒',
+      '血氣',
+      '鋼筋',
+      '泰山',
+      '金剛',
+      '古樹',
+      '巨像'
+    ],
+    ks: { n: '鐵壁', ic: 'asc_s_anvil', s: { armorP: 100, block: 8, ms: -10 } }
   },
   {
-    id: 'knight',
-    n: '騎士',
-    ic: 'cls_knight',
-    ci: 'knight',
-    m: '盾勢',
-    md: '有一層最大生命 10% 的護盾，4 秒沒受傷就充滿；護盾每吃掉 20 傷害 +1 層盾勢（最多 20），每層傷害 +2%',
-    cores: [
-      { id: 'wall', n: '壁壘', v: [20, 35], d: v => `護盾再 +最大生命 ${v}%` },
-      { id: 'firm', n: '不動', v: [1, 2], d: v => `每層盾勢：受到的傷害 -${v}%（最多 -40%）` },
-      { id: 'counter', n: '反擊', v: [4, 8], d: v => `被打時周圍爆出 盾勢層數 ×${v}% 的傷害` },
-      { id: 'bash', n: '盾擊', v: [0.8, 1.5], d: v => `格擋時周圍造成 ×${v} 傷害` }
-    ]
+    n: '劍技',
+    c: '#e8a33d',
+    ic: 'asc_s_sword',
+    sm: [{ meleeP: 5 }, { meleeP: 3, as: 2 }, { dmgA: 4 }],
+    nt: [
+      { meleeP: 20, as: 4 },
+      { meleeP: 15, critX: 15 },
+      { aoe: 10, meleeP: 12 }
+    ],
+    names: [
+      '斬鐵',
+      '劍意',
+      '刃風',
+      '一刀',
+      '劍心',
+      '鋒芒',
+      '劍氣',
+      '十字',
+      '迴刃',
+      '居合',
+      '劍魂',
+      '破甲',
+      '連斬',
+      '斷空'
+    ],
+    ks: { n: '劍聖', ic: 'asc_s_sword', s: { meleeP: 50, projP: -40, spellP: -40 } }
   },
   {
-    id: 'pyro',
-    n: '火法師',
-    ic: 'cls_pyro',
-    ci: 'pyro',
-    m: '燃燒',
-    md: '打中疊 1 層燃燒（最多 10 層、4 秒）：每層每秒受到那一下 8% 的火焰傷害',
-    cores: [
-      { id: 'kindle', n: '引火', v: [1, 2], d: v => `打中多疊 ${v} 層燃燒` },
-      {
-        id: 'burst',
-        n: '爆燃',
-        v: [3, 5],
-        d: v => `燃燒滿 10 層時引爆：周圍受到 層數 ×${v}% 最大生命的火焰傷害，清空`
-      },
-      { id: 'spark', n: '星火', v: [50, 100], d: v => `燒著的敵人死掉：${v}% 的燃燒傳給附近 2 隻` },
-      { id: 'end', n: '焚盡', v: [15, 25], d: v => `燒著的敵人生命低於 ${v}%：直接燒死（王除外）` }
-    ]
+    n: '身法',
+    c: '#7bd36b',
+    ic: 'asc_s_wind',
+    sm: [{ as: 2 }, { ms: 2 }, { as: 1, crit: 1 }],
+    nt: [
+      { as: 8, ms: 4 },
+      { as: 6, critX: 10 },
+      { ms: 6, block: 3 }
+    ],
+    names: [
+      '疾風',
+      '燕身',
+      '輕功',
+      '流水',
+      '殘影',
+      '迅雷',
+      '飛燕',
+      '踏雪',
+      '無影',
+      '風行',
+      '游龍',
+      '靈猴',
+      '電光',
+      '追風'
+    ],
+    ks: { n: '疾風之道', ic: 'asc_s_feather', s: { as: 20, ms: 10, hpP: -20 } }
   },
   {
-    id: 'assassin',
-    n: '刺客',
-    ic: 'cls_assassin',
-    ci: 'assassin',
-    m: '印記',
-    md: '打中 +1 層印記，滿 8 層的下一擊消耗印記：必定暴擊、每層傷害 +5%',
-    cores: [
-      { id: 'exec', n: '處決', v: [30, 40], d: v => `消耗印記時目標生命低於 ${v}%：傷害 ×2` },
-      { id: 'shadow', n: '影步', v: [25, 40], d: v => `消耗印記後 2 秒：移動速度 +${v}%` },
-      { id: 'chain', n: '連鎖', v: [6, 5], d: v => `印記只要 ${v} 層就能消耗` },
-      { id: 'kill', n: '暗殺', v: [30, 60], d: v => `暴擊傷害 +${v}%` }
-    ]
+    n: '必殺',
+    c: '#ffd166',
+    ic: 'asc_s_eye',
+    sm: [{ crit: 1.5 }, { critX: 6 }, { crit: 1, critX: 3 }],
+    nt: [{ crit: 4, critX: 20 }, { critX: 30 }, { crit: 5, projP: 10 }],
+    names: [
+      '精準',
+      '致命',
+      '心眼',
+      '弱點',
+      '穿心',
+      '要害',
+      '鷹眼',
+      '狙擊',
+      '冷血',
+      '斬首',
+      '一擊',
+      '洞察',
+      '破綻',
+      '無情'
+    ],
+    ks: { n: '必殺之心', ic: 'asc_s_stars', s: { critX: 100, crit: -4 } }
   },
   {
-    id: 'tamer',
-    n: '馴獸師',
-    ic: 'cls_tamer',
-    ci: 'tamer',
-    m: '獸群',
-    md: '帶 1 隻戰狼，每放 6 次技能再叫 1 隻（最多 3 隻）；狼咬一下是你平均一擊的 40%',
-    cores: [
-      { id: 'pack', n: '狼群', v: [30, 60], d: v => `狼的傷害 +${v}%` },
-      { id: 'alpha', n: '頭狼', v: [1, 2], d: v => `一進地圖多帶 ${v} 隻狼` },
-      { id: 'wild', n: '野性', v: [4, 5], d: v => `獸群上限 ${v} 隻` },
-      { id: 'guard', n: '守護獸', v: [5, 8], d: v => `每隻狼：你受到的傷害 -${v}%` }
-    ]
+    n: '元素',
+    c: '#8fd6ff',
+    ic: 'asc_s_spark',
+    sm: [{ eleP: 5 }, { spellP: 5 }, { aoe: 3 }],
+    nt: [
+      { eleP: 18, aoe: 6 },
+      { spellP: 20, cdr: 4 },
+      { eleP: 12, resA: 8 }
+    ],
+    names: [
+      '烈焰',
+      '寒霜',
+      '雷鳴',
+      '擴散',
+      '共鳴',
+      '燎原',
+      '冰封',
+      '電網',
+      '焚天',
+      '極光',
+      '星火',
+      '暴風',
+      '熔岩',
+      '天雷'
+    ],
+    ks: { n: '元素過載', ic: 'asc_s_flame', s: { eleP: 50, spellP: 20, hpP: -10 } }
+  },
+  {
+    n: '靈識',
+    c: '#c38bff',
+    ic: 'asc_s_drop',
+    sm: [{ mpP: 4 }, { mpReg: 8 }, { cdr: 1.5 }, { minionP: 6 }],
+    nt: [
+      { mpP: 12, mpReg: 20 },
+      { cdr: 6, mpP: 6 },
+      { minionP: 25, cdr: 3 }
+    ],
+    names: [
+      '冥想',
+      '靈泉',
+      '專注',
+      '御獸',
+      '天啟',
+      '心流',
+      '靈犀',
+      '魂契',
+      '清明',
+      '咒印',
+      '召喚',
+      '靜心',
+      '神識',
+      '萬象'
+    ],
+    ks: { n: '血之代價', ic: 'asc_s_heartx', s: { blood: 1, hpP: 15 } }
   }
 ];
-/* 核心樹節點：c 起點、職業機制 `${cls}`、核心 `${cls}.${core}`、強化 `${cls}.${core}+` */
-const CTREE = (() => {
-  const N = [{ id: 'c', x: 0, y: 0, n: '起點', ic: 'asc_s_stars', big: 1 }],
-    E = [];
-  CORE_CLS.forEach((c, i) => {
-    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-    N.push({ id: c.id, x: Math.cos(a) * 120, y: Math.sin(a) * 120, n: c.n + '：' + c.m, ic: c.ic, big: 2, cls: c.id });
-    E.push(['c', c.id]);
-    c.cores.forEach((k, j) => {
-      const b = a + (j - 1.5) * 0.3,
-        ic = `it_c_${c.ci}_${j}`;
-      N.push({
-        id: `${c.id}.${k.id}`,
-        x: Math.cos(b) * 245,
-        y: Math.sin(b) * 245,
-        n: k.n,
-        ic,
-        big: 1,
-        cls: c.id,
-        core: k,
-        lvl: 0
-      });
-      N.push({
-        id: `${c.id}.${k.id}+`,
-        x: Math.cos(b) * 340,
-        y: Math.sin(b) * 340,
-        n: '強化' + k.n,
-        ic,
-        big: 0,
-        cls: c.id,
-        core: k,
-        lvl: 1
-      });
-      E.push([c.id, `${c.id}.${k.id}`], [`${c.id}.${k.id}`, `${c.id}.${k.id}+`]);
+const PT_R0 = 470; /* 中間挖空（放昇華）的半徑 */
+const PTREE = (() => {
+  const N = [],
+    E = [],
+    I = {},
+    add = o => ((I[o.id] = o), N.push(o), o),
+    link = (a, b) => E.push([a.id, b.id]),
+    deg = Math.PI / 180,
+    pol = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
+  /* 起點環：6 個門（免費）＋門之間 4 個小點 */
+  const ring = [];
+  for (let s = 0; s < 6; s++) {
+    const a = (s * 60 - 90) * deg,
+      T = PT_SECT[s],
+      [x, y] = pol(a, PT_R0);
+    ring.push(add({ id: 'g' + s, x, y, n: T.n + '之門', ic: T.ic, s: {}, big: 1, gate: 1, sec: s }));
+    for (let k = 1; k <= 4; k++) {
+      const [x2, y2] = pol(a + k * 12 * deg, PT_R0),
+        T2 = k <= 2 ? T : PT_SECT[(s + 1) % 6];
+      ring.push(
+        add({
+          id: `r${s}_${k}`,
+          x: x2,
+          y: y2,
+          n: T2.n,
+          s: T2.sm[k % T2.sm.length],
+          big: 0,
+          sec: k <= 2 ? s : (s + 1) % 6
+        })
+      );
+    }
+  }
+  ring.forEach((n, i) => link(n, ring[(i + 1) % ring.length]));
+  for (let s = 0; s < 6; s++) {
+    const T = PT_SECT[s],
+      a0 = (s * 60 - 90) * deg;
+    let nm = 0;
+    /* 三條主幹：-18°、0°、+18° */
+    const lanes = [-18, 0, 18].map((o, li) => {
+      const out = [];
+      for (let r = 560, k = 0; r <= 2360; r += 90, k++) {
+        const [x, y] = pol(a0 + o * deg, r);
+        const n = add({ id: `l${s}_${li}_${k}`, x, y, n: T.n, s: T.sm[(k + li) % T.sm.length], big: 0, sec: s });
+        if (k) link(out[k - 1], n);
+        out.push(n);
+      }
+      return out;
     });
-  });
-  return { N, E, I: Object.fromEntries(N.map(n => [n.id, n])) };
+    link(I['g' + s], lanes[1][0]);
+    link(I[`r${(s + 5) % 6}_4`], lanes[0][0]);
+    link(I[`r${s}_1`], lanes[2][0]);
+    const near = (lane, x, y) =>
+      lane.reduce((b, n) => (Math.hypot(n.x - x, n.y - y) < Math.hypot(b.x - x, b.y - y) ? n : b));
+    /* 星團：中間大點＋一圈 6 個小點，接到兩邊的主幹 */
+    const cluster = (id, a, r, L, R) => {
+      const [cx, cy] = pol(a, r),
+        nt = T.nt[nm % T.nt.length],
+        mid = add({ id: id + 'n', x: cx, y: cy, n: T.names[nm++ % T.names.length], ic: T.ic, s: nt, big: 1, sec: s });
+      const ringN = [];
+      for (let k = 0; k < 6; k++) {
+        const [dx, dy] = pol(a + (k * 60 + 30) * deg, 72);
+        ringN.push(
+          add({
+            id: `${id}_${k}`,
+            x: cx + dx,
+            y: cy + dy,
+            n: T.n,
+            s: k === 3 ? { resA: 4 } : T.sm[k % T.sm.length],
+            big: 0,
+            sec: s
+          })
+        );
+      }
+      ringN.forEach((n, k) => link(n, ringN[(k + 1) % 6]));
+      link(
+        mid,
+        ringN.reduce((b, n) => (Math.hypot(n.x, n.y) < Math.hypot(b.x, b.y) ? n : b))
+      );
+      for (const lane of [L, R].filter(Boolean)) {
+        const e = ringN.reduce((b, n) => {
+          const t = near(lane, n.x, n.y),
+            u = near(lane, b.x, b.y);
+          return Math.hypot(n.x - t.x, n.y - t.y) < Math.hypot(b.x - u.x, b.y - u.y) ? n : b;
+        });
+        link(e, near(lane, e.x, e.y));
+      }
+    };
+    [800, 1150, 1500, 1850, 2200].forEach((r, i) => {
+      cluster(`c${s}_${i}a`, a0 - 9 * deg, r, lanes[0], lanes[1]);
+      cluster(`c${s}_${i}b`, a0 + 9 * deg, r + 60, lanes[1], lanes[2]);
+    });
+    /* 主幹外側的星團 */
+    [1325, 2025].forEach((r, i) => {
+      cluster(`o${s}_${i}a`, a0 - 26 * deg, r, lanes[0], null);
+      cluster(`o${s}_${i}b`, a0 + 22 * deg, r - 175, lanes[2], null);
+    });
+    /* 邊界的星團：接到隔壁方向的主幹（左右兩個方向互通） */
+    [980, 1680].forEach((r, i) => {
+      cluster(`e${s}_${i}`, a0 + 30 * deg, r, lanes[2], null);
+    });
+    /* 基石：中間主幹的盡頭 */
+    const [kx, ky] = pol(a0, 2480);
+    link(
+      lanes[1][lanes[1].length - 1],
+      add({ id: 'k' + s, x: kx, y: ky, n: T.ks.n, ic: T.ks.ic, s: T.ks.s, big: 2, sec: s })
+    );
+  }
+  /* 邊界星團接到下一個方向的左主幹 */
+  for (let s = 0; s < 6; s++)
+    for (const i of [0, 1]) {
+      const e = N.filter(n => n.id.startsWith(`e${s}_${i}_`)),
+        lane = N.filter(n => n.id.startsWith(`l${(s + 1) % 6}_0_`)),
+        best = e
+          .flatMap(a => lane.map(b => [a, b]))
+          .reduce((p, q) =>
+            Math.hypot(q[0].x - q[1].x, q[0].y - q[1].y) < Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) ? q : p
+          );
+      link(best[0], best[1]);
+    }
+  const ADJ = {};
+  for (const [a, b] of E) (ADJ[a] = ADJ[a] || []).push(b), (ADJ[b] = ADJ[b] || []).push(a);
+  return { N, E, I, ADJ };
 })();
-const ctPoints = lv => Math.floor(lv / 3);
+const PT_START = ['g0', 'g1', 'g2', 'g3', 'g4', 'g5'];
+const ptPoints = lv => lv - 1;
+
+/* ---------- 昇華（0.2.3，照 PoE）：藏身處的昇華石碑選，點在天賦樹中間挖空的地方 ----------
+   一開始 2 點，第一次打倒階級 6、12、16 的王各 +2，共 8 點；嚴格 4 小 4 大（一小一大交錯，路線起點與中間都有分岔） */
+const ascPoints = s => 2 + (s.maxT > 6 ? 2 : 0) + (s.maxT > 12 ? 2 : 0) + (s.t16 ? 2 : 0);
+/* 每個分支同一個骨架（st 是入口，免費）；x, y 是在天賦樹中心的位置 */
+const ASC_SHAPE = {
+  st: [0, 250],
+  s1: [-110, 170],
+  s2: [110, 170],
+  b1: [-190, 60],
+  b2: [190, 60],
+  s3: [-250, -60],
+  s4: [0, -20],
+  s5: [250, -60],
+  b3: [-200, -180],
+  b4: [0, -130],
+  b5: [200, -180],
+  s6: [0, -250],
+  b6: [0, -350]
+};
+const ASC_EDGES = [
+  ['st', 's1'],
+  ['st', 's2'],
+  ['s1', 'b1'],
+  ['s2', 'b2'],
+  ['b1', 's3'],
+  ['b1', 's4'],
+  ['b2', 's4'],
+  ['b2', 's5'],
+  ['s3', 'b3'],
+  ['s4', 'b4'],
+  ['s5', 'b5'],
+  ['b3', 's6'],
+  ['b5', 's6'],
+  ['s6', 'b6']
+];
+/* 大點：fx 效果（程式裡用 ascV('效果') 讀），d 說明；小點：s 數值 */
+const ASC = {
+  sword: {
+    n: '劍士',
+    ic: 'cls_swordsman',
+    d: '用劍的近戰職業：三條分支各走不同的打法。',
+    br: {
+      ronin: {
+        n: '浪人',
+        ic: 'it_c_swordsman_0',
+        d: '居合：累積架勢，一刀定勝負',
+        small: {
+          s1: { as: 6 },
+          s2: { meleeP: 12 },
+          s3: { crit: 3 },
+          s4: { as: 4, meleeP: 6 },
+          s5: { ms: 5 },
+          s6: { critX: 20 }
+        },
+        big: {
+          b1: {
+            n: '架勢',
+            fx: { 'ronin.mech': 1 },
+            d: '出手打中 +1 層架勢，滿 5 層的下一次出手是「居合」：傷害 ×3、必定暴擊'
+          },
+          b2: { n: '刀氣', fx: { 'ronin.aura': 30 }, d: '近戰技能範圍 +30%、近戰傷害 +15%' },
+          b3: { n: '斬鐵', fx: { 'ronin.iron': 5 }, d: '居合的傷害 ×3 → ×5' },
+          b4: { n: '燕返', fx: { 'ronin.swallow': 1 }, d: '居合之後馬上再砍一次（同樣的傷害）' },
+          b5: { n: '一閃', fx: { 'ronin.flash': 30 }, d: '見切（出手瞬間翻滾）後架勢直接滿，2 秒內移動速度 +30%' },
+          b6: { n: '明鏡止水', fx: { 'ronin.mirror': 8, 'ronin.gale': 3 }, d: '架勢只要 3 層；居合命中回 8% 生命' }
+        }
+      },
+      rapier: {
+        n: '刺劍姬',
+        ic: 'it_c_swordsman_3',
+        d: '細劍：見切反擊、破綻、步法，越靈活越痛',
+        small: {
+          s1: { crit: 3 },
+          s2: { as: 6 },
+          s3: { block: 4 },
+          s4: { critX: 15 },
+          s5: { ms: 6 },
+          s6: { crit: 2, as: 4 }
+        },
+        big: {
+          b1: { n: '反擊', fx: { 'rapier.riposte': 2 }, d: '見切時立刻反擊周圍的敵人（左鍵技能 ×2 傷害，必定暴擊）' },
+          b2: { n: '致命節奏', fx: { 'rapier.rhythm': 4 }, d: '每第 4 次出手必定暴擊' },
+          b3: { n: '步法', fx: { 'rapier.step': 30 }, d: '翻滾冷卻 -40%；翻滾後 2 秒攻速 +30%' },
+          b4: { n: '破綻', fx: { 'rapier.expose': 20 }, d: '暴擊的敵人 4 秒內受到的傷害 +20%' },
+          b5: { n: '格擋大師', fx: { 'rapier.parry': 1.5 }, d: '格擋 +15%；格擋時反擊周圍（×1.5 傷害）' },
+          b6: { n: '千刺', fx: { 'rapier.flurry': 3 }, d: '近戰技能出手時多刺出 3 道劍氣（投射物，傷害 ×0.5）' }
+        }
+      },
+      berserk: {
+        n: '狂魔',
+        ic: 'it_c_berserker_0',
+        d: '怒氣與鮮血：越殺越快、越痛越強',
+        small: {
+          s1: { hpP: 6 },
+          s2: { meleeP: 12 },
+          s3: { as: 5 },
+          s4: { regen: 5 },
+          s5: { hpP: 5, meleeP: 6 },
+          s6: { as: 4, critX: 15 }
+        },
+        big: {
+          b1: {
+            n: '怒氣',
+            fx: { 'berserk.rage': 30 },
+            d: '打中 +1 怒氣（最多 30，3 秒沒打中開始掉）；每點怒氣傷害 +1%、攻速 +0.5%'
+          },
+          b2: { n: '嗜血', fx: { 'berserk.leech': 2 }, d: '造成傷害的 2% 回復生命' },
+          b3: { n: '背水', fx: { 'berserk.last': 80 }, d: '生命越少傷害越高：生命見底時傷害 +80%' },
+          b4: { n: '血祭', fx: { 'berserk.blood': 25 }, d: '技能改用生命施放（不耗魔力），傷害 +25%' },
+          b5: { n: '狂亂', fx: { 'berserk.frenzy': 8 }, d: '殺怪後 3 秒攻速、移動速度 +8%（最多疊 3 層）' },
+          b6: { n: '不死', fx: { 'berserk.undying': 2 }, d: '每張地圖一次：受到致命傷害時留 1 點生命、無敵 2 秒' }
+        }
+      }
+    }
+  }
+};
+/* 選好的分支的節點（放在天賦樹中間） */
+function ascNodes(br) {
+  if (!br) return null;
+  const B = ASC.sword.br[br],
+    N = Object.entries(ASC_SHAPE).map(([k, [x, y]]) => {
+      const big = B.big[k];
+      return {
+        id: 'a_' + k,
+        k,
+        x,
+        y,
+        asc: 1,
+        big: k === 'st' ? 3 : big ? 1 : 0,
+        n: k === 'st' ? B.n : big ? big.n : B.n,
+        ic: k === 'st' ? B.ic : big ? B.ic : null,
+        s: B.small[k] || {},
+        fx: big ? big.fx : null,
+        d: big ? big.d : ''
+      };
+    });
+  return { N, E: ASC_EDGES.map(([a, b]) => ['a_' + a, 'a_' + b]), I: Object.fromEntries(N.map(n => [n.id, n])) };
+}
 
 const ROLL = { t: 0.32, dist: 175, iframe: 0.26, cd: 0.55, perfect: 0.16, slow: 0.55, slowScale: 0.3 };
 const FLASK = { n: 3, heal: 0.5, t: 1.4, perKill: 0.12 };

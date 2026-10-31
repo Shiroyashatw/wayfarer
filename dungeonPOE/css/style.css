@@ -191,16 +191,57 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .tbar .btn { margin-left: auto; min-height: 36px; padding: 6px 14px; }
 .tbar .x { width: 36px; height: 36px; background: none; border: 1px solid var(--line); color: var(--tx); border-radius: var(--rad); cursor: pointer; font: inherit; }
 #tsvg { flex: 1; width: 100%; cursor: grab; touch-action: none; }
-#tsvg line { stroke: rgba(232, 226, 214, 0.12); stroke-width: 4; }
-#tsvg line.near { stroke: rgba(232, 226, 214, 0.25); }
-#tsvg line.on { stroke: #c9a227; stroke-width: 5; }
+#tsvg line { stroke: rgba(232, 226, 214, 0.1); stroke-width: 5; }
+#tsvg line.near { stroke: rgba(232, 226, 214, 0.22); }
+#tsvg line.on { stroke: #c9a227; stroke-width: 7; }
+#tsvg line.asc { stroke-width: 6; }
+#tsvg line.asc.on { stroke: #ff9f43; }
 .nd { cursor: pointer; }
-.nd circle { fill: #15110f; stroke: rgba(232, 226, 214, 0.25); stroke-width: 2; }
+.nd circle { fill: #15110f; stroke: rgba(232, 226, 214, 0.22); stroke-width: 3; }
+.nd.b0 circle { fill: #1c1714; }
 .nd image { image-rendering: pixelated; opacity: 0.35; pointer-events: none; }
-.nd.can circle { stroke: #8ab4ff; stroke-width: 3; }
-.nd.can image { opacity: 0.8; }
-.nd.on circle { fill: #3a2b12; stroke: #ffd166; stroke-width: 3; }
+.nd.can circle { stroke: #8ab4ff; stroke-width: 4; }
+.nd.can image { opacity: 0.85; }
+/* 點下去：小點填上那個方向的顏色，大點金框 */
+.nd.on circle { fill: var(--c, #3a2b12); stroke: #ffd166; stroke-width: 4; }
+.nd.on.b1 circle, .nd.on.b2 circle { fill: #3a2b12; }
 .nd.on image { opacity: 1; }
-.nd.b2 circle { stroke-width: 4; }
+.nd.b2 circle { stroke-width: 5; stroke: rgba(255, 209, 102, 0.35); }
 .nd:hover circle { filter: brightness(1.6); }
+.hollow { fill: rgba(40, 20, 10, 0.55); stroke: rgba(255, 159, 67, 0.25); stroke-width: 4; }
+.nd.asc circle { fill: #241510; stroke: rgba(255, 159, 67, 0.35); }
+.nd.asc.can circle { stroke: #ffb38a; }
+.nd.asc.on circle { fill: #5a2a12; stroke: #ff9f43; }
+.nd.asc text { fill: var(--dim); font: 700 15px var(--font); text-anchor: middle; pointer-events: none; }
+.nd.asc.on text { fill: #ffb38a; }
+#tsvg text.hint { fill: var(--dim); font: 700 30px var(--font); text-anchor: middle; }
+#tsvg text.hint.sm { font-size: 20px; }
+.tbar > b { font-size: var(--fs-l); }
+.tbar .btn + .btn { margin-left: 0; }
 .thelp { margin: 0; padding: 10px 16px; font-size: var(--fs-s); color: var(--dim); border-top: 1px solid var(--line); }
+
+/* ---------- 0.2.3 昇華石碑、傳送門 ---------- */
+#pasc { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(980px, calc(100vw - 32px)); animation: pop 200ms ease-out; }
+.ascls { display: flex; gap: 8px; margin: 12px 0; }
+.acls { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--rad); }
+.acls .ic { width: 28px; height: 28px; }
+.acls.on { border-color: var(--gold); background: rgba(255, 209, 102, 0.08); }
+.acls.off { opacity: 0.45; }
+.acls small { color: var(--dim); font-size: 11px; }
+.abrs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.abr { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line); border-radius: 8px; }
+.abr.on { border-color: #ff9f43; box-shadow: inset 0 0 18px rgba(255, 159, 67, 0.15); }
+.abh { display: flex; gap: 10px; align-items: center; }
+.abh .ic { width: 40px; height: 40px; }
+.abh b { font-size: var(--fs-l); display: block; }
+.abh small { color: var(--dim); font-size: var(--fs-s); }
+.abr ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-s); color: var(--dim); flex: 1; }
+.abr li b { color: #ffb38a; margin-right: 6px; }
+#pasc > p { font-size: var(--fs-s); margin: 10px 0 0; }
+#over .card.portal h2 { color: #8fc4ff; }
+.pbtns { display: flex; flex-direction: column; gap: 8px; }
+.pbtns .btn { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.pbtns .btn small { color: var(--dim); font-weight: 500; font-size: var(--fs-s); }
+#over .card.portal p.c-dim { margin: 12px 0 0; font-size: var(--fs-s); }
+#over:has(.portal) { background: transparent; pointer-events: none; }
+#over:has(.portal) .card { pointer-events: auto; }

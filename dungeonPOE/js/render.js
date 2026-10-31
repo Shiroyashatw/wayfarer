@@ -26,8 +26,23 @@ function spr(n, x, y, hgt, o = {}) {
   } else CX.drawImage(a.im, r[0], r[1], r[2], r[3], -w / 2, -h, w, h);
   CX.restore();
 }
-/* 主角：PixelLab 的角色表（img/hero.png，每格 80×80、腳底在 y=63；art/hero/hero.json）
-   第 0 列 8 個方向（南、東南、東、東北、北、西北、西、西南）、第 1 列待機（南）、第 2 列滑步（翻滾，朝右）、第 3 列跑步（朝右，往左鏡像） */
+/* 主角：PixelLab 的角色表（img/hero.png，720×720、每格 80×80、腳底在 y=63；art/hero/hero.json）
+   0 八個方向（南、東南、東、東北、北、西北、西、西南）、1 待機、2 滑步（翻滾，原圖朝左）、3 揮砍、4 跳起砸地、5 施法、
+   6 跑步（朝右，往左鏡像）、7 往上跑（背面）、8 旋轉揮擊；出手動畫都朝右下，往左就鏡像 */
+const ACT_ROW = {
+  slash: 3,
+  swallow: 3,
+  iai: 3,
+  quake: 4,
+  whirl: 8,
+  storm: 8,
+  nova: 5,
+  blade: 5,
+  fireball: 5,
+  venom: 5,
+  meteor: 5,
+  wolf: 5
+};
 const HERO_IMG = new Image();
 let HERO_W;
 HERO_IMG.onload = () => {
@@ -450,22 +465,19 @@ function drawHero() {
     if (Math.random() < 0.6) fx({ k: 'dust', x: P.x + rnd(-10, 10), y: P.y, dur: 0.35 });
     return;
   }
-  let row, col, flip;
   if (P.act && P.act.k !== 'iai') {
-    /* 出手：面向瞄準的方向，往前探一下（之後換成攻擊動畫） */
-    const f = P.act.t / P.act.dur,
-      push = Math.sin(Math.min(1, f * 1.6) * Math.PI) * 8;
-    row = 0;
-    col = dirCol(P.act.ang);
-    heroCell(row, col, P.x + Math.cos(P.act.ang) * push, P.y + Math.sin(P.act.ang) * push * 0.6, false, a, {
-      sx: 1 + push / 80,
-      sy: 1 - push / 120
-    });
+    /* 出手：照技能播 9 格動畫，往左就鏡像 */
+    const f = Math.min(8, Math.floor((P.act.t / P.act.dur) * 9));
+    heroCell(ACT_ROW[P.act.k] || 3, f, P.x, P.y, Math.cos(P.act.ang) < -0.05, a);
   } else if (P.mv || (P.act && P.act.k === 'iai')) {
-    const dx = P.act ? Math.cos(P.act.ang) : P.mdx;
-    heroCell(3, Math.floor(G.t * 12) % 8, P.x, P.y, dx < -0.05 || (Math.abs(dx) <= 0.05 && flipF), a);
+    const dx = P.act ? Math.cos(P.act.ang) : P.mdx,
+      dy = P.act ? Math.sin(P.act.ang) : P.mdy,
+      fr = Math.floor(G.t * 12) % 8;
+    /* 往上跑用背面，其他用側面（往左鏡像） */
+    if (dy < -0.6 && Math.abs(dx) < 0.8) heroCell(7, fr, P.x, P.y, false, a);
+    else heroCell(6, fr, P.x, P.y, dx < -0.05 || (Math.abs(dx) <= 0.05 && flipF), a);
   } else {
-    col = dirCol(P.face);
+    const col = dirCol(P.face);
     if (col === 0) heroCell(1, Math.floor(G.t * 8) % 8, P.x, P.y, false, a);
     else heroCell(0, col, P.x, P.y, false, a);
   }
@@ -525,7 +537,7 @@ function drawFx() {
       CX.ellipse(o.x, o.y - 10, o.r * (0.6 + 0.4 * f), o.r * (0.6 + 0.4 * f) * 0.75, 0, 0, TAU);
       CX.stroke();
     } else if (o.k === 'ghost') {
-      heroCell(3, 2, o.x, o.y, o.flip, 0.35 * (1 - f));
+      heroCell(6, 2, o.x, o.y, o.flip, 0.35 * (1 - f));
     } else if (o.k === 'dust') {
       CX.globalAlpha = 0.35 * (1 - f);
       CX.fillStyle = '#8a7a6a';
@@ -616,6 +628,16 @@ function drawHideout() {
       CX.fillRect(p.x - 34, p.y - 52, 68, 14);
       CX.fillStyle = '#d9b45a';
       CX.fillRect(p.x - 5, p.y - 36, 10, 12);
+    } else if (p.k === 'asc') {
+      /* 昇華石碑：發金光的石碑 */
+      CX.fillStyle = '#3d342e';
+      CX.fillRect(p.x - 22, p.y - 70, 44, 70);
+      CX.fillStyle = '#5a4d43';
+      CX.fillRect(p.x - 26, p.y - 76, 52, 10);
+      const g = 0.45 + 0.3 * Math.sin(G.t * 2.4);
+      CX.fillStyle = `rgba(255,209,102,${g})`;
+      CX.fillRect(p.x - 8, p.y - 58, 16, 30);
+      spr('cls_swordsman', p.x, p.y - 26, 30);
     } else {
       CX.fillStyle = '#4a3a2e';
       CX.fillRect(p.x - 36, p.y - 40, 72, 40);

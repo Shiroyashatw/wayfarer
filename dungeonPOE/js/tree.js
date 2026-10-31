@@ -1,94 +1,136 @@
-/* dungeonPOE · 天賦樹（P）與核心昇華樹（O）：全螢幕盤面，拖曳移動、滾輪縮放；點亮著的點＝點下去，再點一次＝退回（不能把後面斷開） */
+/* dungeonPOE · 天賦樹（P，照 PoE）：一千多個點，中間挖空放昇華；拖曳移動、滾輪縮放；
+   點亮著的點＝點下去，再點一次＝退回（不能把後面斷開）。昇華點嚴格 4 小 4 大 */
 'use strict';
-const TREE = { open: false, tab: 'pt', x: 0, y: 0, z: 1, drag: null };
-const TDEF = () =>
-  TREE.tab === 'pt'
-    ? { T: PTREE, key: 'pt', pts: ptPoints(S.lv), hint: '每升一級 1 點' }
-    : { T: CTREE, key: 'ct', pts: ctPoints(S.lv), hint: '每 3 級 1 點' };
-function treeOpen(tab) {
-  if (TREE.open && TREE.tab === tab) return treeClose();
+const TREE = { open: false, x: 0, y: 0, z: 0.55, drag: null };
+const ptLeft = () => ptPoints(S.lv) - (S.pt.length - PT_START.length);
+const ascT = () => ascNodes(S.asc);
+const ascLeft = () => ascPoints(S) - (S.at.length - 1);
+const ascCount = set => {
+  const T = ascT();
+  let sm = 0,
+    bg = 0;
+  for (const id of set) if (id !== 'a_st') T.I[id].big ? bg++ : sm++;
+  return [sm, bg];
+};
+/* 昇華：加了這個點之後，還能不能補成 4 小 4 大（不會卡住、也不會變成 5 大 3 小） */
+function ascFeasible(set) {
+  const T = ascT(),
+    memo = new Set(),
+    go = cur => {
+      const [sm, bg] = ascCount(cur);
+      if (sm > 4 || bg > 4) return false;
+      if (sm === 4 && bg === 4) return true;
+      const key = [...cur].sort().join();
+      if (memo.has(key)) return false;
+      memo.add(key);
+      for (const [a, b] of T.E)
+        for (const [x, y] of [
+          [a, b],
+          [b, a]
+        ])
+          if (cur.has(x) && !cur.has(y) && go(new Set([...cur, y]))) return true;
+      return false;
+    };
+  return go(new Set(set));
+}
+function treeCan(id) {
+  if (id.startsWith('a_')) {
+    const T = ascT();
+    if (!T || S.at.includes(id) || ascLeft() <= 0) return false;
+    if (!T.E.some(([a, b]) => (a === id && S.at.includes(b)) || (b === id && S.at.includes(a)))) return false;
+    return ascFeasible([...S.at, id]);
+  }
+  if (S.pt.includes(id) || ptLeft() <= 0) return false;
+  return (PTREE.ADJ[id] || []).some(o => S.pt.includes(o));
+}
+/* 退回後其他點還連得到起點嗎 */
+function treeCanRefund(id) {
+  const asc = id.startsWith('a_'),
+    have = new Set(asc ? S.at : S.pt),
+    start = asc ? ['a_st'] : PT_START;
+  if (start.includes(id) || !have.has(id)) return false;
+  have.delete(id);
+  const adj = asc ? ascAdj() : PTREE.ADJ,
+    seen = new Set(start),
+    q = [...start];
+  while (q.length) for (const o of adj[q.pop()] || []) if (have.has(o) && !seen.has(o)) seen.add(o), q.push(o);
+  return seen.size === have.size;
+}
+function ascAdj() {
+  const A = {};
+  for (const [a, b] of ascT().E) (A[a] = A[a] || []).push(b), (A[b] = A[b] || []).push(a);
+  return A;
+}
+function treeOpen() {
+  if (TREE.open) return treeClose();
   closePanels();
-  Object.assign(TREE, { open: true, tab, x: 0, y: 0 });
+  Object.assign(TREE, { open: true, x: 0, y: 0, z: 0.55 });
   $('ptree').hidden = false;
   treeRender();
-  treeFit();
 }
 function treeClose() {
   TREE.open = false;
   $('ptree').hidden = true;
   hideTip();
 }
-const treeLeft = d => d.pts - (S[d.key].length - 1);
-/* 這個點能不能點：還沒點、旁邊有點過的、還有點數 */
-function treeCan(d, id) {
-  const have = S[d.key];
-  if (have.includes(id) || treeLeft(d) <= 0) return false;
-  return d.T.E.some(([a, b]) => (a === id && have.includes(b)) || (b === id && have.includes(a)));
-}
-/* 退回這個點後，其他點還連得到起點嗎 */
-function treeCanRefund(d, id) {
-  const have = new Set(S[d.key]);
-  if (id === 'c' || !have.has(id)) return false;
-  have.delete(id);
-  const seen = new Set(['c']),
-    q = ['c'];
-  while (q.length) {
-    const n = q.pop();
-    for (const [a, b] of d.T.E) {
-      const o = a === n ? b : b === n ? a : null;
-      if (o && have.has(o) && !seen.has(o)) seen.add(o), q.push(o);
-    }
-  }
-  return seen.size === have.size;
-}
 function treeRender() {
   if (!TREE.open) return;
-  const d = TDEF(),
-    have = new Set(S[d.key]),
-    left = treeLeft(d);
-  const edges = d.T.E.map(([a, b]) => {
-    const A = d.T.I[a],
-      B = d.T.I[b];
-    return `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" class="${have.has(a) && have.has(b) ? 'on' : have.has(a) || have.has(b) ? 'near' : ''}"/>`;
+  const have = new Set(S.pt),
+    T = ascT(),
+    ah = new Set(S.at);
+  const line = (A, B, on, near, cls = '') =>
+    `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" class="${on ? 'on' : near ? 'near' : ''} ${cls}"/>`;
+  let html = PTREE.E.map(([a, b]) =>
+    line(PTREE.I[a], PTREE.I[b], have.has(a) && have.has(b), have.has(a) || have.has(b))
+  ).join('');
+  html += PTREE.N.map(n => {
+    const r = n.big === 2 ? 30 : n.gate ? 20 : n.big ? 19 : 10,
+      st = have.has(n.id) ? 'on' : treeCan(n.id) ? 'can' : 'off',
+      u = n.big && artIconURL(n.ic);
+    return `<g class="nd ${st} b${n.big}" data-n="${n.id}" transform="translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})" style="--c:${PT_SECT[n.sec].c}"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.7}" y="${-r * 0.7}" width="${r * 1.4}" height="${r * 1.4}"/>` : ''}</g>`;
   }).join('');
-  const nodes = d.T.N.map(n => {
-    const r = n.big === 2 ? 30 : n.big ? 22 : 15,
-      st = have.has(n.id) ? 'on' : treeCan(d, n.id) ? 'can' : 'off',
-      u = artIconURL(n.ic);
-    return `<g class="nd ${st} b${n.big}" data-n="${n.id}" transform="translate(${n.x} ${n.y})"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.72}" y="${-r * 0.72}" width="${r * 1.44}" height="${r * 1.44}"/>` : ''}</g>`;
-  }).join('');
+  /* 中間：昇華 */
+  html += `<circle class="hollow" r="${PT_R0 - 40}"/>`;
+  if (T) {
+    html += T.E.map(([a, b]) => line(T.I[a], T.I[b], ah.has(a) && ah.has(b), ah.has(a) || ah.has(b), 'asc')).join('');
+    html += T.N.map(n => {
+      const r = n.big === 3 ? 26 : n.big ? 24 : 12,
+        st = ah.has(n.id) ? 'on' : treeCan(n.id) ? 'can' : 'off',
+        u = n.ic && artIconURL(n.ic);
+      return `<g class="nd asc ${st} b${n.big}" data-n="${n.id}" transform="translate(${n.x} ${n.y})"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.7}" y="${-r * 0.7}" width="${r * 1.4}" height="${r * 1.4}"/>` : ''}${n.big === 1 ? `<text y="${r + 16}">${esc(n.n)}</text>` : ''}</g>`;
+    }).join('');
+  } else
+    html += `<text class="hint" y="-10">還沒有昇華</text><text class="hint sm" y="22">到藏身處的昇華石碑選擇</text>`;
+  const [sm, bg] = T ? ascCount(S.at) : [0, 0];
   $('ptree').innerHTML = `<div class="tbar">
-    <div class="tabs"><button class="${TREE.tab === 'pt' ? 'on' : ''}" data-tt="pt">天賦樹 <kbd>P</kbd></button><button class="${TREE.tab === 'ct' ? 'on' : ''}" data-tt="ct">核心昇華樹 <kbd>O</kbd></button></div>
-    <span>剩 <b class="${left > 0 ? 'c-gold' : ''}">${left}</b> 點 · ${d.hint}</span>
-    <button class="btn" data-ta="reset" ${S[d.key].length > 1 ? '' : 'disabled'}>全部重置</button>
+    <b>天賦樹</b>
+    <span>天賦點 剩 <b class="${ptLeft() > 0 ? 'c-gold' : ''}">${ptLeft()}</b>（每升一級 1 點）</span>
+    <span>昇華 ${T ? `${ASC.sword.br[S.asc].n} · 剩 <b class="${ascLeft() > 0 ? 'c-gold' : ''}">${ascLeft()}</b> 點 · 小 ${sm}/4 大 ${bg}/4` : '還沒選'}</span>
+    <button class="btn" data-ta="reset" ${S.pt.length > PT_START.length ? '' : 'disabled'}>重置天賦</button>
+    <button class="btn" data-ta="areset" ${S.at.length > 1 ? '' : 'disabled'}>重置昇華</button>
     <button class="x" data-ta="close">✕</button></div>
-  <svg id="tsvg"><g id="tg">${edges}${nodes}</g></svg>
-  <p class="thelp">${TREE.tab === 'pt' ? '從中間的起點往外點：生命、護甲、攻速、暴擊、範圍與元素、魔力與冷卻六個方向。' : '先點職業機制，再往外點核心、強化核心；可以混著走好幾個職業。'}點亮著的點＝點下去，再點一次＝退回。拖曳移動、滾輪縮放。</p>`;
+  <svg id="tsvg"><g id="tg">${html}</g></svg>
+  <p class="thelp">中間一圈是起點，往外六個方向：體魄、劍技、身法、必殺、元素、靈識；大點在星團中間，最外面是基石（強但有代價）。點亮著的點＝點下去，再點一次＝退回。拖曳移動、滾輪縮放。</p>`;
   treeView();
 }
 function treeView() {
   const svg = $('tsvg');
   if (!svg) return;
-  const w = svg.clientWidth,
-    h = svg.clientHeight;
-  $('tg').setAttribute('transform', `translate(${w / 2 + TREE.x} ${h / 2 + TREE.y}) scale(${TREE.z})`);
-}
-/* 整張樹放得進畫面 */
-function treeFit() {
-  const svg = $('tsvg'),
-    R = Math.max(...TDEF().T.N.map(n => Math.hypot(n.x, n.y))) + 40;
-  TREE.z = clamp(Math.min(svg.clientWidth, svg.clientHeight) / (2 * R), 0.5, 1.2);
-  TREE.x = TREE.y = 0;
-  treeView();
+  $('tg').setAttribute(
+    'transform',
+    `translate(${svg.clientWidth / 2 + TREE.x} ${svg.clientHeight / 2 + TREE.y}) scale(${TREE.z})`
+  );
 }
 function treeToggle(id) {
-  const d = TDEF(),
-    have = S[d.key];
+  const asc = id.startsWith('a_'),
+    have = asc ? S.at : S.pt;
   if (have.includes(id)) {
-    if (!treeCanRefund(d, id)) return hudWarn(id === 'c' ? '起點不能退' : '先退後面的點');
+    if (!treeCanRefund(id)) return hudWarn((asc ? ['a_st'] : PT_START).includes(id) ? '起點不能退' : '先退後面的點');
     have.splice(have.indexOf(id), 1);
-  } else if (treeCan(d, id)) have.push(id);
-  else return hudWarn(treeLeft(d) <= 0 ? '沒有點數了：升級會再給' : '要跟點過的點連在一起');
+  } else if (treeCan(id)) have.push(id);
+  else if (asc && ascLeft() <= 0) return hudWarn('沒有昇華點了：階級 6、12、16 的王第一次打倒各 +2');
+  else if (asc) return hudWarn('要跟點過的點連在一起，而且最後要剛好 4 小 4 大');
+  else return hudWarn(ptLeft() <= 0 ? '沒有天賦點了：升級會再給' : '要跟點過的點連在一起');
   sfx('equip');
   treeChanged();
 }
@@ -101,20 +143,27 @@ function treeChanged() {
   hudBar();
   treeRender();
 }
-/* 說明 */
+const statLines = s =>
+  Object.entries(s).map(([k, v]) =>
+    k === 'blood' ? STATN[k][0] : `${STATN[k][0]} ${v > 0 ? '+' : ''}${v}${STATN[k][1]}`
+  );
 function treeTip(id) {
-  const n = TDEF().T.I[id];
-  if (TREE.tab === 'pt') {
-    const lines = Object.entries(n.s).map(([k, v]) => `${STATN[k][0]} +${v}${STATN[k][1]}`);
-    return `<b>${esc(n.n)}</b><small>${n.big ? '大點' : '小點'}</small>${lines.length ? `<p class="aff">${lines.join('<br>')}</p>` : ''}`;
-  }
-  if (n.big === 2) {
-    const c = CORE_CLS.find(c => c.id === n.cls);
-    return `<b>${esc(c.n)}：${esc(c.m)}</b><small>職業機制</small><p class="aff">${esc(c.md)}</p>`;
-  }
-  if (!n.core) return `<b>起點</b>`;
-  const k = n.core;
-  return `<b>${esc(n.n)}</b><small>${n.lvl ? '強化核心（取代核心的數值）' : '核心'}</small><p class="aff">${esc(k.d(k.v[n.lvl]))}</p>`;
+  const n = id.startsWith('a_') ? ascT().I[id] : PTREE.I[id];
+  const kind = n.asc
+    ? n.big === 3
+      ? '昇華入口'
+      : n.big
+        ? '昇華大點'
+        : '昇華小點'
+    : n.big === 2
+      ? '基石'
+      : n.gate
+        ? '起點'
+        : n.big
+          ? '大點'
+          : '小點';
+  const lines = n.d ? [esc(n.d)] : statLines(n.s);
+  return `<b class="${n.big === 2 || n.asc ? 'c-gold' : ''}">${esc(n.n)}</b><small>${kind}</small>${lines.length ? `<p class="aff">${lines.join('<br>')}</p>` : ''}`;
 }
 function treeInit() {
   const el = $('ptree');
@@ -149,7 +198,7 @@ function treeInit() {
     'wheel',
     e => {
       e.preventDefault();
-      const z = clamp(TREE.z * (e.deltaY < 0 ? 1.12 : 1 / 1.12), 0.5, 2.2),
+      const z = clamp(TREE.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), 0.12, 1.6),
         svg = $('tsvg').getBoundingClientRect(),
         mx = e.clientX - svg.left - svg.width / 2 - TREE.x,
         my = e.clientY - svg.top - svg.height / 2 - TREE.y;
@@ -162,18 +211,11 @@ function treeInit() {
     { passive: false }
   );
   el.addEventListener('click', e => {
-    const t = e.target.closest('[data-tt]'),
-      a = e.target.closest('[data-ta]');
-    if (t && t.dataset.tt !== TREE.tab) {
-      TREE.tab = t.dataset.tt;
-      treeRender();
-      treeFit();
-    }
-    if (a && a.dataset.ta === 'close') treeClose();
-    if (a && a.dataset.ta === 'reset') {
-      S[TDEF().key] = ['c'];
-      treeChanged();
-    }
+    const a = e.target.closest('[data-ta]');
+    if (!a) return;
+    if (a.dataset.ta === 'close') treeClose();
+    if (a.dataset.ta === 'reset') (S.pt = [...PT_START]), treeChanged();
+    if (a.dataset.ta === 'areset') (S.at = ['a_st']), treeChanged();
   });
   addEventListener('resize', treeView);
 }

@@ -57,8 +57,14 @@ function useSlot(i) {
   const c = slotCfg(i);
   if (!c) return false;
   if ((P.cds['s' + i] || 0) > 0) return false;
-  if (P.mp < c.mp) return hudWarn('魔力不足'), false;
-  P.mp -= c.mp;
+  if (ST.blood) {
+    /* 血祭／血之代價：用生命施放 */
+    if (P.hp <= c.mp + 1) return hudWarn('生命不夠施放'), false;
+    P.hp -= c.mp;
+  } else {
+    if (P.mp < c.mp) return hudWarn('魔力不足'), false;
+    P.mp -= c.mp;
+  }
   if (c.cd) P.cds['s' + i] = c.cd;
   const w = mouseWorld(),
     ang = Math.atan2(w.y - P.y, w.x - P.x),
@@ -68,7 +74,7 @@ function useSlot(i) {
     k: c.k,
     c,
     t: 0,
-    dur: D.t / ST.asM / c.speed,
+    dur: D.t / ST.asM / c.speed / speedMul(),
     ang,
     hits: c.k === 'swallow' ? [0.3, 0.7] : [0.42],
     n: 0,
@@ -81,6 +87,9 @@ function useSlot(i) {
     P.stance = 0;
     fx({ k: 'mikiri', x: P.x, y: P.y, dur: 0.4 });
   }
+  /* 刺劍姬：致命節奏（每第 4 次出手必定暴擊） */
+  const rh = ascV(S, 'rapier.rhythm');
+  if (rh && ++P.beat % rh === 0) a.crit = 1;
   sfx(D.tags.includes('spell') ? 'cast' : D.tags.includes('proj') ? 'throw' : 'swing');
   if (c.k === 'iai') {
     const d = Math.min(D.dist, Math.hypot(w.x - P.x, w.y - P.y));
@@ -182,6 +191,10 @@ function actHit(a, idx) {
     for (let i = 0; i < c.wolves; i++) callWolf('gem', c);
     fx({ k: 'ring', x: P.x, y: P.y, r: 90, dur: 0.35, col: '#9df29d' });
   }
+  const fl = ascV(S, 'rapier.flurry');
+  if (fl && D.tags.includes('melee') && a.k !== 'iai' && idx === 0)
+    for (let i = 0; i < fl; i++)
+      shoot(a.ang + (i - (fl - 1) / 2) * 0.22, 700, { ...c, mult: c.mult * 0.5, pierce: 1 }, a, { life: 0.45 });
   if (idx === a.hits.length - 1 && a.k !== 'iai' && !a.echo) endAct(a);
 }
 function shoot(ang, spd, c, a, o) {
@@ -228,7 +241,18 @@ function rollDmg(c, m, o = {}) {
     if (v > bigV) (bigV = v), (big = k);
   }
   if (el) (ele += d), (d = 0), (big = el);
-  let tot = (d + ele * (1 + ST.eleP / 100)) * (o.mult || c.mult) * (1 + ST.dmgA / 100) * (1 + 0.02 * (P.guard || 0));
+  const tg = c.D.tags || [],
+    inc =
+      ST.dmgA +
+      (tg.includes('melee') ? ST.meleeP : 0) +
+      (tg.includes('proj') ? ST.projP : 0) +
+      (tg.includes('spell') ? ST.spellP : 0) +
+      (o.minion ? ST.minionP : 0) +
+      (P.rage || 0) +
+      ascV(S, 'berserk.blood') +
+      ascV(S, 'berserk.last') * (1 - P.hp / ST.hp);
+  let tot = (d + ele * (1 + ST.eleP / 100)) * (o.mult || c.mult) * (1 + inc / 100) * (1 + 0.02 * (P.guard || 0));
+  if (m && m.exposeT > G.t) tot *= 1 + ascV(S, 'rapier.expose') / 100;
   tot += tot * c.fireAdd;
   if (m && m.el === big && big !== 'phys') tot *= 0.6;
   let crit = o.crit || P.critNext || Math.random() * 100 < ST.crit + c.crit;
@@ -240,7 +264,7 @@ function rollDmg(c, m, o = {}) {
 function hitMob(m, c, ang, kb, o = {}) {
   const a = o.a || {};
   let mult = (o.mult || c.mult) * (a.mul || 1),
-    crit = false;
+    crit = !!(a.crit || o.crit);
   /* 居合：傷害 ×3（斬鐵 ×4、×5）、必定暴擊 */
   if (a.iai) (mult *= coreV(S, 'ronin', 'iron') || 3), (crit = true);
   /* 刺客的印記：滿了就消耗 */
@@ -257,7 +281,13 @@ function hitMob(m, c, ang, kb, o = {}) {
       fx({ k: 'ring', x: m.x, y: m.y, r: 50, dur: 0.25, col: '#c38bff' });
     } else m.mark = (m.mark || 0) + 1;
   }
-  const r = rollDmg(c, m, { mult, crit });
+  const r = rollDmg(c, m, { mult, crit, minion: o.minion });
+  if (r.crit && ascV(S, 'rapier.expose')) m.exposeT = G.t + 4;
+  /* 狂魔：怒氣、嗜血 */
+  const rg = ascV(S, 'berserk.rage');
+  if (rg && !o.quiet) (P.rage = Math.min(rg, (P.rage || 0) + 1)), (P.rageT = G.t);
+  const lc = ascV(S, 'berserk.leech');
+  if (lc) P.hp = Math.min(ST.hp, P.hp + (r.d * lc) / 100);
   m.hp -= r.d;
   if (a) a.any = 1;
   m.flash = 0.09;
@@ -423,7 +453,7 @@ function updAllies(dt) {
       fx({ k: 'claw', x: w.x, y: w.y, ang: angTo(w, t), r: 34, dur: 0.12 });
       const c = w.c || slotCfg(0) || { D: SKILLS.slash, mult: 1, crit: 0, critX: 0, fireAdd: 0, kb: 1 },
         mult = w.src === 'gem' ? c.mult * c.wolfM : 0.4 * (1 + coreV(S, 'tamer', 'pack') / 100);
-      hitMob(t, c, angTo(w, t), 60, { quiet: 1, mult, noBurn: w.src === 'gem' });
+      hitMob(t, c, angTo(w, t), 60, { quiet: 1, mult, noBurn: w.src === 'gem', minion: 1 });
     }
     if (dist(w, P) > 900) (w.x = P.x), (w.y = P.y);
   }
@@ -458,6 +488,8 @@ function updPools(dt) {
 }
 function updSkills(dt) {
   if (P.shadowT > 0) P.shadowT -= dt;
+  /* 怒氣：3 秒沒打中，每秒掉 5 點 */
+  if (P.rage && G.t - P.rageT > 3) P.rage = Math.max(0, P.rage - 5 * dt);
   /* 騎士的護盾：4 秒沒受傷就充滿 */
   const wm = wardMax();
   if (wm && G.t - (P.lastHurt || -9) > 4) P.ward = wm;
@@ -466,7 +498,76 @@ function updSkills(dt) {
 }
 /* 進地圖、回藏身處：重設核心的狀態；馴獸師帶狼 */
 function skillsEnter() {
-  Object.assign(P, { stance: 0, guard: 0, ward: wardMax(), wardAbs: 0, calls: 0, shadowT: 0, lastHurt: -9 });
+  Object.assign(P, {
+    stance: 0,
+    guard: 0,
+    ward: wardMax(),
+    wardAbs: 0,
+    calls: 0,
+    shadowT: 0,
+    lastHurt: -9,
+    rage: 0,
+    rageT: 0,
+    beat: 0,
+    frenzy: [],
+    undying: 1,
+    flashT: 0,
+    stepT: 0
+  });
   Object.assign(G, { allies: [], pools: [], meteors: [] });
   if (G.scene === 'map' && hasCls(S, 'tamer')) for (let i = 1 + coreV(S, 'tamer', 'alpha'); i > 0; i--) callWolf('cls');
+}
+
+/* ---------- 劍士昇華的其他效果 ---------- */
+/* 出手速度：怒氣（每點 +0.5%）、狂亂（每層 +8%）、步法（翻滾後 +30%） */
+function speedMul() {
+  const fz = (P.frenzy || []).filter(t => t > G.t).length;
+  return (
+    (1 + (P.rage || 0) * 0.005) *
+    (1 + (fz * ascV(S, 'berserk.frenzy')) / 100) *
+    (P.stepT > G.t ? 1 + ascV(S, 'rapier.step') / 100 : 1)
+  );
+}
+/* 移動速度：狂亂、一閃、刺客的影步 */
+function moveMul() {
+  const fz = (P.frenzy || []).filter(t => t > G.t).length;
+  return (
+    (1 + (fz * ascV(S, 'berserk.frenzy')) / 100) *
+    (P.flashT > G.t ? 1 + ascV(S, 'ronin.flash') / 100 : 1) *
+    (P.shadowT > 0 ? 1 + coreV(S, 'assassin', 'shadow') / 100 : 1)
+  );
+}
+/* 見切成功：浪人一閃（架勢滿）、刺劍姬反擊 */
+function onMikiri() {
+  if (ascV(S, 'ronin.flash')) (P.stance = stanceNeed()), (P.flashT = G.t + 2);
+  const rp = ascV(S, 'rapier.riposte');
+  if (rp) {
+    const c = slotCfg(0) || { D: SKILLS.slash, mult: 1, crit: 0, critX: 0, fireAdd: 0, kb: 1 };
+    fx({ k: 'slash', x: P.x, y: P.y, ang: P.face, r: 130, arc: TAU * 0.9, dur: 0.2 });
+    for (const m of G.mobs)
+      if (m.hp > 0 && dist(m, P) < 140 + m.r) hitMob(m, c, angTo(P, m), 220, { quiet: 1, mult: rp, crit: 1 });
+  }
+}
+/* 格擋：刺劍姬的格擋大師反擊 */
+function onBlock() {
+  const pa = ascV(S, 'rapier.parry');
+  if (pa) aoeHit(P.x, P.y, 120, pa, '#cfd8e3');
+}
+/* 殺怪：狂亂疊層 */
+function onKill() {
+  if (ascV(S, 'berserk.frenzy')) {
+    P.frenzy = (P.frenzy || []).filter(t => t > G.t).slice(-2);
+    P.frenzy.push(G.t + 3);
+  }
+}
+/* 致命傷害：狂魔的不死（每張地圖一次） */
+function tryUndying() {
+  if (!ascV(S, 'berserk.undying') || !P.undying || G.scene !== 'map') return false;
+  P.undying = 0;
+  P.hp = 1;
+  P.iuntil = G.t + ascV(S, 'berserk.undying');
+  fx({ k: 'mikiri', x: P.x, y: P.y, dur: 0.8 });
+  hudWarn('不死！');
+  sfx('mikiri');
+  return true;
 }

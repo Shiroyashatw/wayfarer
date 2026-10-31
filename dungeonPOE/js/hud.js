@@ -30,7 +30,7 @@ function hudInit() {
     </div>
     <div class="orb mp" id="omp"><i></i><span></span></div>
   </div>
-  <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 技能 左鍵／右鍵／Q／E／R · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · G 技能寶石 · P 天賦 · O 核心 · T 回藏身處 · H 隱藏</div>
+  <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 技能 左鍵／右鍵／Q／E／R · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · G 技能寶石 · P 天賦與昇華 · T 回藏身處 · H 隱藏</div>
   <div id="warn"></div>`;
   hudBar();
   hudState();
@@ -107,6 +107,7 @@ function hudTick() {
   if (HV.ward !== wv) $('ohp').style.setProperty('--w', (HV.ward = wv));
   const mech = [
     hasCls(S, 'ronin') ? `架勢 ${P.stance}/${stanceNeed()}` : '',
+    ascV(S, 'berserk.rage') ? `怒氣 ${Math.floor(P.rage || 0)}` : '',
     hasCls(S, 'knight') ? `盾勢 ${P.guard}` : '',
     G.allies && G.allies.length ? `狼 ${G.allies.length}` : ''
   ]
@@ -135,14 +136,21 @@ function hudState() {
   if (G.state === 'dead') {
     o.innerHTML = `<div class="card"><h2 class="c-bad">你倒下了</h2><p>這張地圖失敗，失去 ${G.lostXp} 經驗（不會降級）。裝備都還在。</p><button class="btn pri" data-a="home">回到藏身處</button></div>`;
     o.hidden = false;
-  } else if (G.state === 'clear') {
-    o.innerHTML = `<div class="card"><h2 class="c-gold">打倒${esc(bossOf(G.mapT).n)}！</h2><p>${G.first ? `開放階級 ${S.maxT}。` : ''}地上還有戰利品，撿完走進藍色傳送門回家。</p><button class="btn pri" data-a="stay">撿東西</button> <button class="btn" data-a="home">直接回藏身處</button></div>`;
+  } else if (G.state === 'portal') {
+    /* 站在傳送門上：回藏身處，或直接開下一張（同一階、或剛開放的下一階） */
+    const t = G.mapT,
+      up = Math.min(S.maxT, TMAX),
+      btn = (k, a, lab) =>
+        `<button class="btn ${a === 'again' && up === t ? 'pri' : a === 'up' ? 'pri' : ''}" data-a="${a}" ${S.frag < mapCost(k) ? 'disabled' : ''}>${lab}<small>${mapCost(k) ? `${mapCost(k)} 碎片（有 ${S.frag}）` : '免費'}</small></button>`;
+    o.innerHTML = `<div class="card portal"><h2>傳送門</h2><p>${G.first ? `<span class="c-gold">開放階級 ${S.maxT}！</span>` : '地上的東西撿完了嗎？'}</p>
+      <div class="pbtns">${up > t ? btn(up, 'up', `下一把：階級 ${up}`) : ''}${btn(t, 'again', `下一把：階級 ${t}`)}<button class="btn" data-a="home">回藏身處<small>整理背包、點天賦</small></button></div>
+      <p class="c-dim">走開就關掉</p></div>`;
     o.hidden = false;
   } else o.hidden = true;
 }
 
 /* ---------- 面板 ---------- */
-const PANEL = { inv: false, stash: false, device: false, skill: false, pick: 1 };
+const PANEL = { inv: false, stash: false, device: false, skill: false, asc: false, pick: 1 };
 function openPanel(k) {
   if (k === 'stash') (PANEL.inv = PANEL.stash = true), (PANEL.skill = false);
   else if (k === 'skill') (PANEL.inv = PANEL.skill = true), (PANEL.stash = false);
@@ -154,7 +162,7 @@ function openPanel(k) {
   hudPanels();
 }
 function closePanels() {
-  PANEL.inv = PANEL.stash = PANEL.device = PANEL.skill = false;
+  PANEL.inv = PANEL.stash = PANEL.device = PANEL.skill = PANEL.asc = false;
   hideTip();
   hudPanels();
 }
@@ -164,6 +172,8 @@ function hudPanels() {
   $('pstash').hidden = !PANEL.stash;
   $('pdev').hidden = !PANEL.device;
   $('pskill').hidden = !PANEL.skill;
+  $('pasc').hidden = !PANEL.asc;
+  if (PANEL.asc) $('pasc').innerHTML = ascHTML();
   if (PANEL.skill) $('pskill').innerHTML = skillHTML();
   if (PANEL.inv) $('pinv').innerHTML = invHTML();
   if (PANEL.stash)
@@ -242,6 +252,25 @@ function skillHTML() {
         .join('')}</div><div class="skinfo">${info}</div></div>`;
     })
     .join('')}`;
+}
+/* 昇華石碑：選職業（目前只有劍士）與分支；點數在天賦樹中間點 */
+function ascHTML() {
+  const A = ASC.sword,
+    pts = ascPoints(S),
+    soon = ['騎士', '火法師', '刺客', '馴獸師'];
+  return `<div class="ph"><b>昇華石碑</b><span>昇華點 ${pts} / 8（階級 6、12、16 的王第一次打倒各 +2）</span><button class="x" data-a="close">✕</button></div>
+  <div class="ascls"><div class="acls on">${icHTML(A.ic)}<b>${A.n}</b></div>${soon.map(n => `<div class="acls off"><b>${n}</b><small>之後開放</small></div>`).join('')}</div>
+  <div class="abrs">${Object.entries(A.br)
+    .map(([k, B]) => {
+      const cur = S.asc === k;
+      return `<div class="abr ${cur ? 'on' : ''}"><div class="abh">${icHTML(B.ic)}<div><b>${B.n}</b><small>${B.d}</small></div></div>
+      <ul>${Object.values(B.big)
+        .map(g => `<li><b>${g.n}</b>${esc(g.d)}</li>`)
+        .join('')}</ul>
+      <button class="btn ${cur ? '' : 'pri'}" data-a="asc:${k}" ${cur ? 'disabled' : ''}>${cur ? '目前的昇華' : S.asc ? `改成${B.n}（點數退回）` : `成為${B.n}`}</button></div>`;
+    })
+    .join('')}</div>
+  <p class="c-dim">選好後按 P：天賦樹中間挖空的地方就是昇華點。每條分支 8 點只能點成 4 小 4 大（大點是獨特效果）。</p>`;
 }
 function devHTML() {
   const t = PANEL.pick,
@@ -566,7 +595,6 @@ function inputInit() {
     else if (k === 'r') useSlot(4);
     else if (k === 'g') PANEL.skill ? closePanels() : openPanel('skill');
     else if (k === 'p') treeOpen('pt');
-    else if (k === 'o') treeOpen('ct');
     else if (k === '1') drinkFlask();
     else if (k === 'f') interact();
     else if (k === 'i' || k === 'b') PANEL.inv ? closePanels() : openPanel('inv');
@@ -673,8 +701,16 @@ function act(a) {
     closePanels();
   } else if (a === 'home') {
     enterHideout();
-  } else if (a === 'stay') {
-    G.state = 'play';
-    hudState();
+  } else if (a === 'again') mapAgain(G.mapT);
+  else if (a === 'up') mapAgain(Math.min(S.maxT, TMAX));
+  else if (a.startsWith('asc:')) {
+    /* 選昇華分支（換分支＝昇華點全部退回） */
+    S.asc = a.slice(4);
+    S.at = ['a_st'];
+    save();
+    ST = stats();
+    hudPanels();
+    hudWarn(`成為${ASC.sword.br[S.asc].n}！按 P 在天賦樹中間點昇華`);
+    sfx('lvup');
   }
 }

@@ -8,7 +8,7 @@ vm.createContext(ctx);
 for (const f of ['data.js', 'items.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 const G = vm.runInContext(
-  '({ BASES, KINDS, AFF, EQS, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, CTREE, CORE_CLS, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
+  '({ BASES, KINDS, AFF, EQS, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, ASC, ascNodes, ascPoints, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
   ctx
 );
 let bad = 0;
@@ -79,47 +79,75 @@ for (let k = 0; k < 50; k++) {
 }
 ok('格子背包自動擺放不重疊、不出界', !over, over + ' 處');
 /* 5. 技能寶石、天賦樹、核心樹 */
-const miss2 = [...Object.values(G.SKILLS), ...Object.values(G.SUPPORTS), ...G.PTREE.N, ...G.CTREE.N]
+const ascAll = Object.keys(G.ASC.sword.br).map(b => [b, G.ascNodes(b)]);
+const miss2 = [
+  ...Object.values(G.SKILLS),
+  ...Object.values(G.SUPPORTS),
+  ...G.PTREE.N,
+  ...ascAll.flatMap(([, T]) => T.N)
+]
   .map(x => x.ic)
-  .filter(n => !has(n));
-ok('技能、輔助、天賦、核心的圖示都在', !miss2.length, [...new Set(miss2)].join(','));
-for (const [name, T] of [
-  ['天賦樹', G.PTREE],
-  ['核心樹', G.CTREE]
-]) {
-  const bad = T.E.flat().filter(id => !T.I[id]),
-    seen = new Set(['c']),
-    q = ['c'];
-  while (q.length) {
-    const n = q.pop();
-    for (const [a, b] of T.E) {
-      const o = a === n ? b : b === n ? a : null;
-      if (o && !seen.has(o)) seen.add(o), q.push(o);
-    }
-  }
+  .filter(n => n && !has(n));
+ok('技能、輔助、天賦、昇華的圖示都在', !miss2.length, [...new Set(miss2)].join(','));
+{
+  const T = G.PTREE,
+    bad = T.E.flat().filter(id => !T.I[id]),
+    seen = new Set(G.PT_START),
+    q = [...G.PT_START];
+  while (q.length) for (const o of T.ADJ[q.pop()] || []) if (!seen.has(o)) seen.add(o), q.push(o);
   ok(
-    `${name}的每個點都從起點連得到`,
-    !bad.length && seen.size === T.N.length,
-    `${bad.join(',')} 連到 ${seen.size}/${T.N.length}`
+    `天賦樹 ${T.N.length} 個點，每個都從起點連得到`,
+    T.N.length >= 1000 && !bad.length && seen.size === T.N.length,
+    `${seen.size}/${T.N.length}`
   );
 }
-const full = { lv: 60, eq: {}, pt: G.PTREE.N.map(n => n.id), ct: G.CTREE.N.map(n => n.id) },
-  o = G.stats(full),
-  vals = [
-    o.hp,
-    o.mp,
-    o.mpReg,
-    o.cdr,
-    o.dmgA,
-    o.eleP,
-    o.dmg[0],
-    o.aps,
-    o.crit,
-    o.critM,
-    G.dps(o),
-    ...Object.values(o.res)
-  ];
-ok('天賦、核心全點滿數值沒有 NaN', vals.every(Number.isFinite), JSON.stringify(vals));
+/* 昇華：一小一大交錯、6 小 6 大、點得成 4 小 4 大 */
+for (const [b, T] of ascAll) {
+  const big = id => T.I[id].big === 1,
+    alt = T.E.every(([x, y]) => (x === 'a_st' ? !big(y) : big(x) !== big(y))),
+    nb = T.N.filter(n => n.big === 1).length,
+    ns = T.N.filter(n => n.big === 0).length;
+  let can44 = false;
+  const go = set => {
+    const sm = [...set].filter(id => id !== 'a_st' && !big(id)).length,
+      bg = [...set].filter(id => big(id)).length;
+    if (sm > 4 || bg > 4 || can44) return;
+    if (sm === 4 && bg === 4) return (can44 = true);
+    for (const [x, y] of T.E)
+      for (const [p, q] of [
+        [x, y],
+        [y, x]
+      ])
+        if (set.has(p) && !set.has(q)) go(new Set([...set, q]));
+  };
+  go(new Set(['a_st']));
+  ok(`昇華「${G.ASC.sword.br[b].n}」一小一大交錯、6 小 6 大、點得成 4 小 4 大`, alt && nb === 6 && ns === 6 && can44);
+}
+ok(
+  '昇華點：一開始 2 點，階級 6、12、16 各 +2',
+  G.ascPoints({ maxT: 1 }) === 2 && G.ascPoints({ maxT: 16, t16: 1 }) === 8
+);
+for (const [b, T] of ascAll) {
+  const full = { lv: 60, eq: {}, pt: G.PTREE.N.map(n => n.id), asc: b, at: T.N.map(n => n.id) },
+    o = G.stats(full),
+    vals = [
+      o.hp,
+      o.mp,
+      o.mpReg,
+      o.cdr,
+      o.dmgA,
+      o.eleP,
+      o.meleeP,
+      o.dmg[0],
+      o.aps,
+      o.crit,
+      o.critM,
+      o.spd,
+      G.dps(o),
+      ...Object.values(o.res)
+    ];
+  ok(`天賦全點滿＋${G.ASC.sword.br[b].n}：數值沒有 NaN`, vals.every(Number.isFinite), JSON.stringify(vals));
+}
 const gems = Array.from({ length: 200 }, (_, i) => G.dropGem(1 + (i % 16)));
 ok(
   '寶石掉落：等級 1～20、大小 1×1、有名字',

@@ -124,14 +124,20 @@ function gridAuto(g, it) {
 }
 
 /* ---------- 角色數值：等級＋穿在身上的裝備 ---------- */
-/* 核心的數值：沒點 0、點了核心 v[0]、點了強化 v[1] */
-function coreV(s, cls, core) {
-  const ct = s.ct || [];
-  if (ct.includes(`${cls}.${core}+`)) return CORE_CLS.find(c => c.id === cls).cores.find(k => k.id === core).v[1];
-  if (ct.includes(`${cls}.${core}`)) return CORE_CLS.find(c => c.id === cls).cores.find(k => k.id === core).v[0];
-  return 0;
+/* 昇華大點的效果：ascV(s, '浪人.斬鐵' 這種鍵) → 數值，沒點是 0 */
+function ascV(s, key) {
+  const T = s.asc && ascNodes(s.asc);
+  if (!T) return 0;
+  let v = 0;
+  for (const id of s.at || []) {
+    const n = T.I[id];
+    if (n && n.fx && n.fx[key]) v += n.fx[key];
+  }
+  return v;
 }
-const hasCls = (s, cls) => (s.ct || []).includes(cls);
+/* 舊的職業核心介面（skills.js 用）：浪人的機制與核心接到昇華，其他職業還沒開放（是 0） */
+const coreV = (s, cls, core) => ascV(s, `${cls}.${core}`);
+const hasCls = (s, cls) => ascV(s, `${cls}.mech`) > 0;
 function stats(s = S) {
   const o = {
     hp: HERO.hp + 12 * (s.lv - 1),
@@ -149,7 +155,12 @@ function stats(s = S) {
     regen: 0,
     loh: 0,
     aoe: 0,
-    flask: 0
+    flask: 0,
+    meleeP: 0,
+    projP: 0,
+    spellP: 0,
+    minionP: 0,
+    blood: 0
   };
   const w = s.eq.weapon,
     wb = w ? baseOf(w).b : { dmg: HERO.dmg, as: 1.1 };
@@ -174,8 +185,9 @@ function stats(s = S) {
   }
   /* 天賦樹 */
   const pt = { hpP: 0, armorP: 0, mpP: 0, mpReg: 0, cdr: 0, dmgA: 0, eleP: 0 };
-  for (const id of s.pt || []) {
-    const n = PTREE.I[id];
+  const T = s.asc && ascNodes(s.asc),
+    nodes = [...(s.pt || []).map(id => PTREE.I[id]), ...(T ? (s.at || []).map(id => T.I[id]) : [])];
+  for (const n of nodes) {
     if (!n) continue;
     for (const k in n.s) {
       if (k in pt) pt[k] += n.s[k];
@@ -183,7 +195,11 @@ function stats(s = S) {
       else o[k] += n.s[k];
     }
   }
-  o.critX += coreV(s, 'assassin', 'kill');
+  /* 昇華大點的數值效果 */
+  const aura = ascV(s, 'ronin.aura');
+  if (aura) (o.meleeP += 15), (o.aoe += aura);
+  o.block += ascV(s, 'rapier.parry') ? 15 : 0;
+  if (ascV(s, 'berserk.blood')) o.blood = 1;
   o.hp = Math.round(o.hp * (1 + pt.hpP / 100));
   o.armor = Math.round(o.armor * (1 + pt.armorP / 100));
   o.mp = Math.round(o.mp * (1 + pt.mpP / 100));

@@ -26,9 +26,15 @@ function migrate(s) {
   /* 存檔 11（0.2.2）：技能寶石、天賦樹、核心樹；0.2.1 以前固定的 5 招換成寶石 */
   if (s.v < 11) {
     o.skills = ['slash', 'blade', 'whirl', 'iai', 'storm'].map(g => ({ a: mkGem(g), s: [null, null] }));
-    o.pt = ['c'];
-    o.ct = ['c'];
     o.v = 11;
+  }
+  /* 存檔 12（0.2.3）：天賦樹換成一千多點的大樹，點數全部退回；核心樹改成昇華（到藏身處的昇華石碑選） */
+  if (o.v < 12) {
+    o.pt = [...PT_START];
+    o.asc = null;
+    o.at = [];
+    delete o.ct;
+    o.v = 12;
   }
   /* 道具編號接著存檔裡最大的往下編 */
   for (const it of [...Object.values(o.eq), ...o.inv.items, ...o.stash.items, ...o.skills.flatMap(k => [k.a, ...k.s])])

@@ -10,7 +10,7 @@ let S;
 /* 存檔版本 10 是 0.2.0（重製：0.1 的存檔不沿用） */
 function newGame() {
   const s = {
-    v: 11,
+    v: 12,
     name: '女忍者',
     lv: 1,
     xp: 0,
@@ -29,8 +29,9 @@ function newGame() {
   s.skills[0].a = mkGem('slash');
   s.skills[1].a = mkGem('blade');
   s.skills[2].a = mkGem('whirl');
-  s.pt = ['c'];
-  s.ct = ['c'];
+  s.pt = [...PT_START];
+  s.asc = null;
+  s.at = [];
   s.eq.chest = mkItem('c_leather', 1, 0);
   return s;
 }
@@ -110,7 +111,8 @@ function enterHideout() {
   G.props = [
     { k: 'device', n: '地圖台', x: 480, y: 210, r: 46 },
     { k: 'stash', n: '倉庫', x: 190, y: 330, r: 34 },
-    { k: 'market', n: '市集（之後開放）', x: 770, y: 330, r: 34 }
+    { k: 'market', n: '市集（之後開放）', x: 770, y: 330, r: 34 },
+    { k: 'asc', n: '昇華石碑', x: 770, y: 520, r: 30 }
   ];
   newPlayer(480, 470);
   P.hp = ST.hp;
@@ -134,6 +136,16 @@ function openMap(t) {
    殺怪累積首領進度，滿了王就出現在附近（怪物總量約是需要的 150～160%） */
 const TS = 48,
   CHUNK = 14;
+/* 從地圖裡的傳送門直接開下一張（花碎片） */
+function mapAgain(t) {
+  const c = mapCost(t);
+  if (t > S.maxT) return hudWarn('先打倒前一階的王');
+  if (S.frag < c) return hudWarn(`碎片不夠：要 ${c} 個`);
+  S.frag -= c;
+  S.tier = t;
+  save();
+  enterMap(t);
+}
 function enterMap(t) {
   const CW = 6,
     CHn = 5,
@@ -357,7 +369,7 @@ function updPlayer(dt) {
   P.mv = ml ? 1 : 0;
   P.mdx = mx;
   P.mdy = my;
-  const spd = ST.spd * (P.shadowT > 0 ? 1 + coreV(S, 'assassin', 'shadow') / 100 : 1);
+  const spd = ST.spd * moveMul();
   if (P.act) {
     skillTick(P.act, dt, mx, my);
   } else moveBody(P, mx * spd * dt, my * spd * dt);
@@ -433,7 +445,9 @@ function doRoll() {
   if (!dx && !dy) (dx = Math.cos(P.face)), (dy = Math.sin(P.face));
   P.act = null;
   P.roll = { t: 0, dx, dy };
-  P.cds.roll = ROLL.cd + ROLL.t;
+  const step = ascV(S, 'rapier.step');
+  P.cds.roll = ROLL.cd * (step ? 0.6 : 1) + ROLL.t;
+  if (step) P.stepT = G.t + ROLL.t + 2;
   P.iuntil = G.t + ROLL.iframe;
   sfx('roll');
 }
@@ -452,6 +466,7 @@ function hurtPlayer(d, src, el = 'phys') {
     if (!G.slow) {
       G.slow = ROLL.slow;
       P.critNext = 1;
+      onMikiri();
       fx({ k: 'mikiri', x: P.x, y: P.y, dur: 0.6 });
       num(P.x, P.y - 70, 0, 'mikiri');
       sfx('mikiri');
@@ -463,6 +478,7 @@ function hurtPlayer(d, src, el = 'phys') {
     num(P.x, P.y - 60, 0, 'block');
     sfx('block');
     coreBlock();
+    onBlock();
     return;
   }
   if (el === 'phys') d *= 1 - ST.armor / (ST.armor + 10 * d + 1);
@@ -480,7 +496,7 @@ function hurtPlayer(d, src, el = 'phys') {
     P.vx += Math.cos(a) * 160;
     P.vy += Math.sin(a) * 160;
   }
-  if (P.hp <= 0) die();
+  if (P.hp <= 0 && !tryUndying()) die();
 }
 /* 死亡（PoE 式）：地圖失敗、扣這一級 10% 經驗（不降級），裝備不會掉 */
 function die() {
@@ -529,21 +545,22 @@ function killMob(m) {
   /* 技能寶石：小怪 2%、菁英 25%、王一定掉 */
   if (Math.random() < (m.boss ? 1 : m.elite ? 0.25 : 0.02)) dropAt(m.x, m.y, { it: dropGem(t) });
   coreKill(m);
+  onKill();
   addProg(m);
   if (m.boss) bossDown(m);
 }
 function bossDown(m) {
   const first = G.mapT === S.maxT && S.maxT < TMAX;
   if (first) S.maxT++;
+  if (G.mapT === TMAX && !S.t16) (S.t16 = 1), (G.first = 1);
   G.portal = { ...(floorNear(m.x, m.y, 150, 230, 40) || { x: m.x, y: m.y }), home: 1 };
-  G.state = 'clear';
-  G.first = first;
+  G.first = G.first || first;
   shake(0.7);
   hitstop(0.25);
   G.slow = 0.9;
   sfx('boss');
+  hudWarn(first ? `打倒${m.D.n}！開放階級 ${S.maxT}。撿完走進藍色傳送門` : `打倒${m.D.n}！撿完走進藍色傳送門`);
   save();
-  setTimeout(hudState, 900);
 }
 function dropAt(x, y, o) {
   const a = rnd(0, TAU),
@@ -604,6 +621,7 @@ function useProp(p) {
   if (dist(P, p) > p.r + 90) return hudWarn('走近一點'), true;
   if (p.k === 'device') openPanel('device');
   else if (p.k === 'stash') openPanel('stash');
+  else if (p.k === 'asc') openPanel('asc');
   else hudWarn('市集之後開放');
   return true;
 }
@@ -866,7 +884,11 @@ function frame(now) {
     updShots(dt);
     updSkills(dt);
     /* 傳送門：地圖裡打倒王後的門＝回家 */
-    if (G.portal && G.portal.home && G.state === 'play' && dist(P, G.portal) < 36) return goHome();
+    if (G.portal && G.portal.home) {
+      const on = dist(P, G.portal) < 40;
+      if (on && G.state === 'play') (G.state = 'portal'), hudState();
+      else if (!on && G.state === 'portal') (G.state = 'play'), hudState();
+    }
     for (const d of G.drops.slice()) {
       d.t += dt;
       if ((d.gold || d.frag) && d.t > 0.4 && dist(P, d) < 150) {
