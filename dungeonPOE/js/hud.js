@@ -20,11 +20,12 @@ const BAR = [
   { k: 'blade', key: '右鍵' },
   { k: 'whirl', key: 'Q' },
   { k: 'iai', key: 'E' },
+  { k: 'storm', key: 'R' },
   { k: 'roll', key: '空白', n: '翻滾', d: '短暫無敵。怪物出手的瞬間翻滾＝見切：時間變慢，下一擊必定暴擊。' }
 ];
 function hudInit() {
   $('hud').innerHTML = `
-  <div class="top"><div id="area"></div><div id="bossbar" hidden><b id="bossn"></b><div class="bb"><i></i></div></div></div>
+  <div class="top"><div id="area"></div><div id="bossbar" hidden><b id="bossn"></b><div class="bb"><i></i></div></div><div id="prog" hidden><b>首領進度</b><div class="pb"><i></i></div></div></div>
   <div class="bottom">
     <div class="orb hp" id="ohp"><i></i><span></span></div>
     <div class="mid">
@@ -36,7 +37,7 @@ function hudInit() {
     </div>
     <div class="orb mp" id="omp"><i></i><span></span></div>
   </div>
-  <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 左鍵 斬擊 · 右鍵 飛刃 · Q 旋風斬 · E 居合突進 · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · T 回藏身處 · H 隱藏</div>
+  <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 左鍵 斬擊 · 右鍵 飛刃 · Q 旋風斬 · E 居合突進 · R 千本櫻 · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · T 回藏身處 · H 隱藏</div>
   <div id="warn"></div>`;
   hudState();
 }
@@ -97,6 +98,9 @@ function hudTick() {
     if (show) $('bossn').textContent = b.D.n;
   }
   if (show) setV($('bossbar'), 'bhp', (b.hp / b.mhp).toFixed(3));
+  const pr = G.scene === 'map' && !G.bossOut;
+  if (HV.pr !== pr) $('prog').hidden = !(HV.pr = pr);
+  if (pr) setV($('prog'), 'prog', Math.min(1, G.prog / G.need).toFixed(3));
   const at =
     G.scene === 'hide'
       ? `藏身處 · Lv ${S.lv} · ${S.gold} 金 · 地圖碎片 ${S.frag}`
@@ -144,33 +148,34 @@ function hudPanels() {
 }
 const hudInv = () => PANEL.inv && hudPanels();
 /* 裝備欄的位置（照 PoE 的人形擺法），單位 px */
+/* 裝備欄的位置（照 PoE 的人形擺法，緊湊版），[x, y, 寬, 高] px；右邊放角色數值 */
 const EQPOS = {
-  weapon: [0, 40, 2, 4],
-  helm: [168, 0, 2, 2],
-  amulet: [262, 40, 1, 1],
-  off: [336, 40, 2, 4],
-  chest: [168, 88, 2, 3],
-  ring1: [120, 140, 1, 1],
-  ring2: [262, 140, 1, 1],
-  gloves: [0, 210, 2, 2],
-  belt: [168, 210, 2, 1],
-  boots: [336, 210, 2, 2]
+  weapon: [0, 0, 72, 108],
+  gloves: [0, 116, 72, 72],
+  ring1: [80, 116, 36, 36],
+  helm: [124, 0, 72, 72],
+  chest: [124, 80, 72, 108],
+  belt: [124, 196, 72, 36],
+  amulet: [204, 36, 36, 36],
+  ring2: [204, 116, 36, 36],
+  off: [248, 0, 72, 108],
+  boots: [248, 116, 72, 72]
 };
 function invHTML() {
   const s = ST,
     eqs = EQS.map(e => {
       const [x, y, w, h] = EQPOS[e.k],
         it = S.eq[e.k];
-      return `<div class="eqs ${it ? 'r' + it.r : ''}" data-eq="${e.k}" style="left:${x}px;top:${y}px;width:${w * 40}px;height:${h * 40}px">${it ? itemHTML(it, 'eq', e.k) : `<small>${e.n}</small>`}</div>`;
+      return `<div class="eqs ${it ? 'r' + it.r : ''}" data-eq="${e.k}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${it ? itemHTML(it, 'eq', e.k) : `<small>${e.n}</small>`}</div>`;
     }).join('');
-  const res = RESK.map(r => `<span class="res-${r}">${ELN[r][0]} ${s.res[r]}%</span>`).join('');
+  const res = RESK.map(r => `<span class="res-${r}">${ELN[r]}抗 <b>${s.res[r]}%</b></span>`).join('');
   return `<div class="ph"><b>裝備</b><span>Lv ${S.lv} · ${S.gold} 金</span><button class="x" data-a="close">✕</button></div>
-  <div class="doll">${eqs}</div>
+  <div class="eqrow"><div class="doll">${eqs}</div>
   <div class="st">
-    <span>傷害 <b>${Math.round(s.dmg[0])}–${Math.round(s.dmg[1])}</b></span><span>每秒攻擊 <b>${s.aps.toFixed(2)}</b></span><span>暴擊 <b>${Math.min(100, s.crit)}%</b></span>
+    <span>傷害 <b>${Math.round(s.dmg[0])}–${Math.round(s.dmg[1])}</b></span><span>攻速 <b>${s.aps.toFixed(2)}</b></span><span>暴擊 <b>${Math.min(100, s.crit)}%</b></span>
     <span>生命 <b>${s.hp}</b></span><span>護甲 <b>${s.armor}</b></span><span>格擋 <b>${s.block}%</b></span>
-    <span class="res">抗性 ${res}</span>
-  </div>
+    ${res}
+  </div></div>
   <div class="ph2">背包 <span>拖曳擺放 · 點一下＝裝備／收起${PANEL.stash ? '／放進倉庫' : ''}</span></div>
   ${gridHTML(S.inv, 'inv')}
   <div class="foot">${G.scene === 'hide' ? `<div class="sell" data-sell="1">拖到這裡賣掉</div>` : `<span class="c-dim">回藏身處才能賣東西</span>`}</div>`;
@@ -450,6 +455,7 @@ function inputInit() {
       doRoll();
     } else if (k === 'q') useSkill('whirl');
     else if (k === 'e') useSkill('iai');
+    else if (k === 'r') useSkill('storm');
     else if (k === '1') drinkFlask();
     else if (k === 'f') interact();
     else if (k === 'i' || k === 'b') PANEL.inv ? closePanels() : openPanel('inv');

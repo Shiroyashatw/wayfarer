@@ -41,7 +41,7 @@ const G = {
   nums: [],
   drops: [],
   tele: [],
-  rocks: [],
+
   state: 'play',
   scene: 'hide'
 };
@@ -56,8 +56,13 @@ function resetWorld(W, H) {
     nums: [],
     drops: [],
     tele: [],
-    rocks: [],
+
     props: [],
+    tiles: null,
+    mini: null,
+    bossOut: 0,
+    prog: 0,
+    need: 1,
     state: 'play',
     portal: null,
     hs: 0,
@@ -117,44 +122,145 @@ function openMap(t) {
   sfx('portal');
   hudWarn(`階級 ${t} 的傳送門開了`);
 }
+/* 地圖（參考 Chronicon）：一塊一塊 14×14 格的房間拼起來，有岔路也沒關係；
+   殺怪累積首領進度，滿了王就出現在附近（怪物總量約是需要的 150～160%） */
+const TS = 48,
+  CHUNK = 14;
 function enterMap(t) {
-  const W = 3400,
-    H = 2300;
-  resetWorld(W, H);
+  const CW = 6,
+    CHn = 5,
+    cols = CW * CHUNK,
+    rows = CHn * CHUNK;
+  resetWorld(cols * TS, rows * TS);
   G.scene = 'map';
   G.mapT = t;
-  newPlayer(220, H / 2);
-  for (let i = 0; i < 46; i++) {
-    const r = rnd(26, 80),
-      x = rnd(r, W - r),
-      y = rnd(r, H - r);
-    if (Math.hypot(x - P.x, y - P.y) < 320 || Math.hypot(x - (W - 340), y - H / 2) < 380) continue;
-    G.rocks.push({ x, y, r });
+  const tiles = (G.tiles = new Uint8Array(cols * rows).fill(1));
+  G.cols = cols;
+  G.rows = rows;
+  const carve = (x0, y0, x1, y1) => {
+    for (let y = Math.max(1, y0); y <= Math.min(rows - 2, y1); y++)
+      for (let x = Math.max(1, x0); x <= Math.min(cols - 2, x1); x++) tiles[y * cols + x] = 0;
+  };
+  /* 房間的排法：從左邊一塊開始往外長，偶爾從舊房間分岔 */
+  const n = Math.min(CW * CHn - 6, 9 + Math.floor(t / 3)),
+    rooms = [{ cx: 0, cy: irnd(1, CHn - 2) }],
+    has = new Set([rooms[0].cx + ',' + rooms[0].cy]),
+    links = [];
+  for (let k = 0; rooms.length < n && k < 500; k++) {
+    const from = Math.random() < 0.6 ? rooms[rooms.length - 1] : pick(rooms),
+      [dx, dy] = pick([
+        [1, 0],
+        [1, 0],
+        [0, 1],
+        [0, -1],
+        [-1, 0]
+      ]),
+      c = { cx: from.cx + dx, cy: from.cy + dy };
+    if (c.cx < 0 || c.cy < 0 || c.cx >= CW || c.cy >= CHn || has.has(c.cx + ',' + c.cy)) continue;
+    has.add(c.cx + ',' + c.cy);
+    rooms.push(c);
+    links.push([from, c]);
   }
-  const spots = [];
-  for (let tries = 0; spots.length < 15 && tries < 600; tries++) {
-    const p = { x: rnd(500, W - 650), y: rnd(160, H - 160) };
-    if (Math.hypot(p.x - P.x, p.y - P.y) < 550 || spots.some(q => dist(p, q) < 330) || hitRock(p, 60)) continue;
-    spots.push(p);
+  /* 挖房間（大小隨機）＋幾根柱子 */
+  for (const r of rooms) {
+    r.x0 = r.cx * CHUNK + irnd(1, 3);
+    r.y0 = r.cy * CHUNK + irnd(1, 3);
+    r.x1 = (r.cx + 1) * CHUNK - 1 - irnd(1, 3);
+    r.y1 = (r.cy + 1) * CHUNK - 1 - irnd(1, 3);
+    carve(r.x0, r.y0, r.x1, r.y1);
+    for (let k = irnd(0, 3); k > 0; k--) {
+      const px = irnd(r.x0 + 2, r.x1 - 3),
+        py = irnd(r.y0 + 2, r.y1 - 3);
+      if (Math.abs(px + 1 - (r.cx * CHUNK + 7)) < 3 || Math.abs(py + 1 - (r.cy * CHUNK + 7)) < 3) continue;
+      for (const [ax, ay] of [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [1, 1]
+      ])
+        tiles[(py + ay) * cols + px + ax] = 1;
+    }
   }
-  spots.forEach((p, i) => {
-    const kinds = pick(PACKS),
-      elite = i % 4 === 3;
-    kinds.forEach((k, j) => spawnMob(MOBS[k], p.x + rnd(-70, 70), p.y + rnd(-70, 70), i, elite && j === 0));
-  });
-  const b = spawnMob(bossOf(t), W - 340, H / 2, 99, false);
-  b.boss = 1;
+  /* 走廊：相連的房間中心對中心，3 格寬；偶爾多開一條成環 */
+  const mid = r => [r.cx * CHUNK + 7, r.cy * CHUNK + 7];
+  const corridor = (a, b) => {
+    const [ax, ay] = mid(a),
+      [bx, by] = mid(b);
+    carve(Math.min(ax, bx) - 1, Math.min(ay, by) - 1, Math.max(ax, bx) + 1, Math.max(ay, by) + 1);
+  };
+  for (const [a, b] of links) corridor(a, b);
+  for (const a of rooms)
+    for (const b of rooms)
+      if (a !== b && Math.abs(a.cx - b.cx) + Math.abs(a.cy - b.cy) === 1 && Math.random() < 0.08) corridor(a, b);
+  const st = rooms[0];
+  newPlayer((st.cx * CHUNK + 7) * TS, (st.cy * CHUNK + 7) * TS);
+  /* 怪物：起點以外的房間各 2～3 群，每 4 群一隻菁英 */
+  let pk = 0,
+    pts = 0;
+  for (const r of rooms.slice(1))
+    for (let k = irnd(2, 3); k > 0; k--) {
+      const c = floorIn(r);
+      if (!c) continue;
+      const elite = ++pk % 4 === 0;
+      pick(PACKS).forEach((m, j) => {
+        const p = floorNear(c.x, c.y, 0, 70, 20) || c;
+        spawnMob(MOBS[m], p.x, p.y, pk, elite && j === 0);
+        pts += elite && j === 0 ? 6 : 1;
+      });
+    }
+  G.need = Math.ceil(pts / rnd(1.5, 1.6));
+  G.prog = 0;
+  G.rooms = rooms;
   sfx('portal');
   hudState();
+}
+const isWall = (x, y) => {
+  if (!G.tiles) return false;
+  const tx = Math.floor(x / TS),
+    ty = Math.floor(y / TS);
+  return tx < 0 || ty < 0 || tx >= G.cols || ty >= G.rows || G.tiles[ty * G.cols + tx] === 1;
+};
+/* 周圍 clear 像素內都不是牆 */
+const open = (x, y, c) =>
+  !isWall(x, y) && !isWall(x - c, y) && !isWall(x + c, y) && !isWall(x, y - c) && !isWall(x, y + c);
+function floorIn(r) {
+  for (let k = 0; k < 40; k++) {
+    const x = rnd(r.x0 + 1.5, r.x1 - 0.5) * TS,
+      y = rnd(r.y0 + 1.5, r.y1 - 0.5) * TS;
+    if (open(x, y, 40)) return { x, y };
+  }
+  return null;
+}
+function floorNear(x, y, r0, r1, c) {
+  for (let k = 0; k < 60; k++) {
+    const a = rnd(0, TAU),
+      d = rnd(r0, r1),
+      p = { x: x + Math.cos(a) * d, y: y + Math.sin(a) * d };
+    if (open(p.x, p.y, c)) return p;
+  }
+  return null;
+}
+/* 首領進度滿了：王出現在玩家附近 */
+function addProg(m) {
+  if (m.pack === 99 || m.boss || G.bossOut) return;
+  G.prog += m.elite ? 6 : 1;
+  if (G.prog < G.need) return;
+  G.bossOut = 1;
+  const p = floorNear(P.x, P.y, 260, 420, 60) || floorNear(P.x, P.y, 120, 260, 50) || { x: P.x + 1, y: P.y };
+  const b = spawnMob(bossOf(G.mapT), p.x, p.y, 99, false);
+  b.boss = 1;
+  b.aggro = 1;
+  b.cd = 1.2;
+  fx({ k: 'ring', x: p.x, y: p.y, r: 160, dur: 0.6, col: '#ff6b3d' });
+  shake(0.6);
+  sfx('boss');
+  hudWarn(b.D.n + '出現了！');
 }
 /* 回藏身處（地圖就結束了） */
 function goHome() {
   if (G.scene !== 'map') return;
   save();
   enterHideout();
-}
-function hitRock(p, r) {
-  return G.rocks.some(k => Math.hypot(p.x - k.x, p.y - k.y) < k.r + r);
 }
 function spawnMob(D, x, y, pack, elite) {
   const m = tierMul(G.mapT || 1),
@@ -287,6 +393,26 @@ function actHit(a) {
       hit: new Set(),
       life: 0.9
     });
+  } else if (a.k === 'storm') {
+    /* 千本櫻：一圈飛刃往四面八方 */
+    fx({ k: 'ring', x: P.x, y: P.y, r: 90, dur: 0.3, col: '#ffb3c8' });
+    shake(0.15);
+    for (let i = 0; i < D.cnt; i++) {
+      const g = a.ang + (i / D.cnt) * TAU;
+      G.shots.push({
+        x: P.x,
+        y: P.y - 18,
+        vx: Math.cos(g) * D.spd,
+        vy: Math.sin(g) * D.spd,
+        ang: g,
+        r: 10,
+        pierce: D.pierce,
+        m: D.m,
+        hit: new Set(),
+        life: 0.8,
+        pink: 1
+      });
+    }
   } else if (a.k === 'whirl') {
     const R = D.r * ST.aoeM;
     fx({ k: 'ring', x: P.x, y: P.y, r: R, dur: 0.28 });
@@ -357,12 +483,18 @@ function updPlayer(dt) {
       P.face = P.mv && G.scene === 'hide' ? Math.atan2(my, mx) : Math.atan2(w.y - P.y, w.x - P.x);
   }
 }
+/* 移動＋碰撞：地圖是牆（一格一格推出去），藏身處是邊界與擺設；分段走，快速衝刺也不會穿牆 */
 function moveBody(o, dx, dy) {
-  const pad = G.scene === 'hide' ? 60 : 0;
-  o.x = clamp(o.x + dx, o.r + pad, G.W - o.r - pad);
-  o.y = clamp(o.y + dy, o.r + pad + (G.scene === 'hide' ? 40 : 0), G.H - o.r - pad);
-  if (o.D && o.D.fly) return;
-  for (const k of G.rocks.concat(G.props || [])) {
+  const n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / (o.r * 0.8)));
+  for (let i = 0; i < n; i++) {
+    o.x += dx / n;
+    o.y += dy / n;
+    if (G.tiles) pushTiles(o);
+  }
+  if (G.tiles) return;
+  o.x = clamp(o.x, o.r + 60, G.W - o.r - 60);
+  o.y = clamp(o.y, o.r + 100, G.H - o.r - 60);
+  for (const k of G.props) {
     const ddx = o.x - k.x,
       ddy = o.y - k.y,
       d = Math.hypot(ddx, ddy),
@@ -372,6 +504,34 @@ function moveBody(o, dx, dy) {
       o.y = k.y + (ddy / d) * min;
     }
   }
+}
+function pushTiles(o) {
+  const r = o.r;
+  for (let ty = Math.floor((o.y - r) / TS); ty <= Math.floor((o.y + r) / TS); ty++)
+    for (let tx = Math.floor((o.x - r) / TS); tx <= Math.floor((o.x + r) / TS); tx++) {
+      if (!isWall(tx * TS + 1, ty * TS + 1)) continue;
+      const nx = clamp(o.x, tx * TS, tx * TS + TS),
+        ny = clamp(o.y, ty * TS, ty * TS + TS),
+        ddx = o.x - nx,
+        ddy = o.y - ny,
+        d = Math.hypot(ddx, ddy);
+      if (d >= r) continue;
+      if (d > 0) {
+        o.x = nx + (ddx / d) * r;
+        o.y = ny + (ddy / d) * r;
+      } else {
+        /* 中心卡進牆裡：往最近的邊推 */
+        const l = o.x - tx * TS,
+          rr = tx * TS + TS - o.x,
+          u = o.y - ty * TS,
+          b = ty * TS + TS - o.y,
+          mn = Math.min(l, rr, u, b);
+        if (mn === l) o.x = tx * TS - r;
+        else if (mn === rr) o.x = tx * TS + TS + r;
+        else if (mn === u) o.y = ty * TS - r;
+        else o.y = ty * TS + TS + r;
+      }
+    }
 }
 function doRoll() {
   if (P.roll || G.state !== 'play' || (P.cds.roll || 0) > 0) return;
@@ -489,12 +649,13 @@ function killMob(m) {
         ? 1
         : 0;
   if (fr) dropAt(m.x, m.y, { frag: fr });
+  addProg(m);
   if (m.boss) bossDown(m);
 }
 function bossDown(m) {
   const first = G.mapT === S.maxT && S.maxT < TMAX;
   if (first) S.maxT++;
-  G.portal = { x: Math.min(G.W - 60, m.x + 190), y: m.y, home: 1 };
+  G.portal = { ...(floorNear(m.x, m.y, 150, 230, 40) || { x: m.x, y: m.y }), home: 1 };
   G.state = 'clear';
   G.first = first;
   shake(0.7);
@@ -508,6 +669,7 @@ function dropAt(x, y, o) {
   const a = rnd(0, TAU),
     s = rnd(30, 90);
   Object.assign(o, { x: x + Math.cos(a) * s, y: y + Math.sin(a) * s, sx: x, sy: y, t: 0 });
+  if (!open(o.x, o.y, 10)) (o.x = x), (o.y = y);
   G.drops.push(o);
   if (o.it && o.it.r === 2) sfx('rare');
 }
@@ -774,7 +936,7 @@ function updShots(dt) {
           }
         }
       }
-    if (hitRock(s, 0)) {
+    if (isWall(s.x, s.y)) {
       s.life = 0;
       sparks(s.x, s.y, Math.atan2(-s.vy, -s.vx), 4, '#aaa');
     }

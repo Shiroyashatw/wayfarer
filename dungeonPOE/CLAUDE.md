@@ -29,9 +29,9 @@
 | `js/sprites.js`、`js/art.js`、`img/` | 像素圖大圖（`art.js` 是產生的，不要手改）；`artImg`（canvas 用）、`artSprite`（白色閃光版）、`artIconURL`（面板圖示） |
 | `js/items.js` | 裝備產生 `mkItem`／`dropItem`／`rollRarity`、名字與說明 `itemName`／`affText`／`baseText`、賣價 `sellPrice`、格子背包 `gridFree`／`gridHits`／`gridAuto`、角色數值 `stats`、`dps` |
 | `js/audio.js` | Web Audio 合成音效 `sfx` |
-| `js/game.js` | 存檔結構 `newGame`、場景（藏身處 `enterHideout`、開圖 `openMap`、地圖 `enterMap`、回家 `goHome`）、玩家與技能 `useSkill`／`actHit`／`updPlayer`、翻滾 `doRoll`、受傷與見切 `hurtPlayer`、死亡 `die`、打怪 `hitMob`／`killMob`（掉落、碎片）、打倒王 `bossDown`（開放下一階）、撿東西 `pickup`、互動 `interact`／`useProp`、怪物 AI `updMobs`／`mobStrike`、王 `bossAI`、主迴圈 `frame` |
-| `js/render.js` | canvas 畫面 `draw`：藏身處 `drawHideout`、互動提示 `drawPrompts`、預警、怪物、主角（`HERO_SP`，女忍者圖好之前用武士）、特效、跳數字、掉落標籤 `LABELS`、光照、小地圖 |
-| `js/hud.js` | HUD（生命／魔力球、技能列、王血條）、面板 `openPanel`／`hudPanels`（裝備 `invHTML`、倉庫、地圖台 `devHTML`）、拖曳 `dragStart`／`dragMove`／`dropTarget`／`dragEnd`、點一下搬移 `quickMove`、賣 `sell`、說明框 `itemTip`、死亡與通關 `hudState`、輸入 `inputInit`、動作 `act` |
+| `js/game.js` | 存檔結構 `newGame`、場景（藏身處 `enterHideout`、開圖 `openMap`、方塊房間地圖 `enterMap`（`TS`、`CHUNK`、牆 `isWall`、找地板 `floorIn`／`floorNear`）、首領進度 `addProg`、回家 `goHome`）、碰撞 `moveBody`／`pushTiles`、玩家與技能 `useSkill`／`actHit`／`updPlayer`、翻滾 `doRoll`、受傷與見切 `hurtPlayer`、死亡 `die`、打怪 `hitMob`／`killMob`（掉落、碎片）、打倒王 `bossDown`（開放下一階）、撿東西 `pickup`、互動 `interact`／`useProp`、怪物 AI `updMobs`／`mobStrike`、王 `bossAI`、主迴圈 `frame` |
+| `js/render.js` | canvas 畫面 `draw`：藏身處 `drawHideout`、互動提示 `drawPrompts`、預警、怪物、牆 `drawWalls`、主角（`img/hero.png` 的 `heroCell`、方向 `dirCol`）、特效、跳數字、掉落標籤 `LABELS`、光照、小地圖 |
+| `js/hud.js` | HUD（生命／魔力球、技能列固定 5 格 `BAR`、王血條、首領進度條）、面板 `openPanel`／`hudPanels`（裝備 `invHTML`、倉庫、地圖台 `devHTML`）、拖曳 `dragStart`／`dragMove`／`dropTarget`／`dragEnd`、點一下搬移 `quickMove`、賣 `sell`、說明框 `itemTip`、死亡與通關 `hudState`、輸入 `inputInit`、動作 `act` |
 | `js/cloud.js` | Supabase 匿名登入＋雲端存檔（表 `dungeon_saves`） |
 | `js/market.js` | 0.1 的市集（還沒接回 0.2，`index.html` 沒有載入） |
 | `js/main.js` | `load`／`save`／`migrate`／`start` |

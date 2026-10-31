@@ -1,6 +1,6 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.0';
+const VER = '0.2.1';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
@@ -34,6 +34,18 @@ const SKILLS = {
     m: 1.5,
     dist: 300,
     d: '衝向滑鼠位置，斬過路上的敵人；衝刺中無敵'
+  },
+  storm: {
+    n: '千本櫻',
+    ic: 'sk_bladestorm',
+    t: 0.45,
+    mp: 24,
+    cd: 6,
+    m: 0.9,
+    cnt: 10,
+    spd: 620,
+    pierce: 3,
+    d: '向四面八方射出 10 把飛刃，各穿透 3 隻'
   }
 };
 const ROLL = { t: 0.32, dist: 175, iframe: 0.26, cd: 0.55, perfect: 0.16, slow: 0.55, slowScale: 0.3 };
@@ -299,8 +311,8 @@ const PACKS = [
 const ELITE = { hp: 3.2, dmg: 1.5, sz: 1.3 };
 /* 王：照階級輪替；sk 叫小怪的種類、el 屬性 */
 const BOSSES = [
-  { n: '虎姑婆', sp: 'hugupo', hp: 700, dmg: 26, spd: 135, r: 40, sz: 120, xp: 200, call: 'bat' },
-  { n: '魔神仔', sp: 'mosina', hp: 650, dmg: 24, spd: 150, r: 38, sz: 116, xp: 200, call: 'shroom', el: 'chaos' },
-  { n: '林投姐', sp: 'lintoujie', hp: 680, dmg: 25, spd: 140, r: 38, sz: 118, xp: 200, call: 'wolf', el: 'cold' }
+  { n: '虎姑婆', sp: 'hugupo', hp: 480, dmg: 22, spd: 135, r: 40, sz: 120, xp: 200, call: 'bat' },
+  { n: '魔神仔', sp: 'mosina', hp: 450, dmg: 21, spd: 150, r: 38, sz: 116, xp: 200, call: 'shroom', el: 'chaos' },
+  { n: '林投姐', sp: 'lintoujie', hp: 470, dmg: 22, spd: 140, r: 38, sz: 118, xp: 200, call: 'wolf', el: 'cold' }
 ];
 const bossOf = t => BOSSES[(t - 1) % BOSSES.length];

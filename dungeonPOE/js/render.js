@@ -26,31 +26,36 @@ function spr(n, x, y, hgt, o = {}) {
   } else CX.drawImage(a.im, r[0], r[1], r[2], r[3], -w / 2, -h, w, h);
   CX.restore();
 }
-/* 主角的攻擊動畫（4×4 格，每格 64；女忍者的圖好了再換） */
-const HERO_SP = 'av_musashi',
-  ATKF = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13];
-function heroFrame(k, x, y, hgt, flip, al) {
-  const a = artImg(HERO_SP + '_atk');
-  if (!a || !a.im.complete || !a.im.naturalWidth) return;
-  const r = a.r,
-    sc = hgt / 60;
+/* 主角：PixelLab 的角色表（img/hero.png，每格 80×80、腳底在 y=63；art/hero/hero.json）
+   第 0 列 8 個方向（南、東南、東、東北、北、西北、西、西南）、第 1 列待機（南）、第 2 列滑步（翻滾，朝右）、第 3 列跑步（朝右，往左鏡像） */
+const HERO_IMG = new Image();
+let HERO_W;
+HERO_IMG.onload = () => {
+  /* 受傷閃白用的白色版 */
+  const c = (HERO_W = document.createElement('canvas'));
+  c.width = HERO_IMG.width;
+  c.height = HERO_IMG.height;
+  const g = c.getContext('2d');
+  g.drawImage(HERO_IMG, 0, 0);
+  g.globalCompositeOperation = 'source-in';
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, c.width, c.height);
+};
+HERO_IMG.src = 'img/hero.png?v=' + VER;
+const HSC = 1.35;
+function heroCell(row, col, x, y, flip, al, o = {}) {
+  const im = o.white ? HERO_W : HERO_IMG;
+  if (!im || !HERO_IMG.complete || !HERO_IMG.naturalWidth) return;
   CX.save();
   CX.translate(Math.round(x), Math.round(y));
   if (flip) CX.scale(-1, 1);
   if (al != null) CX.globalAlpha = al;
-  CX.drawImage(
-    a.im,
-    r[0] + ((k - 1) % 4) * 64,
-    r[1] + Math.floor((k - 1) / 4) * 64,
-    64,
-    64,
-    -32 * sc,
-    -64 * sc,
-    64 * sc,
-    64 * sc
-  );
+  CX.scale(o.sx || 1, o.sy || 1);
+  CX.drawImage(im, col * 80, row * 80, 80, 80, -40 * HSC, -63 * HSC, 80 * HSC, 80 * HSC);
   CX.restore();
 }
+/* 角度 → 第 0 列的方向格 */
+const dirCol = a => (2 - (((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8) + 8) % 8;
 
 /* 地板：一次畫好的石磚花紋 */
 let FLOOR;
@@ -99,29 +104,7 @@ function draw() {
   CX.lineWidth = 6;
   CX.strokeRect(-3, -3, G.W + 6, G.H + 6);
   if (G.scene === 'hide') drawHideout();
-  else {
-    /* 王房的地 */
-    CX.fillStyle = 'rgba(120,30,20,0.12)';
-    CX.beginPath();
-    CX.arc(G.W - 340, G.H / 2, 360, 0, TAU);
-    CX.fill();
-  }
-  /* 石頭 */
-  for (const k of G.rocks) {
-    if (Math.abs(k.x - G.cam.x) > W / 2 + 100 || Math.abs(k.y - G.cam.y) > H / 2 + 100) continue;
-    CX.fillStyle = 'rgba(0,0,0,0.35)';
-    CX.beginPath();
-    CX.ellipse(k.x + 6, k.y + 10, k.r, k.r * 0.75, 0, 0, TAU);
-    CX.fill();
-    CX.fillStyle = '#2d2622';
-    CX.beginPath();
-    CX.ellipse(k.x, k.y, k.r, k.r * 0.8, 0, 0, TAU);
-    CX.fill();
-    CX.fillStyle = '#3d342e';
-    CX.beginPath();
-    CX.ellipse(k.x - k.r * 0.2, k.y - k.r * 0.25, k.r * 0.65, k.r * 0.45, 0, 0, TAU);
-    CX.fill();
-  }
+  else drawWalls(W, H);
   /* 預警：怪物出手前地上的紅色範圍 */
   CX.lineWidth = 2;
   for (const m of G.mobs) {
@@ -225,7 +208,7 @@ function draw() {
       CX.rotate(s.ang);
       CX.fillStyle = 'rgba(200,230,255,0.25)';
       CX.fillRect(-40, -3, 40, 6);
-      CX.fillStyle = '#eef6ff';
+      CX.fillStyle = s.pink ? '#ffc4d6' : '#eef6ff';
       CX.beginPath();
       CX.moveTo(14, 0);
       CX.lineTo(-6, -7);
@@ -401,31 +384,36 @@ function drawMob(m) {
   }
 }
 function drawHero() {
-  const flip = Math.cos(P.face) < 0,
-    hgt = 62;
   shadow(P.x, P.y, 18);
-  let a = G.t < P.iuntil ? 0.75 : 1;
+  const a = G.t < P.iuntil ? 0.8 : 1,
+    flipF = Math.cos(P.face) < -0.05;
   if (P.roll) {
-    /* 翻滾：壓扁、往方向傾斜 */
-    const f = P.roll.t / ROLL.t;
-    CX.save();
-    CX.translate(P.x, P.y - 20);
-    CX.rotate((P.roll.dx >= 0 ? 1 : -1) * f * TAU);
-    CX.translate(-P.x, -(P.y - 20));
-    spr(HERO_SP, P.x, P.y, hgt * 0.75, { flip, a: 0.85 });
-    CX.restore();
+    /* 翻滾：滑步動畫，往左就鏡像 */
+    const f = Math.min(5, Math.floor((P.roll.t / ROLL.t) * 6));
+    heroCell(2, f, P.x, P.y, P.roll.dx > 0, 0.9);
     if (Math.random() < 0.6) fx({ k: 'dust', x: P.x + rnd(-10, 10), y: P.y, dur: 0.35 });
     return;
   }
+  let row, col, flip;
   if (P.act && P.act.k !== 'iai') {
+    /* 出手：面向瞄準的方向，往前探一下（之後換成攻擊動畫） */
     const f = P.act.t / P.act.dur,
-      k = ATKF[Math.min(ATKF.length - 1, Math.floor(f * ATKF.length))];
-    heroFrame(k, P.x, P.y, hgt, Math.cos(P.act.ang) < 0, a);
+      push = Math.sin(Math.min(1, f * 1.6) * Math.PI) * 8;
+    row = 0;
+    col = dirCol(P.act.ang);
+    heroCell(row, col, P.x + Math.cos(P.act.ang) * push, P.y + Math.sin(P.act.ang) * push * 0.6, false, a, {
+      sx: 1 + push / 80,
+      sy: 1 - push / 120
+    });
+  } else if (P.mv || (P.act && P.act.k === 'iai')) {
+    const dx = P.act ? Math.cos(P.act.ang) : P.mdx;
+    heroCell(3, Math.floor(G.t * 12) % 8, P.x, P.y, dx < -0.05 || (Math.abs(dx) <= 0.05 && flipF), a);
   } else {
-    const bob = P.mv ? Math.abs(Math.sin(G.t * 12)) * 3 : Math.sin(G.t * 2) * 0.8;
-    spr(HERO_SP, P.x, P.y - bob, hgt, { flip, a });
+    col = dirCol(P.face);
+    if (col === 0) heroCell(1, Math.floor(G.t * 8) % 8, P.x, P.y, false, a);
+    else heroCell(0, col, P.x, P.y, false, a);
   }
-  if (P.hurtT > 0.25) spr(HERO_SP, P.x, P.y, hgt, { flip, white: 1, a: 0.6 });
+  if (P.hurtT > 0.25) heroCell(0, dirCol(P.face), P.x, P.y, false, 0.6, { white: 1 });
   /* 見切後的下一擊：刀光 */
   if (P.critNext) {
     CX.strokeStyle = `rgba(143,224,255,${0.5 + 0.3 * Math.sin(G.t * 12)})`;
@@ -473,7 +461,7 @@ function drawFx() {
       CX.ellipse(o.x, o.y - 10, o.r * (0.6 + 0.4 * f), o.r * (0.6 + 0.4 * f) * 0.75, 0, 0, TAU);
       CX.stroke();
     } else if (o.k === 'ghost') {
-      heroFrame(9, o.x, o.y, 62, o.flip, 0.35 * (1 - f));
+      heroCell(3, 2, o.x, o.y, o.flip, 0.35 * (1 - f));
     } else if (o.k === 'dust') {
       CX.globalAlpha = 0.35 * (1 - f);
       CX.fillStyle = '#8a7a6a';
@@ -512,8 +500,18 @@ function drawMinimap(W) {
   CX.strokeStyle = 'rgba(232,226,214,0.25)';
   CX.lineWidth = 1;
   CX.strokeRect(x0 + 0.5, y0 + 0.5, mw - 1, mh - 1);
-  CX.fillStyle = 'rgba(80,70,62,0.8)';
-  for (const k of G.rocks) CX.fillRect(x0 + k.x * s - 1, y0 + k.y * s - 1, Math.max(2, k.r * s), Math.max(2, k.r * s));
+  if (!G.mini) {
+    /* 地圖縮圖：一格一點，進地圖時畫一次 */
+    const c = (G.mini = document.createElement('canvas'));
+    c.width = G.cols;
+    c.height = G.rows;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(120,105,92,0.9)';
+    for (let y = 0; y < G.rows; y++)
+      for (let x = 0; x < G.cols; x++) if (!G.tiles[y * G.cols + x]) g.fillRect(x, y, 1, 1);
+  }
+  CX.imageSmoothingEnabled = false;
+  CX.drawImage(G.mini, x0, y0, mw, mh);
   for (const m of G.mobs) {
     CX.fillStyle = m.boss ? '#ff6b3d' : m.elite ? '#8ab4ff' : '#c95050';
     const z = m.boss ? 5 : 2;
@@ -583,4 +581,37 @@ function drawPrompts() {
   CX.strokeRect(lab[1] - w / 2 + 0.5, lab[2] - 14.5, w - 1, 23);
   CX.fillStyle = '#ffd166';
   CX.fillText(lab[0], lab[1], lab[2] + 2);
+}
+
+/* 地圖的牆：只畫鄰接地板的牆；下面是地板的牆畫出正面（有厚度） */
+function drawWalls(W, H) {
+  const x0 = Math.max(0, Math.floor((G.cam.x - W / 2) / TS) - 1),
+    x1 = Math.min(G.cols - 1, Math.ceil((G.cam.x + W / 2) / TS) + 1),
+    y0 = Math.max(0, Math.floor((G.cam.y - H / 2) / TS) - 1),
+    y1 = Math.min(G.rows - 1, Math.ceil((G.cam.y + H / 2) / TS) + 1),
+    T = G.tiles,
+    C = G.cols,
+    wall = (x, y) => x < 0 || y < 0 || x >= C || y >= G.rows || T[y * C + x] === 1;
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++) {
+      if (!wall(x, y)) continue;
+      const px = x * TS,
+        py = y * TS;
+      let near = false;
+      for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) if (!wall(x + dx, y + dy)) near = true;
+      CX.fillStyle = near ? '#1c1714' : '#070606';
+      CX.fillRect(px, py, TS, TS);
+      if (!near) continue;
+      CX.fillStyle = '#2b231e';
+      CX.fillRect(px + 2, py + 2, TS - 4, TS - 4);
+      if (!wall(x, y + 1)) {
+        /* 正面 */
+        CX.fillStyle = '#3a2f28';
+        CX.fillRect(px, py + TS * 0.45, TS, TS * 0.55);
+        CX.fillStyle = '#4a3d33';
+        CX.fillRect(px, py + TS * 0.45, TS, 3);
+        CX.fillStyle = 'rgba(0,0,0,0.35)';
+        CX.fillRect(px + TS / 2 - 1, py + TS * 0.45 + 3, 2, TS * 0.55 - 3);
+      }
+    }
 }
