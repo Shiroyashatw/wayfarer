@@ -70,6 +70,7 @@ function treeOpen() {
 }
 function treeClose() {
   TREE.open = false;
+  TREE.sel = null;
   $('ptree').hidden = true;
   hideTip();
 }
@@ -97,7 +98,7 @@ function treeRender() {
     const r = n.big === 2 ? 30 : n.gate ? 20 : n.big ? 19 : 10,
       st = have.has(n.id) ? 'on' : treeCan(n.id) ? 'can' : 'off',
       u = n.big && artIconURL(n.ic);
-    return `<g class="nd ${st} b${n.big}" data-n="${n.id}" transform="translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})" style="--c:${PT_THEME[n.th].c}"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.7}" y="${-r * 0.7}" width="${r * 1.4}" height="${r * 1.4}"/>` : ''}</g>`;
+    return `<g class="nd ${st} b${n.big}${TREE.sel === n.id ? ' sel' : ''}" data-n="${n.id}" transform="translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})" style="--c:${PT_THEME[n.th].c}"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.7}" y="${-r * 0.7}" width="${r * 1.4}" height="${r * 1.4}"/>` : ''}</g>`;
   }).join('');
   /* 中間：昇華 */
   html += `<circle class="hollow" r="${PT_R0 - 40}"/>`;
@@ -107,7 +108,7 @@ function treeRender() {
       const r = n.big === 3 ? 26 : n.big ? 24 : 12,
         st = ah.has(n.id) ? 'on' : treeCan(n.id) ? 'can' : 'off',
         u = n.ic && artIconURL(n.ic);
-      return `<g class="nd asc ${st} b${n.big}" data-n="${n.id}" transform="translate(${n.x} ${n.y})"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.7}" y="${-r * 0.7}" width="${r * 1.4}" height="${r * 1.4}"/>` : ''}${n.big === 1 ? `<text y="${r + 16}">${esc(n.n)}</text>` : ''}</g>`;
+      return `<g class="nd asc ${st} b${n.big}${TREE.sel === n.id ? ' sel' : ''}" data-n="${n.id}" transform="translate(${n.x} ${n.y})"><circle r="${r}"/>${u ? `<image href="${u}" x="${-r * 0.7}" y="${-r * 0.7}" width="${r * 1.4}" height="${r * 1.4}"/>` : ''}${n.big === 1 ? `<text y="${r + 16}">${esc(n.n)}</text>` : ''}</g>`;
     }).join('');
   } else
     html += `<text class="hint" y="-10">還沒有昇華</text><text class="hint sm" y="22">到藏身處的昇華石碑選擇</text>`;
@@ -175,17 +176,44 @@ function treeTip(id) {
   const lines = n.d ? [esc(n.d)] : statLines(n.s);
   return `<b class="${n.big === 2 || n.asc ? 'c-gold' : ''}">${esc(n.n)}</b><small>${kind}</small>${lines.length ? `<p class="aff">${lines.join('<br>')}</p>` : ''}`;
 }
+/* 以畫面上一點為中心縮放 */
+function treeZoomAt(cx, cy, z) {
+  const svg = $('tsvg').getBoundingClientRect(),
+    mx = cx - svg.left - svg.width / 2 - TREE.x,
+    my = cy - svg.top - svg.height / 2 - TREE.y;
+  z = clamp(z, 0.12, 1.6);
+  TREE.x -= mx * (z / TREE.z - 1);
+  TREE.y -= my * (z / TREE.z - 1);
+  TREE.z = z;
+  treeView();
+}
 function treeInit() {
-  const el = $('ptree');
+  const el = $('ptree'),
+    TP = new Map(); /* 按著的手指（兩指＝縮放） */
+  const pinchD = () => {
+    const [a, b] = [...TP.values()];
+    return [Math.hypot(a.x - b.x, a.y - b.y), (a.x + b.x) / 2, (a.y + b.y) / 2];
+  };
   el.addEventListener('pointerdown', e => {
     if (!e.target.closest('#tsvg')) return;
-    TREE.drag = { x: e.clientX, y: e.clientY, ox: TREE.x, oy: TREE.y, moved: false, n: e.target.closest('.nd') };
+    TP.set(e.pointerId, { x: e.clientX, y: e.clientY });
     e.target.closest('#tsvg').setPointerCapture(e.pointerId);
+    if (TP.size === 2) {
+      TREE.pinch = { d: pinchD()[0], z: TREE.z };
+      TREE.drag = null;
+      return hideTip();
+    }
+    TREE.drag = { x: e.clientX, y: e.clientY, ox: TREE.x, oy: TREE.y, moved: false, n: e.target.closest('.nd') };
   });
   el.addEventListener('pointermove', e => {
+    if (TP.has(e.pointerId)) TP.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (TREE.pinch && TP.size >= 2) {
+      const [d, cx, cy] = pinchD();
+      return treeZoomAt(cx, cy, (TREE.pinch.z * d) / TREE.pinch.d);
+    }
     const g = TREE.drag;
     if (g) {
-      if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 5) g.moved = true;
+      if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 8) g.moved = true;
       if (g.moved) {
         TREE.x = g.ox + e.clientX - g.x;
         TREE.y = g.oy + e.clientY - g.y;
@@ -193,30 +221,48 @@ function treeInit() {
         return hideTip();
       }
     }
+    if (e.pointerType !== 'mouse') return;
     const n = e.target.closest('.nd');
     if (n) {
       const r = n.getBoundingClientRect();
       showTip(treeTip(n.dataset.n), r.right, r.top + r.height / 2);
     } else hideTip();
   });
-  el.addEventListener('pointerup', () => {
+  const up = e => {
+    TP.delete(e.pointerId);
+    if (TREE.pinch) {
+      if (TP.size < 2) TREE.pinch = null;
+      TREE.drag = null;
+      return;
+    }
     const g = TREE.drag;
     TREE.drag = null;
-    if (g && !g.moved && g.n) treeToggle(g.n.dataset.n);
-  });
+    if (!g || g.moved || e.type !== 'pointerup') return;
+    if (!g.n) {
+      if (TOUCH.on && TREE.sel) (TREE.sel = null), hideTip(), treeRender();
+      return;
+    }
+    const id = g.n.dataset.n;
+    /* 手機：點一下＝選取看說明，再點一次才點亮／退回 */
+    if (TOUCH.on && TREE.sel !== id) {
+      TREE.sel = id;
+      treeRender();
+      const r = document.querySelector(`#tg [data-n="${id}"]`).getBoundingClientRect(),
+        have = (id.startsWith('a_') ? S.at : S.pt).includes(id);
+      showTip(treeTip(id) + `<p class="hint">再點一次${have ? '退回' : '點亮'}</p>`, r.right, r.top + r.height / 2);
+      return;
+    }
+    TREE.sel = null;
+    hideTip();
+    treeToggle(id);
+  };
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
   el.addEventListener(
     'wheel',
     e => {
       e.preventDefault();
-      const z = clamp(TREE.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), 0.12, 1.6),
-        svg = $('tsvg').getBoundingClientRect(),
-        mx = e.clientX - svg.left - svg.width / 2 - TREE.x,
-        my = e.clientY - svg.top - svg.height / 2 - TREE.y;
-      /* 以滑鼠位置為中心縮放 */
-      TREE.x -= mx * (z / TREE.z - 1);
-      TREE.y -= my * (z / TREE.z - 1);
-      TREE.z = z;
-      treeView();
+      treeZoomAt(e.clientX, e.clientY, TREE.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
     },
     { passive: false }
   );

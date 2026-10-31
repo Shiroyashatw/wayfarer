@@ -318,6 +318,7 @@ const K = {},
   M = { x: 0, y: 0, L: 0, R: 0 };
 let CV, CX;
 function mouseWorld() {
+  if (TOUCH.on) return touchAim();
   return { x: (M.x - CV.clientWidth / 2) / ZOOM + G.cam.x, y: (M.y - CV.clientHeight / 2) / ZOOM + G.cam.y };
 }
 
@@ -365,6 +366,7 @@ function updPlayer(dt) {
   /* 面板打開時不吃移動鍵以外的東西；打字時（輸入框）不動 */
   let mx = (K.d || K.arrowright ? 1 : 0) - (K.a || K.arrowleft ? 1 : 0),
     my = (K.s || K.arrowdown ? 1 : 0) - (K.w || K.arrowup ? 1 : 0);
+  if (TOUCH.mv[0] || TOUCH.mv[1]) [mx, my] = TOUCH.mv;
   const ml = Math.hypot(mx, my);
   if (ml) (mx /= ml), (my /= ml);
   P.mv = ml ? 1 : 0;
@@ -386,7 +388,8 @@ function updPlayer(dt) {
     else if (M.R) useSlot(1);
     const w = mouseWorld();
     if (G.scene === 'map' || P.mv)
-      P.face = P.mv && G.scene === 'hide' ? Math.atan2(my, mx) : Math.atan2(w.y - P.y, w.x - P.x);
+      P.face =
+        P.mv && (G.scene === 'hide' || (TOUCH.on && !TOUCH.sk)) ? Math.atan2(my, mx) : Math.atan2(w.y - P.y, w.x - P.x);
   }
 }
 /* 移動＋碰撞：地圖是牆（一格一格推出去），藏身處是邊界與擺設；分段走，快速衝刺也不會穿牆 */

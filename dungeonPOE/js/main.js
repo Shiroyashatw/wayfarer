@@ -57,8 +57,15 @@ function migrate(s) {
     if (it && it.id > IID) IID = it.id;
   return o;
 }
+let NARROW = false;
 function resize() {
   DPR = Math.min(2, devicePixelRatio || 1);
+  /* 手機：畫面高度看得到差不多的範圍；背包格子照寬度（夠寬就兩個面板並排） */
+  NARROW = innerWidth < 800;
+  ZOOM = TOUCH.on ? clamp(innerHeight / 470, 0.72, 1.35) : 1.35;
+  C = TOUCH.on ? clamp(Math.floor(((NARROW ? innerWidth : innerWidth / 2) - 44) / 12), 26, 36) : 36;
+  document.documentElement.style.setProperty('--cell', C + 'px');
+  if (S) hudPanels();
   CV.width = Math.round(innerWidth * DPR);
   CV.height = Math.round(innerHeight * DPR);
 }
@@ -73,6 +80,7 @@ function start() {
   enterHideout();
   inputInit();
   treeInit();
+  touchInit();
   cloudInit().then(remote => {
     if (remote && remote.v >= 10 && (remote.savedAt || 0) > (S.savedAt || 0)) {
       S = migrate(remote);

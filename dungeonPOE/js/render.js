@@ -94,7 +94,7 @@ function floorPat() {
   return CX.createPattern(c, 'repeat');
 }
 let DARK;
-const ZOOM = 1.35;
+let ZOOM = 1.35; /* 手機照螢幕高度調（main.js 的 resize） */
 function draw() {
   const SW = CV.clientWidth,
     SH = CV.clientHeight,
@@ -336,6 +336,7 @@ function draw() {
     CX.fillText(txt, n.x, y);
   }
   CX.globalAlpha = 1;
+  drawAim();
   drawPrompts();
   /* 掉落標籤（PoE 式：名字框，可以點） */
   LABELS.length = 0;
@@ -580,10 +581,11 @@ function drawFx() {
   }
 }
 function drawMinimap(W) {
-  const mw = 190,
+  /* 手機：小一點，放在右上選單下面 */
+  const mw = TOUCH.on ? Math.min(104, (68 * G.W) / G.H) / ZOOM : 190,
     mh = (mw * G.H) / G.W,
-    x0 = W - mw - 16,
-    y0 = 16,
+    x0 = W - mw - (TOUCH.on ? 10 / ZOOM : 16),
+    y0 = TOUCH.on ? 60 / ZOOM : 16,
     s = mw / G.W;
   CX.fillStyle = 'rgba(10,8,7,0.7)';
   CX.fillRect(x0, y0, mw, mh);
@@ -667,9 +669,9 @@ function drawPrompts() {
     port = G.portal && dist(P, G.portal) < 90;
   const lab =
     port && G.scene === 'hide'
-      ? ['F 進入階級 ' + G.portal.to, G.portal.x, G.portal.y - 40]
+      ? [(TOUCH.on ? '' : 'F ') + '進入階級 ' + G.portal.to, G.portal.x, G.portal.y - 40]
       : p
-        ? ['F ' + p.n, p.x, p.y - (p.k === 'device' ? 92 : 80)]
+        ? [(TOUCH.on ? '' : 'F ') + p.n, p.x, p.y - (p.k === 'device' ? 92 : 80)]
         : null;
   if (!lab) return;
   CX.font = '700 14px "Noto Sans TC", sans-serif';

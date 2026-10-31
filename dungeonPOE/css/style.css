@@ -254,3 +254,72 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .aurarow { display: flex; gap: 12px; margin-top: 8px; }
 .aurac { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .aurac small { font-size: 11px; color: var(--dim); }
+
+/* ---------- 0.2.4 手機操作（body.touch 才生效；桌機為主、手機為輔，規則見企劃書「操作模式」） ---------- */
+html { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+button, .sk, .it { touch-action: manipulation; }
+.tonly, #stick, .tmenu, #rot { display: none; }
+body.touch #cv, body.touch #hud .sk { touch-action: none; }
+body.touch .keys, body.touch .sk kbd { display: none; }
+/* 生命、魔力、經驗移到左上（下方留給搖桿和技能鍵） */
+body.touch .bottom { left: calc(10px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); bottom: auto; transform: none; gap: 8px; align-items: flex-start; }
+body.touch .orb { width: 56px; height: 56px; }
+body.touch .orb span { font-size: 10px; }
+body.touch .mid { width: 110px; margin: 0; padding-top: 6px; }
+body.touch .top { left: calc(270px + env(safe-area-inset-left)); right: 240px; top: calc(10px + env(safe-area-inset-top)); }
+body.touch #area { font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.touch #warn { bottom: auto; top: 30%; }
+/* 右下技能鍵：大的是普攻，4 個技能排成弧形，外圈翻滾、藥水、互動 */
+body.touch #bar { position: fixed; right: calc(70px + env(safe-area-inset-right)); bottom: calc(64px + env(safe-area-inset-bottom)); width: 0; height: 0; display: block; }
+body.touch #bar .sk { display: grid; position: absolute; left: 0; top: 0; width: 58px; height: 58px; border-radius: 50%; background: rgba(12, 10, 9, 0.72); border: 2px solid rgba(232, 226, 214, 0.28); transform: translate(calc(var(--x) - 50%), calc(var(--y) - 50%)); transition: scale 90ms ease-out; }
+body.touch #bar .sk s { border-radius: 50%; }
+body.touch #bar .sk .ic { width: 64%; height: 64%; }
+body.touch #bar .sk.hit { animation: none; }
+body.touch #bar .sk.down, body.touch #bar .sk:active { scale: 0.92; border-color: var(--gold); }
+body.touch #bar .sk[data-k='s0'] { --x: 0px; --y: 0px; width: 80px; height: 80px; }
+body.touch #bar .sk[data-k='s1'] { --x: -102px; --y: 0px; }
+body.touch #bar .sk[data-k='s2'] { --x: -83px; --y: -60px; }
+body.touch #bar .sk[data-k='s3'] { --x: -32px; --y: -97px; }
+body.touch #bar .sk[data-k='s4'] { --x: 32px; --y: -97px; }
+body.touch #bar .sk[data-k='roll'] { --x: -180px; --y: 0px; width: 56px; height: 56px; }
+body.touch #bar .sk[data-k='flask'] { --x: -156px; --y: -90px; width: 48px; height: 48px; }
+body.touch #bar .sk[data-k='use'] { --x: -104px; --y: -148px; width: 48px; height: 48px; }
+.sk .use { font-style: normal; font-size: var(--fs-s); font-weight: 700; }
+/* 浮動搖桿：平常淡淡的在左下，手指按哪裡就出現在哪裡 */
+body.touch #stick { display: block; position: fixed; left: calc(110px + env(safe-area-inset-left)); bottom: calc(40px + env(safe-area-inset-bottom)); width: 124px; height: 124px; margin: -62px 0 0 -62px; transform: translateY(62px); border-radius: 50%; border: 2px solid rgba(232, 226, 214, 0.16); background: rgba(0, 0, 0, 0.22); opacity: 0.55; pointer-events: none; }
+body.touch #stick.on { opacity: 1; transform: none; }
+#stick i { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(232, 226, 214, 0.32); border: 2px solid rgba(232, 226, 214, 0.5); }
+/* 右上選單 */
+body.touch .tmenu { display: flex; gap: 6px; position: fixed; top: calc(8px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); pointer-events: auto; }
+.tmenu button { min-width: 50px; min-height: 44px; padding: 0 10px; font: 700 var(--fs-s) var(--font); color: var(--tx); background: rgba(12, 10, 9, 0.8); border: 1px solid var(--line); border-radius: var(--rad); }
+.tmenu button:active { scale: 0.94; border-color: var(--gold); }
+.tmenu button[hidden] { display: none; }
+/* 直拿手機：請橫過來 */
+#rot { position: fixed; inset: 0; z-index: 60; place-items: center; background: var(--bg); color: var(--tx); font-size: var(--fs-l); font-weight: 700; pointer-events: auto; }
+@media (orientation: portrait) { body.touch #rot { display: grid; } }
+/* 面板：貼著螢幕上下、可以捲；夠寬就左右並排（各半），窄就一次一個（標題列切換） */
+.ph .sw { display: none; }
+body.touch .panel { top: calc(6px + env(safe-area-inset-top)); max-height: calc(100dvh - 12px); padding: 10px; overscroll-behavior: contain; }
+body.touch #pinv { right: calc(6px + env(safe-area-inset-right)); width: calc(50vw - 9px); }
+body.touch #pstash, body.touch #pskill { left: calc(6px + env(safe-area-inset-left)); width: calc(50vw - 9px); }
+body.touch #pdev { width: min(440px, calc(100vw - 12px)); max-height: calc(100dvh - 12px); }
+body.touch #pasc { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); }
+body.touch .eqrow { flex-wrap: wrap; gap: 8px; }
+body.touch .st { flex-direction: row; flex-wrap: wrap; gap: 2px 10px; white-space: normal; }
+body.touch .ph .x { width: 40px; height: 40px; }
+@media (max-width: 799px) {
+  body.touch #pinv, body.touch #pstash, body.touch #pskill { left: calc(6px + env(safe-area-inset-left)); right: calc(6px + env(safe-area-inset-right)); width: auto; }
+  body.touch .ph .sw { display: block; width: auto; padding: 0 12px; margin-left: auto; }
+  body.touch .ph .sw + .x { margin-left: 0; }
+}
+/* 說明框：點道具跳出來，下面是動作按鈕 */
+body.touch #tip { max-width: min(320px, calc(100vw - 16px)); }
+#tip.act { pointer-events: auto; }
+.tqa { display: flex; gap: 8px; margin-top: 10px; }
+.tqa .btn { flex: 1; white-space: nowrap; padding: 8px 10px; }
+body.touch #over .card { min-width: 0; max-width: calc(100vw - 24px); }
+/* 天賦樹：工具列換行、說明收起；選取的點白框 */
+body.touch .tbar { flex-wrap: wrap; gap: 6px 10px; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; }
+body.touch .tbar > span { font-size: var(--fs-s); }
+body.touch .thelp { display: none; }
+.nd.sel circle { stroke: #fff; stroke-width: 6; }

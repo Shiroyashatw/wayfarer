@@ -4,7 +4,7 @@
 
 **每次新對話開始**：先用 Skill 啟動 `ponytail`（最小完整改動）和 `grilling`（先把計畫問清楚再動手）。
 
-**只要動到 UI／UX：一定先啟動 skill `ui-design`**（它會先啟動 `apple-design`，有動畫再加 `animate`）。0.2.0 起是**桌機優先**的即時 ARPG：截圖用 1440×900 與 1280×720（面板不能超出畫面），手機不是目標。
+**只要動到 UI／UX：一定先啟動 skill `ui-design`**（它會先啟動 `apple-design`，有動畫再加 `animate`）。0.2.0 起是**桌機為主、手機為輔**的即時 ARPG（0.2.4 起有手機版）：兩邊的操作規則與對照表在 `docs/企劃書.md` 第 9 節「操作模式」，**改介面兩邊都要做、都要測**——桌機截 1440×900 與 1280×720（面板不能超出畫面），手機橫向 844×390 與 667×375（`node tools/touch_check.js`，要先開本機伺服器）。遊戲邏輯只透過 `mouseWorld()` 與移動方向拿輸入，不要在技能、戰鬥程式裡判斷是不是手機。
 
 0.2.0 重製成桌機的即時動作 ARPG（0.2.2 技能寶石，0.2.3 PoE 式天賦樹＋昇華，0.2.4 能量護盾、精魄光環、陷阱地雷砲台圖騰、天賦樹與昇華差異化）：藏身處 → 地圖台放地圖碎片、自選階級（1～16，打倒王開放下一階）→ 刷圖打王撿寶。死亡照 PoE（扣經驗、裝備不掉）。10 欄裝備＋格子背包與倉庫，稀有度照 D2。之後：市集接回、其他職業的昇華。0.1 的撤離＋背包自動戰鬥規則在 `docs/舊企劃書_0.1.md`（程式在 git 紀錄）。
 
@@ -31,6 +31,7 @@
 | `js/audio.js` | Web Audio 合成音效 `sfx` |
 | `js/game.js` | 存檔結構 `newGame`、場景（藏身處 `enterHideout`、開圖 `openMap`、方塊房間地圖 `enterMap`（`TS`、`CHUNK`、牆 `isWall`、找地板 `floorIn`／`floorNear`）、首領進度 `addProg`、回家 `goHome`）、碰撞 `moveBody`／`pushTiles`、玩家與技能 `useSkill`／`actHit`／`updPlayer`、翻滾 `doRoll`、受傷與見切 `hurtPlayer`、死亡 `die`、打怪 `hitMob`／`killMob`（掉落、碎片）、打倒王 `bossDown`（開放下一階、不跳視窗）、傳送門下一把 `mapAgain`、撿東西 `pickup`、互動 `interact`／`useProp`、怪物 AI `updMobs`／`mobStrike`、王 `bossAI`、主迴圈 `frame` |
 | `js/skills.js` | 技能欄 `NSLOT`／`SLOTKEY`、一格的實際數值 `slotCfg`（輔助 `supOK`）、放技能 `useSlot`／`skillTick`／`actHit`、傷害 `rollDmg`、打中 `hitMob`、燃燒 `addBurn`／`mobTick`、寶石經驗 `gemXp`、騎士 `wardMax`／`coreHurt`／`coreBlock`、狼 `callWolf`／`updAllies`、毒刃雨與隕石 `updPools`、`skillsEnter`、劍士昇華效果（出手速度 `speedMul`、移速 `moveMul`、見切 `onMikiri`、格擋 `onBlock`、殺怪 `onKill`、不死 `tryUndying`）、魔劍士（附魔 `P.ench`、劍氣）、能量護盾回充、場上單位 `placeUnit`／`unitFire`／`updUnits`（`UNIT_MAX`） |
+| `js/touch.js` | 手機操作（`TOUCH`、`setTouch` 切模式）：浮動搖桿、技能鍵手勢（點＝自動瞄準 `autoTarget`、拖＝手動瞄準 `touchAim`／地上的線 `drawAim`、拖回取消）、右上選單、點道具出現說明＋動作 `tapItem`、回家要按兩次 `homeAsk` |
 | `js/tree.js` | 天賦樹盤面 `TREE`／`treeOpen`／`treeRender`／`treeToggle`（有弧的拼塊照 `PTREE.ARC` 畫成弧線、中間挖空畫昇華；能不能點 `treeCan`、能不能退 `treeCanRefund`、昇華 4 小 4 大 `ascFeasible`）、說明 `treeTip` |
 | `js/render.js` | canvas 畫面 `draw`：藏身處 `drawHideout`、互動提示 `drawPrompts`、預警、怪物、牆 `drawWalls`、主角（`img/hero.png` 九列動作的 `heroCell`、技能對應動作 `ACT_ROW`、方向 `dirCol`）、特效、跳數字、掉落標籤 `LABELS`、光照、小地圖 |
 | `js/hud.js` | HUD（生命／魔力球、技能列 `BAR`／`hudBar`、職業機制計數、王血條、首領進度條）、面板 `openPanel`／`hudPanels`（裝備 `invHTML`、倉庫、地圖台 `devHTML`、技能寶石與光環欄 `skillHTML`、昇華石碑 `ascHTML`）、欄位 `slotGet`／`slotSet`／`slotFits`（裝備欄與寶石插槽）、拖曳 `dragStart`／`dragMove`／`dropTarget`／`dragEnd`、點一下搬移 `quickMove`、賣 `sell`、說明框 `itemTip`／`gemTip`、死亡與傳送門選單 `hudState`、輸入 `inputInit`、動作 `act` |
@@ -38,6 +39,7 @@
 | `js/market.js` | 0.1 的市集（還沒接回 0.2，`index.html` 沒有載入） |
 | `js/main.js` | `load`／`save`／`migrate`／`start` |
 | `tools/check.js` | 固定檢查 |
+| `tools/touch_check.js` | 手機操作測試（Playwright 模擬觸控，送真的觸控事件）：搖桿、普攻連打、技能點／拖／取消、翻滾、按鈕不重疊、面板不出畫面、點道具的動作、天賦樹點兩次與兩指縮放；`node tools/touch_check.js 寬 高 [網址]` |
 | `tools/pt_shapes.js` | 天賦樹拼塊表：產生候選、比樣子挑最不像的，`--write` 寫進 `data.js` 的 `PT_SHAPES`、`--png` 畫總表、`--drop 編號` 剔掉像的（記在 `tools/pt_shapes_ban.json`） |
 | `supabase/migrations/` | `dungeon_saves` 表、`dungeon_market` 市集表與函式 |
 

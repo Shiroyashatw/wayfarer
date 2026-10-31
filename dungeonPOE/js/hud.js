@@ -1,6 +1,6 @@
 /* dungeonPOE · HUD（生命／魔力球、技能列、經驗條、王的血條）、面板（裝備與背包、倉庫、地圖台）、拖曳、說明框、死亡與通關、輸入 */
 'use strict';
-const C = 36; /* 背包一格的大小（px） */
+let C = 36; /* 背包一格的大小（px）；手機照螢幕寬度調（main.js 的 resize） */
 const icHTML = (n, cls = '') => {
   const u = artIconURL(n);
   return u ? `<img class="ic ${cls}" src="${u}" alt="">` : `<span class="ic ${cls}"></span>`;
@@ -16,7 +16,8 @@ function artRepaint() {
 const BAR = [
   { k: 'flask', key: '1', ic: 'it_potion', n: '藥水', d: '回復一半生命（1.4 秒內）。殺怪會補充。' },
   ...SLOTKEY.map((key, i) => ({ k: 's' + i, key, slot: i })),
-  { k: 'roll', key: '空白', n: '翻滾', d: '短暫無敵。怪物出手的瞬間翻滾＝見切：時間變慢，下一擊必定暴擊。' }
+  { k: 'roll', key: '空白', n: '翻滾', d: '短暫無敵。怪物出手的瞬間翻滾＝見切：時間變慢，下一擊必定暴擊。' },
+  { k: 'use', key: 'F', n: '互動', d: '撿東西、使用藏身處的擺設', touch: 1 }
 ];
 function hudInit() {
   $('hud').innerHTML = `
@@ -31,7 +32,10 @@ function hudInit() {
     <div class="orb mp" id="omp"><i></i><span></span></div>
   </div>
   <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 技能 左鍵／右鍵／Q／E／R · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · G 技能寶石 · P 天賦與昇華 · T 回藏身處 · H 隱藏</div>
-  <div id="warn"></div>`;
+  <div id="warn"></div>
+  <div class="tonly" id="stick"><i></i></div>
+  <div class="tonly tmenu"><button data-tm="inv">背包</button><button data-tm="skill">技能</button><button data-tm="tree">天賦</button><button data-tm="home" id="thome">回家</button></div>
+  <div class="tonly" id="rot">把手機橫過來玩</div>`;
   hudBar();
   hudState();
 }
@@ -42,12 +46,14 @@ function hudBar() {
       ic =
         b.k === 'roll'
           ? '<em class="roll">⤳</em>'
-          : b.slot != null
-            ? g
-              ? icHTML(SKILLS[g.gem].ic)
-              : '<em class="empty">＋</em>'
-            : icHTML(b.ic);
-    return `<div class="sk" data-k="${b.k}" data-tip="${esc(tipOf(b))}">${ic}<u></u><s></s><kbd>${b.key}</kbd></div>`;
+          : b.k === 'use'
+            ? '<em class="use">互動</em>'
+            : b.slot != null
+              ? g
+                ? icHTML(SKILLS[g.gem].ic)
+                : '<em class="empty">＋</em>'
+              : icHTML(b.ic);
+    return `<div class="sk${b.touch ? ' tonly' : ''}" data-k="${b.k}" data-tip="${esc(tipOf(b))}">${ic}<u></u><s></s><kbd>${b.key}</kbd></div>`;
   }).join('');
   for (const k in HV) if (/^[tn]s\d|^cds\d/.test(k)) delete HV[k];
 }
@@ -131,6 +137,8 @@ function hudTick() {
       ? `藏身處 · Lv ${S.lv} · ${S.gold} 金 · 地圖碎片 ${S.frag}`
       : `地圖 階級 ${G.mapT} · Lv ${S.lv} · 剩 ${G.mobs.length} 隻 · 碎片 ${S.frag}`;
   setT($('area'), 'at', at);
+  const hm = G.scene !== 'map';
+  if (HV.hm !== hm) $('thome').hidden = HV.hm = hm;
 }
 /* 死掉、通關：中間的卡片 */
 function hudState() {
@@ -154,6 +162,7 @@ function hudState() {
 /* ---------- 面板 ---------- */
 const PANEL = { inv: false, stash: false, device: false, skill: false, asc: false, pick: 1 };
 function openPanel(k) {
+  TOUCH.front = k === 'stash' || k === 'skill' ? 'other' : 'inv';
   if (k === 'stash') (PANEL.inv = PANEL.stash = true), (PANEL.skill = false);
   else if (k === 'skill') (PANEL.inv = PANEL.skill = true), (PANEL.stash = false);
   else if (k === 'device') {
@@ -175,15 +184,22 @@ function hudPanels() {
   $('pdev').hidden = !PANEL.device;
   $('pskill').hidden = !PANEL.skill;
   $('pasc').hidden = !PANEL.asc;
+  if (TOUCH.on && NARROW && PANEL.inv && (PANEL.stash || PANEL.skill)) {
+    if (TOUCH.front === 'inv') $('pstash').hidden = $('pskill').hidden = true;
+    else $('pinv').hidden = true;
+  }
   if (PANEL.asc) $('pasc').innerHTML = ascHTML();
   if (PANEL.skill) $('pskill').innerHTML = skillHTML();
   if (PANEL.inv) $('pinv').innerHTML = invHTML();
   if (PANEL.stash)
     $('pstash').innerHTML =
-      `<div class="ph"><b>倉庫</b><span>點一下＝放進背包</span><button class="x" data-a="close">✕</button></div>${gridHTML(S.stash, 'stash')}`;
+      `<div class="ph"><b>倉庫</b><span>${TOUCH.on ? '點一下＝說明與動作' : '點一下＝放進背包'}</span>${swapB('背包')}<button class="x" data-a="close">✕</button></div>${gridHTML(S.stash, 'stash')}`;
   if (PANEL.device) $('pdev').innerHTML = devHTML();
 }
 const hudInv = () => PANEL.inv && hudPanels();
+/* 手機窄螢幕：兩個面板一次只顯示一個，標題列的按鈕切換 */
+const swapB = n =>
+  TOUCH.on && (PANEL.stash || PANEL.skill) ? `<button class="x sw" data-tm="swap">${n}</button>` : '';
 /* 裝備欄的位置（照 PoE 的人形擺法），單位 px */
 /* 裝備欄的位置（照 PoE 的人形擺法，緊湊版），[x, y, 寬, 高] px；右邊放角色數值 */
 const EQPOS = {
@@ -200,20 +216,21 @@ const EQPOS = {
 };
 function invHTML() {
   const s = ST,
+    z = C / 36,
     eqs = EQS.map(e => {
-      const [x, y, w, h] = EQPOS[e.k],
+      const [x, y, w, h] = EQPOS[e.k].map(v => Math.round(v * z)),
         it = S.eq[e.k];
       return `<div class="eqs ${it ? 'r' + it.r : ''}" data-eq="${e.k}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${it ? itemHTML(it, 'eq', e.k) : `<small>${e.n}</small>`}</div>`;
     }).join('');
   const res = RESK.map(r => `<span class="res-${r}">${ELN[r]}抗 <b>${s.res[r]}%</b></span>`).join('');
-  return `<div class="ph"><b>裝備</b><span>Lv ${S.lv} · ${S.gold} 金</span><button class="x" data-a="close">✕</button></div>
-  <div class="eqrow"><div class="doll">${eqs}</div>
+  return `<div class="ph"><b>裝備</b><span>Lv ${S.lv} · ${S.gold} 金</span>${swapB(PANEL.stash ? '倉庫' : '技能')}<button class="x" data-a="close">✕</button></div>
+  <div class="eqrow"><div class="doll" style="width:${Math.round(320 * z)}px;height:${Math.round(232 * z)}px">${eqs}</div>
   <div class="st">
     <span>傷害 <b>${Math.round(s.dmg[0])}–${Math.round(s.dmg[1])}</b></span><span>攻速 <b>${s.aps.toFixed(2)}</b></span><span>暴擊 <b>${Math.min(100, s.crit)}%</b></span>
     <span>生命 <b>${s.hp}</b></span>${s.es ? `<span>能量護盾 <b>${s.es}</b></span>` : ''}<span>護甲 <b>${s.armor}</b></span><span>格擋 <b>${s.block}%</b></span><span>精魄 <b>${s.spiritUsed}/${s.spirit}</b></span>
     ${res}
   </div></div>
-  <div class="ph2">背包 <span>拖曳擺放 · 點一下＝裝備／收起${PANEL.stash ? '／放進倉庫' : ''}</span></div>
+  <div class="ph2">背包 <span>${TOUCH.on ? '按住拖＝搬移 · 點一下＝說明與動作' : `拖曳擺放 · 點一下＝裝備／收起${PANEL.stash ? '／放進倉庫' : ''}`}</span></div>
   ${gridHTML(S.inv, 'inv')}
   <div class="foot">${G.scene === 'hide' ? `<div class="sell" data-sell="1">拖到這裡賣掉</div>` : `<span class="c-dim">回藏身處才能賣東西</span>`}</div>`;
 }
@@ -240,7 +257,7 @@ const TAGN = {
 function skillHTML() {
   const sock = (key, it, cls, lab, bad) =>
     `<div class="eqs sock ${cls} ${it ? 'r3' : ''} ${bad ? 'bad-link' : ''}" data-sock="${key}">${it ? itemHTML(it, 'sock', key) : `<small>${lab}</small>`}</div>`;
-  return `<div class="ph"><b>技能寶石</b><span>拖進來或點背包裡的寶石；裝著的寶石殺怪會升級</span><button class="x" data-a="close">✕</button></div>
+  return `<div class="ph"><b>技能寶石</b><span>${TOUCH.on ? '點背包裡的寶石再按鑲上' : '拖進來或點背包裡的寶石'}；裝著的寶石殺怪會升級</span>${swapB('背包')}<button class="x" data-a="close">✕</button></div>
   ${S.skills
     .map((sl, i) => {
       const c = slotCfg(i),
@@ -499,7 +516,7 @@ function dragEnd(e) {
   DR = null;
   if (d.ghost) d.ghost.remove();
   document.querySelectorAll('.hl').forEach(n => n.remove());
-  if (!d.moved) return quickMove(d.src, d.it, d.eqk);
+  if (!d.moved) return TOUCH.on ? tapItem(d) : quickMove(d.src, d.it, d.eqk);
   if (!t || (t.k !== 'sell' && !t.ok)) return hudPanels();
   if (t.k === 'sell') return G.scene === 'hide' ? sell(d.src, d.it, d.eqk) : hudPanels();
   takeOut(d.src, d.it, d.eqk);
@@ -598,10 +615,11 @@ function showTip(html, x, y) {
 }
 function hideTip() {
   $('tip').hidden = true;
+  $('tip').classList.remove('act');
+  TOUCH.sel = null;
 }
 
 /* ---------- 輸入 ---------- */
-let tWarn = 0;
 function inputInit() {
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
@@ -621,11 +639,7 @@ function inputInit() {
     else if (k === 'i' || k === 'b') PANEL.inv ? closePanels() : openPanel('inv');
     else if (k === 'h') $('keys').classList.toggle('off');
     else if (k === 'escape') TREE.open ? treeClose() : closePanels();
-    else if (k === 't' && G.scene === 'map' && G.state === 'play') {
-      /* 按兩次才回家（這張地圖會結束） */
-      if (performance.now() - tWarn < 2000) goHome();
-      else (tWarn = performance.now()), hudWarn('再按一次 T 回藏身處（這張地圖會結束）');
-    }
+    else if (k === 't') homeAsk();
     pressFx(k);
   });
   addEventListener('keyup', e => (K[e.key.toLowerCase()] = 0));
@@ -639,6 +653,7 @@ function inputInit() {
     CV.style.cursor = LABELS.some(l => inL(l, e)) || (G.scene === 'hide' && propAt(e)) ? 'pointer' : 'crosshair';
   });
   CV.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') return; /* 觸控在 touch.js */
     M.x = e.clientX;
     M.y = e.clientY;
     const l = e.button === 0 && LABELS.find(l => inL(l, e));
@@ -687,7 +702,7 @@ function inputInit() {
     }
   });
   document.addEventListener('pointerover', e => {
-    if (DR && DR.moved) return;
+    if (e.pointerType !== 'mouse' || (DR && DR.moved)) return; /* 觸控：點一下才出說明框 */
     const s = e.target.closest('.it[data-id],[data-tip]');
     if (!s) return hideTip();
     const r = s.getBoundingClientRect();
