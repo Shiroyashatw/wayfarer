@@ -51,10 +51,32 @@ function migrate(s) {
     ...Object.values(o.eq),
     ...o.inv.items,
     ...o.stash.items,
-    ...o.skills.flatMap(k => [k.a, ...k.s]),
+    ...o.skills.flatMap(k => [k.a, ...(k.s || []), ...((k.a && k.a.sup) || [])]),
     ...o.auras
   ])
     if (it && it.id > IID) IID = it.id;
+  /* 0.2.6：輔助改插在技能寶石自己的孔裡（舊的技能欄輔助搬過去；沒有技能寶石的輔助收進背包）、材料頁、書庫 */
+  o.mat = o.mat || newMat();
+  const allGems = [
+    ...o.skills.flatMap(k => [k.a, ...(k.s || [])]),
+    ...o.auras,
+    ...o.inv.items,
+    ...o.stash.items
+  ].filter(g => g && g.gem);
+  /* 書庫：存檔原本的（不是新角色的預設）＋身上所有寶石 */
+  o.lib = [...new Set([...(s.lib || []), ...allGems.map(g => g.gem)])];
+  for (const it of [...o.inv.items, ...o.stash.items, ...o.skills.map(k => k.a)])
+    if (it && SKILLS[it.gem] && !it.sup) (it.so = 2), (it.sup = [null, null]);
+  for (const k of o.skills) {
+    if (k.s) {
+      k.s.forEach((sp, j) => {
+        if (!sp) return;
+        if (k.a) k.a.sup[j] = sp;
+        else if (!gridAuto(o.inv, sp)) gridAuto(o.stash, sp);
+      });
+      delete k.s;
+    }
+  }
   /* 0.2.6：舊裝備補上品質 0、孔 0、潛能 3（不重骰，免得讀檔洗出好底材） */
   for (const it of [...Object.values(o.eq), ...o.inv.items, ...o.stash.items])
     if (it && !it.gem && it.q == null) Object.assign(it, { q: 0, so: 0, pot: 3 });

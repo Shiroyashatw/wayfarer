@@ -38,7 +38,7 @@ function slotCfg(i) {
       wolves: D.cnt || 0,
       wolfM: 1
     };
-  for (const sp of sl.s) {
+  for (const sp of g.sup || []) {
     if (!sp || !supOK(D, sp)) continue;
     c.mult *= 1 + 0.01 * (sp.lv - 1);
     const k = sp.gem;
@@ -493,21 +493,8 @@ function coreKill(m) {
     for (const o of near)
       if (dist(o, m) < 220) addBurn(o, m.burn.per / 0.08, Math.max(1, Math.round((m.burn.n * sp) / 100)));
   }
-  gemXp(m.D.xp * tierMul(G.mapT).hp * (m.elite ? 4 : 1));
 }
-/* 裝著的寶石一起拿經驗；等級不能超過角色等級 */
-function gemXp(v) {
-  for (const g of [...S.skills.flatMap(sl => [sl.a, ...sl.s]), ...S.auras]) {
-    if (!g || g.lv >= Math.min(GEM_MAX, S.lv)) continue;
-    g.xp += v;
-    if (g.xp >= gemNeed(g.lv)) {
-      g.xp = 0;
-      g.lv++;
-      hudWarn(`${gemOf(g).n} 升到 Lv ${g.lv}`);
-      sfx('lvup');
-    }
-  }
-}
+/* 0.2.6 起寶石不再插著殺怪練等級，改花靈魂升級（craft.js 的 gemUp） */
 
 /* ---------- 騎士：護盾與盾勢 ---------- */
 const wardMax = () => (hasCls(S, 'knight') ? ST.hp * (0.1 + coreV(S, 'knight', 'wall') / 100) : 0);

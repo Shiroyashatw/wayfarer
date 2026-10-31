@@ -5,10 +5,10 @@ const fs = require('fs'),
   path = require('path');
 const ctx = { console, Math, Date, JSON, Object, Array, location: { search: '' }, URLSearchParams };
 vm.createContext(ctx);
-for (const f of ['data.js', 'items.js'])
+for (const f of ['data.js', 'items.js', 'craft.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 const G = vm.runInContext(
-  '({ BASES, BASEI, KINDS, AFF, EQS, eqTakes, offOK, SOCK_MAX, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, ASC, ascNodes, ascPoints, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
+  '({ BASES, BASEI, KINDS, AFF, EQS, eqTakes, offOK, SOCK_MAX, SHARDS, FORGE, forgeCheck, forgeDo, temperDo, tierRange, affPct, decompDo, newMat, gemUp, drillDo, soulCost, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, ASC, ascNodes, ascPoints, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
   ctx
 );
 let bad = 0;
@@ -58,6 +58,63 @@ ok(
     if (badK.length || o.dmg.some(v => !Number.isFinite(v))) nan.push(B.n + '：' + badK.join(','));
   }
   ok('每種武器的數值都不是 NaN', !nan.length, nan.join('；'));
+  /* 0.2.6 鍛造：材料給滿，隨機鍛造 2000 次 */
+  vm.runInContext('var S = { gold: 1e12, lv: 60, mat: null, lib: [] }', ctx);
+  vm.runInContext(
+    'S.mat = newMat(); S.mat.dust = 1e9; for (const k in S.mat.sh) S.mat.sh[k] = 1e6; S.mat.soul = 1e12; S.mat.drill = [99, 99, 99];',
+    ctx
+  );
+  const fbad = [],
+    ops = Object.keys(G.FORGE);
+  let done = 0;
+  for (let i = 0; i < 2000; i++) {
+    const it = G.dropItem(1 + (i % 16), 0.6);
+    it.pot = 10;
+    const op = ops[i % ops.length],
+      cls = G.SHARDS[i % 8].k,
+      before = it.a.slice(),
+      p0 = it.pot,
+      err = G.forgeDo(it, op, cls);
+    if (err) continue;
+    done++;
+    const add = it.a.filter(a => !before.includes(a)),
+      np = it.a.filter(a => G.AFF[a.k].p).length,
+      cap = it.r === 2 ? 3 : 1;
+    if (add.some(a => a.T < 2)) fbad.push(op + ' 做出 T1');
+    if (it.a.length > (it.r === 2 ? 6 : 2) || np > cap || it.a.length - np > cap) fbad.push(op + ' 超過條數');
+    if (new Set(it.a.map(a => a.k)).size !== it.a.length) fbad.push(op + ' 重複的詞');
+    if (it.pot !== p0 - G.FORGE[op].pot) fbad.push(op + ' 潛能沒扣');
+    const tiers = it.a.map(a => a.T).join();
+    if (
+      !G.temperDo(it, null) &&
+      (it.a.map(a => a.T).join() !== tiers || it.a.some(a => G.affPct(a) < 0 || G.affPct(a) > 1))
+    )
+      fbad.push('淬鍊改到階級或超出範圍');
+  }
+  ok(
+    `鍛造 ${done} 次：沒有做出 T1、不超過條數、不重複、潛能有扣；淬鍊不改階級`,
+    done > 500 && !fbad.length,
+    [...new Set(fbad)].slice(0, 4).join('、') || done
+  );
+  /* 藍裝（後綴已經用掉）強化成黃：還能加後綴（照強化之後的上限） */
+  const blue = G.mkItem('c_leather', 10, 0);
+  blue.r = 1;
+  blue.a = [{ k: 'resF', T: 8, v: 20 }];
+  blue.pot = 5;
+  ok(
+    '藍裝後綴滿了也能「強化」加抗性（照黃裝的上限）',
+    !G.forgeDo(blue, 'enhance', 'res') && blue.r === 2 && blue.a.length === 2
+  );
+  const g = G.mkGem('fireball', 1);
+  let up = 0;
+  while (!G.gemUp(g)) up++;
+  let dr = 0;
+  while (!G.drillDo(g)) dr++;
+  ok(
+    '寶石：靈魂升到 20 級為止、開孔開到 5 孔為止',
+    g.lv === 20 && up === 19 && g.so === 5 && g.sup.length === 5 && dr === 3,
+    `Lv ${g.lv}、${g.so} 孔`
+  );
   ok('雙手武器不能拿副手、箭袋只有弓能用', !rules.length, rules.map(([w, o]) => w.b + '+' + o.b).join('、'));
 }
 /* 2. 產生 3000 件：詞綴數、前後綴上限、不重複、數值在那一階的範圍 */

@@ -1498,7 +1498,7 @@ const KINDS = {
   weapon: {
     n: '武器',
     sz: [1, 3],
-    aff: ['dmgP', 'flat', 'fire', 'cold', 'light', 'chaos', 'as', 'crit', 'critX', 'loh']
+    aff: ['dmgP', 'flat', 'fire', 'cold', 'light', 'chaos', 'as', 'crit', 'critX', 'loh', 'spellP']
   },
   shield: { n: '盾', sz: [2, 2], aff: ['life', 'armor', 'ev', 'block', 'resF', 'resC', 'resL', 'resX', 'resA', 'es'] },
   helm: {
@@ -1543,7 +1543,7 @@ const KINDS = {
   amulet: {
     n: '護身符',
     sz: [1, 1],
-    aff: ['life', 'mp', 'dmgP', 'crit', 'critX', 'aoe', 'regen', 'resA', 'es', 'spirit']
+    aff: ['life', 'mp', 'dmgP', 'crit', 'critX', 'aoe', 'regen', 'resA', 'es', 'spirit', 'spellP']
   }
 };
 /* 底材：lv 從幾階開始掉、ic 圖示、b 固定數值（武器：物理傷害、攻速；防具：護甲；飾品：固定詞綴） */
@@ -1792,6 +1792,29 @@ const BASES = [
   { id: 'a_coral', k: 'amulet', n: '珊瑚墜', lv: 5, ic: 'gear_amulet_2', b: { regen: 2 } },
   { id: 'a_gold', k: 'amulet', n: '金鎖片', lv: 9, ic: 'gear_amulet_4', b: { crit: 8 } }
 ];
+/* ---------- 做裝的材料（0.2.6，企劃書 5.3、6.3、6.4）：放材料頁（S.mat），不佔背包，打怪自動吸收 ---------- */
+/* 8 類屬性碎片：決定鍛造對哪一類詞綴下手 */
+const SHARDS = [
+  { k: 'life', n: '生命', ic: 'asc_s_heart', aff: ['life', 'regen', 'loh', 'flask'] },
+  { k: 'def', n: '防禦', ic: 'asc_s_shield', aff: ['armor', 'ev', 'es', 'block'] },
+  { k: 'ele', n: '元素', ic: 'asc_s_flame', aff: ['fire', 'cold', 'light', 'chaos'] },
+  { k: 'phys', n: '物理', ic: 'asc_s_sword', aff: ['dmgP', 'flat'] },
+  { k: 'crit', n: '暴擊', ic: 'asc_s_eye', aff: ['crit', 'critX'] },
+  { k: 'speed', n: '速度', ic: 'asc_s_wind', aff: ['as', 'ms'] },
+  { k: 'spell', n: '法術', ic: 'sup_sp_fastcast', aff: ['spellP', 'mp', 'aoe', 'spirit'] },
+  { k: 'res', n: '抗性', ic: 'sup_ln_iron', aff: ['resF', 'resC', 'resL', 'resX', 'resA'] }
+];
+const SHARDI = Object.fromEntries(SHARDS.map(x => [x.k, x]));
+const affCls = k => (SHARDS.find(x => x.aff.includes(k)) || {}).k;
+/* 鑿孔石：寶石開孔 2→3 小、3→4 中、4→5 大 */
+const DRILLS = ['小鑿孔石', '中鑿孔石', '大鑿孔石'];
+const GEM_SO_MAX = 5;
+/* 靈魂升級寶石：L 級升 L+1 要 10 × 1.35^L（輔助打三折） */
+const soulCost = (L, sup) => Math.round(10 * Math.pow(1.35, L) * (sup ? 0.3 : 1));
+/* 鍛造要的粉：物品等級越高越多 */
+const dustCost = it => Math.round(8 * (1 + it.L / 3));
+/* 淬鍊的金幣：每按一次 +10%，最多 2 倍 */
+const temperCost = (it, single) => Math.round(3 * (1 + it.L) * Math.min(2, 1 + 0.1 * (it.tmp || 0)) * (single ? 3 : 1));
 const BASEI = Object.fromEntries(BASES.map(b => [b.id, b]));
 
 /* 詞綴：p 前綴（1）／後綴（0）、r：[T12 的最小, T1 的最大]、add 是「附加 a～b」兩個數 */
@@ -1821,6 +1844,7 @@ const AFF = {
   resX: { p: 0, n: '混沌抗性 +{}%', r: [5, 35] },
   resA: { p: 0, n: '全部抗性 +{}%', r: [3, 18] },
   es: { p: 1, n: '能量護盾 +{}', r: [6, 140] },
+  spellP: { p: 1, n: '法術傷害 +{}%', r: [8, 90] },
   spirit: { p: 0, n: '精魄 +{}', r: [4, 30] }
 };
 /* T12（最低）～T1（最高）各一段；物品等級越高，能出現的最高階越高 */

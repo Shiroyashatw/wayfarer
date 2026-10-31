@@ -330,7 +330,8 @@ function draw() {
       gold: ['#ffd166', 14],
       lv: ['#9df29d', 20],
       mikiri: ['#8fe0ff', 26],
-      ev: ['#b8f0c8', 18]
+      ev: ['#b8f0c8', 18],
+      mat: ['#d6b8ff', 15]
     }[n.c];
     CX.globalAlpha = 1 - Math.max(0, f - 0.6) / 0.4;
     CX.font = `700 ${Math.round(st[1] * pop)}px "Noto Sans TC", sans-serif`;
@@ -347,7 +348,7 @@ function draw() {
                 ? '見切'
                 : n.c === 'ev'
                   ? '閃避'
-                  : n.v;
+                  : n.txt || n.v;
     CX.lineWidth = 4;
     CX.strokeStyle = 'rgba(0,0,0,0.8)';
     CX.strokeText(txt, n.x, y);
@@ -362,7 +363,8 @@ function draw() {
   CX.font = '600 13px "Noto Sans TC", sans-serif';
   for (const d of G.drops) {
     if (!d.it || d.t < 0.3) continue;
-    const txt = itemName(d.it),
+    /* 品質、潛能金字以上直接寫在標籤上（D2：好底材一眼看得出來） */
+    const txt = itemName(d.it) + dropTag(d.it),
       w = CX.measureText(txt).width + 14,
       x = d.x,
       y = d.y - 22;
@@ -690,6 +692,16 @@ function drawHideout() {
       CX.fillStyle = `rgba(255,209,102,${g})`;
       CX.fillRect(p.x - 8, p.y - 58, 16, 30);
       spr('cls_swordsman', p.x, p.y - 26, 30);
+    } else if (p.k === 'forge') {
+      /* 鍛造台：鐵砧＋爐火 */
+      CX.fillStyle = '#3a2f28';
+      CX.fillRect(p.x - 30, p.y - 30, 60, 30);
+      CX.fillStyle = '#6b6560';
+      CX.fillRect(p.x - 36, p.y - 46, 72, 16);
+      CX.fillRect(p.x - 14, p.y - 30, 28, 8);
+      const g = 0.4 + 0.3 * Math.sin(G.t * 3.1);
+      CX.fillStyle = `rgba(255,138,76,${g})`;
+      CX.fillRect(p.x - 24, p.y - 22, 48, 14);
     } else {
       CX.fillStyle = '#4a3a2e';
       CX.fillRect(p.x - 36, p.y - 40, 72, 40);

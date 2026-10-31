@@ -332,3 +332,50 @@ body.touch .thelp { display: none; }
 .qb1 { color: var(--blue); }
 .qb2 { color: var(--gold); }
 .qb3 { color: var(--bad); }
+
+/* ---------- 0.2.6 鍛造台、材料、寶石書庫 ---------- */
+#pcraft { left: 16px; width: 462px; animation: inL 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+.ftabs { display: flex; gap: 4px; }
+.ftabs button { font: 700 var(--fs-s) var(--font); color: var(--dim); background: none; border: 1px solid var(--line); border-radius: var(--rad); padding: 4px 10px; min-height: 32px; cursor: pointer; }
+.ftabs button.on { color: var(--tx); border-color: var(--gold); background: rgba(255, 209, 102, 0.08); }
+.mats { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0; }
+.chip { display: inline-flex; align-items: center; gap: 3px; height: 32px; padding: 0 6px; font: 500 var(--fs-s) var(--font); color: var(--tx); background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line); border-radius: var(--rad); }
+.chip .ic { width: 20px; height: 20px; }
+.chip small { color: var(--dim); font-size: 11px; }
+button.chip { cursor: pointer; }
+button.chip:active { scale: 0.95; }
+.chip.on { border-color: var(--gold); background: rgba(255, 209, 102, 0.12); }
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
+.dot.dust { background: radial-gradient(#e8dcc4, #8a7d66); }
+.dot.soul { background: radial-gradient(#d6f0ff, #4a7fc4); }
+.dot.drill { border-radius: 2px; background: #9a9086; }
+.dot.d1 { background: #c9a227; }
+.dot.d2 { background: #e5484d; }
+.fsel { display: flex; gap: 10px; align-items: center; padding: 8px; background: rgba(0, 0, 0, 0.35); border-radius: var(--rad); }
+.fsel .fic { position: static; width: 48px; height: 48px; flex: none; }
+.fsel > div > b { display: block; }
+.fsel small { display: block; color: var(--dim); font-size: var(--fs-s); }
+.faff { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: var(--fs-s); color: var(--blue); }
+.faff li { display: flex; align-items: center; gap: 8px; }
+.faff li > span { flex: 1; }
+.faff i { font-style: normal; font-size: 11px; color: var(--dim); }
+.faff em { font-style: normal; width: 44px; text-align: right; color: var(--dim); background: linear-gradient(90deg, rgba(123, 211, 107, 0.3) calc(var(--v) * 100%), transparent 0); border-radius: 3px; }
+.fops { display: flex; flex-direction: column; gap: 6px; }
+.fop { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.fop > .btn { flex: none; width: 104px; }
+.fop > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.fop small { font-size: var(--fs-s); color: var(--dim); }
+.fop .cost { color: var(--tx); }
+.fop .pv { color: var(--blue); }
+.fhint { font-size: var(--fs-s); color: var(--dim); margin: 8px 0; }
+.flog { font-size: var(--fs-s); color: var(--good); margin: 6px 0; }
+.btn.mini { min-height: 32px; padding: 4px 8px; font-size: 12px; }
+.gbtns { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.lib { display: grid; grid-template-columns: repeat(auto-fill, 44px); gap: 6px; margin-top: 8px; }
+.libg { position: static; width: 44px; height: 44px; cursor: pointer; }
+.libg .ic { width: 34px; height: 34px; }
+.libg:active { scale: 0.94; }
+body.touch #pcraft { left: calc(6px + env(safe-area-inset-left)); width: calc(50vw - 9px); }
+@media (max-width: 799px) {
+  body.touch #pcraft { right: calc(6px + env(safe-area-inset-right)); width: auto; }
+}

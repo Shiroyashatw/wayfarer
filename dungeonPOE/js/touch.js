@@ -121,6 +121,7 @@ function stickHide() {
 
 /* ---------- 面板：點一下道具＝說明＋動作 ---------- */
 function moveLabel(src, it) {
+  if (PANEL.craft && !it.gem) return '放上鍛造台';
   if (isSlot(src)) return '卸下';
   if (it.gem && src === 'inv' && !PANEL.stash) return '鑲上';
   if (src === 'stash') return '放進背包';

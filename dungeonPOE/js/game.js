@@ -24,8 +24,8 @@ function newGame() {
     sfx: 1
   };
   s.eq.weapon = mkItem('w_katana', 1, 0);
-  /* 技能欄：左鍵斬擊、右鍵飛刃、Q 旋風斬；其他從怪物身上掉 */
-  s.skills = Array.from({ length: NSLOT }, () => ({ a: null, s: [null, null] }));
+  /* 技能欄：左鍵斬擊、右鍵燕返、Q 旋風斬；其他從怪物身上掉（撿到就學進書庫） */
+  s.skills = Array.from({ length: NSLOT }, () => ({ a: null }));
   s.skills[0].a = mkGem('slash');
   s.skills[1].a = mkGem('swallow');
   s.skills[2].a = mkGem('whirl');
@@ -34,6 +34,8 @@ function newGame() {
   s.at = [];
   s.auras = Array(AURA_SLOTS).fill(null);
   s.eq.chest = mkItem('c_leather', 1, 0);
+  s.mat = newMat();
+  s.lib = ['slash', 'swallow', 'whirl'];
   return s;
 }
 
@@ -113,7 +115,8 @@ function enterHideout() {
     { k: 'device', n: '地圖台', x: 480, y: 210, r: 46 },
     { k: 'stash', n: '倉庫', x: 190, y: 330, r: 34 },
     { k: 'market', n: '市集（之後開放）', x: 770, y: 330, r: 34 },
-    { k: 'asc', n: '昇華石碑', x: 770, y: 520, r: 30 }
+    { k: 'asc', n: '昇華石碑', x: 770, y: 520, r: 30 },
+    { k: 'forge', n: '鍛造台', x: 190, y: 520, r: 34 }
   ];
   newPlayer(480, 470);
   P.hp = ST.hp;
@@ -329,8 +332,9 @@ function hitstop(s) {
 function shake(a) {
   G.trauma = Math.min(1, G.trauma + a);
 }
-function num(x, y, v, c) {
-  G.nums.push({ x: x + rnd(-8, 8), y, v: Math.round(v), c, t: 0 });
+/* txt：直接顯示的文字（材料、學會寶石） */
+function num(x, y, v, c, txt) {
+  G.nums.push({ x: x + rnd(-8, 8), y, v: Math.round(v), c, t: 0, txt });
 }
 function fx(o) {
   o.t = 0;
@@ -532,6 +536,8 @@ function killMob(m) {
   sparks(m.x, m.y - m.sz * 0.4, rnd(0, TAU), 14, m.boss ? '#ff6b3d' : '#c9b8a8');
   P.flask = Math.min(FLASK.n, P.flask + FLASK.perKill * (m.elite ? 3 : m.boss ? 10 : 1));
   gainXp(m.D.xp * tierMul(t).hp * (m.elite ? 4 : 1));
+  /* 材料：粉、靈魂自動吸收；碎片、鑿孔石直接進材料頁，跳字提醒 */
+  killMat(m, t).forEach((n, i) => num(m.x, m.y - m.sz * 0.6 - i * 18, 0, 'mat', '+' + n));
   /* 掉落：裝備、金幣、地圖碎片（越高階越多） */
   const nItems = m.boss ? 4 : m.elite ? irnd(1, 2) : Math.random() < 0.13 ? 1 : 0;
   for (let i = 0; i < nItems; i++) {
@@ -603,6 +609,20 @@ function pickup(d) {
     S.frag += d.frag;
     num(d.x, d.y - 20, d.frag, 'frag');
     sfx('pick');
+  } else if (d.it.gem) {
+    /* 寶石：沒學過＝學進書庫；學過的換成靈魂（輔助換粉） */
+    const r = learnGem(d.it),
+      n = gemOf(d.it).n;
+    hudWarn(
+      r.learned
+        ? `學會「${n}」：到技能寶石面板（G）的書庫複製`
+        : r.soul
+          ? `「${n}」學過了：換成 ${r.soul} 靈魂`
+          : `「${n}」學過了：換成 ${r.dust} 粉`
+    );
+    num(d.x, d.y - 20, 0, 'mat', r.learned ? '學會 ' + n : '+' + (r.soul ? r.soul + ' 靈魂' : r.dust + ' 粉'));
+    sfx(r.learned ? 'lvup' : 'pick');
+    hudPanels();
   } else {
     if (!gridAuto(S.inv, d.it)) return hudWarn('背包滿了：回藏身處整理');
     sfx('pick');
@@ -631,6 +651,7 @@ function useProp(p) {
   if (p.k === 'device') openPanel('device');
   else if (p.k === 'stash') openPanel('stash');
   else if (p.k === 'asc') openPanel('asc');
+  else if (p.k === 'forge') openPanel('craft');
   else hudWarn('市集之後開放');
   return true;
 }

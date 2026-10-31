@@ -79,6 +79,17 @@ function rollSock(k) {
 }
 /* 品質的區間與顏色 */
 const qBand = q => (q >= 0.35 ? 3 : q >= 0.3 ? 2 : q >= 0.2 ? 1 : 0);
+/* 潛能也分級（顏色跟品質一樣）：6 少見、7～8 很少見、9～10 極稀有 */
+const potBand = p => (p >= 9 ? 3 : p >= 7 ? 2 : p >= 6 ? 1 : 0);
+const P_N = ['', '少見', '很少見', '極稀有'];
+/* 掉落標籤上要不要特別標出來（金字以上） */
+function dropTag(it) {
+  if (it.gem || it.q == null) return '';
+  const t = [];
+  if (qBand(it.q) >= 2) t.push(`品質 ${Math.round(it.q * 100)}%`);
+  if (potBand(it.pot) >= 2) t.push(`潛能 ${it.pot}`);
+  return t.length ? `（${t.join('・')}）` : '';
+}
 function mkItem(baseId, ilvl, rar) {
   const B = BASEI[baseId],
     K = KINDS[B.k],
@@ -108,8 +119,11 @@ function dropItem(ilvl, bonus) {
   return mkItem(pickBase(ilvl).id, ilvl, rollRarity(bonus));
 }
 /* 技能／輔助寶石：1×1，r=3（寶石色），lv 等級、xp 經驗 */
+/* 技能寶石自己有孔（0.2.6，照 PoE2）：一開始 2 孔、最多 5 孔，輔助插在 sup 裡 */
 function mkGem(g, lv = 1) {
-  return { id: ++IID, gem: g, lv, xp: 0, r: 3, a: [], L: lv };
+  const it = { id: ++IID, gem: g, lv, xp: 0, r: 3, a: [], L: lv };
+  if (SKILLS[g]) (it.so = 2), (it.sup = [null, null]);
+  return it;
 }
 const gemOf = it => SKILLS[it.gem] || SUPPORTS[it.gem] || AURAS[it.gem];
 const isAura = it => !!AURAS[it.gem];
@@ -157,7 +171,7 @@ const Q_N = ['', '稀有', '非常稀有', '超級稀有'];
 function baseLayers(it) {
   if (it.gem || it.q == null) return '';
   const qb = qBand(it.q);
-  return `品質 <span class="qb${qb}">${Math.round(it.q * 100)}%${qb ? '（' + Q_N[qb] + '）' : ''}</span> · 孔 ${'○'.repeat(it.so || 0) || '無'} · 潛能 ${it.pot}`;
+  return `品質 <span class="qb${qb}">${Math.round(it.q * 100)}%${qb ? '（' + Q_N[qb] + '）' : ''}</span> · 孔 ${'○'.repeat(it.so || 0) || '無'} · 潛能 <span class="qb${potBand(it.pot)}">${it.pot}${potBand(it.pot) ? '（' + P_N[potBand(it.pot)] + '）' : ''}</span>`;
 }
 /* 賣價：越高階、詞綴越多越貴 */
 const sellPrice = it =>
