@@ -3,15 +3,17 @@ name: pixel-art
 description: 新增或替換塞令老師的怪物、首領、老師頭像、道具圖示等像素圖時使用。先產出給 PixelLab 用的英文提示詞與設定讓使用者去生圖，使用者丟回 PNG 後，照這裡的步驟放進 art/、跑 tools/art.py、接到怪物資料並截圖確認。使用者說「我放了新圖」「新圖放好了」「圖換好了」「art 有更新」等（自己把 PNG 放進 art/）時也用這個：找出新增／變更的圖、跑 tools/art.py、接到資料。
 ---
 
+> **dungeonPOE 版（2026-11-02）**：這份是《塞令老師》帶過來的。dungeonPOE 沒有頭像、塔羅牌，也沒有 `tools/icon_sheets.py`、`tools/pixellab_batch.py`、`tools/art.py`；舊的道具圖示提示詞在 `docs/封存/圖示提示詞.md`（《塞令老師》版）。dungeonPOE 的怪物看 `docs/怪物提示詞.md`、主角看 `docs/主角提示詞.md`、已產的圖示提示詞在 `docs/提示詞封存.md`；新圖要接進 `js/art.js` 前，先確認打包工具。
+
 # 像素圖（PixelLab）提示詞與接入流程
 
 使用者要新增或替換怪物、首領、裝備圖示時，**先給提示詞，不要自己畫**。使用者到 PixelLab 生圖後會把 PNG 丟回來，再照「接入遊戲」的步驟處理。
 
 ## 1. 產出提示詞
 
-**道具圖示改用圖表一次產 64 個**（檔名 `it_道具代號`，遊戲會優先用它，沒有才借舊圖示）：在 `docs/圖示提示詞.md` 補單張的列 → `python3 tools/icon_sheets.py build` → 把 `docs/圖示圖表.md` 裡那張圖表的提示詞給使用者（或有金鑰時 `run`）→ 使用者把圖表 PNG 放進 `art/sheets/`（檔名就是圖表名，例如 `sheet_item_1.png`）→ `python3 tools/icon_sheets.py process` 全部切到 `art/icons/` 並打包。每張要填滿 64 格，不夠的會自動拿「介面圖示」（狀態、通貨、怪物招式、材料）補空格。先產 `sheet_skill_1` 當風格基準，其他張拿它當 Style／Init Image。
+**道具圖示改用圖表一次產 64 個**（檔名 `it_道具代號`，遊戲會優先用它，沒有才借舊圖示）：在 `docs/封存/圖示提示詞.md`（《塞令老師》版） 補單張的列 → `python3 tools/icon_sheets.py build` → 把 `docs/圖示圖表.md` 裡那張圖表的提示詞給使用者（或有金鑰時 `run`）→ 使用者把圖表 PNG 放進 `art/sheets/`（檔名就是圖表名，例如 `sheet_item_1.png`）→ `python3 tools/icon_sheets.py process` 全部切到 `art/icons/` 並打包。每張要填滿 64 格，不夠的會自動拿「介面圖示」（狀態、通貨、怪物招式、材料）補空格。先產 `sheet_skill_1` 當風格基準，其他張拿它當 Style／Init Image。
 
-**先讀 `docs/怪物提示詞.md`**：共用設定、固定句型、世界觀方向，以及已採用的提示詞。新提示詞要沿用同系列的句型與用字（例如七宗罪的王對照路西法那份），畫風才會一致。裝備、技能圖示看 `docs/圖示提示詞.md`。量大時可以請使用者在自己電腦跑 `tools/pixellab_batch.py`（PixelLab API，金鑰放環境變數 `PIXELLAB_API_KEY`，產圖到 `art/new/` 再挑）。
+**先讀 `docs/怪物提示詞.md`**：共用設定、固定句型、世界觀方向，以及已採用的提示詞。新提示詞要沿用同系列的句型與用字（例如七宗罪的王對照路西法那份），畫風才會一致。裝備、技能圖示看 `docs/封存/圖示提示詞.md`（《塞令老師》版）。量大時可以請使用者在自己電腦跑 `tools/pixellab_batch.py`（PixelLab API，金鑰放環境變數 `PIXELLAB_API_KEY`，產圖到 `art/new/` 再挑）。
 
 先確認要做什麼（怪物名稱、外觀方向、用在哪裡：一般怪、亡靈、魔霧、冥府、首領、裝備）。使用者沒講外觀就依遊戲世界觀補：台灣在地元素（廟宇、民俗、山林動物、都市傳說）＋奇幻 RPG。
 
@@ -77,7 +79,7 @@ description: 新增或替換塞令老師的怪物、首領、老師頭像、道�
 
 ## 玩家頭像（4×4 圖表，全身）
 
-提示詞在 `docs/頭像圖表.md`（照 `docs/圖示圖表.md` 的格式：圖表提示詞、格序對照表、單張補產提示詞）。使用者說「頭像圖表放好了」：讀 `art/sheets/sheet_avatar_1.png`（256×256），照對照表的格序切成 16 張 64×64（透明背景，切完去掉空白邊）存成 `art/monsters/av_*.png`，跑 `python3 tools/art.py`，把 `['檔名', '名稱']` 加進 `js/data.js` 的 `AVATARS`，在設定的頭像選單、首頁、準備畫面、戰鬥畫面截圖確認；做完把提示詞搬到 `docs/提示詞封存.md`、原圖搬到 `art/sheets/done/`。
+提示詞在 `docs/封存/頭像圖表.md`（照 `docs/圖示圖表.md` 的格式：圖表提示詞、格序對照表、單張補產提示詞）。使用者說「頭像圖表放好了」：讀 `art/sheets/sheet_avatar_1.png`（256×256），照對照表的格序切成 16 張 64×64（透明背景，切完去掉空白邊）存成 `art/monsters/av_*.png`，跑 `python3 tools/art.py`，把 `['檔名', '名稱']` 加進 `js/data.js` 的 `AVATARS`，在設定的頭像選單、首頁、準備畫面、戰鬥畫面截圖確認；做完把提示詞搬到 `docs/提示詞封存.md`、原圖搬到 `art/sheets/done/`。
 
 ## 塔羅牌卡圖（64×64）
 

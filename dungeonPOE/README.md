@@ -4,7 +4,7 @@
 
 - 線上遊玩：https://shiroyashatw.github.io/wayfarer/dungeonPOE/ （用電腦開，鍵盤＋滑鼠）
 - 目前版本：v0.2.4（[更新紀錄](CHANGELOG.md)）
-- 企劃書：[docs/企劃書.md](docs/企劃書.md)・設計原則：[docs/設計原則.md](docs/設計原則.md)・0.1 版規則：[docs/舊企劃書_0.1.md](docs/舊企劃書_0.1.md)
+- 企劃書：[docs/企劃書.md](docs/企劃書.md)・設計原則：[docs/設計原則.md](docs/設計原則.md)・0.1 版規則：[docs/舊企劃書_0.1.md](docs/封存/舊企劃書_0.1.md)
 
 ## 操作
 WASD 移動、滑鼠瞄準；左鍵斬擊、右鍵飛刃、Q 旋風斬、E 居合突進、R 千本櫻；空白鍵翻滾（怪物出手瞬間翻滾＝見切）；1 藥水；F 互動、撿東西；I 背包；G 技能寶石；P 天賦樹與昇華；T（按兩次）回藏身處；Esc 關閉面板。
