@@ -5,7 +5,7 @@ const fs = require('fs'),
   path = require('path');
 const ctx = { console, Math, Date, JSON, Object, Array, location: { search: '' }, URLSearchParams };
 vm.createContext(ctx);
-for (const f of ['data.js', 'items.js', 'craft.js'])
+for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 const G = vm.runInContext(
   '({ BASES, BASEI, KINDS, AFF, EQS, eqTakes, offOK, SOCK_MAX, SHARDS, FORGE, forgeCheck, forgeDo, temperDo, tierRange, affPct, decompDo, newMat, gemUp, drillDo, soulCost, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, ASC, ascNodes, ascPoints, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
@@ -250,4 +250,29 @@ ok(
   '寶石掉落：等級 1～20、大小 1×1、有名字',
   gems.every(g => g.lv >= 1 && g.lv <= 20 && G.itemSize(g).join() === '1,1' && G.itemName(g))
 );
+/* 0.2.7 底層（企劃書 7.2） */
+const B = s => vm.runInContext(s, ctx);
+ok(
+  '等級與懲罰：第 16 階怪物 Lv83、抗性 −60%；Lv100 有 119 天賦點、Lv300 有 139 點',
+  B('mobLv(16)') === 83 &&
+    B('resPen(83)') === 60 &&
+    B('resPen(10)') === 0 &&
+    B('ptPoints(100)') === 119 &&
+    B('ptPoints(300)') === 139
+);
+vm.runInContext(
+  `var G = { t: 0, mapT: 16, scene: 'map', mobs: [] }, P = { x: 0, y: 0, hp: 100, es: 0 };
+   var dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+   S = { lv: 90, eq: {}, pt: [...PT_START], asc: null, at: [], auras: [], charms: [] }; ST = stats(S);
+   var mob = { D: MOBS.fire, x: 50, y: 0, hp: 1000, mhp: 1000, el: 'fire' }; mobDef(mob, 16);`,
+  ctx
+);
+const hits = Array.from({ length: 300 }, () =>
+  B('hitCalc(BASEC2 = { D: SKILLS.fireball, lv: 20, mult: 1, more: 1 }, mob)')
+);
+ok(
+  '擊中傷害：法術有數字、同屬性怪抗 40%、沒有 NaN',
+  hits.every(h => Number.isFinite(h.d) && h.d > 0) && B('mob.res.fire') === 40 && B('resOf(mob, "fire", 100)') === 0
+);
+ok('抗性：沒堆抗性在第 16 階是 −60%，上限是最大抗性', B("effRes('fire')") === -60 && B('ST.maxRes.fire') === 75);
 process.exit(bad ? 1 : 0);

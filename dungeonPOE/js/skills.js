@@ -23,39 +23,58 @@ function slotCfg(i) {
       k: g.gem,
       D,
       lv,
+      /* 攻擊的技能倍率（寶石等級）；「更多」另外放在 more（combat.js 的 hitCalc 第 5 步） */
       mult: D.m * Math.pow(1.06, lv - 1),
+      more: 1,
       aoe: 1,
-      speed: D.tags.includes('spell') ? 1 + ST.castP / 100 : 1,
+      speed: D.tags.includes('spell') ? (1 + ST.castP / 100) * (hasBuff('arcane') ? 1.15 : 1) : 1,
       mp: D.mp,
       cd: (D.cd || 0) * (1 - ST.cdr / 100),
-      crit: 0,
+      critInc: 0,
       critX: 0,
       leech: 0,
       proj: D.cnt || 1,
       pierce: D.pierce || 0,
       kb: 1,
       fireAdd: 0,
+      pen: 0,
+      ailMag: 0,
+      bleedCh: 0,
+      poisonCh: 0,
+      poiStack: 0,
+      impaleCh: 0,
       wolves: D.cnt || 0,
       wolfM: 1
     };
   for (const sp of g.sup || []) {
     if (!sp || !supOK(D, sp)) continue;
-    c.mult *= 1 + 0.01 * (sp.lv - 1);
+    c.more *= 1 + 0.01 * (sp.lv - 1);
     const k = sp.gem;
-    if (k === 'multi') (c.proj += 2), (c.mult *= 0.8);
+    if (k === 'multi') (c.proj += 2), (c.more *= 0.8);
     else if (k === 'pierce') c.pierce += 3;
     else if (k === 'area') c.aoe *= 1.4;
-    else if (k === 'fury') (c.mult *= 1.35), (c.mp *= 1.4);
+    else if (k === 'fury') (c.more *= 1.35), (c.mp *= 1.4);
     else if (k === 'haste') c.speed *= 1.25;
-    else if (k === 'crit') (c.crit += 10), (c.critX += 40);
+    else if (k === 'crit') (c.critInc += 50), (c.critX += 40);
     else if (k === 'leech') c.leech += 0.03;
     else if (k === 'cdr') c.cd *= 0.65;
     else if (k === 'fireadd') c.fireAdd += 0.25;
-    else if (k === 'heavy') (c.kb *= 2), (c.mult *= 1.15);
+    else if (k === 'heavy') (c.kb *= 2), (c.more *= 1.15);
     else if (k === 'pack') (c.wolves += 1), (c.wolfM *= 1.3);
+    else if (k === 'bleed') c.bleedCh += 25;
+    else if (k === 'poison') c.poisonCh += 25;
+    else if (k === 'poistack') (c.poiStack += 2), (c.ailMag += 10);
+    else if (k === 'ailmag') c.ailMag += 30;
+    else if (k === 'scorch' || k === 'brittle' || k === 'sap') c.alt = k;
+    else if (k === 'expose') c.expose = 1;
+    else if (k === 'armbreak') c.armBreak = 1;
+    else if (k === 'elec') c.elc = 1;
+    else if (k === 'wither') c.wither = 1;
+    else if (k === 'blind') c.blind = 1;
+    else if (k === 'arcane') c.arcane = 1;
     else if (SUPPORTS[k].conv && !c.conv) {
       c.conv = SUPPORTS[k].conv;
-      c.mult *= c.conv === 'trap' ? 1.2 : c.conv === 'totem' ? 0.7 : 1;
+      c.more *= c.conv === 'trap' ? 1.2 : c.conv === 'totem' ? 0.7 : 1;
     }
   }
   c.mp = Math.round(c.mp);
@@ -68,6 +87,7 @@ const wtOK = D => !D.wt || D.wt.includes(ST.wt);
 const wtNeed = D => '要拿' + D.wt.map(w => WTN[w]).join('或');
 function useSlot(i) {
   if (P.act || P.roll || G.state !== 'play' || G.scene !== 'map') return false;
+  if (P.ail && P.ail.frozen > G.t) return false;
   const c = slotCfg(i);
   if (!c) return false;
   if (!wtOK(c.D)) return hudWarn(c.D.n + '：' + wtNeed(c.D)), false;
@@ -201,10 +221,7 @@ function actHit(a, idx) {
       n = hitArc(ang, D.arc, R, (a.k === 'combo' && last ? 200 : 90) * c.kb);
     }
     if (D.gain && n) P.mp = Math.min(ST.mp, P.mp + D.gain * n);
-    if (a.k === 'combo' && last && n) {
-      P.pc = Math.min(3, (P.pcT > G.t ? P.pc : 0) + 1);
-      P.pcT = G.t + 10;
-    }
+    if (a.k === 'combo' && last && n) gainChg('p');
   } else if (a.k === 'split') {
     const n = D.cnt + c.proj - 1;
     for (let i = 0; i < n; i++) shoot(a.ang + (i - (n - 1) / 2) * 0.22, D.spd, c, a, { life: 0.7 });
@@ -267,6 +284,15 @@ function actHit(a, idx) {
   } else if (a.k === 'venom') {
     G.pools.push({ x: a.tx, y: a.ty, r: R, t: 0, dur: D.dur, tick: 0, c, a });
     sfx('cast');
+  } else if (D.curse) {
+    G.meteors.push({ x: a.tx, y: a.ty, r: R, t: 0, dur: 1.5, curse: D.curse, lv: c.lv });
+    fx({ k: 'ring', x: a.tx, y: a.ty, r: R, dur: 0.4, col: '#c38bff' });
+    sfx('cast');
+  } else if (D.mark) {
+    const m = G.mobs
+      .filter(o => o.hp > 0 && Math.hypot(o.x - a.tx, o.y - a.ty) < 120 + o.r)
+      .sort((x, y) => Math.hypot(x.x - a.tx, x.y - a.ty) - Math.hypot(y.x - a.tx, y.y - a.ty))[0];
+    if (m) markMob(m, D.mark), fx({ k: 'ring', x: m.x, y: m.y, r: 40, dur: 0.3, col: '#ff6b6b' }), sfx('cast');
   } else if (a.k === 'meteor') {
     G.meteors.push({ x: a.tx, y: a.ty, r: R, t: 0, dur: D.delay, c, a });
   } else if (a.k === 'wolf') {
@@ -308,68 +334,28 @@ function boom(s) {
       hitMob(m, s.c, angTo(s, m), 120 * s.c.kb, { a: s.a });
 }
 
-/* ---------- 傷害 ---------- */
-/* 一下的傷害：武器的物理＋附加元素；有屬性的技能全部轉成那個屬性；怪物抗自己的屬性 */
-/* 法術的基礎傷害（照 PoE：看寶石等級、每級 +15%，不吃武器；角色等級的加成照算） */
-const SPELL_BASE = [7, 12];
-const spellDmg = lv => rnd(SPELL_BASE[0], SPELL_BASE[1]) * (1 + 0.15 * (lv - 1)) * (1 + (4 * (S.lv - 1)) / 100);
-function rollDmg(c, m, o = {}) {
-  const spell = (c.D.tags || []).includes('spell') && !(c.D.tags || []).includes('attack');
-  let el = c.D.el,
-    d = spell ? spellDmg(c.lv || 1) : rnd(ST.dmg[0], ST.dmg[1]),
-    ele = 0,
-    big = 'phys',
-    bigV = d;
-  for (const k in ST.add) {
-    if (spell) break;
-    const [lo, hi] = ST.add[k];
-    if (!hi) continue;
-    const v = rnd(lo, hi);
-    ele += v;
-    if (v > bigV) (bigV = v), (big = k);
-  }
-  const tg0 = c.D.tags || [];
-  if (tg0.includes('melee') && P.ench && P.ench.until > G.t) {
-    const v = (rnd(ST.dmg[0], ST.dmg[1]) * ascV(S, 'spell.enchant')) / 100;
-    ele += v;
-    if (v > bigV) (bigV = v), (big = P.ench.el);
-  }
-  if (el) (ele += d), (d = 0), (big = el);
-  const tg = c.D.tags || [],
-    inc =
-      ST.dmgA +
-      (tg.includes('melee') ? ST.meleeP : 0) +
-      (tg.includes('proj') ? ST.projP : 0) +
-      (tg.includes('spell') ? ST.spellP : 0) +
-      (o.minion ? ST.minionP : 0) +
-      (o.unit ? ST.unitP : 0) +
-      (P.hp < ST.hp / 2 ? ST.lowHp : 0) +
-      (P.hp >= ST.hp ? ST.fullHp : 0) +
-      (P.es > 0 ? ST.esUp : 0) +
-      (P.rolledT > G.t ? ST.afterRoll : 0) +
-      (m && (m.boss || m.elite) ? ST.bossP : 0) +
-      (m && dist(P, m) < 160 ? ST.closeP : 0) +
-      (m && dist(P, m) > 350 ? ST.farP : 0) +
-      (tg.includes('melee') && ascV(S, 'spell.arcane') ? ST.spellP : 0) +
-      (P.rage || 0) +
-      ascV(S, 'berserk.blood') +
-      ascV(S, 'berserk.last') * (1 - P.hp / ST.hp);
-  let tot = (d + ele * (1 + ST.eleP / 100)) * (o.mult || c.mult) * (1 + inc / 100) * (1 + 0.02 * (P.guard || 0));
-  if (m && m.exposeT > G.t) tot *= 1 + ascV(S, 'rapier.expose') / 100;
-  tot += tot * (c.fireAdd + ST.fireAdd / 100);
-  if (m && m.el === big && big !== 'phys' && !ascV(S, 'spell.pen')) tot *= 0.6;
-  const pc = P.pcT > G.t ? P.pc * 5 : 0;
-  let crit = o.crit || P.critNext || Math.random() * 100 < ST.crit + c.crit + pc;
-  if (crit) tot *= ST.critM + c.critX / 100 + (P.critNext ? 0.5 : 0);
-  if (!o.keep) P.critNext = 0;
-  return { d: tot, crit, el: big };
-}
-/* 打中一隻怪：o.a 出手、o.quiet 不停頓不震（狼、毒、反擊）、o.stun 暈眩、o.mult 改倍率 */
+/* ---------- 傷害（公式在 combat.js 的 hitCalc） ---------- */
+/* 沒有技能時的預設（反擊、盾擊、狼）：左鍵斬擊、沒有輔助 */
+const BASEC = () => ({
+  D: SKILLS.slash,
+  mult: 1,
+  more: 1,
+  critInc: 0,
+  critX: 0,
+  fireAdd: 0,
+  kb: 1,
+  pen: 0,
+  ailMag: 0,
+  bleedCh: 0,
+  poisonCh: 0,
+  poiStack: 0,
+  impaleCh: 0
+});
+/* 打中一隻怪：o.a 出手、o.quiet 不停頓不震（狼、毒、反擊）、o.stun 暈眩、o.mult 改這一下的倍率（換成「更多」） */
 function hitMob(m, c, ang, kb, o = {}) {
   const a = o.a || {};
-  let mult = (o.mult || c.mult) * (a.mul || 1),
+  let mult = (o.mult != null ? o.mult / (c.mult || 1) : 1) * (a.mul || 1),
     crit = !!(a.crit || o.crit);
-  /* 居合：傷害 ×3（斬鐵 ×4、×5）、必定暴擊 */
   if (a.iai) (mult *= coreV(S, 'ronin', 'iron') || 3), (crit = true);
   /* 刺客的印記：滿了就消耗 */
   if (hasCls(S, 'assassin') && !o.quiet) {
@@ -385,11 +371,9 @@ function hitMob(m, c, ang, kb, o = {}) {
       fx({ k: 'ring', x: m.x, y: m.y, r: 50, dur: 0.25, col: '#c38bff' });
     } else m.mark = (m.mark || 0) + 1;
   }
-  if (m.shockT > G.t) mult *= 1.15;
-  const r = rollDmg(c, m, { mult, crit, minion: o.minion, unit: a.unit });
-  /* 狀態：冰冷打中＝冰緩（移動 −35%），閃電打中＝感電（受到的傷害 +15%），各 2 秒 */
-  if (r.el === 'cold') m.chillT = G.t + 2;
-  else if (r.el === 'light') m.shockT = G.t + 2;
+  const r = hitCalc(c, m, { mult, crit, minion: o.minion, unit: a.unit });
+  applyAil(m, r, c);
+  onHitBase(m, r, c);
   if (ST.wt === 'staff' && (c.D.tags || []).includes('melee') && !o.quiet) P.mp = Math.min(ST.mp, P.mp + 1);
   /* 魔劍士：魔力之刃回魔、劍氣 */
   if ((c.D.tags || []).includes('melee') && !o.quiet && !a.unit) {
@@ -406,7 +390,7 @@ function hitMob(m, c, ang, kb, o = {}) {
       );
     }
   }
-  if (r.crit && ascV(S, 'rapier.expose')) m.exposeT = G.t + 4;
+  if (r.crit && ascV(S, 'rapier.expose')) m.ail.rapier = G.t + 4;
   /* 狂魔：怒氣、嗜血 */
   const rg = ascV(S, 'berserk.rage');
   if (rg && !o.quiet) (P.rage = Math.min(rg, (P.rage || 0) + 1)), (P.rageT = G.t);
@@ -424,6 +408,7 @@ function hitMob(m, c, ang, kb, o = {}) {
   }
   aggroPack(m);
   num(m.x, m.y - m.sz, r.d, r.crit ? 'crit' : r.el);
+  fxs(r.crit ? 'crit' : 'hit', m.x, m.y - m.sz * 0.3, m.sz * (r.crit ? 0.8 : 0.5));
   if (!o.quiet) {
     sparks(m.x, m.y - m.sz * 0.4, ang, r.crit ? 10 : 5, r.crit ? '#ffd166' : ELC[r.el]);
     hitstop(r.crit ? 0.085 : 0.04);
@@ -431,7 +416,8 @@ function hitMob(m, c, ang, kb, o = {}) {
     sfx(r.crit ? 'crit' : 'hit');
     if (ST.loh) P.hp = Math.min(ST.hp, P.hp + ST.loh);
   }
-  if (c.leech) P.hp = Math.min(ST.hp, P.hp + r.d * c.leech);
+  /* 吸血：1 秒內回完；同時只有一筆（取回得最快的） */
+  if (c.leech && (!P.lch || P.lch.t <= G.t || r.d * c.leech > P.lch.rate)) P.lch = { rate: r.d * c.leech, t: G.t + 1 };
   if (hasCls(S, 'pyro') && !o.noBurn) addBurn(m, r.d, 1 + coreV(S, 'pyro', 'kindle'));
   if (m.hp > 0 && m.burn && !m.boss) {
     const end = coreV(S, 'pyro', 'end');
@@ -456,9 +442,9 @@ function addBurn(m, hit, n) {
     for (const o of G.mobs) if (o.hp > 0 && dist(o, m) < 110 + o.r) dotHit(o, dmg, 'fire');
   }
 }
-/* 不吃暴擊的傷害（燃燒、爆燃、毒） */
+/* 不吃暴擊的傷害（燃燒、爆燃）：只吃抗性 */
 function dotHit(m, d, el, quiet) {
-  if (m.el === el) d *= 0.6;
+  if (el !== 'phys') d *= 1 - resOf(m, el) / 100;
   m.hp -= d;
   if (!quiet) num(m.x, m.y - m.sz, d, el);
   aggroPack(m);
@@ -479,8 +465,7 @@ function mobTick(m, dt) {
     }
     if (m.hp <= 0) return killMob(m), true;
   }
-  if (m.stun > 0) return (m.stun -= dt), true;
-  return false;
+  return ailTick(m, dt);
 }
 /* 怪物死掉：星火、寶石經驗 */
 function coreKill(m) {
@@ -505,7 +490,6 @@ function coreHurt(d) {
     Math.min(40, G.allies.length * coreV(S, 'tamer', 'guard'));
   d *= 1 - Math.min(60, red) / 100;
   P.lastHurt = G.t;
-  if (P.hp < ST.hp / 2 && ST.lowHpRed) d *= 1 - Math.min(50, ST.lowHpRed) / 100;
   if (P.es > 0) {
     const ab = Math.min(P.es, d);
     P.es -= ab;
@@ -528,7 +512,7 @@ function coreBlock() {
 }
 /* 以玩家為中心的範圍傷害（反擊、盾擊），用左鍵技能的數值 */
 function aoeHit(x, y, r, mult, col) {
-  const c = slotCfg(0) || { D: SKILLS.slash, mult: 1, crit: 0, critX: 0, fireAdd: 0, kb: 1 };
+  const c = slotCfg(0) || BASEC();
   fx({ k: 'ring', x, y, r, dur: 0.25, col });
   for (const m of G.mobs)
     if (m.hp > 0 && Math.hypot(m.x - x, m.y - y) < r + m.r)
@@ -567,7 +551,7 @@ function updAllies(dt) {
     if (t && d < t.r + 30 && w.cd <= 0) {
       w.cd = 0.8;
       fx({ k: 'claw', x: w.x, y: w.y, ang: angTo(w, t), r: 34, dur: 0.12 });
-      const c = w.c || slotCfg(0) || { D: SKILLS.slash, mult: 1, crit: 0, critX: 0, fireAdd: 0, kb: 1 },
+      const c = w.c || slotCfg(0) || BASEC(),
         mult = w.src === 'gem' ? c.mult * c.wolfM : 0.4 * (1 + coreV(S, 'tamer', 'pack') / 100);
       hitMob(t, c, angTo(w, t), 60, { quiet: 1, mult, noBurn: w.src === 'gem', minion: 1 });
     }
@@ -590,7 +574,11 @@ function updPools(dt) {
   G.pools = G.pools.filter(p => p.t < p.dur);
   for (const o of G.meteors) {
     o.t += dt;
-    if (o.t >= o.dur && !o.done) {
+    if (o.t >= o.dur && !o.done && o.curse) {
+      o.done = 1;
+      fxs('dark', o.x, o.y, o.r * 0.6);
+      for (const m of G.mobs) if (m.hp > 0 && Math.hypot(m.x - o.x, m.y - o.y) < o.r + m.r) curseMob(m, o.curse, o.lv);
+    } else if (o.t >= o.dur && !o.done) {
       o.done = 1;
       fx({ k: 'ring', x: o.x, y: o.y, r: o.r, dur: 0.4, col: '#ff6b3d' });
       shake(0.45);
@@ -604,8 +592,6 @@ function updPools(dt) {
 }
 function updSkills(dt) {
   if (P.shadowT > 0) P.shadowT -= dt;
-  /* 怒氣：3 秒沒打中，每秒掉 5 點 */
-  if (P.rage && G.t - P.rageT > 3) P.rage = Math.max(0, P.rage - 5 * dt);
   /* 騎士的護盾：4 秒沒受傷就充滿 */
   const wm = wardMax();
   if (wm && G.t - (P.lastHurt || -9) > 4) P.ward = wm;
@@ -649,9 +635,10 @@ function skillsEnter() {
 function speedMul() {
   const fz = (P.frenzy || []).filter(t => t > G.t).length;
   return (
-    (1 + (P.rage || 0) * 0.005) *
     (1 + (fz * ascV(S, 'berserk.frenzy')) / 100) *
-    (P.stepT > G.t ? 1 + ascV(S, 'rapier.step') / 100 : 1)
+    (P.stepT > G.t ? 1 + ascV(S, 'rapier.step') / 100 : 1) *
+    buffSpeed() *
+    Math.max(0.3, playerSlow())
   );
 }
 /* 移動速度：狂亂、一閃、刺客的影步 */
@@ -660,7 +647,9 @@ function moveMul() {
   return (
     (1 + (fz * ascV(S, 'berserk.frenzy')) / 100) *
     (P.flashT > G.t ? 1 + ascV(S, 'ronin.flash') / 100 : 1) *
-    (P.shadowT > 0 ? 1 + coreV(S, 'assassin', 'shadow') / 100 : 1)
+    (P.shadowT > 0 ? 1 + coreV(S, 'assassin', 'shadow') / 100 : 1) *
+    buffMove() *
+    playerSlow()
   );
 }
 /* 見切成功：浪人一閃（架勢滿）、刺劍姬反擊 */
@@ -668,7 +657,7 @@ function onMikiri() {
   if (ascV(S, 'ronin.flash')) (P.stance = stanceNeed()), (P.flashT = G.t + 2);
   const rp = ascV(S, 'rapier.riposte');
   if (rp) {
-    const c = slotCfg(0) || { D: SKILLS.slash, mult: 1, crit: 0, critX: 0, fireAdd: 0, kb: 1 };
+    const c = slotCfg(0) || BASEC();
     fx({ k: 'slash', x: P.x, y: P.y, ang: P.face, r: 130, arc: TAU * 0.9, dur: 0.2 });
     for (const m of G.mobs)
       if (m.hp > 0 && dist(m, P) < 140 + m.r) hitMob(m, c, angTo(P, m), 220, { quiet: 1, mult: rp, crit: 1 });

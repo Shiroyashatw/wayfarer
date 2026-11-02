@@ -331,7 +331,9 @@ function draw() {
       lv: ['#9df29d', 20],
       mikiri: ['#8fe0ff', 26],
       ev: ['#b8f0c8', 18],
-      mat: ['#d6b8ff', 15]
+      mat: ['#d6b8ff', 15],
+      /* 持續傷害：小、淡，跟擊中分開 */
+      dot: ['#c9a3a3', 12]
     }[n.c];
     CX.globalAlpha = 1 - Math.max(0, f - 0.6) / 0.4;
     CX.font = `700 ${Math.round(st[1] * pop)}px "Noto Sans TC", sans-serif`;
@@ -490,6 +492,19 @@ function drawMob(m) {
     }
   }
 }
+/* 球體：玩家身邊繞圈的小圓點（耐力紅、狂怒綠、暴擊藍） */
+const CHGC = { e: '#ff6b5b', f: '#7be08a', p: '#6cb8ff' };
+function drawCharges() {
+  const ds = [];
+  for (const k of ['e', 'f', 'p']) for (let i = chgN(k); i > 0; i--) ds.push(CHGC[k]);
+  ds.forEach((c, i) => {
+    const a = G.t * 2.4 + (i * TAU) / ds.length;
+    CX.fillStyle = c;
+    CX.beginPath();
+    CX.arc(P.x + Math.cos(a) * 26, P.y - 34 + Math.sin(a) * 9, 4, 0, TAU);
+    CX.fill();
+  });
+}
 function drawHero() {
   shadow(P.x, P.y, 18);
   const a = G.t < P.iuntil ? 0.8 : 1,
@@ -518,6 +533,7 @@ function drawHero() {
     else heroCell(0, col, P.x, P.y, false, a);
   }
   if (P.hurtT > 0.25) heroCell(0, dirCol(P.face), P.x, P.y, false, 0.6, { white: 1 });
+  drawCharges();
   /* 見切後的下一擊：刀光 */
   if (P.critNext) {
     CX.strokeStyle = `rgba(143,224,255,${0.5 + 0.3 * Math.sin(G.t * 12)})`;
@@ -527,6 +543,8 @@ function drawHero() {
     CX.stroke();
   }
 }
+const FXI = {};
+const fxImg = n => FXI[n] || Object.assign((FXI[n] = new Image()), { src: `img/fx/${n}.png?v=${VER}` });
 function drawFx() {
   for (const o of G.fx) {
     const f = o.t / o.dur;
@@ -607,6 +625,24 @@ function drawFx() {
       CX.beginPath();
       CX.ellipse(o.x, o.y - f * 40, 26 + f * 20, 10 + f * 6, 0, 0, TAU);
       CX.stroke();
+    } else if (o.k === 'sh') {
+      /* pixelfx 序列圖：照時間挑一格，對齊原圖的中心點 */
+      const S = FXS[o.n],
+        im = fxImg(o.n);
+      if (im.naturalWidth) {
+        const i = Math.min(S.n - 1, Math.floor(f * S.n));
+        CX.drawImage(
+          im,
+          (i % S.cols) * S.w,
+          Math.floor(i / S.cols) * S.h,
+          S.w,
+          S.h,
+          o.x - S.ox * o.s,
+          o.y - S.oy * o.s,
+          S.w * o.s,
+          S.h * o.s
+        );
+      }
     } else if (o.k === 'mikiri') {
       CX.globalAlpha = 1 - f;
       CX.strokeStyle = '#8fe0ff';

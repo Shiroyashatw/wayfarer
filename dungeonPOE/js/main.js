@@ -80,6 +80,23 @@ function migrate(s) {
   /* 0.2.6：舊裝備補上品質 0、孔 0、潛能 3（不重骰，免得讀檔洗出好底材） */
   for (const it of [...Object.values(o.eq), ...o.inv.items, ...o.stash.items])
     if (it && !it.gem && it.q == null) Object.assign(it, { q: 0, so: 0, pot: 3 });
+  /* 0.2.7（存檔 14）：暴擊詞分成武器的「暴擊率 +」（本地）和其他部位的「暴擊率提高」；護身符的物理傷害改成「物理傷害提高」；
+     數值照同一個階級換到新的範圍（不重骰） */
+  if (o.v < 14) {
+    for (const it of [...Object.values(o.eq), ...o.inv.items, ...o.stash.items]) {
+      if (!it || it.gem || !it.a) continue;
+      const wpn = baseOf(it).k === 'weapon';
+      for (const a of it.a) {
+        const k = a.k === 'crit' && !wpn ? 'critInc' : a.k === 'dmgP' && baseOf(it).k === 'amulet' ? 'physP' : a.k;
+        if (k !== a.k || (a.k === 'crit' && wpn)) {
+          const [lo, hi] = tierRange(k, a.T || 12);
+          Object.assign(a, { k, v: Math.round((lo + hi) / 2) });
+        }
+      }
+    }
+    o.charms = [null, null, null];
+    o.v = 14;
+  }
   /* 飛刃、千本櫻改成要拿短刀：裝著這兩招的，送一把短刀到背包（只送一次） */
   if (!o.gotDagger && o.skills.some(k => k.a && ['blade', 'storm'].includes(k.a.gem))) {
     o.gotDagger = 1;

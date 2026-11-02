@@ -10,7 +10,7 @@ let S;
 /* 存檔版本 10 是 0.2.0（重製：0.1 的存檔不沿用） */
 function newGame() {
   const s = {
-    v: 13,
+    v: 14,
     name: '女忍者',
     lv: 1,
     xp: 0,
@@ -33,6 +33,7 @@ function newGame() {
   s.asc = null;
   s.at = [];
   s.auras = Array(AURA_SLOTS).fill(null);
+  s.charms = [null, null, null];
   s.eq.chest = mkItem('c_leather', 1, 0);
   s.mat = newMat();
   s.lib = ['slash', 'swallow', 'whirl'];
@@ -274,6 +275,9 @@ function addProg(m) {
   const p = floorNear(P.x, P.y, 260, 420, 60) || floorNear(P.x, P.y, 120, 260, 50) || { x: P.x + 1, y: P.y };
   const b = spawnMob(bossOf(G.mapT), p.x, p.y, 99, false);
   b.boss = 1;
+  b.hp = b.mhp = b.hp * bossHpMul(G.mapT || 1);
+  b.dmg *= BOSS_DMG;
+  mobDef(b, G.mapT || 1);
   b.aggro = 1;
   b.cd = 1.2;
   fx({ k: 'ring', x: p.x, y: p.y, r: 160, dur: 0.6, col: '#ff6b3d' });
@@ -312,6 +316,7 @@ function spawnMob(D, x, y, pack, elite) {
     ph: Math.random() * TAU
   };
   o.mhp = o.hp;
+  mobDef(o, G.mapT || 1);
   G.mobs.push(o);
   return o;
 }
@@ -336,9 +341,29 @@ function shake(a) {
 function num(x, y, v, c, txt) {
   G.nums.push({ x: x + rnd(-8, 8), y, v: Math.round(v), c, t: 0, txt });
 }
+/* 圓環、電弧、死亡、補血這些舊特效，順便疊一張 pixelfx 的序列圖（圓環留著，看得出範圍） */
+const RINGFX = {
+  '#ff8a4c': 'boom',
+  '#ff6b3d': 'boom',
+  '#ff8a5b': 'boom',
+  '#8fd6ff': 'frost',
+  '#b28dff': 'dark',
+  '#c38bff': 'dark',
+  '#fff3d6': 'slam'
+};
 function fx(o) {
   o.t = 0;
   G.fx.push(o);
+  if (o.k === 'ring') fxs(RINGFX[o.col || '#fff3d6'], o.x, o.y, o.r);
+  else if (o.k === 'zap') fxs('zap', o.x2, o.y2);
+  else if (o.k === 'die') fxs('poof', o.x, o.y, o.sz * 0.5);
+  else if (o.k === 'heal' || o.k === 'lvup') fxs(o.k, o.x, o.y);
+  else if (o.k === 'mikiri') fxs('blink', o.x, o.y);
+}
+/* 播一張序列圖（js/fxsheets.js）；r 是想要的半徑，照原圖的半徑縮放 */
+function fxs(n, x, y, r, o) {
+  const S = typeof FXS !== 'undefined' && FXS[n];
+  if (S) G.fx.push({ k: 'sh', n, x, y, s: r ? r / S.rad : 1, t: 0, dur: S.n / S.fps, ...o });
 }
 function sparks(x, y, ang, n, col) {
   for (let i = 0; i < n; i++) {
@@ -351,7 +376,8 @@ function sparks(x, y, ang, n, col) {
 /* ---------- 玩家（技能在 skills.js） ---------- */
 function updPlayer(dt) {
   for (const k in P.cds) P.cds[k] = Math.max(0, P.cds[k] - dt);
-  P.mp = Math.min(ST.mp, P.mp + ST.mpReg * dt);
+  P.mp = Math.min(ST.mp, P.mp + ST.mpReg * (hasBuff('arcane') ? 1.2 : 1) * dt);
+  if (G.scene === 'map') baseTick(dt);
   if (ST.regen) P.hp = Math.min(ST.hp, P.hp + ST.regen * dt);
   if (P.heal > 0) {
     const h = Math.min(P.heal, ((ST.hp * FLASK.heal) / FLASK.t) * dt);
@@ -468,10 +494,8 @@ function drinkFlask() {
   fx({ k: 'heal', x: P.x, y: P.y, dur: 0.5 });
   sfx('drink');
 }
-/* 受傷：見切 → 無敵 → 格擋 → 護甲（物理）／抗性（元素） */
-/* 閃避（0.2.6）：閃避值越高越容易完全躲開攻擊，怪物越高階越難躲；最多 70% */
-const evadeOf = ev => (ev > 0 ? Math.min(0.7, ev / (ev + 120 + 30 * (G.mapT || 1))) : 0);
-/* noEv：躲不掉的（王的大範圍、地上的陷阱）；其他攻擊可以被閃避躲開 */
+/* 受傷：完美閃避 → 無敵 → 閃避 → 格擋 → 護甲（物理）／抗性 → 守護 → 能量護盾（公式在 combat.js 的 hurtCalc） */
+/* noEv：躲不掉的（王的紅光大招、地上的陷阱）；其他擊中都可以被閃避、格擋 */
 function hurtPlayer(d, src, el = 'phys', noEv) {
   if (G.state !== 'play') return;
   if (P.roll && P.roll.t < ROLL.perfect) {
@@ -486,16 +510,17 @@ function hurtPlayer(d, src, el = 'phys', noEv) {
     return;
   }
   if (G.t < P.iuntil) return;
-  if (!noEv && Math.random() < evadeOf(ST.ev)) return num(P.x, P.y - 60, 0, 'ev');
-  if (Math.random() * 100 < ST.block) {
+  const r = hurtCalc(d, src, el, noEv);
+  if (r.ev) return num(P.x, P.y - 60, 0, 'ev');
+  if (r.block) {
     num(P.x, P.y - 60, 0, 'block');
+    fxs('block', P.x, P.y);
     sfx('block');
     coreBlock();
     onBlock();
     return;
   }
-  if (el === 'phys') d *= 1 - ST.armor / (ST.armor + 10 * d + 1);
-  else d *= 1 - ST.res[el] / 100;
+  d = r.d;
   d = coreHurt(d);
   if (d <= 0) return;
   P.hp -= d;
@@ -516,7 +541,7 @@ function die() {
   P.hp = 0;
   G.state = 'dead';
   P.act = P.roll = null;
-  G.lostXp = Math.min(S.xp, Math.round(xpNeed(S.lv) * 0.1));
+  G.lostXp = Math.round(Math.min(S.xp, xpNeed(S.lv) * 0.1));
   S.xp -= G.lostXp;
   save();
   sfx('die');
@@ -535,7 +560,7 @@ function killMob(m) {
   fx({ k: 'die', x: m.x, y: m.y, sp: m.D.sp, sz: m.sz, dur: 0.45, flip: m.x > P.x });
   sparks(m.x, m.y - m.sz * 0.4, rnd(0, TAU), 14, m.boss ? '#ff6b3d' : '#c9b8a8');
   P.flask = Math.min(FLASK.n, P.flask + FLASK.perKill * (m.elite ? 3 : m.boss ? 10 : 1));
-  gainXp(m.D.xp * tierMul(t).hp * (m.elite ? 4 : 1));
+  gainXp(Math.max(1, Math.round(m.D.xp * tierMul(t).hp * (m.elite ? 4 : 1) * xpMul(S.lv, mobLv(t)))));
   /* 材料：粉、靈魂自動吸收；碎片、鑿孔石直接進材料頁，跳字提醒 */
   killMat(m, t).forEach((n, i) => num(m.x, m.y - m.sz * 0.6 - i * 18, 0, 'mat', '+' + n));
   /* 掉落：裝備、金幣、地圖碎片（越高階越多） */
@@ -559,7 +584,10 @@ function killMob(m) {
   if (fr) dropAt(m.x, m.y, { frag: fr });
   /* 技能寶石：小怪 2%、菁英 25%、王一定掉 */
   if (Math.random() < (m.boss ? 1 : m.elite ? 0.25 : 0.02)) dropAt(m.x, m.y, { it: dropGem(t) });
+  /* 護符：小怪 1%、菁英 15%、王 50% */
+  if (Math.random() < (m.boss ? 0.5 : m.elite ? 0.15 : 0.01)) dropAt(m.x, m.y, { it: dropCharm() });
   coreKill(m);
+  onKillBase(m);
   onKill();
   addProg(m);
   if (m.boss) bossDown(m);
@@ -707,7 +735,7 @@ function updMobs(dt) {
           vy += ((m.y - o.y) / dd) * 0.9;
         }
       }
-      moveBody(m, vx * D.spd * (m.chillT > G.t ? 0.65 : 1) * dt, vy * D.spd * (m.chillT > G.t ? 0.65 : 1) * dt);
+      moveBody(m, vx * D.spd * mobSpd(m) * dt, vy * D.spd * mobSpd(m) * dt);
       m.mv = want !== 0;
       if (m.cd <= 0 && dP < D.reach + P.r + 4) {
         m.st = 'wind';
@@ -781,7 +809,7 @@ function bossAI(m, dt, dP) {
     m.st = 'move';
     const a = angTo(m, P);
     if (dP > 90) {
-      const cs = m.chillT > G.t ? 0.65 : 1;
+      const cs = mobSpd(m);
       moveBody(m, Math.cos(a) * m.D.spd * cs * (rage < 1 ? 1.25 : 1) * dt, Math.sin(a) * m.D.spd * cs * dt);
     }
     m.mv = dP > 90;

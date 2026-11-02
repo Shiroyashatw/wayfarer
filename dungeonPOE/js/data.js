@@ -1,17 +1,170 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.6';
+const VER = '0.2.7';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
-/* ---------- 主角（等級每升一級：生命 +12、魔力 +3、物理傷害 +4%） ---------- */
-const HERO = { hp: 120, mp: 60, mpReg: 5, spd: 230, dmg: [6, 10], crit: 5, critX: 1.5 };
-const LVMAX = 60;
-const xpNeed = lv => Math.round(40 * Math.pow(lv, 1.7));
+/* ---------- 主角（0.2.7：等級上限 300；到 100 級前每級生命 +12、魔力 +3，不給傷害；100 級後只給天賦點） ---------- */
+const HERO = { hp: 120, mp: 60, mpReg: 5, spd: 230, dmg: [6, 10] };
+const LVMAX = 300;
+/* 100 級後每一級比前一級多 3% */
+const xpNeed = lv => Math.round(40 * Math.pow(Math.min(lv, 100), 1.7) * Math.pow(1.03, Math.max(0, lv - 100)));
 
 /* ---------- 技能寶石（0.2.2）：技能欄固定 5 格（左鍵、右鍵、Q、E、R），每格 1 顆技能＋2 顆輔助 ----------
    t 出手時間（吃攻速）、mp 魔力、cd 冷卻、m 傷害倍率、tags 標籤（輔助看標籤）、el 傷害全部轉成這個屬性、cls 主題（0.1 的職業） */
+/* 詛咒、標記的說明（效果的程式在 combat.js 的 CURSES／MARKS） */
+const CURSE_D = {
+  enfeeble: '造成的傷害更少 20～29%',
+  eleweak: '元素抗性 −40～59%',
+  tchains: '緩速 40～59%',
+  vuln: '護甲 −30～50%',
+  despair: '混沌抗性 −35～49%'
+};
+const MARK_N = {
+  sniper: '狙擊手標記',
+  freeze: '冰凍標記',
+  volt: '電壓標記',
+  hound: '獵犬標記',
+  assassin: '刺客標記',
+  poacher: '獵人標記',
+  warlord: '軍閥標記'
+};
+const MARK_D = {
+  sniper: '下一次被暴擊時多受 50% 傷害並給你狂怒球',
+  freeze: '被冰凍時給你附加冰冷的 buff',
+  volt: '被電殛時給你附加閃電的 buff',
+  hound: '流血會累積重暈，被重暈或死亡時血爆',
+  assassin: '死亡時給你暴擊球',
+  poacher: '被擊中時你回魔，死亡時給狂怒球並回血',
+  warlord: '被擊中時你回血，死亡時給耐力球'
+};
 const SKILLS = {
+  /* 0.2.7 詛咒（照 PoE2：丟一個範圍，1.5 秒後生效；每隻怪 1 個）與標記（單一目標，觸發時消耗；效果在 combat.js） */
+  cu_enfeeble: {
+    n: '衰弱',
+    ic: 'sk_enfeeble',
+    t: 0.35,
+    mp: 14,
+    m: 0,
+    r: 110,
+    curse: 'enfeeble',
+    tags: ['spell', 'curse', 'aoe'],
+    d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.enfeeble
+  },
+  cu_eleweak: {
+    n: '元素要害',
+    ic: 'sk_elemweak',
+    t: 0.35,
+    mp: 14,
+    m: 0,
+    r: 110,
+    curse: 'eleweak',
+    tags: ['spell', 'curse', 'aoe'],
+    d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.eleweak
+  },
+  cu_tchains: {
+    n: '時空鎖鏈',
+    ic: 'sk_chaoschain',
+    t: 0.35,
+    mp: 14,
+    m: 0,
+    r: 110,
+    curse: 'tchains',
+    tags: ['spell', 'curse', 'aoe'],
+    d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.tchains
+  },
+  cu_vuln: {
+    n: '脆弱',
+    ic: 'sk_weaken',
+    t: 0.35,
+    mp: 14,
+    m: 0,
+    r: 110,
+    curse: 'vuln',
+    tags: ['spell', 'curse', 'aoe'],
+    d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.vuln
+  },
+  cu_despair: {
+    n: '絕望',
+    ic: 'sk_despair',
+    t: 0.35,
+    mp: 14,
+    m: 0,
+    r: 110,
+    curse: 'despair',
+    tags: ['spell', 'curse', 'aoe'],
+    d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.despair
+  },
+  mk_sniper: {
+    n: MARK_N.sniper,
+    ic: 'sk_markshot',
+    t: 0.25,
+    mp: 8,
+    m: 0,
+    mark: 'sniper',
+    tags: ['spell', 'mark'],
+    d: '標記滑鼠附近的一隻怪：' + MARK_D.sniper
+  },
+  mk_freeze: {
+    n: MARK_N.freeze,
+    ic: 'sk_frostchain',
+    t: 0.25,
+    mp: 8,
+    m: 0,
+    mark: 'freeze',
+    tags: ['spell', 'mark'],
+    d: '標記滑鼠附近的一隻怪：' + MARK_D.freeze
+  },
+  mk_volt: {
+    n: MARK_N.volt,
+    ic: 'sk_chainlight',
+    t: 0.25,
+    mp: 8,
+    m: 0,
+    mark: 'volt',
+    tags: ['spell', 'mark'],
+    d: '標記滑鼠附近的一隻怪：' + MARK_D.volt
+  },
+  mk_hound: {
+    n: MARK_N.hound,
+    ic: 'sk_deathmark',
+    t: 0.25,
+    mp: 8,
+    m: 0,
+    mark: 'hound',
+    tags: ['spell', 'mark'],
+    d: '標記滑鼠附近的一隻怪：' + MARK_D.hound
+  },
+  mk_assassin: {
+    n: MARK_N.assassin,
+    ic: 'sk_assassinate',
+    t: 0.25,
+    mp: 8,
+    m: 0,
+    mark: 'assassin',
+    tags: ['spell', 'mark'],
+    d: '標記滑鼠附近的一隻怪：' + MARK_D.assassin
+  },
+  mk_poacher: {
+    n: MARK_N.poacher,
+    ic: 'ail_mark',
+    t: 0.25,
+    mp: 8,
+    m: 0,
+    mark: 'poacher',
+    tags: ['spell', 'mark'],
+    d: '標記滑鼠附近的一隻怪：' + MARK_D.poacher
+  },
+  mk_warlord: {
+    n: MARK_N.warlord,
+    ic: 'sk_doom',
+    t: 0.25,
+    mp: 8,
+    m: 0,
+    mark: 'warlord',
+    tags: ['spell', 'mark'],
+    d: '標記滑鼠附近的一隻怪：' + MARK_D.warlord
+  },
   /* 0.2.6 新增：每種武器、每種元素都有一招普攻 */
   thrust: {
     n: '突刺',
@@ -39,7 +192,7 @@ const SKILLS = {
     hits: [0.3, 0.6, 0.9],
     wt: ['staff'],
     tags: ['attack', 'melee'],
-    d: '3 下連打，第 3 下打中得到 1 顆力量球（最多 3 顆，每顆暴擊率 +5%，10 秒沒補就消失）'
+    d: '3 下連打，第 3 下打中得到 1 顆暴擊球（照 PoE2：球本身不加數值，給會消耗暴擊球的技能用，15 秒）'
   },
   split: {
     n: '散射',
@@ -312,24 +465,58 @@ const AURA_SLOTS = 3,
   SPIRIT0 = 30;
 /* 輔助寶石：need 要有其中一個標籤才生效 */
 const SUPPORTS = {
-  multi: { n: '多重投射', ic: 'sup_sp_multi', need: ['proj'], d: '投射物 +2，傷害 ×0.8' },
+  multi: { n: '多重投射', ic: 'sup_sp_multi', need: ['proj'], d: '投射物 +2，傷害更少 20%' },
   pierce: { n: '穿透', ic: 'sup_sp_pen', need: ['proj'], d: '投射物多穿透 3 隻' },
-  area: { n: '範圍擴大', ic: 'sup_sp_aoe', need: ['aoe', 'melee'], d: '範圍 ×1.4' },
-  fury: { n: '狂暴', ic: 'sup_sp_dmg', need: [], d: '傷害 ×1.35，魔力消耗 ×1.4' },
-  haste: { n: '連擊', ic: 'sup_sp_fastatk', need: ['attack', 'spell'], d: '出手速度 ×1.25' },
-  crit: { n: '致命', ic: 'sup_sp_crit', need: [], d: '暴擊率 +10%、暴擊傷害 +40%' },
-  leech: { n: '吸血', ic: 'sup_sp_leech', need: [], d: '造成傷害的 3% 回復生命' },
+  area: { n: '範圍擴大', ic: 'sup_sp_aoe', need: ['aoe', 'melee'], d: '範圍 +40%' },
+  fury: { n: '狂暴', ic: 'sup_sp_dmg', need: [], d: '傷害更多 35%，魔力消耗 ×1.4' },
+  haste: { n: '連擊', ic: 'sup_sp_fastatk', need: ['attack', 'spell'], d: '出手速度更快 25%' },
+  crit: { n: '致命', ic: 'sup_sp_crit', need: [], d: '暴擊率提高 50%、暴擊傷害加成 +40%' },
+  leech: { n: '吸血', ic: 'sup_sp_leech', need: [], d: '擊中傷害的 3% 吸取為生命（1 秒內回完）' },
   cdr: { n: '冷卻縮減', ic: 'sup_sp_cd', need: ['cd'], d: '冷卻 ×0.65' },
-  fireadd: { n: '附加火焰', ic: 'sup_sp_gfire', need: [], d: '多造成傷害 25% 的火焰傷害' },
-  heavy: { n: '重擊', ic: 'sup_sp_heavy', need: ['melee'], d: '擊退 ×2、傷害 ×1.15' },
-  pack: { n: '群狼', ic: 'sup_sp_pet', need: ['minion'], d: '多 1 隻狼、狼的傷害 ×1.3' },
+  fireadd: { n: '附加火焰', ic: 'sup_sp_gfire', need: [], d: '多造成傷害 25% 的火焰附加傷害' },
+  heavy: { n: '重擊', ic: 'sup_sp_heavy', need: ['melee'], d: '擊退 ×2、傷害更多 15%、重暈累積 +50%' },
+  pack: { n: '群狼', ic: 'sup_sp_pet', need: ['minion'], d: '多 1 隻狼、狼的傷害更多 30%' },
+  /* 0.2.7 異常與減益（企劃書 7.2）：機率、強度、特殊元素異常、曝露、破甲、電殛 */
+  bleed: {
+    n: '流血',
+    ic: 'sup_sp_bleed',
+    need: ['attack'],
+    d: '擊中時 25% 機率造成流血（每秒物理傷害的 15%，5 秒；怪物移動時加倍）'
+  },
+  poison: { n: '中毒', ic: 'sup_sp_poison', need: [], d: '擊中時 25% 機率造成中毒（每秒物理＋混沌傷害的 20%，2 秒）' },
+  poistack: { n: '劇毒', ic: 'sup_sp_ailx', need: [], d: '中毒可以多疊 2 層、異常強度提高 10%' },
+  ailmag: {
+    n: '異常強化',
+    ic: 'sup_sp_dot',
+    need: [],
+    d: '異常強度提高 30%（點燃、流血、中毒、冰緩、焦灼、易碎、殘喘）'
+  },
+  scorch: { n: '焦灼', ic: 'sup_sp_ign', need: [], d: '火焰擊中改成造成焦灼（元素抗性最多 −30%，4 秒）' },
+  brittle: { n: '易碎', ic: 'sup_sp_shatter', need: [], d: '冰冷擊中改成造成易碎（被擊中時暴擊率最多 +6%，4 秒）' },
+  sap: { n: '殘喘', ic: 'sup_sp_ctrl', need: [], d: '閃電擊中改成造成殘喘（造成的傷害最多少 20%，4 秒）' },
+  expose: { n: '曝露', ic: 'sup_sp_elefocus', need: [], d: '擊中時曝露：三種元素抗性 −20%，4 秒' },
+  armbreak: {
+    n: '破甲',
+    ic: 'sup_sp_brutal',
+    need: ['attack'],
+    d: '物理擊中削減護甲；削到 0＝完全破甲，受到的物理傷害提高 20%'
+  },
+  elec: { n: '電殛', ic: 'sup_sp_glight', need: [], d: '閃電擊中累積電殛：累滿不能行動 5 秒（王 1.5 秒）' },
+  wither: { n: '凋零', ic: 'sup_sp_wither', need: [], d: '混沌擊中造成凋零：每層受到的混沌傷害提高 5%，最多 10 層' },
+  blind: { n: '致盲', ic: 'ail_n_blind', need: [], d: '擊中時致盲：命中值少 20%，4 秒' },
+  arcane: {
+    n: '秘術增強',
+    ic: 'sup_sp_fastcast',
+    need: ['spell'],
+    d: '法術擊中時得到秘術增強（施法速度 +15%、魔力回復更多 20%，10 秒）'
+  },
   /* 轉換：技能改成丟陷阱／埋地雷／立圖騰，一顆技能只能插一個 */
   trapc: {
     n: '轉陷阱',
     ic: 'sup_sp_trap',
     need: ['spell', 'attack'],
     conv: 'trap',
-    d: '這個技能改成丟陷阱：敵人靠近才觸發，傷害 ×1.2'
+    d: '這個技能改成丟陷阱：敵人靠近才觸發，傷害更多 20%'
   },
   minec: {
     n: '轉地雷',
@@ -343,7 +530,7 @@ const SUPPORTS = {
     ic: 'sup_sp_totem',
     need: ['spell', 'attack'],
     conv: 'totem',
-    d: '這個技能改成立圖騰（8 秒）：圖騰替你自動施放，傷害 ×0.7'
+    d: '這個技能改成立圖騰（8 秒）：圖騰替你自動施放，傷害更少 30%'
   }
 };
 /* 寶石等級：上限 20、不能超過角色等級；每級傷害 +6%（輔助每級 +1%） */
@@ -353,6 +540,31 @@ const gemNeed = lv => Math.round(30 * lv * lv);
 /* ---------- 天賦樹（0.2.4，照 PoE＋漫步勇者）：中間挖空放昇華；18 條路線、每條「內段×外段」結構都不一樣；
    每個方向偏重一種體系、但小點會混搭隔壁的主題；沒有基石，大點都是全職業通用的強效果 ---------- */
 const STATN = {
+  life: ['最大生命', ''],
+  mana: ['最大魔力', ''],
+  armorF: ['護甲', ''],
+  evF: ['閃避', ''],
+  esF: ['能量護盾', ''],
+  evP: ['閃避', '%'],
+  blockInc: ['格擋率提高', '%'],
+  critInc: ['暴擊率提高', '%'],
+  atkP: ['攻擊傷害', '%'],
+  aoeP: ['範圍傷害', '%'],
+  physP: ['物理傷害', '%'],
+  pen: ['元素穿透', '%'],
+  ailMag: ['異常強度', '%'],
+  bleedCh: ['擊中時造成流血的機率', '%'],
+  poisonCh: ['擊中時造成中毒的機率', '%'],
+  poiStack: ['中毒疊層上限', ''],
+  impaleCh: ['持矛擊中時造成穿刺的機率', '%'],
+  armBreak: ['物理擊中會破甲', ''],
+  rageHit: ['近戰擊中時得到狂怒', ''],
+  powOnCrit: ['暴擊時得到暴擊球的機率', '%'],
+  arcaneHit: ['法術擊中時得到秘術增強的機率', '%'],
+  tailwind: ['暴擊時得到順風', ''],
+  onsKill: ['擊殺時得到猛攻的機率', '%'],
+  unholyKill: ['擊殺時得到邪力的機率', '%'],
+  castP: ['施法速度', '%'],
   hpP: ['生命', '%'],
   regen: ['每秒回復生命', ''],
   flask: ['藥水回復', '%'],
@@ -396,225 +608,227 @@ const STATN = {
   blood: ['技能改用生命施放（不耗魔力）', '']
 };
 /* 18 條路線的主題：sm 小點（輪流）、nt 大點（名字＋效果，全職業通用）；繞一圈，相鄰的主題會混搭 */
+/* 基礎能力點（0.2.7）：數值很低，有點加成又不會沒用 */
+const PT_BASE = [{ life: 10 }, { mana: 10 }, { armorF: 20 }, { evF: 20 }, { esF: 8 }];
 const PT_THEME = [
   {
     n: '生命',
     c: '#d9534f',
     ic: 'asc_s_heart',
-    sm: [{ hpP: 4 }, { hpP: 3, regen: 1 }],
+    sm: [{ regen: 2 }, { life: 10 }],
     nt: [
-      ['不屈', { hpP: 12, regen: 4 }],
-      ['血氣方剛', { hpP: 10, flask: 30 }],
-      ['生生不息', { regen: 12, hpP: 5 }]
+      ['不屈', { hpP: 3, regen: 6 }],
+      ['血氣方剛', { flask: 20, hpP: 2 }],
+      ['生生不息', { regen: 12 }]
     ]
   },
   {
     n: '護甲',
     c: '#b0835a',
     ic: 'asc_s_shield',
-    sm: [{ armorP: 10 }, { armorP: 6, hpP: 2 }],
+    sm: [{ armorP: 8 }],
     nt: [
-      ['鐵骨', { armorP: 35, resA: 5 }],
-      ['金剛', { armorP: 30, hpP: 6 }],
-      ['磐石', { armorP: 50, ms: -3 }]
+      ['鐵骨', { armorP: 25, resA: 3 }],
+      ['金剛', { armorP: 20, armBreak: 1 }],
+      ['磐石', { armorP: 40, ms: -3 }]
     ]
   },
   {
     n: '格擋',
     c: '#9aa7b8',
     ic: 'asc_s_anvil',
-    sm: [{ block: 2 }, { block: 1, armorP: 6 }],
+    sm: [{ blockInc: 4 }, { armorP: 8 }],
     nt: [
-      ['銅牆', { block: 6, armorP: 20 }],
-      ['以盾為劍', { block: 4, meleeP: 15 }],
-      ['不動如山', { block: 5, hpP: 8 }]
+      ['銅牆', { blockInc: 12, armorP: 10 }],
+      ['以盾為劍', { blockInc: 8, meleeP: 8 }],
+      ['不動如山', { blockInc: 15, hpP: 2 }]
     ]
   },
   {
     n: '近戰',
     c: '#e8a33d',
     ic: 'asc_s_sword',
-    sm: [{ meleeP: 6 }, { swordP: 6 }, { meleeP: 4, as: 2 }],
+    sm: [{ meleeP: 3 }],
     nt: [
-      ['斬鐵', { meleeP: 25, critX: 10 }],
-      ['劍意', { meleeP: 20, aoe: 8 }],
-      ['破甲', { meleeP: 22, dmgA: 5 }]
+      ['斬鐵', { meleeP: 12, critX: 5 }],
+      ['劍意', { meleeP: 10, rageHit: 1 }],
+      ['破甲', { meleeP: 15, as: 2 }]
     ]
   },
   {
     n: '矛',
     c: '#d9a066',
     ic: 'gear_weapon_9',
-    sm: [{ spearP: 6 }, { spearP: 4, as: 2 }],
+    sm: [{ spearP: 3 }],
     nt: [
-      ['穿刺', { spearP: 25, critX: 10 }],
-      ['長槍陣', { spearP: 20, aoe: 10 }],
-      ['擲矛', { spearP: 18, projP: 12 }]
+      ['穿刺', { spearP: 12, impaleCh: 25 }],
+      ['長槍陣', { spearP: 10, aoe: 8 }],
+      ['擲矛', { spearP: 10, projP: 5 }]
     ]
   },
   {
     n: '攻速',
     c: '#f2c14e',
     ic: 'asc_s_wind',
-    sm: [{ as: 3 }, { as: 2, ms: 1 }],
+    sm: [{ as: 1 }],
     nt: [
-      ['疾風', { as: 10, ms: 4 }],
-      ['連斬', { as: 12 }],
-      ['流水', { as: 8, cdr: 4 }]
+      ['疾風', { as: 5 }],
+      ['連斬', { as: 4, ms: 3 }],
+      ['流水', { as: 2, onsKill: 25 }]
     ]
   },
   {
     n: '暴擊傷害',
     c: '#ffd166',
     ic: 'asc_s_stars',
-    sm: [{ critX: 8 }, { critX: 5, crit: 1 }],
+    sm: [{ critX: 4 }],
     nt: [
-      ['致命', { critX: 35 }],
-      ['要害', { critX: 25, crit: 3 }],
-      ['斬首', { critX: 30, meleeP: 8 }]
+      ['致命', { critX: 12 }],
+      ['要害', { critX: 10, critInc: 8 }],
+      ['斬首', { critX: 15, meleeP: 4 }]
     ]
   },
   {
     n: '身法',
     c: '#7bd36b',
     ic: 'asc_s_feather',
-    sm: [{ ms: 2 }, { ms: 1, rollCd: 4 }],
+    sm: [{ ms: 2 }, { evP: 8 }],
     nt: [
-      ['輕功', { ms: 8, rollCd: 15 }],
-      ['殘影', { ms: 6, as: 6 }],
-      ['踏雪', { rollCd: 20, resA: 6 }]
+      ['輕功', { ms: 4, rollCd: 15 }],
+      ['殘影', { evP: 25, tailwind: 1 }],
+      ['踏雪', { rollCd: 15, evP: 15 }]
     ]
   },
   {
     n: '棍',
     c: '#b5d36b',
     ic: 'gear_weapon_4',
-    sm: [{ staffP: 6 }, { staffP: 4, ms: 1 }],
+    sm: [{ staffP: 3 }],
     nt: [
-      ['武僧', { staffP: 22, as: 6 }],
-      ['迴棍', { staffP: 20, aoe: 10 }],
-      ['禪定', { staffP: 15, es: 25, resA: 5 }]
+      ['武僧', { staffP: 12, as: 2 }],
+      ['迴棍', { staffP: 10, aoe: 10 }],
+      ['禪定', { staffP: 8, powOnCrit: 20 }]
     ]
   },
   {
     n: '投射物',
     c: '#8fe0a5',
     ic: 'asc_s_bolt',
-    sm: [{ projP: 6 }, { projP: 4, crit: 1 }],
+    sm: [{ projP: 3 }],
     nt: [
-      ['鷹眼', { projP: 25, crit: 3 }],
-      ['穿雲', { projP: 22, as: 5 }],
-      ['連珠', { projP: 20, critX: 15 }]
+      ['鷹眼', { projP: 12, critInc: 5 }],
+      ['穿雲', { projP: 10, as: 2 }],
+      ['連珠', { projP: 20, closeP: -30 }]
     ]
   },
   {
     n: '陷阱地雷',
     c: '#a3d977',
     ic: 'asc_s_spark',
-    sm: [{ unitP: 7 }, { unitP: 4, cdr: 2 }],
+    sm: [{ unitP: 3 }],
     nt: [
-      ['機關師', { unitP: 25, units: 1 }],
-      ['連環爆', { unitP: 20, aoe: 10 }],
-      ['伏擊', { unitP: 22, crit: 4 }]
+      ['機關師', { unitP: 10, units: 1 }],
+      ['連環爆', { unitP: 10, aoe: 8 }],
+      ['伏擊', { unitP: 12, critInc: 5 }]
     ]
   },
   {
     n: '暴擊率',
     c: '#fff08a',
     ic: 'asc_s_eye',
-    sm: [{ crit: 2 }, { crit: 1, critX: 4 }],
+    sm: [{ critInc: 6 }],
     nt: [
-      ['精準', { crit: 6, critX: 15 }],
-      ['心眼', { crit: 8 }],
-      ['洞察', { crit: 5, projP: 10 }]
+      ['精準', { critInc: 12 }],
+      ['心眼', { critInc: 10, critX: 5 }],
+      ['洞察', { critInc: 8, powOnCrit: 10 }]
     ]
   },
   {
     n: '圖騰砲台',
     c: '#c9a46b',
     ic: 'asc_s_rune',
-    sm: [{ unitP: 6 }, { unitP: 4, armorP: 6 }],
+    sm: [{ unitP: 3 }],
     nt: [
-      ['堡壘工匠', { unitP: 25, units: 1 }],
-      ['砲陣', { unitP: 22, projP: 10 }],
-      ['祖靈', { unitP: 20, hpP: 6 }]
+      ['堡壘工匠', { unitP: 10, units: 1 }],
+      ['砲陣', { unitP: 12, projP: 4 }],
+      ['祖靈', { unitP: 10, hpP: 2 }]
     ]
   },
   {
     n: '召喚',
     c: '#9df29d',
     ic: 'asc_s_paw',
-    sm: [{ minionP: 8 }, { minionP: 5, hpP: 2 }],
+    sm: [{ minionP: 3 }],
     nt: [
-      ['御獸', { minionP: 30 }],
-      ['群狼', { minionP: 25, spirit: 15 }],
-      ['魂契', { minionP: 22, cdr: 5 }]
+      ['御獸', { minionP: 12 }],
+      ['群狼', { minionP: 10, spirit: 10 }],
+      ['魂契', { minionP: 10, cdr: 5 }]
     ]
   },
   {
     n: '元素',
     c: '#ff8a4c',
     ic: 'asc_s_flame',
-    sm: [{ eleP: 6 }, { eleP: 4, resA: 2 }],
+    sm: [{ eleP: 3 }],
     nt: [
-      ['燎原', { eleP: 25 }],
-      ['共鳴', { eleP: 20, aoe: 8 }],
-      ['元素親和', { eleP: 18, resA: 10 }]
+      ['燎原', { eleP: 12 }],
+      ['共鳴', { eleP: 8, ailMag: 20 }],
+      ['元素親和', { eleP: 8, pen: 10 }]
     ]
   },
   {
     n: '法術',
     c: '#8fd6ff',
     ic: 'asc_s_spark',
-    sm: [{ spellP: 6 }, { spellP: 4, mpP: 2 }],
+    sm: [{ spellP: 3 }],
     nt: [
-      ['天雷', { spellP: 25 }],
-      ['咒法', { spellP: 20, cdr: 5 }],
-      ['秘術', { spellP: 18, es: 30 }]
+      ['天雷', { spellP: 12 }],
+      ['咒法', { spellP: 8, castP: 8 }],
+      ['秘術', { spellP: 8, arcaneHit: 20 }]
     ]
   },
   {
     n: '範圍',
     c: '#b7e3ff',
     ic: 'asc_s_stars',
-    sm: [{ aoe: 4 }, { aoe: 3, dmgA: 2 }],
+    sm: [{ aoe: 3 }],
     nt: [
-      ['擴散', { aoe: 15 }],
-      ['震波', { aoe: 12, meleeP: 10 }],
-      ['星爆', { aoe: 12, spellP: 10 }]
+      ['擴散', { aoe: 12 }],
+      ['震波', { aoe: 8, aoeP: 8 }],
+      ['星爆', { aoe: 8, spellP: 5 }]
     ]
   },
   {
     n: '能量護盾',
     c: '#7aa8ff',
     ic: 'asc_s_drop',
-    sm: [{ esP: 8 }, { es: 10 }, { esP: 5, esRec: 5 }],
+    sm: [{ esP: 8 }],
     nt: [
-      ['靈障', { esP: 30, es: 20 }],
-      ['快速充能', { esRec: 40, esP: 10 }],
-      ['魂盾', { esP: 25, resA: 6 }]
+      ['靈障', { esP: 25, esF: 15 }],
+      ['快速充能', { esRec: 30, esP: 10 }],
+      ['魂盾', { esP: 20, resA: 3 }]
     ]
   },
   {
     n: '精魄光環',
     c: '#c38bff',
     ic: 'asc_s_lotus',
-    sm: [{ auraEff: 4 }, { spirit: 5 }],
+    sm: [{ auraEff: 3 }],
     nt: [
-      ['靈識', { spirit: 20 }],
-      ['聖域', { auraEff: 20, spirit: 10 }],
-      ['共感', { auraEff: 15, resA: 6 }]
+      ['靈識', { spirit: 15 }],
+      ['聖域', { auraEff: 10, spirit: 5 }],
+      ['共感', { auraEff: 8, mpReg: 15 }]
     ]
   },
   {
     n: '魔力冷卻',
     c: '#b28dff',
     ic: 'asc_s_book',
-    sm: [{ mpP: 5 }, { mpReg: 10 }, { cdr: 2 }],
+    sm: [{ mpReg: 8 }, { mpP: 5 }],
     nt: [
-      ['冥想', { mpP: 15, mpReg: 25 }],
+      ['冥想', { mpP: 15, mpReg: 15 }],
       ['迅捷施術', { cdr: 10 }],
-      ['血之代價', { blood: 1, hpP: 10 }]
+      ['血之代價', { blood: 1, hpP: 3 }]
     ]
   }
 ];
@@ -654,6 +868,14 @@ const PT_ICONS = (() => {
   ];
 })();
 const PT_STAT_IC = {
+  life: 'asc_s_heart',
+  mana: 'asc_s_book',
+  armorF: 'asc_s_shield',
+  evF: 'asc_s_feather',
+  esF: 'asc_s_drop',
+  evP: 'asc_s_feather',
+  blockInc: 'asc_s_anvil',
+  critInc: 'asc_s_eye',
   hpP: 'asc_s_heart',
   regen: 'asc_s_potion',
   armorP: 'asc_s_shield',
@@ -979,31 +1201,36 @@ const PTREE = (() => {
     const T = PT_THEME[ti],
       sj = (ti + (k % 2 ? 1 : NR - 1)) % NR,
       side = PT_THEME[sj];
-    return k % 10 < 7 ? { s: T.sm[k % T.sm.length], th: ti } : { s: side.sm[k % side.sm.length], th: sj };
+    /* 0.2.7：每 10 點有 1 點是基礎能力（取代 PoE2 的「+5 屬性」點；一點只給一種） */
+    if (k % 10 === 9) return { s: PT_BASE[Math.floor(k / 10) % PT_BASE.length], th: ti };
+    return k % 10 < 6 ? { s: T.sm[k % T.sm.length], th: ti } : { s: side.sm[k % side.sm.length], th: sj };
   };
   const near = (x, y, d) => N.some(o => Math.hypot(o.x - x, o.y - y) < d);
   const SUFFIX = ['之心', '之道', '極意', '奧義', '秘訣', '真髓', '之魂', '心法', '之印', '之誓', '領悟', '妙法'],
     CONDS = [
-      { lowHp: 30 },
-      { fullHp: 20 },
-      { esUp: 20 },
-      { afterRoll: 25 },
-      { bossP: 20 },
-      { closeP: 20 },
-      { farP: 20 },
-      { killHeal: 8 },
-      { lowHpRed: 12 },
-      { crit: 4 },
-      { as: 6 },
-      { hpP: 8 },
-      { resA: 8 },
-      { ms: 5 },
-      { aoe: 10 },
-      { cdr: 6 },
-      { spirit: 10 },
-      { es: 30 }
+      { lowHp: 15 },
+      { fullHp: 12 },
+      { esUp: 12 },
+      { afterRoll: 12 },
+      { bossP: 12 },
+      { closeP: 12 },
+      { farP: 12 },
+      { killHeal: 4 },
+      { critInc: 10 },
+      { as: 3 },
+      { hpP: 2 },
+      { resA: 2 },
+      { ms: 2 },
+      { aoe: 5 },
+      { cdr: 3 },
+      { spirit: 4 },
+      { esF: 10 },
+      { onsKill: 8 },
+      { ailMag: 8 },
+      { bleedCh: 5 },
+      { poisonCh: 5 }
     ],
-    COST = [{ hpP: -8 }, { ms: -6 }, { resA: -8 }, { armorP: -20 }, { mpP: -12 }],
+    COST = [{ hpP: -3 }, { ms: -4 }, { resA: -6 }, { armorP: -15 }, { mpP: -10 }],
     used = new Set();
   let ntK = 0;
   /* 第一個大點用手寫的（名字有特色），之後的照「主屬性 × 深度＋條件」組出來 */
@@ -1015,9 +1242,9 @@ const PTREE = (() => {
       if (!used.has(n)) return used.add(n), { n, s: st };
     }
     const [mk] = Object.keys(T.sm[0]),
-      base = T.sm[0][mk] * 4 * depth,
+      base = T.sm[0][mk] * 2.5 * depth,
       power = k % 4 === 3,
-      st = { [mk]: Math.round(base * (power ? 2.2 : 1)) };
+      st = { [mk]: Math.round(base * (power ? 1.6 : 1)) };
     const extra = power ? COST[k % COST.length] : CONDS[(k * 7 + ti * 3) % CONDS.length];
     for (const ck in extra) st[ck] = (st[ck] || 0) + Math.round(extra[ck] * (power ? 1 : depth));
     const words = [T.n, ...T.nt.map(x => x[0])];
@@ -1229,7 +1456,9 @@ const PTREE = (() => {
   return { N, E, I, ADJ, ARC };
 })();
 const PT_START = ['g0', 'g1', 'g2', 'g3', 'g4', 'g5'];
-const ptPoints = lv => lv - 1;
+/* 天賦點：每級 1 點、每到 10 的倍數再 +2（到 100 級共 119）；100 級後每 10 級 1 點 */
+const ptPoints = lv =>
+  Math.min(lv, 100) - 1 + 2 * Math.floor(Math.min(lv, 100) / 10) + Math.max(0, Math.floor((lv - 100) / 10));
 
 /* ---------- 昇華（0.2.3，照 PoE）：藏身處的昇華石碑選，點在天賦樹中間挖空的地方 ----------
    一開始 2 點，第一次打倒階級 6、12、16 的王各 +2，共 8 點；嚴格 4 小 4 大（一小一大交錯，路線起點與中間都有分岔） */
@@ -1504,7 +1733,7 @@ const KINDS = {
   helm: {
     n: '頭盔',
     sz: [2, 2],
-    aff: ['life', 'armor', 'ev', 'mp', 'crit', 'aoe', 'resF', 'resC', 'resL', 'resX', 'es', 'spirit']
+    aff: ['life', 'armor', 'ev', 'mp', 'critInc', 'aoe', 'resF', 'resC', 'resL', 'resX', 'es', 'spirit']
   },
   chest: {
     n: '胸甲',
@@ -1529,7 +1758,7 @@ const KINDS = {
       'cold',
       'light',
       'as',
-      'crit',
+      'critInc',
       'regen',
       'resF',
       'resC',
@@ -1539,11 +1768,11 @@ const KINDS = {
       'es'
     ]
   },
-  quiver: { n: '箭袋', sz: [2, 3], aff: ['life', 'flat', 'fire', 'cold', 'light', 'as', 'crit', 'critX', 'resA'] },
+  quiver: { n: '箭袋', sz: [2, 3], aff: ['life', 'flat', 'fire', 'cold', 'light', 'as', 'critInc', 'critX', 'resA'] },
   amulet: {
     n: '護身符',
     sz: [1, 1],
-    aff: ['life', 'mp', 'dmgP', 'crit', 'critX', 'aoe', 'regen', 'resA', 'es', 'spirit', 'spellP']
+    aff: ['life', 'mp', 'physP', 'critInc', 'critX', 'aoe', 'regen', 'resA', 'es', 'spirit', 'spellP']
   }
 };
 /* 底材：lv 從幾階開始掉、ic 圖示、b 固定數值（武器：物理傷害、攻速；防具：護甲；飾品：固定詞綴） */
@@ -1819,7 +2048,9 @@ const BASEI = Object.fromEntries(BASES.map(b => [b.id, b]));
 
 /* 詞綴：p 前綴（1）／後綴（0）、r：[T12 的最小, T1 的最大]、add 是「附加 a～b」兩個數 */
 const AFF = {
-  dmgP: { p: 1, n: '物理傷害 +{}%', r: [10, 170] },
+  /* 武器上的 dmgP、flat、元素附加、as、crit 是本地詞（只改這把武器，stats 處理） */
+  dmgP: { p: 1, n: '物理傷害提高 {}%', r: [10, 170] },
+  physP: { p: 1, n: '物理傷害提高 {}%', r: [5, 30] },
   flat: { p: 1, n: '附加 {} 物理傷害', r: [1, 28], add: 1 },
   fire: { p: 1, n: '附加 {} 火焰傷害', r: [2, 40], add: 1 },
   cold: { p: 1, n: '附加 {} 冰冷傷害', r: [2, 36], add: 1 },
@@ -1829,10 +2060,11 @@ const AFF = {
   armor: { p: 1, n: '護甲 +{}', r: [6, 260] },
   ev: { p: 1, n: '閃避 +{}', r: [6, 260] },
   mp: { p: 1, n: '最大魔力 +{}', r: [6, 70] },
-  block: { p: 1, n: '格擋 +{}%', r: [2, 12] },
+  block: { p: 1, n: '格擋率 +{}%', r: [2, 12] },
   as: { p: 0, n: '攻擊速度 +{}%', r: [4, 28] },
-  crit: { p: 0, n: '暴擊率 +{}%', r: [2, 30] },
-  critX: { p: 0, n: '暴擊傷害 +{}%', r: [8, 70] },
+  crit: { p: 0, n: '暴擊率 +{}%', r: [1, 5] },
+  critInc: { p: 0, n: '暴擊率提高 {}%', r: [10, 40] },
+  critX: { p: 0, n: '暴擊傷害加成 +{}%', r: [8, 70] },
   regen: { p: 0, n: '每秒回復 {} 生命', r: [1, 30] },
   loh: { p: 0, n: '擊中回復 {} 生命', r: [1, 20] },
   ms: { p: 0, n: '移動速度 +{}%', r: [6, 32] },
@@ -1844,7 +2076,7 @@ const AFF = {
   resX: { p: 0, n: '混沌抗性 +{}%', r: [5, 35] },
   resA: { p: 0, n: '全部抗性 +{}%', r: [3, 18] },
   es: { p: 1, n: '能量護盾 +{}', r: [6, 140] },
-  spellP: { p: 1, n: '法術傷害 +{}%', r: [8, 90] },
+  spellP: { p: 1, n: '法術傷害提高 {}%', r: [8, 90] },
   spirit: { p: 0, n: '精魄 +{}', r: [4, 30] }
 };
 /* T12（最低）～T1（最高）各一段；物品等級越高，能出現的最高階越高 */
@@ -1860,7 +2092,8 @@ const RARN = ['普通', '魔法', '稀有'];
 const NAME_A = ['血', '鴉', '霜', '雷', '屍', '魂', '龍', '狼', '影', '骨', '焰', '夜', '鬼', '蛇', '鐵', '星'];
 const NAME_B = ['之牙', '之爪', '之握', '之心', '之怒', '之歌', '之嚎', '之印', '之刃', '之殼', '之眼', '之息'];
 
-/* ---------- 怪物：hp／dmg 是階級 1 的值，r 碰撞半徑、sz 畫的高度、ai 行為、el 屬性（抗自己的屬性） ---------- */
+/* ---------- 怪物：hp／dmg 是階級 1 的值，r 碰撞半徑、sz 畫的高度、ai 行為、el 屬性（抗自己的屬性 40%）、
+   ail 擊中會上的異常（bleed／poison，企劃書 7.2）、arm 護甲係數（預設 0.3，重甲 1） ---------- */
 const MOBS = {
   slime: {
     n: '綠史萊姆',
@@ -1878,6 +2111,7 @@ const MOBS = {
   },
   dog: {
     n: '流浪狗',
+    ail: 'bleed',
     sp: 'm_straydog',
     hp: 26,
     dmg: 8,
@@ -1923,6 +2157,7 @@ const MOBS = {
   },
   wolf: {
     n: '雪原狼',
+    ail: 'bleed',
     sp: 'm_snowwolf',
     hp: 30,
     dmg: 9,
@@ -1954,6 +2189,7 @@ const MOBS = {
   },
   shroom: {
     n: '毒菇',
+    ail: 'poison',
     sp: 'm_mushroom',
     hp: 40,
     dmg: 9,
@@ -1969,6 +2205,7 @@ const MOBS = {
   },
   bear: {
     n: '黑熊',
+    arm: 1,
     sp: 'm_blackbear',
     hp: 95,
     dmg: 24,

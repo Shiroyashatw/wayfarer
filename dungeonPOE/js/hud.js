@@ -113,12 +113,16 @@ function hudTick() {
   if (HV.ward !== wv) $('ohp').style.setProperty('--w', (HV.ward = wv));
   const mech = [
     hasCls(S, 'ronin') ? `架勢 ${P.stance}/${stanceNeed()}` : '',
-    ascV(S, 'berserk.rage') ? `怒氣 ${Math.floor(P.rage || 0)}` : '',
+    P.rage ? `狂怒 ${Math.floor(P.rage)}` : '',
     hasCls(S, 'knight') ? `盾勢 ${P.guard}` : '',
     G.allies && G.allies.length ? `狼 ${G.allies.length}` : '',
     G.units && G.units.length ? `場上 ${G.units.length}` : '',
     ST.auraOn.length ? `精魄 ${ST.spiritUsed}/${ST.spirit}` : '',
-    P.pcT > G.t && P.pc ? `力量球 ${P.pc}` : ''
+    ...Object.keys(BUFF)
+      .filter(hasBuff)
+      .map(k => BUFF[k].n),
+    P.tail ? `順風 ${Math.ceil(P.tail)}` : '',
+    ...ailNames()
   ]
     .filter(Boolean)
     .join(' · ');
@@ -222,17 +226,33 @@ const EQPOS = {
 function invHTML() {
   const s = ST,
     z = C / 36,
-    eqs = EQS.map(e => {
-      const [x, y, w, h] = EQPOS[e.k].map(v => Math.round(v * z)),
-        it = S.eq[e.k];
-      return `<div class="eqs ${it ? 'r' + it.r : ''}" data-eq="${e.k}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${it ? itemHTML(it, 'eq', e.k) : `<small>${e.n}</small>`}</div>`;
-    }).join('');
-  const res = RESK.map(r => `<span class="res-${r}">${ELN[r]}抗 <b>${s.res[r]}%</b></span>`).join('');
+    eqs =
+      EQS.map(e => {
+        const [x, y, w, h] = EQPOS[e.k].map(v => Math.round(v * z)),
+          it = S.eq[e.k];
+        return `<div class="eqs ${it ? 'r' + it.r : ''}" data-eq="${e.k}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${it ? itemHTML(it, 'eq', e.k) : `<small>${e.n}</small>`}</div>`;
+      }).join('') +
+      /* 護符槽：腰帶給幾格就開幾格（照 PoE2） */
+      [0, 1, 2]
+        .map(i => {
+          const [x, y, w, h] = [204 + i * 40, 196, 36, 36].map(v => Math.round(v * z)),
+            it = S.charms[i],
+            lock = i >= charmSlots(S);
+          return `<div class="eqs ${it ? 'r' + it.r : ''} ${lock ? 'lock' : ''}" data-eq="ch${i}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${it ? itemHTML(it, 'eq', 'ch' + i) : `<small>${lock ? '🔒' : '護符'}</small>`}</div>`;
+        })
+        .join('');
+  /* 抗性：顯示扣完這一階懲罰的（照 PoE2，上限是最大抗性） */
+  const pen = G.scene === 'map' ? resPen(mobLv(G.mapT || 1)) : 0,
+    res =
+      RESK.map(
+        r =>
+          `<span class="res-${r}">${ELN[r]}抗 <b>${effRes(r)}%</b>${s.maxRes[r] > RES_CAP ? `<small>／${s.maxRes[r]}</small>` : ''}</span>`
+      ).join('') + (pen ? `<span class="c-dim">這一階元素抗性 −${pen}%</span>` : '');
   return `<div class="ph"><b>裝備</b><span>Lv ${S.lv} · ${S.gold} 金</span>${swapB(PANEL.stash ? '倉庫' : PANEL.craft ? '鍛造' : '技能')}<button class="x" data-a="close">✕</button></div>
   <div class="eqrow"><div class="doll" style="width:${Math.round(320 * z)}px;height:${Math.round(232 * z)}px">${eqs}</div>
   <div class="st">
-    <span>傷害 <b>${Math.round(s.dmg[0])}–${Math.round(s.dmg[1])}</b></span><span>攻速 <b>${s.aps.toFixed(2)}</b></span><span>暴擊 <b>${Math.min(100, s.crit)}%</b></span>
-    <span>生命 <b>${s.hp}</b></span>${s.es ? `<span>能量護盾 <b>${s.es}</b></span>` : ''}<span>護甲 <b>${s.armor}</b></span><span>格擋 <b>${s.block}%</b></span><span>精魄 <b>${s.spiritUsed}/${s.spirit}</b></span>
+    <span>傷害 <b>${Math.round(s.dmg[0])}–${Math.round(s.dmg[1])}</b></span><span>攻速 <b>${s.aps.toFixed(2)}</b></span><span>暴擊 <b>${s.crit.toFixed(1)}%</b></span>
+    <span>生命 <b>${s.hp}</b></span>${s.es ? `<span>能量護盾 <b>${s.es}</b></span>` : ''}<span>護甲 <b>${s.armor}</b></span>${s.ev ? `<span>閃避 <b>${s.ev}</b></span>` : ''}<span>格擋 <b>${s.block}%</b></span><span>精魄 <b>${s.spiritUsed}/${s.spirit}</b></span>
     ${res}
   </div></div>
   <div class="ph2">背包 <span>${TOUCH.on ? '按住拖＝搬移 · 點一下＝說明與動作' : PANEL.craft ? '拖曳擺放 · 點一下＝放上鍛造台' : `拖曳擺放 · 點一下＝裝備／收起${PANEL.stash ? '／放進倉庫' : ''}`}</span></div>
@@ -257,6 +277,8 @@ const TAGN = {
   cd: '冷卻',
   minion: '召喚',
   dot: '持續傷害',
+  curse: '詛咒',
+  mark: '標記',
   move: '位移'
 };
 function skillHTML() {
@@ -345,32 +367,34 @@ const GRIDS = () => ({ inv: S.inv, stash: S.stash });
 /* 欄位：裝備欄 eq（key＝欄位名）、寶石插槽 sock（key＝「技能欄:a」是技能、「技能欄:0／1」是輔助） */
 const isSlot = src => src === 'eq' || src === 'sock';
 function slotGet(src, key) {
-  if (src === 'eq') return S.eq[key];
+  if (src === 'eq') return key[0] === 'c' && key[1] === 'h' ? S.charms[+key[2]] : S.eq[key];
   const [i, p] = key.split(':');
   if (i === 'A') return S.auras[+p];
   const a = S.skills[i].a;
   return p === 'a' ? a : a && a.sup ? a.sup[+p] : null;
 }
 function slotSet(src, key, it) {
-  if (src === 'eq') return (S.eq[key] = it);
+  if (src === 'eq') return key[0] === 'c' && key[1] === 'h' ? (S.charms[+key[2]] = it) : (S.eq[key] = it);
   const [i, p] = key.split(':');
   if (i === 'A') S.auras[+p] = it;
   else if (p === 'a') S.skills[i].a = it;
   else S.skills[i].a.sup[+p] = it;
 }
 const slotFits = (src, key, it) =>
-  src === 'eq'
-    ? eqTakes(
-        EQS.find(q => q.k === key),
-        kindOf(it)
-      ) &&
-      (key !== 'off' || offOK(S.eq.weapon, it))
-    : !!it.gem &&
-      (key[0] === 'A'
-        ? isAura(it)
-        : key.endsWith(':a')
-          ? !isSup(it) && !isAura(it)
-          : isSup(it) && !!S.skills[key.split(':')[0]].a && +key.split(':')[1] < S.skills[key.split(':')[0]].a.so);
+  src === 'eq' && /^ch\d$/.test(key)
+    ? !!it.charm && +key[2] < charmSlots(S)
+    : src === 'eq'
+      ? eqTakes(
+          EQS.find(q => q.k === key),
+          kindOf(it)
+        ) &&
+        (key !== 'off' || offOK(S.eq.weapon, it))
+      : !!it.gem &&
+        (key[0] === 'A'
+          ? isAura(it)
+          : key.endsWith(':a')
+            ? !isSup(it) && !isAura(it)
+            : isSup(it) && !!S.skills[key.split(':')[0]].a && +key.split(':')[1] < S.skills[key.split(':')[0]].a.so);
 function findItem(src, id, eqk) {
   if (isSlot(src)) return slotGet(src, eqk);
   return GRIDS()[src].items.find(o => o.id === +id);
@@ -431,6 +455,12 @@ function quickMove(src, it, eqk) {
   } else if (PANEL.stash) {
     takeOut('inv', it);
     if (!gridAuto(S.stash, it)) return gridAuto(S.inv, it), hudWarn('倉庫滿了');
+  } else if (it.charm) {
+    /* 護符：放進第一個空的護符槽 */
+    const i = S.charms.findIndex((c, j) => !c && j < charmSlots(S));
+    if (i < 0) return hudWarn(charmSlots(S) ? '護符槽滿了：拖到想換的那一格' : '要先裝腰帶才有護符槽');
+    takeOut('inv', it);
+    S.charms[i] = it;
   } else {
     const k = kindOf(it),
       slots = EQS.filter(e => eqTakes(e, k)),
@@ -621,7 +651,7 @@ function gemTip(it) {
   } else if (sup)
     html += `<p class="base">${D.need.length ? '要有標籤：' + D.need.map(t => TAGN[t]).join('、') : '所有技能都能用'}</p>`;
   else if (!isAura(it))
-    html += `${D.wt ? `<p class="${wtOK(D) ? 'base' : 'c-bad'}">${wtNeed(D)}</p>` : ''}<p class="base">標籤：${D.tags.map(t => TAGN[t]).join('、')}${D.mp ? ` · 魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}<br>傷害 ×${(D.m * Math.pow(1.06, it.lv - 1)).toFixed(2)}${D.el ? `（全部是${ELN[D.el]}）` : ''}</p>`;
+    html += `${D.wt ? `<p class="${wtOK(D) ? 'base' : 'c-bad'}">${wtNeed(D)}</p>` : ''}<p class="base">標籤：${D.tags.map(t => TAGN[t]).join('、')}${D.mp ? ` · 魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}${D.m ? `<br>傷害 ×${(D.m * Math.pow(1.06, it.lv - 1)).toFixed(2)}${D.el ? `（全部是${ELN[D.el]}）` : ''}` : ''}</p>`;
   if (bad) html += `<p class="c-bad">跟這個技能不相容，沒有效果</p>`;
   if (it.sup)
     html += `<p class="base">孔 ${it.so}／${GEM_SO_MAX}${
@@ -638,6 +668,10 @@ function gemTip(it) {
 }
 function itemTip(it, cmp) {
   if (it.gem) return gemTip(it);
+  if (it.charm) {
+    const C = CHARMS[it.charm];
+    return `<b class="rc1">${esc(C.n)}</b><small>護符 · 放在腰帶的護符槽</small><p class="aff">${esc(C.d)}</p><p class="base">充能 ${Math.floor(it.ch || 0)}／${C.max} · 每次用 ${C.use} · 殺怪回充</p><p class="hint">條件達成就自動觸發，不用按鍵${G.scene === 'hide' ? ' · 賣價 3 金' : ''}</p>`;
+  }
   const B = baseOf(it);
   let html = `<b class="rc${it.r}">${esc(itemName(it))}</b><small>${RARN[it.r]} ${KINDS[B.k].n} · 物品等級 ${it.L}</small>`;
   const lay = baseLayers(it);

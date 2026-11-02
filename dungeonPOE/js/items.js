@@ -94,6 +94,8 @@ function mkItem(baseId, ilvl, rar) {
   const B = BASEI[baseId],
     K = KINDS[B.k],
     it = { id: ++IID, b: baseId, L: ilvl, r: rar, a: [], q: rollQ(ilvl), so: rollSock(B.k), pot: rollPot() };
+  /* 腰帶的護符槽（照 PoE2，看物品等級） */
+  if (B.k === 'belt') it.cs = rollCharmSlots(ilvl);
   if (rar === 0) return it;
   /* 魔法 1～2 條（前、後綴各最多 1）；稀有 3～6 條（各最多 3） */
   const n = rar === 1 ? irnd(1, 2) : irnd(3, 6),
@@ -134,11 +136,17 @@ function dropGem(t) {
   return mkGem(pick(pool), Math.max(1, Math.min(GEM_MAX, irnd(1, 1 + Math.floor(t / 2)))));
 }
 const baseOf = it => BASEI[it.b];
-const kindOf = it => (it.gem ? 'gem' : baseOf(it).k);
-const itemSize = it => (it.gem ? [1, 1] : KINDS[baseOf(it).k].sz);
-const itemIc = it => (it.gem ? gemOf(it).ic : baseOf(it).ic);
+const kindOf = it => (it.gem ? 'gem' : it.charm ? 'charm' : baseOf(it).k);
+const itemSize = it => (it.gem || it.charm ? [1, 1] : KINDS[baseOf(it).k].sz);
+const itemIc = it => (it.gem ? gemOf(it).ic : it.charm ? CHARMS[it.charm].ic : baseOf(it).ic);
 const itemName = it =>
-  it.gem ? gemOf(it).n : it.nm ? it.nm + ' ' + baseOf(it).n : (it.r === 1 ? '魔法' : '') + baseOf(it).n;
+  it.charm
+    ? CHARMS[it.charm].n
+    : it.gem
+      ? gemOf(it).n
+      : it.nm
+        ? it.nm + ' ' + baseOf(it).n
+        : (it.r === 1 ? '魔法' : '') + baseOf(it).n;
 const affText = a => AFF[a.k].n.replace('{}', Array.isArray(a.v) ? a.v[0] + '～' + a.v[1] : a.v);
 /* 底材的數值（品質放大）＋隱性詞 */
 const qMul = it => 1 + (it.q || 0);
@@ -175,11 +183,13 @@ function baseLayers(it) {
 }
 /* 賣價：越高階、詞綴越多越貴 */
 const sellPrice = it =>
-  it.gem
-    ? 2 + it.lv
-    : Math.round(
-        (1 + it.a.length * 2 + (it.r === 2 ? 4 : 0)) * (1 + it.L * 0.4) * (1 + Math.max(0, (it.q || 0) - 0.2) * 5)
-      );
+  it.charm
+    ? 3
+    : it.gem
+      ? 2 + it.lv
+      : Math.round(
+          (1 + it.a.length * 2 + (it.r === 2 ? 4 : 0)) * (1 + it.L * 0.4) * (1 + Math.max(0, (it.q || 0) - 0.2) * 5)
+        );
 /* 副手合不合規：雙手武器不能拿副手；箭袋只有拿弓才能用 */
 function offOK(w, off) {
   if (!off) return true;
@@ -236,27 +246,52 @@ function ascV(s, key) {
 const coreV = (s, cls, core) => ascV(s, `${cls}.${core}`);
 const hasCls = (s, cls) => ascV(s, `${cls}.mech`) > 0;
 function stats(s = S) {
+  /* 0.2.7 照 PoE2（企劃書 7.2）：角色等級只給生命、魔力（到 100 級），不給傷害；提高同池相加在 combat.js 的 hitCalc */
+  const lv = Math.min(100, s.lv);
   const o = {
-    hp: HERO.hp + 12 * (s.lv - 1),
-    mp: HERO.mp + 3 * (s.lv - 1),
-    dmgP: 4 * (s.lv - 1),
+    hp: HERO.hp + 12 * (lv - 1),
+    mp: HERO.mp + 3 * (lv - 1),
     flat: [0, 0],
     add: { fire: [0, 0], cold: [0, 0], light: [0, 0], chaos: [0, 0] },
+    wadd: { fire: [0, 0], cold: [0, 0], light: [0, 0], chaos: [0, 0] },
     as: 0,
-    crit: HERO.crit,
+    critInc: 0,
     critX: 0,
     armor: 0,
     block: 0,
     res: { fire: 0, cold: 0, light: 0, chaos: 0 },
+    maxRes: { fire: 0, cold: 0, light: 0, chaos: 0 },
     ms: 0,
     regen: 0,
     loh: 0,
     aoe: 0,
     flask: 0,
+    dmgA: 0,
+    atkP: 0,
     meleeP: 0,
     projP: 0,
     spellP: 0,
+    aoeP: 0,
     minionP: 0,
+    physP: 0,
+    eleP: 0,
+    fireP: 0,
+    coldP: 0,
+    lightP: 0,
+    chaosP: 0,
+    pen: 0,
+    ailMag: 0,
+    bleedCh: 0,
+    poisonCh: 0,
+    poiStack: 0,
+    impaleCh: 0,
+    armBreak: 0,
+    rageHit: 0,
+    powOnCrit: 0,
+    arcaneHit: 0,
+    tailwind: 0,
+    onsKill: 0,
+    unholyKill: 0,
     blood: 0,
     es: 0,
     esP: 0,
@@ -278,14 +313,20 @@ function stats(s = S) {
     closeP: 0,
     farP: 0,
     killHeal: 0,
-    lowHpRed: 0,
     ev: 0,
     spellLv: 0,
     castP: 0
   };
   const w = s.eq.weapon,
     wb0 = w ? baseOf(w).b : { dmg: HERO.dmg, as: 1.1 },
-    wb = w ? { ...wb0, dmg: wb0.dmg.map(v => v * qMul(w)) } : wb0;
+    /* 武器的本地詞：物理提高、附加傷害、攻速、暴擊率只改這把武器 */
+    loc = { dmgP: 0, flat: [0, 0], as: 0, crit: 0 };
+  if (w)
+    for (const a of w.a) {
+      if (a.k === 'dmgP' || a.k === 'as' || a.k === 'crit') loc[a.k] += a.v;
+      else if (a.k === 'flat') (loc.flat[0] += a.v[0]), (loc.flat[1] += a.v[1]);
+      else if (o.wadd[a.k]) (o.wadd[a.k][0] += a.v[0]), (o.wadd[a.k][1] += a.v[1]);
+    }
   const put = (k, v) => {
     if (k === 'life') o.hp += v;
     else if (k === 'resF') o.res.fire += v;
@@ -293,33 +334,53 @@ function stats(s = S) {
     else if (k === 'resL') o.res.light += v;
     else if (k === 'resX') o.res.chaos += v;
     else if (k === 'resA') for (const r of ['fire', 'cold', 'light']) o.res[r] += v;
+    else if (k === 'maxRes') for (const r of ['fire', 'cold', 'light']) o.maxRes[r] += v;
     else if (k === 'flat') (o.flat[0] += v[0]), (o.flat[1] += v[1]);
     else if (o.add[k]) (o.add[k][0] += v[0]), (o.add[k][1] += v[1]);
-    else if (k === 'dmgP') o.dmgP += v;
+    else if (k === 'dmgP') o.physP += v;
+    else if (k === 'crit') o.critInc += v;
     else if (k in o) o[k] += v;
   };
   for (const e of EQS) {
     const it = s.eq[e.k];
     if (!it || (e.k === 'off' && !offOK(w, it))) continue;
     const b = baseOf(it).b;
-    for (const k in b) if (k !== 'dmg' && k !== 'as') put(k, DEFK.includes(k) ? Math.round(b[k] * qMul(it)) : b[k]);
-    for (const a of it.a) put(a.k, a.v);
+    if (it !== w)
+      for (const k in b)
+        if (k !== 'dmg' && k !== 'as') put(k, DEFK.includes(k) ? Math.round(b[k] * qMul(it)) : b[k]);
+        else for (const k in b) if (k !== 'dmg' && k !== 'as' && k !== 'crit') put(k, b[k]);
+    if (it !== w) for (const a of it.a) put(a.k, a.v);
+    else for (const a of it.a) if (!(a.k in loc) && !o.wadd[a.k]) put(a.k, a.v);
   }
+  o.add.phys = o.flat;
   /* 天賦樹 */
-  const pt = { hpP: 0, armorP: 0, mpP: 0, mpReg: 0, cdr: 0, dmgA: 0, eleP: 0 };
+  const pt = {
+    hpP: 0,
+    armorP: 0,
+    evP: 0,
+    mpP: 0,
+    mpReg: 0,
+    cdr: 0,
+    life: 0,
+    mana: 0,
+    armorF: 0,
+    evF: 0,
+    esF: 0,
+    blockInc: 0
+  };
   const T = s.asc && ascNodes(s.asc),
     nodes = [...(s.pt || []).map(id => PTREE.I[id]), ...(T ? (s.at || []).map(id => T.I[id]) : [])];
   for (const n of nodes) {
     if (!n) continue;
     for (const k in n.s) {
       if (k in pt) pt[k] += n.s[k];
-      else if (k === 'resA') for (const r of RESK) o.res[r] += n.s[k];
-      else o[k] += n.s[k];
+      else if (k === 'resA') for (const r of ['fire', 'cold', 'light']) o.res[r] += n.s[k];
+      else put(k, n.s[k]);
     }
   }
   /* 魔劍士：秘法護盾、元素穿透、魔導之心 */
   o.esP += ascV(s, 'spell.ward');
-  pt.eleP += ascV(s, 'spell.pen');
+  o.pen += ascV(s, 'spell.pen') ? 25 : 0;
   if (ascV(s, 'spell.heart')) (o.spirit += 30), (o.auraEff += 25);
   /* 光環：照光環欄的順序預留精魄，精魄不夠的不生效 */
   o.spiritUsed = 0;
@@ -334,16 +395,21 @@ function stats(s = S) {
     for (const k in A.fx) {
       const v = A.fx[k] * m;
       if (k === 'wolf') o.auraWolf = 1;
-      else if (k === 'resA') for (const r of RESK) o.res[r] += Math.round(v);
+      else if (k === 'resA') for (const r of ['fire', 'cold', 'light']) o.res[r] += Math.round(v);
       else if (k in pt) pt[k] += v;
-      else o[k] += v;
+      else put(k, v);
     }
   }
+  o.hp += pt.life;
+  o.mp += pt.mana;
+  o.armor += pt.armorF;
+  o.ev += pt.evF;
+  o.es += pt.esF;
   o.es = Math.round(o.es * (1 + o.esP / 100));
   /* 持武器的加成 */
   o.wt = (w && baseOf(w).wt) || 'sword';
-  /* 天賦「持劍／持矛／持棍時傷害」：野太刀也算劍；其他武器種類還沒有對應的天賦 */
-  pt.dmgA += o[{ sword: 'swordP', nodachi: 'swordP', spear: 'spearP', staff: 'staffP' }[o.wt]] || 0;
+  /* 天賦「持劍／持矛／持棍時傷害」：野太刀也算劍 */
+  o.dmgA += o[{ sword: 'swordP', nodachi: 'swordP', spear: 'spearP', staff: 'staffP' }[o.wt]] || 0;
   /* 昇華大點的數值效果 */
   const aura = ascV(s, 'ronin.aura');
   if (aura) (o.meleeP += 15), (o.aoe += aura);
@@ -351,25 +417,29 @@ function stats(s = S) {
   if (ascV(s, 'berserk.blood')) o.blood = 1;
   o.hp = Math.round(o.hp * (1 + pt.hpP / 100));
   o.armor = Math.round(o.armor * (1 + pt.armorP / 100));
+  o.ev = Math.round(o.ev * (1 + pt.evP / 100));
   o.mp = Math.round(o.mp * (1 + pt.mpP / 100));
   o.mpReg = HERO.mpReg * (1 + pt.mpReg / 100);
   o.cdr = Math.min(60, pt.cdr);
-  o.dmgA = pt.dmgA;
-  o.eleP = pt.eleP;
-  const m = 1 + o.dmgP / 100;
-  o.dmg = [(wb.dmg[0] + o.flat[0]) * m, (wb.dmg[1] + o.flat[1]) * m];
-  o.aps = wb.as * (1 + o.as / 100);
+  /* 武器：本地詞先改武器自己（品質也是本地） */
+  const lm = (w ? qMul(w) : 1) + loc.dmgP / 100;
+  o.dmg = [wb0.dmg[0] * lm + loc.flat[0], wb0.dmg[1] * lm + loc.flat[1]];
+  o.wcrit = 5 + (wb0.crit || 0) + loc.crit;
+  o.waps = wb0.as * (1 + loc.as / 100);
+  o.aps = o.waps * (1 + o.as / 100);
   o.asM = o.aps / 1.1;
   o.spd = HERO.spd * (1 + o.ms / 100);
   o.aoeM = 1 + o.aoe / 100;
-  o.critM = HERO.critX + o.critX / 100;
-  o.block = Math.min(50, o.block);
-  for (const r of RESK) o.res[r] = Math.min(RES_CAP, o.res[r]);
+  o.crit = Math.min(100, o.wcrit * (1 + o.critInc / 100));
+  o.critM = 2 + o.critX / 100;
+  o.block = Math.min(50, Math.round(o.block * (1 + pt.blockInc / 100)));
+  for (const r of RESK) o.maxRes[r] = Math.min(MAXRES_CAP, RES_CAP + o.maxRes[r]);
   return o;
 }
-/* 平均每秒傷害（給比較用） */
+/* 平均每秒傷害（給比較用；攻擊、不算提高與目標防禦） */
 function dps(o) {
   let d = (o.dmg[0] + o.dmg[1]) / 2;
   for (const k in o.add) d += (o.add[k][0] + o.add[k][1]) / 2;
-  return d * o.aps * (1 + (Math.min(100, o.crit) / 100) * (o.critM - 1));
+  for (const k in o.wadd) d += (o.wadd[k][0] + o.wadd[k][1]) / 2;
+  return d * (1 + (o.dmgA + o.atkP + o.physP) / 100) * o.aps * (1 + (o.crit / 100) * (o.critM - 1));
 }
