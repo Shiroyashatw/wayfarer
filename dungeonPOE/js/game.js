@@ -23,7 +23,7 @@ function newGame() {
     stash: { w: 12, h: 12, items: [] },
     sfx: 1
   };
-  s.eq.weapon = mkItem('w_katana', 1, 0);
+  s.eq.weapon = mkItem('w_sword1_0', 1, 0);
   /* 技能欄：左鍵斬擊、右鍵燕返、Q 旋風斬；其他從怪物身上掉（撿到就學進書庫） */
   s.skills = Array.from({ length: NSLOT }, () => ({ a: null }));
   s.skills[0].a = mkGem('slash');

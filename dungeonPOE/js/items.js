@@ -25,6 +25,13 @@ function rollAff(k, ilvl) {
 }
 /* 隨機挑一種當下能掉的底材 */
 function pickBase(ilvl, kind) {
+  /* 0.2.9：先挑種類（武器 ×3），再挑底材，免得 100 多個武器底材把防具擠掉 */
+  if (!kind) {
+    const ks = [...new Set(BASES.filter(b => b.lv <= ilvl).map(b => b.k))],
+      kw = ks.map(k => (k === 'weapon' ? 3 : 1));
+    let r = Math.random() * kw.reduce((a, b) => a + b, 0);
+    kind = ks.find((k, i) => (r -= kw[i]) <= 0) || ks[0];
+  }
   const pool = BASES.filter(b => b.lv <= ilvl && (!kind || b.k === kind));
   /* 高階的底材機率高一點 */
   const w = pool.map(b => 1 + b.lv / 4);
@@ -36,6 +43,7 @@ function pickBase(ilvl, kind) {
 const SOCK_MAX = {
   weapon: 3,
   shield: 2,
+  focus: 2,
   quiver: 2,
   helm: 2,
   chest: 4,
@@ -100,7 +108,7 @@ function mkItem(baseId, ilvl, rar) {
   /* 魔法 1～2 條（前、後綴各最多 1）；稀有 3～6 條（各最多 3） */
   const n = rar === 1 ? irnd(1, 2) : irnd(3, 6),
     cap = rar === 1 ? 1 : 3,
-    pool = K.aff.slice();
+    pool = (B.aff || K.aff).slice();
   let np = 0,
     ns = 0;
   for (let i = 0; i < 40 && it.a.length < n && pool.length; i++) {
@@ -157,22 +165,25 @@ function baseText(it) {
     m = qMul(it),
     o = [];
   if (b.dmg) {
-    const wt = B.wt || 'sword';
+    const wt = B.wt || 'sword1';
     o.push(
-      `${WTN[wt]}${WT2.has(wt) ? '（雙手）' : ''} · 物理傷害 ${Math.round(b.dmg[0] * m)}～${Math.round(b.dmg[1] * m)}`,
-      `每秒攻擊 ${b.as}`
+      SPELLW.has(wt)
+        ? `${WTN[wt]}${WT2.has(wt) ? '（雙手）' : '（單手）'} · 法系武器`
+        : `${WTN[wt]}${WT2.has(wt) ? '（雙手）' : '（單手）'}${DUAL.has(wt) ? '・可雙持' : ''} · 物理傷害 ${Math.round(b.dmg[0] * m)}～${Math.round(b.dmg[1] * m)}`,
+      SPELLW.has(wt) ? '' : `每秒攻擊 ${b.as} · 暴擊率 ${5 + (b.crit || 0)}%`
     );
     if (wt === 'spear') o.push('近戰距離 +25%');
-    if (wt === 'staff') o.push('打中回 1 點魔力');
+    if (wt === 'qstaff') o.push('打中回 1 點魔力');
+    if (wt === 'sceptre') o.push('可以放在副手');
   }
   const dn = { armor: '護甲', ev: '閃避', es: '能量護盾' };
   for (const k of DEFK) if (b[k]) o.push(`${dn[k]} ${Math.round(b[k] * m)}`);
   if (b.block) o.push(`格擋 ${b.block}%`);
   if (B.k === 'quiver') o.push('只有拿弓才能用');
   for (const k in b)
-    if (!['dmg', 'as', 'block', ...DEFK].includes(k))
+    if (!['dmg', 'as', 'block', 'crit', ...DEFK].includes(k) || (k === 'crit' && !b.dmg))
       o.push(AFF[k] ? affText({ k, v: b[k] }) : (IMPN[k] || k + ' {}').replace('{}', b[k]));
-  return o;
+  return o.filter(Boolean);
 }
 /* 品質、孔數、潛能（說明框用；舊存檔的裝備沒有就不顯示） */
 const Q_N = ['', '稀有', '非常稀有', '超級稀有'];
@@ -190,12 +201,30 @@ const sellPrice = it =>
       : Math.round(
           (1 + it.a.length * 2 + (it.r === 2 ? 4 : 0)) * (1 + it.L * 0.4) * (1 + Math.max(0, (it.q || 0) - 0.2) * 5)
         );
-/* 副手合不合規：雙手武器不能拿副手；箭袋只有拿弓才能用 */
+/* 副手合不合規（0.2.9，docs/開發參考.md 0.1）：雙手武器不能拿副手（弓可以配箭袋）；
+   盾配任何單手武器；法器配魔杖、權杖；權杖可以放副手（主手不能也是權杖）；爪、匕首、單手劍、單手斧可以雙持同類 */
 function offOK(w, off) {
   if (!off) return true;
-  const wt = (w && baseOf(w).wt) || 'sword';
-  if (baseOf(off).k === 'quiver') return !!w && wt === 'bow';
-  return !(w && WT2.has(wt));
+  const wt = (w && baseOf(w).wt) || 'sword1',
+    k = baseOf(off).k;
+  if (k === 'quiver') return !!w && wt === 'bow';
+  if (w && WT2.has(wt)) return false;
+  if (k === 'focus') return wt === 'wand' || wt === 'sceptre';
+  if (k === 'weapon') {
+    const ot = baseOf(off).wt;
+    return ot === 'sceptre' ? wt !== 'sceptre' : !!w && ot === wt && DUAL.has(wt);
+  }
+  return true;
+}
+/* 副手不合規時的說明 */
+function offWhy(w, off) {
+  const wt = (w && baseOf(w).wt) || 'sword1',
+    k = baseOf(off).k;
+  if (k === 'quiver') return '箭袋只有拿弓才能用';
+  if (w && WT2.has(wt)) return '拿雙手武器時不能拿副手';
+  if (k === 'focus') return '法器只能配魔杖或權杖';
+  if (baseOf(off).wt === 'sceptre') return '不能拿兩把權杖';
+  return '只有爪、匕首、單手劍、單手斧能雙持（要同一類）';
 }
 
 /* ---------- 格子背包：g = { w, h, items: [道具（含 x, y）] } ---------- */
@@ -304,15 +333,33 @@ function stats(s = S) {
     castP: 0
   };
   const w = s.eq.weapon,
-    wb0 = w ? baseOf(w).b : { dmg: HERO.dmg, as: 1.1 },
-    /* 武器的本地詞：物理提高、附加傷害、攻速、暴擊率只改這把武器 */
-    loc = { dmgP: 0, flat: [0, 0], as: 0, crit: 0 };
-  if (w)
-    for (const a of w.a) {
-      if (a.k === 'dmgP' || a.k === 'as' || a.k === 'crit') loc[a.k] += a.v;
-      else if (a.k === 'flat') (loc.flat[0] += a.v[0]), (loc.flat[1] += a.v[1]);
-      else if (o.wadd[a.k]) (o.wadd[a.k][0] += a.v[0]), (o.wadd[a.k][1] += a.v[1]);
-    }
+    off = s.eq.off,
+    /* 雙持（0.2.9）：爪、匕首、單手劍、單手斧，副手拿同類武器 */
+    dual = !!(w && off && baseOf(off).k === 'weapon' && baseOf(off).wt === baseOf(w).wt && DUAL.has(baseOf(w).wt)),
+    /* 武器的本地詞：物理提高、附加傷害、攻速、暴擊率只改那把武器（品質也是本地） */
+    local = it => {
+      const B = it ? baseOf(it).b : { dmg: HERO.dmg, as: 1.1 },
+        L = {
+          dmgP: 0,
+          flat: [0, 0],
+          as: 0,
+          crit: 0,
+          add: { fire: [0, 0], cold: [0, 0], light: [0, 0], chaos: [0, 0] }
+        };
+      for (const a of (it && it.a) || []) {
+        if (a.k === 'dmgP' || a.k === 'as' || a.k === 'crit') L[a.k] += a.v;
+        else if (a.k === 'flat') (L.flat[0] += a.v[0]), (L.flat[1] += a.v[1]);
+        else if (L.add[a.k]) (L.add[a.k][0] += a.v[0]), (L.add[a.k][1] += a.v[1]);
+      }
+      const m = (it ? qMul(it) : 1) + L.dmgP / 100;
+      return {
+        dmg: [B.dmg[0] * m + L.flat[0], B.dmg[1] * m + L.flat[1]],
+        add: L.add,
+        crit: 5 + (B.crit || 0) + L.crit,
+        aps: B.as * (1 + L.as / 100)
+      };
+    },
+    isLocal = (it, k) => baseOf(it).k === 'weapon' && (['dmgP', 'as', 'crit', 'flat'].includes(k) || !!o.wadd[k]);
   const put = (k, v) => {
     if (k === 'life') o.hp += v;
     else if (k === 'resF') o.res.fire += v;
@@ -331,12 +378,11 @@ function stats(s = S) {
     const it = s.eq[e.k];
     if (!it || (e.k === 'off' && !offOK(w, it))) continue;
     const b = baseOf(it).b;
-    if (it !== w)
-      for (const k in b)
-        if (k !== 'dmg' && k !== 'as') put(k, DEFK.includes(k) ? Math.round(b[k] * qMul(it)) : b[k]);
-        else for (const k in b) if (k !== 'dmg' && k !== 'as' && k !== 'crit') put(k, b[k]);
-    if (it !== w) for (const a of it.a) put(a.k, a.v);
-    else for (const a of it.a) if (!(a.k in loc) && !o.wadd[a.k]) put(a.k, a.v);
+    /* 底材的數值：防禦照品質放大；武器的傷害、攻速、暴擊是本地的（下面另外算） */
+    for (const k in b)
+      if (!(baseOf(it).k === 'weapon' && (k === 'dmg' || k === 'as' || k === 'crit')))
+        put(k, DEFK.includes(k) ? Math.round(b[k] * qMul(it)) : b[k]);
+    for (const a of it.a) if (!isLocal(it, a.k)) put(a.k, a.v);
   }
   o.add.phys = o.flat;
   /* 天賦樹 */
@@ -388,20 +434,24 @@ function stats(s = S) {
   o.es += pt.esF;
   o.es = Math.round(o.es * (1 + o.esP / 100));
   /* 持武器的加成 */
-  o.wt = (w && baseOf(w).wt) || 'sword';
-  /* 天賦「持劍／持矛／持棍時傷害」：野太刀也算劍 */
-  o.dmgA += o[{ sword: 'swordP', nodachi: 'swordP', spear: 'spearP', staff: 'staffP' }[o.wt]] || 0;
+  o.wt = (w && baseOf(w).wt) || 'sword1';
+  /* 天賦「持劍／持矛／持棍時傷害」（其他武器的專精等天賦樹重做） */
+  o.dmgA += o[{ sword1: 'swordP', sword2: 'swordP', spear: 'spearP', qstaff: 'staffP' }[o.wt]] || 0;
   o.hp = Math.round(o.hp * (1 + pt.hpP / 100));
   o.armor = Math.round(o.armor * (1 + pt.armorP / 100));
   o.ev = Math.round(o.ev * (1 + pt.evP / 100));
   o.mp = Math.round(o.mp * (1 + pt.mpP / 100));
   o.mpReg = HERO.mpReg * (1 + pt.mpReg / 100);
   o.cdr = Math.min(60, pt.cdr);
-  /* 武器：本地詞先改武器自己（品質也是本地） */
-  const lm = (w ? qMul(w) : 1) + loc.dmgP / 100;
-  o.dmg = [wb0.dmg[0] * lm + loc.flat[0], wb0.dmg[1] * lm + loc.flat[1]];
-  o.wcrit = 5 + (wb0.crit || 0) + loc.crit;
-  o.waps = wb0.as * (1 + loc.as / 100);
+  /* 武器：雙持時兩把輪流出手，傷害、暴擊取平均，攻速再快 10% */
+  const W1 = local(w),
+    W2 = dual ? local(off) : null,
+    avg = (x, y) => (W2 ? (x + y) / 2 : x);
+  o.dmg = [avg(W1.dmg[0], W2 && W2.dmg[0]), avg(W1.dmg[1], W2 && W2.dmg[1])];
+  for (const k in o.wadd) o.wadd[k] = [avg(W1.add[k][0], W2 && W2.add[k][0]), avg(W1.add[k][1], W2 && W2.add[k][1])];
+  o.wcrit = avg(W1.crit, W2 && W2.crit);
+  o.waps = avg(W1.aps, W2 && W2.aps) * (dual ? 1.1 : 1);
+  o.dual = dual;
   o.aps = o.waps * (1 + o.as / 100);
   o.asM = o.aps / 1.1;
   o.spd = HERO.spd * (1 + o.ms / 100);

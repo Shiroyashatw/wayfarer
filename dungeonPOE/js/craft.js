@@ -15,7 +15,7 @@ function affPool(it, cls, skip) {
     np = it.a.filter(a => a !== skip && AFF[a.k].p).length,
     ns = it.a.filter(a => a !== skip && !AFF[a.k].p).length,
     cap = sideCap(it);
-  return KINDS[baseOf(it).k].aff.filter(
+  return (baseOf(it).aff || KINDS[baseOf(it).k].aff).filter(
     k => !have.has(k) && (!cls || affCls(k) === cls) && (AFF[k].p ? np < cap : ns < cap)
   );
 }

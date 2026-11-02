@@ -70,7 +70,7 @@ function gear(t, want, wt) {
       bv = -1;
     for (let i = 0; i < 4; i++) {
       const pool = R('BASES').filter(
-        b => R('eqTakes')(e, b.k) && b.lv <= t && (e.k !== 'weapon' || b.wt === wt || (!b.wt && wt === 'sword'))
+        b => R('eqTakes')(e, b.k) && b.lv <= t && (e.k !== 'weapon' || b.wt === wt)
       );
       if (!pool.length) break;
       const b = pool[Math.floor(Math.random() * pool.length)],
@@ -83,7 +83,7 @@ function gear(t, want, wt) {
   return eq;
 }
 const BUILDS = {
-  刀近戰: {
+  劍近戰: {
     tree: { meleeP: 2, swordP: 2, critInc: 1, critX: 1, as: 3, life: 0.3 },
     gear: {
       dmgP: 1,
@@ -98,19 +98,19 @@ const BUILDS = {
       resC: 0.5,
       resL: 0.5
     },
-    wt: 'sword',
+    wt: 'sword1',
     sk: 'slash'
   },
   火法: {
     tree: { spellP: 2, eleP: 2, castP: 3, pen: 2, life: 0.3 },
     gear: { spellP: 1, life: 0.5, es: 0.5, resA: 1, resF: 0.5, resC: 0.5, resL: 0.5 },
-    wt: 'rod',
+    wt: 'staff',
     sk: 'fireball'
   },
   坦克: {
     tree: { life: 1, armorP: 3, armorF: 0.5, regen: 2, resA: 5, blockInc: 2 },
     gear: { life: 1, armor: 0.5, block: 3, resA: 2, resF: 1, resC: 1, resL: 1, dmgP: 0.3 },
-    wt: 'sword',
+    wt: 'sword1',
     sk: 'slash'
   }
 };

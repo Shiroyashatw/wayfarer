@@ -1,6 +1,6 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.8';
+const VER = '0.2.9';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
@@ -39,6 +39,7 @@ const MARK_D = {
   warlord: '被擊中時你回血，死亡時給耐力球'
 };
 const SKILLS = {
+  /* 0.2.9：wt 暫時對應到新的 18 種武器（每種攻擊武器至少有一招）；照武器身分的新技能在 0.2.11 做 */
   /* 0.2.7 詛咒（照 PoE2：丟一個範圍，1.5 秒後生效；每隻怪 1 個）與標記（單一目標，觸發時消耗；效果在 combat.js） */
   cu_enfeeble: {
     n: '衰弱',
@@ -190,7 +191,7 @@ const SKILLS = {
     arc: 1.8,
     gain: 1,
     hits: [0.3, 0.6, 0.9],
-    wt: ['staff'],
+    wt: ['qstaff'],
     tags: ['attack', 'melee'],
     d: '3 下連打，第 3 下打中得到 1 顆暴擊球（照 PoE2：球本身不加數值，給會消耗暴擊球的技能用，15 秒）'
   },
@@ -202,7 +203,7 @@ const SKILLS = {
     m: 0.7,
     spd: 900,
     cnt: 3,
-    wt: ['bow'],
+    wt: ['bow', 'xbow'],
     tags: ['attack', 'proj'],
     d: '一次射出 3 支箭，扇形散開'
   },
@@ -238,7 +239,7 @@ const SKILLS = {
     r: 100,
     arc: 2.1,
     gain: 2,
-    wt: ['sword', 'nodachi'],
+    wt: ['sword1', 'sword2', 'axe1', 'axe2', 'mace1', 'mace2', 'flail', 'talisman'],
     tags: ['attack', 'melee'],
     d: '向前揮出扇形斬擊，打中每隻回 2 魔力'
   },
@@ -251,7 +252,7 @@ const SKILLS = {
     m: 0.85,
     r: 110,
     arc: 2.4,
-    wt: ['sword', 'nodachi'],
+    wt: ['sword1', 'sword2', 'axe1', 'axe2'],
     tags: ['attack', 'melee'],
     d: '連砍兩刀：先往前、再反手一刀'
   },
@@ -264,7 +265,7 @@ const SKILLS = {
     cd: 3,
     m: 1.8,
     r: 150,
-    wt: ['sword', 'nodachi'],
+    wt: ['sword1', 'sword2', 'axe1', 'axe2', 'flail'],
     tags: ['attack', 'melee', 'aoe', 'cd'],
     d: '原地迴旋，打周圍所有敵人並擊退'
   },
@@ -277,7 +278,7 @@ const SKILLS = {
     cd: 4,
     m: 1.5,
     dist: 300,
-    wt: ['sword', 'nodachi'],
+    wt: ['sword1', 'sword2'],
     tags: ['attack', 'melee', 'move', 'cd'],
     d: '衝向滑鼠位置，斬過路上的敵人；衝刺中無敵'
   },
@@ -291,7 +292,7 @@ const SKILLS = {
     r: 170,
     arc: 1.4,
     stun: 0.6,
-    wt: ['nodachi', 'staff'],
+    wt: ['mace1', 'mace2', 'qstaff', 'talisman'],
     tags: ['attack', 'melee', 'aoe'],
     d: '往前重擊地面，扇形範圍的敵人暈眩 0.6 秒'
   },
@@ -305,7 +306,7 @@ const SKILLS = {
     spd: 760,
     pierce: 2,
     cnt: 1,
-    wt: ['dagger'],
+    wt: ['dagger', 'claw'],
     tags: ['attack', 'proj'],
     d: '射出飛刃，穿透 2 隻'
   },
@@ -320,7 +321,7 @@ const SKILLS = {
     cnt: 10,
     spd: 620,
     pierce: 3,
-    wt: ['dagger'],
+    wt: ['dagger', 'claw'],
     tags: ['attack', 'proj', 'cd'],
     d: '向四面八方射出 10 把飛刃，各穿透 3 隻'
   },
@@ -533,6 +534,9 @@ const SUPPORTS = {
     d: '這個技能改成立圖騰（8 秒）：圖騰替你自動施放，傷害更少 30%'
   }
 };
+/* 輔助的分類（0.2.9，照 PoE2 0.3）：同一分類不能插在同一顆技能上，可以跨技能重複；沒寫的分類就是自己（同一顆不能插兩次） */
+const SUP_CAT = { scorch: 'alt', brittle: 'alt', sap: 'alt', trapc: 'conv', minec: 'conv', totemc: 'conv' };
+const supCat = k => SUP_CAT[k] || k;
 /* 寶石的使用等級（0.2.7，照 PoE2）：角色等級到了才能生成；生成面板照這個分組 */
 const GEM_LV = {
   slash: 1,
@@ -1544,18 +1548,36 @@ const tierIlvl = t => t;
 const RESK = ['fire', 'cold', 'light', 'chaos'];
 /* 武器種類（0.2.6，照 PoE2：武器決定技能組）：矛的近戰距離 +25%、棍打中回 1 魔力；雙手武器不能拿副手（箭袋只有弓能用） */
 const WTN = {
-  sword: '刀',
-  nodachi: '野太刀',
-  dagger: '短刀',
+  sword1: '單手劍',
+  sword2: '雙手劍',
+  axe1: '單手斧',
+  axe2: '雙手斧',
+  mace1: '單手錘',
+  mace2: '雙手錘',
+  qstaff: '長棍',
   spear: '矛',
-  staff: '棍',
   bow: '弓',
-  rod: '法杖',
-  wand: '魔杖'
+  xbow: '弩',
+  dagger: '匕首',
+  claw: '爪',
+  flail: '連枷',
+  staff: '法杖',
+  wand: '魔杖',
+  sceptre: '權杖',
+  traptool: '陷阱器',
+  talisman: '護符'
 };
-const WT2 = new Set(['nodachi', 'spear', 'staff', 'bow', 'rod']);
+/* 雙手（不能拿副手；弓可以配箭袋）、可以雙持、法系（不能攻擊，給法術加成） */
+const WT2 = new Set(['sword2', 'axe2', 'mace2', 'qstaff', 'bow', 'xbow', 'staff', 'traptool', 'talisman']);
+const DUAL = new Set(['sword1', 'axe1', 'dagger', 'claw']);
+const SPELLW = new Set(['staff', 'wand', 'sceptre', 'traptool']);
 /* 底材自帶的數值（隱性詞）裡，詞綴表沒有的名字 */
 const IMPN = {
+  bleedCh: '擊中時 {}% 機率造成流血',
+  impaleCh: '擊中時 {}% 機率穿刺',
+  unitP: '陷阱、地雷傷害 +{}%',
+  minionP: '召喚物傷害 +{}%',
+  block: '格擋率 +{}%',
   projP: '投射物傷害 +{}%',
   spellP: '法術傷害 +{}%',
   spellLv: '法術技能等級 +{}',
@@ -1581,14 +1603,19 @@ const EQS = [
   { k: 'ring1', t: 'ring', n: '戒指' },
   { k: 'ring2', t: 'ring', n: '戒指' }
 ];
-/* 這一欄能不能放這種東西（副手也能放箭袋） */
-const eqTakes = (e, k) => e.t === k || (e.k === 'off' && k === 'quiver');
+/* 這一欄能不能放這種東西：副手欄放盾、法器、箭袋，或武器（權杖、雙持）；細的規則在 items.js 的 offOK */
+const eqTakes = (e, k) => e.t === k || (e.k === 'off' && (k === 'quiver' || k === 'focus' || k === 'weapon'));
 /* 種類：大小（格）、圖示前綴、可以出現的詞綴 */
 const KINDS = {
   weapon: {
     n: '武器',
     sz: [1, 3],
     aff: ['dmgP', 'flat', 'fire', 'cold', 'light', 'chaos', 'as', 'crit', 'critX', 'loh', 'spellP']
+  },
+  focus: {
+    n: '法器',
+    sz: [2, 2],
+    aff: ['life', 'es', 'mp', 'spellP', 'critInc', 'resF', 'resC', 'resL', 'resX', 'spirit']
   },
   shield: { n: '盾', sz: [2, 2], aff: ['life', 'armor', 'ev', 'block', 'resF', 'resC', 'resL', 'resX', 'resA', 'es'] },
   helm: {
@@ -1637,194 +1664,195 @@ const KINDS = {
   }
 };
 /* 底材：lv 從幾階開始掉、ic 圖示、b 固定數值（武器：物理傷害、攻速；防具：護甲；飾品：固定詞綴） */
+/* ---------- 武器（0.2.9，照 PoE2 的 18 種類別，docs/開發參考.md 0.1 節）----------
+   每類 6 個底材（階級 1、3、6、9、12、15 開始掉）；傷害照階級成長，類別之間的差別靠攻速、暴擊、隱性詞與技能。
+   m 傷害倍率（單手近戰＝1）、as 攻速、crit 加在基礎 5% 上的暴擊、imp 隱性詞（每階 ×1、×1.5、×2…）、ic 借用的圖示 */
+const WCLS = {
+  sword1: {
+    m: 1,
+    as: 1.55,
+    crit: 1,
+    imp: {},
+    ic: [0, 1, 17, 19, 20, 1],
+    n: ['短劍', '闊劍', '彎刀', '長劍', '細劍', '符文劍']
+  },
+  sword2: {
+    m: 1.6,
+    as: 1.35,
+    crit: 1,
+    imp: {},
+    ic: [5, 18, 16, 5, 18, 5],
+    n: ['雙手劍', '太刀', '闊刃大劍', '斬首劍', '野太刀', '王者大劍']
+  },
+  axe1: {
+    m: 1.05,
+    as: 1.45,
+    crit: 0,
+    imp: { bleedCh: 4 },
+    ic: [2, 21, 2, 21, 2, 21],
+    n: ['手斧', '戰斧', '鉞', '劈斧', '雙刃斧', '屠夫斧']
+  },
+  axe2: {
+    m: 1.7,
+    as: 1.2,
+    crit: 0,
+    imp: { bleedCh: 6 },
+    ic: [6, 21, 6, 21, 6, 21],
+    n: ['伐木斧', '巨斧', '開山斧', '劊子手斧', '月牙斧', '泰坦斧']
+  },
+  mace1: {
+    m: 1.05,
+    as: 1.45,
+    crit: 0,
+    imp: { critX: 8 },
+    ic: [8, 23, 8, 23, 8, 23],
+    n: ['木棒', '釘頭錘', '戰鎚', '晨星', '狼牙棒', '雷神鎚']
+  },
+  mace2: {
+    m: 1.75,
+    as: 1.15,
+    crit: 0,
+    imp: { aoe: 6 },
+    ic: [7, 7, 7, 7, 7, 7],
+    n: ['大槌', '巨鎚', '大地之鎚', '破城鎚', '隕鐵鎚', '天罰鎚']
+  },
+  qstaff: {
+    m: 1.35,
+    as: 1.4,
+    crit: 5,
+    imp: { block: 6 },
+    ic: [4, 31, 4, 31, 4, 31],
+    n: ['長棍', '鐵棍', '齊眉棍', '降魔杖', '金剛棍', '如意棍']
+  },
+  spear: {
+    m: 1,
+    as: 1.6,
+    crit: 1,
+    imp: { impaleCh: 8 },
+    ic: [9, 10, 29, 30, 9, 29],
+    n: ['短矛', '長槍', '三叉戟', '偃月矛', '龍膽槍', '方天戟']
+  },
+  bow: {
+    m: 1.25,
+    as: 1.25,
+    crit: 1,
+    imp: { projP: 6 },
+    ic: [3, 25, 11, 24, 3, 24],
+    n: ['短弓', '竹弓', '長弓', '複合弓', '和弓', '重藤弓']
+  },
+  xbow: {
+    m: 1.4,
+    as: 1.5,
+    crit: 0,
+    imp: { projP: 8 },
+    ic: [12, 12, 26, 12, 26, 26],
+    n: ['手弩', '輕弩', '連弩', '重弩', '攻城弩', '神機弩']
+  },
+  dagger: {
+    m: 0.85,
+    as: 1.6,
+    crit: 5,
+    imp: { critX: 10 },
+    ic: [13, 28, 13, 28, 13, 28],
+    n: ['短刀', '匕首', '蛇牙匕首', '苦無', '儀式匕首', '刺客短刀']
+  },
+  claw: {
+    m: 0.8,
+    as: 1.65,
+    crit: 1,
+    imp: { loh: 2 },
+    ic: [27, 14, 27, 14, 27, 14],
+    n: ['拳刃', '爪', '虎爪', '鷹爪', '鬼爪', '龍爪']
+  },
+  flail: {
+    m: 1.1,
+    as: 1.45,
+    crit: 4,
+    imp: {},
+    ic: [22, 22, 22, 22, 22, 22],
+    n: ['鏈錘', '流星錘', '鐵蒺藜', '雙節錘', '晨星連枷', '天雷連枷']
+  },
+  staff: {
+    m: 0.35,
+    as: 1.2,
+    crit: 0,
+    imp: { spellP: 15, spellLv: 0.5 },
+    ic: [4, 31, 4, 31, 4, 31],
+    n: ['木杖', '骨杖', '符杖', '龍骨杖', '水晶法杖', '雷霆杖']
+  },
+  wand: {
+    m: 0.3,
+    as: 1.3,
+    crit: 0,
+    imp: { spellP: 8, castP: 5 },
+    ic: [31, 31, 31, 31, 31, 31],
+    n: ['短杖', '骨魔杖', '雷擊木', '符咒杖', '聖杖', '星辰杖']
+  },
+  sceptre: {
+    m: 0.3,
+    as: 1.3,
+    crit: 0,
+    imp: { spirit: 15 },
+    ic: [15, 15, 15, 15, 15, 15],
+    n: ['銅權杖', '儀式權杖', '祭司權杖', '黃金權杖', '魂權杖', '王權']
+  },
+  traptool: {
+    m: 0.3,
+    as: 1.2,
+    crit: 0,
+    imp: { unitP: 10 },
+    ic: ['sup_sp_trap', 'sup_sp_mine', 'sup_sp_trap', 'sup_sp_mine', 'sup_sp_trap', 'sup_sp_mine'],
+    n: ['機關匣', '捕獸器', '火藥匣', '符咒匣', '千機匣', '天工匣']
+  },
+  talisman: {
+    m: 1.45,
+    as: 1.3,
+    crit: 1,
+    imp: { minionP: 10 },
+    ic: ['asc_s_paw', 'asc_s_paw', 'asc_s_paw', 'asc_s_paw', 'asc_s_paw', 'asc_s_paw'],
+    n: ['木圖騰', '骨圖騰', '獸牙圖騰', '月石圖騰', '古樹圖騰', '龍魂圖騰']
+  }
+};
+const WLV = [1, 3, 6, 9, 12, 15];
+/* 法系武器（法杖、魔杖、權杖、陷阱器）的詞綴池：法術方向，不出攻擊詞 */
+const SPELL_AFF = ['spellP', 'critInc', 'critX', 'mp', 'es', 'life', 'spirit', 'aoe'];
+const WEAPON_BASES = Object.entries(WCLS).flatMap(([wt, C]) =>
+  WLV.map((lv, i) => {
+    /* 傷害：單手每階 ×1.12；階級 1 平均約 9 */
+    const avg = 9 * Math.pow(1.12, lv - 1) * C.m,
+      b = { dmg: [Math.max(1, Math.round(avg * 0.6)), Math.round(avg * 1.4)], as: C.as };
+    if (C.crit) b.crit = C.crit;
+    for (const k in C.imp) {
+      const v = C.imp[k] * (1 + i * 0.5);
+      b[k] = k === 'spellLv' ? Math.floor(v) : Math.round(v);
+      if (!b[k]) delete b[k];
+    }
+    const ic = C.ic[i];
+    return {
+      id: `w_${wt}_${i}`,
+      k: 'weapon',
+      n: C.n[i],
+      lv,
+      ic: typeof ic === 'number' ? 'gear_weapon_' + ic : ic,
+      wt,
+      ...(SPELLW.has(wt) ? { aff: SPELL_AFF } : {}),
+      b
+    };
+  })
+);
 const BASES = [
   /* 刀（單手）：暴擊率 */
-  { id: 'w_katana', k: 'weapon', n: '打刀', lv: 1, ic: 'gear_weapon_18', b: { dmg: [6, 13], as: 1.15, crit: 2 } },
-  { id: 'w_moon', k: 'weapon', n: '月影刀', lv: 10, ic: 'gear_weapon_17', b: { dmg: [24, 42], as: 1.15, crit: 3 } },
-  { id: 'w_demon', k: 'weapon', n: '妖刀', lv: 14, ic: 'gear_weapon_20', b: { dmg: [34, 62], as: 1.1, crit: 4 } },
-  /* 野太刀（雙手）：範圍 */
-  {
-    id: 'w_nodachi',
-    k: 'weapon',
-    n: '野太刀',
-    lv: 4,
-    ic: 'gear_weapon_5',
-    wt: 'nodachi',
-    b: { dmg: [16, 30], as: 0.95, aoe: 8 }
-  },
-  {
-    id: 'w_zanba',
-    k: 'weapon',
-    n: '斬馬刀',
-    lv: 9,
-    ic: 'gear_weapon_1',
-    wt: 'nodachi',
-    b: { dmg: [30, 54], as: 0.9, aoe: 12 }
-  },
-  {
-    id: 'w_omono',
-    k: 'weapon',
-    n: '大業物',
-    lv: 14,
-    ic: 'gear_weapon_16',
-    wt: 'nodachi',
-    b: { dmg: [48, 84], as: 0.9, aoe: 16 }
-  },
-  /* 短刀（單手）：暴擊傷害 */
-  {
-    id: 'w_short',
-    k: 'weapon',
-    n: '短刀',
-    lv: 1,
-    ic: 'gear_weapon_0',
-    wt: 'dagger',
-    b: { dmg: [4, 9], as: 1.3, critX: 15 }
-  },
-  {
-    id: 'w_kris',
-    k: 'weapon',
-    n: '蛇紋刃',
-    lv: 7,
-    ic: 'gear_weapon_28',
-    wt: 'dagger',
-    b: { dmg: [12, 22], as: 1.35, critX: 20 }
-  },
-  {
-    id: 'w_kunai',
-    k: 'weapon',
-    n: '苦無',
-    lv: 13,
-    ic: 'gear_weapon_13',
-    wt: 'dagger',
-    b: { dmg: [22, 40], as: 1.4, critX: 25 }
-  },
-  /* 弓（雙手）：投射物傷害 */
-  {
-    id: 'w_bow',
-    k: 'weapon',
-    n: '短弓',
-    lv: 1,
-    ic: 'gear_weapon_3',
-    wt: 'bow',
-    b: { dmg: [5, 11], as: 1.2, projP: 10 }
-  },
-  {
-    id: 'w_yumi',
-    k: 'weapon',
-    n: '和弓',
-    lv: 6,
-    ic: 'gear_weapon_11',
-    wt: 'bow',
-    b: { dmg: [12, 25], as: 1.15, projP: 15 }
-  },
-  {
-    id: 'w_shigeto',
-    k: 'weapon',
-    n: '重藤弓',
-    lv: 12,
-    ic: 'gear_weapon_24',
-    wt: 'bow',
-    b: { dmg: [26, 48], as: 1.1, projP: 20 }
-  },
-  /* 法杖（雙手）：法術傷害、法術技能等級 */
-  {
-    id: 'w_rod',
-    k: 'weapon',
-    n: '木杖',
-    lv: 1,
-    ic: 'gear_weapon_8',
-    wt: 'rod',
-    b: { dmg: [4, 8], as: 1.1, spellP: 25 }
-  },
-  {
-    id: 'w_fuzue',
-    k: 'weapon',
-    n: '符杖',
-    lv: 6,
-    ic: 'gear_weapon_8',
-    wt: 'rod',
-    b: { dmg: [8, 15], as: 1.1, spellP: 40, spellLv: 1 }
-  },
-  {
-    id: 'w_bonerod',
-    k: 'weapon',
-    n: '龍骨杖',
-    lv: 12,
-    ic: 'gear_weapon_8',
-    wt: 'rod',
-    b: { dmg: [14, 26], as: 1.1, spellP: 55, spellLv: 1 }
-  },
-  /* 魔杖（單手）：法術傷害、施法速度 */
-  {
-    id: 'w_charm',
-    k: 'weapon',
-    n: '符咒',
-    lv: 1,
-    ic: 'gear_weapon_19',
-    wt: 'wand',
-    b: { dmg: [3, 7], as: 1.3, spellP: 12, castP: 8 }
-  },
-  {
-    id: 'w_flute',
-    k: 'weapon',
-    n: '骨笛',
-    lv: 6,
-    ic: 'gear_weapon_19',
-    wt: 'wand',
-    b: { dmg: [6, 12], as: 1.3, spellP: 18, castP: 12 }
-  },
-  {
-    id: 'w_thunder',
-    k: 'weapon',
-    n: '雷擊木',
-    lv: 12,
-    ic: 'gear_weapon_19',
-    wt: 'wand',
-    b: { dmg: [10, 20], as: 1.3, spellP: 25, castP: 16 }
-  },
-  { id: 'w_spear', k: 'weapon', n: '短矛', lv: 1, ic: 'gear_weapon_9', wt: 'spear', b: { dmg: [5, 12], as: 1.2 } },
-  {
-    id: 'w_trident',
-    k: 'weapon',
-    n: '三叉戟',
-    lv: 6,
-    ic: 'gear_weapon_29',
-    wt: 'spear',
-    b: { dmg: [12, 26], as: 1.15 }
-  },
-  {
-    id: 'w_glaive',
-    k: 'weapon',
-    n: '偃月矛',
-    lv: 12,
-    ic: 'gear_weapon_30',
-    wt: 'spear',
-    b: { dmg: [26, 48], as: 1.1 }
-  },
-  { id: 'w_staff', k: 'weapon', n: '長棍', lv: 1, ic: 'gear_weapon_4', wt: 'staff', b: { dmg: [6, 12], as: 1.3 } },
-  {
-    id: 'w_ironstaff',
-    k: 'weapon',
-    n: '鐵棍',
-    lv: 6,
-    ic: 'gear_weapon_15',
-    wt: 'staff',
-    b: { dmg: [11, 23], as: 1.3 }
-  },
-  {
-    id: 'w_demonstaff',
-    k: 'weapon',
-    n: '降魔杖',
-    lv: 13,
-    ic: 'gear_weapon_31',
-    wt: 'staff',
-    b: { dmg: [24, 44], as: 1.25 }
-  },
+  ...WEAPON_BASES,
+  /* 盾只有一種（0.2.9：不分盾與輕盾）；法器是單手法系武器的副手 */
   { id: 's_wood', k: 'shield', n: '木盾', lv: 1, ic: 'gear_offhand_2', b: { armor: 12, block: 10 } },
-  { id: 's_iron', k: 'shield', n: '鐵盾', lv: 6, ic: 'gear_offhand_8', b: { armor: 40, block: 14 } },
-  { id: 's_orb', k: 'shield', n: '法珠', lv: 4, ic: 'gear_offhand_11', b: { es: 30 } },
-  { id: 's_tower', k: 'shield', n: '塔盾', lv: 12, ic: 'gear_offhand_3', b: { armor: 95, block: 18 } },
-  /* 箭袋（副手，只有拿弓才能用） */
+  { id: 's_round', k: 'shield', n: '圓盾', lv: 4, ic: 'gear_offhand_8', b: { armor: 28, ev: 20, block: 12 } },
+  { id: 's_iron', k: 'shield', n: '鳶盾', lv: 7, ic: 'gear_offhand_9', b: { armor: 50, block: 14 } },
+  { id: 's_bone', k: 'shield', n: '骨盾', lv: 10, ic: 'gear_offhand_10', b: { armor: 45, es: 30, block: 15 } },
+  { id: 's_tower', k: 'shield', n: '塔盾', lv: 13, ic: 'gear_offhand_3', b: { armor: 110, block: 18 } },
+  { id: 'f_orb', k: 'focus', n: '水晶球', lv: 1, ic: 'gear_offhand_11', b: { es: 20 } },
+  { id: 'f_rune', k: 'focus', n: '符文法珠', lv: 5, ic: 'gear_offhand_4', b: { es: 45, spellP: 6 } },
+  { id: 'f_moon', k: 'focus', n: '月光法器', lv: 9, ic: 'gear_offhand_5', b: { es: 75, spellP: 10 } },
+  { id: 'f_mirror', k: 'focus', n: '八卦鏡', lv: 13, ic: 'gear_offhand_12', b: { es: 110, spellP: 14 } },
   { id: 'q_bamboo', k: 'quiver', n: '竹箭袋', lv: 1, ic: 'ail_n_arrow', b: { projP: 8 } },
   { id: 'q_feather', k: 'quiver', n: '羽箭袋', lv: 6, ic: 'ail_n_arrow', b: { projP: 12, crit: 2 } },
   { id: 'q_oni', k: 'quiver', n: '鬼箭袋', lv: 12, ic: 'ail_n_arrow', b: { projP: 16, critX: 15 } },

@@ -5,8 +5,12 @@
 /* ---------- 技能欄 ---------- */
 const NSLOT = 5;
 const SLOTKEY = ['左鍵', '右鍵', 'Q', 'E', 'R'];
-const supOK = (D, sp) => {
+/* 同一顆技能上已經有同分類的輔助（排在前面的那顆才算） */
+const supDup = (g, sp) =>
+  !!g && g.sup.some(x => x && x !== sp && supCat(x.gem) === supCat(sp.gem) && g.sup.indexOf(x) < g.sup.indexOf(sp));
+const supOK = (D, sp, g) => {
   const U = SUPPORTS[sp.gem];
+  if (g && supDup(g, sp)) return false;
   if (U.conv && (D.unit || D.tags.includes('move') || D.tags.includes('minion'))) return false;
   return !U.need.length || U.need.some(t => D.tags.includes(t));
 };
@@ -47,7 +51,7 @@ function slotCfg(i) {
       wolfM: 1
     };
   for (const sp of g.sup || []) {
-    if (!sp || !supOK(D, sp)) continue;
+    if (!sp || !supOK(D, sp, g)) continue;
     c.more *= 1 + 0.01 * (sp.lv - 1);
     const k = sp.gem;
     if (k === 'multi') (c.proj += 2), (c.more *= 0.8);
@@ -330,7 +334,7 @@ function hitMob(m, c, ang, kb, o = {}) {
   const r = hitCalc(c, m, { mult, crit, minion: o.minion, unit: a.unit });
   applyAil(m, r, c);
   onHitBase(m, r, c);
-  if (ST.wt === 'staff' && (c.D.tags || []).includes('melee') && !o.quiet) P.mp = Math.min(ST.mp, P.mp + 1);
+  if (ST.wt === 'qstaff' && (c.D.tags || []).includes('melee') && !o.quiet) P.mp = Math.min(ST.mp, P.mp + 1);
   m.hp -= r.d;
   if (a) a.any = 1;
   m.flash = 0.09;

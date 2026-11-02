@@ -304,7 +304,7 @@ function skillHTML() {
         supC = sups.filter(x => !gemUpCheck(x).why).reduce((a, x) => a + soulCost(x.lv, 1), 0),
         dr = drillCheck(g);
       return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', g, 'act', '技能')}<div class="links">${g.sup
-        .map((x, j) => sock(i + ':' + j, x, 'sup', '輔助', x && !supOK(SKILLS[g.gem], x)))
+        .map((x, j) => sock(i + ':' + j, x, 'sup', '輔助', x && !supOK(SKILLS[g.gem], x, g)))
         .join(
           ''
         )}</div><div class="skinfo"><b>${esc(c.D.n)} <span>Lv ${g.lv}${c.lv > g.lv ? `（+${c.lv - g.lv}）` : ''} · ${g.so} 孔</span></b><small>${c.mp ? `魔力 ${c.mp}` : '不耗魔力'}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}${c.D.wt ? ` · <span class="${wtOK(c.D) ? '' : 'c-bad'}">${wtNeed(c.D)}</span>` : ''}</small>
@@ -511,7 +511,13 @@ const slotFits = (src, key, it) =>
           ? isAura(it)
           : key.endsWith(':a')
             ? !isSup(it) && !isAura(it)
-            : isSup(it) && !!S.skills[key.split(':')[0]].a && +key.split(':')[1] < S.skills[key.split(':')[0]].a.so);
+            : isSup(it) &&
+              !!S.skills[key.split(':')[0]].a &&
+              +key.split(':')[1] < S.skills[key.split(':')[0]].a.so &&
+              /* 同分類不能同插（換掉同一格的自己不算） */
+              !S.skills[key.split(':')[0]].a.sup.some(
+                (x, j) => x && x !== it && j !== +key.split(':')[1] && supCat(x.gem) === supCat(it.gem)
+              ));
 function findItem(src, id, eqk) {
   if (isSlot(src)) return slotGet(src, eqk);
   return GRIDS()[src].items.find(o => o.id === +id);
@@ -540,8 +546,9 @@ function changed() {
   /* 換上雙手武器（或換掉弓）：不合規的副手收進背包 */
   if (!offOK(S.eq.weapon, S.eq.off)) {
     const off = S.eq.off;
-    if (gridAuto(S.inv, off)) (S.eq.off = null), hudWarn('雙手武器不能拿副手：副手收進背包');
-    else hudWarn('背包滿了：副手沒有作用（雙手武器不能拿副手）');
+    const why = offWhy(S.eq.weapon, off);
+    if (gridAuto(S.inv, off)) (S.eq.off = null), hudWarn(why + '：副手收進背包');
+    else hudWarn('背包滿了：副手沒有作用（' + why + '）');
   }
   const hpF = P.hp / ST.hp;
   ST = stats();
@@ -581,10 +588,13 @@ function quickMove(src, it, eqk) {
   } else {
     const k = kindOf(it),
       slots = EQS.filter(e => eqTakes(e, k)),
-      e = slots.find(e => !S.eq[e.k]) || slots[0];
+      /* 武器：主手空著放主手；主手有武器、而且副手能拿這把（權杖、雙持）才放副手，不然換掉主手 */
+      e =
+        k === 'weapon'
+          ? EQS.find(q => q.k === (S.eq.weapon && !S.eq.off && offOK(S.eq.weapon, it) ? 'off' : 'weapon'))
+          : slots.find(e => !S.eq[e.k]) || slots[0];
     if (!e) return;
-    if (e.k === 'off' && !offOK(S.eq.weapon, it))
-      return hudWarn(k === 'quiver' ? '箭袋只有拿弓才能用' : '拿雙手武器時不能拿副手');
+    if (e.k === 'off' && !offOK(S.eq.weapon, it)) return hudWarn(offWhy(S.eq.weapon, it));
     const old = S.eq[e.k],
       ox = it.x,
       oy = it.y;
@@ -607,7 +617,12 @@ function gemSlotFor(it) {
   for (let i = 0; i < NSLOT; i++) {
     const sl = S.skills[i];
     if (!isSup(it) && !sl.a) return i + ':a';
-    if (isSup(it) && sl.a && supOK(SKILLS[sl.a.gem], it)) {
+    if (
+      isSup(it) &&
+      sl.a &&
+      supOK(SKILLS[sl.a.gem], it) &&
+      !sl.a.sup.some(x => x && supCat(x.gem) === supCat(it.gem))
+    ) {
       const j = sl.a.sup.findIndex(x => !x);
       if (j >= 0) return i + ':' + j;
     }
@@ -615,7 +630,7 @@ function gemSlotFor(it) {
   if (isSup(it))
     for (let i = 0; i < NSLOT; i++) {
       const a = S.skills[i].a,
-        j = a ? a.sup.findIndex(x => !x) : -1;
+        j = a && !a.sup.some(x => x && supCat(x.gem) === supCat(it.gem)) ? a.sup.findIndex(x => !x) : -1;
       if (j >= 0) return i + ':' + j;
     }
   return null;
@@ -759,7 +774,7 @@ function gemTip(it) {
   const D = gemOf(it),
     sup = isSup(it),
     sl = S.skills.find(sl => sl.a && sl.a.sup.includes(it)),
-    bad = sl && sl.a && !supOK(SKILLS[sl.a.gem], it);
+    bad = sl && sl.a && !supOK(SKILLS[sl.a.gem], it, sl.a);
   let html = `<b class="rc3">${esc(D.n)}</b><small>${isAura(it) ? '光環寶石' : sup ? '輔助寶石' : '技能寶石'} · Lv ${it.lv}</small><p>${esc(D.d)}</p>`;
   if (isAura(it)) {
     const on = S.auras.includes(it),
@@ -770,7 +785,8 @@ function gemTip(it) {
     html += `<p class="base">${D.need.length ? '要有標籤：' + D.need.map(t => TAGN[t]).join('、') : '所有技能都能用'}</p>`;
   else if (!isAura(it))
     html += `${D.wt ? `<p class="${wtOK(D) ? 'base' : 'c-bad'}">${wtNeed(D)}</p>` : ''}<p class="base">標籤：${D.tags.map(t => TAGN[t]).join('、')}${D.mp ? ` · 魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}${D.m ? `<br>傷害 ×${(D.m * Math.pow(1.06, it.lv - 1)).toFixed(2)}${D.el ? `（全部是${ELN[D.el]}）` : ''}` : ''}</p>`;
-  if (bad) html += `<p class="c-bad">跟這個技能不相容，沒有效果</p>`;
+  if (bad)
+    html += `<p class="c-bad">${sl && sl.a && supDup(sl.a, it) ? '這顆技能已經有同分類的輔助，沒有效果' : '跟這個技能不相容，沒有效果'}</p>`;
   if (it.sup)
     html += `<p class="base">孔 ${it.so}／${GEM_SO_MAX}${
       it.sup.some(Boolean)

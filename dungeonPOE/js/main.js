@@ -96,12 +96,28 @@ function migrate(s) {
     o.charms = [null, null, null];
     o.v = 14;
   }
-  /* 飛刃、千本櫻改成要拿短刀：裝著這兩招的，送一把短刀到背包（只送一次） */
-  if (!o.gotDagger && o.skills.some(k => k.a && ['blade', 'storm'].includes(k.a.gem))) {
-    o.gotDagger = 1;
-    const d = mkItem('w_short', 1, 0);
-    if (!gridAuto(o.inv, d)) gridAuto(o.stash, d);
+  /* 0.2.9：武器照 PoE2 的 18 種類別重做；舊底材換成同一族的新類別、最接近的階級（等級、稀有度、詞綴都保留） */
+  const OLDW = {
+    sword1: ['w_katana', 'w_moon', 'w_demon'],
+    sword2: ['w_nodachi', 'w_zanba', 'w_omono'],
+    dagger: ['w_short', 'w_kris', 'w_kunai'],
+    bow: ['w_bow', 'w_yumi', 'w_shigeto'],
+    staff: ['w_rod', 'w_fuzue', 'w_bonerod'],
+    wand: ['w_charm', 'w_flute', 'w_thunder'],
+    spear: ['w_spear', 'w_trident', 'w_glaive'],
+    qstaff: ['w_staff', 'w_ironstaff', 'w_demonstaff']
+  };
+  for (const it of [...Object.values(o.eq), ...o.inv.items, ...o.stash.items]) {
+    if (!it || it.gem || it.charm) continue;
+    if (it.b === 's_orb') it.b = 'f_orb';
+    if (BASEI[it.b]) continue;
+    const wt = Object.keys(OLDW).find(k => OLDW[k].includes(it.b));
+    if (!wt) continue;
+    const i = OLDW[wt].indexOf(it.b);
+    it.b = `w_${wt}_${[0, 3, 5][i]}`;
   }
+  /* 副手不合規的（例：雙手劍配盾）收回背包 */
+  if (o.eq.off && !offOK(o.eq.weapon, o.eq.off) && gridAuto(o.inv, o.eq.off)) o.eq.off = null;
   return o;
 }
 let NARROW = false;

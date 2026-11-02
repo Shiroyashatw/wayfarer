@@ -41,12 +41,19 @@ ok(
   ok('品質 0～40%（35% 以上只在階級 10 以上）、孔數不超過上限、潛能 3～10', !bad.length, bad.slice(0, 4).join('、'));
   const mk = id => G.mkItem(id, 10, 0),
     rules = [
-      [mk('w_nodachi'), mk('s_wood'), false],
-      [mk('w_katana'), mk('s_wood'), true],
-      [mk('w_bow'), mk('q_bamboo'), true],
-      [mk('w_katana'), mk('q_bamboo'), false],
-      [mk('w_bow'), mk('s_wood'), false],
-      [mk('w_charm'), mk('s_orb'), true]
+      [mk('w_sword2_0'), mk('s_wood'), false],
+      [mk('w_sword1_0'), mk('s_wood'), true],
+      [mk('w_bow_0'), mk('q_bamboo'), true],
+      [mk('w_sword1_0'), mk('q_bamboo'), false],
+      [mk('w_bow_0'), mk('s_wood'), false],
+      [mk('w_wand_0'), mk('f_orb'), true],
+      [mk('w_mace1_0'), mk('f_orb'), false],
+      [mk('w_mace1_0'), mk('w_sceptre_0'), true],
+      [mk('w_sceptre_0'), mk('w_sceptre_1'), false],
+      [mk('w_dagger_0'), mk('w_dagger_2'), true],
+      [mk('w_dagger_0'), mk('w_claw_0'), false],
+      [mk('w_mace1_0'), mk('w_mace1_1'), false],
+      [mk('w_spear_0'), mk('s_wood'), true]
     ].filter(([w, o, want]) => G.offOK(w, o) !== want);
   /* 每種武器都拿一次：所有數值都要是數字（新武器種類查不到天賦加成會變 NaN） */
   const nan = [];
@@ -133,7 +140,8 @@ for (let i = 0; i < 3000; i++) {
     const [lo, hi] = G.tierRange(a.k, a.T),
       v = Array.isArray(a.v) ? a.v[1] : a.v;
     if (v < lo || v > hi) err.push(`數值超出 ${a.k} ${v}`);
-    if (!G.KINDS[G.BASES.find(b => b.id === it.b).k].aff.includes(a.k)) err.push('不該出現的詞綴 ' + a.k);
+    const Bb = G.BASES.find(b => b.id === it.b);
+    if (!(Bb.aff || G.KINDS[Bb.k].aff).includes(a.k)) err.push('不該出現的詞綴 ' + a.k);
   }
   if (!(G.sellPrice(it) > 0)) err.push('賣價');
   if (!G.itemName(it) || it.a.some(a => G.affText(a).includes('{}'))) err.push('文字');
