@@ -6,7 +6,7 @@ const fs = require('fs'),
   path = require('path');
 const ctx = { console, Math, Date, JSON, Object, Array, Set, location: { search: '' }, URLSearchParams };
 vm.createContext(ctx);
-for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js'])
+for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js', 'maps.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 /* 遊戲裡由 game.js 提供的全域：這裡給最小的替身 */
 vm.runInContext(

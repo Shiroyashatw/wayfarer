@@ -16,7 +16,7 @@ function artRepaint() {
 const BAR = [
   { k: 'flask', key: '1', ic: 'it_potion', n: '藥水', d: '回復一半生命（1.4 秒內）。殺怪會補充。' },
   ...SLOTKEY.map((key, i) => ({ k: 's' + i, key, slot: i })),
-  { k: 'roll', key: '空白', n: '翻滾', d: '短暫無敵。怪物出手的瞬間翻滾＝見切：時間變慢，下一擊必定暴擊。' },
+  { k: 'roll', key: '空白', n: '翻滾', d: '短暫無敵。怪物出手的瞬間翻滾＝完美閃避：時間變慢，下一擊必定暴擊。' },
   { k: 'use', key: 'F', n: '互動', d: '撿東西、使用藏身處的擺設', touch: 1 }
 ];
 function hudInit() {
@@ -29,7 +29,7 @@ function hudInit() {
       <div class="xp" id="xp" data-tip="經驗"><i></i></div>
       <div class="bar" id="bar"></div>
     </div>
-    <div class="orb mp" id="omp"><i></i><span></span></div>
+    <div class="orb mp" id="omp"><i></i><svg class="spir" viewBox="0 0 100 100" aria-hidden="true"><path class="tr" d="M50 95 A45 45 0 0 1 50 5"/><path class="fg" pathLength="1" d="M50 95 A45 45 0 0 1 50 5"/></svg><span></span></div>
   </div>
   <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 技能 左鍵／右鍵／Q／E／R · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · G 技能寶石 · P 天賦與昇華 · T 回藏身處 · H 隱藏</div>
   <div id="warn"></div>
@@ -108,16 +108,26 @@ function hudTick() {
     const no = (c && (P.mp < c.mp || !wtOK(c.D))) || G.scene === 'hide';
     if (HV['n' + k] !== no) el.classList.toggle('no', (HV['n' + k] = no));
   }
+  /* 能量護盾（照 PoE）：生命球上疊一層白，高度＝護盾÷最大護盾；騎士的護盾也畫在這層 */
   const wm = wardMax();
-  const wv = wm || ST.es ? Math.min(1, ((P.ward || 0) + (P.es || 0)) / ST.hp).toFixed(3) : '0';
+  const wv = ST.es
+    ? Math.min(1, (P.es || 0) / ST.es).toFixed(3)
+    : wm
+      ? Math.min(1, (P.ward || 0) / wm).toFixed(3)
+      : '0';
   if (HV.ward !== wv) $('ohp').style.setProperty('--w', (HV.ward = wv));
+  /* 精魄：魔力球左邊的弧（已預留÷總量） */
+  const sv = ST.spirit ? (ST.spiritUsed / ST.spirit).toFixed(3) : '0';
+  if (HV.spir !== sv) {
+    $('omp').style.setProperty('--s', (HV.spir = sv));
+    $('omp').dataset.tip = `精魄 ${ST.spiritUsed} / ${ST.spirit}`;
+  }
   const mech = [
     hasCls(S, 'ronin') ? `架勢 ${P.stance}/${stanceNeed()}` : '',
     P.rage ? `狂怒 ${Math.floor(P.rage)}` : '',
     hasCls(S, 'knight') ? `盾勢 ${P.guard}` : '',
     G.allies && G.allies.length ? `狼 ${G.allies.length}` : '',
     G.units && G.units.length ? `場上 ${G.units.length}` : '',
-    ST.auraOn.length ? `精魄 ${ST.spiritUsed}/${ST.spirit}` : '',
     ...Object.keys(BUFF)
       .filter(hasBuff)
       .map(k => BUFF[k].n),
@@ -140,7 +150,7 @@ function hudTick() {
   const at =
     G.scene === 'hide'
       ? `藏身處 · Lv ${S.lv} · ${S.gold} 金 · 地圖碎片 ${S.frag}`
-      : `地圖 階級 ${G.mapT} · Lv ${S.lv} · 剩 ${G.mobs.length} 隻 · 碎片 ${S.frag}`;
+      : `地圖 階級 ${G.mapT} · ${'★'.repeat(G.star || 1)} · Lv ${S.lv} · 剩 ${G.mobs.length} 隻 · 碎片 ${S.frag}`;
   setT($('area'), 'at', at);
   const hm = G.scene !== 'map';
   if (HV.hm !== hm) $('thome').hidden = HV.hm = hm;
@@ -152,13 +162,9 @@ function hudState() {
     o.innerHTML = `<div class="card"><h2 class="c-bad">你倒下了</h2><p>這張地圖失敗，失去 ${G.lostXp} 經驗（不會降級）。裝備都還在。</p><button class="btn pri" data-a="home">回到藏身處</button></div>`;
     o.hidden = false;
   } else if (G.state === 'portal') {
-    /* 站在傳送門上：回藏身處，或直接開下一張（同一階、或剛開放的下一階） */
-    const t = G.mapT,
-      up = Math.min(S.maxT, TMAX),
-      btn = (k, a, lab) =>
-        `<button class="btn ${a === 'again' && up === t ? 'pri' : a === 'up' ? 'pri' : ''}" data-a="${a}" ${S.frag < mapCost(k) ? 'disabled' : ''}>${lab}<small>${mapCost(k) ? `${mapCost(k)} 碎片（有 ${S.frag}）` : '免費'}</small></button>`;
+    /* 站在傳送門上：打開地圖台選下一張（新的一批卡），或回藏身處 */
     o.innerHTML = `<div class="card portal"><h2>傳送門</h2><p>${G.first ? `<span class="c-gold">開放階級 ${S.maxT}！</span>` : '地上的東西撿完了嗎？'}</p>
-      <div class="pbtns">${up > t ? btn(up, 'up', `下一把：階級 ${up}`) : ''}${btn(t, 'again', `下一把：階級 ${t}`)}<button class="btn" data-a="home">回藏身處<small>整理背包、點天賦</small></button></div>
+      <div class="pbtns"><button class="btn pri" data-a="pickmap">選下一張地圖<small>新的一批地圖卡</small></button><button class="btn" data-a="home">回藏身處<small>整理背包、點天賦</small></button></div>
       <p class="c-dim">走開就關掉</p></div>`;
     o.hidden = false;
   } else o.hidden = true;
@@ -175,12 +181,13 @@ function openPanel(k) {
   } else if (k === 'device') {
     PANEL.device = true;
     PANEL.pick = S.maxT;
+    PANEL.card = 0;
   } else PANEL[k] = true;
   hideTip();
   hudPanels();
 }
 function closePanels() {
-  PANEL.inv = PANEL.stash = PANEL.device = PANEL.skill = PANEL.asc = PANEL.craft = false;
+  PANEL.inv = PANEL.stash = PANEL.device = PANEL.skill = PANEL.asc = PANEL.craft = PANEL.gem = false;
   hideTip();
   hudPanels();
 }
@@ -192,6 +199,13 @@ function hudPanels() {
   $('pskill').hidden = !PANEL.skill;
   $('pasc').hidden = !PANEL.asc;
   $('pcraft').hidden = !PANEL.craft;
+  $('pgem').hidden = !PANEL.gem;
+  /* 生成寶石是單獨一個視窗：開著時後面的面板先藏起來，關掉回到原本的 */
+  if (PANEL.gem) {
+    $('pgem').innerHTML = gemHTML();
+    for (const id of ['pinv', 'pstash', 'pskill', 'pcraft', 'pasc', 'pdev']) $(id).hidden = true;
+    return;
+  }
   if (TOUCH.on && NARROW && PANEL.inv && (PANEL.stash || PANEL.skill || PANEL.craft)) {
     if (TOUCH.front === 'inv') $('pstash').hidden = $('pskill').hidden = $('pcraft').hidden = true;
     else $('pinv').hidden = true;
@@ -293,7 +307,7 @@ function skillHTML() {
       const c = slotCfg(i),
         g = sl.a;
       if (!g)
-        return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', null, 'act', '技能')}<div class="skinfo"><small class="c-dim">放一顆技能寶石（書庫可以複製白板）</small></div></div>`;
+        return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', null, 'act', '技能')}<div class="skinfo"><small class="c-dim">放一顆技能寶石（下面「生成寶石」）</small></div></div>`;
       const up = gemUpCheck(g),
         sups = g.sup.filter(Boolean),
         supC = sups.filter(x => !gemUpCheck(x).why).reduce((a, x) => a + soulCost(x.lv, 1), 0),
@@ -314,14 +328,131 @@ function skillHTML() {
       return `<div class="aurac">${sock('A:' + j, g, 'act', '光環', g && !on)}<small>${g ? `${esc(AURAS[g.gem].n)} Lv ${g.lv}` : '空的'}</small>${g ? mini('aup:' + j, `升級 ${up.c}`, up.why) : ''}</div>`;
     })
     .join('')}</div>
-  <div class="aurah"><b>書庫</b><span>學會的寶石永遠會；點一下複製一顆白板（Lv 1、2 孔）到背包</span></div>
-  <div class="lib">${LIB()
-    .map(
-      k =>
-        `<button class="eqs libg" data-fg="lib:${k}" title="${esc(gemOf({ gem: k }).n)}">${icHTML(gemOf({ gem: k }).ic)}</button>`
-    )
+  <div class="aurah"><b>生成寶石</b><span>角色等級夠就能生成（Lv 1、2 孔），花靈魂</span></div>
+  <div class="gkind">${Object.entries(GEMKIND)
+    .map(([k, n]) => `<button class="btn" data-gm="open:${k}">${n}</button>`)
     .join('')}</div>`;
 }
+/* 生成寶石（0.2.7，照 PoE2 選技能）：上面三種、左邊頁籤（主動照武器、輔助與精魄照標籤）、右邊照使用等級分組 */
+const GEMUI = { kind: 'act', tab: null };
+const GEMKIND = { act: '主動技能', sup: '輔助寶石', aura: '精魄' };
+const SUPTAB = {
+  通用: ['fury', 'crit', 'leech', 'haste', 'cdr', 'fireadd'],
+  投射物: ['multi', 'pierce'],
+  範圍與近戰: ['area', 'heavy'],
+  異常: ['bleed', 'poison', 'poistack', 'ailmag', 'armbreak', 'wither', 'blind'],
+  元素: ['scorch', 'brittle', 'sap', 'expose', 'elec'],
+  法術: ['arcane'],
+  召喚: ['pack'],
+  轉換: ['trapc', 'minec', 'totemc']
+};
+function gemTabs(kind) {
+  const by = (n, ks) => ({ n, ks: ks.sort((a, b) => gemLv(a) - gemLv(b)) });
+  let tabs;
+  if (kind === 'act') {
+    const K = Object.keys(SKILLS),
+      tg = (k, t) => SKILLS[k].tags.includes(t);
+    tabs = [
+      ...Object.entries(WTN).map(([w, n]) =>
+        by(
+          n,
+          K.filter(k => (SKILLS[k].wt || []).includes(w))
+        )
+      ),
+      by(
+        '法術',
+        K.filter(k => !SKILLS[k].wt && tg(k, 'spell') && !SKILLS[k].unit && !SKILLS[k].curse && !SKILLS[k].mark)
+      ),
+      by(
+        '陷阱圖騰',
+        K.filter(k => SKILLS[k].unit)
+      ),
+      by(
+        '召喚',
+        K.filter(k => tg(k, 'minion'))
+      ),
+      by(
+        '詛咒與標記',
+        K.filter(k => SKILLS[k].curse || SKILLS[k].mark)
+      )
+    ];
+  } else if (kind === 'sup') {
+    const seen = new Set(Object.values(SUPTAB).flat());
+    tabs = Object.entries(SUPTAB).map(([n, ks]) =>
+      by(
+        n,
+        ks.filter(k => SUPPORTS[k])
+      )
+    );
+    tabs[0].ks.push(...Object.keys(SUPPORTS).filter(k => !seen.has(k)));
+  } else
+    tabs = [
+      by(
+        '光環',
+        Object.keys(AURAS).filter(k => !AURAS[k].fx.wolf)
+      ),
+      by(
+        '召喚',
+        Object.keys(AURAS).filter(k => AURAS[k].fx.wolf)
+      )
+    ];
+  return tabs.filter(t => t.ks.length);
+}
+/* 能不能生成：角色等級、靈魂；回傳原因或 null */
+const gemCost = k => soulCost(1, !!SUPPORTS[k]);
+const gemWhy = k =>
+  S.lv < gemLv(k) ? `角色 Lv ${gemLv(k)} 才能生成` : MAT().soul < gemCost(k) ? `靈魂不夠（要 ${gemCost(k)}）` : null;
+function gemMake(k) {
+  const why = gemWhy(k);
+  if (why) return hudWarn(why);
+  const g = mkGem(k);
+  if (!gridAuto(S.inv, g)) return hudWarn('背包滿了');
+  MAT().soul -= gemCost(k);
+  hudWarn(`生成了「${gemOf(g).n}」，放進背包`);
+  sfx('pick');
+  changed();
+}
+function gemHTML() {
+  const tabs = gemTabs(GEMUI.kind),
+    tab = tabs.find(t => t.n === GEMUI.tab) || tabs[0],
+    lvs = [...new Set(tab.ks.map(gemLv))];
+  return `<div class="ph"><b>生成寶石</b><span>靈魂 <b class="c-gold">${MAT().soul}</b> · 角色 Lv ${S.lv} · 寶石不能賣</span><button class="x" data-gm="close">✕</button></div>
+  <div class="gkind">${Object.entries(GEMKIND)
+    .map(([k, n]) => `<button class="btn ${k === GEMUI.kind ? 'on' : ''}" data-gm="kind:${k}">${n}</button>`)
+    .join('')}</div>
+  <div class="gwrap"><div class="gtabs">${tabs
+    .map(
+      t =>
+        `<button class="gtab ${t === tab ? 'on' : ''}" data-gm="tab:${t.n}">${t.n}<small>${t.ks.length}</small></button>`
+    )
+    .join('')}</div>
+  <div class="glist">${lvs
+    .map(
+      L =>
+        `<div class="glv"><h4 class="${S.lv < L ? 'c-dim' : ''}">Lv ${L}${S.lv < L ? ' 🔒' : ''}</h4>${tab.ks
+          .filter(k => gemLv(k) === L)
+          .map(k => {
+            const G0 = gemOf({ gem: k }),
+              why = gemWhy(k);
+            return `<div class="gcard ${S.lv < L ? 'lock' : ''}">${icHTML(G0.ic)}<div><b>${esc(G0.n)}</b><small>${esc(G0.d)}</small></div><button class="btn mini" data-gm="mk:${k}" ${why ? `disabled title="${esc(why)}"` : ''}>生成 ${gemCost(k)} 魂</button></div>`;
+          })
+          .join('')}</div>`
+    )
+    .join('')}</div></div>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-gm]');
+  if (!b) return;
+  const [k, v] = b.dataset.gm.split(':');
+  if (k === 'open') (GEMUI.kind = v), (GEMUI.tab = null), (PANEL.gem = true);
+  else if (k === 'kind') (GEMUI.kind = v), (GEMUI.tab = null);
+  else if (k === 'tab') GEMUI.tab = v;
+  else if (k === 'mk') return gemMake(v);
+  else if (k === 'close') PANEL.gem = false;
+  sfx('click');
+  hudPanels();
+});
+
 /* 昇華石碑：選職業（目前只有劍士）與分支；點數在天賦樹中間點 */
 function ascHTML() {
   const A = ASC.sword,
@@ -342,24 +473,38 @@ function ascHTML() {
   <p class="c-dim">選好後按 P：天賦樹中間挖空的地方就是昇華點。每條分支 8 點只能點成 4 小 4 大（大點是獨特效果）。</p>`;
 }
 function devHTML() {
+  /* 地圖台（0.2.7）：上面選階級（怪物強度、物品等級），下面選一張地圖卡（星級＝詞綴數＝風險與獎勵） */
   const t = PANEL.pick,
-    c = mapCost(t),
+    cards = mapCards(S),
+    open = cardsOpen(S),
+    i = Math.min(PANEL.card || 0, open - 1),
+    card = cards[i],
+    c = mapCost(t, card.star),
     m = tierMul(t),
-    b = bossOf(t);
-  return `<div class="ph"><b>地圖台</b><span>放進地圖碎片，選要打的階級</span><button class="x" data-a="close">✕</button></div>
-  <div class="tiers">${Array.from({ length: TMAX }, (_, i) => {
-    const k = i + 1,
+    rw = cardRew(card),
+    lv = mobLv(t);
+  return `<div class="ph"><b>地圖台</b><span>選階級和一張地圖卡；打完一把才換一批卡</span><button class="x" data-a="close">✕</button></div>
+  <div class="tiers">${Array.from({ length: TMAX }, (_, k0) => {
+    const k = k0 + 1,
       lock = k > S.maxT;
     return `<button class="tier ${k === t ? 'on' : ''} ${lock ? 'lock' : ''}" data-tier="${k}" ${lock ? 'disabled' : ''}>${lock ? '🔒' : k}</button>`;
   }).join('')}</div>
+  <div class="mcards">${cards
+    .map((cd, k) =>
+      k >= open
+        ? `<div class="mcard lock">🔒<small>打到階級 ${3 * (k - 2) + 1}</small></div>`
+        : `<button class="mcard ${k === i ? 'on' : ''}" data-card="${k}" style="--sc:${STARS[cd.star].c}"><b>${'★'.repeat(cd.star)}</b><small>${cd.mods.length} 條 · 數量 +${cardRew(cd).qty}%</small></button>`
+    )
+    .join('')}</div>
   <div class="tinfo">
-    <div><span>怪物強度</span><b>生命 ×${m.hp.toFixed(1)} · 傷害 ×${m.dmg.toFixed(1)}</b></div>
-    <div><span>物品等級</span><b>${tierIlvl(t)}（最高 T${bestTier(tierIlvl(t))} 詞綴）</b></div>
-    <div><span>王</span><b>${b.n}</b></div>
+    <div><span>怪物</span><b>Lv ${lv} · 生命 ×${m.hp.toFixed(1)} · 傷害 ×${m.dmg.toFixed(1)}</b></div>
+    <div><span>你的元素抗性</span><b class="${resPen(lv) ? 'c-warn' : ''}">${resPen(lv) ? `−${resPen(lv)}%` : '不扣'}</b></div>
+    <div><span>獎勵</span><b class="c-gold">物品數量 +${rw.qty}% · 稀有度 +${rw.rar}% · 材料 +${rw.mat}%</b></div>
+    <div><span>王</span><b>${bossOf(t).n}</b></div>
     <div><span>費用</span><b class="${S.frag < c ? 'c-bad' : ''}">${c ? `${c} 個地圖碎片（有 ${S.frag}）` : '免費'}</b></div>
   </div>
-  <p class="c-dim">打倒最高階的王會開放下一階（目前到 ${S.maxT}）。</p>
-  <button class="btn pri" data-a="open" ${S.frag < c ? 'disabled' : ''}>${S.frag < c ? '碎片不夠' : '開啟傳送門'}</button>`;
+  <ul class="mmods">${card.mods.map(k => `<li class="d${MAPMOD[k].d}">${MAPMOD[k].t}</li>`).join('')}</ul>
+  <button class="btn pri" data-a="open" ${S.frag < c ? 'disabled' : ''}>${S.frag < c ? '碎片不夠' : G.scene === 'map' ? '進入下一張' : '開啟傳送門'}</button>`;
 }
 
 /* ---------- 找道具、移動道具 ---------- */
@@ -504,6 +649,7 @@ function gemSlotFor(it) {
   return null;
 }
 function sell(src, it, eqk) {
+  if (it.gem) return hudWarn('寶石不能賣（要的話再生成就好）');
   takeOut(src, it, eqk);
   const p = sellPrice(it);
   S.gold += p;
@@ -795,6 +941,11 @@ function inputInit() {
       PANEL.pick = +t.dataset.tier;
       hudPanels();
     }
+    const cd = e.target.closest('[data-card]');
+    if (cd) {
+      PANEL.card = +cd.dataset.card;
+      hudPanels();
+    }
   });
   document.addEventListener('pointerover', e => {
     if (e.pointerType !== 'mouse' || (DR && DR.moved)) return; /* 觸控：點一下才出說明框 */
@@ -828,13 +979,15 @@ function pressFx(key) {
 function act(a) {
   if (a === 'close') closePanels();
   else if (a === 'open') {
-    openMap(PANEL.pick);
+    if (G.scene === 'map') mapAgain(PANEL.pick, PANEL.card || 0);
+    else openMap(PANEL.pick, PANEL.card || 0);
     closePanels();
   } else if (a === 'home') {
     enterHideout();
-  } else if (a === 'again') mapAgain(G.mapT);
-  else if (a === 'up') mapAgain(Math.min(S.maxT, TMAX));
-  else if (a.startsWith('asc:')) {
+  } else if (a === 'pickmap') {
+    $('over').hidden = true;
+    openPanel('device');
+  } else if (a.startsWith('asc:')) {
     /* 選昇華分支（換分支＝昇華點全部退回） */
     S.asc = a.slice(4);
     S.at = ['a_st'];

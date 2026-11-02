@@ -5,7 +5,7 @@ const fs = require('fs'),
   path = require('path');
 const ctx = { console, Math, Date, JSON, Object, Array, location: { search: '' }, URLSearchParams };
 vm.createContext(ctx);
-for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js'])
+for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js', 'maps.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 const G = vm.runInContext(
   '({ BASES, BASEI, KINDS, AFF, EQS, eqTakes, offOK, SOCK_MAX, SHARDS, FORGE, forgeCheck, forgeDo, temperDo, tierRange, affPct, decompDo, newMat, gemUp, drillDo, soulCost, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, ASC, ascNodes, ascPoints, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
@@ -275,4 +275,22 @@ ok(
   hits.every(h => Number.isFinite(h.d) && h.d > 0) && B('mob.res.fire') === 40 && B('resOf(mob, "fire", 100)') === 0
 );
 ok('抗性：沒堆抗性在第 16 階是 −60%，上限是最大抗性', B("effRes('fire')") === -60 && B('ST.maxRes.fire') === 75);
+const cards = Array.from({ length: 2000 }, () => B('rollCard()'));
+ok(
+  '地圖卡：詞綴數照星級（1★ 1～3、5★ 13～15）、同組不重複、1～2★ 沒有致命詞',
+  cards.every(c => {
+    const [lo, hi] = B('STARS')[c.star].n,
+      M = B('MAPMOD'),
+      g = new Set(c.mods.map(k => M[k].g));
+    return (
+      c.mods.length >= lo &&
+      c.mods.length <= hi &&
+      g.size === c.mods.length &&
+      (c.star > 2 || c.mods.every(k => M[k].d <= 2))
+    );
+  }) &&
+    B('cardsOpen({ maxT: 1 })') === 3 &&
+    B('cardsOpen({ maxT: 16 })') === 8 &&
+    B('mapCost(16, 5)') === 23
+);
 process.exit(bad ? 1 : 0);

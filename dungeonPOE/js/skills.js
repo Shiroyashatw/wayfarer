@@ -129,7 +129,7 @@ function useSlot(i) {
   if (hasCls(S, 'ronin') && P.stance >= stanceNeed()) {
     a.iai = 1;
     P.stance = 0;
-    fx({ k: 'mikiri', x: P.x, y: P.y, dur: 0.4 });
+    fx({ k: 'perfect', x: P.x, y: P.y, dur: 0.4 });
   }
   /* 刺劍姬：致命節奏（每第 4 次出手必定暴擊） */
   const rh = ascV(S, 'rapier.rhythm');
@@ -243,7 +243,7 @@ function actHit(a, idx) {
     for (let k = 0; cur && k <= D.chain + (c.proj - 1); k++) {
       fx({ k: 'zap', x: from.x, y: from.y, x2: cur.x, y2: cur.y - cur.sz * 0.4, dur: 0.18 });
       hit.add(cur);
-      hitMob(cur, c, angTo(from, cur), 60 * c.kb, { a });
+      hitMob(cur, c, angTo(from, cur), 60 * c.kb, { a, from });
       from = { x: cur.x, y: cur.y - cur.sz * 0.4 };
       let nx = null,
         nd = 260;
@@ -331,7 +331,7 @@ function boom(s) {
   sfx('slam');
   for (const m of G.mobs)
     if (m.hp > 0 && Math.hypot(m.x - s.x, m.y - 18 - s.y) < s.boom + m.r)
-      hitMob(m, s.c, angTo(s, m), 120 * s.c.kb, { a: s.a });
+      hitMob(m, s.c, angTo(s, m), 120 * s.c.kb, { a: s.a, from: { x: s.x, y: s.y + 18 } });
 }
 
 /* ---------- 傷害（公式在 combat.js 的 hitCalc） ---------- */
@@ -353,8 +353,11 @@ const BASEC = () => ({
 });
 /* 打中一隻怪：o.a 出手、o.quiet 不停頓不震（狼、毒、反擊）、o.stun 暈眩、o.mult 改這一下的倍率（換成「更多」） */
 function hitMob(m, c, ang, kb, o = {}) {
+  /* 不能穿牆：從出手的地方（o.from，預設是玩家）看不到就打不到 */
+  const f = o.from || P;
+  if (!los(f.x, f.y, m.x, m.y)) return;
   const a = o.a || {};
-  let mult = (o.mult != null ? o.mult / (c.mult || 1) : 1) * (a.mul || 1),
+  let mult = (o.mult ? o.mult / (c.mult || 1) : 1) * (a.mul || 1),
     crit = !!(a.crit || o.crit);
   if (a.iai) (mult *= coreV(S, 'ronin', 'iron') || 3), (crit = true);
   /* 刺客的印記：滿了就消耗 */
@@ -417,7 +420,8 @@ function hitMob(m, c, ang, kb, o = {}) {
     if (ST.loh) P.hp = Math.min(ST.hp, P.hp + ST.loh);
   }
   /* 吸血：1 秒內回完；同時只有一筆（取回得最快的） */
-  if (c.leech && (!P.lch || P.lch.t <= G.t || r.d * c.leech > P.lch.rate)) P.lch = { rate: r.d * c.leech, t: G.t + 1 };
+  const lr = r.d * c.leech * (1 + MM('pleech') / 100);
+  if (c.leech && (!P.lch || P.lch.t <= G.t || lr > P.lch.rate)) P.lch = { rate: lr, t: G.t + 1 };
   if (hasCls(S, 'pyro') && !o.noBurn) addBurn(m, r.d, 1 + coreV(S, 'pyro', 'kindle'));
   if (m.hp > 0 && m.burn && !m.boss) {
     const end = coreV(S, 'pyro', 'end');
@@ -516,7 +520,7 @@ function aoeHit(x, y, r, mult, col) {
   fx({ k: 'ring', x, y, r, dur: 0.25, col });
   for (const m of G.mobs)
     if (m.hp > 0 && Math.hypot(m.x - x, m.y - y) < r + m.r)
-      hitMob(m, c, Math.atan2(m.y - y, m.x - x), 160, { quiet: 1, mult });
+      hitMob(m, c, Math.atan2(m.y - y, m.x - x), 160, { quiet: 1, mult, from: { x, y } });
 }
 
 /* ---------- 馴獸師與召喚戰狼：狼跟著你、咬最近的怪 ---------- */
@@ -553,7 +557,7 @@ function updAllies(dt) {
       fx({ k: 'claw', x: w.x, y: w.y, ang: angTo(w, t), r: 34, dur: 0.12 });
       const c = w.c || slotCfg(0) || BASEC(),
         mult = w.src === 'gem' ? c.mult * c.wolfM : 0.4 * (1 + coreV(S, 'tamer', 'pack') / 100);
-      hitMob(t, c, angTo(w, t), 60, { quiet: 1, mult, noBurn: w.src === 'gem', minion: 1 });
+      hitMob(t, c, angTo(w, t), 60, { quiet: 1, mult, noBurn: w.src === 'gem', minion: 1, from: w });
     }
     if (dist(w, P) > 900) (w.x = P.x), (w.y = P.y);
   }
@@ -568,7 +572,7 @@ function updPools(dt) {
       p.tick = 0.5;
       for (const m of G.mobs)
         if (m.hp > 0 && Math.hypot(m.x - p.x, m.y - p.y) < p.r + m.r)
-          hitMob(m, p.c, 0, 0, { quiet: 1, a: p.a, mult: p.c.mult });
+          hitMob(m, p.c, 0, 0, { quiet: 1, a: p.a, mult: p.c.mult, from: p });
     }
   }
   G.pools = G.pools.filter(p => p.t < p.dur);
@@ -577,7 +581,9 @@ function updPools(dt) {
     if (o.t >= o.dur && !o.done && o.curse) {
       o.done = 1;
       fxs('dark', o.x, o.y, o.r * 0.6);
-      for (const m of G.mobs) if (m.hp > 0 && Math.hypot(m.x - o.x, m.y - o.y) < o.r + m.r) curseMob(m, o.curse, o.lv);
+      for (const m of G.mobs)
+        if (m.hp > 0 && Math.hypot(m.x - o.x, m.y - o.y) < o.r + m.r && los(o.x, o.y, m.x, m.y))
+          curseMob(m, o.curse, o.lv);
     } else if (o.t >= o.dur && !o.done) {
       o.done = 1;
       fx({ k: 'ring', x: o.x, y: o.y, r: o.r, dur: 0.4, col: '#ff6b3d' });
@@ -585,7 +591,7 @@ function updPools(dt) {
       sfx('slam');
       for (const m of G.mobs)
         if (m.hp > 0 && Math.hypot(m.x - o.x, m.y - o.y) < o.r + m.r)
-          hitMob(m, o.c, Math.atan2(m.y - o.y, m.x - o.x), 260, { a: o.a });
+          hitMob(m, o.c, Math.atan2(m.y - o.y, m.x - o.x), 260, { a: o.a, from: o });
     }
   }
   G.meteors = G.meteors.filter(o => !o.done);
@@ -597,7 +603,7 @@ function updSkills(dt) {
   if (wm && G.t - (P.lastHurt || -9) > 4) P.ward = wm;
   /* 能量護盾：2 秒沒受傷（秘法護盾 1 秒）開始回充，每秒 25% */
   if (ST.es && P.es < ST.es && G.t - (P.lastHurt || -9) > (ascV(S, 'spell.ward') ? 1 : 2))
-    P.es = Math.min(ST.es, P.es + ST.es * 0.25 * (1 + ST.esRec / 100) * dt);
+    P.es = Math.min(ST.es, P.es + ST.es * 0.25 * (1 + (ST.esRec + MM('pes')) / 100) * dt);
   /* 戰狼精魄光環 */
   const aw = G.allies.some(w => w.src === 'aura');
   if (G.scene === 'map' && ST.auraWolf && !aw) callWolf('aura');
@@ -652,8 +658,8 @@ function moveMul() {
     playerSlow()
   );
 }
-/* 見切成功：浪人一閃（架勢滿）、刺劍姬反擊 */
-function onMikiri() {
+/* 完美閃避成功：浪人一閃（架勢滿）、刺劍姬反擊 */
+function onPerfect() {
   if (ascV(S, 'ronin.flash')) (P.stance = stanceNeed()), (P.flashT = G.t + 2);
   const rp = ascV(S, 'rapier.riposte');
   if (rp) {
@@ -682,9 +688,9 @@ function tryUndying() {
   P.undying = 0;
   P.hp = 1;
   P.iuntil = G.t + ascV(S, 'berserk.undying');
-  fx({ k: 'mikiri', x: P.x, y: P.y, dur: 0.8 });
+  fx({ k: 'perfect', x: P.x, y: P.y, dur: 0.8 });
   hudWarn('不死！');
-  sfx('mikiri');
+  sfx('perfect');
   return true;
 }
 
@@ -694,9 +700,15 @@ const UNIT_N = { trap: '陷阱', mine: '地雷', totem: '圖騰', turret: '砲�
 function placeUnit(c, w) {
   const d = Math.min(320, Math.hypot(w.x - P.x, w.y - P.y)),
     a = Math.atan2(w.y - P.y, w.x - P.x);
-  let x = P.x + Math.cos(a) * d,
-    y = P.y + Math.sin(a) * d;
-  if (!open(x, y, 12)) (x = P.x), (y = P.y);
+  /* 往滑鼠方向走，碰到牆就停在牆前（不能丟到隔壁房間） */
+  let x = P.x,
+    y = P.y;
+  for (let s = 12; s <= d; s += 12) {
+    const nx = P.x + Math.cos(a) * s,
+      ny = P.y + Math.sin(a) * s;
+    if (!open(nx, ny, 12)) break;
+    (x = nx), (y = ny);
+  }
   const type = c.unit,
     mine = G.units.filter(u => u.type === type);
   /* 滿了就收掉最舊的 */
@@ -721,7 +733,7 @@ function unitFire(u, tgt, mul = 1) {
     sfx('slam');
     for (const m of G.mobs)
       if (m.hp > 0 && Math.hypot(m.x - u.x, m.y - u.y) < r + m.r)
-        hitMob(m, c, Math.atan2(m.y - u.y, m.x - u.x), 140, { a, stun: D.stun });
+        hitMob(m, c, Math.atan2(m.y - u.y, m.x - u.x), 140, { a, stun: D.stun, from: u });
     return;
   }
   /* 其他：暫時把施放點換成單位的位置，照原本的技能出手（出手完放回來） */

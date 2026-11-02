@@ -1,6 +1,6 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.7';
+const VER = '0.2.8';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
@@ -533,6 +533,77 @@ const SUPPORTS = {
     d: '這個技能改成立圖騰（8 秒）：圖騰替你自動施放，傷害更少 30%'
   }
 };
+/* 寶石的使用等級（0.2.7，照 PoE2）：角色等級到了才能生成；生成面板照這個分組 */
+const GEM_LV = {
+  slash: 1,
+  thrust: 1,
+  combo: 1,
+  split: 1,
+  blade: 1,
+  frostbolt: 1,
+  arc: 1,
+  swallow: 3,
+  quake: 3,
+  fireball: 3,
+  wolf: 3,
+  frosttrap: 3,
+  whirl: 5,
+  storm: 5,
+  venom: 5,
+  nova: 5,
+  blastmine: 5,
+  ballista: 5,
+  cu_enfeeble: 5,
+  mk_sniper: 5,
+  iai: 7,
+  firetotem: 7,
+  cu_tchains: 7,
+  mk_assassin: 7,
+  meteor: 9,
+  cu_vuln: 9,
+  mk_poacher: 9,
+  cu_eleweak: 11,
+  mk_warlord: 11,
+  cu_despair: 13,
+  mk_freeze: 13,
+  mk_volt: 13,
+  mk_hound: 15,
+  multi: 1,
+  pierce: 1,
+  area: 1,
+  fury: 3,
+  haste: 3,
+  fireadd: 3,
+  heavy: 3,
+  bleed: 3,
+  poison: 3,
+  crit: 5,
+  leech: 5,
+  pack: 5,
+  trapc: 5,
+  minec: 5,
+  blind: 5,
+  cdr: 7,
+  totemc: 7,
+  ailmag: 7,
+  armbreak: 7,
+  wither: 7,
+  arcane: 7,
+  poistack: 9,
+  expose: 9,
+  elec: 9,
+  scorch: 11,
+  brittle: 11,
+  sap: 11,
+  anger: 3,
+  precise: 3,
+  swift: 5,
+  iron: 5,
+  purity: 7,
+  clarity: 7,
+  wolfsp: 9
+};
+const gemLv = k => GEM_LV[k] || 1;
 /* 寶石等級：上限 20、不能超過角色等級；每級傷害 +6%（輔助每級 +1%） */
 const GEM_MAX = 20;
 const gemNeed = lv => Math.round(30 * lv * lv);
@@ -1527,14 +1598,14 @@ const ASC = {
           b2: { n: '刀氣', fx: { 'ronin.aura': 30 }, d: '近戰技能範圍 +30%、近戰傷害 +15%' },
           b3: { n: '斬鐵', fx: { 'ronin.iron': 5 }, d: '居合的傷害 ×3 → ×5' },
           b4: { n: '燕返', fx: { 'ronin.swallow': 1 }, d: '居合之後馬上再砍一次（同樣的傷害）' },
-          b5: { n: '一閃', fx: { 'ronin.flash': 30 }, d: '見切（出手瞬間翻滾）後架勢直接滿，2 秒內移動速度 +30%' },
+          b5: { n: '一閃', fx: { 'ronin.flash': 30 }, d: '完美閃避（出手瞬間翻滾）後架勢直接滿，2 秒內移動速度 +30%' },
           b6: { n: '明鏡止水', fx: { 'ronin.mirror': 8, 'ronin.gale': 3 }, d: '架勢只要 3 層；居合命中回 8% 生命' }
         }
       },
       rapier: {
         n: '刃舞者',
         ic: 'it_c_swordsman_3',
-        d: '細劍之舞：見切反擊、破綻、步法，越靈活越痛',
+        d: '細劍之舞：完美閃避反擊、破綻、步法，越靈活越痛',
         /* 三片旋轉的花瓣：中心往三個方向，每片再往外轉一點 */
         pos: {
           st: [0, 0],
@@ -1574,7 +1645,11 @@ const ASC = {
           s6: { crit: 2, as: 4 }
         },
         big: {
-          b1: { n: '反擊', fx: { 'rapier.riposte': 2 }, d: '見切時立刻反擊周圍的敵人（左鍵技能 ×2 傷害，必定暴擊）' },
+          b1: {
+            n: '反擊',
+            fx: { 'rapier.riposte': 2 },
+            d: '完美閃避時立刻反擊周圍的敵人（左鍵技能 ×2 傷害，必定暴擊）'
+          },
           b2: { n: '致命節奏', fx: { 'rapier.rhythm': 4 }, d: '每第 4 次出手必定暴擊' },
           b3: { n: '格擋大師', fx: { 'rapier.parry': 1.5 }, d: '格擋 +15%；格擋時反擊周圍（×1.5 傷害）' },
           b4: { n: '破綻', fx: { 'rapier.expose': 20 }, d: '暴擊的敵人 4 秒內受到的傷害 +20%' },
@@ -1672,9 +1747,8 @@ function ascNodes(br) {
 const ROLL = { t: 0.32, dist: 175, iframe: 0.26, cd: 0.55, perfect: 0.16, slow: 0.55, slowScale: 0.3 };
 const FLASK = { n: 3, heal: 0.5, t: 1.4, perKill: 0.12 };
 
-/* ---------- 地圖：階級 1～16，打倒王開放下一階；階級 t 花 t-1 個碎片 ---------- */
+/* ---------- 地圖：階級 1～16，打倒王開放下一階；費用與地圖卡在 maps.js ---------- */
 const TMAX = 16;
-const mapCost = t => t - 1;
 /* 怪物等級：生命、傷害跟著階級長 */
 const tierMul = t => ({ hp: Math.pow(1.32, t - 1), dmg: Math.pow(1.2, t - 1) });
 const tierIlvl = t => t;

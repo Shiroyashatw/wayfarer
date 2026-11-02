@@ -38,9 +38,12 @@ function mobDef(m, t) {
   m.res = { fire: 0, cold: 0, light: 0, chaos: 0 };
   if (m.boss) for (const k of ELEK) m.res[k] = 25;
   if (m.el && m.el !== 'phys') m.res[m.el] = 40;
+  for (const k of ELEK) m.res[k] += MM('mres');
   /* 護甲：照「這種怪在這一階的基礎生命」的比例（重甲類 D.arm 高、王低；王的生命倍率不放大護甲） */
   m.arm0 = m.arm = (m.boss ? 0.1 : m.D.arm || 0.3) * m.D.hp * tierMul(t).hp * (m.elite ? ELITE.hp : 1) * 0.5;
-  m.acc = 15 + 6 * mobLv(t);
+  m.arm0 = m.arm *= 1 + MM('marm') / 100;
+  m.acc = (15 + 6 * mobLv(t)) * (1 + MM('macc') / 100);
+  m.spdM = 1 + MM('mspd') / 100;
   m.ail = {};
 }
 
@@ -136,6 +139,9 @@ function hitCalc(c, m, o = {}) {
   };
   /* 5. 更多：輔助、昇華、狂怒（只有攻擊）、化身（法術的元素） */
   let more = (o.mult || 1) * (c.more || 1) * (1 + 0.02 * (P.guard || 0));
+  /* 你被「衰弱」詛咒（地圖詞）：造成的傷害更少 */
+  const pc = P.ail && P.ail.curse;
+  if (pc && pc.k === 'enfeeble' && pc.t > G.t) more *= 1 - pc.v / 100;
   if (tg.includes('attack')) more *= 1 + (P.rage || 0) / 100;
   for (const k of DT) {
     let mk = more;
@@ -268,7 +274,7 @@ function ailTick(m, dt) {
 /* 怪物的移動倍率：冰緩、阻礙、殘廢、時空鎖鏈 */
 function mobSpd(m) {
   const a = m.ail || {};
-  let s = 1;
+  let s = m.spdM || 1;
   if (a.chill && a.chill.t > G.t) s *= 1 - a.chill.v / 100;
   if (a.hinder > G.t || a.maim > G.t) s *= 0.7;
   if (a.curse && a.curse.k === 'tchains') s *= 1 - a.curse.v / 100;
@@ -423,7 +429,7 @@ const effRes = k => {
   let r = ST.res[k] - pen;
   const cu = P.ail && P.ail.curse;
   if (cu && cu.t > G.t && ((cu.k === 'eleweak' && k !== 'chaos') || (cu.k === 'despair' && k === 'chaos'))) r -= cu.v;
-  return Math.min(ST.maxRes[k], r);
+  return Math.min(ST.maxRes[k] + (k !== 'chaos' && G.scene === 'map' ? MM('pmaxres') : 0), r);
 };
 function hurtCalc(d, src, el, noEv) {
   const m = src && src.ail ? src : src && src.src && src.src.ail ? src.src : null;
@@ -438,12 +444,26 @@ function hurtCalc(d, src, el, noEv) {
     P.evE -= 100;
   }
   if (!noEv && Math.random() * 100 < ST.block) return { block: 1 };
-  /* 王、菁英會暴擊（5%，暴擊傷害 +60%） */
-  const crit = m && (m.boss || m.elite) && Math.random() < 0.05;
-  if (crit) d *= 1.6;
-  const pre = d;
-  if (el === 'phys') d *= 1 - Math.min(0.9, ST.armor / (ST.armor + 10 * d + 1));
-  else d *= 1 - effRes(el) / 100;
+  /* 王、菁英會暴擊（5%，暴擊傷害 +60%）；地圖詞可以讓所有怪暴擊 */
+  const crit = m && Math.random() * 100 < (m.boss || m.elite ? 5 : 0) + MM('mcrit');
+  if (crit) d *= 1.6 + MM('mcritX');
+  const pre = d,
+    /* 怪物穿透（地圖詞）：最多穿到 0 */
+    resHit = k => {
+      const r = effRes(k);
+      return r > 0 ? Math.max(0, r - MM('mpen')) : r;
+    },
+    cu = P.ail && P.ail.curse,
+    arm = ST.armor * (cu && cu.k === 'vuln' ? 1 - cu.v / 100 : 1);
+  if (el === 'phys') d *= 1 - Math.min(0.9, arm / (arm + 10 * d + 1));
+  else d *= 1 - resHit(el) / 100;
+  /* 地圖詞「怪物多造成 20% 的某元素傷害」：另外照那個元素的抗性算 */
+  for (const [f, k] of [
+    ['addF', 'fire'],
+    ['addC', 'cold'],
+    ['addL', 'light']
+  ])
+    if (MM(f)) d += ((pre * MM(f)) / 100) * (1 - resHit(k) / 100);
   if (P.ail && P.ail.shock > G.t) d *= 1.2;
   if (m) mobAilPlayer(m, pre, el);
   /* 守護先吸收 */
@@ -472,8 +492,11 @@ function mobAilPlayer(m, d, el) {
     a.frz = (a.frz || 0) + (d / thr) * 50;
     if (a.frz >= 100) (a.frozen = G.t + 1.5), (a.frz = 0);
   }
-  if (ail === 'bleed' && !imm('bleed') && Math.random() < 0.25) a.bleed = keepMax(a.bleed, d * 0.15, 5);
-  if (ail === 'poison' && !imm('poi') && Math.random() < 0.3) a.poi = { dps: d * 0.2, t: G.t + 2 };
+  if (!imm('bleed') && Math.random() < (ail === 'bleed' ? 0.25 : 0) + MM('mbleed') / 100)
+    a.bleed = keepMax(a.bleed, d * 0.15, 5);
+  if (!imm('poi') && Math.random() < (ail === 'poison' ? 0.3 : 0) + MM('mpoi') / 100)
+    a.poi = { dps: d * 0.2, t: G.t + 2 };
+  if (!imm('ign') && Math.random() * 100 < MM('mign')) a.ign = keepMax(a.ign, d * 0.2, 4);
   trigCharms(el, a);
 }
 /* 玩家被冰緩、時空鎖鏈時的移動、出手倍率 */

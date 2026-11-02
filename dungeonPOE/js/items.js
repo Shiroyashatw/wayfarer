@@ -186,7 +186,7 @@ const sellPrice = it =>
   it.charm
     ? 3
     : it.gem
-      ? 2 + it.lv
+      ? 0
       : Math.round(
           (1 + it.a.length * 2 + (it.r === 2 ? 4 : 0)) * (1 + it.L * 0.4) * (1 + Math.max(0, (it.q || 0) - 0.2) * 5)
         );

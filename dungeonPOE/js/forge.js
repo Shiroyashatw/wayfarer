@@ -150,10 +150,6 @@ document.addEventListener('click', e => {
     const a = S.skills[+v].a;
     if (a) err = drillDo(a);
     if (!err) sfx('equip');
-  } else if (k === 'lib') {
-    const g = blankGem(v);
-    if (!gridAuto(S.inv, g)) err = '背包滿了';
-    else hudWarn(`複製了一顆「${gemOf(g).n}」白板到背包`), sfx('pick');
   }
   if (err) hudWarn(err);
   changed();

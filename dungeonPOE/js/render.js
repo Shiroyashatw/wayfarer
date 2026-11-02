@@ -329,7 +329,7 @@ function draw() {
       hurt: ['#ff5a5a', 17],
       gold: ['#ffd166', 14],
       lv: ['#9df29d', 20],
-      mikiri: ['#8fe0ff', 26],
+      perfect: ['#8fe0ff', 26],
       ev: ['#b8f0c8', 18],
       mat: ['#d6b8ff', 15],
       /* 持續傷害：小、淡，跟擊中分開 */
@@ -346,8 +346,8 @@ function draw() {
             ? '格擋'
             : n.c === 'lv'
               ? '升級！Lv ' + n.v
-              : n.c === 'mikiri'
-                ? '見切'
+              : n.c === 'perfect'
+                ? '完美閃避'
                 : n.c === 'ev'
                   ? '閃避'
                   : n.txt || n.v;
@@ -408,7 +408,7 @@ function draw() {
   {
     const W = SW,
       H = SH;
-    /* 受傷：畫面邊緣紅；見切：藍 */
+    /* 受傷：畫面邊緣紅；完美閃避：藍 */
     if (P.hurtT > 0 || P.hp < ST.hp * 0.3 || G.slow > 0) {
       const a = G.slow > 0 ? 0.35 : Math.max(P.hurtT / 0.35, P.hp < ST.hp * 0.3 ? 0.35 + 0.15 * Math.sin(G.t * 6) : 0),
         vg = CX.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.7);
@@ -534,7 +534,7 @@ function drawHero() {
   }
   if (P.hurtT > 0.25) heroCell(0, dirCol(P.face), P.x, P.y, false, 0.6, { white: 1 });
   drawCharges();
-  /* 見切後的下一擊：刀光 */
+  /* 完美閃避後的下一擊：刀光 */
   if (P.critNext) {
     CX.strokeStyle = `rgba(143,224,255,${0.5 + 0.3 * Math.sin(G.t * 12)})`;
     CX.lineWidth = 2;
@@ -643,7 +643,7 @@ function drawFx() {
           S.h * o.s
         );
       }
-    } else if (o.k === 'mikiri') {
+    } else if (o.k === 'perfect') {
       CX.globalAlpha = 1 - f;
       CX.strokeStyle = '#8fe0ff';
       CX.lineWidth = 3;

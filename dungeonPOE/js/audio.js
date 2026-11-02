@@ -63,7 +63,7 @@ function sfx(k) {
       ),
       hurt: () => (tone(200, 80, 0.18, 0.25, 'sawtooth'), nz(0.12, 600, 150, 0.25, 'lowpass')),
       roll: () => nz(0.18, 500, 1400, 0.1),
-      mikiri: () => (tone(1800, 1800, 0.35, 0.12, 'triangle'), tone(2700, 2700, 0.3, 0.06, 'sine', 0.04)),
+      perfect: () => (tone(1800, 1800, 0.35, 0.12, 'triangle'), tone(2700, 2700, 0.3, 0.06, 'sine', 0.04)),
       drink: () => tone(500, 900, 0.18, 0.12, 'sine'),
       coin: () => (tone(1500, 1500, 0.06, 0.08, 'square'), tone(2000, 2000, 0.1, 0.06, 'square', 0.05)),
       pick: () => tone(700, 1100, 0.1, 0.1, 'triangle'),

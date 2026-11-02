@@ -1,4 +1,4 @@
-/* dungeonPOE · 遊戲：存檔結構、場景（藏身處／地圖）、玩家與技能、打擊感（停頓、震動、擊退、閃白、見切）、怪物 AI、王、掉落、主迴圈 */
+/* dungeonPOE · 遊戲：存檔結構、場景（藏身處／地圖）、玩家與技能、打擊感（停頓、震動、擊退、閃白、完美閃避）、怪物 AI、王、掉落、主迴圈 */
 'use strict';
 const TAU = Math.PI * 2;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -126,28 +126,33 @@ function enterHideout() {
   hudState();
 }
 /* 開地圖：花碎片、地圖台前面出現傳送門 */
-function openMap(t) {
-  if (t > S.maxT) return hudWarn('先打倒前一階的王');
-  const c = mapCost(t);
-  if (S.frag < c) return hudWarn(`碎片不夠：要 ${c} 個`);
+/* 選了地圖卡 i、階級 t：付碎片（階級＋星級），記住這張卡（進地圖時套用） */
+function payMap(t, i) {
+  const card = mapCards(S)[i];
+  if (t > S.maxT) return hudWarn('先打倒前一階的王'), false;
+  if (!card || i >= cardsOpen(S)) return hudWarn('這張卡還沒開放'), false;
+  const c = mapCost(t, card.star);
+  if (S.frag < c) return hudWarn(`碎片不夠：要 ${c} 個`), false;
   S.frag -= c;
   S.tier = t;
+  S.card = card;
+  return true;
+}
+function openMap(t, i) {
+  if (!payMap(t, i)) return;
   G.portal = { x: 480, y: 330, to: t };
   save();
   sfx('portal');
-  hudWarn(`階級 ${t} 的傳送門開了`);
+  hudWarn(`階級 ${t}・${S.card.star} 星的傳送門開了`);
 }
 /* 地圖（參考 Chronicon）：一塊一塊 14×14 格的房間拼起來，有岔路也沒關係；
    殺怪累積首領進度，滿了王就出現在附近（怪物總量約是需要的 150～160%） */
 const TS = 48,
   CHUNK = 14;
 /* 從地圖裡的傳送門直接開下一張（花碎片） */
-function mapAgain(t) {
-  const c = mapCost(t);
-  if (t > S.maxT) return hudWarn('先打倒前一階的王');
-  if (S.frag < c) return hudWarn(`碎片不夠：要 ${c} 個`);
-  S.frag -= c;
-  S.tier = t;
+/* 傳送門：直接開下一張 */
+function mapAgain(t, i) {
+  if (!payMap(t, i)) return;
   save();
   enterMap(t);
 }
@@ -159,6 +164,11 @@ function enterMap(t) {
   resetWorld(cols * TS, rows * TS);
   G.scene = 'map';
   G.mapT = t;
+  /* 地圖卡的詞綴；這一批卡用掉了，下次打開地圖台抽新的 */
+  G.mm = mapMods(S.card);
+  G.star = (S.card && S.card.star) || 1;
+  S.card = null;
+  S.cards = null;
   const tiles = (G.tiles = new Uint8Array(cols * rows).fill(1));
   G.cols = cols;
   G.rows = rows;
@@ -219,14 +229,15 @@ function enterMap(t) {
       if (a !== b && Math.abs(a.cx - b.cx) + Math.abs(a.cy - b.cy) === 1 && Math.random() < 0.08) corridor(a, b);
   const st = rooms[0];
   newPlayer((st.cx * CHUNK + 7) * TS, (st.cy * CHUNK + 7) * TS);
+  if (G.mm.pcurse) P.ail = { curse: { k: G.mm.pcurse, v: G.mm.pcv, t: 1e9 } };
   /* 怪物：起點以外的房間各 2～3 群，每 4 群一隻菁英 */
   let pk = 0,
     pts = 0;
   for (const r of rooms.slice(1))
-    for (let k = irnd(2, 3); k > 0; k--) {
+    for (let k = irnd(2, 3) + (Math.random() * 100 < MM('pack') * 2 ? 1 : 0); k > 0; k--) {
       const c = floorIn(r);
       if (!c) continue;
-      const elite = ++pk % 4 === 0;
+      const elite = ++pk % 4 === 0 || Math.random() * 400 < MM('elite');
       pick(PACKS).forEach((m, j) => {
         const p = floorNear(c.x, c.y, 0, 70, 20) || c;
         spawnMob(MOBS[m], p.x, p.y, pk, elite && j === 0);
@@ -246,6 +257,12 @@ const isWall = (x, y) => {
     ty = Math.floor(y / TS);
   return tx < 0 || ty < 0 || tx >= G.cols || ty >= G.rows || G.tiles[ty * G.cols + tx] === 1;
 };
+/* 視線：兩點之間沒有牆（每 12 px 檢查一次）；技能、陷阱、爆炸都不能穿牆 */
+function los(ax, ay, bx, by) {
+  const n = Math.ceil(Math.hypot(bx - ax, by - ay) / 12);
+  for (let i = 1; i < n; i++) if (isWall(ax + ((bx - ax) * i) / n, ay + ((by - ay) * i) / n)) return false;
+  return true;
+}
 /* 周圍 clear 像素內都不是牆 */
 const open = (x, y, c) =>
   !isWall(x, y) && !isWall(x - c, y) && !isWall(x + c, y) && !isWall(x, y - c) && !isWall(x, y + c);
@@ -275,8 +292,8 @@ function addProg(m) {
   const p = floorNear(P.x, P.y, 260, 420, 60) || floorNear(P.x, P.y, 120, 260, 50) || { x: P.x + 1, y: P.y };
   const b = spawnMob(bossOf(G.mapT), p.x, p.y, 99, false);
   b.boss = 1;
-  b.hp = b.mhp = b.hp * bossHpMul(G.mapT || 1);
-  b.dmg *= BOSS_DMG;
+  b.hp = b.mhp = b.hp * bossHpMul(G.mapT || 1) * (1 + MM('bhp') / 100);
+  b.dmg *= BOSS_DMG * (1 + MM('bdmg') / 100);
   mobDef(b, G.mapT || 1);
   b.aggro = 1;
   b.cd = 1.2;
@@ -304,8 +321,8 @@ function spawnMob(D, x, y, pack, elite) {
     elite,
     r: D.r * e.sz,
     sz: D.sz * e.sz,
-    hp: D.hp * m.hp * e.hp,
-    dmg: D.dmg * m.dmg * e.dmg,
+    hp: D.hp * m.hp * e.hp * (1 + MM('mhp') / 100),
+    dmg: D.dmg * m.dmg * e.dmg * (1 + MM('mdmg') / 100),
     el: D.el || 'phys',
     st: 'idle',
     t: 0,
@@ -358,7 +375,7 @@ function fx(o) {
   else if (o.k === 'zap') fxs('zap', o.x2, o.y2);
   else if (o.k === 'die') fxs('poof', o.x, o.y, o.sz * 0.5);
   else if (o.k === 'heal' || o.k === 'lvup') fxs(o.k, o.x, o.y);
-  else if (o.k === 'mikiri') fxs('blink', o.x, o.y);
+  else if (o.k === 'perfect') fxs('blink', o.x, o.y);
 }
 /* 播一張序列圖（js/fxsheets.js）；r 是想要的半徑，照原圖的半徑縮放 */
 function fxs(n, x, y, r, o) {
@@ -378,7 +395,7 @@ function updPlayer(dt) {
   for (const k in P.cds) P.cds[k] = Math.max(0, P.cds[k] - dt);
   P.mp = Math.min(ST.mp, P.mp + ST.mpReg * (hasBuff('arcane') ? 1.2 : 1) * dt);
   if (G.scene === 'map') baseTick(dt);
-  if (ST.regen) P.hp = Math.min(ST.hp, P.hp + ST.regen * dt);
+  if (ST.regen) P.hp = Math.min(ST.hp, P.hp + ST.regen * Math.max(0, 1 + MM('pregen') / 100) * dt);
   if (P.heal > 0) {
     const h = Math.min(P.heal, ((ST.hp * FLASK.heal) / FLASK.t) * dt);
     P.heal -= h;
@@ -490,7 +507,7 @@ function drinkFlask() {
   if (G.scene !== 'map' || G.state !== 'play') return;
   if (P.flask < 1) return hudWarn('藥水用完了：殺怪會補');
   P.flask -= 1;
-  P.heal += ST.hp * FLASK.heal * (1 + ST.flask / 100);
+  P.heal += ST.hp * FLASK.heal * (1 + (ST.flask + MM('pflask')) / 100);
   fx({ k: 'heal', x: P.x, y: P.y, dur: 0.5 });
   sfx('drink');
 }
@@ -502,10 +519,10 @@ function hurtPlayer(d, src, el = 'phys', noEv) {
     if (!G.slow) {
       G.slow = ROLL.slow;
       P.critNext = 1;
-      onMikiri();
-      fx({ k: 'mikiri', x: P.x, y: P.y, dur: 0.6 });
-      num(P.x, P.y - 70, 0, 'mikiri');
-      sfx('mikiri');
+      onPerfect();
+      fx({ k: 'perfect', x: P.x, y: P.y, dur: 0.6 });
+      num(P.x, P.y - 70, 0, 'perfect');
+      sfx('perfect');
     }
     return;
   }
@@ -563,10 +580,14 @@ function killMob(m) {
   gainXp(Math.max(1, Math.round(m.D.xp * tierMul(t).hp * (m.elite ? 4 : 1) * xpMul(S.lv, mobLv(t)))));
   /* 材料：粉、靈魂自動吸收；碎片、鑿孔石直接進材料頁，跳字提醒 */
   killMat(m, t).forEach((n, i) => num(m.x, m.y - m.sz * 0.6 - i * 18, 0, 'mat', '+' + n));
+  /* 地圖卡的材料加成：多拿一次 */
+  if (Math.random() * 100 < MM('mat')) killMat(m, t);
   /* 掉落：裝備、金幣、地圖碎片（越高階越多） */
-  const nItems = m.boss ? 4 : m.elite ? irnd(1, 2) : Math.random() < 0.13 ? 1 : 0;
+  /* 地圖卡：物品數量、稀有度 */
+  const q = 1 + MM('qty') / 100,
+    nItems = m.boss ? Math.round(4 * q) : m.elite ? Math.round(irnd(1, 2) * q) : Math.random() < 0.13 * q ? 1 : 0;
   for (let i = 0; i < nItems; i++) {
-    const it = dropItem(tierIlvl(t), m.boss ? 0.8 : m.elite ? 0.4 : 0);
+    const it = dropItem(tierIlvl(t), (m.boss ? 0.8 : m.elite ? 0.4 : 0) + MM('rar') / 100);
     if (m.boss && i === 0 && it.r < 2) Object.assign(it, mkItem(it.b, it.L, 2), { id: it.id });
     dropAt(m.x, m.y, { it });
   }
@@ -582,8 +603,6 @@ function killMob(m) {
         ? 1
         : 0;
   if (fr) dropAt(m.x, m.y, { frag: fr });
-  /* 技能寶石：小怪 2%、菁英 25%、王一定掉 */
-  if (Math.random() < (m.boss ? 1 : m.elite ? 0.25 : 0.02)) dropAt(m.x, m.y, { it: dropGem(t) });
   /* 護符：小怪 1%、菁英 15%、王 50% */
   if (Math.random() < (m.boss ? 0.5 : m.elite ? 0.15 : 0.01)) dropAt(m.x, m.y, { it: dropCharm() });
   coreKill(m);
@@ -692,7 +711,63 @@ function interact() {
 }
 
 /* ---------- 怪物 AI ---------- */
+/* 怪物找路（0.2.7）：從玩家的格子做 BFS（每 0.25 秒一次），看不到玩家的怪沿著距離變小的格子走，不會卡在房間外 */
+const DIR8 = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1]
+];
+function flowUpd() {
+  if (!G.tiles || G.flowT > G.t) return;
+  G.flowT = G.t + 0.25;
+  const C = G.cols,
+    R = G.rows,
+    d = G.flow && G.flow.length === C * R ? G.flow.fill(-1) : (G.flow = new Int16Array(C * R).fill(-1)),
+    s = Math.floor(P.y / TS) * C + Math.floor(P.x / TS),
+    q = new Int32Array(C * R);
+  if (s < 0 || s >= C * R) return;
+  let h = 0,
+    n = 0;
+  d[s] = 0;
+  q[n++] = s;
+  while (h < n) {
+    const i = q[h++],
+      x = i % C,
+      y = (i / C) | 0;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + DIR8[k][0],
+        ny = y + DIR8[k][1],
+        j = ny * C + nx;
+      if (nx < 0 || ny < 0 || nx >= C || ny >= R || d[j] >= 0 || G.tiles[j] === 1) continue;
+      d[j] = d[i] + 1;
+      q[n++] = j;
+    }
+  }
+}
+/* 往距離最小的鄰格走（斜走要兩邊都不是牆，免得卡在牆角） */
+function flowAng(m) {
+  const C = G.cols,
+    x = Math.floor(m.x / TS),
+    y = Math.floor(m.y / TS),
+    f = G.flow,
+    at = (cx, cy) => (cx < 0 || cy < 0 || cx >= C || cy >= G.rows ? -1 : f[cy * C + cx]);
+  let bx = 0,
+    by = 0,
+    bv = 1e9;
+  for (const [dx, dy] of DIR8) {
+    const v = at(x + dx, y + dy);
+    if (v < 0 || v >= bv || (dx && dy && (at(x + dx, y) < 0 || at(x, y + dy) < 0))) continue;
+    (bv = v), (bx = x + dx), (by = y + dy);
+  }
+  return bv < 1e9 ? Math.atan2((by + 0.5) * TS - m.y, (bx + 0.5) * TS - m.x) : angTo(m, P);
+}
 function updMobs(dt) {
+  flowUpd();
   for (const m of G.mobs) {
     if (m.hp <= 0) continue;
     m.flash = Math.max(0, m.flash - dt);
@@ -720,9 +795,12 @@ function updMobs(dt) {
     const D = m.D;
     if (m.st === 'idle' || m.st === 'move') {
       m.st = 'move';
-      const a = angTo(m, P);
+      /* 看得到玩家就直走，看不到就照找路的方向繞過去 */
+      const see = los(m.x, m.y, P.x, P.y),
+        a = see ? angTo(m, P) : flowAng(m);
       let want = 1;
-      if (D.ai === 'ranged') want = dP > 300 ? 1 : dP < 200 ? -1 : 0;
+      if (!see) want = 1;
+      else if (D.ai === 'ranged') want = dP > 300 ? 1 : dP < 200 ? -1 : 0;
       else if (dP < D.reach * (D.ai === 'lunge' ? 0.9 : 0.85)) want = 0;
       let vx = Math.cos(a) * want,
         vy = Math.sin(a) * want;
@@ -737,7 +815,7 @@ function updMobs(dt) {
       }
       moveBody(m, vx * D.spd * mobSpd(m) * dt, vy * D.spd * mobSpd(m) * dt);
       m.mv = want !== 0;
-      if (m.cd <= 0 && dP < D.reach + P.r + 4) {
+      if (m.cd <= 0 && dP < D.reach + P.r + 4 && see) {
         m.st = 'wind';
         m.t = D.wind * (m.elite ? 0.85 : 1);
         m.ang = angTo(m, P);
@@ -807,13 +885,14 @@ function bossAI(m, dt, dP) {
   }
   if (m.st === 'idle' || m.st === 'move') {
     m.st = 'move';
-    const a = angTo(m, P);
-    if (dP > 90) {
+    const see = los(m.x, m.y, P.x, P.y),
+      a = see ? angTo(m, P) : flowAng(m);
+    if (dP > 90 || !see) {
       const cs = mobSpd(m);
       moveBody(m, Math.cos(a) * m.D.spd * cs * (rage < 1 ? 1.25 : 1) * dt, Math.sin(a) * m.D.spd * cs * dt);
     }
     m.mv = dP > 90;
-    if (m.cd <= 0) {
+    if (m.cd <= 0 && see) {
       m.pat = pick(dP < 140 ? ['swipe', 'swipe', 'slam'] : ['charge', 'slam', 'charge', 'summon']);
       m.st = 'wind';
       m.ang = angTo(m, P);
@@ -898,7 +977,8 @@ function updShots(dt) {
           /* 冰霜彈：越遠越弱（飛到底剩 40%） */
           hitMob(m, s.c, s.ang, 120 * s.c.kb, {
             a: s.a,
-            mult: s.decay ? s.c.mult * (0.4 + 0.6 * (s.life / s.life0)) : 0
+            mult: s.decay ? s.c.mult * (0.4 + 0.6 * (s.life / s.life0)) : 0,
+            from: s
           });
           if (s.pierce-- <= 0) {
             s.life = 0;
