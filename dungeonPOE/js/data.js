@@ -1,6 +1,6 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.10';
+const VER = '0.2.11';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
@@ -178,19 +178,19 @@ const SKILLS = {
     d: '標記滑鼠附近的一隻怪：' + MARK_D.warlord
   },
   /* 0.2.6 新增：每種武器、每種元素都有一招普攻 */
+  /* 0.2.11 起每種武器 2 招（docs/技能分配.md）；機制在 mech.js、出手在 skills.js 的 actHit */
   thrust: {
-    n: '突刺',
-    ic: 'sk_thrust',
-    t: 0.5,
+    n: '招架反擊',
+    ic: 'sk_riposte',
+    t: 0.45,
     mp: 0,
-    m: 0.6,
+    m: 1.3,
     r: 120,
-    arc: 0.7,
-    gain: 1,
-    hits: [0.25, 0.5, 0.8],
+    hits: [0.95],
+    parry: 1,
     wt: ['spear'],
     tags: ['attack', 'melee'],
-    d: '連刺 3 下，最後一下打穿一整排；打中回魔力'
+    d: '舉矛招架 0.4 秒（被近戰或投射物打到就擋下，攻擊者失衡），接著往前突刺一整排；刺中失衡的怪會消耗失衡、必定暴擊、給 1 顆狂怒球'
   },
   combo: {
     n: '連打',
@@ -204,7 +204,7 @@ const SKILLS = {
     hits: [0.3, 0.6, 0.9],
     wt: ['qstaff'],
     tags: ['attack', 'melee'],
-    d: '3 下連打，第 3 下打中得到 1 顆暴擊球（照 PoE2：球本身不加數值，給會消耗暴擊球的技能用，15 秒）'
+    d: '3 下連打，每下打中 +1 連擊數；第 3 下打中得到 1 顆暴擊球（給雷鳴擊消耗）'
   },
   split: {
     n: '散射',
@@ -214,7 +214,7 @@ const SKILLS = {
     m: 0.7,
     spd: 900,
     cnt: 3,
-    wt: ['bow', 'xbow'],
+    wt: ['bow'],
     tags: ['attack', 'proj'],
     d: '一次射出 3 支箭，扇形散開'
   },
@@ -243,29 +243,16 @@ const SKILLS = {
   slash: {
     n: '斬擊',
     ic: 'sk_slash2',
-    cls: 'ronin',
     t: 0.36,
     mp: 0,
     m: 1,
     r: 100,
     arc: 2.1,
     gain: 2,
-    wt: ['sword1', 'sword2', 'axe1', 'axe2', 'mace1', 'mace2', 'flail', 'talisman'],
+    stage: 1,
+    wt: ['sword1'],
     tags: ['attack', 'melee'],
-    d: '向前揮出扇形斬擊，打中每隻回 2 魔力'
-  },
-  swallow: {
-    n: '燕返',
-    ic: 'sk_crosscut',
-    cls: 'ronin',
-    t: 0.5,
-    mp: 6,
-    m: 0.85,
-    r: 110,
-    arc: 2.4,
-    wt: ['sword1', 'sword2', 'axe1', 'axe2'],
-    tags: ['attack', 'melee'],
-    d: '連砍兩刀：先往前、再反手一刀'
+    d: '扇形斬擊，打中每隻回 2 魔力；1 秒內再按進下一段，3 段一輪：第 3 段範圍 ×1.5、必定暴擊'
   },
   whirl: {
     n: '旋風斬',
@@ -276,7 +263,7 @@ const SKILLS = {
     cd: 3,
     m: 1.8,
     r: 150,
-    wt: ['sword1', 'sword2', 'axe1', 'axe2', 'flail'],
+    wt: ['sword2'],
     tags: ['attack', 'melee', 'aoe', 'cd'],
     d: '原地迴旋，打周圍所有敵人並擊退'
   },
@@ -289,52 +276,22 @@ const SKILLS = {
     cd: 4,
     m: 1.5,
     dist: 300,
-    wt: ['sword1', 'sword2'],
+    wt: ['sword2'],
     tags: ['attack', 'melee', 'move', 'cd'],
     d: '衝向滑鼠位置，斬過路上的敵人；衝刺中無敵'
   },
   quake: {
     n: '震地',
     ic: 'sk_groundslam',
-    cls: 'knight',
     t: 0.55,
     mp: 14,
-    m: 2,
+    m: 1.6,
     r: 170,
     arc: 1.4,
     stun: 0.6,
-    wt: ['mace1', 'mace2', 'qstaff', 'talisman'],
+    wt: ['mace1'],
     tags: ['attack', 'melee', 'aoe'],
-    d: '往前重擊地面，扇形範圍的敵人暈眩 0.6 秒'
-  },
-  blade: {
-    n: '飛刃',
-    ic: 'sk_fanblade',
-    cls: 'assassin',
-    t: 0.42,
-    mp: 6,
-    m: 0.8,
-    spd: 760,
-    pierce: 2,
-    cnt: 1,
-    wt: ['dagger', 'claw'],
-    tags: ['attack', 'proj'],
-    d: '射出飛刃，穿透 2 隻'
-  },
-  storm: {
-    n: '千本櫻',
-    ic: 'sk_bladestorm',
-    cls: 'assassin',
-    t: 0.45,
-    mp: 24,
-    cd: 6,
-    m: 0.9,
-    cnt: 10,
-    spd: 620,
-    pierce: 3,
-    wt: ['dagger', 'claw'],
-    tags: ['attack', 'proj', 'cd'],
-    d: '向四面八方射出 10 把飛刃，各穿透 3 隻'
+    d: '往前重擊地面，扇形範圍的敵人暈眩 0.6 秒，留下碎裂地面 2 秒（怪物緩速 30%），結束時餘震再打一次（×1.2）'
   },
   venom: {
     n: '毒刃雨',
@@ -365,16 +322,16 @@ const SKILLS = {
     d: '射出火球，打中爆炸（範圍火焰傷害）'
   },
   nova: {
-    n: '火焰新星',
+    n: '灌注新星',
     ic: 'sk_fireburst',
-    cls: 'pyro',
     t: 0.4,
     mp: 15,
     m: 1.3,
     r: 165,
     el: 'fire',
+    wt: ['staff'],
     tags: ['spell', 'aoe'],
-    d: '以自己為中心爆出一圈火焰'
+    d: '以自己為中心爆出一圈火焰；有火灌注就消耗 1 層，範圍 ×1.5 並留下燃燒地面；有冰灌注就消耗 1 層，留下冰緩地面（灌注：撿起元素殘留物得到，點燃、冰緩、感電中的怪死掉會留下）'
   },
   meteor: {
     n: '隕石',
@@ -413,6 +370,7 @@ const SKILLS = {
     stun: 1,
     el: 'cold',
     unit: 'trap',
+    wt: ['traptool'],
     tags: ['spell', 'trap', 'aoe'],
     d: '丟出陷阱，敵人靠近就爆開：範圍冰冷傷害、凍住 1 秒'
   },
@@ -425,6 +383,7 @@ const SKILLS = {
     r: 100,
     el: 'fire',
     unit: 'mine',
+    wt: ['traptool'],
     tags: ['spell', 'mine', 'aoe'],
     d: '埋下地雷（可以疊好幾顆）；最後一顆埋下 1.2 秒後一起引爆，每多一顆全部 +10% 傷害'
   },
@@ -455,6 +414,304 @@ const SKILLS = {
     unit: 'totem',
     tags: ['spell', 'totem', 'proj', 'cd'],
     d: '立起圖騰（8 秒），自動對附近的敵人吐火彈（小範圍爆炸）'
+  },
+  mirage: {
+    n: '幻影斬',
+    ic: 'sk_mirage',
+    t: 0.3,
+    mp: 14,
+    cd: 6,
+    m: 1,
+    wt: ['sword1'],
+    tags: ['attack', 'melee', 'cd'],
+    d: '在滑鼠位置召出劍士分身 4 秒，每 0.8 秒用斬擊砍最近的敵人（傷害 ×0.6）'
+  },
+  axethrow: {
+    n: '擲斧',
+    ic: 'sk_axespin',
+    t: 0.4,
+    mp: 5,
+    m: 1,
+    spd: 700,
+    pierce: 1,
+    bleed: 40,
+    wt: ['axe1'],
+    tags: ['attack', 'proj'],
+    d: '丟出旋轉的斧頭，穿透 1 隻；擊中 40% 機率流血'
+  },
+  rend: {
+    n: '撕裂',
+    ic: 'sk_rend',
+    t: 0.4,
+    mp: 8,
+    m: 1.1,
+    r: 100,
+    arc: 1.6,
+    wt: ['axe1'],
+    tags: ['attack', 'melee'],
+    d: '近戰一斬；目標在流血就消耗流血，一次結算剩下的流血傷害 ×1.5，並讓附近 120 內的敵人也流血'
+  },
+  cleave: {
+    n: '劈砍',
+    ic: 'sk_cleave',
+    t: 0.7,
+    mp: 10,
+    m: 2.2,
+    r: 150,
+    arc: 1.6,
+    bleed: 60,
+    hsM: 1.5,
+    wt: ['axe2'],
+    tags: ['attack', 'melee', 'aoe'],
+    d: '慢而重的大範圍下劈；擊中 60% 機率流血，重暈累積 ×1.5'
+  },
+  warcry: {
+    n: '狂暴戰吼',
+    ic: 'sk_warcry',
+    t: 0.35,
+    mp: 12,
+    cd: 8,
+    m: 0,
+    r: 250,
+    wt: ['axe2'],
+    tags: ['warcry', 'aoe', 'cd'],
+    d: '立刻得到 15 點狂怒（攻擊傷害更多 1%／點），周圍 250 內的敵人被威嚇 4 秒（受到的傷害 +10%、造成的傷害 −10%）'
+  },
+  smash: {
+    n: '重擊',
+    ic: 'sk_bonecrush',
+    t: 0.5,
+    mp: 6,
+    m: 1.6,
+    r: 100,
+    arc: 1.2,
+    armBreak: 1,
+    wt: ['mace1'],
+    tags: ['attack', 'melee'],
+    d: '單體重擊，物理擊中削減護甲；打中瀕臨重暈的怪＝碾壓一擊：直接重暈，並震傷周圍 120 內的敵人'
+  },
+  leap: {
+    n: '跳砸',
+    ic: 'sk_titanfall',
+    t: 0.45,
+    mp: 14,
+    m: 1.8,
+    r: 120,
+    dist: 300,
+    wt: ['mace2'],
+    tags: ['attack', 'melee', 'aoe', 'move'],
+    d: '跳到滑鼠位置（最遠 300，跳躍中無敵）砸地，落點留下碎裂地面 2 秒，結束時餘震再打一次（×0.8）'
+  },
+  fissure: {
+    n: '裂地',
+    ic: 'sk_earthquake',
+    t: 0.55,
+    mp: 12,
+    m: 1.3,
+    r: 55,
+    wt: ['mace2'],
+    tags: ['attack', 'melee', 'aoe'],
+    d: '往前一連串 5 處裂地；打到完全破甲的怪會消耗破甲，這一下 ×2'
+  },
+  thunder: {
+    n: '雷鳴擊',
+    ic: 'sk_thorhammer',
+    t: 0.5,
+    mp: 12,
+    m: 1.2,
+    r: 60,
+    el: 'light',
+    wt: ['qstaff'],
+    tags: ['attack', 'melee', 'aoe'],
+    d: '砸地往前劈下閃電（物理轉成閃電）；消耗全部暴擊球，每顆多劈一道；連擊數 5 以上時也消耗連擊數，範圍 ×1.5'
+  },
+  spearthrow: {
+    n: '擲矛',
+    ic: 'sk_javelin',
+    t: 0.45,
+    mp: 6,
+    m: 1.3,
+    spd: 900,
+    pierce: 2,
+    wt: ['spear'],
+    tags: ['attack', 'proj'],
+    d: '擲出長矛，穿透 2 隻；消耗全部狂怒球，每顆多一根，多的會在擊中時爆炸'
+  },
+  gasarrow: {
+    n: '毒氣箭',
+    ic: 'sk_poison',
+    t: 0.5,
+    mp: 10,
+    m: 0.8,
+    spd: 850,
+    r: 90,
+    wt: ['bow'],
+    tags: ['attack', 'proj', 'aoe'],
+    d: '射出一箭，落點留下可燃的毒氣雲 5 秒（中毒）；被火焰擊中或引爆器打到會爆炸'
+  },
+  apshot: {
+    n: '穿甲彈',
+    ic: 'sk_apshot',
+    t: 0.18,
+    mp: 0,
+    m: 0.7,
+    spd: 1100,
+    ammo: [6, 1.5],
+    armBreak: 1,
+    wt: ['xbow'],
+    tags: ['attack', 'proj'],
+    d: '彈夾 6 發，快速連射，物理擊中削減護甲；打完裝填 1.5 秒（裝填時這招不能用）'
+  },
+  grenade: {
+    n: '爆裂手雷',
+    ic: 'sk_combust',
+    t: 0.35,
+    mp: 10,
+    m: 1.6,
+    r: 100,
+    gren: [2, 4],
+    detonator: 1,
+    wt: ['xbow'],
+    tags: ['attack', 'proj', 'aoe'],
+    d: '丟出會彈跳的手雷，1.5 秒後爆炸（火焰範圍傷害），也是引爆器（引爆可燃地面、其他手雷）；可存 2 顆，各冷卻 4 秒'
+  },
+  flyswords: {
+    n: '御劍訣',
+    ic: 'sk_fanblade',
+    t: 0.35,
+    mp: 10,
+    m: 0.8,
+    wt: ['dagger'],
+    tags: ['attack', 'proj'],
+    d: '召出 3 把飛劍環繞身邊（15 秒，最多 10 把）；已經滿了再按，就把全部飛劍射向滑鼠方向（每把一次擊中）'
+  },
+  shadowstrike: {
+    n: '影襲',
+    ic: 'sk_shadowstep',
+    t: 0.3,
+    mp: 8,
+    cd: 3,
+    m: 1.6,
+    dist: 450,
+    toMob: 1,
+    wt: ['dagger'],
+    tags: ['attack', 'melee', 'move', 'cd'],
+    d: '瞬移到滑鼠附近敵人的背後一刺，必定暴擊；翻滾後 2 秒內使用傷害 ×2'
+  },
+  clawchain: {
+    n: '連爪',
+    ic: 'sk_bloodclaw',
+    t: 0.5,
+    mp: 0,
+    m: 0.45,
+    r: 90,
+    arc: 1.6,
+    hits: [0.2, 0.4, 0.6, 0.8],
+    wt: ['claw'],
+    tags: ['attack', 'melee'],
+    d: '4 段快速爪擊，每段打中回 1% 最大生命'
+  },
+  blindpounce: {
+    n: '盲擊撲',
+    ic: 'sk_smokebomb',
+    t: 0.3,
+    mp: 10,
+    cd: 5,
+    m: 1.3,
+    r: 110,
+    dist: 320,
+    toMob: 1,
+    blind: 1,
+    wt: ['claw'],
+    tags: ['attack', 'melee', 'aoe', 'move', 'cd'],
+    d: '撲向滑鼠附近的敵人，落地範圍攻擊並致盲 4 秒（命中值少 20%）'
+  },
+  chainsweep: {
+    n: '鏈錘橫掃',
+    ic: 'sk_sweep',
+    t: 0.42,
+    mp: 0,
+    m: 1,
+    r: 130,
+    arc: 2.2,
+    crit: 50,
+    stage: 1,
+    wt: ['flail'],
+    tags: ['attack', 'melee'],
+    d: '甩鏈橫掃，暴擊率提高 50%；1 秒內再按進下一段，3 段越來越寬（範圍 ×1、×1.3、×1.7）'
+  },
+  banner: {
+    n: '戰旗',
+    ic: 'sk_banner',
+    t: 0.3,
+    mp: 0,
+    m: 0,
+    wt: ['flail'],
+    tags: ['banner'],
+    d: '榮耀滿 100 才能用（擊中、暴擊、擊殺累積）：插下戰旗 10 秒，站在旗子範圍裡傷害提高 30%'
+  },
+  chaosbolt: {
+    n: '混沌箭',
+    ic: 'sk_chaosbolt',
+    t: 0.35,
+    mp: 6,
+    m: 0.9,
+    spd: 800,
+    el: 'chaos',
+    wither: 1,
+    wt: ['wand'],
+    tags: ['spell', 'proj'],
+    d: '快速的混沌投射物，擊中疊 1 層凋零（受到的混沌傷害 +5%／層，最多 10 層）'
+  },
+  corpseboom: {
+    n: '屍爆',
+    ic: 'sk_corpseburst',
+    t: 0.35,
+    mp: 12,
+    m: 0,
+    r: 110,
+    el: 'fire',
+    detonator: 1,
+    wt: ['wand'],
+    tags: ['spell', 'aoe'],
+    d: '引爆滑鼠附近的一具屍體：屍體最大生命 10% 的火焰範圍傷害，也是引爆器；附近沒有屍體就不能用'
+  },
+  paperdoll: {
+    n: '召喚紙人',
+    ic: 'sk_talisman',
+    t: 0.4,
+    mp: 14,
+    m: 0.6,
+    wt: ['sceptre'],
+    tags: ['minion'],
+    d: '消耗身邊的一具屍體，叫出紙人兵 15 秒（最多 4 隻），用這顆寶石的召喚物傷害攻擊；附近沒有屍體就不能用'
+  },
+  bearmaul: {
+    n: '熊掌',
+    ic: 'sk_berserk',
+    t: 0.6,
+    mp: 6,
+    m: 1.7,
+    r: 140,
+    arc: 2.4,
+    form: 'bear',
+    wt: ['talisman'],
+    tags: ['attack', 'melee', 'aoe'],
+    d: '變成熊（護甲 ×1.5、移速 −10%），大範圍爪擊，打中 +2 狂怒'
+  },
+  wolfpounce: {
+    n: '狼撲',
+    ic: 'sk_lunge',
+    t: 0.3,
+    mp: 8,
+    m: 1.2,
+    r: 80,
+    dist: 300,
+    toMob: 1,
+    form: 'wolf',
+    wt: ['talisman'],
+    tags: ['attack', 'melee', 'move'],
+    d: '變成狼人（移速 +15%、攻速 +10%），撲向滑鼠附近的敵人，給牠上獵人標記'
   }
 };
 /* 光環（0.2.4，照 PoE2）：插在光環欄、開著就一直生效，預留精魄；效果跟著寶石等級與光環效果變強 */
@@ -471,6 +728,14 @@ const AURAS = {
     sp: 40,
     fx: { wolf: 1 },
     d: '一隻戰狼一直跟著你（不用放技能，換地圖也在）'
+  },
+  golem: {
+    n: '召喚魔像',
+    ic: 'sk_guardtotem',
+    sp: 30,
+    wt: ['sceptre'],
+    fx: { golem: 1 },
+    d: '拿權杖時，一隻石魔像跟著你打怪；你站在它旁邊時，受到的傷害少 20%（它替你擋）'
   }
 };
 const AURA_SLOTS = 3,
@@ -522,21 +787,7 @@ const SUPPORTS = {
     need: ['spell'],
     d: '法術擊中時得到秘術增強（施法速度 +15%、魔力回復更多 20%，10 秒）'
   },
-  /* 轉換：技能改成丟陷阱／埋地雷／立圖騰，一顆技能只能插一個 */
-  trapc: {
-    n: '轉陷阱',
-    ic: 'sup_sp_trap',
-    need: ['spell', 'attack'],
-    conv: 'trap',
-    d: '這個技能改成丟陷阱：敵人靠近才觸發，傷害更多 20%'
-  },
-  minec: {
-    n: '轉地雷',
-    ic: 'sup_sp_mine',
-    need: ['spell', 'attack'],
-    conv: 'mine',
-    d: '這個技能改成埋地雷：可以疊好幾顆一起引爆，每多一顆 +10%'
-  },
+  /* 轉換：技能改成立圖騰（陷阱、地雷 0.2.11 起是陷阱器自己的技能） */
   totemc: {
     n: '轉圖騰',
     ic: 'sup_sp_totem',
@@ -546,24 +797,45 @@ const SUPPORTS = {
   }
 };
 /* 輔助的分類（0.2.9，照 PoE2 0.3）：同一分類不能插在同一顆技能上，可以跨技能重複；沒寫的分類就是自己（同一顆不能插兩次） */
-const SUP_CAT = { scorch: 'alt', brittle: 'alt', sap: 'alt', trapc: 'conv', minec: 'conv', totemc: 'conv' };
+const SUP_CAT = { scorch: 'alt', brittle: 'alt', sap: 'alt' };
 const supCat = k => SUP_CAT[k] || k;
 /* 寶石的使用等級（0.2.7，照 PoE2）：角色等級到了才能生成；生成面板照這個分組 */
 const GEM_LV = {
   slash: 1,
+  mirage: 3,
+  axethrow: 1,
+  rend: 3,
+  cleave: 1,
+  warcry: 3,
+  smash: 1,
+  leap: 1,
+  fissure: 3,
+  thunder: 3,
+  spearthrow: 3,
+  gasarrow: 3,
+  apshot: 1,
+  grenade: 3,
+  flyswords: 1,
+  shadowstrike: 3,
+  clawchain: 1,
+  blindpounce: 3,
+  chainsweep: 1,
+  banner: 3,
+  chaosbolt: 1,
+  corpseboom: 3,
+  paperdoll: 1,
+  bearmaul: 1,
+  wolfpounce: 3,
   thrust: 1,
   combo: 1,
   split: 1,
-  blade: 1,
   frostbolt: 1,
   arc: 1,
-  swallow: 3,
   quake: 3,
   fireball: 3,
   wolf: 3,
   frosttrap: 3,
   whirl: 5,
-  storm: 5,
   venom: 5,
   nova: 5,
   blastmine: 5,
@@ -596,8 +868,6 @@ const GEM_LV = {
   crit: 5,
   leech: 5,
   pack: 5,
-  trapc: 5,
-  minec: 5,
   blind: 5,
   cdr: 7,
   totemc: 7,
@@ -617,7 +887,8 @@ const GEM_LV = {
   iron: 5,
   purity: 7,
   clarity: 7,
-  wolfsp: 9
+  wolfsp: 9,
+  golem: 3
 };
 const gemLv = k => GEM_LV[k] || 1;
 /* 寶石等級：上限 20、不能超過角色等級；每級傷害 +6%（輔助每級 +1%） */

@@ -119,7 +119,7 @@ function hudTick() {
   }
   const mech = [
     P.rage ? `狂怒 ${Math.floor(P.rage)}` : '',
-    G.allies && G.allies.length ? `狼 ${G.allies.length}` : '',
+    G.allies && G.allies.length ? `同伴 ${G.allies.length}` : '',
     G.units && G.units.length ? `場上 ${G.units.length}` : '',
     ...Object.keys(BUFF)
       .filter(hasBuff)
@@ -346,7 +346,7 @@ const SUPTAB = {
   元素: ['scorch', 'brittle', 'sap', 'expose', 'elec'],
   法術: ['arcane'],
   召喚: ['pack'],
-  轉換: ['trapc', 'minec', 'totemc']
+  轉換: ['totemc']
 };
 function gemTabs(kind) {
   const by = (n, ks) => ({ n, ks: ks.sort((a, b) => gemLv(a) - gemLv(b)) });

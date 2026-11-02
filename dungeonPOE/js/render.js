@@ -31,19 +31,40 @@ function spr(n, x, y, hgt, o = {}) {
    6 跑步（朝右，往左鏡像）、7 往上跑（背面）、8 旋轉揮擊；出手動畫都朝右下，往左就鏡像 */
 const ACT_ROW = {
   slash: 3,
-  swallow: 3,
   iai: 3,
   quake: 4,
   whirl: 8,
-  storm: 8,
   thrust: 3,
   combo: 8,
   split: 5,
   frostbolt: 5,
   arc: 5,
   nova: 5,
-  blade: 5,
   fireball: 5,
+  mirage: 5,
+  axethrow: 5,
+  rend: 3,
+  cleave: 4,
+  warcry: 5,
+  smash: 4,
+  leap: 4,
+  fissure: 4,
+  thunder: 4,
+  spearthrow: 5,
+  gasarrow: 5,
+  apshot: 5,
+  grenade: 5,
+  flyswords: 5,
+  shadowstrike: 3,
+  clawchain: 3,
+  blindpounce: 3,
+  chainsweep: 8,
+  banner: 5,
+  chaosbolt: 5,
+  corpseboom: 5,
+  paperdoll: 5,
+  bearmaul: 3,
+  wolfpounce: 3,
   venom: 5,
   meteor: 5,
   wolf: 5
@@ -253,6 +274,8 @@ function draw() {
   for (const e of ents) e === P ? drawHero() : e.src ? drawWolf(e) : drawMob(e);
   /* 投射物 */
   for (const s of G.shots) {
+    /* 有 pixelfx 投射物圖（箭、子彈、飛斧…）就照方向畫序列圖 */
+    if (s.sh && drawSh(s.sh, s.x, s.y, s.shs || 1, s.ang, Math.floor((G.t * FXS[s.sh].fps) % FXS[s.sh].n))) continue;
     if (s.wave || s.bolt) {
       CX.save();
       CX.translate(s.x, s.y);
@@ -554,6 +577,28 @@ function drawHero() {
 }
 const FXI = {};
 const fxImg = n => FXI[n] || Object.assign((FXI[n] = new Image()), { src: `img/fx/${n}.png?v=${VER}` });
+/* 畫序列圖的第 i 格；rot：原圖朝右，照方向轉，朝左時上下翻（弧線才不會倒過來）；圖還沒載入回傳 false */
+function drawSh(n, x, y, sc, rot, i) {
+  const S = FXS[n],
+    im = fxImg(n);
+  if (!im.naturalWidth) return false;
+  CX.save();
+  CX.translate(x, y);
+  if (rot != null) CX.rotate(rot), Math.cos(rot) < 0 && CX.scale(1, -1);
+  CX.drawImage(
+    im,
+    (i % S.cols) * S.w,
+    Math.floor(i / S.cols) * S.h,
+    S.w,
+    S.h,
+    -S.ox * sc,
+    -S.oy * sc,
+    S.w * sc,
+    S.h * sc
+  );
+  CX.restore();
+  return true;
+}
 function drawFx() {
   for (const o of G.fx) {
     const f = o.t / o.dur;
@@ -636,22 +681,15 @@ function drawFx() {
       CX.stroke();
     } else if (o.k === 'sh') {
       /* pixelfx 序列圖：照時間挑一格，對齊原圖的中心點 */
-      const S = FXS[o.n],
-        im = fxImg(o.n);
-      if (im.naturalWidth) {
-        const i = Math.min(S.n - 1, Math.floor(f * S.n));
-        CX.drawImage(
-          im,
-          (i % S.cols) * S.w,
-          Math.floor(i / S.cols) * S.h,
-          S.w,
-          S.h,
-          o.x - S.ox * o.s,
-          o.y - S.oy * o.s,
-          S.w * o.s,
-          S.h * o.s
-        );
-      }
+      const S = FXS[o.n];
+      drawSh(
+        o.n,
+        o.x,
+        o.y,
+        o.s,
+        o.rot,
+        o.loop ? Math.floor((o.t * S.fps) % S.n) : Math.min(S.n - 1, Math.floor(f * S.n))
+      );
     } else if (o.k === 'perfect') {
       CX.globalAlpha = 1 - f;
       CX.strokeStyle = '#8fe0ff';
@@ -810,7 +848,9 @@ function drawWolf(w) {
   CX.ellipse(w.x, w.y, 16, 6, 0, 0, TAU);
   CX.stroke();
   const bob = w.mv ? Math.abs(Math.sin(w.ph)) * 0.08 : 0;
-  spr('m_snowwolf', w.x, w.y, 36, { flip: (w.face || 0) > 0, sy: 1 + bob });
+  /* 紙人兵、石魔像、戰狼 */
+  const [im, sz] = w.src === 'doll' ? ['m_paperdoll', 34] : w.src === 'golem' ? ['m_golem', 52] : ['m_snowwolf', 36];
+  spr(im, w.x, w.y, sz, { flip: (w.face || 0) > 0, sy: 1 + bob });
 }
 
 /* 場上單位：陷阱（地上的齒輪）、地雷（閃紅點）、砲台（弩）、圖騰（柱子）；砲台、圖騰下面的小條是剩下的時間 */

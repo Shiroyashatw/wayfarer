@@ -422,6 +422,7 @@ function stats(s = S) {
     for (const k in A.fx) {
       const v = A.fx[k] * m;
       if (k === 'wolf') o.auraWolf = 1;
+      else if (k === 'golem') o.auraGolem = 1;
       else if (k === 'resA') for (const r of ['fire', 'cold', 'light']) o.res[r] += Math.round(v);
       else if (k in pt) pt[k] += v;
       else put(k, v);

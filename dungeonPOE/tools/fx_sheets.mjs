@@ -22,7 +22,31 @@ const LIST = {
   poof: ['spawn/poof', 0.9, 20, 35],
   heal: ['holy/heal', 1.4, 15, 30],
   blink: ['arcane/blink-out', 1.0, 20, 40],
-  lvup: ['ui/level-up', 1.6, 15, 50]
+  lvup: ['ui/level-up', 1.6, 15, 50],
+  /* 0.2.11 第二批：近戰與投射物朝右畫，遊戲照出手方向旋轉（fxs 的 rot） */
+  sslash: ['melee/sword-slash', 0.45, 20, 92],
+  spin: ['melee/spin-slash', 0.55, 20, 104],
+  dslash: ['melee/double-slash', 0.55, 20, 120],
+  cleave: ['melee/heavy-cleave', 0.5, 20, 140, 0.5],
+  hammer: ['melee/hammer-smash', 0.5, 20, 128, 0.4],
+  claw: ['melee/claw-swipe', 0.5, 20, 92],
+  whip: ['melee/whip-crack', 0.5, 20, 162],
+  flurry: ['melee/dagger-flurry', 0.6, 20, 112],
+  thrust: ['melee/thrust', 0.5, 20, 162],
+  parry: ['impacts/parry', 0.6, 20, 60],
+  landing: ['impacts/heavy-landing', 0.8, 20, 88],
+  dirt: ['explosions/dirt-explosion', 1, 20, 100],
+  blunt: ['impacts/blunt-hit', 0.6, 20, 50],
+  arrow: ['projectiles/arrow', 0.3, 20, 20],
+  tracer: ['projectiles/bullet-tracer', 0.3, 20, 20],
+  disc: ['projectiles/energy-disc', 0.3, 20, 20],
+  rise: ['spawn/summon-rise', 1.2, 15, 60],
+  smoke: ['explosions/smoke-bomb', 1.2, 15, 110, 1.05],
+  bleed: ['status/bleeding', 1, 15, 25],
+  rage: ['status/rage', 0.8, 15, 35],
+  pillar: ['holy/holy-pillar', 1.2, 15, 90],
+  blinkin: ['arcane/blink-in', 0.8, 20, 50],
+  gas: ['nature/poison-cloud', 1.2, 15, 120]
 };
 
 const SRC = process.argv[2];

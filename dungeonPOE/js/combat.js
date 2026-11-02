@@ -208,7 +208,10 @@ function applyAil(m, r, c) {
   const hit = p.phys + p.fire + p.light + p.chaos;
   if (!m.boss && hit / m.mhp >= 0.15 && Math.random() < hit / m.mhp) m.stun = Math.max(m.stun || 0, 0.5);
   a.hs =
-    (a.hs || 0) + ((hit * (p.phys > 0 ? 1.5 : 1) * ((c.D.tags || []).includes('melee') ? 1.5 : 1)) / m.mhp) * 100 * 0.5;
+    (a.hs || 0) +
+    ((hit * (p.phys > 0 ? 1.5 : 1) * ((c.D.tags || []).includes('melee') ? 1.5 : 1) * (c.hsM || 1)) / m.mhp) *
+      100 *
+      0.5;
   if (a.hs >= 100) (a.hstun = G.t + (m.boss ? 1.2 : 3)), (a.hs = 0);
   /* 流血、中毒：要有機率 */
   if (attack && p.phys > 0 && Math.random() * 100 < ST.bleedCh + (c.bleedCh || 0))
@@ -388,6 +391,11 @@ function onKillBase(m) {
   if (ST.onsKill && Math.random() * 100 < ST.onsKill) gainBuff('onslaught', 4);
   if (ST.unholyKill && Math.random() * 100 < ST.unholyKill) gainBuff('unholy', 4);
   addCorpse(m);
+  /* 元素殘留物：點燃、冰緩（冰凍）、感電中的怪死掉留下（撿起來得到灌注） */
+  const a = m.ail || {};
+  if (a.ign && a.ign.t > G.t) dropRemnant('fire', m.x, m.y);
+  if ((a.chill && a.chill.t > G.t) || a.frozen > G.t) dropRemnant('cold', m.x, m.y);
+  if (a.shock > G.t) dropRemnant('light', m.x, m.y);
   gainGlory(m.boss ? 40 : m.elite ? 15 : 3);
   metaEvent('kill');
   chargeCharms(m);

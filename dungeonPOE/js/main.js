@@ -45,6 +45,15 @@ function migrate(s) {
   delete o.at;
   /* 天賦樹的形狀換過（點的編號對不上）就把點數全部退回 */
   if (o.pt.some(id => !PTREE.I[id])) o.pt = [...PT_START];
+  /* 0.2.11：刪掉的寶石換成同等級的替代（燕返→斬擊、飛刃與千本櫻→御劍訣、轉陷阱與轉地雷→轉圖騰） */
+  const GONE = { swallow: 'slash', blade: 'flyswords', storm: 'flyswords', trapc: 'totemc', minec: 'totemc' };
+  for (const g of [
+    ...o.skills.flatMap(k => [k.a, ...(k.s || []), ...((k.a && k.a.sup) || [])]),
+    ...o.inv.items,
+    ...o.stash.items
+  ])
+    if (g && GONE[g.gem]) g.gem = GONE[g.gem];
+  if (s.lib) s.lib = s.lib.map(k => GONE[k] || k);
   /* 道具編號接著存檔裡最大的往下編 */
   for (const it of [
     ...Object.values(o.eq),

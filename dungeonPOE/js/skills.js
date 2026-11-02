@@ -16,7 +16,7 @@ const supOK = (D, sp, g) => {
   if (U.conv && (D.unit || D.tags.includes('move') || D.tags.includes('minion'))) return false;
   return !U.need.length || U.need.some(t => D.tags.includes(t));
 };
-/* 一格技能的實際數值（技能等級＋輔助＋天賦冷卻縮減）；觸發、幻影直接用 gemCfg（i = −1） */
+/* 一格技能的實際數值（技能等級＋輔助＋天賦冷卻縮減）；觸發、幻影直接用 gemCfg（i = −1）；c.g 是寶石本身 */
 const slotCfg = i => gemCfg(S.skills[i] && S.skills[i].a, i);
 function gemCfg(g, i) {
   if (!g) return null;
@@ -35,7 +35,8 @@ function gemCfg(g, i) {
       speed: D.tags.includes('spell') ? (1 + ST.castP / 100) * (hasBuff('arcane') ? 1.15 : 1) : 1,
       mp: D.mp,
       cd: (D.cd || 0) * (1 - ST.cdr / 100),
-      critInc: 0,
+      g,
+      critInc: D.crit || 0,
       critX: 0,
       leech: 0,
       proj: D.cnt || 1,
@@ -44,10 +45,14 @@ function gemCfg(g, i) {
       fireAdd: 0,
       pen: 0,
       ailMag: 0,
-      bleedCh: 0,
+      bleedCh: D.bleed || 0,
       poisonCh: 0,
       poiStack: 0,
       impaleCh: 0,
+      armBreak: D.armBreak,
+      wither: D.wither,
+      blind: D.blind,
+      hsM: D.hsM || 1,
       wolves: D.cnt || 0,
       wolfM: 1
     };
@@ -98,20 +103,26 @@ function useSlot(i) {
   if (c.D.meta) return hudWarn(c.D.n + '不能手動施放：條件達成會自動施放孔裡的法術'), false;
   if (!wtOK(c.D)) return hudWarn(c.D.n + '：' + wtNeed(c.D)), false;
   if ((P.cds['s' + i] || 0) > 0) return false;
-  if (ST.blood) {
-    /* 血祭／血之代價：用生命施放 */
-    if (P.hp <= c.mp + 1) return hudWarn('生命不夠施放'), false;
-    P.hp -= c.mp;
-  } else {
-    if (P.mp < c.mp) return hudWarn('魔力不足'), false;
-    P.mp -= c.mp;
-  }
+  /* 血祭／血之代價：用生命施放 */
+  if (ST.blood ? P.hp <= c.mp + 1 : P.mp < c.mp) return hudWarn(ST.blood ? '生命不夠施放' : '魔力不足'), false;
+  const w = mouseWorld(),
+    D = c.D,
+    tm = D.toMob && mobNear(w.x, w.y, 150, D.dist);
+  if (D.toMob && !tm) return hudWarn('滑鼠附近沒有敵人'), false;
+  if (c.k === 'banner' && (P.glory || 0) < 100)
+    return hudWarn('榮耀不夠（' + Math.floor(P.glory || 0) + '／100）'), false;
+  if ((c.k === 'corpseboom' || c.k === 'paperdoll') && !corpseNear(c.k === 'paperdoll' ? P : w, 250))
+    return hudWarn('附近沒有屍體'), false;
+  const A = D.ammo && P.ammo && P.ammo[c.k];
+  if (A && A.until > G.t) return hudWarn('裝填中'), false;
+  if (D.gren && !grenadeReady(c.k, D.gren[0], D.gren[1])) return hudWarn('手雷還沒好'), false;
+  if (D.ammo) ammoUse(c.k, D.ammo[0], D.ammo[1]);
+  if (ST.blood) P.hp -= c.mp;
+  else P.mp -= c.mp;
   if (c.cd) P.cds['s' + i] = c.cd;
   /* 變身（mech.js）：用了不是這個形態的技能就變回來 */
   formFor(c.D);
-  const w = mouseWorld(),
-    ang = Math.atan2(w.y - P.y, w.x - P.x),
-    D = c.D;
+  const ang = Math.atan2(w.y - P.y, w.x - P.x);
   P.face = ang;
   /* 陷阱、地雷、砲台、圖騰：放在滑鼠位置（最遠 320） */
   if (c.unit) {
@@ -126,32 +137,58 @@ function useSlot(i) {
     t: 0,
     dur: D.t / ST.asM / c.speed / speedMul(),
     ang,
-    hits: D.hits || (c.k === 'swallow' ? [0.3, 0.7] : [0.42]),
+    hits: D.hits || [0.42],
     n: 0,
     tx: w.x,
-    ty: w.y
+    ty: w.y,
+    stage: D.stage ? nextStage(c.k) : 0
   });
   sfx(D.tags.includes('spell') ? 'cast' : D.tags.includes('proj') ? 'throw' : 'swing');
-  if (c.k === 'iai') {
-    const d = Math.min(D.dist, Math.hypot(w.x - P.x, w.y - P.y));
-    Object.assign(a, { sx: P.x, sy: P.y, d, hit: new Set(), hits: [] });
+  if (D.parry) startParry(0.4), fxs('parry', P.x, P.y - 20, 50);
+  /* 位移技能：衝向滑鼠（居合、跳砸）或撲向滑鼠附近的怪（影襲停在牠背後），途中無敵 */
+  if (D.dist) {
+    let tx = w.x,
+      ty = w.y;
+    if (tm) {
+      const g = angTo(P, tm),
+        off = (tm.r + 16) * (c.k === 'shadowstrike' ? 1 : -1);
+      (tx = tm.x + Math.cos(g) * off), (ty = tm.y + Math.sin(g) * off);
+      if (c.k === 'shadowstrike') fxs('blink', P.x, P.y);
+    }
+    a.ang = P.face = Math.atan2(ty - P.y, tx - P.x);
+    const d = Math.min(D.dist, Math.hypot(tx - P.x, ty - P.y));
+    Object.assign(a, { sx: P.x, sy: P.y, d, tm, hit: new Set(), hits: [] });
     P.iuntil = G.t + a.dur + 0.05;
   }
   return true;
 }
+/* (x, y) 附近 r 內、離自己 far 以內最近的怪 */
+function mobNear(x, y, r, far = 1e9) {
+  let best = null,
+    bd = r;
+  for (const m of G.mobs) {
+    const d = Math.hypot(m.x - x, m.y - y);
+    if (m.hp > 0 && d < bd + m.r && dist(P, m) < far) (bd = d), (best = m);
+  }
+  return best;
+}
+const corpseNear = (o, r) => G.corpses.some(c => c.t > G.t && Math.hypot(c.x - o.x, c.y - o.y) < r);
 /* 每格畫面：出手中的動作 */
 function skillTick(a, dt, mx, my) {
   a.t += dt;
-  if (a.k === 'iai') {
+  if (a.sx != null) {
     const f = Math.min(1, a.t / a.dur),
       e = 1 - Math.pow(1 - f, 3);
     moveBody(P, a.sx + Math.cos(a.ang) * a.d * e - P.x, a.sy + Math.sin(a.ang) * a.d * e - P.y);
     if (Math.random() < 0.8) fx({ k: 'ghost', x: P.x, y: P.y, dur: 0.22, flip: Math.cos(a.ang) < 0 });
-    for (const m of G.mobs)
-      if (m.hp > 0 && !a.hit.has(m) && dist(P, m) < m.r + 40) {
-        a.hit.add(m);
-        hitMob(m, a.c, a.ang + Math.PI / 2, 220, { a });
-      }
+    /* 居合：路上的都斬；其他的落地才出手 */
+    if (a.k === 'iai') {
+      for (const m of G.mobs)
+        if (m.hp > 0 && !a.hit.has(m) && dist(P, m) < m.r + 40) {
+          a.hit.add(m);
+          hitMob(m, a.c, a.ang + Math.PI / 2, 220, { a });
+        }
+    } else if (f >= 1 && !a.n++) actHit(a, 0);
   } else {
     moveBody(P, mx * ST.spd * 0.35 * dt, my * ST.spd * 0.35 * dt);
     while (a.n < a.hits.length && a.t >= a.dur * a.hits[a.n]) actHit(a, a.n++);
@@ -174,38 +211,43 @@ function actHit(a, idx) {
     }
     return n;
   };
-  if (a.k === 'slash' || a.k === 'swallow') {
-    const ang = a.k === 'swallow' && idx === 1 ? a.ang + 0.25 : a.ang;
-    P.x += Math.cos(ang) * 10;
-    P.y += Math.sin(ang) * 10;
-    fx({ k: 'slash', x: P.x, y: P.y, ang, r: R, arc: D.arc, dur: 0.18, flipArc: idx === 1 });
-    const n = hitArc(ang, D.arc, R, 170 * c.kb);
+  if (a.k === 'slash') {
+    /* 3 段一輪：第 2 段反手，第 3 段範圍 ×1.5、必定暴擊 */
+    const st = a.stage || 0,
+      R2 = R * (st === 2 ? 1.5 : 1);
+    P.x += Math.cos(a.ang) * 10;
+    P.y += Math.sin(a.ang) * 10;
+    fx({ k: 'slash', x: P.x, y: P.y, ang: a.ang, r: R2, arc: D.arc, dur: 0.18, flipArc: st === 1 });
+    fxs(st === 2 ? 'dslash' : 'sslash', P.x, P.y - 20, R2, { rot: a.ang });
+    const n = hitArc(a.ang, D.arc, R2, 170 * c.kb, st === 2 ? { crit: 1 } : {});
     if (D.gain && n) P.mp = Math.min(ST.mp, P.mp + D.gain * n);
-  } else if (a.k === 'thrust' || a.k === 'combo') {
-    /* 突刺：前兩下窄、最後一下打穿一整排；連打：左右左，第 3 下得到力量球 */
-    const last = idx === a.hits.length - 1,
-      ang = a.ang + (a.k === 'combo' ? [-0.3, 0.3, 0][idx] : last ? 0 : idx ? 0.1 : -0.1);
-    let n = 0;
-    if (a.k === 'thrust' && last) {
-      const L = R * 1.9;
-      fx({ k: 'slash', x: P.x, y: P.y, ang, r: L, arc: 0.3, dur: 0.16 });
-      for (const m of G.mobs) {
-        if (m.hp <= 0) continue;
-        const dx = m.x - P.x,
-          dy = m.y - P.y,
-          along = dx * Math.cos(ang) + dy * Math.sin(ang),
-          side = Math.abs(-dx * Math.sin(ang) + dy * Math.cos(ang));
-        if (along > 0 && along < L + m.r && side < 28 + m.r) hitMob(m, c, ang, 220 * c.kb, { a }), n++;
-      }
-    } else {
-      fx({ k: 'slash', x: P.x, y: P.y, ang, r: R, arc: D.arc, dur: 0.15, flipArc: idx === 1 });
-      n = hitArc(ang, D.arc, R, (a.k === 'combo' && last ? 200 : 90) * c.kb);
+  } else if (a.k === 'thrust') {
+    /* 招架反擊：往前刺一整排；失衡的怪消耗失衡、必定暴擊、給狂怒球 */
+    const L = R * 1.9;
+    fxs('thrust', P.x, P.y - 20, L, { rot: a.ang });
+    for (const m of G.mobs) {
+      if (m.hp <= 0) continue;
+      const dx = m.x - P.x,
+        dy = m.y - P.y,
+        along = dx * Math.cos(a.ang) + dy * Math.sin(a.ang),
+        side = Math.abs(-dx * Math.sin(a.ang) + dy * Math.cos(a.ang));
+      if (!(along > 0 && along < L + m.r && side < 28 + m.r)) continue;
+      const par = takeState(m, 'parried');
+      hitMob(m, c, a.ang, 220 * c.kb, { a, crit: par });
+      if (par) gainChg('f');
     }
+  } else if (a.k === 'combo') {
+    /* 連打：左右左，第 3 下得到暴擊球 */
+    const last = idx === a.hits.length - 1,
+      ang = a.ang + [-0.3, 0.3, 0][idx];
+    fx({ k: 'slash', x: P.x, y: P.y, ang, r: R, arc: D.arc, dur: 0.15, flipArc: idx === 1 });
+    fxs('dslash', P.x, P.y - 20, R, { rot: ang });
+    const n = hitArc(ang, D.arc, R, (last ? 200 : 90) * c.kb);
     if (D.gain && n) P.mp = Math.min(ST.mp, P.mp + D.gain * n);
-    if (a.k === 'combo' && last && n) gainChg('p');
+    if (last && n) gainChg('p');
   } else if (a.k === 'split') {
     const n = D.cnt + c.proj - 1;
-    for (let i = 0; i < n; i++) shoot(a.ang + (i - (n - 1) / 2) * 0.22, D.spd, c, a, { life: 0.7 });
+    for (let i = 0; i < n; i++) shoot(a.ang + (i - (n - 1) / 2) * 0.22, D.spd, c, a, { life: 0.7, sh: 'arrow' });
   } else if (a.k === 'frostbolt') {
     const n = c.proj;
     for (let i = 0; i < n; i++)
@@ -242,26 +284,31 @@ function actHit(a, idx) {
     shake(0.3);
     sfx('slam');
     hitArc(a.ang, D.arc, R, 120 * c.kb, { stun: D.stun });
+    const cx = P.x + Math.cos(a.ang) * R * 0.55,
+      cy = P.y + Math.sin(a.ang) * R * 0.55;
+    addGround({ k: 'jagged', x: cx, y: cy, r: R * 0.5, dur: 2, c, after: 1.2 });
   } else if (a.k === 'whirl') {
     fx({ k: 'ring', x: P.x, y: P.y, r: R, dur: 0.28 });
+    fxs('spin', P.x, P.y - 10, R);
     shake(0.25);
     for (const m of G.mobs) if (m.hp > 0 && dist(P, m) < R + m.r) hitMob(m, c, angTo(P, m), 320 * c.kb, { a });
   } else if (a.k === 'nova') {
-    fx({ k: 'ring', x: P.x, y: P.y, r: R, dur: 0.32, col: '#ff8a4c' });
+    /* 灌注：火＝範圍 ×1.5＋燃燒地面，冰＝冰緩地面（觸發、幻影施放的不吃灌注） */
+    const fire = !a.trig && takeInf('fire'),
+      cold = !a.trig && takeInf('cold'),
+      R2 = R * (fire ? 1.5 : 1);
+    fx({ k: 'ring', x: P.x, y: P.y, r: R2, dur: 0.32, col: '#ff8a4c' });
     shake(0.2);
-    for (const m of G.mobs) if (m.hp > 0 && dist(P, m) < R + m.r) hitMob(m, c, angTo(P, m), 140 * c.kb, { a });
-  } else if (a.k === 'blade' || a.k === 'fireball') {
+    for (const m of G.mobs) if (m.hp > 0 && dist(P, m) < R2 + m.r) hitMob(m, c, angTo(P, m), 140 * c.kb, { a });
+    if (fire) addGround({ k: 'fire', x: P.x, y: P.y, r: R2, dur: 4, c, dps: 0.3 });
+    if (cold) addGround({ k: 'chill', x: P.x, y: P.y, r: R2, dur: 4 }), fxs('frost', P.x, P.y, R2);
+  } else if (a.k === 'fireball') {
     const n = c.proj,
       spread = 0.18;
     for (let i = 0; i < n; i++) {
       const g = a.ang + (i - (n - 1) / 2) * spread;
-      shoot(g, D.spd, c, a, a.k === 'fireball' ? { boom: (D.r || 70) * ST.aoeM * c.aoe, fire: 1, life: 1.1 } : {});
+      shoot(g, D.spd, c, a, { boom: (D.r || 70) * ST.aoeM * c.aoe, fire: 1, life: 1.1 });
     }
-  } else if (a.k === 'storm') {
-    fx({ k: 'ring', x: P.x, y: P.y, r: 90, dur: 0.3, col: '#ffb3c8' });
-    shake(0.15);
-    const n = D.cnt + (c.proj - 1) * 2;
-    for (let i = 0; i < n; i++) shoot(a.ang + (i / n) * TAU, D.spd, c, a, { pink: 1, life: 0.8 });
   } else if (a.k === 'venom') {
     G.pools.push({ x: a.tx, y: a.ty, r: R, t: 0, dur: D.dur, tick: 0, c, a });
     sfx('cast');
@@ -280,6 +327,186 @@ function actHit(a, idx) {
     G.allies = G.allies.filter(w => w.src !== 'gem');
     for (let i = 0; i < c.wolves; i++) callWolf('gem', c);
     fx({ k: 'ring', x: P.x, y: P.y, r: 90, dur: 0.35, col: '#9df29d' });
+  } else actHit2(a, idx, R, hitArc);
+}
+/* 0.2.11 的武器技能（docs/技能分配.md）；機制都在 mech.js、combat.js */
+function actHit2(a, idx, R, hitArc) {
+  const c = a.c,
+    D = c.D,
+    cos = Math.cos(a.ang),
+    sin = Math.sin(a.ang),
+    /* 圓形範圍：(x, y) 半徑 r 內的怪都打一下 */
+    around = (x, y, r, kb, o) => {
+      let n = 0;
+      for (const m of G.mobs)
+        if (m.hp > 0 && Math.hypot(m.x - x, m.y - y) < r + m.r)
+          hitMob(m, c, Math.atan2(m.y - y, m.x - x), kb * c.kb, { a, from: { x, y }, ...o }), n++;
+      return n;
+    };
+  if (a.k === 'mirage') {
+    /* 分身用這顆寶石的等級與輔助出斬擊 */
+    const p = open(a.tx, a.ty, 14) ? { x: a.tx, y: a.ty } : { x: P.x, y: P.y };
+    spawnMirage({ ...c.g, gem: 'slash' }, p.x, p.y, 4, 0.8, 0.6);
+    fxs('blinkin', p.x, p.y, 40);
+  } else if (a.k === 'axethrow' || a.k === 'apshot' || a.k === 'chaosbolt') {
+    const n = c.proj,
+      o = {
+        axethrow: { sh: 'disc', life: 0.8 },
+        apshot: { sh: 'tracer', life: 0.6 },
+        chaosbolt: { wave: 'chaos', life: 0.8 }
+      }[a.k];
+    for (let i = 0; i < n; i++) shoot(a.ang + (i - (n - 1) / 2) * 0.16, D.spd, c, a, { ...o });
+  } else if (a.k === 'rend') {
+    /* 撕裂：先記下流血，擊中後消耗它，一次結算剩下的 ×1.5，並傳給附近 */
+    fxs('claw', P.x, P.y - 20, R, { rot: a.ang });
+    for (const m of G.mobs) {
+      if (m.hp <= 0) continue;
+      const dd = dist(P, m);
+      if (!(dd < R + m.r && angDiff(angTo(P, m), a.ang) < D.arc / 2 + m.r / Math.max(dd, 1))) continue;
+      const b = hasState(m, 'bleed') && { ...m.ail.bleed };
+      hitMob(m, c, angTo(P, m), 150 * c.kb, { a });
+      if (!b || m.hp <= 0 || !takeState(m, 'bleed')) continue;
+      fxs('bleed', m.x, m.y - m.sz * 0.5, 30);
+      for (const o of G.mobs)
+        if (o.hp > 0 && o !== m && dist(o, m) < 120 + o.r) o.ail.bleed = keepMax(o.ail.bleed, b.dps, 5);
+      dotHit(m, b.dps * (b.t - G.t) * 1.5, 'phys');
+    }
+  } else if (a.k === 'cleave') {
+    fxs('cleave', P.x + cos * R * 0.5, P.y + sin * R * 0.5, R * 0.6);
+    shake(0.3);
+    sfx('slam');
+    hitArc(a.ang, D.arc, R, 200 * c.kb);
+  } else if (a.k === 'warcry') {
+    P.rage = Math.min(30, (P.rage || 0) + 15);
+    P.rageT = G.t;
+    fxs('rage', P.x, P.y - 30, 40);
+    fx({ k: 'ring', x: P.x, y: P.y, r: R, dur: 0.35, col: '#ff6b3d' });
+    for (const m of G.mobs) if (m.hp > 0 && dist(P, m) < R + m.r) m.ail.intim = G.t + 4;
+    shake(0.2);
+  } else if (a.k === 'smash') {
+    /* 重擊：打前方最近的一隻；瀕臨重暈就碾壓（直接重暈）並震傷周圍 */
+    let t = null,
+      bd = 1e9;
+    for (const m of G.mobs) {
+      const dd = dist(P, m);
+      if (m.hp > 0 && dd < R + m.r && angDiff(angTo(P, m), a.ang) < D.arc / 2 + m.r / Math.max(dd, 1) && dd < bd)
+        (bd = dd), (t = m);
+    }
+    if (!t) return fxs('blunt', P.x + cos * R * 0.6, P.y + sin * R * 0.6, 40);
+    const crushed = crush(t);
+    hitMob(t, c, a.ang, 200 * c.kb, { a });
+    if (crushed) {
+      fxs('hammer', t.x, t.y, 90);
+      shake(0.35);
+      for (const o of G.mobs)
+        if (o.hp > 0 && o !== t && dist(o, t) < 120 + o.r)
+          hitMob(o, c, angTo(t, o), 260, { a, quiet: 1, mult: c.mult * 0.5, from: t });
+    } else fxs('blunt', t.x, t.y - t.sz * 0.3, 45);
+  } else if (a.k === 'leap' || a.k === 'blindpounce') {
+    /* 落地：範圍攻擊；跳砸留碎裂地面，盲擊撲致盲（c.blind） */
+    shake(0.3);
+    sfx('slam');
+    if (a.k === 'leap') {
+      fxs('landing', P.x, P.y, R);
+      addGround({ k: 'jagged', x: P.x, y: P.y, r: R, dur: 2, c, after: 0.8 });
+    } else fxs('smoke', P.x, P.y, R * 0.8);
+    around(P.x, P.y, R, 180);
+  } else if (a.k === 'fissure') {
+    /* 往前 5 處裂地（碰到牆停），每隻怪只打一次；完全破甲的消耗掉、這一下 ×2 */
+    const hit = new Set();
+    for (let k = 0; k < 5; k++) {
+      const x = P.x + cos * (60 + k * 65),
+        y = P.y + sin * (60 + k * 65),
+        r = R * ST.aoeM * c.aoe;
+      if (isWall(x, y)) break;
+      fxs('dirt', x, y, r);
+      for (const m of G.mobs)
+        if (m.hp > 0 && !hit.has(m) && Math.hypot(m.x - x, m.y - y) < r + m.r) {
+          hit.add(m);
+          hitMob(m, c, a.ang, 100 * c.kb, { a, from: { x, y }, mult: takeState(m, 'broken') ? c.mult * 2 : 0 });
+        }
+    }
+    shake(0.25);
+  } else if (a.k === 'thunder') {
+    /* 每顆暴擊球多劈一道；連擊數 5 以上全部花掉換範圍 ×1.5 */
+    const n = 1 + useChg('p'),
+      r = R * (comboN() >= 5 ? (useCombo(), 1.5) : 1);
+    for (let k = 0; k < n; k++) {
+      const x = P.x + cos * (80 + k * 70) - sin * (k % 2 ? 24 : -24) * (k > 0),
+        y = P.y + sin * (80 + k * 70) + cos * (k % 2 ? 24 : -24) * (k > 0);
+      if (isWall(x, y)) break;
+      fxs('thunder', x, y, r);
+      around(x, y, r, 80);
+    }
+    shake(0.25);
+    sfx('slam');
+  } else if (a.k === 'spearthrow') {
+    /* 每顆狂怒球多一根，多的擊中時爆炸 */
+    const f = useChg('f'),
+      n = c.proj + f;
+    for (let i = 0; i < n; i++)
+      shoot(a.ang + (i - (n - 1) / 2) * 0.12, D.spd, c, a, {
+        sh: 'arrow',
+        shs: 1.4,
+        life: 0.8,
+        ...(i >= c.proj ? { boom: 80 * ST.aoeM * c.aoe } : {})
+      });
+  } else if (a.k === 'gasarrow') {
+    for (let i = 0; i < c.proj; i++)
+      shoot(a.ang + (i - (c.proj - 1) / 2) * 0.2, D.spd, c, a, {
+        sh: 'arrow',
+        life: 0.6,
+        boom: 1,
+        gas: R * ST.aoeM * c.aoe
+      });
+  } else if (a.k === 'grenade') {
+    throwGrenade(c, a.tx, a.ty, { r: R * ST.aoeM * c.aoe, el: 'fire' });
+  } else if (a.k === 'flyswords') {
+    if (swordN() >= SWORD_MAX) launchSwords(a.tx, a.ty), sfx('throw');
+    else gainSwords(3 + c.proj - 1, c), fx({ k: 'ring', x: P.x, y: P.y, r: 45, dur: 0.25, col: '#cfd8e3' });
+  } else if (a.k === 'shadowstrike' || a.k === 'wolfpounce') {
+    /* 撲到目標身邊：影襲必定暴擊（翻滾後 2 秒內 ×2），狼撲上獵人標記 */
+    const t = a.tm;
+    if (!t || t.hp <= 0 || dist(P, t) > t.r + 60) return;
+    const g = angTo(P, t);
+    fxs(a.k === 'shadowstrike' ? 'flurry' : 'claw', P.x, P.y - 20, 70, { rot: g });
+    if (a.k === 'shadowstrike') hitMob(t, c, g, 120 * c.kb, { a, crit: 1, mult: P.rolledT > G.t ? c.mult * 2 : 0 });
+    else hitMob(t, c, g, 160 * c.kb, { a }), t.hp > 0 && markMob(t, 'poacher');
+  } else if (a.k === 'clawchain') {
+    /* 4 段爪擊，每段打中回 1% 生命 */
+    const ang = a.ang + [-0.25, 0.25, -0.12, 0.12][idx];
+    fxs('claw', P.x, P.y - 20, R, { rot: ang });
+    if (hitArc(ang, D.arc, R, 60 * c.kb)) P.hp = Math.min(ST.hp, P.hp + ST.hp * 0.01);
+  } else if (a.k === 'chainsweep') {
+    const r = R * [1, 1.3, 1.7][a.stage || 0];
+    fxs('whip', P.x, P.y - 20, r, { rot: a.ang });
+    hitArc(a.ang, D.arc, r, 150 * c.kb);
+  } else if (a.k === 'banner') {
+    if (plantBanner({ dmg: 30 })) fxs('pillar', P.x, P.y, 70), sfx('cast');
+  } else if (a.k === 'corpseboom') {
+    /* 屍體最大生命 10%（每級 +3%）的火焰範圍傷害，只吃抗性；也是引爆器 */
+    const cp = takeCorpse(a.tx, a.ty, 250);
+    if (!cp) return;
+    const r = R * ST.aoeM * c.aoe,
+      d = cp.mhp * 0.1 * (1 + 0.03 * (c.lv - 1));
+    fxs('dark', cp.x, cp.y, r);
+    shake(0.25);
+    sfx('slam');
+    for (const m of G.mobs) if (m.hp > 0 && Math.hypot(m.x - cp.x, m.y - cp.y) < r + m.r) dotHit(m, d, 'fire');
+    detonate(cp.x, cp.y, r, c);
+  } else if (a.k === 'paperdoll') {
+    /* 消耗一具屍體叫紙人兵（15 秒，最多 4 隻，滿了換掉最舊的） */
+    const cp = takeCorpse(P.x, P.y, 250);
+    if (!cp) return;
+    const dolls = G.allies.filter(w => w.src === 'doll');
+    if (dolls.length >= 4) G.allies.splice(G.allies.indexOf(dolls[0]), 1);
+    callWolf('doll', c, cp, G.t + 15);
+    fxs('rise', cp.x, cp.y, 40);
+  } else if (a.k === 'bearmaul') {
+    fxs('claw', P.x, P.y - 20, R, { rot: a.ang });
+    fxs('slam', P.x + cos * R * 0.5, P.y + sin * R * 0.5, R * 0.5);
+    shake(0.25);
+    if (hitArc(a.ang, D.arc, R, 220 * c.kb)) (P.rage = Math.min(30, (P.rage || 0) + 2)), (P.rageT = G.t);
   }
 }
 function shoot(ang, spd, c, a, o) {
@@ -302,6 +529,10 @@ function shoot(ang, spd, c, a, o) {
 function boom(s) {
   if (s.done) return;
   s.done = 1;
+  if (s.gas) {
+    addGround({ k: 'gas', x: s.x, y: s.y + 18, r: s.gas, dur: 5, c: s.c, dps: 0.6 });
+    return fxs('gas', s.x, s.y + 18, s.gas);
+  }
   fx({ k: 'ring', x: s.x, y: s.y + 18, r: s.boom, dur: 0.3, col: '#ff8a4c' });
   shake(0.12);
   sfx('slam');
@@ -397,10 +628,13 @@ function esAbsorb(d) {
 }
 
 /* ---------- 召喚戰狼：狼跟著你、咬最近的怪 ---------- */
-function callWolf(src, c) {
-  const p = floorNear(P.x, P.y, 30, 80, 14) || { x: P.x, y: P.y };
-  G.allies.push({ src, x: p.x, y: p.y, vx: 0, vy: 0, r: 14, cd: rnd(0.2, 0.6), c, ph: Math.random() * TAU });
+function callWolf(src, c, at = P, t = 0) {
+  const p = floorNear(at.x, at.y, 30, 80, 14) || { x: at.x, y: at.y };
+  G.allies.push({ src, x: p.x, y: p.y, vx: 0, vy: 0, r: 14, cd: rnd(0.2, 0.6), c, ph: Math.random() * TAU, t });
 }
+/* 同伴這一下的倍率：寶石叫的狼吃群狼、紙人用寶石倍率、魔像與光環狼用左鍵技能打折 */
+const allyMult = (w, c) =>
+  w.src === 'gem' ? c.mult * c.wolfM : w.src === 'doll' ? c.mult : w.src === 'golem' ? c.mult * 0.8 : 0.4;
 function updAllies(dt) {
   for (const w of G.allies) {
     w.cd -= dt;
@@ -425,7 +659,7 @@ function updAllies(dt) {
       w.cd = 0.8;
       fx({ k: 'claw', x: w.x, y: w.y, ang: angTo(w, t), r: 34, dur: 0.12 });
       const c = w.c || slotCfg(0) || BASEC(),
-        mult = w.src === 'gem' ? c.mult * c.wolfM : 0.4;
+        mult = allyMult(w, c);
       hitMob(t, c, angTo(w, t), 60, { quiet: 1, mult, minion: 1, from: w });
     }
     if (dist(w, P) > 900) (w.x = P.x), (w.y = P.y);
@@ -473,6 +707,13 @@ function updSkills(dt) {
   const aw = G.allies.some(w => w.src === 'aura');
   if (G.scene === 'map' && ST.auraWolf && !aw) callWolf('aura');
   else if (!ST.auraWolf && aw) G.allies = G.allies.filter(w => w.src !== 'aura');
+  /* 召喚魔像（光環欄）：拿權杖才會出來 */
+  const gm = G.allies.some(w => w.src === 'golem'),
+    gOn = ST.auraGolem && ST.wt === 'sceptre';
+  if (G.scene === 'map' && gOn && !gm) callWolf('golem');
+  else if (!gOn && gm) G.allies = G.allies.filter(w => w.src !== 'golem');
+  /* 紙人 15 秒就消失 */
+  G.allies = G.allies.filter(w => !w.t || w.t > G.t);
   updAllies(dt);
   updPools(dt);
   updUnits(dt);
@@ -548,7 +789,7 @@ function unitFire(u, tgt, mul = 1) {
   P.y = u.y;
   if (D.unit === 'turret') shoot(ang, 820, c, a, { life: 0.7, bolt: 1 });
   else if (D.unit === 'totem') shoot(ang, 520, c, a, { boom: D.r * ST.aoeM, fire: 1, life: 1 });
-  else for (let i = 0; i < (c.k === 'swallow' ? 2 : 1); i++) actHit(a, i);
+  else actHit(a, 0);
   P.x = px;
   P.y = py;
   P.face = pf;

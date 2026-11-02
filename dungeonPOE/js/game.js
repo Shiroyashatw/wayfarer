@@ -24,17 +24,16 @@ function newGame() {
     sfx: 1
   };
   s.eq.weapon = mkItem('w_sword1_0', 1, 0);
-  /* 技能欄：左鍵斬擊、右鍵燕返、Q 旋風斬；其他從怪物身上掉（撿到就學進書庫） */
+  /* 技能欄：單手劍的兩招，左鍵斬擊、右鍵幻影斬；其他到生成寶石拿 */
   s.skills = Array.from({ length: NSLOT }, () => ({ a: null }));
   s.skills[0].a = mkGem('slash');
-  s.skills[1].a = mkGem('swallow');
-  s.skills[2].a = mkGem('whirl');
+  s.skills[1].a = mkGem('mirage');
   s.pt = [...PT_START];
   s.auras = Array(AURA_SLOTS).fill(null);
   s.charms = [null, null, null];
   s.eq.chest = mkItem('c_leather', 1, 0);
   s.mat = newMat();
-  s.lib = ['slash', 'swallow', 'whirl'];
+  s.lib = ['slash', 'mirage'];
   return s;
 }
 
@@ -533,6 +532,8 @@ function hurtPlayer(d, src, el = 'phys', noEv) {
     return;
   }
   d = r.d;
+  /* 召喚魔像：站在它旁邊受到的傷害少 20% */
+  if (G.allies.some(w => w.src === 'golem' && dist(w, P) < 200)) d *= 0.8;
   d = esAbsorb(d);
   if (d <= 0) return;
   P.hp -= d;
