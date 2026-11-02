@@ -112,8 +112,6 @@ function useSlot(i) {
     sfx('throw');
     return true;
   }
-  /* 魔劍士：放法術後 4 秒，近戰附加那個屬性 */
-  if (D.tags.includes('spell') && ascV(S, 'spell.enchant')) P.ench = { el: D.el || 'light', until: G.t + 4 };
   const a = (P.act = {
     k: c.k,
     c,
@@ -125,23 +123,12 @@ function useSlot(i) {
     tx: w.x,
     ty: w.y
   });
-  /* 架勢滿了：這次出手是居合 */
-  if (hasCls(S, 'ronin') && P.stance >= stanceNeed()) {
-    a.iai = 1;
-    P.stance = 0;
-    fx({ k: 'perfect', x: P.x, y: P.y, dur: 0.4 });
-  }
-  /* 刺劍姬：致命節奏（每第 4 次出手必定暴擊） */
-  const rh = ascV(S, 'rapier.rhythm');
-  if (rh && ++P.beat % rh === 0) a.crit = 1;
   sfx(D.tags.includes('spell') ? 'cast' : D.tags.includes('proj') ? 'throw' : 'swing');
   if (c.k === 'iai') {
     const d = Math.min(D.dist, Math.hypot(w.x - P.x, w.y - P.y));
     Object.assign(a, { sx: P.x, sy: P.y, d, hit: new Set(), hits: [] });
     P.iuntil = G.t + a.dur + 0.05;
   }
-  /* 馴獸師：每放 6 次技能叫一隻狼 */
-  if (hasCls(S, 'tamer') && ++P.calls % 6 === 0) callWolf('cls');
   return true;
 }
 /* 每格畫面：出手中的動作 */
@@ -161,22 +148,8 @@ function skillTick(a, dt, mx, my) {
     moveBody(P, mx * ST.spd * 0.35 * dt, my * ST.spd * 0.35 * dt);
     while (a.n < a.hits.length && a.t >= a.dur * a.hits[a.n]) actHit(a, a.n++);
   }
-  if (a.t >= a.dur) {
-    if (a.k === 'iai') endAct(a);
-    P.act = null;
-  }
+  if (a.t >= a.dur) P.act = null;
 }
-/* 出手結束：架勢、燕返、明鏡 */
-function endAct(a) {
-  if (!a.any || a.unit) return;
-  if (a.iai) {
-    const sw = coreV(S, 'ronin', 'swallow'),
-      mi = coreV(S, 'ronin', 'mirror');
-    if (mi) P.hp = Math.min(ST.hp, P.hp + (ST.hp * mi) / 100);
-    if (sw && !a.echo && a.k !== 'iai') actHit({ ...a, echo: 1, mul: sw, iai: 0 }, 0);
-  } else if (hasCls(S, 'ronin')) P.stance = Math.min(stanceNeed(), P.stance + 1);
-}
-const stanceNeed = () => coreV(S, 'ronin', 'gale') || 5;
 
 /* ---------- 各技能出手 ---------- */
 function actHit(a, idx) {
@@ -300,11 +273,6 @@ function actHit(a, idx) {
     for (let i = 0; i < c.wolves; i++) callWolf('gem', c);
     fx({ k: 'ring', x: P.x, y: P.y, r: 90, dur: 0.35, col: '#9df29d' });
   }
-  const fl = ascV(S, 'rapier.flurry');
-  if (fl && D.tags.includes('melee') && a.k !== 'iai' && idx === 0)
-    for (let i = 0; i < fl; i++)
-      shoot(a.ang + (i - (fl - 1) / 2) * 0.22, 700, { ...c, mult: c.mult * 0.5, pierce: 1 }, a, { life: 0.45 });
-  if (idx === a.hits.length - 1 && a.k !== 'iai' && !a.echo) endAct(a);
 }
 function shoot(ang, spd, c, a, o) {
   G.shots.push({
@@ -359,46 +327,10 @@ function hitMob(m, c, ang, kb, o = {}) {
   const a = o.a || {};
   let mult = (o.mult ? o.mult / (c.mult || 1) : 1) * (a.mul || 1),
     crit = !!(a.crit || o.crit);
-  if (a.iai) (mult *= coreV(S, 'ronin', 'iron') || 3), (crit = true);
-  /* 刺客的印記：滿了就消耗 */
-  if (hasCls(S, 'assassin') && !o.quiet) {
-    const need = coreV(S, 'assassin', 'chain') || 8;
-    if ((m.mark || 0) >= need) {
-      crit = true;
-      mult *= 1 + 0.05 * m.mark;
-      const ex = coreV(S, 'assassin', 'exec');
-      if (ex && m.hp < (m.mhp * ex) / 100) mult *= 2;
-      const sh = coreV(S, 'assassin', 'shadow');
-      if (sh) P.shadowT = 2;
-      m.mark = 0;
-      fx({ k: 'ring', x: m.x, y: m.y, r: 50, dur: 0.25, col: '#c38bff' });
-    } else m.mark = (m.mark || 0) + 1;
-  }
   const r = hitCalc(c, m, { mult, crit, minion: o.minion, unit: a.unit });
   applyAil(m, r, c);
   onHitBase(m, r, c);
   if (ST.wt === 'staff' && (c.D.tags || []).includes('melee') && !o.quiet) P.mp = Math.min(ST.mp, P.mp + 1);
-  /* 魔劍士：魔力之刃回魔、劍氣 */
-  if ((c.D.tags || []).includes('melee') && !o.quiet && !a.unit) {
-    if (ascV(S, 'spell.arcane')) P.mp = Math.min(ST.mp, P.mp + 1);
-    const wv = ascV(S, 'spell.wave');
-    if (wv && Math.random() * 100 < wv) {
-      const el = (P.ench && P.ench.until > G.t && P.ench.el) || 'light';
-      shoot(
-        angTo(P, m),
-        640,
-        { ...c, D: { ...c.D, el, tags: ['spell', 'proj'] }, mult: c.mult * 0.8, pierce: 1 },
-        {},
-        { life: 0.6, wave: el }
-      );
-    }
-  }
-  if (r.crit && ascV(S, 'rapier.expose')) m.ail.rapier = G.t + 4;
-  /* 狂魔：怒氣、嗜血 */
-  const rg = ascV(S, 'berserk.rage');
-  if (rg && !o.quiet) (P.rage = Math.min(rg, (P.rage || 0) + 1)), (P.rageT = G.t);
-  const lc = ascV(S, 'berserk.leech');
-  if (lc) P.hp = Math.min(ST.hp, P.hp + (r.d * lc) / 100);
   m.hp -= r.d;
   if (a) a.any = 1;
   m.flash = 0.09;
@@ -422,31 +354,10 @@ function hitMob(m, c, ang, kb, o = {}) {
   /* 吸血：1 秒內回完；同時只有一筆（取回得最快的） */
   const lr = r.d * c.leech * (1 + MM('pleech') / 100);
   if (c.leech && (!P.lch || P.lch.t <= G.t || lr > P.lch.rate)) P.lch = { rate: lr, t: G.t + 1 };
-  if (hasCls(S, 'pyro') && !o.noBurn) addBurn(m, r.d, 1 + coreV(S, 'pyro', 'kindle'));
-  if (m.hp > 0 && m.burn && !m.boss) {
-    const end = coreV(S, 'pyro', 'end');
-    if (end && m.hp < (m.mhp * end) / 100) m.hp = 0;
-  }
   if (m.hp <= 0) killMob(m);
 }
 
-/* ---------- 火法師：燃燒 ---------- */
-function addBurn(m, hit, n) {
-  const b = m.burn || (m.burn = { n: 0, per: 0, t: 0 });
-  b.n = Math.min(10, b.n + n);
-  b.per = Math.max(b.per, hit * 0.08);
-  b.t = 4;
-  const bu = coreV(S, 'pyro', 'burst');
-  if (bu && b.n >= 10) {
-    /* 爆燃：周圍受到燃燒 v 秒份的傷害 */
-    const dmg = b.per * 10 * bu;
-    m.burn = null;
-    fx({ k: 'ring', x: m.x, y: m.y, r: 110, dur: 0.3, col: '#ff6b3d' });
-    shake(0.15);
-    for (const o of G.mobs) if (o.hp > 0 && dist(o, m) < 110 + o.r) dotHit(o, dmg, 'fire');
-  }
-}
-/* 不吃暴擊的傷害（燃燒、爆燃）：只吃抗性 */
+/* 不吃暴擊的傷害：只吃抗性 */
 function dotHit(m, d, el, quiet) {
   if (el !== 'phys') d *= 1 - resOf(m, el) / 100;
   m.hp -= d;
@@ -454,81 +365,25 @@ function dotHit(m, d, el, quiet) {
   aggroPack(m);
   if (m.hp <= 0) killMob(m);
 }
-/* 怪物每格：燃燒、暈眩；回傳 true＝這格不行動 */
+/* 怪物每格：異常（combat.js）；回傳 true＝這格不行動 */
 function mobTick(m, dt) {
-  if (m.burn) {
-    const b = m.burn,
-      d = b.per * b.n * dt;
-    m.hp -= d;
-    m.dotAcc = (m.dotAcc || 0) + d;
-    b.t -= dt;
-    if (b.t <= 0) m.burn = null;
-    if ((m.dotT = (m.dotT || 0) + dt) > 0.5) {
-      if (m.dotAcc >= 1) num(m.x, m.y - m.sz, m.dotAcc, 'fire');
-      m.dotT = m.dotAcc = 0;
-    }
-    if (m.hp <= 0) return killMob(m), true;
-  }
-  return ailTick(m, dt);
+  const stop = ailTick(m, dt);
+  if (m.hp <= 0) return killMob(m), true;
+  return stop;
 }
-/* 怪物死掉：星火、寶石經驗 */
-function coreKill(m) {
-  const sp = coreV(S, 'pyro', 'spark');
-  if (sp && m.burn) {
-    const near = G.mobs
-      .filter(o => o.hp > 0 && o !== m)
-      .sort((a, b) => dist(a, m) - dist(b, m))
-      .slice(0, 2);
-    for (const o of near)
-      if (dist(o, m) < 220) addBurn(o, m.burn.per / 0.08, Math.max(1, Math.round((m.burn.n * sp) / 100)));
-  }
-}
-/* 0.2.6 起寶石不再插著殺怪練等級，改花靈魂升級（craft.js 的 gemUp） */
-
-/* ---------- 騎士：護盾與盾勢 ---------- */
-const wardMax = () => (hasCls(S, 'knight') ? ST.hp * (0.1 + coreV(S, 'knight', 'wall') / 100) : 0);
-/* 受傷前：減傷（不動、守護獸）、護盾吸收、反擊；回傳剩下的傷害 */
-function coreHurt(d) {
-  let red =
-    Math.min(40, (P.guard || 0) * coreV(S, 'knight', 'firm')) +
-    Math.min(40, G.allies.length * coreV(S, 'tamer', 'guard'));
-  d *= 1 - Math.min(60, red) / 100;
+/* 能量護盾：受傷先扣護盾（流血、中毒在 combat.js 另外算）；回傳剩下的傷害 */
+function esAbsorb(d) {
   P.lastHurt = G.t;
   if (P.es > 0) {
     const ab = Math.min(P.es, d);
     P.es -= ab;
     d -= ab;
   }
-  if (P.ward > 0) {
-    const ab = Math.min(P.ward, d);
-    P.ward -= ab;
-    d -= ab;
-    P.wardAbs += ab;
-    while (P.wardAbs >= 20) (P.wardAbs -= 20), (P.guard = Math.min(20, P.guard + 1));
-  }
-  const co = coreV(S, 'knight', 'counter');
-  if (co && P.guard) aoeHit(P.x, P.y, 120, (P.guard * co) / 100, '#9ad1ff');
   return d;
 }
-function coreBlock() {
-  const b = coreV(S, 'knight', 'bash');
-  if (b) aoeHit(P.x, P.y, 110, b, '#cfd8e3');
-}
-/* 以玩家為中心的範圍傷害（反擊、盾擊），用左鍵技能的數值 */
-function aoeHit(x, y, r, mult, col) {
-  const c = slotCfg(0) || BASEC();
-  fx({ k: 'ring', x, y, r, dur: 0.25, col });
-  for (const m of G.mobs)
-    if (m.hp > 0 && Math.hypot(m.x - x, m.y - y) < r + m.r)
-      hitMob(m, c, Math.atan2(m.y - y, m.x - x), 160, { quiet: 1, mult, from: { x, y } });
-}
 
-/* ---------- 馴獸師與召喚戰狼：狼跟著你、咬最近的怪 ---------- */
-function wolfCap() {
-  return coreV(S, 'tamer', 'wild') || 3;
-}
+/* ---------- 召喚戰狼：狼跟著你、咬最近的怪 ---------- */
 function callWolf(src, c) {
-  if (src === 'cls' && G.allies.filter(w => w.src === 'cls').length >= wolfCap()) return;
   const p = floorNear(P.x, P.y, 30, 80, 14) || { x: P.x, y: P.y };
   G.allies.push({ src, x: p.x, y: p.y, vx: 0, vy: 0, r: 14, cd: rnd(0.2, 0.6), c, ph: Math.random() * TAU });
 }
@@ -556,8 +411,8 @@ function updAllies(dt) {
       w.cd = 0.8;
       fx({ k: 'claw', x: w.x, y: w.y, ang: angTo(w, t), r: 34, dur: 0.12 });
       const c = w.c || slotCfg(0) || BASEC(),
-        mult = w.src === 'gem' ? c.mult * c.wolfM : 0.4 * (1 + coreV(S, 'tamer', 'pack') / 100);
-      hitMob(t, c, angTo(w, t), 60, { quiet: 1, mult, noBurn: w.src === 'gem', minion: 1, from: w });
+        mult = w.src === 'gem' ? c.mult * c.wolfM : 0.4;
+      hitMob(t, c, angTo(w, t), 60, { quiet: 1, mult, minion: 1, from: w });
     }
     if (dist(w, P) > 900) (w.x = P.x), (w.y = P.y);
   }
@@ -597,12 +452,8 @@ function updPools(dt) {
   G.meteors = G.meteors.filter(o => !o.done);
 }
 function updSkills(dt) {
-  if (P.shadowT > 0) P.shadowT -= dt;
-  /* 騎士的護盾：4 秒沒受傷就充滿 */
-  const wm = wardMax();
-  if (wm && G.t - (P.lastHurt || -9) > 4) P.ward = wm;
-  /* 能量護盾：2 秒沒受傷（秘法護盾 1 秒）開始回充，每秒 25% */
-  if (ST.es && P.es < ST.es && G.t - (P.lastHurt || -9) > (ascV(S, 'spell.ward') ? 1 : 2))
+  /* 能量護盾：2 秒沒受傷開始回充，每秒 25% */
+  if (ST.es && P.es < ST.es && G.t - (P.lastHurt || -9) > 2)
     P.es = Math.min(ST.es, P.es + ST.es * 0.25 * (1 + (ST.esRec + MM('pes')) / 100) * dt);
   /* 戰狼精魄光環 */
   const aw = G.allies.some(w => w.src === 'aura');
@@ -612,86 +463,23 @@ function updSkills(dt) {
   updPools(dt);
   updUnits(dt);
 }
-/* 進地圖、回藏身處：重設核心的狀態；馴獸師帶狼 */
+/* 進地圖、回藏身處：重設狀態 */
 function skillsEnter() {
-  Object.assign(P, {
-    stance: 0,
-    guard: 0,
-    ward: wardMax(),
-    wardAbs: 0,
-    calls: 0,
-    shadowT: 0,
-    lastHurt: -9,
-    rage: 0,
-    rageT: 0,
-    beat: 0,
-    frenzy: [],
-    undying: 1,
-    flashT: 0,
-    stepT: 0
-  });
+  Object.assign(P, { lastHurt: -9, rage: 0, rageT: 0 });
   Object.assign(G, { allies: [], pools: [], meteors: [], units: [], mineT: 0 });
   P.es = ST.es;
-  P.ench = null;
-  if (G.scene === 'map' && hasCls(S, 'tamer')) for (let i = 1 + coreV(S, 'tamer', 'alpha'); i > 0; i--) callWolf('cls');
 }
 
-/* ---------- 劍士昇華的其他效果 ---------- */
-/* 出手速度：怒氣（每點 +0.5%）、狂亂（每層 +8%）、步法（翻滾後 +30%） */
+/* 出手速度、移動速度：buff 與冰緩、冰凍（combat.js） */
 function speedMul() {
-  const fz = (P.frenzy || []).filter(t => t > G.t).length;
-  return (
-    (1 + (fz * ascV(S, 'berserk.frenzy')) / 100) *
-    (P.stepT > G.t ? 1 + ascV(S, 'rapier.step') / 100 : 1) *
-    buffSpeed() *
-    Math.max(0.3, playerSlow())
-  );
+  return buffSpeed() * Math.max(0.3, playerSlow());
 }
-/* 移動速度：狂亂、一閃、刺客的影步 */
 function moveMul() {
-  const fz = (P.frenzy || []).filter(t => t > G.t).length;
-  return (
-    (1 + (fz * ascV(S, 'berserk.frenzy')) / 100) *
-    (P.flashT > G.t ? 1 + ascV(S, 'ronin.flash') / 100 : 1) *
-    (P.shadowT > 0 ? 1 + coreV(S, 'assassin', 'shadow') / 100 : 1) *
-    buffMove() *
-    playerSlow()
-  );
+  return buffMove() * playerSlow();
 }
-/* 完美閃避成功：浪人一閃（架勢滿）、刺劍姬反擊 */
-function onPerfect() {
-  if (ascV(S, 'ronin.flash')) (P.stance = stanceNeed()), (P.flashT = G.t + 2);
-  const rp = ascV(S, 'rapier.riposte');
-  if (rp) {
-    const c = slotCfg(0) || BASEC();
-    fx({ k: 'slash', x: P.x, y: P.y, ang: P.face, r: 130, arc: TAU * 0.9, dur: 0.2 });
-    for (const m of G.mobs)
-      if (m.hp > 0 && dist(m, P) < 140 + m.r) hitMob(m, c, angTo(P, m), 220, { quiet: 1, mult: rp, crit: 1 });
-  }
-}
-/* 格擋：刺劍姬的格擋大師反擊 */
-function onBlock() {
-  const pa = ascV(S, 'rapier.parry');
-  if (pa) aoeHit(P.x, P.y, 120, pa, '#cfd8e3');
-}
-/* 殺怪：狂亂疊層 */
+/* 殺怪：擊殺回血 */
 function onKill() {
   if (ST.killHeal) P.hp = Math.min(ST.hp, P.hp + ST.killHeal);
-  if (ascV(S, 'berserk.frenzy')) {
-    P.frenzy = (P.frenzy || []).filter(t => t > G.t).slice(-2);
-    P.frenzy.push(G.t + 3);
-  }
-}
-/* 致命傷害：狂魔的不死（每張地圖一次） */
-function tryUndying() {
-  if (!ascV(S, 'berserk.undying') || !P.undying || G.scene !== 'map') return false;
-  P.undying = 0;
-  P.hp = 1;
-  P.iuntil = G.t + ascV(S, 'berserk.undying');
-  fx({ k: 'perfect', x: P.x, y: P.y, dur: 0.8 });
-  hudWarn('不死！');
-  sfx('perfect');
-  return true;
 }
 
 /* ---------- 陷阱、地雷、砲台、圖騰（場上單位） ---------- */

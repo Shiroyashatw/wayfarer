@@ -8,7 +8,7 @@ vm.createContext(ctx);
 for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js', 'maps.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 const G = vm.runInContext(
-  '({ BASES, BASEI, KINDS, AFF, EQS, eqTakes, offOK, SOCK_MAX, SHARDS, FORGE, forgeCheck, forgeDo, temperDo, tierRange, affPct, decompDo, newMat, gemUp, drillDo, soulCost, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, ASC, ascNodes, ascPoints, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
+  '({ BASES, BASEI, KINDS, AFF, EQS, eqTakes, offOK, SOCK_MAX, SHARDS, FORGE, forgeCheck, forgeDo, temperDo, tierRange, affPct, decompDo, newMat, gemUp, drillDo, soulCost, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
   ctx
 );
 let bad = 0;
@@ -169,16 +169,10 @@ for (let k = 0; k < 50; k++) {
 }
 ok('格子背包自動擺放不重疊、不出界', !over, over + ' 處');
 /* 5. 技能寶石、天賦樹、核心樹 */
-const ascAll = Object.keys(G.ASC.sword.br).map(b => [b, G.ascNodes(b)]);
-const miss2 = [
-  ...Object.values(G.SKILLS),
-  ...Object.values(G.SUPPORTS),
-  ...G.PTREE.N,
-  ...ascAll.flatMap(([, T]) => T.N)
-]
+const miss2 = [...Object.values(G.SKILLS), ...Object.values(G.SUPPORTS), ...G.PTREE.N]
   .map(x => x.ic)
   .filter(n => n && !has(n));
-ok('技能、輔助、天賦、昇華的圖示都在', !miss2.length, [...new Set(miss2)].join(','));
+ok('技能、輔助、天賦的圖示都在', !miss2.length, [...new Set(miss2)].join(','));
 {
   const T = G.PTREE,
     bad = T.E.flat().filter(id => !T.I[id]),
@@ -198,34 +192,8 @@ ok('技能、輔助、天賦、昇華的圖示都在', !miss2.length, [...new Se
     for (let j = i + 1; j < T.N.length; j++) if (Math.hypot(T.N[i].x - T.N[j].x, T.N[i].y - T.N[j].y) < 30) close++;
   ok('天賦樹的點沒有疊在一起', !close, close + ' 組');
 }
-/* 昇華：一小一大交錯、6 小 6 大、點得成 4 小 4 大 */
-for (const [b, T] of ascAll) {
-  const big = id => T.I[id].big === 1,
-    alt = T.E.every(([x, y]) => (x === 'a_st' ? !big(y) : big(x) !== big(y))),
-    nb = T.N.filter(n => n.big === 1).length,
-    ns = T.N.filter(n => n.big === 0).length;
-  let can44 = false;
-  const go = set => {
-    const sm = [...set].filter(id => id !== 'a_st' && !big(id)).length,
-      bg = [...set].filter(id => big(id)).length;
-    if (sm > 4 || bg > 4 || can44) return;
-    if (sm === 4 && bg === 4) return (can44 = true);
-    for (const [x, y] of T.E)
-      for (const [p, q] of [
-        [x, y],
-        [y, x]
-      ])
-        if (set.has(p) && !set.has(q)) go(new Set([...set, q]));
-  };
-  go(new Set(['a_st']));
-  ok(`昇華「${G.ASC.sword.br[b].n}」一小一大交錯、6 小 6 大、點得成 4 小 4 大`, alt && nb === 6 && ns === 6 && can44);
-}
-ok(
-  '昇華點：一開始 2 點，階級 6、12、16 各 +2',
-  G.ascPoints({ maxT: 1 }) === 2 && G.ascPoints({ maxT: 16, t16: 1 }) === 8
-);
-for (const [b, T] of ascAll) {
-  const full = { lv: 60, eq: {}, pt: G.PTREE.N.map(n => n.id), asc: b, at: T.N.map(n => n.id) },
+{
+  const full = { lv: 100, eq: {}, pt: G.PTREE.N.map(n => n.id) },
     o = G.stats(full),
     vals = [
       o.hp,
@@ -243,7 +211,7 @@ for (const [b, T] of ascAll) {
       G.dps(o),
       ...Object.values(o.res)
     ];
-  ok(`天賦全點滿＋${G.ASC.sword.br[b].n}：數值沒有 NaN`, vals.every(Number.isFinite), JSON.stringify(vals));
+  ok('天賦全點滿：數值沒有 NaN', vals.every(Number.isFinite), JSON.stringify(vals));
 }
 const gems = Array.from({ length: 200 }, (_, i) => G.dropGem(1 + (i % 16)));
 ok(

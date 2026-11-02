@@ -469,13 +469,20 @@ function drawMob(m) {
     CX.fill();
     CX.globalAlpha = 1;
   }
-  /* 刺客的印記（紫點）、燃燒（橘色的火） */
-  if (m.mark) {
-    CX.fillStyle = '#c38bff';
-    for (let i = 0; i < Math.min(10, m.mark); i++) CX.fillRect(m.x - 18 + i * 4, m.y - fly - m.sz - 16, 3, 3);
+  /* 標記（頭上紅色菱形）、點燃（橘色的火）；異常的 pixelfx 圖示在待做清單 */
+  const ma = m.ail || {};
+  if (ma.mark) {
+    const y = m.y - fly - m.sz - 18;
+    CX.fillStyle = '#ff6b6b';
+    CX.beginPath();
+    CX.moveTo(m.x, y - 6);
+    CX.lineTo(m.x + 5, y);
+    CX.lineTo(m.x, y + 6);
+    CX.lineTo(m.x - 5, y);
+    CX.fill();
   }
-  if (m.burn) {
-    CX.fillStyle = `rgba(255,120,50,${0.25 + 0.03 * m.burn.n})`;
+  if (ma.ign && ma.ign.t > G.t) {
+    CX.fillStyle = 'rgba(255,120,50,0.3)';
     CX.beginPath();
     CX.ellipse(m.x, m.y - fly - m.sz * 0.4, m.r * 0.9, m.sz * 0.45, 0, 0, TAU);
     CX.fill();
@@ -718,16 +725,6 @@ function drawHideout() {
       CX.fillRect(p.x - 34, p.y - 52, 68, 14);
       CX.fillStyle = '#d9b45a';
       CX.fillRect(p.x - 5, p.y - 36, 10, 12);
-    } else if (p.k === 'asc') {
-      /* 昇華石碑：發金光的石碑 */
-      CX.fillStyle = '#3d342e';
-      CX.fillRect(p.x - 22, p.y - 70, 44, 70);
-      CX.fillStyle = '#5a4d43';
-      CX.fillRect(p.x - 26, p.y - 76, 52, 10);
-      const g = 0.45 + 0.3 * Math.sin(G.t * 2.4);
-      CX.fillStyle = `rgba(255,209,102,${g})`;
-      CX.fillRect(p.x - 8, p.y - 58, 16, 30);
-      spr('cls_swordsman', p.x, p.y - 26, 30);
     } else if (p.k === 'forge') {
       /* 鍛造台：鐵砧＋爐火 */
       CX.fillStyle = '#3a2f28';

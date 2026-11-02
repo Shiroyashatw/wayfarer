@@ -30,8 +30,6 @@ function newGame() {
   s.skills[1].a = mkGem('swallow');
   s.skills[2].a = mkGem('whirl');
   s.pt = [...PT_START];
-  s.asc = null;
-  s.at = [];
   s.auras = Array(AURA_SLOTS).fill(null);
   s.charms = [null, null, null];
   s.eq.chest = mkItem('c_leather', 1, 0);
@@ -116,7 +114,6 @@ function enterHideout() {
     { k: 'device', n: '地圖台', x: 480, y: 210, r: 46 },
     { k: 'stash', n: '倉庫', x: 190, y: 330, r: 34 },
     { k: 'market', n: '市集（之後開放）', x: 770, y: 330, r: 34 },
-    { k: 'asc', n: '昇華石碑', x: 770, y: 520, r: 30 },
     { k: 'forge', n: '鍛造台', x: 190, y: 520, r: 34 }
   ];
   newPlayer(480, 470);
@@ -496,9 +493,7 @@ function doRoll() {
   if (!dx && !dy) (dx = Math.cos(P.face)), (dy = Math.sin(P.face));
   P.act = null;
   P.roll = { t: 0, dx, dy };
-  const step = ascV(S, 'rapier.step');
-  P.cds.roll = ROLL.cd * (step ? 0.6 : 1) * (1 - Math.min(60, ST.rollCd) / 100) + ROLL.t;
-  if (step) P.stepT = G.t + ROLL.t + 2;
+  P.cds.roll = ROLL.cd * (1 - Math.min(60, ST.rollCd) / 100) + ROLL.t;
   P.rolledT = G.t + ROLL.t + 2;
   P.iuntil = G.t + ROLL.iframe;
   sfx('roll');
@@ -519,7 +514,6 @@ function hurtPlayer(d, src, el = 'phys', noEv) {
     if (!G.slow) {
       G.slow = ROLL.slow;
       P.critNext = 1;
-      onPerfect();
       fx({ k: 'perfect', x: P.x, y: P.y, dur: 0.6 });
       num(P.x, P.y - 70, 0, 'perfect');
       sfx('perfect');
@@ -533,12 +527,10 @@ function hurtPlayer(d, src, el = 'phys', noEv) {
     num(P.x, P.y - 60, 0, 'block');
     fxs('block', P.x, P.y);
     sfx('block');
-    coreBlock();
-    onBlock();
     return;
   }
   d = r.d;
-  d = coreHurt(d);
+  d = esAbsorb(d);
   if (d <= 0) return;
   P.hp -= d;
   P.hurtT = 0.35;
@@ -551,7 +543,7 @@ function hurtPlayer(d, src, el = 'phys', noEv) {
     P.vx += Math.cos(a) * 160;
     P.vy += Math.sin(a) * 160;
   }
-  if (P.hp <= 0 && !tryUndying()) die();
+  if (P.hp <= 0) die();
 }
 /* 死亡（PoE 式）：地圖失敗、扣這一級 10% 經驗（不降級），裝備不會掉 */
 function die() {
@@ -605,7 +597,6 @@ function killMob(m) {
   if (fr) dropAt(m.x, m.y, { frag: fr });
   /* 護符：小怪 1%、菁英 15%、王 50% */
   if (Math.random() < (m.boss ? 0.5 : m.elite ? 0.15 : 0.01)) dropAt(m.x, m.y, { it: dropCharm() });
-  coreKill(m);
   onKillBase(m);
   onKill();
   addProg(m);
@@ -697,7 +688,6 @@ function useProp(p) {
   if (dist(P, p) > p.r + 90) return hudWarn('走近一點'), true;
   if (p.k === 'device') openPanel('device');
   else if (p.k === 'stash') openPanel('stash');
-  else if (p.k === 'asc') openPanel('asc');
   else if (p.k === 'forge') openPanel('craft');
   else hudWarn('市集之後開放');
   return true;

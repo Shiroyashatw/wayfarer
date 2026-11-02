@@ -109,12 +109,7 @@ function hudTick() {
     if (HV['n' + k] !== no) el.classList.toggle('no', (HV['n' + k] = no));
   }
   /* 能量護盾（照 PoE）：生命球上疊一層白，高度＝護盾÷最大護盾；騎士的護盾也畫在這層 */
-  const wm = wardMax();
-  const wv = ST.es
-    ? Math.min(1, (P.es || 0) / ST.es).toFixed(3)
-    : wm
-      ? Math.min(1, (P.ward || 0) / wm).toFixed(3)
-      : '0';
+  const wv = ST.es ? Math.min(1, (P.es || 0) / ST.es).toFixed(3) : '0';
   if (HV.ward !== wv) $('ohp').style.setProperty('--w', (HV.ward = wv));
   /* 精魄：魔力球左邊的弧（已預留÷總量） */
   const sv = ST.spirit ? (ST.spiritUsed / ST.spirit).toFixed(3) : '0';
@@ -123,9 +118,7 @@ function hudTick() {
     $('omp').dataset.tip = `精魄 ${ST.spiritUsed} / ${ST.spirit}`;
   }
   const mech = [
-    hasCls(S, 'ronin') ? `架勢 ${P.stance}/${stanceNeed()}` : '',
     P.rage ? `狂怒 ${Math.floor(P.rage)}` : '',
-    hasCls(S, 'knight') ? `盾勢 ${P.guard}` : '',
     G.allies && G.allies.length ? `狼 ${G.allies.length}` : '',
     G.units && G.units.length ? `場上 ${G.units.length}` : '',
     ...Object.keys(BUFF)
@@ -171,7 +164,7 @@ function hudState() {
 }
 
 /* ---------- 面板 ---------- */
-const PANEL = { inv: false, stash: false, device: false, skill: false, asc: false, craft: false, pick: 1 };
+const PANEL = { inv: false, stash: false, device: false, skill: false, craft: false, pick: 1 };
 function openPanel(k) {
   TOUCH.front = k === 'stash' || k === 'skill' || k === 'craft' ? 'other' : 'inv';
   /* 左邊一次只開一個（倉庫／技能寶石／鍛造台），右邊是背包 */
@@ -187,7 +180,7 @@ function openPanel(k) {
   hudPanels();
 }
 function closePanels() {
-  PANEL.inv = PANEL.stash = PANEL.device = PANEL.skill = PANEL.asc = PANEL.craft = PANEL.gem = false;
+  PANEL.inv = PANEL.stash = PANEL.device = PANEL.skill = PANEL.craft = PANEL.gem = false;
   hideTip();
   hudPanels();
 }
@@ -197,20 +190,18 @@ function hudPanels() {
   $('pstash').hidden = !PANEL.stash;
   $('pdev').hidden = !PANEL.device;
   $('pskill').hidden = !PANEL.skill;
-  $('pasc').hidden = !PANEL.asc;
   $('pcraft').hidden = !PANEL.craft;
   $('pgem').hidden = !PANEL.gem;
   /* 生成寶石是單獨一個視窗：開著時後面的面板先藏起來，關掉回到原本的 */
   if (PANEL.gem) {
     $('pgem').innerHTML = gemHTML();
-    for (const id of ['pinv', 'pstash', 'pskill', 'pcraft', 'pasc', 'pdev']) $(id).hidden = true;
+    for (const id of ['pinv', 'pstash', 'pskill', 'pcraft', 'pdev']) $(id).hidden = true;
     return;
   }
   if (TOUCH.on && NARROW && PANEL.inv && (PANEL.stash || PANEL.skill || PANEL.craft)) {
     if (TOUCH.front === 'inv') $('pstash').hidden = $('pskill').hidden = $('pcraft').hidden = true;
     else $('pinv').hidden = true;
   }
-  if (PANEL.asc) $('pasc').innerHTML = ascHTML();
   if (PANEL.skill) $('pskill').innerHTML = skillHTML();
   if (PANEL.craft) $('pcraft').innerHTML = forgeHTML();
   if (PANEL.inv) $('pinv').innerHTML = invHTML();
@@ -453,25 +444,6 @@ document.addEventListener('click', e => {
   hudPanels();
 });
 
-/* 昇華石碑：選職業（目前只有劍士）與分支；點數在天賦樹中間點 */
-function ascHTML() {
-  const A = ASC.sword,
-    pts = ascPoints(S),
-    soon = ['騎士', '火法師', '刺客', '馴獸師'];
-  return `<div class="ph"><b>昇華石碑</b><span>昇華點 ${pts} / 8（階級 6、12、16 的王第一次打倒各 +2）</span><button class="x" data-a="close">✕</button></div>
-  <div class="ascls"><div class="acls on">${icHTML(A.ic)}<b>${A.n}</b></div>${soon.map(n => `<div class="acls off"><b>${n}</b><small>之後開放</small></div>`).join('')}</div>
-  <div class="abrs">${Object.entries(A.br)
-    .map(([k, B]) => {
-      const cur = S.asc === k;
-      return `<div class="abr ${cur ? 'on' : ''}"><div class="abh">${icHTML(B.ic)}<div><b>${B.n}</b><small>${B.d}</small></div></div>
-      <ul>${Object.values(B.big)
-        .map(g => `<li><b>${g.n}</b>${esc(g.d)}</li>`)
-        .join('')}</ul>
-      <button class="btn ${cur ? '' : 'pri'}" data-a="asc:${k}" ${cur ? 'disabled' : ''}>${cur ? '目前的昇華' : S.asc ? `改成${B.n}（點數退回）` : `成為${B.n}`}</button></div>`;
-    })
-    .join('')}</div>
-  <p class="c-dim">選好後按 P：天賦樹中間挖空的地方就是昇華點。每條分支 8 點只能點成 4 小 4 大（大點是獨特效果）。</p>`;
-}
 function devHTML() {
   /* 地圖台（0.2.7）：上面選階級（怪物強度、物品等級），下面選一張地圖卡（星級＝詞綴數＝風險與獎勵） */
   const t = PANEL.pick,
@@ -987,14 +959,5 @@ function act(a) {
   } else if (a === 'pickmap') {
     $('over').hidden = true;
     openPanel('device');
-  } else if (a.startsWith('asc:')) {
-    /* 選昇華分支（換分支＝昇華點全部退回） */
-    S.asc = a.slice(4);
-    S.at = ['a_st'];
-    save();
-    ST = stats();
-    hudPanels();
-    hudWarn(`成為${ASC.sword.br[S.asc].n}！按 P 在天賦樹中間點昇華`);
-    sfx('lvup');
   }
 }

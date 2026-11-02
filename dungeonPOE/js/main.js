@@ -31,19 +31,18 @@ function migrate(s) {
   /* 存檔 12（0.2.3）：天賦樹換成一千多點的大樹，點數全部退回；核心樹改成昇華（到藏身處的昇華石碑選） */
   if (o.v < 12) {
     o.pt = [...PT_START];
-    o.asc = null;
-    o.at = [];
     delete o.ct;
     o.v = 12;
   }
   /* 存檔 13（0.2.4）：天賦樹換成 18 條各不相同的路線（點數退回）；狂魔改成魔劍士、昇華圖案換新（昇華點退回）；光環欄 */
   if (o.v < 13) {
     o.pt = [...PT_START];
-    if (o.asc && !ASC.sword.br[o.asc]) o.asc = null;
-    o.at = o.asc ? ['a_st'] : [];
     o.auras = Array(AURA_SLOTS).fill(null);
     o.v = 13;
   }
+  /* 0.2.9：職業與昇華全部砍掉（之後重新設計） */
+  delete o.asc;
+  delete o.at;
   /* 天賦樹的形狀換過（點的編號對不上）就把點數全部退回 */
   if (o.pt.some(id => !PTREE.I[id])) o.pt = [...PT_START];
   /* 道具編號接著存檔裡最大的往下編 */

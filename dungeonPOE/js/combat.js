@@ -72,8 +72,6 @@ function takenInc(m, k) {
   if (a.intim > G.t) v += 10;
   if (k === 'chaos') v += 5 * (a.wither || []).filter(t => t > G.t).length;
   if (k === 'phys' && a.broken > G.t) v += 20;
-  /* 刃舞者「破綻」：暴擊後 4 秒受到的傷害提高 */
-  if (a.rapier > G.t) v += ascV(S, 'rapier.expose');
   return v;
 }
 /* c 技能設定（slotCfg）、m 目標、o：mult 更多倍率、crit 必暴、minion、unit */
@@ -95,8 +93,6 @@ function hitCalc(c, m, o = {}) {
       const [lo, hi] = ST.add[k];
       if (hi) pre[k === 'flat' ? 'phys' : k] += rnd(lo, hi);
     }
-    if (tg.includes('melee') && P.ench && P.ench.until > G.t)
-      pre[P.ench.el] += (rnd(ST.dmg[0], ST.dmg[1]) * ascV(S, 'spell.enchant')) / 100;
     /* 穿刺：取出最強的一個，加進這一下 */
     const imp = m && m.ail && m.ail.imp;
     if (imp && imp.length) pre.phys += imp.splice(imp.indexOf(Math.max(...imp)), 1)[0];
@@ -126,10 +122,7 @@ function hitCalc(c, m, o = {}) {
       (P.rolledT > G.t ? ST.afterRoll : 0) +
       (m && (m.boss || m.elite) ? ST.bossP : 0) +
       (near < 160 ? ST.closeP : 0) +
-      (near > 350 ? ST.farP : 0) +
-      (tg.includes('melee') && ascV(S, 'spell.arcane') ? ST.spellP : 0) +
-      ascV(S, 'berserk.blood') +
-      ascV(S, 'berserk.last') * (1 - P.hp / ST.hp);
+      (near > 350 ? ST.farP : 0);
   const typeInc = {
     phys: ST.physP,
     fire: ST.eleP + ST.fireP + (conv === 'fire' ? ST.physP : 0),
@@ -138,7 +131,7 @@ function hitCalc(c, m, o = {}) {
     chaos: ST.chaosP + (conv === 'chaos' ? ST.physP : 0)
   };
   /* 5. 更多：輔助、昇華、狂怒（只有攻擊）、化身（法術的元素） */
-  let more = (o.mult || 1) * (c.more || 1) * (1 + 0.02 * (P.guard || 0));
+  let more = (o.mult || 1) * (c.more || 1);
   /* 你被「衰弱」詛咒（地圖詞）：造成的傷害更少 */
   const pc = P.ail && P.ail.curse;
   if (pc && pc.k === 'enfeeble' && pc.t > G.t) more *= 1 - pc.v / 100;
@@ -415,7 +408,7 @@ function baseTick(dt) {
     const viaEs = Math.min(P.es || 0, (d - skipEs) * dt);
     P.es = (P.es || 0) - viaEs;
     P.hp -= d * dt - viaEs;
-    if (P.hp <= 0 && !tryUndying()) die();
+    if (P.hp <= 0) die();
   }
   /* 吸血：1 秒內回完 */
   if (P.lch && P.lch.t > G.t) P.hp = Math.min(ST.hp, P.hp + P.lch.rate * dt);

@@ -231,20 +231,6 @@ function gridAuto(g, it) {
 }
 
 /* ---------- 角色數值：等級＋穿在身上的裝備 ---------- */
-/* 昇華大點的效果：ascV(s, '浪人.斬鐵' 這種鍵) → 數值，沒點是 0 */
-function ascV(s, key) {
-  const T = s.asc && ascNodes(s.asc);
-  if (!T) return 0;
-  let v = 0;
-  for (const id of s.at || []) {
-    const n = T.I[id];
-    if (n && n.fx && n.fx[key]) v += n.fx[key];
-  }
-  return v;
-}
-/* 舊的職業核心介面（skills.js 用）：浪人的機制與核心接到昇華，其他職業還沒開放（是 0） */
-const coreV = (s, cls, core) => ascV(s, `${cls}.${core}`);
-const hasCls = (s, cls) => ascV(s, `${cls}.mech`) > 0;
 function stats(s = S) {
   /* 0.2.7 照 PoE2（企劃書 7.2）：角色等級只給生命、魔力（到 100 級），不給傷害；提高同池相加在 combat.js 的 hitCalc */
   const lv = Math.min(100, s.lv);
@@ -368,8 +354,7 @@ function stats(s = S) {
     esF: 0,
     blockInc: 0
   };
-  const T = s.asc && ascNodes(s.asc),
-    nodes = [...(s.pt || []).map(id => PTREE.I[id]), ...(T ? (s.at || []).map(id => T.I[id]) : [])];
+  const nodes = (s.pt || []).map(id => PTREE.I[id]);
   for (const n of nodes) {
     if (!n) continue;
     for (const k in n.s) {
@@ -378,10 +363,6 @@ function stats(s = S) {
       else put(k, n.s[k]);
     }
   }
-  /* 魔劍士：秘法護盾、元素穿透、魔導之心 */
-  o.esP += ascV(s, 'spell.ward');
-  o.pen += ascV(s, 'spell.pen') ? 25 : 0;
-  if (ascV(s, 'spell.heart')) (o.spirit += 30), (o.auraEff += 25);
   /* 光環：照光環欄的順序預留精魄，精魄不夠的不生效 */
   o.spiritUsed = 0;
   o.auraOn = [];
@@ -410,11 +391,6 @@ function stats(s = S) {
   o.wt = (w && baseOf(w).wt) || 'sword';
   /* 天賦「持劍／持矛／持棍時傷害」：野太刀也算劍 */
   o.dmgA += o[{ sword: 'swordP', nodachi: 'swordP', spear: 'spearP', staff: 'staffP' }[o.wt]] || 0;
-  /* 昇華大點的數值效果 */
-  const aura = ascV(s, 'ronin.aura');
-  if (aura) (o.meleeP += 15), (o.aoe += aura);
-  o.block += ascV(s, 'rapier.parry') ? 15 : 0;
-  if (ascV(s, 'berserk.blood')) o.blood = 1;
   o.hp = Math.round(o.hp * (1 + pt.hpP / 100));
   o.armor = Math.round(o.armor * (1 + pt.armorP / 100));
   o.ev = Math.round(o.ev * (1 + pt.evP / 100));
