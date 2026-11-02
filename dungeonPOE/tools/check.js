@@ -304,11 +304,10 @@ vm.runInContext(
   const hv = R(`var m = { x: 0, y: 0, r: 10, mhp: 100, ail: { frozen: 5, hs: 50 } };
     [takeState(m, 'frozen'), takeState(m, 'frozen'), hasState(m, 'primed'), crush(m), hasState(m, 'primed'), m.ail.hstun > G.t]`);
   ok('收割與碾壓一擊', hv.join() === 'true,false,true,true,false,true', hv.join());
-  /* 灌注：撿殘留物 +1（最多 3），消耗 −1；咒符之力：站在法陣裡每 30 魔力 +1 層（最多 4） */
+  /* 灌注：撿殘留物 +1（最多 3），消耗 −1 */
   const inf = R(`G.t = 0; for (let i = 0; i < 5; i++) dropRemnant('fire', 0, 0), remnantTick();
     [infN('fire'), takeInf('fire'), infN('fire'), takeInf('cold')]`);
-  const sg = R('placeSigil(0, 0); sigilSpend(100); sigilSpend(100); [P.sigil, sigilInc(), (P.x = 999, sigilInc())]');
-  ok('灌注與咒符之力', inf.join() === '3,true,2,false' && sg.join() === '4,40,0', inf + ' ' + sg);
+  ok('灌注', inf.join() === '3,true,2,false', inf.join());
   /* 飛劍：最多 10 把、15 秒 */
   const sw = R('P.x = 0; gainSwords(7, {}); gainSwords(7, {}); var n1 = swordN(); G.t += 16; [n1, swordN()]');
   ok('飛劍上限與時間', sw.join() === '10,0', sw.join());

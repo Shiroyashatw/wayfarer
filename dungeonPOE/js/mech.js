@@ -1,6 +1,6 @@
 /* dungeonPOE · 技能用的底層新機制（0.2.10，照 PoE2；規則在 docs/企劃書.md 7.3）：
    收割、地面效果與引爆器、殘留物與灌注、屍體、連擊數與段數、招架與失衡、能量與觸發（Meta）、手雷、彈藥、飛劍、幻影、
-   旗幟與榮耀、咒符之力、烙印、變身。技能（0.2.11 起）只呼叫這裡的函式，不自己發明規則。 */
+   旗幟與榮耀、變身。技能（0.2.11 起）只呼叫這裡的函式，不自己發明規則。 */
 'use strict';
 
 /* ---------- 1. 收割：消耗敵人身上的狀態，回傳有沒有（有的話清掉） ---------- */
@@ -43,7 +43,6 @@ const GROUND = {
   oil: { n: '油', col: '#4a3a2a', slow: 0.3, burn: 1 },
   fire: { n: '燃燒地面', col: '#ff6b3d' },
   chill: { n: '冰緩地面', col: '#8fd6ff' },
-  sigil: { n: '咒符之力', col: '#c38bff' },
   blades: { n: '劍陣', col: '#e8e2d6' }
 };
 /* o：k 種類、x、y、r、dur 秒、c 技能設定（傷害照它算）、dps 每秒傷害倍率、after 結束時再打一次的倍率（餘震） */
@@ -332,54 +331,7 @@ function plantBanner(buff, r = 220, dur = 10) {
 }
 const bannerOn = () => !!G.banner && G.banner.t > G.t && Math.hypot(P.x - G.banner.x, P.y - G.banner.y) < G.banner.r;
 
-/* ---------- 14. 咒符之力、烙印 ---------- */
-function placeSigil(x, y, r = 110) {
-  G.ground = G.ground.filter(g => g.k !== 'sigil');
-  addGround({ k: 'sigil', x, y, r, dur: 12 });
-  P.sigil = 0;
-  P.sigilMp = 0;
-}
-/* 施法花魔力時呼叫：站在法陣裡每 30 魔力 +1 層（最多 4 層） */
-function sigilSpend(mp) {
-  const s = (G.ground || []).find(g => g.k === 'sigil' && !g.done);
-  if (!s || !inGround(s, P)) return;
-  P.sigilMp = (P.sigilMp || 0) + mp;
-  while (P.sigilMp >= 30 && (P.sigil || 0) < 4) (P.sigilMp -= 30), (P.sigil = (P.sigil || 0) + 1);
-}
-const sigilInc = () => {
-  const s = (G.ground || []).find(g => g.k === 'sigil' && !g.done);
-  return s && inGround(s, P) ? 10 * (P.sigil || 0) : 0;
-};
-/* 烙印：貼在怪物身上，每 every 秒從牠的位置施放 g；牠死了跳到 200 內最近的怪 */
-function attachBrand(m, g, dur = 8, every = 1) {
-  G.brands.push({ m, g, t: G.t + dur, next: G.t + every, every });
-}
-function brandTick() {
-  for (const b of G.brands) {
-    if (b.m.hp <= 0) {
-      const n = G.mobs
-        .filter(o => o.hp > 0 && Math.hypot(o.x - b.m.x, o.y - b.m.y) < 200)
-        .sort((x, y) => Math.hypot(x.x - b.m.x, x.y - b.m.y) - Math.hypot(y.x - b.m.x, y.y - b.m.y))[0];
-      if (!n) {
-        b.t = 0;
-        continue;
-      }
-      b.m = n;
-    }
-    if (b.next > G.t) continue;
-    b.next = G.t + b.every;
-    const px = P.x,
-      py = P.y;
-    P.x = b.m.x;
-    P.y = b.m.y - 1;
-    castGem(b.g, b.m);
-    P.x = px;
-    P.y = py;
-  }
-  G.brands = G.brands.filter(b => b.t > G.t);
-}
-
-/* ---------- 15. 變身 ---------- */
+/* ---------- 14. 變身 ---------- */
 const FORMS = {
   bear: { n: '熊', armorM: 1.5, move: 0.9, atk: 1 },
   wolf: { n: '狼人', move: 1.15, atk: 1.1 },
@@ -393,7 +345,7 @@ const formOf = () => (P.form ? FORMS[P.form] : null);
 
 /* ---------- 每格、進場、畫面 ---------- */
 function mechEnter() {
-  Object.assign(G, { ground: [], remnants: [], corpses: [], grenades: [], mirages: [], brands: [], banner: null });
+  Object.assign(G, { ground: [], remnants: [], corpses: [], grenades: [], mirages: [], banner: null });
   Object.assign(P, {
     combo: 0,
     stage: {},
@@ -401,8 +353,6 @@ function mechEnter() {
     inf: {},
     swords: [],
     glory: 0,
-    sigil: 0,
-    sigilMp: 0,
     form: null,
     ammo: {},
     gren: {}
@@ -413,7 +363,6 @@ function mechTick(dt) {
   remnantTick();
   grenadeTick(dt);
   mirageTick();
-  brandTick();
   G.corpses = G.corpses.filter(c => c.t > G.t);
 }
 function drawMech() {
@@ -469,10 +418,6 @@ function drawMech() {
     CX.fillStyle = '#ffd166';
     CX.fill();
     CX.globalAlpha = 1;
-  }
-  for (const b of G.brands) {
-    CX.fillStyle = '#c38bff';
-    CX.fillRect(b.m.x - 4, b.m.y - b.m.sz - 26, 8, 8);
   }
   /* 飛劍：繞著玩家轉 */
   const sw = swordN();

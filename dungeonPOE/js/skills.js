@@ -16,7 +16,7 @@ const supOK = (D, sp, g) => {
   if (U.conv && (D.unit || D.tags.includes('move') || D.tags.includes('minion'))) return false;
   return !U.need.length || U.need.some(t => D.tags.includes(t));
 };
-/* 一格技能的實際數值（技能等級＋輔助＋天賦冷卻縮減）；觸發、幻影、烙印直接用 gemCfg（i = −1） */
+/* 一格技能的實際數值（技能等級＋輔助＋天賦冷卻縮減）；觸發、幻影直接用 gemCfg（i = −1） */
 const slotCfg = i => gemCfg(S.skills[i] && S.skills[i].a, i);
 function gemCfg(g, i) {
   if (!g) return null;
@@ -107,9 +107,8 @@ function useSlot(i) {
     P.mp -= c.mp;
   }
   if (c.cd) P.cds['s' + i] = c.cd;
-  /* 變身（mech.js）：用了不是這個形態的技能就變回來；施法花的魔力給咒符之力累積 */
+  /* 變身（mech.js）：用了不是這個形態的技能就變回來 */
   formFor(c.D);
-  if (c.D.tags.includes('spell')) sigilSpend(c.mp);
   const w = mouseWorld(),
     ang = Math.atan2(w.y - P.y, w.x - P.x),
     D = c.D;

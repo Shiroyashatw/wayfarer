@@ -123,7 +123,6 @@ function hitCalc(c, m, o = {}) {
       (m && (m.boss || m.elite) ? ST.bossP : 0) +
       (near < 160 ? ST.closeP : 0) +
       (near > 350 ? ST.farP : 0) +
-      (spell ? sigilInc() : 0) +
       (bannerOn() ? G.banner.buff.dmg || 0 : 0);
   const typeInc = {
     phys: ST.physP,
