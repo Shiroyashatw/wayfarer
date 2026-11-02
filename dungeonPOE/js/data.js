@@ -1,6 +1,6 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.9';
+const VER = '0.2.10';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
@@ -39,6 +39,17 @@ const MARK_D = {
   warlord: '被擊中時你回血，死亡時給耐力球'
 };
 const SKILLS = {
+  /* 0.2.10 第一顆 Meta 寶石（mech.js 的 metaEvent）：孔裡插法術，條件達成自動施放 */
+  cast_crit: {
+    n: '暴擊施放',
+    ic: 'sup_sp_auto',
+    t: 0,
+    mp: 0,
+    m: 0,
+    meta: 'crit',
+    tags: ['meta'],
+    d: '暴擊時累積能量（每次 +10），滿 100 自動對那個敵人施放孔裡的法術；不能手動施放'
+  },
   /* 0.2.9：wt 暫時對應到新的 18 種武器（每種攻擊武器至少有一招）；照武器身分的新技能在 0.2.11 做 */
   /* 0.2.7 詛咒（照 PoE2：丟一個範圍，1.5 秒後生效；每隻怪 1 個）與標記（單一目標，觸發時消耗；效果在 combat.js） */
   cu_enfeeble: {
@@ -572,6 +583,7 @@ const GEM_LV = {
   mk_freeze: 13,
   mk_volt: 13,
   mk_hound: 15,
+  cast_crit: 9,
   multi: 1,
   pierce: 1,
   area: 1,

@@ -6,7 +6,7 @@ const fs = require('fs'),
   path = require('path');
 const ctx = { console, Math, Date, JSON, Object, Array, Set, location: { search: '' }, URLSearchParams };
 vm.createContext(ctx);
-for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js', 'maps.js'])
+for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js', 'maps.js', 'mech.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 /* 遊戲裡由 game.js 提供的全域：這裡給最小的替身 */
 vm.runInContext(
@@ -69,9 +69,7 @@ function gear(t, want, wt) {
     let best = null,
       bv = -1;
     for (let i = 0; i < 4; i++) {
-      const pool = R('BASES').filter(
-        b => R('eqTakes')(e, b.k) && b.lv <= t && (e.k !== 'weapon' || b.wt === wt)
-      );
+      const pool = R('BASES').filter(b => R('eqTakes')(e, b.k) && b.lv <= t && (e.k !== 'weapon' || b.wt === wt));
       if (!pool.length) break;
       const b = pool[Math.floor(Math.random() * pool.length)],
         it = R('mkItem')(b.id, R('tierIlvl')(t), 2),

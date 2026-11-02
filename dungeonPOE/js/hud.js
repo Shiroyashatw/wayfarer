@@ -304,7 +304,15 @@ function skillHTML() {
         supC = sups.filter(x => !gemUpCheck(x).why).reduce((a, x) => a + soulCost(x.lv, 1), 0),
         dr = drillCheck(g);
       return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', g, 'act', '技能')}<div class="links">${g.sup
-        .map((x, j) => sock(i + ':' + j, x, 'sup', '輔助', x && !supOK(SKILLS[g.gem], x, g)))
+        .map((x, j) =>
+          sock(
+            i + ':' + j,
+            x,
+            'sup',
+            SKILLS[g.gem].meta ? '法術' : '輔助',
+            x && !SKILLS[g.gem].meta && !supOK(SKILLS[g.gem], x, g)
+          )
+        )
         .join(
           ''
         )}</div><div class="skinfo"><b>${esc(c.D.n)} <span>Lv ${g.lv}${c.lv > g.lv ? `（+${c.lv - g.lv}）` : ''} · ${g.so} 孔</span></b><small>${c.mp ? `魔力 ${c.mp}` : '不耗魔力'}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}${c.D.wt ? ` · <span class="${wtOK(c.D) ? '' : 'c-bad'}">${wtNeed(c.D)}</span>` : ''}</small>
@@ -324,6 +332,9 @@ function skillHTML() {
     .map(([k, n]) => `<button class="btn" data-gm="open:${k}">${n}</button>`)
     .join('')}</div>`;
 }
+/* Meta 寶石的孔：插法術（不插 Meta） */
+const metaTakes = (g, it) =>
+  !!(g && SKILLS[g.gem] && SKILLS[g.gem].meta && SKILLS[it.gem] && SKILLS[it.gem].tags.includes('spell'));
 /* 生成寶石（0.2.7，照 PoE2 選技能）：上面三種、左邊頁籤（主動照武器、輔助與精魄照標籤）、右邊照使用等級分組 */
 const GEMUI = { kind: 'act', tab: null };
 const GEMKIND = { act: '主動技能', sup: '輔助寶石', aura: '精魄' };
@@ -365,6 +376,10 @@ function gemTabs(kind) {
       by(
         '詛咒與標記',
         K.filter(k => SKILLS[k].curse || SKILLS[k].mark)
+      ),
+      by(
+        '觸發',
+        K.filter(k => SKILLS[k].meta)
       )
     ];
   } else if (kind === 'sup') {
@@ -511,7 +526,7 @@ const slotFits = (src, key, it) =>
           ? isAura(it)
           : key.endsWith(':a')
             ? !isSup(it) && !isAura(it)
-            : isSup(it) &&
+            : (isSup(it) || metaTakes(S.skills[key.split(':')[0]].a, it)) &&
               !!S.skills[key.split(':')[0]].a &&
               +key.split(':')[1] < S.skills[key.split(':')[0]].a.so &&
               /* 同分類不能同插（換掉同一格的自己不算） */

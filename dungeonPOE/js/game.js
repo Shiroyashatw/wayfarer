@@ -514,6 +514,7 @@ function hurtPlayer(d, src, el = 'phys', noEv) {
     if (!G.slow) {
       G.slow = ROLL.slow;
       P.critNext = 1;
+      metaEvent('perfect');
       fx({ k: 'perfect', x: P.x, y: P.y, dur: 0.6 });
       num(P.x, P.y - 70, 0, 'perfect');
       sfx('perfect');
@@ -523,7 +524,9 @@ function hurtPlayer(d, src, el = 'phys', noEv) {
   if (G.t < P.iuntil) return;
   const r = hurtCalc(d, src, el, noEv);
   if (r.ev) return num(P.x, P.y - 60, 0, 'ev');
+  if (r.parry) return;
   if (r.block) {
+    metaEvent('block');
     num(P.x, P.y - 60, 0, 'block');
     fxs('block', P.x, P.y);
     sfx('block');

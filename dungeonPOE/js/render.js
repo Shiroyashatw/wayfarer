@@ -125,6 +125,8 @@ function draw() {
   CX.strokeRect(-3, -3, G.W + 6, G.H + 6);
   if (G.scene === 'hide') drawHideout();
   else drawWalls(W, H);
+  /* 地面效果、屍體、殘留物、手雷、幻影、旗幟、飛劍（mech.js） */
+  if (G.scene === 'map' && G.ground) drawMech();
   /* 預警：怪物出手前地上的紅色範圍 */
   CX.lineWidth = 2;
   for (const m of G.mobs) {

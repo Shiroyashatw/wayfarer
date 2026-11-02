@@ -10,14 +10,15 @@ const supDup = (g, sp) =>
   !!g && g.sup.some(x => x && x !== sp && supCat(x.gem) === supCat(sp.gem) && g.sup.indexOf(x) < g.sup.indexOf(sp));
 const supOK = (D, sp, g) => {
   const U = SUPPORTS[sp.gem];
+  /* Meta 寶石的孔插的是法術，不是輔助 */
+  if (!U) return false;
   if (g && supDup(g, sp)) return false;
   if (U.conv && (D.unit || D.tags.includes('move') || D.tags.includes('minion'))) return false;
   return !U.need.length || U.need.some(t => D.tags.includes(t));
 };
-/* 一格技能的實際數值（技能等級＋輔助＋天賦冷卻縮減） */
-function slotCfg(i) {
-  const sl = S.skills[i],
-    g = sl && sl.a;
+/* 一格技能的實際數值（技能等級＋輔助＋天賦冷卻縮減）；觸發、幻影、烙印直接用 gemCfg（i = −1） */
+const slotCfg = i => gemCfg(S.skills[i] && S.skills[i].a, i);
+function gemCfg(g, i) {
   if (!g) return null;
   const D = SKILLS[g.gem],
     /* 法杖：法術技能等級 +1 */
@@ -94,6 +95,7 @@ function useSlot(i) {
   if (P.ail && P.ail.frozen > G.t) return false;
   const c = slotCfg(i);
   if (!c) return false;
+  if (c.D.meta) return hudWarn(c.D.n + '不能手動施放：條件達成會自動施放孔裡的法術'), false;
   if (!wtOK(c.D)) return hudWarn(c.D.n + '：' + wtNeed(c.D)), false;
   if ((P.cds['s' + i] || 0) > 0) return false;
   if (ST.blood) {
@@ -105,6 +107,9 @@ function useSlot(i) {
     P.mp -= c.mp;
   }
   if (c.cd) P.cds['s' + i] = c.cd;
+  /* 變身（mech.js）：用了不是這個形態的技能就變回來；施法花的魔力給咒符之力累積 */
+  formFor(c.D);
+  if (c.D.tags.includes('spell')) sigilSpend(c.mp);
   const w = mouseWorld(),
     ang = Math.atan2(w.y - P.y, w.x - P.x),
     D = c.D;
@@ -334,6 +339,12 @@ function hitMob(m, c, ang, kb, o = {}) {
   const r = hitCalc(c, m, { mult, crit, minion: o.minion, unit: a.unit });
   applyAil(m, r, c);
   onHitBase(m, r, c);
+  /* mech.js：火焰點燃可燃地面、引爆器、連擊數、榮耀、暴擊觸發 */
+  if (r.pre.fire > 0) igniteAt(m.x, m.y);
+  if (c.D.detonator) detonate(m.x, m.y, 60, c);
+  if ((c.D.tags || []).includes('melee') && !o.quiet) comboHit(a);
+  gainGlory(r.crit ? 4 : 1);
+  if (r.crit && !a.trig) metaEvent('crit', m);
   if (ST.wt === 'qstaff' && (c.D.tags || []).includes('melee') && !o.quiet) P.mp = Math.min(ST.mp, P.mp + 1);
   m.hp -= r.d;
   if (a) a.any = 1;
@@ -466,20 +477,22 @@ function updSkills(dt) {
   updAllies(dt);
   updPools(dt);
   updUnits(dt);
+  if (G.scene === 'map') mechTick(dt);
 }
 /* 進地圖、回藏身處：重設狀態 */
 function skillsEnter() {
   Object.assign(P, { lastHurt: -9, rage: 0, rageT: 0 });
   Object.assign(G, { allies: [], pools: [], meteors: [], units: [], mineT: 0 });
+  mechEnter();
   P.es = ST.es;
 }
 
 /* 出手速度、移動速度：buff 與冰緩、冰凍（combat.js） */
 function speedMul() {
-  return buffSpeed() * Math.max(0.3, playerSlow());
+  return buffSpeed() * Math.max(0.3, playerSlow()) * ((formOf() && formOf().atk) || 1);
 }
 function moveMul() {
-  return buffMove() * playerSlow();
+  return buffMove() * playerSlow() * ((formOf() && formOf().move) || 1);
 }
 /* 殺怪：擊殺回血 */
 function onKill() {

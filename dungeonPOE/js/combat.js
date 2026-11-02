@@ -122,7 +122,9 @@ function hitCalc(c, m, o = {}) {
       (P.rolledT > G.t ? ST.afterRoll : 0) +
       (m && (m.boss || m.elite) ? ST.bossP : 0) +
       (near < 160 ? ST.closeP : 0) +
-      (near > 350 ? ST.farP : 0);
+      (near > 350 ? ST.farP : 0) +
+      (spell ? sigilInc() : 0) +
+      (bannerOn() ? G.banner.buff.dmg || 0 : 0);
   const typeInc = {
     phys: ST.physP,
     fire: ST.eleP + ST.fireP + (conv === 'fire' ? ST.physP : 0),
@@ -136,6 +138,8 @@ function hitCalc(c, m, o = {}) {
   const pc = P.ail && P.ail.curse;
   if (pc && pc.k === 'enfeeble' && pc.t > G.t) more *= 1 - pc.v / 100;
   if (tg.includes('attack')) more *= 1 + (P.rage || 0) / 100;
+  /* 失衡（招架，mech.js）：受到的攻擊傷害提高 50% */
+  if (!spell && m && m.ail && m.ail.parried > G.t) more *= 1.5;
   for (const k of DT) {
     let mk = more;
     if (spell && k !== 'phys' && k !== 'chaos' && P.buf && P.buf.archon > G.t) mk *= 1.25;
@@ -267,7 +271,7 @@ function ailTick(m, dt) {
 /* 怪物的移動倍率：冰緩、阻礙、殘廢、時空鎖鏈 */
 function mobSpd(m) {
   const a = m.ail || {};
-  let s = m.spdM || 1;
+  let s = (m.spdM || 1) * (m.gslow > G.t ? 0.7 : 1);
   if (a.chill && a.chill.t > G.t) s *= 1 - a.chill.v / 100;
   if (a.hinder > G.t || a.maim > G.t) s *= 0.7;
   if (a.curse && a.curse.k === 'tchains') s *= 1 - a.curse.v / 100;
@@ -384,6 +388,9 @@ function onKillBase(m) {
   }
   if (ST.onsKill && Math.random() * 100 < ST.onsKill) gainBuff('onslaught', 4);
   if (ST.unholyKill && Math.random() * 100 < ST.unholyKill) gainBuff('unholy', 4);
+  addCorpse(m);
+  gainGlory(m.boss ? 40 : m.elite ? 15 : 3);
+  metaEvent('kill');
   chargeCharms(m);
 }
 /* 玩家這一格：狂怒消退、球體與 buff 到期、玩家身上的異常、護符 */
@@ -427,6 +434,8 @@ const effRes = k => {
 function hurtCalc(d, src, el, noEv) {
   const m = src && src.ail ? src : src && src.src && src.src.ail ? src.src : null;
   if (m) d *= mobDmgMul(m);
+  /* 招架（mech.js）：窗口裡被打到＝擋下，攻擊者失衡 */
+  if (!noEv && tryParry(m)) return { parry: 1 };
   /* 閃避：熵值（累積命中率到 100 才算打中），王的紅光大招（noEv）躲不掉 */
   if (!noEv) {
     const acc = (m ? m.acc : 15 + 6 * mobLv(G.mapT || 1)) * (m && m.ail.blind > G.t ? 0.8 : 1),
@@ -447,7 +456,7 @@ function hurtCalc(d, src, el, noEv) {
       return r > 0 ? Math.max(0, r - MM('mpen')) : r;
     },
     cu = P.ail && P.ail.curse,
-    arm = ST.armor * (cu && cu.k === 'vuln' ? 1 - cu.v / 100 : 1);
+    arm = ST.armor * (cu && cu.k === 'vuln' ? 1 - cu.v / 100 : 1) * ((formOf() && formOf().armorM) || 1);
   if (el === 'phys') d *= 1 - Math.min(0.9, arm / (arm + 10 * d + 1));
   else d *= 1 - resHit(el) / 100;
   /* 地圖詞「怪物多造成 20% 的某元素傷害」：另外照那個元素的抗性算 */
@@ -458,6 +467,7 @@ function hurtCalc(d, src, el, noEv) {
   ])
     if (MM(f)) d += ((pre * MM(f)) / 100) * (1 - resHit(k) / 100);
   if (P.ail && P.ail.shock > G.t) d *= 1.2;
+  if (el !== 'phys' && el !== 'chaos' && formOf() && formOf().eleTaken) d *= formOf().eleTaken;
   if (m) mobAilPlayer(m, pre, el);
   /* 守護先吸收 */
   if (P.guardV > 0) {

@@ -5,7 +5,7 @@ const fs = require('fs'),
   path = require('path');
 const ctx = { console, Math, Date, JSON, Object, Array, location: { search: '' }, URLSearchParams };
 vm.createContext(ctx);
-for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js', 'maps.js'])
+for (const f of ['data.js', 'items.js', 'craft.js', 'combat.js', 'maps.js', 'mech.js'])
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'), ctx, { filename: f });
 const G = vm.runInContext(
   '({ BASES, BASEI, KINDS, AFF, EQS, eqTakes, offOK, SOCK_MAX, SHARDS, FORGE, forgeCheck, forgeDo, temperDo, tierRange, affPct, decompDo, newMat, gemUp, drillDo, soulCost, TMAX, MOBS, BOSSES, SKILLS, SUPPORTS, PTREE, PT_START, mkItem, mkGem, dropItem, dropGem, itemSize, stats, dps, gridAuto, sellPrice, bestTier, tierRange, affText, itemName })',
@@ -269,4 +269,48 @@ ok(
     B('cardsOpen({ maxT: 16 })') === 8 &&
     B('mapCost(16, 5)') === 23
 );
+/* 0.2.10 技能用的底層新機制（企劃書 7.3、mech.js） */
+vm.runInContext(
+  `G = { t: 0, mapT: 5, scene: 'map', mobs: [] }; P = { x: 0, y: 0, hp: 100, mp: 100 };
+   var fx = () => {}, fxs = () => {}, num = () => {}, sfx = () => {}, isWall = () => false;
+   mechEnter();`,
+  ctx
+);
+{
+  const R = s => vm.runInContext(s, ctx);
+  /* 連擊數：每次出手最多 +1，8 秒沒加就歸零；段數：1 秒內再按進下一段 */
+  R('var a1 = {}, a2 = {}; comboHit(a1); comboHit(a1); comboHit(a2);');
+  const c2 = R('comboN()');
+  R('G.t = 9');
+  const c0 = R('comboN()');
+  const st = R(
+    '[nextStage("x"), (G.t += 0.5, nextStage("x")), (G.t += 0.5, nextStage("x")), (G.t += 0.5, nextStage("x")), (G.t += 2, nextStage("x"))]'
+  );
+  ok('連擊數與段數', c2 === 2 && c0 === 0 && st.join() === '0,1,2,0,0', `${c2} ${c0} ${st}`);
+  /* 彈藥：3 發打完裝填 1 秒，裝填時不能射 */
+  const am = R(
+    'G.t = 0; [ammoUse("k", 3, 1), ammoUse("k", 3, 1), ammoUse("k", 3, 1), ammoUse("k", 3, 1), (G.t = 1.1, ammoUse("k", 3, 1))]'
+  );
+  /* 手雷次數：2 顆，各自冷卻 */
+  const gr = R(
+    'G.t = 0; [grenadeReady("g", 2, 3), grenadeReady("g", 2, 3), grenadeReady("g", 2, 3), (G.t = 3.1, grenadeReady("g", 2, 3))]'
+  );
+  ok(
+    '彈藥與手雷次數',
+    am.join() === 'true,true,true,false,true' && gr.join() === 'true,true,false,true',
+    am + ' ' + gr
+  );
+  /* 收割：有才消耗、消耗後就沒了；碾壓一擊 */
+  const hv = R(`var m = { x: 0, y: 0, r: 10, mhp: 100, ail: { frozen: 5, hs: 50 } };
+    [takeState(m, 'frozen'), takeState(m, 'frozen'), hasState(m, 'primed'), crush(m), hasState(m, 'primed'), m.ail.hstun > G.t]`);
+  ok('收割與碾壓一擊', hv.join() === 'true,false,true,true,false,true', hv.join());
+  /* 灌注：撿殘留物 +1（最多 3），消耗 −1；咒符之力：站在法陣裡每 30 魔力 +1 層（最多 4） */
+  const inf = R(`G.t = 0; for (let i = 0; i < 5; i++) dropRemnant('fire', 0, 0), remnantTick();
+    [infN('fire'), takeInf('fire'), infN('fire'), takeInf('cold')]`);
+  const sg = R('placeSigil(0, 0); sigilSpend(100); sigilSpend(100); [P.sigil, sigilInc(), (P.x = 999, sigilInc())]');
+  ok('灌注與咒符之力', inf.join() === '3,true,2,false' && sg.join() === '4,40,0', inf + ' ' + sg);
+  /* 飛劍：最多 10 把、15 秒 */
+  const sw = R('P.x = 0; gainSwords(7, {}); gainSwords(7, {}); var n1 = swordN(); G.t += 16; [n1, swordN()]');
+  ok('飛劍上限與時間', sw.join() === '10,0', sw.join());
+}
 process.exit(bad ? 1 : 0);
