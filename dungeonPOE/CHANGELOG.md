@@ -1,5 +1,9 @@
 # dungeonPOE 更新紀錄
 
+## 未上版
+
+- 開發流程：介面改成 Impeccable 為主（`DESIGN.md`），apple-design 只管互動手感；skill `ui-design` 重寫成 dungeonPOE 版，刪掉《塞令老師》的 `audit.js`。遊戲沒有變化。
+
 ## 0.2.16（2026-11-03）主畫面捷徑可以直立
 
 - 修正：加到主畫面的捷徑被鎖成橫向（`manifest.webmanifest` 的 `orientation`），直立操作轉不過來、看起來像卡在舊版。改成不鎖方向。舊的捷徑要刪掉重新「加到主畫面」（Android 不會馬上更新），或在提示畫面按「改用橫向操作」。
