@@ -165,11 +165,12 @@ function baseText(it) {
     m = qMul(it),
     o = [];
   if (b.dmg) {
-    const wt = B.wt || 'sword1';
+    const wt = B.wt || 'sword',
+      two = !!B.two;
     o.push(
       SPELLW.has(wt)
-        ? `${WTN[wt]}${WT2.has(wt) ? '（雙手）' : '（單手）'} · 法系武器`
-        : `${WTN[wt]}${WT2.has(wt) ? '（雙手）' : '（單手）'}${DUAL.has(wt) ? '・可雙持' : ''} · 物理傷害 ${Math.round(b.dmg[0] * m)}～${Math.round(b.dmg[1] * m)}`,
+        ? `${WTN[wt]}${two ? '（雙手）' : '（單手）'} · 法系武器`
+        : `${two ? '雙手' : '單手'}${WTN[wt]}${DUAL.has(wt) && !two ? '・可雙持' : ''} · 物理傷害 ${Math.round(b.dmg[0] * m)}～${Math.round(b.dmg[1] * m)}`,
       SPELLW.has(wt) ? '' : `每秒攻擊 ${b.as} · 暴擊率 ${5 + (b.crit || 0)}%`
     );
     if (wt === 'spear') o.push('近戰距離 +25%');
@@ -205,26 +206,26 @@ const sellPrice = it =>
    盾配任何單手武器；法器配魔杖、權杖；權杖可以放副手（主手不能也是權杖）；爪、匕首、單手劍、單手斧可以雙持同類 */
 function offOK(w, off) {
   if (!off) return true;
-  const wt = (w && baseOf(w).wt) || 'sword1',
+  const wt = (w && baseOf(w).wt) || 'sword',
     k = baseOf(off).k;
   if (k === 'quiver') return !!w && wt === 'bow';
-  if (w && WT2.has(wt)) return false;
+  if (w && baseOf(w).two) return false;
   if (k === 'focus') return wt === 'wand' || wt === 'sceptre';
   if (k === 'weapon') {
     const ot = baseOf(off).wt;
-    return ot === 'sceptre' ? wt !== 'sceptre' : !!w && ot === wt && DUAL.has(wt);
+    return ot === 'sceptre' ? wt !== 'sceptre' : !!w && ot === wt && DUAL.has(wt) && !baseOf(off).two;
   }
   return true;
 }
 /* 副手不合規時的說明 */
 function offWhy(w, off) {
-  const wt = (w && baseOf(w).wt) || 'sword1',
+  const wt = (w && baseOf(w).wt) || 'sword',
     k = baseOf(off).k;
   if (k === 'quiver') return '箭袋只有拿弓才能用';
-  if (w && WT2.has(wt)) return '拿雙手武器時不能拿副手';
+  if (w && baseOf(w).two) return '拿雙手武器時不能拿副手';
   if (k === 'focus') return '法器只能配魔杖或權杖';
   if (baseOf(off).wt === 'sceptre') return '不能拿兩把權杖';
-  return '只有爪、匕首、單手劍、單手斧能雙持（要同一類）';
+  return '只有爪、匕首、單手的劍與斧能雙持（要同一類）';
 }
 
 /* ---------- 格子背包：g = { w, h, items: [道具（含 x, y）] } ---------- */
@@ -335,7 +336,15 @@ function stats(s = S) {
   const w = s.eq.weapon,
     off = s.eq.off,
     /* 雙持（0.2.9）：爪、匕首、單手劍、單手斧，副手拿同類武器 */
-    dual = !!(w && off && baseOf(off).k === 'weapon' && baseOf(off).wt === baseOf(w).wt && DUAL.has(baseOf(w).wt)),
+    dual = !!(
+      w &&
+      off &&
+      baseOf(off).k === 'weapon' &&
+      baseOf(off).wt === baseOf(w).wt &&
+      DUAL.has(baseOf(w).wt) &&
+      !baseOf(w).two &&
+      !baseOf(off).two
+    ),
     /* 武器的本地詞：物理提高、附加傷害、攻速、暴擊率只改那把武器（品質也是本地） */
     local = it => {
       const B = it ? baseOf(it).b : { dmg: HERO.dmg, as: 1.1 },
@@ -435,9 +444,9 @@ function stats(s = S) {
   o.es += pt.esF;
   o.es = Math.round(o.es * (1 + o.esP / 100));
   /* 持武器的加成 */
-  o.wt = (w && baseOf(w).wt) || 'sword1';
+  o.wt = (w && baseOf(w).wt) || 'sword';
   /* 天賦「持劍／持矛／持棍時傷害」（其他武器的專精等天賦樹重做） */
-  o.dmgA += o[{ sword1: 'swordP', sword2: 'swordP', spear: 'spearP', qstaff: 'staffP' }[o.wt]] || 0;
+  o.dmgA += o[{ sword: 'swordP', spear: 'spearP', qstaff: 'staffP' }[o.wt]] || 0;
   o.hp = Math.round(o.hp * (1 + pt.hpP / 100));
   o.armor = Math.round(o.armor * (1 + pt.armorP / 100));
   o.ev = Math.round(o.ev * (1 + pt.evP / 100));

@@ -1,6 +1,6 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.11';
+const VER = '0.2.12';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
@@ -250,7 +250,7 @@ const SKILLS = {
     arc: 2.1,
     gain: 2,
     stage: 1,
-    wt: ['sword1'],
+    wt: ['sword'],
     tags: ['attack', 'melee'],
     d: '扇形斬擊，打中每隻回 2 魔力；1 秒內再按進下一段，3 段一輪：第 3 段範圍 ×1.5、必定暴擊'
   },
@@ -263,7 +263,7 @@ const SKILLS = {
     cd: 3,
     m: 1.8,
     r: 150,
-    wt: ['sword2'],
+    wt: ['sword'],
     tags: ['attack', 'melee', 'aoe', 'cd'],
     d: '原地迴旋，打周圍所有敵人並擊退'
   },
@@ -276,7 +276,7 @@ const SKILLS = {
     cd: 4,
     m: 1.5,
     dist: 300,
-    wt: ['sword2'],
+    wt: ['sword'],
     tags: ['attack', 'melee', 'move', 'cd'],
     d: '衝向滑鼠位置，斬過路上的敵人；衝刺中無敵'
   },
@@ -289,7 +289,7 @@ const SKILLS = {
     r: 170,
     arc: 1.4,
     stun: 0.6,
-    wt: ['mace1'],
+    wt: ['mace'],
     tags: ['attack', 'melee', 'aoe'],
     d: '往前重擊地面，扇形範圍的敵人暈眩 0.6 秒，留下碎裂地面 2 秒（怪物緩速 30%），結束時餘震再打一次（×1.2）'
   },
@@ -422,7 +422,7 @@ const SKILLS = {
     mp: 14,
     cd: 6,
     m: 1,
-    wt: ['sword1'],
+    wt: ['sword'],
     tags: ['attack', 'melee', 'cd'],
     d: '在滑鼠位置召出劍士分身 4 秒，每 0.8 秒用斬擊砍最近的敵人（傷害 ×0.6）'
   },
@@ -435,7 +435,7 @@ const SKILLS = {
     spd: 700,
     pierce: 1,
     bleed: 40,
-    wt: ['axe1'],
+    wt: ['axe'],
     tags: ['attack', 'proj'],
     d: '丟出旋轉的斧頭，穿透 1 隻；擊中 40% 機率流血'
   },
@@ -447,7 +447,7 @@ const SKILLS = {
     m: 1.1,
     r: 100,
     arc: 1.6,
-    wt: ['axe1'],
+    wt: ['axe'],
     tags: ['attack', 'melee'],
     d: '近戰一斬；目標在流血就消耗流血，一次結算剩下的流血傷害 ×1.5，並讓附近 120 內的敵人也流血'
   },
@@ -461,7 +461,7 @@ const SKILLS = {
     arc: 1.6,
     bleed: 60,
     hsM: 1.5,
-    wt: ['axe2'],
+    wt: ['axe'],
     tags: ['attack', 'melee', 'aoe'],
     d: '慢而重的大範圍下劈；擊中 60% 機率流血，重暈累積 ×1.5'
   },
@@ -473,7 +473,7 @@ const SKILLS = {
     cd: 8,
     m: 0,
     r: 250,
-    wt: ['axe2'],
+    wt: ['axe'],
     tags: ['warcry', 'aoe', 'cd'],
     d: '立刻得到 15 點狂怒（攻擊傷害更多 1%／點），周圍 250 內的敵人被威嚇 4 秒（受到的傷害 +10%、造成的傷害 −10%）'
   },
@@ -486,7 +486,7 @@ const SKILLS = {
     r: 100,
     arc: 1.2,
     armBreak: 1,
-    wt: ['mace1'],
+    wt: ['mace'],
     tags: ['attack', 'melee'],
     d: '單體重擊，物理擊中削減護甲；打中瀕臨重暈的怪＝碾壓一擊：直接重暈，並震傷周圍 120 內的敵人'
   },
@@ -498,7 +498,7 @@ const SKILLS = {
     m: 1.8,
     r: 120,
     dist: 300,
-    wt: ['mace2'],
+    wt: ['mace'],
     tags: ['attack', 'melee', 'aoe', 'move'],
     d: '跳到滑鼠位置（最遠 300，跳躍中無敵）砸地，落點留下碎裂地面 2 秒，結束時餘震再打一次（×0.8）'
   },
@@ -509,7 +509,7 @@ const SKILLS = {
     mp: 12,
     m: 1.3,
     r: 55,
-    wt: ['mace2'],
+    wt: ['mace'],
     tags: ['attack', 'melee', 'aoe'],
     d: '往前一連串 5 處裂地；打到完全破甲的怪會消耗破甲，這一下 ×2'
   },
@@ -1831,12 +1831,9 @@ const tierIlvl = t => t;
 const RESK = ['fire', 'cold', 'light', 'chaos'];
 /* 武器種類（0.2.6，照 PoE2：武器決定技能組）：矛的近戰距離 +25%、棍打中回 1 魔力；雙手武器不能拿副手（箭袋只有弓能用） */
 const WTN = {
-  sword1: '單手劍',
-  sword2: '雙手劍',
-  axe1: '單手斧',
-  axe2: '雙手斧',
-  mace1: '單手錘',
-  mace2: '雙手錘',
+  sword: '劍',
+  axe: '斧',
+  mace: '錘',
   qstaff: '長棍',
   spear: '矛',
   bow: '弓',
@@ -1850,9 +1847,9 @@ const WTN = {
   traptool: '陷阱器',
   talisman: '護符'
 };
-/* 雙手（不能拿副手；弓可以配箭袋）、可以雙持、法系（不能攻擊，給法術加成） */
-const WT2 = new Set(['sword2', 'axe2', 'mace2', 'qstaff', 'bow', 'xbow', 'staff', 'traptool', 'talisman']);
-const DUAL = new Set(['sword1', 'axe1', 'dagger', 'claw']);
+/* 一律雙手的類別（劍、斧、錘的雙手是看底材的 two，0.2.12：單手與雙手是同一類）、可以雙持（只限單手底材）、法系（不能攻擊，給法術加成） */
+const WT2 = new Set(['qstaff', 'bow', 'xbow', 'staff', 'traptool', 'talisman']);
+const DUAL = new Set(['sword', 'axe', 'dagger', 'claw']);
 const SPELLW = new Set(['staff', 'wand', 'sceptre', 'traptool']);
 /* 底材自帶的數值（隱性詞）裡，詞綴表沒有的名字 */
 const IMPN = {
@@ -1949,9 +1946,10 @@ const KINDS = {
 /* 底材：lv 從幾階開始掉、ic 圖示、b 固定數值（武器：物理傷害、攻速；防具：護甲；飾品：固定詞綴） */
 /* ---------- 武器（0.2.9，照 PoE2 的 18 種類別，docs/開發參考.md 0.1 節）----------
    每類 6 個底材（階級 1、3、6、9、12、15 開始掉）；傷害照階級成長，類別之間的差別靠攻速、暴擊、隱性詞與技能。
-   m 傷害倍率（單手近戰＝1）、as 攻速、crit 加在基礎 5% 上的暴擊、imp 隱性詞（每階 ×1、×1.5、×2…）、ic 借用的圖示 */
+   fam 武器類別（0.2.12：單手劍與雙手劍都是「劍」，技能共用；id 照舊）、two 雙手底材；m 傷害倍率（單手近戰＝1）、as 攻速、crit 加在基礎 5% 上的暴擊、imp 隱性詞（每階 ×1、×1.5、×2…）、ic 借用的圖示 */
 const WCLS = {
   sword1: {
+    fam: 'sword',
     m: 1,
     as: 1.55,
     crit: 1,
@@ -1960,6 +1958,8 @@ const WCLS = {
     n: ['短劍', '闊劍', '彎刀', '長劍', '細劍', '符文劍']
   },
   sword2: {
+    fam: 'sword',
+    two: 1,
     m: 1.6,
     as: 1.35,
     crit: 1,
@@ -1968,6 +1968,7 @@ const WCLS = {
     n: ['雙手劍', '太刀', '闊刃大劍', '斬首劍', '野太刀', '王者大劍']
   },
   axe1: {
+    fam: 'axe',
     m: 1.05,
     as: 1.45,
     crit: 0,
@@ -1976,6 +1977,8 @@ const WCLS = {
     n: ['手斧', '戰斧', '鉞', '劈斧', '雙刃斧', '屠夫斧']
   },
   axe2: {
+    fam: 'axe',
+    two: 1,
     m: 1.7,
     as: 1.2,
     crit: 0,
@@ -1984,6 +1987,7 @@ const WCLS = {
     n: ['伐木斧', '巨斧', '開山斧', '劊子手斧', '月牙斧', '泰坦斧']
   },
   mace1: {
+    fam: 'mace',
     m: 1.05,
     as: 1.45,
     crit: 0,
@@ -1992,6 +1996,8 @@ const WCLS = {
     n: ['木棒', '釘頭錘', '戰鎚', '晨星', '狼牙棒', '雷神鎚']
   },
   mace2: {
+    fam: 'mace',
+    two: 1,
     m: 1.75,
     as: 1.15,
     crit: 0,
@@ -2117,8 +2123,9 @@ const WEAPON_BASES = Object.entries(WCLS).flatMap(([wt, C]) =>
       n: C.n[i],
       lv,
       ic: typeof ic === 'number' ? 'gear_weapon_' + ic : ic,
-      wt,
-      ...(SPELLW.has(wt) ? { aff: SPELL_AFF } : {}),
+      wt: C.fam || wt,
+      ...(C.two || WT2.has(wt) ? { two: 1 } : {}),
+      ...(SPELLW.has(C.fam || wt) ? { aff: SPELL_AFF } : {}),
       b
     };
   })

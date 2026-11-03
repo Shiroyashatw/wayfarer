@@ -96,7 +96,7 @@ const BUILDS = {
       resC: 0.5,
       resL: 0.5
     },
-    wt: 'sword1',
+    wt: 'sword',
     sk: 'slash'
   },
   火法: {
@@ -108,7 +108,7 @@ const BUILDS = {
   坦克: {
     tree: { life: 1, armorP: 3, armorF: 0.5, regen: 2, resA: 5, blockInc: 2 },
     gear: { life: 1, armor: 0.5, block: 3, resA: 2, resF: 1, resC: 1, resL: 1, dmgP: 0.3 },
-    wt: 'sword1',
+    wt: 'sword',
     sk: 'slash'
   }
 };
