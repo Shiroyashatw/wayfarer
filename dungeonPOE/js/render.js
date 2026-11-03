@@ -137,7 +137,30 @@ function draw() {
     const D = m.D,
       wind = m.boss ? 0.75 : D.wind,
       f = clamp(1 - m.t / wind, 0, 1);
-    if (m.boss && m.pat === 'slam') continue;
+    if (m.boss && (m.pat === 'slam' || m.pat === 'line')) continue;
+    if (D.ai === 'bomb') {
+      teleCircle(m.x, m.y, D.boom, f);
+      continue;
+    }
+    if (m.boss && m.pat === 'blink') {
+      CX.strokeStyle = `rgba(178,141,255,${0.3 + 0.6 * f})`;
+      CX.beginPath();
+      CX.arc(m.tx, m.ty, m.r * (1.6 - f * 0.6), 0, TAU);
+      CX.stroke();
+      continue;
+    }
+    if (m.boss && m.pat === 'nova') {
+      /* 彈幕環：畫出每一發的方向，缺口看得到 */
+      CX.strokeStyle = `rgba(229,72,77,${0.25 + 0.5 * f})`;
+      CX.beginPath();
+      for (let i = 0; i < NOVA_N - NOVA_GAP; i++) {
+        const a = novaAng(m, i);
+        CX.moveTo(m.x + Math.cos(a) * m.r, m.y + Math.sin(a) * m.r);
+        CX.lineTo(m.x + Math.cos(a) * (m.r + 60 + 120 * f), m.y + Math.sin(a) * (m.r + 60 + 120 * f));
+      }
+      CX.stroke();
+      continue;
+    }
     if (D.ai === 'lunge' || (m.boss && m.pat === 'charge')) {
       const len = m.boss ? 520 : D.reach + 20,
         wd = m.r * 1.6;
@@ -161,12 +184,14 @@ function draw() {
       CX.arc(m.x, m.y, R, m.ang - 1.2, m.ang + 1.2);
       CX.closePath();
       CX.fill();
-    } else if (D.ai === 'ranged') {
+    } else if (D.ai === 'ranged' || D.ai === 'fan') {
       CX.strokeStyle = `rgba(122,208,255,${0.2 + 0.5 * f})`;
       CX.setLineDash([6, 6]);
       CX.beginPath();
-      CX.moveTo(m.x, m.y - m.sz * 0.5);
-      CX.lineTo(m.x + Math.cos(m.ang) * 260, m.y - m.sz * 0.5 + Math.sin(m.ang) * 260);
+      for (const da of D.ai === 'fan' ? [-0.3, 0, 0.3] : [0]) {
+        CX.moveTo(m.x, m.y - m.sz * 0.5);
+        CX.lineTo(m.x + Math.cos(m.ang + da) * 260, m.y - m.sz * 0.5 + Math.sin(m.ang + da) * 260);
+      }
       CX.stroke();
       CX.setLineDash([]);
     }

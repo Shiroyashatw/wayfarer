@@ -201,6 +201,53 @@ ok('技能、輔助、天賦的圖示都在', !miss2.length, [...new Set(miss2)]
   ok('天賦樹的點沒有疊在一起', !close, close + ' 組');
 }
 {
+  /* 0.2.17 結構驗收（開發參考 §2）：同主題相連的點（過路點切斷）平均 ≤ 3、最多 12；同主題的叢集至少隔 3 步；
+     12 個基石各只連 1 條線；15 種武器都有專精叢集 */
+  const T = G.PTREE,
+    TH = vm.runInContext('PT_THEME', ctx),
+    cid = n => (/^k\d/.test(n.id) ? n.id.split('_')[0] : null),
+    seen = new Set(),
+    runs = [];
+  for (const n of T.N) {
+    if (seen.has(n.id) || !cid(n) || !n.th) continue;
+    let c = 0;
+    const q = [n.id];
+    seen.add(n.id);
+    while (q.length) {
+      c++;
+      for (const b of T.ADJ[q.pop()] || [])
+        if (!seen.has(b) && cid(T.I[b]) && T.I[b].th === n.th) seen.add(b), q.push(b);
+    }
+    runs.push(c);
+  }
+  const avg = runs.reduce((a, b) => a + b, 0) / runs.length,
+    cl = {};
+  for (const n of T.N) if (cid(n) && n.th) cl[cid(n)] = n.th;
+  let near = 0;
+  for (const c in cl) {
+    const d = {},
+      q = T.N.filter(n => cid(n) === c).map(n => n.id);
+    q.forEach(i => (d[i] = 0));
+    for (let h = 0; h < q.length; h++)
+      for (const b of T.ADJ[q[h]] || []) {
+        if (d[b] !== undefined || d[q[h]] >= 2) continue;
+        d[b] = d[q[h]] + 1;
+        const cb = cid(T.I[b]);
+        if (cb && cb !== c && cl[cb] === cl[c] && T.I[b].th) near++;
+        q.push(b);
+      }
+  }
+  const ks = T.N.filter(n => n.big === 2),
+    wp = TH.filter(t => t.wp && !Object.values(cl).includes(TH.indexOf(t))).map(t => t.n);
+  ok(
+    `天賦樹同主題相連的點：平均 ${avg.toFixed(2)}、最多 ${Math.max(...runs)}（≤ 3、≤ 12）`,
+    avg <= 3 && Math.max(...runs) <= 12
+  );
+  ok('同主題的叢集至少隔 3 步', !near, near + ' 處');
+  ok('12 個基石、各只連 1 條線', ks.length === 12 && ks.every(n => T.ADJ[n.id].length === 1), ks.length);
+  ok('15 種武器都有專精叢集', !wp.length, wp.join(','));
+}
+{
   const full = { lv: 100, eq: {}, pt: G.PTREE.N.map(n => n.id) },
     o = G.stats(full),
     vals = [

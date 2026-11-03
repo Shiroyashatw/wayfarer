@@ -143,6 +143,8 @@ function hitCalc(c, m, o = {}) {
   const pc = P.ail && P.ail.curse;
   if (pc && pc.k === 'enfeeble' && pc.t > G.t) more *= 1 - pc.v / 100;
   if (tg.includes('attack')) more *= 1 + (P.rage || 0) / 100;
+  /* 天賦基石的全域更多／更少（0.2.17） */
+  if (ST.more) more *= 1 + ST.more / 100;
   /* 失衡（招架，mech.js）：受到的攻擊傷害提高 50% */
   if (!spell && m && m.ail && m.ail.parried > G.t) more *= 1.5;
   for (const k of DT) {

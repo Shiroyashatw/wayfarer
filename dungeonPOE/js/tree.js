@@ -77,7 +77,7 @@ function treeRender() {
     <button class="btn" data-ta="reset" id="treset">重置天賦</button>
     <button class="x" aria-label="關閉" data-ta="close">${ICO.x}</button></div>
   <div id="tview"><svg id="tsvg" viewBox="${B.x} ${B.y} ${B.w} ${B.h}" width="${B.w}" height="${B.h}"><g id="tg">${html}</g></svg></div>
-  <p class="thelp"><b>方向</b> 上 生命護甲 · 右上 近戰攻速 · 右 投射物陷阱 · 下 暴擊圖騰召喚 · 左下 元素法術 · 左上 能量護盾精魄　<b>操作</b> 點亮著的點＝點下去，再點＝退回 · 拖曳移動 · 滾輪縮放　越外圈的大點越強，帶代價的最強</p>`;
+  <p class="thelp"><b>起點</b> ${PT_ROADS.map((r, i) => ['上', '右上', '右下', '下', '左下', '左上'][i] + ' ' + r.n.slice(0, 2)).join(' · ')}　<b>操作</b> 點亮著的點＝點下去，再點＝退回 · 拖曳移動 · 滾輪縮放　外圈是武器專精，最外面的大圓是基石（有代價）</p>`;
   /* 之後選取、點亮只改 class，不重畫整棵樹（一千多個點，手機重畫會卡） */
   const tg = $('tg');
   TEL = {

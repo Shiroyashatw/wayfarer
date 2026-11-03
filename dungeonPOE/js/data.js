@@ -1,6 +1,6 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.16';
+const VER = '0.2.18';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
@@ -974,9 +974,8 @@ const STATN = {
   armorP: ['護甲', '%'],
   block: ['格擋', '%'],
   meleeP: ['近戰傷害', '%'],
-  swordP: ['持劍時傷害', '%'],
-  spearP: ['持矛時傷害', '%'],
-  staffP: ['持棍時傷害', '%'],
+  shieldP: ['持盾時傷害', '%'],
+  more: ['傷害更多', '%'],
   as: ['攻速', '%'],
   critX: ['暴擊傷害', '%'],
   crit: ['暴擊率', '%'],
@@ -1013,14 +1012,20 @@ const STATN = {
   lowHpRed: ['生命低於一半時受到的傷害減少', '%'],
   blood: ['技能改用生命施放（不耗魔力）', '']
 };
-/* 18 條路線的主題：sm 小點（輪流）、nt 大點（名字＋效果，全職業通用）；繞一圈，相鄰的主題會混搭 */
+/* 天賦樹的主題（0.2.17，照技能體系重做）：sm 小點（輪流）、nt 大點（名字＋效果）；
+   rg 六條路（鬥士、遊俠、暗影、魔導、死靈、自然）各自的權重，叢集照所在方向抽主題；
+   inner 防禦與生命（內圈多）、wp 武器專精（只在外圈）；第 0 個「基礎」是過路點（切斷主題，不會被抽到） */
 /* 基礎能力點（0.2.7）：數值很低，有點加成又不會沒用 */
 const PT_BASE = [{ life: 10 }, { mana: 10 }, { armorF: 20 }, { evF: 20 }, { esF: 8 }];
+const PT_WP = (wp, n, c, ic, rg, nt) => ({ n, c, ic, wp, rg, sm: [{ ['w_' + wp]: 3 }], nt });
 const PT_THEME = [
+  { n: '基礎', c: '#8a8f98', ic: 'asc_s_heart', base: 1, rg: [0, 0, 0, 0, 0, 0], sm: PT_BASE, nt: [] },
   {
     n: '生命',
     c: '#d9534f',
     ic: 'asc_s_heart',
+    inner: 1,
+    rg: [2, 1, 1, 1, 1, 2],
     sm: [{ regen: 2 }, { life: 10 }],
     nt: [
       ['不屈', { hpP: 3, regen: 6 }],
@@ -1032,6 +1037,8 @@ const PT_THEME = [
     n: '護甲',
     c: '#b0835a',
     ic: 'asc_s_shield',
+    inner: 1,
+    rg: [3, 0, 0, 0, 0, 2],
     sm: [{ armorP: 8 }],
     nt: [
       ['鐵骨', { armorP: 25, resA: 3 }],
@@ -1040,13 +1047,15 @@ const PT_THEME = [
     ]
   },
   {
-    n: '格擋',
+    n: '格擋與盾',
     c: '#9aa7b8',
     ic: 'asc_s_anvil',
-    sm: [{ blockInc: 4 }, { armorP: 8 }],
+    inner: 1,
+    rg: [3, 0, 0, 0, 0, 1],
+    sm: [{ blockInc: 4 }, { shieldP: 3 }],
     nt: [
       ['銅牆', { blockInc: 12, armorP: 10 }],
-      ['以盾為劍', { blockInc: 8, meleeP: 8 }],
+      ['以盾為劍', { shieldP: 12, blockInc: 4 }],
       ['不動如山', { blockInc: 15, hpP: 2 }]
     ]
   },
@@ -1054,28 +1063,19 @@ const PT_THEME = [
     n: '近戰',
     c: '#e8a33d',
     ic: 'asc_s_sword',
+    rg: [3, 2, 0, 0, 0, 1],
     sm: [{ meleeP: 3 }],
     nt: [
       ['斬鐵', { meleeP: 12, critX: 5 }],
-      ['劍意', { meleeP: 10, rageHit: 1 }],
-      ['破甲', { meleeP: 15, as: 2 }]
-    ]
-  },
-  {
-    n: '矛',
-    c: '#d9a066',
-    ic: 'gear_weapon_9',
-    sm: [{ spearP: 3 }],
-    nt: [
-      ['穿刺', { spearP: 12, impaleCh: 25 }],
-      ['長槍陣', { spearP: 10, aoe: 8 }],
-      ['擲矛', { spearP: 10, projP: 5 }]
+      ['戰意', { meleeP: 10, rageHit: 1 }],
+      ['破陣', { meleeP: 15, as: 2 }]
     ]
   },
   {
     n: '攻速',
     c: '#f2c14e',
     ic: 'asc_s_wind',
+    rg: [2, 2, 2, 0, 0, 1],
     sm: [{ as: 1 }],
     nt: [
       ['疾風', { as: 5 }],
@@ -1084,42 +1084,10 @@ const PT_THEME = [
     ]
   },
   {
-    n: '暴擊傷害',
-    c: '#ffd166',
-    ic: 'asc_s_stars',
-    sm: [{ critX: 4 }],
-    nt: [
-      ['致命', { critX: 12 }],
-      ['要害', { critX: 10, critInc: 8 }],
-      ['斬首', { critX: 15, meleeP: 4 }]
-    ]
-  },
-  {
-    n: '身法',
-    c: '#7bd36b',
-    ic: 'asc_s_feather',
-    sm: [{ ms: 2 }, { evP: 8 }],
-    nt: [
-      ['輕功', { ms: 4, rollCd: 15 }],
-      ['殘影', { evP: 25, tailwind: 1 }],
-      ['踏雪', { rollCd: 15, evP: 15 }]
-    ]
-  },
-  {
-    n: '棍',
-    c: '#b5d36b',
-    ic: 'gear_weapon_4',
-    sm: [{ staffP: 3 }],
-    nt: [
-      ['武僧', { staffP: 12, as: 2 }],
-      ['迴棍', { staffP: 10, aoe: 10 }],
-      ['禪定', { staffP: 8, powOnCrit: 20 }]
-    ]
-  },
-  {
     n: '投射物',
     c: '#8fe0a5',
     ic: 'asc_s_bolt',
+    rg: [0, 3, 2, 0, 0, 0],
     sm: [{ projP: 3 }],
     nt: [
       ['鷹眼', { projP: 12, critInc: 5 }],
@@ -1128,20 +1096,23 @@ const PT_THEME = [
     ]
   },
   {
-    n: '陷阱地雷',
-    c: '#a3d977',
-    ic: 'asc_s_spark',
-    sm: [{ unitP: 3 }],
+    n: '身法',
+    c: '#7bd36b',
+    ic: 'asc_s_feather',
+    inner: 1,
+    rg: [0, 3, 2, 0, 0, 0],
+    sm: [{ evP: 8 }, { ms: 2 }],
     nt: [
-      ['機關師', { unitP: 10, units: 1 }],
-      ['連環爆', { unitP: 10, aoe: 8 }],
-      ['伏擊', { unitP: 12, critInc: 5 }]
+      ['輕功', { ms: 4, rollCd: 15 }],
+      ['殘影', { evP: 25, tailwind: 1 }],
+      ['踏雪', { rollCd: 15, evP: 15 }]
     ]
   },
   {
     n: '暴擊率',
     c: '#fff08a',
     ic: 'asc_s_eye',
+    rg: [1, 1, 3, 1, 1, 1],
     sm: [{ critInc: 6 }],
     nt: [
       ['精準', { critInc: 12 }],
@@ -1150,64 +1121,83 @@ const PT_THEME = [
     ]
   },
   {
-    n: '圖騰砲台',
-    c: '#c9a46b',
-    ic: 'asc_s_rune',
-    sm: [{ unitP: 3 }],
+    n: '暴擊傷害',
+    c: '#ffd166',
+    ic: 'sup_sp_brutal',
+    rg: [1, 1, 3, 1, 1, 1],
+    sm: [{ critX: 4 }],
     nt: [
-      ['堡壘工匠', { unitP: 10, units: 1 }],
-      ['砲陣', { unitP: 12, projP: 4 }],
-      ['祖靈', { unitP: 10, hpP: 2 }]
+      ['致命', { critX: 12 }],
+      ['要害', { critX: 10, critInc: 8 }],
+      ['斬首', { critX: 15, meleeP: 4 }]
     ]
   },
   {
-    n: '召喚',
-    c: '#9df29d',
-    ic: 'asc_s_paw',
-    sm: [{ minionP: 3 }],
+    n: '陷阱地雷',
+    c: '#a3d977',
+    ic: 'sup_sp_trap',
+    rg: [0, 1, 3, 0, 0, 0],
+    sm: [{ unitP: 3 }],
     nt: [
-      ['御獸', { minionP: 12 }],
-      ['群狼', { minionP: 10, spirit: 10 }],
-      ['魂契', { minionP: 10, cdr: 5 }]
+      ['機關師', { unitP: 10, units: 1 }],
+      ['連環爆', { unitP: 10, aoe: 8 }],
+      ['伏擊', { unitP: 12, critInc: 5 }]
+    ]
+  },
+  {
+    n: '異常',
+    c: '#c46b8f',
+    ic: 'ail_bleed',
+    rg: [1, 0, 3, 0, 1, 2],
+    sm: [{ ailMag: 4 }, { bleedCh: 3 }, { poisonCh: 3 }],
+    nt: [
+      ['放血', { bleedCh: 12, ailMag: 6 }],
+      ['劇毒', { poisonCh: 12, poiStack: 1 }],
+      ['共鳴', { ailMag: 15 }]
     ]
   },
   {
     n: '元素',
     c: '#ff8a4c',
     ic: 'asc_s_flame',
+    rg: [1, 1, 1, 2, 1, 1],
     sm: [{ eleP: 3 }],
     nt: [
       ['燎原', { eleP: 12 }],
-      ['共鳴', { eleP: 8, ailMag: 20 }],
-      ['元素親和', { eleP: 8, pen: 10 }]
+      ['元素親和', { eleP: 8, pen: 10 }],
+      ['三相', { eleP: 8, ailMag: 10 }]
+    ]
+  },
+  {
+    n: '元素技能',
+    c: '#ff6a3d',
+    ic: 'asc_pyro_c',
+    rg: [0, 0, 0, 3, 0, 0],
+    sm: [{ elemP: 3 }],
+    nt: [
+      ['天雷', { elemP: 12 }],
+      ['灌注', { elemP: 10, aoe: 6 }],
+      ['寒霜', { elemP: 10, pen: 6 }]
     ]
   },
   {
     n: '法術',
     c: '#8fd6ff',
-    ic: 'asc_s_spark',
+    ic: 'sup_sp_fastcast',
+    rg: [0, 0, 0, 3, 2, 0],
     sm: [{ spellP: 3 }],
     nt: [
-      ['天雷', { spellP: 12 }],
       ['咒法', { spellP: 8, castP: 8 }],
-      ['秘術', { spellP: 8, arcaneHit: 20 }]
-    ]
-  },
-  {
-    n: '範圍',
-    c: '#b7e3ff',
-    ic: 'asc_s_stars',
-    sm: [{ aoe: 3 }],
-    nt: [
-      ['擴散', { aoe: 12 }],
-      ['震波', { aoe: 8, aoeP: 8 }],
-      ['星爆', { aoe: 8, spellP: 5 }]
+      ['秘法', { spellP: 8, arcaneHit: 20 }],
+      ['詠唱', { spellP: 12 }]
     ]
   },
   {
     n: '能量護盾',
     c: '#7aa8ff',
     ic: 'asc_s_drop',
+    inner: 1,
+    rg: [0, 0, 1, 3, 2, 0],
     sm: [{ esP: 8 }],
     nt: [
       ['靈障', { esP: 25, esF: 15 }],
@@ -1216,9 +1206,46 @@ const PT_THEME = [
     ]
   },
   {
+    n: '魔力冷卻',
+    c: '#b28dff',
+    ic: 'asc_s_book',
+    rg: [0, 0, 1, 2, 2, 1],
+    sm: [{ mpReg: 8 }, { mpP: 5 }],
+    nt: [
+      ['冥想', { mpP: 15, mpReg: 15 }],
+      ['迅捷施術', { cdr: 10 }],
+      ['專注', { mpP: 10, cdr: 5 }]
+    ]
+  },
+  {
+    n: '秘術技能',
+    c: '#9b6bd9',
+    ic: 'ail_curse',
+    rg: [0, 0, 0, 0, 3, 0],
+    sm: [{ occP: 3 }],
+    nt: [
+      ['凋零', { occP: 12, unholyKill: 10 }],
+      ['咒怨', { occP: 10, castP: 5 }],
+      ['幽冥', { occP: 10, ailMag: 8 }]
+    ]
+  },
+  {
+    n: '召喚',
+    c: '#9df29d',
+    ic: 'asc_s_paw',
+    rg: [0, 0, 0, 0, 3, 2],
+    sm: [{ minionP: 3 }],
+    nt: [
+      ['御獸', { minionP: 12 }],
+      ['群狼', { minionP: 10, spirit: 10 }],
+      ['魂契', { minionP: 10, cdr: 5 }]
+    ]
+  },
+  {
     n: '精魄光環',
     c: '#c38bff',
     ic: 'asc_s_lotus',
+    rg: [0, 0, 0, 1, 3, 0],
     sm: [{ auraEff: 3 }],
     nt: [
       ['靈識', { spirit: 15 }],
@@ -1227,51 +1254,280 @@ const PT_THEME = [
     ]
   },
   {
-    n: '魔力冷卻',
-    c: '#b28dff',
-    ic: 'asc_s_book',
-    sm: [{ mpReg: 8 }, { mpP: 5 }],
+    n: '原始技能',
+    c: '#7fbf5a',
+    ic: 'asc_tamer_c',
+    rg: [1, 0, 0, 0, 0, 3],
+    sm: [{ priP: 3 }],
     nt: [
-      ['冥想', { mpP: 15, mpReg: 15 }],
-      ['迅捷施術', { cdr: 10 }],
-      ['血之代價', { blood: 1, hpP: 3 }]
+      ['野性', { priP: 12 }],
+      ['獸魂', { priP: 10, hpP: 2 }],
+      ['根脈', { priP: 10, regen: 6 }]
     ]
-  }
+  },
+  {
+    n: '圖騰砲台',
+    c: '#c9a46b',
+    ic: 'asc_s_rune',
+    rg: [1, 1, 0, 0, 0, 3],
+    sm: [{ unitP: 3 }],
+    nt: [
+      ['堡壘工匠', { unitP: 10, units: 1 }],
+      ['砲陣', { unitP: 12, projP: 4 }],
+      ['祖靈', { unitP: 10, hpP: 2 }]
+    ]
+  },
+  {
+    n: '範圍',
+    c: '#b7e3ff',
+    ic: 'sup_sp_aoe',
+    rg: [2, 1, 1, 1, 1, 2],
+    sm: [{ aoe: 3 }],
+    nt: [
+      ['擴散', { aoe: 12 }],
+      ['震波', { aoe: 8, aoeP: 8 }],
+      ['星爆', { aoe: 8, spellP: 5 }]
+    ]
+  },
+  /* 武器專精（只在外圈）：持這種武器時傷害提高 */
+  PT_WP(
+    'sword',
+    '劍術',
+    '#e0b070',
+    'gear_weapon_0',
+    [3, 1, 0, 0, 0, 0],
+    [
+      ['連斬劍', { w_sword: 12, as: 2 }],
+      ['劍氣', { w_sword: 10, critX: 5 }],
+      ['幻劍', { w_sword: 10, aoe: 6 }]
+    ]
+  ),
+  PT_WP(
+    'axe',
+    '斧術',
+    '#c8743c',
+    'gear_weapon_2',
+    [3, 0, 0, 0, 0, 1],
+    [
+      ['裂骨', { w_axe: 12, bleedCh: 10 }],
+      ['怒斧', { w_axe: 10, rageHit: 1 }],
+      ['飛斧', { w_axe: 10, projP: 5 }]
+    ]
+  ),
+  PT_WP(
+    'mace',
+    '錘術',
+    '#b39a6b',
+    'gear_weapon_8',
+    [3, 0, 0, 0, 0, 1],
+    [
+      ['碎骨', { w_mace: 12, armBreak: 1 }],
+      ['震地', { w_mace: 10, aoe: 8 }],
+      ['重錘', { w_mace: 10, critX: 6 }]
+    ]
+  ),
+  PT_WP(
+    'flail',
+    '連枷術',
+    '#a8a070',
+    'gear_weapon_22',
+    [3, 1, 0, 0, 0, 0],
+    [
+      ['鏈舞', { w_flail: 12, critInc: 8 }],
+      ['旗手', { w_flail: 10, aoe: 6 }],
+      ['迴旋', { w_flail: 10, as: 2 }]
+    ]
+  ),
+  PT_WP(
+    'spear',
+    '矛術',
+    '#d9a066',
+    'gear_weapon_9',
+    [1, 3, 0, 0, 0, 0],
+    [
+      ['穿刺', { w_spear: 12, impaleCh: 25 }],
+      ['長槍陣', { w_spear: 10, aoe: 8 }],
+      ['擲矛', { w_spear: 10, projP: 5 }]
+    ]
+  ),
+  PT_WP(
+    'bow',
+    '弓術',
+    '#9fd27a',
+    'gear_weapon_3',
+    [0, 3, 1, 0, 0, 0],
+    [
+      ['百步穿楊', { w_bow: 12, farP: 6 }],
+      ['連珠箭', { w_bow: 10, as: 2 }],
+      ['毒箭', { w_bow: 10, poisonCh: 10 }]
+    ]
+  ),
+  PT_WP(
+    'xbow',
+    '弩術',
+    '#8fb88a',
+    'gear_weapon_12',
+    [0, 3, 0, 0, 0, 1],
+    [
+      ['重弩', { w_xbow: 12, armBreak: 1 }],
+      ['速裝', { w_xbow: 10, as: 3 }],
+      ['砲手', { w_xbow: 10, unitP: 6 }]
+    ]
+  ),
+  PT_WP(
+    'dagger',
+    '匕首術',
+    '#b6c9e0',
+    'gear_weapon_13',
+    [0, 1, 3, 0, 0, 0],
+    [
+      ['背刺', { w_dagger: 12, critX: 6 }],
+      ['御劍', { w_dagger: 10, projP: 5 }],
+      ['影步', { w_dagger: 10, afterRoll: 10 }]
+    ]
+  ),
+  PT_WP(
+    'claw',
+    '爪術',
+    '#d98a8a',
+    'gear_weapon_27',
+    [0, 0, 3, 0, 0, 1],
+    [
+      ['撕爪', { w_claw: 10, as: 3 }],
+      ['嗜血', { w_claw: 10, killHeal: 3 }],
+      ['獸性', { w_claw: 12, critInc: 8 }]
+    ]
+  ),
+  PT_WP(
+    'traptool',
+    '機關術',
+    '#a3c977',
+    'sup_sp_mine',
+    [0, 1, 3, 0, 0, 0],
+    [
+      ['巧匠', { w_traptool: 12, units: 1 }],
+      ['連環', { w_traptool: 10, aoe: 6 }],
+      ['精工', { w_traptool: 10, unitP: 6 }]
+    ]
+  ),
+  PT_WP(
+    'staff',
+    '法杖術',
+    '#ff9f6b',
+    'gear_weapon_4',
+    [0, 0, 0, 3, 1, 0],
+    [
+      ['元素之杖', { w_staff: 12, elemP: 5 }],
+      ['杖心', { w_staff: 10, castP: 4 }],
+      ['長吟', { w_staff: 10, mpReg: 10 }]
+    ]
+  ),
+  PT_WP(
+    'wand',
+    '魔杖術',
+    '#a98bdf',
+    'gear_weapon_31',
+    [0, 0, 0, 1, 3, 0],
+    [
+      ['咒杖', { w_wand: 12, occP: 5 }],
+      ['速咒', { w_wand: 10, castP: 5 }],
+      ['凋零之杖', { w_wand: 10, unholyKill: 10 }]
+    ]
+  ),
+  PT_WP(
+    'sceptre',
+    '權杖術',
+    '#d0a8ff',
+    'gear_weapon_15',
+    [0, 0, 0, 0, 3, 1],
+    [
+      ['王權', { w_sceptre: 10, spirit: 8 }],
+      ['號令', { w_sceptre: 10, auraEff: 5 }],
+      ['權威', { w_sceptre: 12, minionP: 5 }]
+    ]
+  ),
+  PT_WP(
+    'talisman',
+    '魔符術',
+    '#8fcf6a',
+    'asc_tamer_e',
+    [1, 0, 0, 0, 0, 3],
+    [
+      ['熊魂', { w_talisman: 12, hpP: 2 }],
+      ['狼魂', { w_talisman: 10, as: 2 }],
+      ['獸血', { w_talisman: 10, priP: 6 }]
+    ]
+  ),
+  PT_WP(
+    'qstaff',
+    '棍術',
+    '#b5d36b',
+    'asc_moon_c',
+    [1, 0, 0, 0, 0, 3],
+    [
+      ['武僧', { w_qstaff: 12, as: 2 }],
+      ['迴棍', { w_qstaff: 10, aoe: 10 }],
+      ['禪定', { w_qstaff: 8, powOnCrit: 20 }]
+    ]
+  )
 ];
-/* 天賦樹的圖示：大點照主題輪流挑（同一區的大點不會長一樣），小點照加的數值 */
+const PT_TH = Object.fromEntries(PT_THEME.map((t, i) => [t.n, i]));
+/* 六條路（起點，照技能體系；排成一圈，相鄰的互相混搭）：th 起點的顏色與圖示、d 往外偏重什麼 */
+const PT_ROADS = [
+  { n: '鬥士之路', th: '近戰', d: '劍、斧、錘、連枷、盾；近戰、護甲、格擋' },
+  { n: '遊俠之路', th: '投射物', d: '弓、弩、矛；投射物、身法、攻速' },
+  { n: '暗影之路', th: '暴擊率', d: '匕首、爪、陷阱器；暴擊、異常、陷阱地雷' },
+  { n: '魔導之路', th: '元素技能', d: '法杖；元素技能（火、冰、電）、法術、能量護盾' },
+  { n: '死靈之路', th: '秘術技能', d: '魔杖、權杖；秘術技能（混沌、詛咒、召喚）、召喚物、精魄光環' },
+  { n: '自然之路', th: '原始技能', d: '魔符、長棍；原始技能（變身、圖騰、植物）、生命、圖騰砲台' }
+];
+/* 基石（0.2.17，每條路 2 個，放在外圈末端、只連 1 條線）：好處和代價寫在同一點；「傷害更多」是全域的（7.2 第 5 步） */
+const PT_KEYS = [
+  { rg: 0, n: '狂戰之血', ic: 'asc_bloodclaw_e', s: { more: 30, resA: -15 } },
+  { rg: 0, n: '鐵壁', ic: 'asc_phalanx_e', s: { armorP: 80, blockInc: 15, more: -20 } },
+  { rg: 1, n: '狙擊者', ic: 'asc_hunter_e', s: { more: 35, closeP: -50 } },
+  { rg: 1, n: '疾風步', ic: 'asc_master_e', s: { ms: 15, as: 8, hpP: -15 } },
+  { rg: 2, n: '玻璃大砲', ic: 'asc_shadow_e', s: { more: 40, hpP: -30 } },
+  { rg: 2, n: '一擊必殺', ic: 'asc_judge_e', s: { critX: 60, critInc: -30 } },
+  { rg: 3, n: '元素超載', ic: 'asc_storm_e', s: { pen: 25, resA: -20 } },
+  { rg: 3, n: '靈體', ic: 'asc_medium_e', s: { esP: 60, hpP: -40 } },
+  { rg: 4, n: '血魔法', ic: 'asc_bloodmage_e', s: { blood: 1, hpP: 10 } },
+  { rg: 4, n: '亡者之主', ic: 'asc_bonelord_e', s: { minionP: 50, spirit: 20, hpP: -20 } },
+  { rg: 5, n: '巨人之血', ic: 'asc_peach_e', s: { hpP: 25, regen: 20, as: -10, ms: -8 } },
+  { rg: 5, n: '祖靈守護', ic: 'asc_banner_e', s: { units: 2, unitP: 30, ms: -10 } }
+];
+/* 天賦樹的圖示：大點照主題輪流挑（同一區的大點不會長一樣），小點照加的數值；沒列的主題用自己的 ic */
 const PT_ICONS = (() => {
   const AF = f => ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'c', 'c0', 'c1', 'c2', 'e'].map(k => `asc_${f}_${k}`);
-  return [
-    ['asc_s_heart', 'asc_s_heartx', 'asc_s_potion', ...AF('peach')],
-    ['asc_s_shield', 'sup_ln_iron', ...AF('phalanx')],
-    ['asc_s_anvil', 'ail_guard', 'ail_shield', ...AF('paladin')],
-    ['asc_s_sword', 'asc_s_fist', 'sup_sp_melee', 'sup_sp_heavy', ...AF('blade'), ...AF('crusher').slice(0, 5)],
-    [...AF('valkyrie'), 'gear_weapon_9'],
-    ['asc_s_wind', 'sup_sp_fastatk', 'sup_sp_combo', 'sup_sp_echo', ...AF('master').slice(0, 6)],
-    ['sup_sp_crit', 'sup_sp_brutal', 'ail_bleed', ...AF('bloodclaw')],
-    ['asc_s_feather', ...AF('shadow')],
-    [...AF('moon'), 'gear_weapon_4'],
-    ['asc_s_bolt', 'sup_sp_proj', 'sup_sp_multi', 'sup_sp_chain', 'sup_sp_pen', 'ail_n_arrow', ...AF('hunter')],
-    ['sup_sp_trap', 'sup_sp_mine', 'sup_sp_deploy', 'sup_sp_deployfast', ...AF('engineer')],
-    ['asc_s_eye', 'sup_sp_exec', 'ail_mark', 'ail_dmark', ...AF('judge')],
-    ['asc_s_rune', 'asc_s_flag', 'sup_sp_totem', ...AF('banner')],
-    ['asc_s_paw', 'sup_sp_pet', 'sup_sp_horde', 'sup_ln_pack', 'sup_ln_legion', ...AF('tamer'), ...AF('bonelord')],
-    [
-      'asc_s_flame',
-      'asc_s_ice',
-      'sup_sp_gfire',
-      'sup_sp_gcold',
-      'sup_sp_glight',
-      ...AF('pyro'),
-      ...AF('frost'),
-      ...AF('storm')
-    ],
-    ['sup_sp_fastcast', 'sup_sp_conc', 'sup_ln_hellfire', ...AF('talisman'), ...AF('bloodmage')],
-    ['asc_s_stars', 'sup_sp_aoe', 'sup_sp_boom', 'sup_sp_ext', ...AF('crusher').slice(5)],
-    ['asc_s_drop', 'sup_ln_soul', 'sup_ln_void', ...AF('medium')],
-    ['asc_s_lotus', 'sup_ln_candle', 'sup_ln_wrath', ...AF('alchemist'), ...AF('curse')],
-    ['asc_s_book', 'sup_sp_cd', 'sup_sp_mpleech', 'sup_sp_eff', ...AF('master').slice(6)]
-  ];
+  return {
+    生命: ['asc_s_heart', 'asc_s_heartx', 'asc_s_potion', ...AF('peach')],
+    護甲: ['asc_s_shield', 'sup_ln_iron', ...AF('phalanx')],
+    格擋與盾: ['asc_s_anvil', 'ail_guard', 'ail_shield', ...AF('paladin')],
+    近戰: ['asc_s_sword', 'asc_s_fist', 'sup_sp_melee', 'sup_sp_heavy'],
+    攻速: ['asc_s_wind', 'sup_sp_fastatk', 'sup_sp_combo', 'sup_sp_echo', ...AF('master').slice(0, 6)],
+    投射物: ['asc_s_bolt', 'sup_sp_proj', 'sup_sp_multi', 'sup_sp_chain', 'sup_sp_pen', 'ail_n_arrow'],
+    身法: ['asc_s_feather', ...AF('shadow')],
+    暴擊率: ['asc_s_eye', 'sup_sp_exec', 'ail_mark', 'ail_dmark', ...AF('judge')],
+    暴擊傷害: ['sup_sp_crit', 'sup_sp_brutal', ...AF('bloodclaw')],
+    陷阱地雷: ['sup_sp_trap', 'sup_sp_mine', 'sup_sp_deploy', 'sup_sp_deployfast', ...AF('engineer')],
+    異常: ['ail_bleed', 'ail_poison', 'ail_burn', 'ail_shock', 'ail_n_corrode', 'ail_n_weak'],
+    元素: ['asc_s_flame', 'asc_s_ice', 'sup_sp_gfire', 'sup_sp_gcold', 'sup_sp_glight'],
+    元素技能: [...AF('pyro'), ...AF('frost'), ...AF('storm')],
+    法術: ['sup_sp_fastcast', 'sup_sp_conc', 'sup_ln_hellfire', ...AF('bloodmage')],
+    能量護盾: ['asc_s_drop', 'sup_ln_soul', 'sup_ln_void', ...AF('medium')],
+    魔力冷卻: ['asc_s_book', 'sup_sp_cd', 'sup_sp_mpleech', 'sup_sp_eff', ...AF('master').slice(6)],
+    秘術技能: ['ail_curse', 'ail_doom', ...AF('curse')],
+    召喚: ['asc_s_paw', 'sup_sp_pet', 'sup_sp_horde', 'sup_ln_pack', 'sup_ln_legion', ...AF('bonelord')],
+    精魄光環: ['asc_s_lotus', 'sup_ln_candle', 'sup_ln_wrath', ...AF('alchemist')],
+    原始技能: [...AF('tamer'), ...AF('talisman')],
+    圖騰砲台: ['asc_s_rune', 'asc_s_flag', 'sup_sp_totem', ...AF('banner')],
+    範圍: ['asc_s_stars', 'sup_sp_aoe', 'sup_sp_boom', 'sup_sp_ext', ...AF('crusher').slice(5)],
+    劍術: [...AF('blade'), 'gear_weapon_0'],
+    錘術: [...AF('crusher').slice(0, 5), 'gear_weapon_8'],
+    矛術: [...AF('valkyrie'), 'gear_weapon_9'],
+    弓術: [...AF('hunter'), 'gear_weapon_3'],
+    棍術: [...AF('moon'), 'gear_weapon_4']
+  };
 })();
 const PT_STAT_IC = {
   life: 'asc_s_heart',
@@ -1287,9 +1543,7 @@ const PT_STAT_IC = {
   armorP: 'asc_s_shield',
   block: 'asc_s_anvil',
   meleeP: 'asc_s_sword',
-  swordP: 'asc_s_sword',
-  spearP: 'gear_weapon_9',
-  staffP: 'gear_weapon_4',
+  shieldP: 'asc_s_anvil',
   as: 'asc_s_wind',
   critX: 'sup_sp_brutal',
   crit: 'asc_s_eye',
@@ -1600,17 +1854,12 @@ const PTREE = (() => {
     add = o => ((I[o.id] = o), N.push(o), o),
     link = (a, b) => E.push([a.id, b.id]),
     pol = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
-  const NR = PT_THEME.length,
-    STEP = 360 / NR;
-  /* 小點的數值：主題 70%、隔壁主題 30%（每個方向偏重一種體系，但不會全部都是那個） */
-  const smallOf = (ti, k) => {
-    const T = PT_THEME[ti],
-      sj = (ti + (k % 2 ? 1 : NR - 1)) % NR,
-      side = PT_THEME[sj];
-    /* 0.2.7：每 10 點有 1 點是基礎能力（取代 PoE2 的「+5 屬性」點；一點只給一種） */
-    if (k % 10 === 9) return { s: PT_BASE[Math.floor(k / 10) % PT_BASE.length], th: ti };
-    return k % 10 < 6 ? { s: T.sm[k % T.sm.length], th: ti } : { s: side.sm[k % side.sm.length], th: sj };
-  };
+  /* 小點的數值：叢集自己的主題（照 PoE2：一個叢集的小點同一條詞）；每 10 點有 1 點是基礎能力點，
+     過路點全部是基礎能力點（th 0「基礎」，切斷主題，不能沿同一主題一路點下去） */
+  const smallOf = (ti, k) =>
+    k % 10 === 9 || !ti
+      ? { s: PT_BASE[Math.floor(k / (ti ? 10 : 1)) % PT_BASE.length], th: 0 }
+      : { s: PT_THEME[ti].sm[k % PT_THEME[ti].sm.length], th: ti };
   const near = (x, y, d) => N.some(o => Math.hypot(o.x - x, o.y - y) < d);
   const SUFFIX = ['之心', '之道', '極意', '奧義', '秘訣', '真髓', '之魂', '心法', '之印', '之誓', '領悟', '妙法'],
     CONDS = [
@@ -1666,8 +1915,9 @@ const PTREE = (() => {
   /* 照 PoE2：沒有大格網。拼塊表裡每塊都不一樣、每塊只用一次（不分區，整棵樹混在一起），轉向、翻面隨機；
      刻意不對稱：疏密圖（擠的地方拼塊挨在一起、稀的地方空出一片只拉長線）、大小圖（有的區域拼塊大、有的小）、
      外框隨角度凹凸（有半島、有缺口）；相鄰的拼塊直接相連（過路點很少，遠一點的才補） */
+  /* 六條路的方向：f 是 0～6 的小數，整數＝起點正中間（0 鬥士在正上方，順時針） */
   const hsh = i => ((Math.imul(i + 7, 2654435761) >>> 0) % 1000) / 1000,
-    thAt = (x, y) => Math.floor((((Math.atan2(y, x) * 180) / Math.PI + 90 + 360) % 360) / STEP) % NR,
+    rgF = (x, y) => (((Math.atan2(y, x) * 180) / Math.PI + 90 + 360) % 360) / 60,
     /* 平滑的不規則圖：幾個不同方向、不同波長的波疊起來，0～1 */
     WAVE = {},
     field = (sd, x, y) => {
@@ -1686,12 +1936,12 @@ const PTREE = (() => {
   const par = {},
     find = a => (par[a] === a || par[a] === undefined ? ((par[a] = a), a) : (par[a] = find(par[a]))),
     uni = (a, b) => (par[find(a)] = find(b));
-  /* 起點：6 個門（免費），不連成環 */
+  /* 起點：六條路（免費），不連成環 */
   for (let g = 0; g < 6; g++) {
-    const a = (g * 60 - 90) * deg,
-      [x, y] = pol(a, PT_R0),
-      th = thAt(x, y);
-    add({ id: 'g' + g, x, y, n: PT_THEME[th].n + '之門', ic: PT_THEME[th].ic, s: {}, big: 1, gate: 1, th });
+    const [x, y] = pol((g * 60 - 90) * deg, PT_R0),
+      R = PT_ROADS[g],
+      th = PT_TH[R.th];
+    add({ id: 'g' + g, x, y, n: R.n, d: '往外偏重：' + R.d, ic: PT_THEME[th].ic, s: {}, big: 1, gate: 1, th });
   }
   /* 拼塊：固定順序打散；ext＝單位大小下的半徑 */
   const q = PT_LIB.map((p, k) => ({ p, ext: Math.max(...p.pts.map(t => Math.hypot(t[0], t[1]))), k })).sort(
@@ -1740,7 +1990,6 @@ const PTREE = (() => {
           R: U.ext * sc,
           U: { p: U.p, sc },
           gap,
-          th: thAt(x, y),
           mir: hsh(cl.length * 17 + 3) < 0.5 ? -1 : 1,
           rot: hsh(cl.length * 31 + 5) * Math.PI * 2,
           id: 'k' + cl.length
@@ -1748,7 +1997,52 @@ const PTREE = (() => {
       }
     }
   const RMAX = Math.max(...cl.map(c => Math.hypot(c.x, c.y) + c.R));
+  /* 叢集的主題（照 PoE2「區域權重抽樣＋距離排斥」）：照方向混合兩條路的權重，內圈多防禦、武器專精只在外圈；
+     附近（中間隔不到約 3 步）已經有的主題不抽，同主題的叢集不會黏在一起 */
+  const REP = 450,
+    byR = [...cl].sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y));
+  for (const [ci, c] of byR.entries()) {
+    const f = rgF(c.x, c.y),
+      r0 = Math.floor(f) % 6,
+      t = f - Math.floor(f),
+      dd = (Math.hypot(c.x, c.y) - PT_R0) / (RMAX - PT_R0),
+      w = PT_THEME.map((T, ti) =>
+        T.base
+          ? 0
+          : (T.rg[r0] * (1 - t) + T.rg[(r0 + 1) % 6] * t) *
+            (T.wp ? (dd < 0.45 ? 0 : dd < 0.65 ? 0.6 : 3) : T.inner && dd < 0.35 ? 2.5 : 1)
+      );
+    /* 這個方向的主題全部被排斥時，排斥距離減半再找 */
+    let ws = w;
+    for (const rep of [REP, REP / 2, REP / 4]) {
+      const ban = new Set(byR.filter(b => b.th && Math.hypot(b.x - c.x, b.y - c.y) - b.R - c.R < rep).map(b => b.th)),
+        v = w.map((x, ti) => (ban.has(ti) ? 0 : x));
+      if (v.some(x => x > 0)) {
+        ws = v;
+        break;
+      }
+    }
+    let roll = hsh(ci * 131 + 17) * ws.reduce((a, b) => a + b, 0);
+    c.th = ws.findIndex(v => (roll -= v) < 0);
+    if (c.th < 0) c.th = ws.findLastIndex(v => v > 0);
+  }
+  /* 保底：每種武器至少 2 個專精叢集，不夠的從它那條路的外圈挑一個（那個主題要還有 4 個以上）換掉 */
+  const cnt = t => cl.filter(c => c.th === t).length;
+  for (const [ti, T] of PT_THEME.entries())
+    for (let need = T.wp ? 2 - cnt(ti) : 0; need > 0; need--) {
+      const c = byR
+        .filter(
+          c =>
+            Math.round(rgF(c.x, c.y)) % 6 === T.rg.indexOf(3) &&
+            !PT_THEME[c.th].wp &&
+            cnt(c.th) >= 4 &&
+            !cl.some(b => b.th === ti && Math.hypot(b.x - c.x, b.y - c.y) - b.R - c.R < REP)
+        )
+        .pop();
+      if (c) c.th = ti;
+    }
   /* 拼塊的點 */
+  let L;
   const ARC = {},
     icK = {},
     smIc = o => PT_STAT_IC[Object.keys(o.s)[0]] || PT_THEME[o.th].ic;
@@ -1759,6 +2053,9 @@ const PTREE = (() => {
         c.x + (Math.cos(c.rot) * u - Math.sin(c.rot) * v * c.mir) * sc,
         c.y + (Math.sin(c.rot) * u + Math.cos(c.rot) * v * c.mir) * sc
       ];
+    /* 拼塊裡的十字路口（連 3 條以上）當過路點：叢集被切成幾小段，跟 PoE2 一樣大點前面是幹道 */
+    const dg = c.U.p.pts.map(() => 0);
+    for (const [p, q] of c.U.p.e) dg[p]++, dg[q]++;
     c.nodes = c.U.p.pts.map(([u, v, big], k) => {
       const [x, y] = at([u, v]);
       if (big) {
@@ -1768,14 +2065,15 @@ const PTREE = (() => {
           x,
           y,
           n: nt.n,
-          ic: PT_ICONS[c.th][(icK[c.th] = (icK[c.th] || 0) + 1) % PT_ICONS[c.th].length],
+          ic:
+            ((L = PT_ICONS[PT_THEME[c.th].n] || [PT_THEME[c.th].ic]), L[(icK[c.th] = (icK[c.th] || 0) + 1) % L.length]),
           s: nt.s,
           big: 1,
           power: nt.power,
           th: c.th
         });
       }
-      const o = smallOf(c.th, k + N.length);
+      const o = smallOf(dg[k] >= 4 ? 0 : c.th, k + N.length);
       return add({ id: `${c.id}_${k}`, x, y, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th, ic: smIc(o) });
     });
     c.U.p.e.forEach(([p, q], k) => {
@@ -1826,16 +2124,16 @@ const PTREE = (() => {
       (gp[gf(i)] = gf(j)), use.push(c), (gDeg[i] = (gDeg[i] || 0) + 1), (gDeg[j] = (gDeg[j] || 0) + 1);
     else if (hsh(i * 97 + j) < 0.5 || (i < 6 && (gDeg[i] || 0) < 2)) use.push(c), (gDeg[i] = (gDeg[i] || 0) + 1);
   }
-  /* 連線太長才在中間補過路點（每 190 一個） */
+  /* 叢集之間至少一個過路點（照 PoE2，叢集不直接相連），連線長的每 190 再補一個 */
   for (const [A, B, L] of use) {
-    const n = Math.floor(L / 190);
+    const n = Math.max(1, Math.floor(L / 190));
     let prev = A;
     for (let k = 1; k <= n; k++) {
       const f = k / (n + 1),
         x = A.x + (B.x - A.x) * f,
         y = A.y + (B.y - A.y) * f;
       if (near(x, y, 36)) continue;
-      const o = smallOf(A.th, k + N.length),
+      const o = smallOf(0, k + N.length),
         nd = add({ id: 'x' + N.length, x, y, n: PT_THEME[o.th].n, s: o.s, big: 0, th: o.th, ic: smIc(o) });
       link(prev, nd);
       uni(prev.id, nd.id);
@@ -1856,6 +2154,20 @@ const PTREE = (() => {
         }
     link(best[0], best[1]);
     uni(best[0].id, best[1].id);
+  }
+  /* 基石：每條路 2 個，接在那條路最外面的叢集的最外一點，往外拉出去、只連 1 條線 */
+  for (const [i, K] of PT_KEYS.entries()) {
+    const out = c => Math.hypot(c.x, c.y) + c.R;
+    for (const c of cl.filter(c => !c.ks && Math.round(rgF(c.x, c.y)) % 6 === K.rg).sort((a, b) => out(b) - out(a))) {
+      const A = c.nodes.reduce((p, q) => (Math.hypot(q.x, q.y) > Math.hypot(p.x, p.y) ? q : p)),
+        r = Math.hypot(A.x, A.y),
+        x = (A.x / r) * (r + 120),
+        y = (A.y / r) * (r + 120);
+      if (near(x, y, 90)) continue;
+      c.ks = 1;
+      link(A, add({ id: 'ks' + i, x, y, n: K.n, ic: K.ic, s: K.s, big: 2, th: c.th }));
+      break;
+    }
   }
   const ADJ = {};
   for (const [a, b] of E) (ADJ[a] = ADJ[a] || []).push(b), (ADJ[b] = ADJ[b] || []).push(a);
@@ -1896,6 +2208,8 @@ const WTN = {
   traptool: '陷阱器',
   talisman: '魔符'
 };
+/* 武器專精：持某武器時傷害（0.2.17，15 種武器都有） */
+for (const k in WTN) STATN['w_' + k] = [`持${WTN[k]}時傷害`, '%'];
 /* 一律雙手的類別（劍、斧、錘的雙手是看底材的 two，0.2.12：單手與雙手是同一類）、可以雙持（只限單手底材）、法系（不能攻擊，給法術加成） */
 const WT2 = new Set(['qstaff', 'bow', 'xbow', 'staff', 'traptool', 'talisman']);
 const DUAL = new Set(['sword', 'axe', 'dagger', 'claw']);
@@ -2450,6 +2764,353 @@ const MOBS = {
     reach: 100,
     cd: 2.4,
     xp: 18
+  },
+  /* 0.2.17：新行為 bomb（自爆：靠近後亮圈再爆，自爆不給經驗與掉寶）、cast（在玩家腳下放預警圈）、
+     fan（扇形 3 發）、summon（後排叫 call，最多 4 隻）；split 死掉分成 2 隻小的 */
+  islime: {
+    n: '冰史萊姆',
+    sp: 'm_slime_ice',
+    hp: 44,
+    dmg: 9,
+    spd: 90,
+    r: 20,
+    sz: 44,
+    ai: 'melee',
+    wind: 0.5,
+    reach: 48,
+    cd: 1.3,
+    xp: 7,
+    el: 'cold',
+    split: 1
+  },
+  fslime: {
+    n: '火史萊姆',
+    sp: 'm_slime_fire',
+    hp: 44,
+    dmg: 10,
+    spd: 95,
+    r: 20,
+    sz: 44,
+    ai: 'melee',
+    wind: 0.5,
+    reach: 48,
+    cd: 1.3,
+    xp: 7,
+    el: 'fire',
+    split: 1
+  },
+  tslime: {
+    n: '腐臭史萊姆',
+    ail: 'poison',
+    sp: 'm_slime_trash',
+    hp: 48,
+    dmg: 8,
+    spd: 85,
+    r: 20,
+    sz: 44,
+    ai: 'melee',
+    wind: 0.5,
+    reach: 48,
+    cd: 1.3,
+    xp: 7,
+    el: 'chaos',
+    split: 1
+  },
+  lgolem: {
+    n: '熔岩魔像',
+    arm: 1,
+    sp: 'm_lavagolem',
+    hp: 100,
+    dmg: 24,
+    spd: 75,
+    r: 26,
+    sz: 64,
+    ai: 'slam',
+    wind: 0.9,
+    reach: 100,
+    cd: 2.5,
+    xp: 18,
+    el: 'fire'
+  },
+  tgolem: {
+    n: '雷魔像',
+    arm: 1,
+    sp: 'm_thundergolem',
+    hp: 95,
+    dmg: 23,
+    spd: 80,
+    r: 26,
+    sz: 64,
+    ai: 'slam',
+    wind: 0.85,
+    reach: 100,
+    cd: 2.4,
+    xp: 18,
+    el: 'light'
+  },
+  bknight: {
+    n: '骷髏騎士',
+    arm: 1,
+    ail: 'bleed',
+    sp: 'bone_knight',
+    hp: 90,
+    dmg: 22,
+    spd: 90,
+    r: 24,
+    sz: 60,
+    ai: 'slam',
+    wind: 0.8,
+    reach: 95,
+    cd: 2.3,
+    xp: 17
+  },
+  ltoad: {
+    n: '熔岩蟾蜍',
+    sp: 'm_lavatoad',
+    hp: 36,
+    dmg: 12,
+    spd: 70,
+    r: 18,
+    sz: 42,
+    ai: 'cast',
+    wind: 0.6,
+    reach: 360,
+    cd: 2.6,
+    xp: 8,
+    el: 'fire'
+  },
+  tfrog: {
+    n: '雷蛙',
+    sp: 'm_thunderfrog',
+    hp: 32,
+    dmg: 12,
+    spd: 80,
+    r: 17,
+    sz: 42,
+    ai: 'cast',
+    wind: 0.6,
+    reach: 360,
+    cd: 2.5,
+    xp: 8,
+    el: 'light'
+  },
+  treefrog: {
+    n: '毒樹蛙',
+    ail: 'poison',
+    sp: 'm_treefrog',
+    hp: 32,
+    dmg: 10,
+    spd: 80,
+    r: 17,
+    sz: 42,
+    ai: 'cast',
+    wind: 0.6,
+    reach: 360,
+    cd: 2.5,
+    xp: 8,
+    el: 'chaos'
+  },
+  lantern: {
+    n: '燈籠鬼',
+    sp: 'm_lantern',
+    hp: 30,
+    dmg: 12,
+    spd: 100,
+    r: 17,
+    sz: 44,
+    ai: 'cast',
+    wind: 0.65,
+    reach: 380,
+    cd: 2.6,
+    xp: 8,
+    fly: 1,
+    el: 'fire'
+  },
+  joss: {
+    n: '金紙火',
+    sp: 'm_jossfire',
+    hp: 18,
+    dmg: 26,
+    spd: 190,
+    r: 15,
+    sz: 42,
+    ai: 'bomb',
+    wind: 0.9,
+    reach: 60,
+    boom: 90,
+    cd: 1,
+    xp: 5,
+    fly: 1,
+    el: 'fire'
+  },
+  hghost: {
+    n: '餓鬼',
+    sp: 'hungry_ghost',
+    hp: 22,
+    dmg: 24,
+    spd: 180,
+    r: 15,
+    sz: 46,
+    ai: 'bomb',
+    wind: 0.9,
+    reach: 60,
+    boom: 90,
+    cd: 1,
+    xp: 5,
+    el: 'chaos'
+  },
+  imp: {
+    n: '地獄小鬼',
+    sp: 'hell_imp',
+    hp: 26,
+    dmg: 8,
+    spd: 120,
+    r: 16,
+    sz: 44,
+    ai: 'fan',
+    wind: 0.6,
+    reach: 320,
+    cd: 2.2,
+    xp: 8,
+    el: 'fire'
+  },
+  paper: {
+    n: '紙人',
+    sp: 'm_paperdoll',
+    hp: 24,
+    dmg: 8,
+    spd: 125,
+    r: 16,
+    sz: 44,
+    ai: 'fan',
+    wind: 0.6,
+    reach: 320,
+    cd: 2.2,
+    xp: 7,
+    el: 'cold'
+  },
+  cobra: {
+    n: '眼鏡蛇',
+    ail: 'poison',
+    sp: 'm_cobra',
+    hp: 30,
+    dmg: 9,
+    spd: 110,
+    r: 17,
+    sz: 44,
+    ai: 'fan',
+    wind: 0.6,
+    reach: 300,
+    cd: 2.3,
+    xp: 8,
+    el: 'chaos'
+  },
+  viper: {
+    n: '青竹絲',
+    ail: 'poison',
+    sp: 'm_greenviper',
+    hp: 26,
+    dmg: 9,
+    spd: 210,
+    r: 16,
+    sz: 42,
+    ai: 'lunge',
+    wind: 0.36,
+    reach: 220,
+    cd: 1.6,
+    xp: 7,
+    el: 'chaos'
+  },
+  bailiff: {
+    n: '鬼差',
+    ail: 'bleed',
+    sp: 'ghost_bailiff',
+    hp: 32,
+    dmg: 10,
+    spd: 200,
+    r: 16,
+    sz: 50,
+    ai: 'lunge',
+    wind: 0.4,
+    reach: 240,
+    cd: 1.6,
+    xp: 8
+  },
+  jiangshi: {
+    n: '殭屍',
+    arm: 1,
+    sp: 'jiangshi',
+    hp: 55,
+    dmg: 12,
+    spd: 70,
+    r: 18,
+    sz: 50,
+    ai: 'melee',
+    wind: 0.55,
+    reach: 46,
+    cd: 1.5,
+    xp: 9
+  },
+  skel: {
+    n: '骷髏兵',
+    ail: 'bleed',
+    sp: 'skeleton',
+    hp: 30,
+    dmg: 9,
+    spd: 130,
+    r: 17,
+    sz: 48,
+    ai: 'melee',
+    wind: 0.45,
+    reach: 44,
+    cd: 1.2,
+    xp: 6
+  },
+  yaksha: {
+    n: '夜叉',
+    sp: 'm_yaksha',
+    hp: 38,
+    dmg: 10,
+    spd: 170,
+    r: 17,
+    sz: 48,
+    ai: 'melee',
+    wind: 0.35,
+    reach: 44,
+    cd: 0.9,
+    xp: 8,
+    el: 'light'
+  },
+  judge: {
+    n: '判官',
+    sp: 'm_judge',
+    hp: 50,
+    dmg: 8,
+    spd: 90,
+    r: 18,
+    sz: 50,
+    ai: 'summon',
+    call: 'paper',
+    wind: 0.8,
+    reach: 340,
+    cd: 4.5,
+    xp: 12
+  },
+  priest: {
+    n: '鬼道士',
+    sp: 'ghost_priest',
+    hp: 50,
+    dmg: 8,
+    spd: 90,
+    r: 18,
+    sz: 50,
+    ai: 'summon',
+    call: 'jiangshi',
+    wind: 0.8,
+    reach: 340,
+    cd: 5,
+    xp: 12,
+    el: 'chaos'
   }
 };
 /* 一群的組成 */
@@ -2462,13 +3123,182 @@ const PACKS = [
   ['wolf', 'wolf', 'wolf'],
   ['tbat', 'tbat', 'tbat', 'tbat', 'bat', 'bat'],
   ['shroom', 'shroom', 'slime', 'slime'],
-  ['bear', 'tbat', 'tbat', 'fire']
+  ['bear', 'tbat', 'tbat', 'fire'],
+  ['islime', 'islime', 'paper', 'paper'],
+  ['fslime', 'fslime', 'imp', 'imp'],
+  ['tslime', 'tslime', 'treefrog', 'treefrog'],
+  ['lgolem', 'ltoad', 'ltoad', 'joss'],
+  ['tgolem', 'tfrog', 'tfrog', 'yaksha'],
+  ['bknight', 'skel', 'skel', 'skel'],
+  ['skel', 'skel', 'skel', 'skel', 'cobra'],
+  ['joss', 'joss', 'joss', 'fire'],
+  ['hghost', 'hghost', 'hghost', 'shroom'],
+  ['viper', 'viper', 'viper', 'cobra'],
+  ['bailiff', 'bailiff', 'paper', 'paper'],
+  ['jiangshi', 'jiangshi', 'priest'],
+  ['yaksha', 'yaksha', 'judge'],
+  ['lantern', 'lantern', 'jiangshi', 'jiangshi'],
+  ['wolf', 'wolf', 'islime', 'paper'],
+  ['imp', 'imp', 'imp', 'lgolem'],
+  ['tfrog', 'tbat', 'tbat', 'tbat', 'tgolem']
 ];
 const ELITE = { hp: 3.2, dmg: 1.5, sz: 1.3 };
-/* 王：照階級輪替；sk 叫小怪的種類、el 屬性 */
+/* 王（0.2.17 起每張圖隨機一隻，不跟上一隻重複 bossPick）：call 叫小怪的種類、el 屬性、
+   pat 會的招（揮爪 swipe、衝撞 charge、砸地 slam、叫小怪 summon、彈幕環 nova、連爆線 line、瞬移斬 blink；game.js 的 bossAI） */
 const BOSSES = [
-  { n: '虎姑婆', sp: 'hugupo', hp: 480, dmg: 22, spd: 135, r: 40, sz: 120, xp: 200, call: 'bat' },
-  { n: '魔神仔', sp: 'mosina', hp: 450, dmg: 21, spd: 150, r: 38, sz: 116, xp: 200, call: 'shroom', el: 'chaos' },
-  { n: '林投姐', sp: 'lintoujie', hp: 470, dmg: 22, spd: 140, r: 38, sz: 118, xp: 200, call: 'wolf', el: 'cold' }
+  {
+    n: '虎姑婆',
+    sp: 'hugupo',
+    hp: 480,
+    dmg: 22,
+    spd: 135,
+    r: 40,
+    sz: 120,
+    xp: 200,
+    call: 'bat',
+    pat: ['swipe', 'charge', 'summon', 'blink']
+  },
+  {
+    n: '魔神仔',
+    sp: 'mosina',
+    hp: 450,
+    dmg: 21,
+    spd: 150,
+    r: 38,
+    sz: 116,
+    xp: 200,
+    call: 'shroom',
+    el: 'chaos',
+    pat: ['line', 'slam', 'summon']
+  },
+  {
+    n: '林投姐',
+    sp: 'lintoujie',
+    hp: 470,
+    dmg: 22,
+    spd: 140,
+    r: 38,
+    sz: 118,
+    xp: 200,
+    call: 'wolf',
+    el: 'cold',
+    pat: ['nova', 'blink', 'swipe']
+  },
+  {
+    n: '牛頭',
+    sp: 'oxhead',
+    hp: 500,
+    dmg: 23,
+    spd: 130,
+    r: 40,
+    sz: 120,
+    xp: 200,
+    call: 'skel',
+    pat: ['swipe', 'charge', 'slam']
+  },
+  {
+    n: '馬面',
+    sp: 'horseface',
+    hp: 460,
+    dmg: 22,
+    spd: 155,
+    r: 38,
+    sz: 118,
+    xp: 200,
+    call: 'bailiff',
+    pat: ['charge', 'line', 'swipe']
+  },
+  {
+    n: '閻羅',
+    sp: 'yanluo',
+    hp: 480,
+    dmg: 21,
+    spd: 130,
+    r: 40,
+    sz: 120,
+    xp: 200,
+    call: 'judge',
+    el: 'fire',
+    pat: ['nova', 'summon', 'line', 'swipe']
+  },
+  {
+    n: '鍾馗',
+    sp: 'zhongkui',
+    hp: 480,
+    dmg: 22,
+    spd: 140,
+    r: 40,
+    sz: 120,
+    xp: 200,
+    call: 'paper',
+    el: 'light',
+    pat: ['blink', 'slam', 'swipe', 'line']
+  },
+  {
+    n: '巫妖王',
+    sp: 'lichking',
+    hp: 450,
+    dmg: 22,
+    spd: 125,
+    r: 38,
+    sz: 118,
+    xp: 200,
+    call: 'skel',
+    el: 'cold',
+    pat: ['nova', 'slam', 'summon']
+  },
+  {
+    n: '骨巨人',
+    sp: 'bone_colossus',
+    hp: 500,
+    dmg: 23,
+    spd: 120,
+    r: 42,
+    sz: 124,
+    xp: 200,
+    call: 'skel',
+    pat: ['slam', 'charge', 'line']
+  },
+  {
+    n: '死神',
+    sp: 'reaper',
+    hp: 450,
+    dmg: 22,
+    spd: 150,
+    r: 38,
+    sz: 116,
+    xp: 200,
+    call: 'hghost',
+    el: 'chaos',
+    pat: ['blink', 'nova', 'swipe']
+  },
+  {
+    n: '饕餮',
+    sp: 'taotie',
+    hp: 500,
+    dmg: 22,
+    spd: 135,
+    r: 42,
+    sz: 120,
+    xp: 200,
+    call: 'tslime',
+    pat: ['charge', 'swipe', 'slam', 'summon']
+  },
+  {
+    n: '燭龍',
+    sp: 'zhulong',
+    hp: 470,
+    dmg: 22,
+    spd: 135,
+    r: 40,
+    sz: 120,
+    xp: 200,
+    call: 'imp',
+    el: 'fire',
+    pat: ['line', 'nova', 'charge', 'slam']
+  }
 ];
-const bossOf = t => BOSSES[(t - 1) % BOSSES.length];
+const bossPick = no => {
+  const l = BOSSES.filter(b => b !== no);
+  return l[Math.floor(Math.random() * l.length)];
+};

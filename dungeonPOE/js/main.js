@@ -105,6 +105,11 @@ function migrate(s) {
     o.charms = [null, null, null];
     o.v = 14;
   }
+  /* 存檔 15（0.2.17）：天賦樹照技能體系重做（編號一樣、內容換了），點數全部退回 */
+  if (o.v < 15) {
+    o.pt = [...PT_START];
+    o.v = 15;
+  }
   /* 0.2.9：武器照 PoE2 的 18 種類別重做；舊底材換成同一族的新類別、最接近的階級（等級、稀有度、詞綴都保留） */
   const OLDW = {
     sword1: ['w_katana', 'w_moon', 'w_demon'],

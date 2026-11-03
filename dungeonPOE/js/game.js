@@ -10,7 +10,7 @@ let S;
 /* 存檔版本 10 是 0.2.0（重製：0.1 的存檔不沿用） */
 function newGame() {
   const s = {
-    v: 14,
+    v: 15,
     name: '女忍者',
     /* 手機的操作方向：p 直立、l 橫向（桌機一律橫向）；舊存檔 migrate 從這裡補 */
     orient: 'p',
@@ -330,7 +330,7 @@ function addProg(m) {
   if (G.prog < G.need) return;
   G.bossOut = 1;
   const p = floorNear(P.x, P.y, 260, 420, 60) || floorNear(P.x, P.y, 120, 260, 50) || { x: P.x + 1, y: P.y };
-  const b = spawnMob(bossOf(G.mapT), p.x, p.y, 99, false);
+  const b = spawnMob((G.lastBoss = bossPick(G.lastBoss)), p.x, p.y, 99, false);
   b.boss = 1;
   b.hp = b.mhp = b.hp * bossHpMul(G.mapT || 1) * (1 + MM('bhp') / 100);
   b.dmg *= BOSS_DMG * (1 + MM('bdmg') / 100);
@@ -660,6 +660,16 @@ function killMob(m) {
   onKill();
   addProg(m);
   if (m.boss) bossDown(m);
+  /* 分裂：分成 2 隻小的（不再分、不算首領進度） */
+  if (m.D.split && !m.small)
+    for (let i = 0; i < 2; i++) {
+      const o = spawnMob(m.D, m.x + rnd(-24, 24), m.y + rnd(-24, 24), 99, false);
+      o.small = o.aggro = 1;
+      o.r *= 0.65;
+      o.sz *= 0.65;
+      o.hp = o.mhp = o.hp * 0.35;
+      o.dmg *= 0.6;
+    }
 }
 function bossDown(m) {
   const first = G.mapT === S.maxT && S.maxT < TMAX;
@@ -851,7 +861,7 @@ function updMobs(dt) {
         a = see ? angTo(m, P) : flowAng(m);
       let want = 1;
       if (!see) want = 1;
-      else if (D.ai === 'ranged') want = dP > 300 ? 1 : dP < 200 ? -1 : 0;
+      else if (FAR_AI[D.ai]) want = dP > 300 ? 1 : dP < 200 ? -1 : 0;
       else if (dP < D.reach * (D.ai === 'lunge' ? 0.9 : 0.85)) want = 0;
       let vx = Math.cos(a) * want,
         vy = Math.sin(a) * want;
@@ -904,19 +914,31 @@ function mobStrike(m) {
     m.st = 'dash';
     m.t = (D.reach / 900) * 1.05;
     m.hitP = 0;
-  } else if (D.ai === 'ranged') {
-    G.shots.push({
-      foe: 1,
-      x: m.x,
-      y: m.y - m.sz * 0.5,
-      vx: Math.cos(m.ang) * 330,
-      vy: Math.sin(m.ang) * 330,
-      r: 9,
-      dmg: m.dmg,
-      el: m.el,
-      life: 1.6
-    });
+  } else if (D.ai === 'ranged' || D.ai === 'fan') {
+    const grp = {};
+    for (const da of D.ai === 'fan' ? [-0.3, 0, 0.3] : [0]) foeShot(m, m.ang + da, 330, m.dmg, grp);
     recover(m, 0.3);
+  } else if (D.ai === 'cast') {
+    G.tele.push({ x: P.x, y: P.y, r: 70, t: 0, dur: 0.8, dmg: m.dmg, src: m, el: m.el });
+    recover(m, 0.4);
+  } else if (D.ai === 'summon') {
+    if (G.mobs.filter(o => o.owner === m && o.hp > 0).length < 4)
+      for (let i = 0; i < 2; i++) {
+        const o = spawnMob(MOBS[D.call], m.x + rnd(-60, 60), m.y + rnd(-60, 60), 99, false);
+        o.owner = m;
+        o.aggro = 1;
+      }
+    fx({ k: 'ring', x: m.x, y: m.y, r: 70, dur: 0.35, col: '#b28dff' });
+    recover(m, 0.5);
+  } else if (D.ai === 'bomb') {
+    /* 自爆：死掉但不給經驗與掉寶，只算首領進度 */
+    fx({ k: 'ring', x: m.x, y: m.y, r: D.boom, dur: 0.35, col: '#ff8a5b' });
+    shake(0.3);
+    sfx('slam');
+    if (dist(m, P) < D.boom + P.r) hurtPlayer(m.dmg, m, m.el, true);
+    m.hp = 0;
+    fx({ k: 'die', x: m.x, y: m.y, sp: D.sp, sz: m.sz, dur: 0.45, flip: m.x > P.x });
+    addProg(m);
   } else if (D.ai === 'slam') {
     const x = m.x + Math.cos(m.ang) * 55,
       y = m.y + Math.sin(m.ang) * 55;
@@ -926,7 +948,31 @@ function mobStrike(m) {
     recover(m, 0.6);
   }
 }
-/* 王：追一下，然後衝撞／連續砸地／叫小怪／近身揮爪；半血以下更快 */
+/* 怪物的投射物 */
+function foeShot(m, ang, spd, dmg, grp) {
+  G.shots.push({
+    foe: 1,
+    x: m.x,
+    y: m.y - m.sz * 0.5,
+    vx: Math.cos(ang) * spd,
+    vy: Math.sin(ang) * spd,
+    r: 9,
+    dmg,
+    el: m.el,
+    life: 1.6,
+    grp
+  });
+}
+/* 會跟玩家保持距離的小怪 */
+const FAR_AI = { ranged: 1, fan: 1, cast: 1, summon: 1 };
+/* 王的招：近身能用的、遠的能用的（每隻王只會 D.pat 裡的）；彈幕環 NOVA_N 發、留 NOVA_GAP 發的缺口 */
+const BOSS_NEAR = { swipe: 1, slam: 1, nova: 1, blink: 1 },
+  BOSS_FAR = { charge: 1, slam: 1, summon: 1, nova: 1, line: 1, blink: 1 },
+  BOSS_WIND = { swipe: 0.5, charge: 0.75, slam: 0.2, summon: 0.6, nova: 0.8, line: 0.3, blink: 0.6 },
+  NOVA_N = 16,
+  NOVA_GAP = 3;
+const novaAng = (m, i) => m.gap + ((i + NOVA_GAP) * TAU) / NOVA_N;
+/* 王：追一下，然後照自己會的招出手（揮爪、衝撞、砸地、叫小怪、彈幕環、連爆線、瞬移斬）；半血以下更快 */
 function bossAI(m, dt, dP) {
   const rage = m.hp < m.mhp / 2 ? 0.72 : 1;
   if (rage < 1 && !m.raged) {
@@ -944,10 +990,32 @@ function bossAI(m, dt, dP) {
     }
     m.mv = dP > 90;
     if (m.cd <= 0 && see) {
-      m.pat = pick(dP < 140 ? ['swipe', 'swipe', 'slam'] : ['charge', 'slam', 'charge', 'summon']);
+      const ok = dP < 140 ? BOSS_NEAR : BOSS_FAR,
+        l = m.D.pat.filter(k => ok[k]);
+      m.pat = pick(l.length ? l : m.D.pat);
       m.st = 'wind';
       m.ang = angTo(m, P);
-      m.t = { swipe: 0.5, charge: 0.75, slam: 0.2, summon: 0.6 }[m.pat] * rage;
+      m.t = BOSS_WIND[m.pat] * rage;
+      if (m.pat === 'nova') m.gap = rnd(0, TAU);
+      if (m.pat === 'line')
+        for (let i = 0; i < 6; i++)
+          G.tele.push({
+            x: m.x + Math.cos(m.ang) * 85 * (i + 1),
+            y: m.y + Math.sin(m.ang) * 85 * (i + 1),
+            r: 62,
+            t: 0,
+            dur: (0.6 + i * 0.12) * rage,
+            dmg: m.dmg,
+            src: m,
+            el: m.el
+          });
+      if (m.pat === 'blink') {
+        /* 瞬移到玩家背後（背後是牆就落在玩家旁邊） */
+        const a = angTo(m, P);
+        m.tx = P.x + Math.cos(a) * 90;
+        m.ty = P.y + Math.sin(a) * 90;
+        if (isWall(m.tx, m.ty)) (m.tx = P.x + 1), (m.ty = P.y);
+      }
       if (m.pat === 'slam')
         for (let i = 0; i < 3; i++)
           G.tele.push({
@@ -978,6 +1046,20 @@ function bossAI(m, dt, dP) {
           spawnMob(MOBS[m.D.call], m.x + rnd(-90, 90), m.y + rnd(-90, 90), 99, false).aggro = 1;
         fx({ k: 'ring', x: m.x, y: m.y, r: 120, dur: 0.35, col: '#b28dff' });
         bossRec(m, 0.6, rage);
+      } else if (m.pat === 'nova') {
+        const grp = {};
+        for (let i = 0; i < NOVA_N - NOVA_GAP; i++) foeShot(m, novaAng(m, i), 260, m.dmg * 0.8, grp);
+        shake(0.25);
+        bossRec(m, 0.7, rage);
+      } else if (m.pat === 'blink') {
+        fx({ k: 'ring', x: m.x, y: m.y, r: 70, dur: 0.3, col: '#b28dff' });
+        m.x = m.tx;
+        m.y = m.ty;
+        fx({ k: 'ring', x: m.x, y: m.y, r: 70, dur: 0.3, col: '#b28dff' });
+        /* 落地接一下揮爪（畫面照揮爪的預警） */
+        m.pat = 'swipe';
+        m.ang = angTo(m, P);
+        m.t = 0.4 * rage;
       } else bossRec(m, 0.9, rage);
     }
   } else if (m.st === 'dash') {
@@ -1019,7 +1101,9 @@ function updShots(dt) {
     if (s.bounce != null && s.life <= 0) (s.ret = 1), (s.life = 1);
     if (s.foe) {
       if (Math.hypot(P.x - s.x, P.y - 20 - s.y) < P.r + s.r) {
-        hurtPlayer(s.dmg, s, s.el);
+        /* 同一波（扇形、彈幕環）只打中一次 */
+        if (!s.grp || !s.grp.hit) hurtPlayer(s.dmg, s, s.el);
+        if (s.grp) s.grp.hit = 1;
         s.life = 0;
       }
     } else

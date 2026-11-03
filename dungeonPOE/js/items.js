@@ -321,9 +321,9 @@ function stats(s = S) {
     units: 0,
     rollCd: 0,
     fireAdd: 0,
-    swordP: 0,
-    spearP: 0,
-    staffP: 0,
+    ...Object.fromEntries(Object.keys(WTN).map(k => ['w_' + k, 0])),
+    shieldP: 0,
+    more: 0,
     lowHp: 0,
     fullHp: 0,
     esUp: 0,
@@ -448,8 +448,8 @@ function stats(s = S) {
   o.es = Math.round(o.es * (1 + o.esP / 100));
   /* 持武器的加成 */
   o.wt = (w && baseOf(w).wt) || 'sword';
-  /* 天賦「持劍／持矛／持棍時傷害」（其他武器的專精等天賦樹重做） */
-  o.dmgA += o[{ sword: 'swordP', spear: 'spearP', qstaff: 'staffP' }[o.wt]] || 0;
+  /* 天賦「持某武器時傷害」（0.2.17，15 種武器都有） */
+  o.dmgA += o['w_' + o.wt] || 0;
   o.hp = Math.round(o.hp * (1 + pt.hpP / 100));
   o.armor = Math.round(o.armor * (1 + pt.armorP / 100));
   o.ev = Math.round(o.ev * (1 + pt.evP / 100));
@@ -468,6 +468,7 @@ function stats(s = S) {
   /* 盾技能（0.2.13）：基礎物理＝這面盾的護甲＋閃避（底材照品質＋盾上的詞）×0.14～0.26，每秒出手 1.2 下 */
   const sh = off && offOK(w, off) && baseOf(off).k === 'shield' ? off : null;
   o.shield = !!sh;
+  if (sh) o.dmgA += o.shieldP;
   if (sh) {
     const b = baseOf(sh).b,
       def =

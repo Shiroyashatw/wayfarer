@@ -638,10 +638,10 @@ function devHTML() {
   return `<div class="ph"><b>地圖台</b><span>地圖碎片 <b class="c-gold">${S.frag}</b> · 打完一張才換一批卡</span><button class="x" aria-label="關閉" data-a="close">${ICO.x}</button></div>
   <div class="tstep">
     <button class="btn" data-tier="${t - 1}" ${t <= 1 ? 'disabled' : ''} aria-label="低一階">${ICO.prev}</button>
-    <div><b>階級 ${t}</b><small>王 ${bossOf(t).n} · 怪物 Lv ${lv} · 生命 ×${m.hp.toFixed(1)} · 傷害 ×${m.dmg.toFixed(1)}${resPen(lv) ? ` · <span class="c-warn">元素抗性 −${resPen(lv)}%</span>` : ''}</small></div>
+    <div><b>階級 ${t}</b><small>怪物 Lv ${lv} · 生命 ×${m.hp.toFixed(1)} · 傷害 ×${m.dmg.toFixed(1)}${resPen(lv) ? ` · <span class="c-warn">元素抗性 −${resPen(lv)}%</span>` : ''}</small></div>
     <button class="btn" data-tier="${t + 1}" ${t >= S.maxT ? 'disabled' : ''} aria-label="高一階">${ICO.next}</button>
   </div>
-  ${S.maxT < TMAX ? `<p class="tnext">打倒階級 ${S.maxT} 的王（${bossOf(S.maxT).n}）開放階級 ${S.maxT + 1}</p>` : ''}
+  ${S.maxT < TMAX ? `<p class="tnext">打倒階級 ${S.maxT} 的王開放階級 ${S.maxT + 1}</p>` : ''}
   <div class="mcards2">${cards
     .slice(0, open)
     .map((cd, k) => {

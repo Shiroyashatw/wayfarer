@@ -32,7 +32,7 @@ function route(w, pts) {
     src.forEach(s => (d[s] = 0));
     while (q.length) {
       const c = q.shift();
-      if (d[c] >= 6) continue;
+      if (d[c] >= 14) continue;
       for (const n of ADJ[c] || []) if (d[n] === undefined && !have.has(n)) (d[n] = d[c] + 1), (prev[n] = c), q.push(n);
     }
     return { d, prev };
@@ -82,7 +82,7 @@ function gear(t, want, wt) {
 }
 const BUILDS = {
   劍近戰: {
-    tree: { meleeP: 2, swordP: 2, critInc: 1, critX: 1, as: 3, life: 0.3 },
+    tree: { meleeP: 2, atkP: 2, w_sword: 2, critInc: 1, critX: 1, as: 3, life: 0.3 },
     gear: {
       dmgP: 1,
       flat: 3,
@@ -100,13 +100,13 @@ const BUILDS = {
     sk: 'slash'
   },
   火法: {
-    tree: { spellP: 2, eleP: 2, castP: 3, pen: 2, life: 0.3 },
+    tree: { spellP: 2, eleP: 2, elemP: 2, w_staff: 2, castP: 3, pen: 2, life: 0.3 },
     gear: { spellP: 1, life: 0.5, es: 0.5, resA: 1, resF: 0.5, resC: 0.5, resL: 0.5 },
     wt: 'staff',
     sk: 'fireball'
   },
   坦克: {
-    tree: { life: 1, armorP: 3, armorF: 0.5, regen: 2, resA: 5, blockInc: 2 },
+    tree: { life: 1, hpP: 10, armorP: 3, armorF: 0.5, regen: 2, resA: 5, blockInc: 2 },
     gear: { life: 1, armor: 0.5, block: 3, resA: 2, resF: 1, resC: 1, resL: 1, dmgP: 0.3 },
     wt: 'sword',
     sk: 'slash'
@@ -131,7 +131,12 @@ for (const L of [30, 60, 90]) {
       D = R('SKILLS')[B.sk],
       lv = Math.min(20, Math.round(L / 4.5)),
       c = { D, lv, mult: D.m * Math.pow(1.06, lv - 1), more: 1, critInc: 0, critX: 0, fireAdd: 0, pen: 0, ailMag: 0 },
-      bossD = R('bossOf')(t),
+      /* 王是隨機的：用生命最高、傷害最高的組合當最壞情況 */
+      bossD = {
+        ...R('BOSSES')[0],
+        hp: Math.max(...R('BOSSES').map(b => b.hp)),
+        dmg: Math.max(...R('BOSSES').map(b => b.dmg))
+      },
       tm = R('tierMul')(t),
       boss = {
         D: bossD,
