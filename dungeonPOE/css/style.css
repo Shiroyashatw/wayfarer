@@ -584,7 +584,8 @@ body.touch .tmore:not([hidden]) { display: flex; flex-direction: column; gap: 4p
 .tmore button[hidden] { display: none; }
 .tmore .ico { color: var(--title); }
 #rot { flex-direction: column; gap: 14px; text-align: center; }
-#rot p { margin: 0; }
+#rot p { margin: 0; padding: 0 24px; }
+#rot p small { display: block; margin-top: 8px; font-size: var(--fs-s); font-weight: 500; color: var(--dim); }
 #rot .btn { min-width: 180px; }
 
 /* 手機橫向（MOBA 式）：血藍經驗長條在底部中間（搖桿和技能鍵之間），左上只剩地圖名稱 */

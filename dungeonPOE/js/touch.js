@@ -16,7 +16,10 @@ function setTouch(on) {
 function applyOrient() {
   const p = PORT();
   document.body.classList.toggle('port', p);
-  $('rott').textContent = p ? '直立操作：把手機轉直' : '橫向操作：把手機橫過來';
+  /* 0.2.14 以前加到主畫面的捷徑被 manifest 鎖成橫向（Android 要過一陣子才會更新），轉不過來時教玩家重新加入 */
+  $('rott').innerHTML =
+    (p ? '直立操作：把手機轉直' : '橫向操作：把手機橫過來') +
+    (inApp() ? '<small>轉不過來的話：刪掉主畫面的捷徑、重新「加到主畫面」，或按下面改用另一種</small>' : '');
   $('rotb').textContent = p ? '改用橫向操作' : '改用直立操作';
   if (fsOn() && screen.orientation && screen.orientation.lock)
     screen.orientation.lock(p ? 'portrait' : 'landscape').catch(() => {});
