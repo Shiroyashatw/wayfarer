@@ -189,7 +189,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .tbar > span { color: var(--dim); }
 .tbar .btn { margin-left: auto; min-height: 36px; padding: 6px 14px; }
 .tbar .x { width: 36px; height: 36px; background: none; border: 1px solid var(--line); color: var(--tx); border-radius: var(--rad); cursor: pointer; font: inherit; }
-#tsvg { flex: 1; width: 100%; cursor: grab; touch-action: none; }
+#tview { flex: 1; position: relative; overflow: hidden; cursor: grab; touch-action: none; }
+#tsvg { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: visible; }
+#tsvg.moving { will-change: transform; }
 #tsvg line, #tsvg path { stroke: rgba(232, 226, 214, 0.1); stroke-width: 5; fill: none; }
 #tsvg line.near, #tsvg path.near { stroke: rgba(232, 226, 214, 0.22); }
 #tsvg line.on, #tsvg path.on { stroke: #c9a227; stroke-width: 7; }
@@ -621,3 +623,44 @@ body.touch.port .ph .sw { display: none; }
 .tinfo div > :last-child { text-align: right; }
 body.touch.port .panel > .ph:first-child .x { display: none; }
 body.touch.port #pdev > .ph:first-child .x, body.touch.port #pgem > .ph:first-child .x, body.touch.port #pset > .ph:first-child .x { display: grid; }
+
+/* ---------- 0.2.14 地圖台：◀ 階級 ▶、三張大卡、選中的卡展開地圖詞 ---------- */
+.tstep { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; gap: 8px; margin: 2px 0 6px; }
+.tstep .btn { padding: 0; display: grid; place-items: center; color: var(--title); }
+.tstep .ico { width: 20px; height: 20px; }
+.tstep div { text-align: center; }
+.tstep b { display: block; font: 700 22px/1.2 var(--serif); color: var(--title); letter-spacing: 0.06em; }
+.tstep small { display: block; color: var(--dim); font-size: var(--fs-s); }
+.tnext { margin: 0 0 10px; text-align: center; font-size: var(--fs-s); color: var(--dim); }
+.mcards2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 8px; margin: 4px 0 6px; }
+.mc2 { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px; font: 500 var(--fs-s) var(--font); color: var(--tx); background: linear-gradient(180deg, #1c1610, #0c0a08); border: 1px solid var(--fr-o); border-radius: 2px; cursor: pointer; }
+.mc2:hover { border-color: var(--fr); }
+.mc2:active { transform: scale(0.97); }
+.mc2.on { border-color: var(--sc); box-shadow: inset 0 0 0 1px var(--sc), inset 0 0 18px rgba(0, 0, 0, 0.6); background: linear-gradient(180deg, #261d13, #0e0b08); }
+.mstar { font-size: 18px; color: var(--sc); letter-spacing: 1px; }
+.mdang { font-weight: 700; }
+.mdang.d1 { color: var(--good); } .mdang.d2 { color: var(--warn); } .mdang.d3 { color: var(--bad); }
+.mrew { color: var(--gold); }
+.mcost { color: var(--dim); }
+.msel { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin: 10px 0 0; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs-s); }
+.msel b { font-family: var(--serif); color: var(--title); font-size: var(--fs); }
+body.touch.port .mcards2 { grid-template-columns: 1fr; }
+body.touch.port .mc2 { display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; text-align: left; justify-items: start; padding: 10px 12px; column-gap: 12px; }
+body.touch.port .mc2 .mstar { grid-row: 1 / 3; align-self: center; }
+body.touch.port .mc2 .mcost { grid-column: 3; grid-row: 1 / 3; align-self: center; }
+
+/* ---------- 0.2.14 裝備：人形欄放大置中、空格是淡淡的部位圖示、數值在下面 ---------- */
+.eqrow.col { flex-direction: column; align-items: center; gap: 10px; }
+.eqrow.col .st { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 2px 12px; white-space: normal; }
+.eqg { display: grid; place-items: center; width: 100%; height: 100%; }
+.eqg .ic { width: 58%; max-height: 70%; object-fit: contain; opacity: 0.16; filter: grayscale(1); }
+
+/* ---------- 0.2.14 技能寶石：上方分頁；一行一招，點那一行看說明＋升級、開孔 ---------- */
+.sktabs { margin: 0 0 8px; }
+.sktabs .btn.on { border-color: var(--fr-hi); color: var(--title); background: rgba(215, 183, 124, 0.14); }
+button.skinfo { text-align: left; font: inherit; color: inherit; background: none; border: 1px solid transparent; border-radius: 2px; padding: 4px 6px; cursor: pointer; min-height: 44px; }
+button.skinfo:hover { border-color: var(--fr-o); }
+button.skinfo:active { transform: scale(0.98); }
+.skinfo .upd { margin-left: 6px; font: 700 11px var(--font); font-style: normal; color: var(--good); }
+.aurac[data-sk] { cursor: pointer; }
+.tqa.col { flex-direction: column; }

@@ -10,7 +10,7 @@
 
 ## 溝通規則
 - **一律用繁體中文回覆**（包含 commit 訊息）。
-- 版本號：0.2.x。改版本時改 `js/data.js` 的 `VER` 和 `index.html` 所有 `?v=`，再更新 `CHANGELOG.md`。
+- 版本號：0.2.x。改版本時改 `js/data.js` 的 `VER`、`index.html` 所有 `?v=` 和 `version.json`（手機拿到快取的舊頁面時，`main.js` 的 `verCheck` 看它不同就換網址重新載入），再更新 `CHANGELOG.md`。
 - 流程：先改、先測，確認 OK 後再 commit + push（push 前先問使用者）。
 - 這個資料夾自己就能跑（不引用上一層的檔案），以後可以整個搬到別的 repo。
 

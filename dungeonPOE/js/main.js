@@ -180,11 +180,28 @@ function start() {
     if (remote && remote.v >= 10 && (remote.savedAt || 0) > (S.savedAt || 0)) {
       S = migrate(remote);
       enterHideout();
+      applyOrient();
       save();
       hudWarn('已從雲端載入存檔');
     } else cloudPush();
   });
   setInterval(save, 10000);
   requestAnimationFrame(frame);
+  verCheck();
+  document.addEventListener('visibilitychange', () => !document.hidden && G.scene === 'hide' && verCheck());
+}
+/* 新版上線後手機常拿到快取的舊 index.html（GitHub Pages 快取 10 分鐘、主畫面 App 更久）：
+   問一次 version.json（不走快取），版本不同就換網址（加 v=）重新載入；已經換過就不再換，避免一直重載 */
+function verCheck() {
+  fetch('version.json?' + Date.now(), { cache: 'no-store' })
+    .then(r => r.json())
+    .then(j => {
+      const u = new URL(location.href);
+      if (!j.v || j.v === VER || u.searchParams.get('v') === j.v) return;
+      save();
+      u.searchParams.set('v', j.v);
+      location.replace(u);
+    })
+    .catch(() => {});
 }
 start();

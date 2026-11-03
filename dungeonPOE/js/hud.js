@@ -38,7 +38,9 @@ const ICO = (() => {
       '<circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/>'
     ),
     menu: s('<path d="M2.5 4h11M2.5 8h11M2.5 12h11"/>'),
-    full: s('<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>')
+    full: s('<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>'),
+    prev: s('<path d="M10 3L5 8l5 5"/>'),
+    next: s('<path d="M6 3l5 5-5 5"/>')
   };
 })();
 /* 直立操作：手機而且設定選直立（桌機一律橫向） */
@@ -340,14 +342,18 @@ const EQPOS = {
   off: [248, 0, 72, 108],
   boots: [248, 116, 72, 72]
 };
+/* 空的裝備欄：那個部位的淡圖示（取第一個同部位的底材圖） */
+const slotIc = e => (BASES.find(b => b.k === e.t) || {}).ic;
 function invHTML() {
+  /* 人形裝備欄照面板寬度放大置中（最多 1.3 倍），數值放在下面一排 */
   const s = ST,
-    z = C / 36,
+    pp = TOUCH.on ? 20 : 28,
+    z = Math.min(TOUCH.on ? 1.3 : 1.15, (($('pinv').clientWidth || 462) - pp) / 320),
     eqs =
       EQS.map(e => {
         const [x, y, w, h] = EQPOS[e.k].map(v => Math.round(v * z)),
           it = S.eq[e.k];
-        return `<div class="eqs ${it ? 'r' + it.r : ''}" data-eq="${e.k}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${it ? itemHTML(it, 'eq', e.k) : `<small>${e.n}</small>`}</div>`;
+        return `<div class="eqs ${it ? 'r' + it.r : ''}" data-eq="${e.k}" ${it ? '' : `data-tip="${e.n}"`} style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${it ? itemHTML(it, 'eq', e.k) : `<span class="eqg">${icHTML(slotIc(e))}</span>`}</div>`;
       }).join('') +
       /* 護符槽：腰帶給幾格就開幾格（照 PoE2） */
       [0, 1, 2]
@@ -366,12 +372,16 @@ function invHTML() {
           `<span class="res-${r}">${ELN[r]}抗 <b>${effRes(r)}%</b>${s.maxRes[r] > RES_CAP ? `<small>／${s.maxRes[r]}</small>` : ''}</span>`
       ).join('') + (pen ? `<span class="c-dim">這一階元素抗性 −${pen}%</span>` : '');
   return `<div class="ph"><b>裝備</b><span>Lv ${S.lv} · ${S.gold} 金</span>${swapB(PANEL.stash ? '倉庫' : PANEL.craft ? '鍛造' : '技能')}<button class="x" aria-label="關閉" data-a="close">${ICO.x}</button></div>
-  <div class="eqrow"><div class="doll" style="width:${Math.round(320 * z)}px;height:${Math.round(232 * z)}px">${eqs}</div>
+  ${
+    /* 直立、上面疊著倉庫或技能寶石時：只放背包格子（要互拖的是背包） */ PORT() && (PANEL.stash || PANEL.skill)
+      ? ''
+      : `<div class="eqrow col"><div class="doll" style="width:${Math.round(320 * z)}px;height:${Math.round(232 * z)}px">${eqs}</div>
   <div class="st">
     <span>傷害 <b>${Math.round(s.dmg[0])}–${Math.round(s.dmg[1])}</b></span><span>攻速 <b>${s.aps.toFixed(2)}</b></span><span>暴擊 <b>${s.crit.toFixed(1)}%</b></span>
     <span>生命 <b>${s.hp}</b></span>${s.es ? `<span>能量護盾 <b>${s.es}</b></span>` : ''}<span>護甲 <b>${s.armor}</b></span>${s.ev ? `<span>閃避 <b>${s.ev}</b></span>` : ''}<span>格擋 <b>${s.block}%</b></span><span>精魄 <b>${s.spiritUsed}/${s.spirit}</b></span>
     ${res}
-  </div></div>
+  </div></div>`
+  }
   <div class="ph2">背包 <span>${TOUCH.on ? '按住拖＝搬移 · 點一下＝說明與動作' : PANEL.craft ? '拖曳擺放 · 點一下＝放上鍛造台' : `拖曳擺放 · 點一下＝裝備／收起${PANEL.stash ? '／放進倉庫' : ''}`}</span></div>
   ${gridHTML(S.inv, 'inv')}
   <div class="foot">${G.scene === 'hide' ? `<div class="sell" data-sell="1">拖到這裡賣掉</div>` : `<span class="c-dim">回藏身處才能賣東西</span>`}</div>`;
@@ -404,41 +414,91 @@ const TAGN = {
 function skillHTML() {
   const sock = (key, it, cls, lab, bad) =>
       `<div class="eqs sock ${cls} ${it ? 'r3' : ''} ${bad ? 'bad-link' : ''}" data-sock="${key}">${it ? itemHTML(it, 'sock', key) : `<small>${lab}</small>`}</div>`,
-    mini = (fg, lab, why) =>
-      `<button class="btn mini" data-fg="${fg}" ${why ? `disabled title="${esc(why)}"` : ''}>${lab}</button>`,
     M = MAT();
+  /* 0.2.14：上方分頁（技能／光環／生成寶石）；一行一招，升級、開孔收進「點那一行」的說明框 */
+  const tab = SKUI.tab,
+    tabs = `<div class="gkind sktabs">${[
+      ['sk', '技能'],
+      ['aura', `光環 ${ST.spiritUsed}/${ST.spirit}`],
+      ['gen', '生成寶石']
+    ]
+      .map(([k, n]) => `<button class="btn ${tab === k ? 'on' : ''}" data-sk="tab:${k}">${n}</button>`)
+      .join('')}</div>`;
+  let body;
+  if (tab === 'aura')
+    body = `<p class="sethint">開著就一直生效；精魄不夠的不會生效（框變紅）。點光環看說明與升級</p><div class="aurarow">${S.auras
+      .map((g, j) => {
+        const on = g && ST.auraOn.includes(g.gem);
+        return `<div class="aurac" ${g ? `data-sk="aura:${j}"` : ''}>${sock('A:' + j, g, 'act', '光環', g && !on)}<small>${g ? `${esc(AURAS[g.gem].n)} Lv ${g.lv}` : '空的'}</small></div>`;
+      })
+      .join('')}</div>`;
+  else if (tab === 'gen')
+    body = `<p class="sethint">角色等級夠就能生成（Lv 1、2 孔），花靈魂</p><div class="gkind">${Object.entries(GEMKIND)
+      .map(([k, n]) => `<button class="btn" data-gm="open:${k}">${n}</button>`)
+      .join('')}</div>`;
+  else
+    body = S.skills
+      .map((sl, i) => {
+        const c = slotCfg(i),
+          g = sl.a;
+        if (!g)
+          return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', null, 'act', '技能')}<div class="skinfo"><small class="c-dim">空的：到「生成寶石」做一顆，再拖進來</small></div></div>`;
+        const canUp = !gemUpCheck(g).why;
+        return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', g, 'act', '技能')}<div class="links">${g.sup
+          .map((x, j) => sock(i + ':' + j, x, 'sup', '輔助', x && !supOK(SKILLS[g.gem], x, g)))
+          .join(
+            ''
+          )}</div><button class="skinfo" data-sk="row:${i}"><b>${esc(c.D.n)} <span>Lv ${g.lv}${c.lv > g.lv ? `（+${c.lv - g.lv}）` : ''}</span>${canUp ? `<i class="upd">可升級</i>` : ''}</b><small>${c.mp ? `魔力 ${c.mp}` : '不耗魔力'}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}${wtNeed(c.D) ? ` · <span class="${wtOK(c.D) ? '' : 'c-bad'}">${wtNeed(c.D)}</span>` : ''}</small></button></div>`;
+      })
+      .join('');
   return `<div class="ph"><b>技能寶石</b><span>靈魂 <b class="c-gold">${M.soul}</b> · ${TOUCH.on ? '點背包裡的寶石再按鑲上' : '拖進來或點背包裡的寶石'}</span>${swapB('背包')}<button class="x" aria-label="關閉" data-a="close">${ICO.x}</button></div>
-  ${S.skills
-    .map((sl, i) => {
-      const c = slotCfg(i),
-        g = sl.a;
-      if (!g)
-        return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', null, 'act', '技能')}<div class="skinfo"><small class="c-dim">放一顆技能寶石（下面「生成寶石」）</small></div></div>`;
-      const up = gemUpCheck(g),
-        sups = g.sup.filter(Boolean),
-        supC = sups.filter(x => !gemUpCheck(x).why).reduce((a, x) => a + soulCost(x.lv, 1), 0),
-        dr = drillCheck(g);
-      return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', g, 'act', '技能')}<div class="links">${g.sup
-        .map((x, j) => sock(i + ':' + j, x, 'sup', '輔助', x && !supOK(SKILLS[g.gem], x, g)))
-        .join(
-          ''
-        )}</div><div class="skinfo"><b>${esc(c.D.n)} <span>Lv ${g.lv}${c.lv > g.lv ? `（+${c.lv - g.lv}）` : ''} · ${g.so} 孔</span></b><small>${c.mp ? `魔力 ${c.mp}` : '不耗魔力'}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}${wtNeed(c.D) ? ` · <span class="${wtOK(c.D) ? '' : 'c-bad'}">${wtNeed(c.D)}</span>` : ''}</small>
-        <span class="gbtns">${mini('gup:' + i, `升級 ${up.c} 魂`, up.why)}${sups.length ? mini('sup:' + i, `輔助 +1 ${supC} 魂`, supC ? '' : '輔助都升不了（滿級、超過角色等級或靈魂不夠）') : ''}${g.so < GEM_SO_MAX ? mini('dri:' + i, `開孔（${DRILLS[dr.k]}）`, dr.why) : ''}</span></div></div>`;
-    })
-    .join('')}
-  <div class="aurah"><b>光環</b><span>精魄 ${ST.spiritUsed} / ${ST.spirit} · 開著就一直生效，精魄不夠的不會生效</span></div>
-  <div class="aurarow">${S.auras
-    .map((g, j) => {
-      const on = g && ST.auraOn.includes(g.gem),
-        up = g && gemUpCheck(g);
-      return `<div class="aurac">${sock('A:' + j, g, 'act', '光環', g && !on)}<small>${g ? `${esc(AURAS[g.gem].n)} Lv ${g.lv}` : '空的'}</small>${g ? mini('aup:' + j, `升級 ${up.c}`, up.why) : ''}</div>`;
-    })
-    .join('')}</div>
-  <div class="aurah"><b>生成寶石</b><span>角色等級夠就能生成（Lv 1、2 孔），花靈魂</span></div>
-  <div class="gkind">${Object.entries(GEMKIND)
-    .map(([k, n]) => `<button class="btn" data-gm="open:${k}">${n}</button>`)
-    .join('')}</div>`;
+  ${tabs}${body}`;
 }
+const SKUI = { tab: 'sk' };
+/* 點技能那一行（或光環）：說明＋升級、輔助升級、開孔（跟道具一樣是「點一下＝說明＋動作」） */
+function skActTip(kind, i, el) {
+  const btn = (fg, lab, why) =>
+    `<button class="btn" data-fg="${fg}" ${why ? `disabled title="${esc(why)}"` : ''}>${lab}</button>`;
+  let html;
+  if (kind === 'aura') {
+    const g = S.auras[i],
+      up = gemUpCheck(g);
+    html =
+      gemTip(g) +
+      `<div class="tqa">${btn('aup:' + i, `升級 ${up.c} 靈魂`, up.why)}</div>${up.why ? `<p class="hint">${esc(up.why)}</p>` : ''}`;
+  } else {
+    const g = S.skills[i].a,
+      up = gemUpCheck(g),
+      sups = g.sup.filter(Boolean),
+      supC = sups.filter(x => !gemUpCheck(x).why).reduce((a, x) => a + soulCost(x.lv, 1), 0),
+      dr = drillCheck(g);
+    html =
+      gemTip(g) +
+      `<div class="tqa col">${btn('gup:' + i, `升級 ${up.c} 靈魂`, up.why)}${
+        sups.length
+          ? btn('sup:' + i, `輔助都升一級 ${supC} 靈魂`, supC ? '' : '輔助都升不了（滿級、超過角色等級或靈魂不夠）')
+          : ''
+      }${g.so < GEM_SO_MAX ? btn('dri:' + i, `開孔（${DRILLS[dr.k]}）`, dr.why) : ''}</div>${up.why ? `<p class="hint">升級：${esc(up.why)}</p>` : ''}`;
+  }
+  const r = el.getBoundingClientRect();
+  showTip(html, r.right, r.top + r.height / 2);
+  $('tip').classList.add('act');
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-sk]');
+  if (b) {
+    const [k, v] = b.dataset.sk.split(':');
+    if (k === 'tab') (SKUI.tab = v), hideTip(), hudPanels();
+    else skActTip(k, +v, b);
+    return;
+  }
+  /* 按了說明框裡的動作（升級、開孔）：收起說明框；點說明框以外也收起 */
+  if (
+    e.target.closest('#tip [data-fg]') ||
+    (!e.target.closest('#tip') && $('tip').classList.contains('act') && !TOUCH.on)
+  )
+    hideTip();
+});
 /* 生成寶石（0.2.7，照 PoE2 選技能）：上面三種、左邊頁籤（主動照武器、輔助與精魄照標籤）、右邊照使用等級分組 */
 const GEMUI = { kind: 'act', tab: null };
 const GEMKIND = { act: '主動技能', sup: '輔助寶石', aura: '精魄' };
@@ -571,28 +631,34 @@ function devHTML() {
     m = tierMul(t),
     rw = cardRew(card),
     lv = mobLv(t);
-  return `<div class="ph"><b>地圖台</b><span>選階級和一張地圖卡；打完一把才換一批卡</span><button class="x" aria-label="關閉" data-a="close">${ICO.x}</button></div>
-  <div class="tiers">${Array.from({ length: TMAX }, (_, k0) => {
-    const k = k0 + 1,
-      lock = k > S.maxT;
-    return `<button class="tier ${k === t ? 'on' : ''} ${lock ? 'lock' : ''}" data-tier="${k}" ${lock ? 'disabled' : ''}>${lock ? ICO.lock : k}</button>`;
-  }).join('')}</div>
-  <div class="mcards">${cards
-    .map((cd, k) =>
-      k >= open
-        ? `<div class="mcard lock">${ICO.lock}<small>打到階級 ${3 * (k - 2) + 1}</small></div>`
-        : `<button class="mcard ${k === i ? 'on' : ''}" data-card="${k}" style="--sc:${STARS[cd.star].c}"><b>${'★'.repeat(cd.star)}</b><small>${cd.mods.length} 條 · 數量 +${cardRew(cd).qty}%</small></button>`
-    )
-    .join('')}</div>
-  <div class="tinfo">
-    <div><span>怪物</span><b>Lv ${lv} · 生命 ×${m.hp.toFixed(1)} · 傷害 ×${m.dmg.toFixed(1)}</b></div>
-    <div><span>你的元素抗性</span><b class="${resPen(lv) ? 'c-warn' : ''}">${resPen(lv) ? `−${resPen(lv)}%` : '不扣'}</b></div>
-    <div><span>獎勵</span><b class="c-gold">物品數量 +${rw.qty}% · 稀有度 +${rw.rar}% · 材料 +${rw.mat}%</b></div>
-    <div><span>王</span><b>${bossOf(t).n}</b></div>
-    <div><span>費用</span><b class="${S.frag < c ? 'c-bad' : ''}">${c ? `${c} 個地圖碎片（有 ${S.frag}）` : '免費'}</b></div>
+  /* 0.2.14：預設最高階、◀ ▶ 往下選；只列開放的卡（大卡：星級、危險、獎勵、費用），選中的那張展開地圖詞 */
+  const danger = cd => Math.max(1, ...cd.mods.map(k => MAPMOD[k].d)),
+    DN = ['', '低', '中', '高'],
+    next = cards.length > open ? `再打到階級 ${3 * (open - 2) + 1} 多開一張卡` : '';
+  return `<div class="ph"><b>地圖台</b><span>地圖碎片 <b class="c-gold">${S.frag}</b> · 打完一張才換一批卡</span><button class="x" aria-label="關閉" data-a="close">${ICO.x}</button></div>
+  <div class="tstep">
+    <button class="btn" data-tier="${t - 1}" ${t <= 1 ? 'disabled' : ''} aria-label="低一階">${ICO.prev}</button>
+    <div><b>階級 ${t}</b><small>王 ${bossOf(t).n} · 怪物 Lv ${lv} · 生命 ×${m.hp.toFixed(1)} · 傷害 ×${m.dmg.toFixed(1)}${resPen(lv) ? ` · <span class="c-warn">元素抗性 −${resPen(lv)}%</span>` : ''}</small></div>
+    <button class="btn" data-tier="${t + 1}" ${t >= S.maxT ? 'disabled' : ''} aria-label="高一階">${ICO.next}</button>
   </div>
-  <ul class="mmods">${card.mods.map(k => `<li class="d${MAPMOD[k].d}">${MAPMOD[k].t}</li>`).join('')}</ul>
-  <button class="btn pri" data-a="open" ${S.frag < c ? 'disabled' : ''}>${S.frag < c ? '碎片不夠' : G.scene === 'map' ? '進入下一張' : '開啟傳送門'}</button>`;
+  ${S.maxT < TMAX ? `<p class="tnext">打倒階級 ${S.maxT} 的王（${bossOf(S.maxT).n}）開放階級 ${S.maxT + 1}</p>` : ''}
+  <div class="mcards2">${cards
+    .slice(0, open)
+    .map((cd, k) => {
+      const r = cardRew(cd),
+        d = danger(cd),
+        cc = mapCost(t, cd.star);
+      return `<button class="mc2 ${k === i ? 'on' : ''}" data-card="${k}" style="--sc:${STARS[cd.star].c}">
+        <span class="mstar">${'★'.repeat(cd.star)}</span>
+        <span class="mdang d${d}">危險 ${DN[d]}</span>
+        <span class="mrew">數量 +${r.qty}% · 稀有 +${r.rar}%</span>
+        <span class="mcost ${S.frag < cc ? 'c-bad' : ''}">${cc ? `${cc} 碎片` : '免費'}</span></button>`;
+    })
+    .join('')}</div>
+  ${next ? `<p class="tnext">${next}</p>` : ''}
+  <div class="msel"><b>這張的地圖詞</b><span class="c-gold">物品數量 +${rw.qty}% · 稀有度 +${rw.rar}% · 材料 +${rw.mat}%</span></div>
+  <ul class="mmods">${card.mods.map(k => `<li class="d${MAPMOD[k].d}">${MAPMOD[k].t}</li>`).join('') || '<li>沒有地圖詞</li>'}</ul>
+  <button class="btn pri" data-a="open" ${S.frag < c ? 'disabled' : ''}>${S.frag < c ? `碎片不夠（要 ${c}，有 ${S.frag}）` : `${G.scene === 'map' ? '進入下一張' : '開啟傳送門'}${c ? ` · ${c} 碎片` : ''}`}</button>`;
 }
 
 /* ---------- 找道具、移動道具 ---------- */
@@ -1041,8 +1107,8 @@ function inputInit() {
     const a = e.target.closest('[data-a]');
     if (a) act(a.dataset.a);
     const t = e.target.closest('[data-tier]');
-    if (t) {
-      PANEL.pick = +t.dataset.tier;
+    if (t && !t.disabled) {
+      PANEL.pick = clamp(+t.dataset.tier, 1, S.maxT);
       hudPanels();
     }
     const cd = e.target.closest('[data-card]');
@@ -1053,6 +1119,7 @@ function inputInit() {
   });
   document.addEventListener('pointerover', e => {
     if (e.pointerType !== 'mouse' || (DR && DR.moved)) return; /* 觸控：點一下才出說明框 */
+    if ($('tip').classList.contains('act')) return; /* 有動作按鈕的說明框：等玩家按或點別的地方 */
     const s = e.target.closest('.it[data-id],[data-tip]');
     if (!s) return hideTip();
     const r = s.getBoundingClientRect();

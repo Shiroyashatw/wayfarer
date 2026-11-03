@@ -70,22 +70,69 @@ function treeRender() {
     return `<g class="nd ${st} b${n.big}${TREE.sel === n.id ? ' sel' : ''}" data-n="${n.id}" transform="translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})" style="--c:${PT_THEME[n.th].c}"><circle r="${r}"/>${img}</g>`;
   }).join('');
   html += `<circle class="hollow" r="${PT_R0 - 40}"/><text class="hint" y="6">昇華重新設計中</text>`;
+  const B = treeBox();
   $('ptree').innerHTML = `<div class="tbar">
     <b>天賦樹</b>
-    <span>天賦點 剩 <b class="${ptLeft() > 0 ? 'c-gold' : ''}">${ptLeft()}</b>（每升一級 1 點）</span>
-    <button class="btn" data-ta="reset" ${S.pt.length > PT_START.length ? '' : 'disabled'}>重置天賦</button>
+    <span>天賦點 剩 <b id="tpts"></b>（每升一級 1 點）</span>
+    <button class="btn" data-ta="reset" id="treset">重置天賦</button>
     <button class="x" aria-label="關閉" data-ta="close">${ICO.x}</button></div>
-  <svg id="tsvg"><g id="tg">${html}</g></svg>
+  <div id="tview"><svg id="tsvg" viewBox="${B.x} ${B.y} ${B.w} ${B.h}" width="${B.w}" height="${B.h}"><g id="tg">${html}</g></svg></div>
   <p class="thelp"><b>方向</b> 上 生命護甲 · 右上 近戰攻速 · 右 投射物陷阱 · 下 暴擊圖騰召喚 · 左下 元素法術 · 左上 能量護盾精魄　<b>操作</b> 點亮著的點＝點下去，再點＝退回 · 拖曳移動 · 滾輪縮放　越外圈的大點越強，帶代價的最強</p>`;
+  /* 之後選取、點亮只改 class，不重畫整棵樹（一千多個點，手機重畫會卡） */
+  const tg = $('tg');
+  TEL = {
+    n: new Map([...tg.querySelectorAll('.nd')].map(e => [e.dataset.n, e])),
+    e: [...tg.querySelectorAll(':scope > line, :scope > path')].map((el, i) => [el, ...PTREE.E[i]])
+  };
+  treeRefresh();
   treeView();
 }
+let TEL = null;
+function treeRefresh() {
+  if (!TREE.open || !TEL) return;
+  const have = new Set(S.pt);
+  for (const [id, el] of TEL.n) {
+    const st = have.has(id) ? 'on' : treeCan(id) ? 'can' : 'off',
+      cls = `nd ${st} b${PTREE.I[id].big}${TREE.sel === id ? ' sel' : ''}`;
+    if (el.getAttribute('class') !== cls) el.setAttribute('class', cls);
+  }
+  for (const [el, a, b] of TEL.e) {
+    const cls = have.has(a) && have.has(b) ? 'on' : have.has(a) || have.has(b) ? 'near' : '';
+    if (el.getAttribute('class') !== cls) el.setAttribute('class', cls);
+  }
+  $('tpts').textContent = ptLeft();
+  $('tpts').className = ptLeft() > 0 ? 'c-gold' : '';
+  $('treset').disabled = S.pt.length <= PT_START.length;
+}
+/* 整棵樹的範圍（畫一次）；拖曳、縮放只改 SVG 的 CSS transform（交給 GPU，不重排 SVG） */
+let TBOX = null;
+function treeBox() {
+  if (TBOX) return TBOX;
+  let x0 = 0,
+    y0 = 0,
+    x1 = 0,
+    y1 = 0;
+  for (const n of PTREE.N)
+    (x0 = Math.min(x0, n.x)), (y0 = Math.min(y0, n.y)), (x1 = Math.max(x1, n.x)), (y1 = Math.max(y1, n.y));
+  return (TBOX = {
+    x: Math.floor(x0 - 60),
+    y: Math.floor(y0 - 60),
+    w: Math.ceil(x1 - x0 + 120),
+    h: Math.ceil(y1 - y0 + 120)
+  });
+}
 function treeView() {
-  const svg = $('tsvg');
-  if (!svg) return;
-  $('tg').setAttribute(
-    'transform',
-    `translate(${svg.clientWidth / 2 + TREE.x} ${svg.clientHeight / 2 + TREE.y}) scale(${TREE.z})`
-  );
+  const v = $('tview');
+  if (!v) return;
+  const B = treeBox(),
+    z = TREE.z;
+  $('tsvg').style.transform =
+    `translate(${v.clientWidth / 2 + TREE.x + B.x * z}px, ${v.clientHeight / 2 + TREE.y + B.y * z}px) scale(${z})`;
+}
+/* 拖曳、縮放時才把 SVG 升成一張圖層（放手後拿掉，瀏覽器會重新畫成清楚的） */
+function treeMoving(on) {
+  const s = $('tsvg');
+  if (s) s.classList.toggle('moving', on);
 }
 function treeToggle(id) {
   const have = S.pt;
@@ -104,7 +151,7 @@ function treeChanged() {
   P.mp = Math.min(ST.mp, P.mp);
   save();
   hudBar();
-  treeRender();
+  treeRefresh();
 }
 const statLines = s =>
   Object.entries(s).map(([k, v]) =>
@@ -118,7 +165,7 @@ function treeTip(id) {
 }
 /* 以畫面上一點為中心縮放 */
 function treeZoomAt(cx, cy, z) {
-  const svg = $('tsvg').getBoundingClientRect(),
+  const svg = $('tview').getBoundingClientRect(),
     mx = cx - svg.left - svg.width / 2 - TREE.x,
     my = cy - svg.top - svg.height / 2 - TREE.y;
   z = clamp(z, 0.12, 1.6);
@@ -135,11 +182,12 @@ function treeInit() {
     return [Math.hypot(a.x - b.x, a.y - b.y), (a.x + b.x) / 2, (a.y + b.y) / 2];
   };
   el.addEventListener('pointerdown', e => {
-    if (!e.target.closest('#tsvg')) return;
+    if (!e.target.closest('#tview')) return;
     TP.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    e.target.closest('#tsvg').setPointerCapture(e.pointerId);
+    $('tview').setPointerCapture(e.pointerId);
     if (TP.size === 2) {
       TREE.pinch = { d: pinchD()[0], z: TREE.z };
+      treeMoving(true);
       TREE.drag = null;
       return hideTip();
     }
@@ -153,7 +201,7 @@ function treeInit() {
     }
     const g = TREE.drag;
     if (g) {
-      if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 8) g.moved = true;
+      if (!g.moved && Math.hypot(e.clientX - g.x, e.clientY - g.y) > 8) (g.moved = true), treeMoving(true);
       if (g.moved) {
         TREE.x = g.ox + e.clientX - g.x;
         TREE.y = g.oy + e.clientY - g.y;
@@ -170,6 +218,7 @@ function treeInit() {
   });
   const up = e => {
     TP.delete(e.pointerId);
+    if (!TP.size) treeMoving(false);
     if (TREE.pinch) {
       if (TP.size < 2) TREE.pinch = null;
       TREE.drag = null;
@@ -179,14 +228,14 @@ function treeInit() {
     TREE.drag = null;
     if (!g || g.moved || e.type !== 'pointerup') return;
     if (!g.n) {
-      if (TOUCH.on && TREE.sel) (TREE.sel = null), hideTip(), treeRender();
+      if (TOUCH.on && TREE.sel) (TREE.sel = null), hideTip(), treeRefresh();
       return;
     }
     const id = g.n.dataset.n;
     /* 手機：點一下＝選取看說明，再點一次才點亮／退回 */
     if (TOUCH.on && TREE.sel !== id) {
       TREE.sel = id;
-      treeRender();
+      treeRefresh();
       const r = document.querySelector(`#tg [data-n="${id}"]`).getBoundingClientRect(),
         have = S.pt.includes(id);
       showTip(treeTip(id) + `<p class="hint">再點一次${have ? '退回' : '點亮'}</p>`, r.right, r.top + r.height / 2);
