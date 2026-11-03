@@ -98,27 +98,6 @@ function heroCell(row, col, x, y, flip, al, o = {}) {
 /* 角度 → 第 0 列的方向格 */
 const dirCol = a => (2 - (((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8) + 8) % 8;
 
-/* 地板：一次畫好的石磚花紋 */
-let FLOOR;
-function floorPat() {
-  const c = document.createElement('canvas'),
-    N = 256;
-  c.width = c.height = N;
-  const g = c.getContext('2d');
-  g.fillStyle = '#1b1715';
-  g.fillRect(0, 0, N, N);
-  for (let y = 0; y < 4; y++)
-    for (let x = 0; x < 4; x++) {
-      const v = 22 + Math.floor(Math.random() * 10);
-      g.fillStyle = `rgb(${v + 6},${v + 2},${v})`;
-      g.fillRect(x * 64 + 2, y * 64 + 2, 60, 60);
-    }
-  for (let i = 0; i < 900; i++) {
-    g.fillStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,240,220'},${Math.random() * 0.06})`;
-    g.fillRect(Math.random() * N, Math.random() * N, 2, 2);
-  }
-  return CX.createPattern(c, 'repeat');
-}
 let DARK;
 let ZOOM = 1.35; /* 手機照螢幕高度調（main.js 的 resize） */
 function draw() {
@@ -137,15 +116,18 @@ function draw() {
     oy = Math.round(H / 2 - G.cam.y + sy);
   CX.save();
   CX.translate(ox, oy);
-  /* 地板 */
-  FLOOR = FLOOR || floorPat();
-  CX.fillStyle = FLOOR;
+  /* 地板、地上細節、牆、擺設（場景在 biome.js） */
+  CX.fillStyle = bFloor();
   CX.fillRect(0, 0, G.W, G.H);
   CX.strokeStyle = '#3a2f28';
   CX.lineWidth = 6;
   CX.strokeRect(-3, -3, G.W + 6, G.H + 6);
   if (G.scene === 'hide') drawHideout();
-  else drawWalls(W, H);
+  else {
+    bDecals(W, H);
+    bWalls(W, H);
+  }
+  bDeco(W, H);
   /* 地面效果、屍體、殘留物、手雷、幻影、旗幟、飛劍（mech.js） */
   if (G.scene === 'map' && G.ground) drawMech();
   /* 預警：怪物出手前地上的紅色範圍 */
@@ -252,16 +234,24 @@ function draw() {
     else if (d.frag) spr('mat_frag', x, y + 8, 24);
     else {
       const col = RCOL[d.it.r];
-      if (d.it.r === 2) {
-        const g = CX.createLinearGradient(x, y - 120, x, y);
-        g.addColorStop(0, 'rgba(255,209,102,0)');
-        g.addColorStop(1, 'rgba(255,209,102,0.35)');
+      /* 掉落光柱：稀有金色、又粗又亮會呼吸；魔法淡藍細柱 */
+      if (d.it.r >= 1) {
+        const rare = d.it.r === 2,
+          bh = rare ? 190 : 110,
+          a = (rare ? 0.6 : 0.28) * (0.8 + 0.2 * Math.sin(G.t * 3 + d.sx)),
+          g = CX.createLinearGradient(x, y - bh, x, y);
+        g.addColorStop(0, `rgba(${rare ? '255,209,102' : '138,180,255'},0)`);
+        g.addColorStop(1, `rgba(${rare ? '255,209,102' : '138,180,255'},${a})`);
         CX.fillStyle = g;
-        CX.fillRect(x - 4, y - 120, 8, 120);
+        CX.fillRect(x - (rare ? 7 : 3), y - bh, rare ? 14 : 6, bh);
+        if (rare) {
+          CX.fillStyle = `rgba(255,236,190,${a})`;
+          CX.fillRect(x - 1.5, y - bh * 0.8, 3, bh * 0.8);
+        }
       }
       spr(itemIc(d.it), x, y + 10, 26);
       CX.fillStyle = col;
-      CX.globalAlpha = 0.25;
+      CX.globalAlpha = d.it.r === 2 ? 0.5 : 0.25;
       CX.beginPath();
       CX.ellipse(x, y + 8, 16, 6, 0, 0, TAU);
       CX.fill();
@@ -350,6 +340,8 @@ function draw() {
   /* 跳數字 */
   CX.textAlign = 'center';
   for (const n of G.nums) {
+    /* 手機：升級的大字會撞到上面的王名，底部的提示字已經寫了，不畫 */
+    if (TOUCH.on && n.c === 'lv') continue;
     const f = n.t / 0.9,
       pop = n.t < 0.08 ? 1 + (0.08 - n.t) * 8 : 1,
       y = n.y - 30 * Math.sqrt(f) - (n.c === 'crit' ? 10 : 0);
@@ -365,7 +357,7 @@ function draw() {
       crit: ['#ffd166', 24],
       hurt: ['#ff5a5a', 17],
       gold: ['#ffd166', 14],
-      lv: ['#9df29d', 20],
+      lv: ['#ffd166', 26],
       perfect: ['#8fe0ff', 26],
       ev: ['#b8f0c8', 18],
       mat: ['#d6b8ff', 15],
@@ -400,18 +392,27 @@ function draw() {
   /* 掉落標籤（PoE 式：名字框，可以點） */
   LABELS.length = 0;
   CX.font = '600 13px "Noto Sans TC", sans-serif';
+  const btns = touchRects();
   for (const d of G.drops) {
     if (!d.it || d.t < 0.3) continue;
     /* 品質、潛能金字以上直接寫在標籤上（D2：好底材一眼看得出來） */
     const txt = itemName(d.it) + dropTag(d.it),
-      w = CX.measureText(txt).width + 14,
-      x = d.x,
+      w = CX.measureText(txt).width + 14;
+    let x = d.x,
       y = d.y - 22;
+    /* 手機：標籤被右邊的技能鍵蓋住就往左推（推到按鈕左邊） */
+    for (const r of btns) {
+      const L = (x - w / 2 + ox) * ZOOM,
+        T = (y - 11 + oy) * ZOOM;
+      if (L < r.right && L + w * ZOOM > r.left && T < r.bottom && T + 20 * ZOOM > r.top)
+        x = (r.left - 6) / ZOOM - ox - w / 2;
+    }
     const near = dist(P, d) < 110;
-    CX.fillStyle = near ? 'rgba(30,26,24,0.92)' : 'rgba(10,9,8,0.8)';
+    /* 底色帶一點稀有度的色調（跟說明框的標題列一致），稀有以上框粗一點 */
+    CX.fillStyle = near ? RBG[d.it.r] : 'rgba(8,6,5,0.86)';
     CX.fillRect(x - w / 2, y - 11, w, 20);
     CX.strokeStyle = RCOL[d.it.r];
-    CX.lineWidth = near ? 2 : 1;
+    CX.lineWidth = near || d.it.r >= 2 ? 2 : 1;
     CX.strokeRect(x - w / 2 + 0.5, y - 10.5, w - 1, 19);
     CX.fillStyle = RCOL[d.it.r];
     CX.fillText(txt, x, y + 4);
@@ -429,7 +430,7 @@ function draw() {
     py = (P.y - 20 + oy) * DPR * ZOOM;
   dg.globalCompositeOperation = 'source-over';
   dg.clearRect(0, 0, DARK.width, DARK.height);
-  dg.fillStyle = G.scene === 'hide' ? 'rgba(4,3,3,0.3)' : 'rgba(4,3,3,0.72)';
+  dg.fillStyle = `rgba(${BIO().dark},${G.scene === 'hide' ? 0.45 : 0.74})`;
   dg.fillRect(0, 0, DARK.width, DARK.height);
   dg.globalCompositeOperation = 'destination-out';
   const R = 560 * DPR * ZOOM,
@@ -439,8 +440,10 @@ function draw() {
   g.addColorStop(1, 'rgba(0,0,0,0)');
   dg.fillStyle = g;
   dg.fillRect(0, 0, DARK.width, DARK.height);
+  bLights(dg, ox, oy);
   CX.setTransform(1, 0, 0, 1, 0, 0);
   CX.drawImage(DARK, 0, 0);
+  bGlow(ox, oy);
   CX.setTransform(DPR, 0, 0, DPR, 0, 0);
   {
     const W = SW,
@@ -458,6 +461,29 @@ function draw() {
   }
 }
 const RCOL = ['#e8e2d6', '#8ab4ff', '#ffd166'];
+/* 手機的技能鍵在螢幕上的位置（每 0.5 秒量一次，避免每格都排版） */
+let TRECT = [],
+  TRECT_T = -1;
+function touchRects() {
+  if (!TOUCH.on) return [];
+  if (Math.abs(G.t - TRECT_T) > 0.5) {
+    TRECT_T = G.t;
+    TRECT = [...document.querySelectorAll('#bar .sk')]
+      .map(e => e.getBoundingClientRect())
+      .sort((a, b) => b.left - a.left);
+  }
+  return TRECT;
+}
+const RBG = ['rgba(21,17,13,0.95)', 'rgba(18,24,51,0.95)', 'rgba(42,33,13,0.95)'];
+/* 古銅雙框（跟 CSS 的面板一樣）：外暗銅、內亮銅 */
+function bronzeRect(x, y, w, h) {
+  CX.lineWidth = 3;
+  CX.strokeStyle = '#5a4628';
+  CX.strokeRect(x - 1.5, y - 1.5, w + 3, h + 3);
+  CX.lineWidth = 1;
+  CX.strokeStyle = '#b8955a';
+  CX.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+}
 const LABELS = [];
 function teleCircle(x, y, r, f) {
   CX.fillStyle = `rgba(229,72,77,${0.08 + 0.12 * f})`;
@@ -720,11 +746,9 @@ function drawMinimap(W) {
     x0 = W - mw - (TOUCH.on ? 10 / ZOOM : 16),
     y0 = TOUCH.on ? 60 / ZOOM : 16,
     s = mw / G.W;
-  CX.fillStyle = 'rgba(10,8,7,0.7)';
+  CX.fillStyle = 'rgba(8,6,5,0.78)';
   CX.fillRect(x0, y0, mw, mh);
-  CX.strokeStyle = 'rgba(232,226,214,0.25)';
-  CX.lineWidth = 1;
-  CX.strokeRect(x0 + 0.5, y0 + 0.5, mw - 1, mh - 1);
+  bronzeRect(x0, y0, mw, mh);
   if (!G.mini) {
     /* 地圖縮圖：一格一點，進地圖時畫一次 */
     const c = (G.mini = document.createElement('canvas'));
@@ -742,18 +766,31 @@ function drawMinimap(W) {
     const z = m.boss ? 5 : 2;
     CX.fillRect(x0 + m.x * s - z / 2, y0 + m.y * s - z / 2, z, z);
   }
+  /* 地上的稀有裝：黑邊金菱形（比玩家的點大，一眼分得出來） */
+  CX.fillStyle = RCOL[2];
+  CX.strokeStyle = '#000';
+  CX.lineWidth = 1.5;
+  for (const d of G.drops)
+    if (d.it && d.it.r >= 2) {
+      const dx = x0 + d.x * s,
+        dy = y0 + d.y * s,
+        z = 5;
+      CX.beginPath();
+      CX.moveTo(dx, dy - z);
+      CX.lineTo(dx + z, dy);
+      CX.lineTo(dx, dy + z);
+      CX.lineTo(dx - z, dy);
+      CX.closePath();
+      CX.stroke();
+      CX.fill();
+    }
   CX.fillStyle = '#9df29d';
   CX.fillRect(x0 + P.x * s - 2, y0 + P.y * s - 2, 4, 4);
 }
 
 /* 藏身處：木地板、牆、地圖台、倉庫箱、市集攤；走近時顯示「F 名字」 */
 function drawHideout() {
-  CX.fillStyle = '#2a211b';
-  CX.fillRect(0, 0, G.W, 100);
-  CX.fillStyle = '#3a2d23';
-  for (let x = 0; x < G.W; x += 48) CX.fillRect(x + 2, 60, 44, 36);
-  CX.fillStyle = 'rgba(0,0,0,0.35)';
-  CX.fillRect(0, 96, G.W, 14);
+  bHideWall();
   for (const p of G.props) {
     shadow(p.x, p.y + 6, p.r * 1.1);
     if (p.k === 'device') {
@@ -807,48 +844,14 @@ function drawPrompts() {
         ? [(TOUCH.on ? '' : 'F ') + p.n, p.x, p.y - (p.k === 'device' ? 92 : 80)]
         : null;
   if (!lab) return;
-  CX.font = '700 14px "Noto Sans TC", sans-serif';
+  CX.font = '700 15px "Noto Serif TC", serif';
   CX.textAlign = 'center';
-  const w = CX.measureText(lab[0]).width + 18;
-  CX.fillStyle = 'rgba(10,8,7,0.85)';
-  CX.fillRect(lab[1] - w / 2, lab[2] - 15, w, 24);
-  CX.strokeStyle = 'rgba(255,209,102,0.7)';
-  CX.strokeRect(lab[1] - w / 2 + 0.5, lab[2] - 14.5, w - 1, 23);
-  CX.fillStyle = '#ffd166';
+  const w = CX.measureText(lab[0]).width + 22;
+  CX.fillStyle = 'rgba(14,11,9,0.92)';
+  CX.fillRect(lab[1] - w / 2, lab[2] - 15, w, 25);
+  bronzeRect(lab[1] - w / 2, lab[2] - 15, w, 25);
+  CX.fillStyle = '#e6c88e';
   CX.fillText(lab[0], lab[1], lab[2] + 2);
-}
-
-/* 地圖的牆：只畫鄰接地板的牆；下面是地板的牆畫出正面（有厚度） */
-function drawWalls(W, H) {
-  const x0 = Math.max(0, Math.floor((G.cam.x - W / 2) / TS) - 1),
-    x1 = Math.min(G.cols - 1, Math.ceil((G.cam.x + W / 2) / TS) + 1),
-    y0 = Math.max(0, Math.floor((G.cam.y - H / 2) / TS) - 1),
-    y1 = Math.min(G.rows - 1, Math.ceil((G.cam.y + H / 2) / TS) + 1),
-    T = G.tiles,
-    C = G.cols,
-    wall = (x, y) => x < 0 || y < 0 || x >= C || y >= G.rows || T[y * C + x] === 1;
-  for (let y = y0; y <= y1; y++)
-    for (let x = x0; x <= x1; x++) {
-      if (!wall(x, y)) continue;
-      const px = x * TS,
-        py = y * TS;
-      let near = false;
-      for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) if (!wall(x + dx, y + dy)) near = true;
-      CX.fillStyle = near ? '#1c1714' : '#070606';
-      CX.fillRect(px, py, TS, TS);
-      if (!near) continue;
-      CX.fillStyle = '#2b231e';
-      CX.fillRect(px + 2, py + 2, TS - 4, TS - 4);
-      if (!wall(x, y + 1)) {
-        /* 正面 */
-        CX.fillStyle = '#3a2f28';
-        CX.fillRect(px, py + TS * 0.45, TS, TS * 0.55);
-        CX.fillStyle = '#4a3d33';
-        CX.fillRect(px, py + TS * 0.45, TS, 3);
-        CX.fillStyle = 'rgba(0,0,0,0.35)';
-        CX.fillRect(px + TS / 2 - 1, py + TS * 0.45 + 3, 2, TS * 0.55 - 3);
-      }
-    }
 }
 
 /* 戰狼：跟著你的狼（腳下綠圈） */

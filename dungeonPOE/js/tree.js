@@ -22,7 +22,8 @@ function treeCanRefund(id) {
 function treeOpen() {
   if (TREE.open) return treeClose();
   closePanels();
-  Object.assign(TREE, { open: true, x: 0, y: 0, z: 0.55 });
+  /* 起點的 6 個門大約在半徑 560 的圈上；窄螢幕（直立）縮到看得到全部的門 */
+  Object.assign(TREE, { open: true, x: 0, y: 0, z: Math.min(0.55, (innerWidth / 2 - 30) / 560) });
   $('ptree').hidden = false;
   treeRender();
 }
@@ -73,9 +74,9 @@ function treeRender() {
     <b>天賦樹</b>
     <span>天賦點 剩 <b class="${ptLeft() > 0 ? 'c-gold' : ''}">${ptLeft()}</b>（每升一級 1 點）</span>
     <button class="btn" data-ta="reset" ${S.pt.length > PT_START.length ? '' : 'disabled'}>重置天賦</button>
-    <button class="x" data-ta="close">✕</button></div>
+    <button class="x" aria-label="關閉" data-ta="close">${ICO.x}</button></div>
   <svg id="tsvg"><g id="tg">${html}</g></svg>
-  <p class="thelp">照 PoE2：中間是起點的 6 個門，160 多塊形狀都不一樣的拼塊（不分區，整棵樹混在一起）密密麻麻地往外擴散、相鄰的直接相連（有的是死路、有的兩頭都接），過路點很少。方向大致是：上方生命護甲、右上近戰矛攻速、右邊身法棍投射物陷阱、下方暴擊圖騰召喚、左下元素法術、左上能量護盾精魄魔力；越外面的大點越強，帶代價的是強力大點。點亮著的點＝點下去，再點一次＝退回。拖曳移動、滾輪縮放。</p>`;
+  <p class="thelp"><b>方向</b> 上 生命護甲 · 右上 近戰攻速 · 右 投射物陷阱 · 下 暴擊圖騰召喚 · 左下 元素法術 · 左上 能量護盾精魄　<b>操作</b> 點亮著的點＝點下去，再點＝退回 · 拖曳移動 · 滾輪縮放　越外圈的大點越強，帶代價的最強</p>`;
   treeView();
 }
 function treeView() {

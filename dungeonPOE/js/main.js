@@ -156,7 +156,8 @@ function resize() {
   DPR = Math.min(2, devicePixelRatio || 1);
   /* 手機：畫面高度看得到差不多的範圍；背包格子照寬度（夠寬就兩個面板並排） */
   NARROW = innerWidth < 800;
-  ZOOM = TOUCH.on ? clamp(innerHeight / 470, 0.72, 1.35) : 1.35;
+  /* 直立：左右看得到約 10 格（480 px）；橫向手機：照高度 */
+  ZOOM = PORT() ? clamp(innerWidth / 480, 0.6, 1.35) : TOUCH.on ? clamp(innerHeight / 470, 0.72, 1.35) : 1.35;
   C = TOUCH.on ? clamp(Math.floor(((NARROW ? innerWidth : innerWidth / 2) - 44) / 12), 26, 36) : 36;
   document.documentElement.style.setProperty('--cell', C + 'px');
   if (S) hudPanels();

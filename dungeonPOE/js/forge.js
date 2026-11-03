@@ -86,7 +86,7 @@ function forgeHTML() {
   }
   return `<div class="ph"><b>鍛造台</b><span class="ftabs">${tabs
     .map(([k, n]) => `<button class="${tab === k ? 'on' : ''}" data-fg="tab:${k}">${n}</button>`)
-    .join('')}</span>${swapB('背包')}<button class="x" data-a="close">✕</button></div>
+    .join('')}</span>${swapB('背包')}<button class="x" aria-label="關閉" data-a="close">${ICO.x}</button></div>
   ${matsHTML(tab === 'forge')}
   ${selHTML(it, tab === 'temper')}
   ${CRAFT.log ? `<p class="flog">${esc(CRAFT.log)}</p>` : ''}

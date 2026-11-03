@@ -12,6 +12,8 @@ function newGame() {
   const s = {
     v: 14,
     name: '女忍者',
+    /* 手機的操作方向：p 直立、l 橫向（桌機一律橫向）；舊存檔 migrate 從這裡補 */
+    orient: 'p',
     lv: 1,
     xp: 0,
     gold: 0,
@@ -111,6 +113,8 @@ function newPlayer(x, y) {
 function enterHideout() {
   resetWorld(960, 640);
   G.scene = 'hide';
+  G.biome = 'temple';
+  G.deco = hideDeco();
   G.props = [
     { k: 'device', n: '地圖台', x: 480, y: 210, r: 46 },
     { k: 'stash', n: '倉庫', x: 190, y: 330, r: 34 },
@@ -201,6 +205,7 @@ function enterMap(t) {
     r.x1 = (r.cx + 1) * CHUNK - 1 - irnd(1, 3);
     r.y1 = (r.cy + 1) * CHUNK - 1 - irnd(1, 3);
     carve(r.x0, r.y0, r.x1, r.y1);
+    roomShape(tiles, cols, r);
     for (let k = irnd(0, 3); k > 0; k--) {
       const px = irnd(r.x0 + 2, r.x1 - 3),
         py = irnd(r.y0 + 2, r.y1 - 3);
@@ -226,6 +231,9 @@ function enterMap(t) {
     for (const b of rooms)
       if (a !== b && Math.abs(a.cx - b.cx) + Math.abs(a.cy - b.cy) === 1 && Math.random() < 0.08) corridor(a, b);
   const st = rooms[0];
+  /* 場景只是外觀（biome.js）：每張圖隨機一種 */
+  G.biome = pick(Object.keys(BIOMES));
+  G.deco = decorate(rooms);
   newPlayer((st.cx * CHUNK + 7) * TS, (st.cy * CHUNK + 7) * TS);
   if (G.mm.pcurse) P.ail = { curse: { k: G.mm.pcurse, v: G.mm.pcv, t: 1e9 } };
   /* 怪物：起點以外的房間各 2～3 群，每 4 群一隻菁英 */
@@ -248,6 +256,40 @@ function enterMap(t) {
   G.rooms = rooms;
   sfx('portal');
   hudState();
+}
+/* 房間形狀：圓形庭院、切角、一角崩塌（都在房間的長方形裡加牆；
+   走廊之後才挖、而且接到房間中心，所以不會堵死） */
+function roomShape(tiles, cols, r) {
+  const w = r.x1 - r.x0,
+    hgt = r.y1 - r.y0,
+    k = Math.random(),
+    wall = (x, y) => (tiles[y * cols + x] = 1);
+  if (k < 0.25 && w >= 9 && hgt >= 9) {
+    const cx = (r.x0 + r.x1) / 2,
+      cy = (r.y0 + r.y1) / 2,
+      rx = w / 2 + 0.6,
+      ry = hgt / 2 + 0.6;
+    for (let y = r.y0; y <= r.y1; y++)
+      for (let x = r.x0; x <= r.x1; x++) if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 > 1) wall(x, y);
+  } else if (k < 0.55) {
+    const c = irnd(2, 3);
+    for (let i = 0; i < c; i++)
+      for (let j = 0; j < c - i; j++) {
+        wall(r.x0 + i, r.y0 + j);
+        wall(r.x1 - i, r.y0 + j);
+        wall(r.x0 + i, r.y1 - j);
+        wall(r.x1 - i, r.y1 - j);
+      }
+  } else if (k < 0.8) {
+    const [ax, ay] = pick([
+      [r.x0, r.y0],
+      [r.x1, r.y0],
+      [r.x0, r.y1],
+      [r.x1, r.y1]
+    ]);
+    for (let y = r.y0; y <= r.y1; y++)
+      for (let x = r.x0; x <= r.x1; x++) if (Math.hypot(x - ax, y - ay) < 2.2 + Math.random() * 1.6) wall(x, y);
+  }
 }
 const isWall = (x, y) => {
   if (!G.tiles) return false;
@@ -650,7 +692,9 @@ function gainXp(v) {
     P.hp = ST.hp;
     P.mp = ST.mp;
     fx({ k: 'lvup', x: P.x, y: P.y, dur: 1.1 });
+    fx({ k: 'ring', x: P.x, y: P.y, r: 120, col: '#ffd166', dur: 0.6 });
     num(P.x, P.y - 90, S.lv, 'lv');
+    hudWarn(`升級！Lv ${S.lv}・天賦點 +1`);
     sfx('lvup');
   }
 }

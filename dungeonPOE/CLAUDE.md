@@ -4,7 +4,7 @@
 
 **每次新對話開始**：先用 Skill 啟動 `ponytail`（最小完整改動）和 `grilling`（先把計畫問清楚再動手）。
 
-**只要動到 UI／UX：一定先啟動 skill `ui-design`**（它會先啟動 `apple-design`，有動畫再加 `animate`）。0.2.0 起是**桌機為主、手機為輔**的即時 ARPG（0.2.4 起有手機版）：兩邊的操作規則與對照表在 `docs/企劃書.md` 第 9 節「操作模式」，**改介面兩邊都要做、都要測**——桌機截 1440×900 與 1280×720（面板不能超出畫面），手機橫向 844×390 與 667×375（`node tools/touch_check.js`，要先開本機伺服器）。遊戲邏輯只透過 `mouseWorld()` 與移動方向拿輸入，不要在技能、戰鬥程式裡判斷是不是手機。
+**只要動到 UI／UX：一定先啟動 skill `ui-design`**（它會先啟動 `apple-design`，有動畫再加 `animate`）。0.2.0 起是**桌機為主、手機為輔**的即時 ARPG（0.2.4 起有手機版）：兩邊的操作規則與對照表在 `docs/企劃書.md` 第 9 節「操作模式」，**改介面兩邊都要做、都要測**——桌機截 1440×900 與 1280×720（面板不能超出畫面），手機橫向 844×390 與 667×375、手機直立 390×844 與 375×667（`node tools/touch_check.js 寬 高`，要先開本機伺服器；0.2.14 起手機有直立／橫向兩種操作，設定裡選，`S.orient`、`PORT()`）。遊戲邏輯只透過 `mouseWorld()` 與移動方向拿輸入，不要在技能、戰鬥程式裡判斷是不是手機。
 
 0.2.0 重製成桌機的即時動作 ARPG（0.2.2 技能寶石，0.2.3 PoE 式天賦樹＋昇華，0.2.4 能量護盾、精魄光環、陷阱地雷砲台圖騰、天賦樹與昇華差異化）：藏身處 → 地圖台放地圖碎片、自選階級（1～16，打倒王開放下一階）→ 刷圖打王撿寶。死亡照 PoE（扣經驗、裝備不掉）。10 欄裝備＋格子背包與倉庫，稀有度照 D2。**0.2.9 起職業與昇華全部砍掉**，照 `docs/開發參考.md` 的順序（底層 → 武器與底材 → 技能體系 → 天賦樹 → 職業）重新設計。0.2.6 做了第一批的做裝（底材三層、鍛造、淬鍊、分解、材料頁、靈魂＋孔位（書庫 0.2.8 拿掉，改成生成寶石））。**docs 的索引在 `docs/索引.md`**（哪份是權威、什麼時候讀）；**還沒做的都在 `docs/待做清單.md`**（做完一項就從那裡刪掉、寫進 CHANGELOG）。0.1 的撤離＋背包自動戰鬥規則在 `docs/封存/舊企劃書_0.1.md`（程式在 git 紀錄）。
 
@@ -36,10 +36,11 @@
 | `js/audio.js` | Web Audio 合成音效 `sfx` |
 | `js/game.js` | 存檔結構 `newGame`、場景（藏身處 `enterHideout`、開圖 `openMap`、方塊房間地圖 `enterMap`（`TS`、`CHUNK`、牆 `isWall`、找地板 `floorIn`／`floorNear`）、首領進度 `addProg`、回家 `goHome`）、碰撞 `moveBody`／`pushTiles`、玩家與技能 `useSkill`／`actHit`／`updPlayer`、翻滾 `doRoll`、受傷與完美閃避 `hurtPlayer`、死亡 `die`、打怪 `hitMob`／`killMob`（掉落、碎片）、打倒王 `bossDown`（開放下一階、不跳視窗）、傳送門下一把 `mapAgain`、撿東西 `pickup`、互動 `interact`／`useProp`、怪物 AI `updMobs`／`mobStrike`、王 `bossAI`、主迴圈 `frame` |
 | `js/skills.js` | 技能欄 `NSLOT`／`SLOTKEY`、一格的實際數值 `slotCfg`（輔助 `supOK`）、放技能 `useSlot`（付費前檢查彈藥、手雷、榮耀、屍體、目標 `mobNear`）／`skillTick`（位移技能 `D.dist`）／`actHit`、0.2.11 的武器技能 `actHit2`（每種武器 2 招）、技能限定武器 `wtOK`／`wtNeed`、打中 `hitMob`（傷害公式與異常在 combat.js）、沒技能時的預設 `BASEC`、詛咒與標記的施放（`actHit` 的 `D.curse`／`D.mark`）、怪物每格 `mobTick`、能量護盾吸收與回充 `esAbsorb`、狼 `callWolf`／`updAllies`、毒刃雨與隕石 `updPools`、`skillsEnter`、出手與移動速度 `speedMul`／`moveMul`、擊殺 `onKill`、場上單位 `placeUnit`／`unitFire`／`updUnits`（`UNIT_MAX`） |
-| `js/touch.js` | 手機操作（`TOUCH`、`setTouch` 切模式）：全螢幕 `fsEnter`／`fsClick`（iPhone 教加入主畫面，`manifest.webmanifest`）、浮動搖桿、技能鍵手勢（點＝自動瞄準 `autoTarget`、拖＝手動瞄準 `touchAim`／地上的線 `drawAim`、拖回取消）、右上選單、點道具出現說明＋動作 `tapItem`、回家要按兩次 `homeAsk` |
+| `js/touch.js` | 手機操作（`TOUCH`、`setTouch` 切模式、直立／橫向 `applyOrient`／`setOrient`、直立的龍絆式手勢（點＝普攻、按住＝連打、拖＝移動、一撥＝翻滾）、右上 ☰ `moreMenu`；設定面板 `setHTML`、桌機功能列 `DMENU`、直立分頁 `portTabs` 在 hud.js）：全螢幕 `fsEnter`／`fsClick`（iPhone 教加入主畫面，`manifest.webmanifest`）、浮動搖桿、技能鍵手勢（點＝自動瞄準 `autoTarget`、拖＝手動瞄準 `touchAim`／地上的線 `drawAim`、拖回取消）、右上選單、點道具出現說明＋動作 `tapItem`、回家要按兩次 `homeAsk` |
 | `js/forge.js` | 鍛造台面板 `forgeHTML`（`CRAFT`：分頁、選的碎片、選的裝備 `craftPick`）、材料列 `matsHTML`；技能寶石面板的升級／開孔按鈕（生成寶石的視窗在 hud.js 的 `gemHTML`）（`data-fg`） |
 | `js/tree.js` | 天賦樹盤面 `TREE`／`treeOpen`／`treeRender`／`treeToggle`（有弧的拼塊照 `PTREE.ARC` 畫成弧線；能不能點 `treeCan`、能不能退 `treeCanRefund`；中間挖空的地方等新昇華）、說明 `treeTip` |
-| `js/render.js` | canvas 畫面 `draw`：藏身處 `drawHideout`、互動提示 `drawPrompts`、預警、怪物、牆 `drawWalls`、主角（`img/hero.png` 九列動作的 `heroCell`、技能對應動作 `ACT_ROW`、方向 `dirCol`）、特效、跳數字、掉落標籤 `LABELS`、光照、小地圖 |
+| `js/render.js` | canvas 畫面 `draw`：藏身處 `drawHideout`、互動提示 `drawPrompts`、預警、怪物、主角（`img/hero.png` 九列動作的 `heroCell`、技能對應動作 `ACT_ROW`、方向 `dirCol`）、特效、跳數字、掉落標籤 `LABELS`（手機避開技能鍵 `touchRects`）、光照、小地圖、古銅框 `bronzeRect` |
+| `js/biome.js` | 地圖場景（0.2.14，只有外觀、不影響戰鬥）：`BIOMES`（冰雪洞窟、岩漿地城、毒沼古墓、廢棄廟宇；`G.biome` 在 `enterMap` 隨機，藏身處固定廟宇）、地板花紋 `bFloor`、地上細節 `bDecals`、牆 `bWalls`、藏身處後牆 `bHideWall`、擺設 `decorate`／`hideDeco`／`bDeco`（`G.deco`，不擋路）、光源 `bLights`（暗層挖亮）／`bGlow`。房間形狀（圓形庭院、切角、崩塌，會擋路）在 game.js 的 `roomShape` |
 | `js/hud.js` | HUD（生命／魔力球、技能列 `BAR`／`hudBar`、王血條、首領進度條）、面板 `openPanel`／`hudPanels`（裝備 `invHTML`、倉庫、地圖台 `devHTML`、技能寶石與光環欄 `skillHTML`）、欄位 `slotGet`／`slotSet`／`slotFits`（裝備欄與寶石插槽）、拖曳 `dragStart`／`dragMove`／`dropTarget`／`dragEnd`、點一下搬移 `quickMove`、賣 `sell`、說明框 `itemTip`／`gemTip`、死亡與傳送門選單 `hudState`、輸入 `inputInit`、動作 `act` |
 | `js/cloud.js` | Supabase 匿名登入＋雲端存檔（表 `dungeon_saves`） |
 | `js/market.js` | 0.1 的市集（還沒接回 0.2，`index.html` 沒有載入） |

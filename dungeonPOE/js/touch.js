@@ -10,11 +10,28 @@ function setTouch(on) {
   if (TOUCH.on === on) return;
   TOUCH.on = on;
   document.body.classList.toggle('touch', on);
+  applyOrient();
+}
+/* 直立／橫向（設定裡選，存在 S.orient）：換 body.port、視野、全螢幕的方向鎖 */
+function applyOrient() {
+  const p = PORT();
+  document.body.classList.toggle('port', p);
+  $('rott').textContent = p ? '直立操作：把手機轉直' : '橫向操作：把手機橫過來';
+  $('rotb').textContent = p ? '改用橫向操作' : '改用直立操作';
+  if (fsOn() && screen.orientation && screen.orientation.lock)
+    screen.orientation.lock(p ? 'portrait' : 'landscape').catch(() => {});
+  stickHide();
   fsBtn();
   resize();
   hideTip();
   hudPanels();
   if (TREE.open) treeRender();
+}
+function setOrient(o) {
+  if (S.orient === o) return;
+  S.orient = o;
+  save();
+  applyOrient();
 }
 /* 最近的敵人（王的距離打六折＝優先打王） */
 function autoTarget() {
@@ -72,7 +89,9 @@ function fsEnter() {
     rq = el.requestFullscreen || el.webkitRequestFullscreen;
   if (!rq) return;
   Promise.resolve(rq.call(el, { navigationUI: 'hide' }))
-    .then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'))
+    .then(
+      () => screen.orientation && screen.orientation.lock && screen.orientation.lock(PORT() ? 'portrait' : 'landscape')
+    )
     .catch(() => {});
 }
 function fsClick() {
@@ -87,6 +106,12 @@ function fsClick() {
 function fsBtn() {
   const b = $('tfs');
   if (b) b.hidden = !TOUCH.on || inApp() || fsOn();
+}
+function moreMenu(on) {
+  const el = $('tmore');
+  if (!el || el.hidden === !on) return;
+  el.hidden = !on;
+  document.querySelector('[data-tm=more]').setAttribute('aria-expanded', on);
 }
 /* 在地圖裡按兩次才回家（這張地圖會結束） */
 let tHome = 0;
@@ -161,6 +186,24 @@ function touchInit() {
       if (p === 'portal') return dist(P, G.portal) < 120 ? enterMap(G.portal.to) : hudWarn('走近一點');
       if (p) return useProp(p);
     }
+    /* 直立（龍絆式）：整個畫面都是手勢區。拖＝移動、點＝普攻、按住不動＝連打、快速一撥＝翻滾 */
+    if (PORT()) {
+      if (TOUCH.stick) return;
+      const st = (TOUCH.stick = {
+        id: e.pointerId,
+        x0: e.clientX,
+        y0: e.clientY,
+        sx: e.clientX,
+        sy: e.clientY,
+        t: performance.now(),
+        port: true,
+        mv: false
+      });
+      st.tm = setTimeout(() => {
+        if (TOUCH.stick === st && !st.mv) (st.atk = true), (TOUCH.cast = true), (M.L = 1);
+      }, 220);
+      return;
+    }
     if (e.clientX < innerWidth * 0.55 && !TOUCH.stick) {
       TOUCH.stick = { id: e.pointerId, x0: e.clientX, y0: e.clientY };
       stickShow(e.clientX, e.clientY);
@@ -169,6 +212,13 @@ function touchInit() {
   addEventListener('pointermove', e => {
     const st = TOUCH.stick;
     if (st && e.pointerId === st.id) {
+      if (st.port && !st.mv) {
+        if (Math.hypot(e.clientX - st.sx, e.clientY - st.sy) < 12) return;
+        /* 開始拖：停止連打，搖桿出現在按下去的地方 */
+        st.mv = true;
+        if (st.atk) (st.atk = false), (TOUCH.cast = false), (M.L = 0);
+        stickShow(st.x0, st.y0);
+      }
       let dx = e.clientX - st.x0,
         dy = e.clientY - st.y0;
       const L = Math.hypot(dx, dy);
@@ -201,7 +251,27 @@ function touchInit() {
     }
   });
   const up = e => {
-    if (TOUCH.stick && e.pointerId === TOUCH.stick.id) stickHide();
+    const st = TOUCH.stick;
+    if (st && e.pointerId === st.id) {
+      if (st.port) {
+        clearTimeout(st.tm);
+        const dt = performance.now() - st.t,
+          dx = e.clientX - st.sx,
+          dy = e.clientY - st.sy,
+          L = Math.hypot(dx, dy);
+        if (st.atk) (M.L = 0), (TOUCH.cast = false);
+        else if (e.type === 'pointerup' && !st.mv && dt < 300) {
+          TOUCH.cast = true;
+          useSlot(0);
+          TOUCH.cast = false;
+        } else if (e.type === 'pointerup' && st.mv && dt < 260 && L > 40) {
+          P.mdx = dx / L;
+          P.mdy = dy / L;
+          doRoll();
+        }
+      }
+      stickHide();
+    }
     const s = TOUCH.sk;
     if (s && e.pointerId === s.id) {
       s.el.classList.remove('down');
@@ -246,13 +316,21 @@ function touchInit() {
   /* 右上選單、說明框的動作 */
   document.addEventListener('click', e => {
     const m = e.target.closest('[data-tm]');
+    /* ☰ 選單：點選單裡的項目或選單以外的地方就收起來 */
+    if (!m || m.dataset.tm !== 'more') moreMenu(false);
     if (m) {
       const k = m.dataset.tm;
       if (k === 'fs') return fsClick();
+      if (k === 'more') return moreMenu($('tmore').hidden);
       if (k === 'inv') PANEL.inv && !PANEL.stash && !PANEL.skill ? closePanels() : openPanel('inv');
       else if (k === 'skill') PANEL.skill ? closePanels() : openPanel('skill');
       else if (k === 'tree') treeOpen('pt');
       else if (k === 'home') homeAsk();
+      else if (k === 'set') PANEL.set ? closePanels() : (closePanels(), openPanel('set'));
+      else if (k === 'port' || k === 'land') setOrient(k[0]);
+      else if (k === 'flip') setOrient(PORT() ? 'l' : 'p');
+      else if (k === 'tabinv') (PANEL.stash = PANEL.skill = PANEL.craft = false), hudPanels();
+      else if (k.startsWith('tab')) openPanel(k.slice(3));
       else if (k === 'swap') (TOUCH.front = TOUCH.front === 'inv' ? 'other' : 'inv'), hudPanels();
       return;
     }

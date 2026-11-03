@@ -33,6 +33,19 @@ let fail = 0;
     console.log((v ? '✅ ' : '❌ ') + n + (d ? ' ' + d : ''));
   };
   ok('進來就是觸控模式', await p.evaluate(() => document.body.classList.contains('touch')));
+  /* 直的尺寸測直立操作（龍絆式手勢），橫的尺寸測橫向操作 */
+  const PORTM = H > W;
+  ok('新存檔預設直立', await p.evaluate(() => S.orient === 'p'));
+  await p.evaluate(port => {
+    S.orient = port ? 'p' : 'l';
+    applyOrient();
+  }, PORTM);
+  await p.waitForTimeout(200);
+  ok(
+    '沒有出現「把手機轉過來」',
+    await p.evaluate(() => getComputedStyle($('rot')).display === 'none'),
+    PORTM ? '直立' : '橫向'
+  );
   await p.screenshot({ path: shot('hide') });
   await p.evaluate(() => {
     enterMap(1);
@@ -43,10 +56,11 @@ let fail = 0;
       m.aggro = 0;
     }
   });
-  const x0 = await p.evaluate(() => P.x);
-  await touch('touchStart', [[150, H - 90]]);
+  const x0 = await p.evaluate(() => P.x),
+    sp = PORTM ? [W / 2 - 60, H * 0.45] : [150, H - 90];
+  await touch('touchStart', [sp]);
   for (let i = 1; i <= 6; i++) {
-    await touch('touchMove', [[150 + i * 12, H - 90]]);
+    await touch('touchMove', [[sp[0] + i * 12, sp[1]]]);
     await p.waitForTimeout(30);
   }
   await p.waitForTimeout(500);
@@ -67,13 +81,19 @@ let fail = 0;
     window._m = m;
     window._hp = m.hp;
   });
-  const r0 = await p.evaluate(() => {
-    const r = document.querySelector('.sk[data-k=s0]').getBoundingClientRect();
-    return [r.left + r.width / 2, r.top + r.height / 2];
-  });
+  /* 橫向：按住普攻鍵；直立：畫面上按住不動 */
+  const r0 = PORTM
+    ? [W / 2, H * 0.3]
+    : await p.evaluate(() => {
+        const r = document.querySelector('.sk[data-k=s0]').getBoundingClientRect();
+        return [r.left + r.width / 2, r.top + r.height / 2];
+      });
   await touch('touchStart', [r0]);
   await p.waitForTimeout(900);
-  ok('普攻按住會自動打最近的怪', await p.evaluate(() => _m.hp < _hp || !G.mobs.includes(_m)));
+  ok(
+    PORTM ? '畫面上按住不動＝連續普攻最近的怪' : '普攻按住會自動打最近的怪',
+    await p.evaluate(() => _m.hp < _hp || !G.mobs.includes(_m))
+  );
   const face = await p.evaluate(() => Math.cos(P.face - Math.atan2(_m.y - P.y, _m.x - P.x)));
   ok('朝向怪物', face > 0.7, face.toFixed(2));
   await touch('touchEnd', []);
@@ -107,15 +127,39 @@ let fail = 0;
   await touch('touchEnd', []);
   await p.waitForTimeout(30);
   ok('點一下技能＝施放', await p.evaluate(() => P.mp < _mp || P.cds.s1 > 0 || !!P.act));
-  /* 翻滾 */
-  const rr = await p.evaluate(() => {
-    P.cds.roll = 0;
-    const r = document.querySelector('.sk[data-k=roll]').getBoundingClientRect();
-    return [r.left + r.width / 2, r.top + r.height / 2];
-  });
-  await touch('touchStart', [rr]);
-  await touch('touchEnd', []);
-  ok('翻滾鍵', await p.evaluate(() => !!P.roll || P.cds.roll > 0));
+  /* 翻滾：橫向按翻滾鍵；直立快速一撥 */
+  if (PORTM) {
+    await p.evaluate(() => {
+      P.cds.roll = 0;
+      P.act = null;
+      P.roll = null;
+    });
+    await touch('touchStart', [[W / 2, H * 0.45]]);
+    await touch('touchMove', [[W / 2 + 30, H * 0.45]]);
+    await touch('touchMove', [[W / 2 + 80, H * 0.45]]);
+    await touch('touchEnd', []);
+    ok('快速一撥＝翻滾（往撥的方向）', await p.evaluate(() => (!!P.roll && P.roll.dx > 0.7) || P.cds.roll > 0));
+    /* 點一下＝普攻一次 */
+    await p.evaluate(() => {
+      P.act = null;
+      P.roll = null;
+      window._hp = _m.hp;
+    });
+    await p.waitForTimeout(400);
+    await touch('touchStart', [[W / 2, H * 0.3]]);
+    await touch('touchEnd', []);
+    await p.waitForTimeout(500);
+    ok('點一下＝普攻', await p.evaluate(() => _m.hp < _hp || !G.mobs.includes(_m) || !!P.act));
+  } else {
+    const rr = await p.evaluate(() => {
+      P.cds.roll = 0;
+      const r = document.querySelector('.sk[data-k=roll]').getBoundingClientRect();
+      return [r.left + r.width / 2, r.top + r.height / 2];
+    });
+    await touch('touchStart', [rr]);
+    await touch('touchEnd', []);
+    ok('翻滾鍵', await p.evaluate(() => !!P.roll || P.cds.roll > 0));
+  }
   /* 按鈕都在畫面內、不重疊、夠大 */
   const lay = await p.evaluate(() => {
     const els = [...document.querySelectorAll('#bar .sk,.tmenu button')]

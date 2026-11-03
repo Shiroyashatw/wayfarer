@@ -66,9 +66,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .sk.no .ic { filter: grayscale(1) brightness(0.55); }
 .sk.hit { animation: press 160ms ease-out; }
 @keyframes press { 0% { transform: scale(0.9); border-color: var(--gold); } 100% { transform: scale(1); } }
-.keys { position: absolute; left: 16px; bottom: 16px; max-width: 300px; font-size: var(--fs-s); color: var(--dim); background: rgba(10, 8, 7, 0.7); border: 1px solid var(--line); border-radius: var(--rad); padding: 8px 10px; line-height: 1.7; }
-.keys b { color: var(--tx); margin-right: 4px; }
-.keys.off { display: none; }
 #warn { position: absolute; left: 50%; bottom: 140px; transform: translateX(-50%); font-size: var(--fs-l); font-weight: 700; color: var(--warn); text-shadow: 0 1px 3px #000; opacity: 0; white-space: nowrap; }
 #warn.on { animation: warn 1600ms ease-out; }
 @keyframes warn { 0% { opacity: 0; transform: translate(-50%, 6px); } 10%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
@@ -248,7 +245,7 @@ html { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
 button, .sk, .it { touch-action: manipulation; }
 .tonly, #stick, .tmenu, #rot { display: none; }
 body.touch #cv, body.touch #hud .sk { touch-action: none; }
-body.touch .keys, body.touch .sk kbd { display: none; }
+body.touch .sk kbd { display: none; }
 /* 生命、魔力、經驗移到左上（下方留給搖桿和技能鍵） */
 body.touch .bottom { left: calc(10px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); bottom: auto; transform: none; gap: 8px; align-items: flex-start; }
 body.touch .orb { width: 56px; height: 56px; }
@@ -285,7 +282,8 @@ body.touch .tmenu { display: flex; gap: 6px; position: fixed; top: calc(8px + en
 .tmenu button[hidden] { display: none; }
 /* 直拿手機：請橫過來 */
 #rot { position: fixed; inset: 0; z-index: 60; place-items: center; background: var(--bg); color: var(--tx); font-size: var(--fs-l); font-weight: 700; pointer-events: auto; }
-@media (orientation: portrait) { body.touch #rot { display: grid; } }
+@media (orientation: portrait) { body.touch:not(.port) #rot { display: grid; } }
+@media (orientation: landscape) { body.touch.port #rot { display: grid; } }
 /* 面板：貼著螢幕上下、可以捲；夠寬就左右並排（各半），窄就一次一個（標題列切換） */
 .ph .sw { display: none; }
 body.touch .panel { top: calc(6px + env(safe-area-inset-top)); max-height: calc(100dvh - 12px); padding: 10px; overscroll-behavior: contain; }
@@ -405,3 +403,221 @@ button.mcard:active { transform: scale(0.96); }
 @media (max-width: 600px) { .mmods { columns: 1; } }
 /* 主要按鈕固定在地圖台底部（手機橫向一屏放不下時也按得到） */
 #pdev > .btn.pri { position: sticky; bottom: -14px; box-shadow: 0 -10px 14px var(--panel); }
+
+/* ---------- 0.2.14 視覺：ARPG 標準做法（PoE2／Last Epoch 的精緻度） ----------
+   石材底、古銅雙框（外框＋往內縮的細線）、襯線金標題、說明框標題列照稀有度上色 */
+:root {
+  --bg: #070605;
+  --stone: linear-gradient(180deg, #17130f 0%, #0e0b09 100%);
+  --panel: #0e0b09;
+  --line: rgba(196, 160, 104, 0.2);
+  --fr-o: #5a4628;
+  --fr: #b8955a;
+  --fr-hi: #d7b77c;
+  --title: #e6c88e;
+  --dim: #a1968a;
+  --serif: 'Noto Serif TC', 'Songti TC', 'PMingLiU', serif;
+  --frame: 0 0 0 1px #000, 0 0 0 3px var(--fr-o), 0 0 0 4px #000;
+  --pp: 14px;
+  --dia: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M4 0L8 4 4 8 0 4z' fill='%23d7b77c'/%3E%3C/svg%3E");
+}
+.ico { width: 16px; height: 16px; display: inline-block; vertical-align: -3px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.sk .roll .ico { width: 26px; height: 26px; }
+.sk .empty .ico { width: 20px; height: 20px; }
+.ph .x:not(.sw), .tbar .x { display: grid; place-items: center; }
+.tier .ico, .mcard .ico, .eqs .ico { color: #7d6a4c; }
+::selection { background: rgba(215, 183, 124, 0.35); color: #fff; }
+.panel, #ptree { scrollbar-width: thin; scrollbar-color: var(--fr) #0a0807; }
+/* 面板：古銅外框＋內縮細線，標題列是一條深色帶 */
+.panel, #over .card { background: var(--stone); border: 1px solid var(--fr); border-radius: 2px; box-shadow: var(--frame), 0 18px 48px rgba(0, 0, 0, 0.75); outline: 1px solid rgba(140, 109, 63, 0.32); outline-offset: -5px; padding: var(--pp); }
+body.touch .panel { --pp: 10px; }
+.panel > .ph:first-child { margin: calc(-1 * var(--pp)) calc(-1 * var(--pp)) 12px; padding: 10px var(--pp); background: linear-gradient(180deg, #241b12, #130f0b); border-bottom: 1px solid var(--fr); position: sticky; top: calc(-1 * var(--pp)); z-index: 3; }
+.ph b { font: 700 19px/1.2 var(--serif); color: var(--title); letter-spacing: 0.08em; text-shadow: 0 1px 0 #000; }
+.ph span b { font: inherit; color: var(--gold); letter-spacing: 0; text-shadow: none; }
+.ph2 { font: 700 var(--fs) var(--serif); color: var(--title); letter-spacing: 0.04em; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.ph .x, .tbar .x { border: 1px solid var(--fr-o); background: #0a0807; color: var(--dim); border-radius: 2px; }
+.ph .x:hover, .tbar .x:hover { color: var(--title); border-color: var(--fr); }
+/* 按鈕：深色凹面、古銅框；主要按鈕暗紅＋金框 */
+.btn { background: linear-gradient(180deg, #221a13, #120e0b); border: 1px solid var(--fr-o); border-radius: 2px; color: #e9dfcd; box-shadow: inset 0 1px 0 rgba(255, 225, 170, 0.06); }
+.btn:not(:disabled):hover { border-color: var(--fr); color: var(--title); }
+.btn.pri { background: linear-gradient(180deg, #6b2414, #3a110a); border-color: var(--fr); color: #f6e6c4; font-family: var(--serif); letter-spacing: 0.08em; }
+.btn.pri:not(:disabled):hover { border-color: var(--fr-hi); }
+.btn:focus-visible, .tier:focus-visible, .mcard:focus-visible, .gtab:focus-visible, .chip:focus-visible, .ph .x:focus-visible { outline: 1px solid var(--fr-hi); outline-offset: 2px; }
+.tbar .tabs button.on, .ftabs button.on, .chip.on { border-color: var(--fr-hi); color: var(--title); background: rgba(215, 183, 124, 0.1); }
+.tier { border-radius: 2px; background: #0c0a08; border-color: var(--fr-o); }
+.tier.on { border-color: var(--fr-hi); background: rgba(215, 183, 124, 0.14); color: var(--title); }
+/* 鎖住：虛線框＋暗字，不只靠半透明 */
+.tier.lock, .mcard.lock, .gcard.lock { opacity: 1; color: #6a6259; border-style: dashed; }
+.mcard, .gtab, .gcard, .chip, .ftabs button, .tbar .tabs button { border-radius: 2px; }
+.tinfo, .fsel { background: rgba(0, 0, 0, 0.4); border: 1px solid var(--line); border-radius: 2px; }
+.sell { border-radius: 2px; }
+/* 裝備欄、格子：凹進去的深色槽 */
+.eqs { background: radial-gradient(circle at 50% 40%, #16120e, #070605); border: 1px solid #2c2318; border-radius: 2px; box-shadow: inset 0 0 10px #000; }
+.eqs.lock { border-style: dashed; }
+.grid { background-color: #070605; border: 1px solid var(--fr-o); box-shadow: inset 0 0 12px #000; }
+.it { border-radius: 1px; background: rgba(28, 23, 19, 0.75); }
+.it.r1 { background: radial-gradient(circle, rgba(70, 95, 170, 0.35), rgba(20, 28, 60, 0.4)); }
+.it.r2 { background: radial-gradient(circle, rgba(160, 125, 40, 0.38), rgba(55, 42, 12, 0.45)); }
+.it.r3 { background: radial-gradient(circle, rgba(50, 150, 140, 0.35), rgba(12, 48, 45, 0.45)); }
+/* 說明框：照 PoE，名字在稀有度顏色的標題列、置中，各段用細線分開 */
+#tip { padding: 0 0 10px; min-width: 240px; text-align: center; border: 1px solid var(--fr); border-radius: 2px; box-shadow: var(--frame), 0 12px 32px rgba(0, 0, 0, 0.8); }
+#tip > b:first-child { padding: 8px 14px 2px; font: 700 var(--fs-l)/1.3 var(--serif); letter-spacing: 0.04em; background: #15110d; }
+#tip > b.rc1:first-child { background: #121833; }
+#tip > b.rc2:first-child { background: #2a210d; }
+#tip > b.rc3:first-child { background: #0e2826; }
+#tip > b:first-child + small { display: block; padding: 0 14px 8px; background: #15110d; border-bottom: 1px solid var(--fr-o); }
+#tip > b.rc1:first-child + small { background: #121833; }
+#tip > b.rc2:first-child + small { background: #2a210d; }
+#tip > b.rc3:first-child + small { background: #0e2826; }
+#tip p { margin: 0; padding: 7px 14px 0; }
+#tip p + p { margin-top: 7px; border-top: 1px solid rgba(140, 109, 63, 0.25); }
+#tip .aff { color: #9aa6ff; line-height: 1.6; }
+#tip .aff i { color: #8a86a0; }
+#tip:not(:has(> b:first-child)) { padding: 8px 12px; text-align: left; white-space: pre-line; }
+/* HUD：古銅框的球、技能托盤、王血條 */
+#area { font-family: var(--serif); color: #c9b48c; letter-spacing: 0.04em; }
+.orb { border: 2px solid #1a130b; box-shadow: 0 0 0 2px var(--fr), 0 0 0 4px #1a130b, 0 0 0 5px var(--fr-o), 0 6px 18px rgba(0, 0, 0, 0.8), inset 0 0 22px #000; }
+.orb::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(ellipse 55% 35% at 38% 22%, rgba(255, 255, 255, 0.26), transparent 70%), radial-gradient(circle at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%); pointer-events: none; }
+.orb span { z-index: 2; font-size: 13px; }
+.mid { padding: 8px 10px 9px; background: var(--stone); border: 1px solid var(--fr); border-radius: 2px; box-shadow: var(--frame), 0 8px 24px rgba(0, 0, 0, 0.7); margin-bottom: 10px; }
+.mech:empty { display: none; }
+.xp { height: 5px; background: #050404; border: 1px solid var(--fr-o); }
+.xp i { background: linear-gradient(90deg, #8a6a24, #e1bd62); }
+.sk { background: radial-gradient(circle at 50% 35%, #1a1510, #060504); border: 1px solid var(--fr-o); border-radius: 2px; box-shadow: inset 0 0 8px #000; }
+.sk:hover { border-color: var(--fr); }
+.sk s { border-radius: 1px; background: rgba(0, 0, 0, 0.7); }
+.sk kbd { color: var(--title); font-size: 11px; }
+.sk .empty { color: #6a6259; }
+.sk.no .ic { filter: grayscale(1) brightness(0.45); }
+@keyframes press { 0% { transform: scale(0.92); border-color: var(--fr-hi); } 100% { transform: scale(1); } }
+#bossbar b { font: 700 var(--fs-l) var(--serif); color: #f0d49c; letter-spacing: 0.14em; text-shadow: 0 1px 3px #000, 0 0 12px rgba(0, 0, 0, 0.9); }
+#bossbar .bb { height: 14px; margin-top: 6px; background: #080505; border: 1px solid #1a130b; box-shadow: 0 0 0 1px var(--fr), 0 0 0 3px #0a0806, 0 4px 14px rgba(0, 0, 0, 0.8); }
+#bossbar .bb i { background: linear-gradient(180deg, #d9443a, #7e1610 60%, #5a0e0a); }
+#prog b { font: 700 var(--fs-s) var(--serif); color: #c9b48c; letter-spacing: 0.1em; }
+#prog .pb { height: 7px; background: #050404; border: 1px solid var(--fr-o); }
+#prog .pb i { background: linear-gradient(90deg, #7a4a14, #e1a54c); }
+#warn { font-family: var(--serif); color: #f0c98a; letter-spacing: 0.06em; }
+#over .card h2 { font-family: var(--serif); color: var(--title); }
+#over .card h2.c-bad { color: #e8574f; }
+#over .card.portal h2 { color: #a9cfff; }
+/* 天賦樹：石材工具列、金色連線 */
+#ptree { background: radial-gradient(ellipse at 50% 45%, #15110d, #050404 75%); }
+#ptree .tbar { background: linear-gradient(180deg, #241b12, #130f0b); border-bottom: 1px solid var(--fr); }
+.tbar > b { font: 700 19px var(--serif); color: var(--title); letter-spacing: 0.08em; }
+#tsvg line.on, #tsvg path.on { stroke: #d7b77c; }
+.thelp { border-top: 1px solid var(--fr-o); background: #0a0807; }
+/* 手機：圓形技能鍵、右上選單也用古銅框 */
+body.touch #bar .sk { background: radial-gradient(circle at 50% 35%, rgba(26, 21, 16, 0.85), rgba(6, 5, 4, 0.85)); border: 2px solid var(--fr-o); box-shadow: 0 0 0 1px #000; }
+body.touch #bar .sk.down, body.touch #bar .sk:active { border-color: var(--fr-hi); }
+body.touch .mid { padding: 5px 6px; margin: 0; background: none; border: 0; box-shadow: none; }
+.tmenu button { background: linear-gradient(180deg, #221a13, #120e0b); border: 1px solid var(--fr-o); border-radius: 2px; }
+/* 角落的小菱形：上面兩顆畫在標題列（標題列蓋住面板的上緣），下面兩顆畫在面板 */
+.panel, #tip { background: var(--dia) left 3px bottom 3px / 7px no-repeat, var(--dia) right 3px bottom 3px / 7px no-repeat, var(--stone); }
+#over .card { background: var(--dia) left 3px top 3px / 7px no-repeat, var(--dia) right 3px top 3px / 7px no-repeat, var(--dia) left 3px bottom 3px / 7px no-repeat, var(--dia) right 3px bottom 3px / 7px no-repeat, var(--stone); }
+.panel > .ph:first-child { background: var(--dia) left 3px top 3px / 7px no-repeat, var(--dia) right 3px top 3px / 7px no-repeat, linear-gradient(180deg, #241b12, #130f0b); }
+/* 桌機：標題置中、兩側細線，說明在下一行；關閉鈕固定在右上（手機橫向高度不夠，維持一行） */
+body:not(.touch) .panel > .ph:first-child { flex-wrap: wrap; justify-content: center; row-gap: 2px; padding: 12px 56px 10px; text-align: center; }
+body:not(.touch) .panel > .ph:first-child > b { display: flex; align-items: center; gap: 12px; }
+body:not(.touch) .panel > .ph:first-child > b::before, body:not(.touch) .panel > .ph:first-child > b::after { content: ''; width: 36px; height: 1px; background: linear-gradient(90deg, transparent, var(--fr)); }
+body:not(.touch) .panel > .ph:first-child > b::after { transform: scaleX(-1); }
+body:not(.touch) .panel > .ph:first-child > span { flex-basis: 100%; justify-content: center; }
+body:not(.touch) .panel > .ph:first-child > .x { position: absolute; right: 12px; top: 12px; margin: 0; }
+/* 球的液面：填滿處的上緣一條亮線 */
+.orb i { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28); }
+/* 字擠：裝備欄名字不換行 */
+.eqs small { white-space: nowrap; }
+/* 手機：提示字放在底部、搖桿和技能鍵中間的空檔（不壓主角、王、王血條） */
+body.touch #warn { top: auto; bottom: calc(60px + env(safe-area-inset-bottom)); left: calc(184px + env(safe-area-inset-left)); right: calc(316px + env(safe-area-inset-right)); transform: none; font-size: var(--fs); text-align: center; white-space: normal; }
+body.touch #warn.on { animation-name: warnT; }
+@keyframes warnT { 0% { opacity: 0; transform: translateY(6px); } 10%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+/* 說明框不超出畫面（手機橫向矮，詞綴多的稀有裝會很長；下面的動作按鈕要按得到） */
+#tip { max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; }
+body.touch #tip p { padding-top: 4px; }
+body.touch #tip p + p { margin-top: 4px; }
+body.touch #tip .aff { line-height: 1.4; }
+/* 天賦樹：桌機標題置中＋兩側細線（跟面板一樣）；說明一行、字大一點 */
+#ptree .tbar { position: relative; }
+body:not(.touch) .tbar > b { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; }
+body:not(.touch) .tbar > b::before, body:not(.touch) .tbar > b::after { content: ''; width: 36px; height: 1px; background: linear-gradient(90deg, transparent, var(--fr)); }
+body:not(.touch) .tbar > b::after { transform: scaleX(-1); }
+.thelp { font-size: var(--fs); text-align: center; }
+.thelp b { color: var(--title); margin-right: 4px; }
+
+/* ---------- 0.2.14 操作版面：桌機功能列＋設定；手機橫向（MOBA 式）與直立（龍絆式） ---------- */
+/* 桌機：魔力球右邊一排功能鈕（角落寫快捷鍵），取代原本左下角的操作說明 */
+.dmenu { display: flex; gap: 4px; align-self: flex-end; margin: 0 0 6px 6px; pointer-events: auto; }
+.dmenu button { position: relative; width: 38px; height: 38px; display: grid; place-items: center; color: var(--title); background: linear-gradient(180deg, #221a13, #120e0b); border: 1px solid var(--fr-o); border-radius: 2px; cursor: pointer; }
+.dmenu button:hover { border-color: var(--fr); }
+.dmenu button:active { transform: scale(0.94); }
+.dmenu .ico { width: 18px; height: 18px; }
+.dmenu kbd { position: absolute; right: 2px; bottom: 0; font: 700 9px var(--font); color: var(--dim); }
+body.touch .dmenu { display: none; }
+/* 設定面板（置中）：操作方向、快捷鍵／手勢一覽 */
+#pset { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); animation: pop 200ms cubic-bezier(0.23, 1, 0.32, 1); z-index: 12; }
+.seg2 { grid-template-columns: 1fr 1fr; }
+.seg2 .btn.on { border-color: var(--fr-hi); color: var(--title); background: rgba(215, 183, 124, 0.14); }
+.sethint { margin: 4px 0 12px; font-size: var(--fs-s); color: var(--dim); }
+.keyl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 8px 0 4px; }
+.keyl dt { font-weight: 700; color: var(--title); white-space: nowrap; }
+.keyl dd { margin: 0; color: var(--tx); }
+
+/* 手機共用：血、魔力改成長條（球收起來）；「互動」只在附近有東西時出現；右上 ☰ 選單 */
+.bars { display: none; }
+body.touch .orb { display: none; }
+body.touch .bars { display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+.hb { position: relative; height: 15px; background: #050404; border: 1px solid #1a130b; box-shadow: 0 0 0 1px var(--fr-o); overflow: hidden; }
+.hb i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--v, 1) * 100%); background: linear-gradient(180deg, #e0504a, #8e1414); transition: width 120ms ease-out; }
+.hb.mp { height: 10px; }
+.hb.mp i { background: linear-gradient(180deg, #6f9cff, #1a2f8e); }
+.hb .ward { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--w, 0) * 100%); background: rgba(255, 255, 255, 0.35); }
+.hb span { position: absolute; inset: 0; display: grid; place-items: center; font: 700 10px/1 var(--font); text-shadow: 0 1px 2px #000, 0 0 3px #000; }
+.hb.mp span { font-size: 9px; }
+body.touch .xp { height: 4px; }
+body.touch #bar .sk.far { display: none; }
+.tmenu .ico { width: 18px; height: 18px; }
+.tmenu button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+body.touch .tmore:not([hidden]) { display: flex; flex-direction: column; gap: 4px; position: fixed; z-index: 13; top: calc(58px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); padding: 6px; background: var(--stone); border: 1px solid var(--fr); box-shadow: var(--frame), 0 12px 32px rgba(0, 0, 0, 0.8); pointer-events: auto; animation: pop 160ms ease-out; transform-origin: top right; }
+.tmore button { display: flex; align-items: center; gap: 10px; min-width: 150px; min-height: 44px; padding: 0 12px; font: 700 var(--fs) var(--font); color: var(--tx); background: linear-gradient(180deg, #221a13, #120e0b); border: 1px solid var(--fr-o); border-radius: 2px; }
+.tmore button:active { scale: 0.97; border-color: var(--fr-hi); }
+.tmore button[hidden] { display: none; }
+.tmore .ico { color: var(--title); }
+#rot { flex-direction: column; gap: 14px; text-align: center; }
+#rot p { margin: 0; }
+#rot .btn { min-width: 180px; }
+
+/* 手機橫向（MOBA 式）：血藍經驗長條在底部中間（搖桿和技能鍵之間），左上只剩地圖名稱 */
+body.touch:not(.port) .bottom { left: calc(186px + env(safe-area-inset-left)); right: calc(322px + env(safe-area-inset-right)); top: auto; bottom: calc(10px + env(safe-area-inset-bottom)); transform: none; display: block; }
+body.touch:not(.port) .mid { width: auto; padding: 0; }
+body.touch:not(.port) .top { top: calc(10px + env(safe-area-inset-top)); right: calc(130px + env(safe-area-inset-right)); }
+
+/* 手機直立（龍絆式）：上面是資訊，下面是拇指的操作；中間整塊是遊戲畫面與手勢區 */
+body.touch.port .top { left: calc(10px + env(safe-area-inset-left)); right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); gap: 6px; }
+body.touch.port #area { max-width: calc(100% - 130px); }
+body.touch.port #bossbar, body.touch.port #prog { align-self: flex-start; width: calc(100% - 130px); margin-top: 18px; }
+body.touch.port #prog + #bossbar, body.touch.port #bossbar + #prog { margin-top: 0; }
+body.touch.port .bottom { left: calc(12px + env(safe-area-inset-left)); right: calc(12px + env(safe-area-inset-right)); top: auto; bottom: calc(86px + env(safe-area-inset-bottom)); transform: none; display: block; }
+body.touch.port .mid { width: auto; padding: 0; }
+body.touch.port #bar { left: 0; right: 0; bottom: calc(12px + env(safe-area-inset-bottom)); width: auto; height: auto; display: flex; justify-content: center; align-items: center; gap: 8px; }
+body.touch.port #bar .sk { position: relative; transform: none; width: 56px; height: 56px; order: 1; }
+body.touch.port #bar .sk[data-k='s0'], body.touch.port #bar .sk[data-k='roll'] { display: none; }
+body.touch.port #bar .sk[data-k='flask'] { order: 0; width: 44px; height: 44px; }
+body.touch.port #bar .sk[data-k='mflask'] { order: 2; width: 44px; height: 44px; }
+body.touch.port #bar .sk[data-k='use'] { position: fixed; left: 50%; top: auto; bottom: calc(150px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: 88px; height: 44px; border-radius: 22px; }
+body.touch.port #warn { left: 16px; right: 16px; bottom: calc(204px + env(safe-area-inset-bottom)); }
+body.touch.port #stick { opacity: 0; }
+body.touch.port #stick.on { opacity: 1; }
+/* 直立的面板：全螢幕，上面一排分頁（裝備／技能寶石／倉庫／鍛造台）；兩個面板時上下疊，可以互拖 */
+#ptabs { display: none; }
+body.touch.port #ptabs:not([hidden]) { display: flex; position: fixed; z-index: 11; left: 0; right: 0; top: 0; height: calc(48px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 4px 0; gap: 2px; background: linear-gradient(180deg, #241b12, #130f0b); border-bottom: 1px solid var(--fr); }
+#ptabs button { flex: 1; min-height: 44px; font: 700 var(--fs) var(--font); color: var(--dim); background: none; border: 0; border-bottom: 2px solid transparent; }
+#ptabs button.on { color: var(--title); border-bottom-color: var(--fr-hi); }
+#ptabs .x { flex: none; width: 48px; display: grid; place-items: center; color: var(--dim); }
+body.touch.port .panel { left: 0 !important; right: 0 !important; width: auto !important; top: calc(48px + env(safe-area-inset-top)); bottom: 0; max-height: none; transform: none; border-radius: 0; outline: none; }
+body.touch.port.pair #pstash, body.touch.port.pair #pskill, body.touch.port.pair #pcraft { bottom: auto; height: calc((100dvh - 48px - env(safe-area-inset-top)) * 0.45); }
+body.touch.port.pair #pinv { top: calc(48px + env(safe-area-inset-top) + (100dvh - 48px - env(safe-area-inset-top)) * 0.45); }
+body.touch.port #pdev, body.touch.port #pgem, body.touch.port #pset { top: env(safe-area-inset-top); transform: none; max-height: none; }
+body.touch.port .ph .sw { display: none; }
+.tinfo span { white-space: nowrap; }
+.tinfo div > :last-child { text-align: right; }
+body.touch.port .panel > .ph:first-child .x { display: none; }
+body.touch.port #pdev > .ph:first-child .x, body.touch.port #pgem > .ph:first-child .x, body.touch.port #pset > .ph:first-child .x { display: grid; }
