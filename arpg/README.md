@@ -24,4 +24,4 @@ WASD 移動、滑鼠瞄準；左鍵斬擊（按住連砍，打中回魔力）、
 | `js/render.js` | canvas 畫面：地板、預警、怪物、武士攻擊動畫、特效、跳數字、掉落標籤、光照、小地圖 |
 | `js/hud.js` | HUD、裝備面板、說明框、死亡與通關卡片、輸入 |
 | `js/audio.js` | 合成音效 |
-| `tools/atlas.py` | 從 `../dungeonPOE` 的大圖挑出要用的圖，拼成 `img/atlas.png` 與 `js/art.js`（只有換圖時要跑，遊戲本身不依賴上一層） |
+| `tools/atlas.py` | 從 `../dpoe` 的大圖挑出要用的圖，拼成 `img/atlas.png` 與 `js/art.js`（只有換圖時要跑，遊戲本身不依賴上一層） |

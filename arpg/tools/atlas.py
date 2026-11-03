@@ -1,7 +1,7 @@
-"""從 ../dungeonPOE 的大圖挑出原型要用的圖，拼成 img/atlas.png 與 js/art.js（只在換圖時跑）"""
+"""從 ../dpoe 的大圖挑出原型要用的圖，拼成 img/atlas.png 與 js/art.js（只在換圖時跑）"""
 import json, re, os
 from PIL import Image
-SRC = os.path.join(os.path.dirname(__file__), '..', '..', 'dungeonPOE')
+SRC = os.path.join(os.path.dirname(__file__), '..', '..', 'dpoe')
 OUT = os.path.join(os.path.dirname(__file__), '..')
 art = open(os.path.join(SRC, 'js', 'art.js'), encoding='utf-8').read()
 sheets = dict(re.findall(r"'?([\w-]+)'?: '(img/[^']+)'", art))

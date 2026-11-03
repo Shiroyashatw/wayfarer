@@ -2,7 +2,7 @@
 
 桌機的即時動作 ARPG：在藏身處的地圖台放進地圖碎片、自選階級，走進傳送門刷圖、打王、撿寶。定位是**打到爽、刷到爽**。
 
-- 線上遊玩：https://shiroyashatw.github.io/wayfarer/dungeonPOE/ （用電腦開，鍵盤＋滑鼠）
+- 線上遊玩：https://shiroyashatw.github.io/wayfarer/dpoe/ （用電腦開，鍵盤＋滑鼠）
 - 目前版本：v0.2.4（[更新紀錄](CHANGELOG.md)）
 - 企劃書：[docs/企劃書.md](docs/企劃書.md)・設計原則：[docs/設計原則.md](docs/設計原則.md)・0.1 版規則：[docs/舊企劃書_0.1.md](docs/封存/舊企劃書_0.1.md)
 
@@ -17,6 +17,6 @@ WASD 移動、滑鼠瞄準；左鍵斬擊、右鍵飛刃、Q 旋風斬、E 居�
 
 ## 本機執行
 ```bash
-python3 -m http.server 8000   # 在 dungeonPOE/ 底下，開 http://localhost:8000
+python3 -m http.server 8000   # 在 dpoe/ 底下，開 http://localhost:8000
 node tools/check.js           # 固定檢查
 ```

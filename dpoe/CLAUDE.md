@@ -53,7 +53,7 @@
 
 ## 本機執行
 ```bash
-python3 -m http.server 8000   # 在 dungeonPOE/ 底下，開 http://localhost:8000
+python3 -m http.server 8000   # 在 dpoe/ 底下，開 http://localhost:8000
 ```
 存檔在 localStorage（鍵 `dungeonpoe_v1`，網址加 `?p=2` 用另一份）。存檔版本 `S.v`：0.2.0 是 10、0.2.2 是 11（技能寶石 `S.skills`）、0.2.3 是 12（天賦 `S.pt`、昇華 `S.asc`／`S.at`、打過階級 16 `S.t16`）、0.2.4 是 13（光環欄 `S.auras`、天賦與昇華退回；0.1 的 1～3 直接開新角色）。0.2.7 是 14（暴擊詞分成本地／全域、護身符物理改成提高 %、護符欄 `S.charms`）。0.2.18 是 15（天賦樹照技能體系重做，點數退回）。0.2.6 沒有換版本號，`migrate()` 每次都補：材料 `S.mat`、書庫 `S.lib`、技能欄的輔助搬進技能寶石的孔（`gem.so`／`gem.sup`，技能欄只剩 `{ a }`）、舊裝備補品質 0／孔 0／潛能 3，改格式要在 `main.js` 的 `migrate()` 補轉換。
 
@@ -61,4 +61,4 @@ python3 -m http.server 8000   # 在 dungeonPOE/ 底下，開 http://localhost:80
 同一個專案（ref `eugkdfhkoaxvqhztvptc`），表 `public.dungeon_saves`（跟《塞令老師》的 `saves` 分開，RLS 只允許本人）。前端只放 anon key，**絕對不要使用或要求 service_role key**。表不存在時只存本機。
 
 ## 部署
-GitHub Pages：`main` 分支，網址 https://shiroyashatw.github.io/wayfarer/dungeonPOE/ 。
+GitHub Pages：`main` 分支，網址 https://shiroyashatw.github.io/wayfarer/dpoe/ 。

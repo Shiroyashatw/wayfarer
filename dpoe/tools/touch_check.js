@@ -1,6 +1,6 @@
 const { chromium } = require('playwright');
 /* 手機操作測試（docs/企劃書.md 第 9 節「操作模式」）：Playwright 模擬觸控螢幕、送真的觸控事件。
-   用法：先在 dungeonPOE/ 開 python3 -m http.server 8000，再 node tools/touch_check.js [寬 844] [高 390] [網址]
+   用法：先在 dpoe/ 開 python3 -m http.server 8000，再 node tools/touch_check.js [寬 844] [高 390] [網址]
    截圖存在系統暫存資料夾（touch_*.png）；有 ❌ 時結束碼 1 */
 const os = require('os'),
   path = require('path');
