@@ -43,7 +43,9 @@ const GROUND = {
   oil: { n: '油', col: '#4a3a2a', slow: 0.3, burn: 1 },
   fire: { n: '燃燒地面', col: '#ff6b3d' },
   chill: { n: '冰緩地面', col: '#8fd6ff' },
-  blades: { n: '劍陣', col: '#e8e2d6' }
+  blades: { n: '劍陣', col: '#e8e2d6' },
+  /* 0.2.13 死亡紅花：每秒吸血的持續傷害，時間到或被引爆就整排爆炸＋流血 */
+  bloom: { n: '死亡紅花', col: '#d9304a', leech: 0.2 }
 };
 /* o：k 種類、x、y、r、dur 秒、c 技能設定（傷害照它算）、dps 每秒傷害倍率、after 結束時再打一次的倍率（餘震） */
 function addGround(o) {
@@ -59,6 +61,7 @@ function detonate(x, y, r, c) {
       boomAt(g.x, g.y, g.r * 1.2, g.c || c, 1.5, 'fire');
       if (g.k === 'oil') addGround({ k: 'fire', x: g.x, y: g.y, r: g.r, dur: 4, c: g.c || c, dps: 0.3 });
     } else if (g.k === 'blades') (g.done = 1), boomAt(g.x, g.y, g.r, g.c || c, 0.6 * (g.n || 1));
+    else if (g.k === 'bloom') popBlooms();
   }
   for (const n of G.grenades) if (Math.hypot(n.x - x, n.y - y) < r + 30) n.fuse = 0;
 }
@@ -71,6 +74,15 @@ function boomAt(x, y, r, c, mul = 1, el) {
     if (m.hp > 0 && Math.hypot(m.x - x, m.y - y) < r + m.r)
       hitMob(m, cc, Math.atan2(m.y - y, m.x - x), 120, { quiet: 1, mult: (cc.mult || 1) * mul, from: { x, y } });
 }
+/* 死亡紅花爆炸：一朵一次範圍物理擊中（技能的 boomM），一定流血；場上只有一排，一朵爆就整排爆 */
+function popBlooms() {
+  for (const g of G.ground)
+    if (g.k === 'bloom' && !g.done) {
+      g.done = 1;
+      boomAt(g.x, g.y, g.r * 1.4, { ...g.c, bleedCh: 100, spellBleed: 1 }, g.c.D.boomM / g.c.D.m);
+      fxs('bleed', g.x, g.y - 10, 30);
+    }
+}
 function groundTick(dt) {
   for (const g of G.ground) {
     g.t += dt;
@@ -78,12 +90,14 @@ function groundTick(dt) {
     if (g.dps && g.c && (g.tick = (g.tick || 0) - dt) <= 0) {
       g.tick = 0.5;
       for (const m of G.mobs)
-        if (m.hp > 0 && inGround(g, m))
-          hitMob(m, g.k === 'gas' ? { ...g.c, poisonCh: 100 } : g.c, 0, 0, {
+        if (m.hp > 0 && inGround(g, m)) {
+          if (g.k === 'gas' && !hasState(m, 'poison')) fxs('poisoned', m.x, m.y - m.sz * 0.3, m.sz * 0.5);
+          hitMob(m, g.k === 'gas' ? { ...g.c, poisonCh: 100 } : G0.leech ? { ...g.c, leech: G0.leech } : g.c, 0, 0, {
             quiet: 1,
             mult: g.c.mult * g.dps * 0.5,
             from: g
           });
+        }
     }
     if (g.k === 'chill') for (const m of G.mobs) if (m.hp > 0 && inGround(g, m)) m.ail.chill = { v: 30, t: G.t + 0.5 };
     if (G0.slow) for (const m of G.mobs) if (m.hp > 0 && inGround(g, m)) m.gslow = G.t + 0.2;
@@ -91,6 +105,7 @@ function groundTick(dt) {
     if (g.t >= g.dur && !g.done) {
       g.done = 1;
       if (g.after) boomAt(g.x, g.y, g.r, g.c, g.after);
+      if (g.k === 'bloom') (g.done = 0), popBlooms();
     }
   }
   G.ground = G.ground.filter(g => !g.done);
@@ -177,19 +192,17 @@ function tryParry(m) {
 
 /* ---------- 8. 能量與觸發（Meta 寶石） ---------- */
 const ENERGY = { crit: 10, perfect: 40, block: 25, kill: 5 };
-/* 事件：每顆 Meta 技能照自己的觸發條件累積能量，滿 100 對最近的敵人施放孔裡的法術 */
+/* 事件：插了觸發輔助（暴擊施放）的法術照輔助的條件累積能量（存在輔助寶石上），滿 100 對最近的敵人施放那招 */
 function metaEvent(kind, near) {
   for (let i = 0; i < NSLOT; i++) {
     const g = S.skills[i] && S.skills[i].a,
-      D = g && SKILLS[g.gem];
-    if (!D || D.meta !== kind) continue;
-    g.en = Math.min(200, (g.en || 0) + ENERGY[kind]);
-    if (g.en < 100) continue;
-    const spell = (g.sup || []).find(x => x && SKILLS[x.gem] && !SKILLS[x.gem].meta);
-    if (!spell) continue;
-    g.en -= 100;
+      sp = metaOf(g);
+    if (!sp || SUPPORTS[sp.gem].meta !== kind) continue;
+    sp.en = Math.min(200, (sp.en || 0) + ENERGY[kind]);
+    if (sp.en < 100) continue;
+    sp.en -= 100;
     const t = near || G.mobs.filter(m => m.hp > 0).sort((a, b) => dist(a, P) - dist(b, P))[0];
-    if (t) castGem(spell, t);
+    if (t) castGem(g, t);
   }
 }
 /* 不經技能欄、直接施放一顆技能寶石（觸發、幻影用） */
@@ -274,7 +287,7 @@ function launchSwords(tx, ty, mul = 1) {
   P.swords = [];
   sw.forEach((s, i) => {
     const ang = Math.atan2(ty - P.y, tx - P.x) + (i - (sw.length - 1) / 2) * 0.08;
-    shoot(ang, 900, { ...s.c, mult: s.c.mult * mul, pierce: 1 }, {}, { life: 0.8 });
+    shoot(ang, 900, { ...s.c, mult: s.c.mult * mul, pierce: 1 }, {}, { life: 0.8, hitfx: 'mmhit' });
   });
   return sw.length;
 }
@@ -369,6 +382,29 @@ function drawMech() {
   for (const g of G.ground) {
     const C = GROUND[g.k],
       f = Math.min(1, (g.dur - g.t) / 0.5);
+    if (g.k === 'bloom') {
+      /* 紅花：五片花瓣，快爆的時候變大、跳得更快 */
+      const k = g.t / g.dur,
+        s = (8 + 6 * k) * (1 + 0.08 * Math.sin(G.t * (6 + 14 * k))),
+        y = g.y - 6;
+      CX.globalAlpha = 0.18;
+      CX.fillStyle = C.col;
+      CX.beginPath();
+      CX.ellipse(g.x, g.y, g.r, g.r * 0.6, 0, 0, TAU);
+      CX.fill();
+      CX.globalAlpha = 1;
+      for (let i = 0; i < 5; i++) {
+        const q = (i / 5) * TAU + g.x;
+        CX.beginPath();
+        CX.arc(g.x + Math.cos(q) * s * 0.7, y + Math.sin(q) * s * 0.5, s * 0.55, 0, TAU);
+        CX.fill();
+      }
+      CX.fillStyle = '#ffd166';
+      CX.beginPath();
+      CX.arc(g.x, y, s * 0.3, 0, TAU);
+      CX.fill();
+      continue;
+    }
     CX.globalAlpha = 0.22 * f;
     CX.fillStyle = C.col;
     CX.beginPath();
@@ -396,6 +432,16 @@ function drawMech() {
   }
   CX.globalAlpha = 1;
   for (const n of G.grenades) {
+    /* 手雷：畫火瓶的圖示轉著飛，圖還沒載好才畫圓點 */
+    const im = artImg('it_firebottle');
+    if (im && im.im.naturalWidth) {
+      CX.save();
+      CX.translate(n.x, n.y - 8);
+      CX.rotate(n.t * 10);
+      CX.drawImage(im.im, im.r[0], im.r[1], im.r[2], im.r[3], -11, -11, 22, 22);
+      CX.restore();
+      continue;
+    }
     CX.fillStyle = n.el ? ELC[n.el] : '#cfd8e3';
     CX.beginPath();
     CX.arc(n.x, n.y - 8, 6, 0, TAU);

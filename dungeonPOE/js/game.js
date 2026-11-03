@@ -97,6 +97,8 @@ function newPlayer(x, y) {
     cds: {},
     flask: FLASK.n,
     heal: 0,
+    mflask: FLASK.n,
+    mheal: 0,
     iuntil: 0,
     critNext: 0,
     hurtT: 0,
@@ -397,6 +399,11 @@ function updPlayer(dt) {
     P.heal -= h;
     P.hp = Math.min(ST.hp, P.hp + h);
   }
+  if (P.mheal > 0) {
+    const h = Math.min(P.mheal, ((ST.mp * FLASK.mp) / FLASK.t) * dt);
+    P.mheal -= h;
+    P.mp = Math.min(ST.mp, P.mp + h);
+  }
   P.hurtT = Math.max(0, P.hurtT - dt);
   if (P.roll) {
     const r = P.roll;
@@ -497,11 +504,15 @@ function doRoll() {
   P.iuntil = G.t + ROLL.iframe;
   sfx('roll');
 }
-function drinkFlask() {
+/* mana：喝藍水（2）回魔力，不然喝紅水（1）回生命；藥水效果的詞綴與地圖詞兩種都算 */
+function drinkFlask(mana) {
   if (G.scene !== 'map' || G.state !== 'play') return;
-  if (P.flask < 1) return hudWarn('藥水用完了：殺怪會補');
-  P.flask -= 1;
-  P.heal += ST.hp * FLASK.heal * (1 + (ST.flask + MM('pflask')) / 100);
+  const k = mana ? 'mflask' : 'flask';
+  if (P[k] < 1) return hudWarn((mana ? '魔力' : '生命') + '藥水用完了：殺怪會補');
+  P[k] -= 1;
+  const v = 1 + (ST.flask + MM('pflask')) / 100;
+  if (mana) P.mheal += ST.mp * FLASK.mp * v;
+  else P.heal += ST.hp * FLASK.heal * v;
   fx({ k: 'heal', x: P.x, y: P.y, dur: 0.5 });
   sfx('drink');
 }
@@ -572,7 +583,9 @@ function killMob(m) {
   const t = G.mapT;
   fx({ k: 'die', x: m.x, y: m.y, sp: m.D.sp, sz: m.sz, dur: 0.45, flip: m.x > P.x });
   sparks(m.x, m.y - m.sz * 0.4, rnd(0, TAU), 14, m.boss ? '#ff6b3d' : '#c9b8a8');
-  P.flask = Math.min(FLASK.n, P.flask + FLASK.perKill * (m.elite ? 3 : m.boss ? 10 : 1));
+  const fk = FLASK.perKill * (m.elite ? 3 : m.boss ? 10 : 1);
+  P.flask = Math.min(FLASK.n, P.flask + fk);
+  P.mflask = Math.min(FLASK.n, P.mflask + fk);
   gainXp(Math.max(1, Math.round(m.D.xp * tierMul(t).hp * (m.elite ? 4 : 1) * xpMul(S.lv, mobLv(t)))));
   /* 材料：粉、靈魂自動吸收；碎片、鑿孔石直接進材料頁，跳字提醒 */
   killMat(m, t).forEach((n, i) => num(m.x, m.y - m.sz * 0.6 - i * 18, 0, 'mat', '+' + n));
@@ -952,6 +965,14 @@ function updShots(dt) {
     s.x += s.vx * dt;
     s.y += s.vy * dt;
     s.life -= dt;
+    /* 盾牌投擲飛回來：追著玩家，碰到就收回 */
+    if (s.ret) {
+      const g = Math.atan2(P.y - 20 - s.y, P.x - s.x);
+      (s.vx = Math.cos(g) * 900), (s.vy = Math.sin(g) * 900), (s.life = 1);
+      if (Math.hypot(P.x - s.x, P.y - 20 - s.y) < 30) (s.life = 0), (P.shieldOut = 0);
+      continue;
+    }
+    if (s.bounce != null && s.life <= 0) (s.ret = 1), (s.life = 1);
     if (s.foe) {
       if (Math.hypot(P.x - s.x, P.y - 20 - s.y) < P.r + s.r) {
         hurtPlayer(s.dmg, s, s.el);
@@ -974,6 +995,19 @@ function updShots(dt) {
             mult: s.decay ? s.c.mult * (0.4 + 0.6 * (s.life / s.life0)) : 0,
             from: s
           });
+          if (s.hitfx) fxs(s.hitfx, m.x, m.y - m.sz * 0.4, s.hfr || 40);
+          /* 盾牌投擲：跳到 320 內最近、還沒打過的怪；跳完或沒有就飛回來 */
+          if (s.bounce != null) {
+            const n = G.mobs
+              .filter(o => o.hp > 0 && !s.hit.has(o) && dist(o, m) < 320)
+              .sort((x, y) => dist(x, m) - dist(y, m))[0];
+            if (s.bounce-- > 0 && n) {
+              const g = Math.atan2(n.y - n.sz * 0.4 - s.y, n.x - s.x),
+                v = Math.hypot(s.vx, s.vy);
+              (s.vx = Math.cos(g) * v), (s.vy = Math.sin(g) * v), (s.ang = g), (s.life = 0.7);
+            } else s.ret = 1;
+            break;
+          }
           if (s.pierce-- <= 0) {
             s.life = 0;
             break;
@@ -981,7 +1015,8 @@ function updShots(dt) {
         }
       }
     if (s.boom && s.life <= 0) boom(s);
-    if (isWall(s.x, s.y)) {
+    if (isWall(s.x, s.y) && s.bounce != null) (s.ret = 1), (s.life = 1);
+    else if (isWall(s.x, s.y)) {
       if (s.boom) boom(s);
       s.life = 0;
       sparks(s.x, s.y, Math.atan2(-s.vy, -s.vx), 4, '#aaa');

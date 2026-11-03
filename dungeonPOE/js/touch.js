@@ -226,7 +226,7 @@ function touchInit() {
     void el.offsetWidth;
     el.classList.add('hit');
     if (k === 'roll') return doRoll();
-    if (k === 'flask') return drinkFlask();
+    if (k === 'flask' || k === 'mflask') return drinkFlask(k === 'mflask');
     if (k === 'use') return interact();
     const i = +k[1],
       r = el.getBoundingClientRect();

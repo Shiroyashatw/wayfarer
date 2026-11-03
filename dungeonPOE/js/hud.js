@@ -12,9 +12,10 @@ function artRepaint() {
   if (TREE.open && document.querySelector('#tg .nd:not(:has(image))')) treeRender();
 }
 
-/* 技能列：1 藥水、5 個技能欄（左鍵、右鍵、Q、E、R）、空白翻滾 */
+/* 技能列：1 紅水、2 藍水、5 個技能欄（左鍵、右鍵、Q、E、R）、空白翻滾 */
 const BAR = [
-  { k: 'flask', key: '1', ic: 'it_potion', n: '藥水', d: '回復一半生命（1.4 秒內）。殺怪會補充。' },
+  { k: 'flask', key: '1', ic: 'it_potion', n: '生命藥水', d: '回復一半生命（1.4 秒內）。殺怪會補充。' },
+  { k: 'mflask', key: '2', ic: 'it_potion', n: '魔力藥水', d: '回復一半魔力（1.4 秒內）。殺怪會補充。' },
   ...SLOTKEY.map((key, i) => ({ k: 's' + i, key, slot: i })),
   { k: 'roll', key: '空白', n: '翻滾', d: '短暫無敵。怪物出手的瞬間翻滾＝完美閃避：時間變慢，下一擊必定暴擊。' },
   { k: 'use', key: 'F', n: '互動', d: '撿東西、使用藏身處的擺設', touch: 1 }
@@ -31,7 +32,7 @@ function hudInit() {
     </div>
     <div class="orb mp" id="omp"><i></i><svg class="spir" viewBox="0 0 100 100" aria-hidden="true"><path class="tr" d="M50 95 A45 45 0 0 1 50 5"/><path class="fg" pathLength="1" d="M50 95 A45 45 0 0 1 50 5"/></svg><span></span></div>
   </div>
-  <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 技能 左鍵／右鍵／Q／E／R · 空白 翻滾 · 1 藥水 · F 互動／撿東西 · I 背包 · G 技能寶石 · P 天賦與昇華 · T 回藏身處 · H 隱藏</div>
+  <div class="keys" id="keys"><b>操作</b> WASD 移動 · 滑鼠瞄準 · 技能 左鍵／右鍵／Q／E／R · 空白 翻滾 · 1 紅水／2 藍水 · F 互動／撿東西 · I 背包 · G 技能寶石 · P 天賦與昇華 · T 回藏身處 · H 隱藏</div>
   <div id="warn"></div>
   <div class="tonly" id="stick"><i></i></div>
   <div class="tonly tmenu"><button data-tm="fs" id="tfs">全螢幕</button><button data-tm="inv">背包</button><button data-tm="skill">技能</button><button data-tm="tree">天賦</button><button data-tm="home" id="thome">回家</button></div>
@@ -61,7 +62,7 @@ function tipOf(b) {
   if (b.slot == null) return `${b.n}\n${b.d}`;
   const c = slotCfg(b.slot);
   if (!c) return `${b.key}：空的\n按 G 打開技能寶石，把技能寶石放進來`;
-  return `${c.D.n} Lv ${c.lv}${c.D.wt ? `（${wtNeed(c.D)}）` : ''}\n${c.D.d}${c.mp ? `\n魔力 ${c.mp}` : ''}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}`;
+  return `${c.D.n} Lv ${c.lv}${wtNeed(c.D) ? `（${wtNeed(c.D)}）` : ''}\n${c.D.d}${c.mp ? `\n魔力 ${c.mp}` : ''}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}`;
 }
 let warnT;
 function hudWarn(t) {
@@ -95,9 +96,9 @@ function hudTick() {
       c = k[0] === 's' ? slotCfg(+k[1]) : null;
     let cd = 0,
       txt = '';
-    if (k === 'flask') {
-      cd = P.flask >= 1 ? 0 : 1 - (P.flask % 1);
-      txt = Math.floor(P.flask) + '';
+    if (k === 'flask' || k === 'mflask') {
+      cd = P[k] >= 1 ? 0 : 1 - (P[k] % 1);
+      txt = Math.floor(P[k]) + '';
     } else if (k === 'roll') cd = (P.cds.roll || 0) / (ROLL.cd + ROLL.t);
     else if (c && c.cd) {
       cd = (P.cds[k] || 0) / c.cd;
@@ -284,7 +285,10 @@ const TAGN = {
   dot: '持續傷害',
   curse: '詛咒',
   mark: '標記',
-  move: '位移'
+  move: '位移',
+  elem: '元素',
+  occ: '秘術',
+  pri: '原始'
 };
 function skillHTML() {
   const sock = (key, it, cls, lab, bad) =>
@@ -304,18 +308,10 @@ function skillHTML() {
         supC = sups.filter(x => !gemUpCheck(x).why).reduce((a, x) => a + soulCost(x.lv, 1), 0),
         dr = drillCheck(g);
       return `<div class="skrow"><kbd>${SLOTKEY[i]}</kbd>${sock(i + ':a', g, 'act', '技能')}<div class="links">${g.sup
-        .map((x, j) =>
-          sock(
-            i + ':' + j,
-            x,
-            'sup',
-            SKILLS[g.gem].meta ? '法術' : '輔助',
-            x && !SKILLS[g.gem].meta && !supOK(SKILLS[g.gem], x, g)
-          )
-        )
+        .map((x, j) => sock(i + ':' + j, x, 'sup', '輔助', x && !supOK(SKILLS[g.gem], x, g)))
         .join(
           ''
-        )}</div><div class="skinfo"><b>${esc(c.D.n)} <span>Lv ${g.lv}${c.lv > g.lv ? `（+${c.lv - g.lv}）` : ''} · ${g.so} 孔</span></b><small>${c.mp ? `魔力 ${c.mp}` : '不耗魔力'}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}${c.D.wt ? ` · <span class="${wtOK(c.D) ? '' : 'c-bad'}">${wtNeed(c.D)}</span>` : ''}</small>
+        )}</div><div class="skinfo"><b>${esc(c.D.n)} <span>Lv ${g.lv}${c.lv > g.lv ? `（+${c.lv - g.lv}）` : ''} · ${g.so} 孔</span></b><small>${c.mp ? `魔力 ${c.mp}` : '不耗魔力'}${c.cd ? ` · 冷卻 ${c.cd.toFixed(1)} 秒` : ''}${wtNeed(c.D) ? ` · <span class="${wtOK(c.D) ? '' : 'c-bad'}">${wtNeed(c.D)}</span>` : ''}</small>
         <span class="gbtns">${mini('gup:' + i, `升級 ${up.c} 魂`, up.why)}${sups.length ? mini('sup:' + i, `輔助 +1 ${supC} 魂`, supC ? '' : '輔助都升不了（滿級、超過角色等級或靈魂不夠）') : ''}${g.so < GEM_SO_MAX ? mini('dri:' + i, `開孔（${DRILLS[dr.k]}）`, dr.why) : ''}</span></div></div>`;
     })
     .join('')}
@@ -332,9 +328,6 @@ function skillHTML() {
     .map(([k, n]) => `<button class="btn" data-gm="open:${k}">${n}</button>`)
     .join('')}</div>`;
 }
-/* Meta 寶石的孔：插法術（不插 Meta） */
-const metaTakes = (g, it) =>
-  !!(g && SKILLS[g.gem] && SKILLS[g.gem].meta && SKILLS[it.gem] && SKILLS[it.gem].tags.includes('spell'));
 /* 生成寶石（0.2.7，照 PoE2 選技能）：上面三種、左邊頁籤（主動照武器、輔助與精魄照標籤）、右邊照使用等級分組 */
 const GEMUI = { kind: 'act', tab: null };
 const GEMKIND = { act: '主動技能', sup: '輔助寶石', aura: '精魄' };
@@ -344,7 +337,7 @@ const SUPTAB = {
   範圍與近戰: ['area', 'heavy'],
   異常: ['bleed', 'poison', 'poistack', 'ailmag', 'armbreak', 'wither', 'blind'],
   元素: ['scorch', 'brittle', 'sap', 'expose', 'elec'],
-  法術: ['arcane'],
+  法術: ['arcane', 'cast_crit'],
   召喚: ['pack'],
   轉換: ['totemc']
 };
@@ -354,34 +347,31 @@ function gemTabs(kind) {
   if (kind === 'act') {
     const K = Object.keys(SKILLS),
       tg = (k, t) => SKILLS[k].tags.includes(t);
+    /* 0.2.13：綁武器的放武器頁（錘與連枷同一頁、盾一頁），不綁的照分類（元素、秘術、原始）；空的頁不顯示 */
     tabs = [
-      ...Object.entries(WTN).map(([w, n]) =>
+      ...Object.entries(WTN)
+        .filter(([w]) => w !== 'flail')
+        .map(([w, n]) =>
+          by(
+            w === 'mace' ? '錘・連枷' : n,
+            K.filter(k => (SKILLS[k].wt || []).includes(w))
+          )
+        ),
+      by(
+        '盾',
+        K.filter(k => SKILLS[k].off === 'shield')
+      ),
+      ...[
+        ['elem', '元素'],
+        ['occ', '秘術'],
+        ['pri', '原始']
+      ].map(([t, n]) =>
         by(
           n,
-          K.filter(k => (SKILLS[k].wt || []).includes(w))
+          K.filter(k => !SKILLS[k].wt && tg(k, t))
         )
-      ),
-      by(
-        '法術',
-        K.filter(k => !SKILLS[k].wt && tg(k, 'spell') && !SKILLS[k].unit && !SKILLS[k].curse && !SKILLS[k].mark)
-      ),
-      by(
-        '陷阱圖騰',
-        K.filter(k => SKILLS[k].unit)
-      ),
-      by(
-        '召喚',
-        K.filter(k => tg(k, 'minion'))
-      ),
-      by(
-        '詛咒與標記',
-        K.filter(k => SKILLS[k].curse || SKILLS[k].mark)
-      ),
-      by(
-        '觸發',
-        K.filter(k => SKILLS[k].meta)
       )
-    ];
+    ].filter(t => t.ks.length);
   } else if (kind === 'sup') {
     const seen = new Set(Object.values(SUPTAB).flat());
     tabs = Object.entries(SUPTAB).map(([n, ks]) =>
@@ -526,7 +516,7 @@ const slotFits = (src, key, it) =>
           ? isAura(it)
           : key.endsWith(':a')
             ? !isSup(it) && !isAura(it)
-            : (isSup(it) || metaTakes(S.skills[key.split(':')[0]].a, it)) &&
+            : isSup(it) &&
               !!S.skills[key.split(':')[0]].a &&
               +key.split(':')[1] < S.skills[key.split(':')[0]].a.so &&
               /* 同分類不能同插（換掉同一格的自己不算） */
@@ -799,7 +789,7 @@ function gemTip(it) {
   } else if (sup)
     html += `<p class="base">${D.need.length ? '要有標籤：' + D.need.map(t => TAGN[t]).join('、') : '所有技能都能用'}</p>`;
   else if (!isAura(it))
-    html += `${D.wt ? `<p class="${wtOK(D) ? 'base' : 'c-bad'}">${wtNeed(D)}</p>` : ''}<p class="base">標籤：${D.tags.map(t => TAGN[t]).join('、')}${D.mp ? ` · 魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}${D.m ? `<br>傷害 ×${(D.m * Math.pow(1.06, it.lv - 1)).toFixed(2)}${D.el ? `（全部是${ELN[D.el]}）` : ''}` : ''}</p>`;
+    html += `${wtNeed(D) ? `<p class="${wtOK(D) ? 'base' : 'c-bad'}">${wtNeed(D)}</p>` : ''}<p class="base">標籤：${D.tags.map(t => TAGN[t]).join('、')}${D.mp ? ` · 魔力 ${D.mp}` : ''}${D.cd ? ` · 冷卻 ${D.cd} 秒` : ''}${D.m ? `<br>傷害 ×${(D.m * Math.pow(1.06, it.lv - 1)).toFixed(2)}${D.el ? `（全部是${ELN[D.el]}）` : ''}` : ''}</p>`;
   if (bad)
     html += `<p class="c-bad">${sl && sl.a && supDup(sl.a, it) ? '這顆技能已經有同分類的輔助，沒有效果' : '跟這個技能不相容，沒有效果'}</p>`;
   if (it.sup)
@@ -879,6 +869,7 @@ function inputInit() {
     else if (k === 'g') PANEL.skill ? closePanels() : openPanel('skill');
     else if (k === 'p') treeOpen('pt');
     else if (k === '1') drinkFlask();
+    else if (k === '2') drinkFlask(1);
     else if (k === 'f') interact();
     else if (k === 'i' || k === 'b') PANEL.inv ? closePanels() : openPanel('inv');
     else if (k === 'h') $('keys').classList.toggle('off');

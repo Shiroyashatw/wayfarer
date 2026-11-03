@@ -1,6 +1,6 @@
 /* dungeonPOE · 資料表：版本、主角、技能、地圖階級、裝備欄與底材、詞綴（T12～T1）、怪物、王 */
 'use strict';
-const VER = '0.2.12';
+const VER = '0.2.13';
 const KEY = 'dungeonpoe_v1';
 const SLOT = new URLSearchParams(location.search).get('p') || '';
 
@@ -39,17 +39,6 @@ const MARK_D = {
   warlord: '被擊中時你回血，死亡時給耐力球'
 };
 const SKILLS = {
-  /* 0.2.10 第一顆 Meta 寶石（mech.js 的 metaEvent）：孔裡插法術，條件達成自動施放 */
-  cast_crit: {
-    n: '暴擊施放',
-    ic: 'sup_sp_auto',
-    t: 0,
-    mp: 0,
-    m: 0,
-    meta: 'crit',
-    tags: ['meta'],
-    d: '暴擊時累積能量（每次 +10），滿 100 自動對那個敵人施放孔裡的法術；不能手動施放'
-  },
   /* 0.2.9：wt 暫時對應到新的 18 種武器（每種攻擊武器至少有一招）；照武器身分的新技能在 0.2.11 做 */
   /* 0.2.7 詛咒（照 PoE2：丟一個範圍，1.5 秒後生效；每隻怪 1 個）與標記（單一目標，觸發時消耗；效果在 combat.js） */
   cu_enfeeble: {
@@ -60,7 +49,7 @@ const SKILLS = {
     m: 0,
     r: 110,
     curse: 'enfeeble',
-    tags: ['spell', 'curse', 'aoe'],
+    tags: ['spell', 'curse', 'aoe', 'occ'],
     d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.enfeeble
   },
   cu_eleweak: {
@@ -71,7 +60,7 @@ const SKILLS = {
     m: 0,
     r: 110,
     curse: 'eleweak',
-    tags: ['spell', 'curse', 'aoe'],
+    tags: ['spell', 'curse', 'aoe', 'occ'],
     d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.eleweak
   },
   cu_tchains: {
@@ -82,7 +71,7 @@ const SKILLS = {
     m: 0,
     r: 110,
     curse: 'tchains',
-    tags: ['spell', 'curse', 'aoe'],
+    tags: ['spell', 'curse', 'aoe', 'occ'],
     d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.tchains
   },
   cu_vuln: {
@@ -93,7 +82,7 @@ const SKILLS = {
     m: 0,
     r: 110,
     curse: 'vuln',
-    tags: ['spell', 'curse', 'aoe'],
+    tags: ['spell', 'curse', 'aoe', 'occ'],
     d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.vuln
   },
   cu_despair: {
@@ -104,7 +93,7 @@ const SKILLS = {
     m: 0,
     r: 110,
     curse: 'despair',
-    tags: ['spell', 'curse', 'aoe'],
+    tags: ['spell', 'curse', 'aoe', 'occ'],
     d: '詛咒滑鼠位置的範圍（1.5 秒後生效）：' + CURSE_D.despair
   },
   mk_sniper: {
@@ -114,6 +103,7 @@ const SKILLS = {
     mp: 8,
     m: 0,
     mark: 'sniper',
+    wt: ['bow'],
     tags: ['spell', 'mark'],
     d: '標記滑鼠附近的一隻怪：' + MARK_D.sniper
   },
@@ -124,6 +114,7 @@ const SKILLS = {
     mp: 8,
     m: 0,
     mark: 'freeze',
+    wt: ['qstaff'],
     tags: ['spell', 'mark'],
     d: '標記滑鼠附近的一隻怪：' + MARK_D.freeze
   },
@@ -134,6 +125,7 @@ const SKILLS = {
     mp: 8,
     m: 0,
     mark: 'volt',
+    wt: ['spear'],
     tags: ['spell', 'mark'],
     d: '標記滑鼠附近的一隻怪：' + MARK_D.volt
   },
@@ -144,6 +136,7 @@ const SKILLS = {
     mp: 8,
     m: 0,
     mark: 'hound',
+    wt: ['axe'],
     tags: ['spell', 'mark'],
     d: '標記滑鼠附近的一隻怪：' + MARK_D.hound
   },
@@ -154,6 +147,7 @@ const SKILLS = {
     mp: 8,
     m: 0,
     mark: 'assassin',
+    wt: ['dagger'],
     tags: ['spell', 'mark'],
     d: '標記滑鼠附近的一隻怪：' + MARK_D.assassin
   },
@@ -164,6 +158,7 @@ const SKILLS = {
     mp: 8,
     m: 0,
     mark: 'poacher',
+    wt: ['talisman'],
     tags: ['spell', 'mark'],
     d: '標記滑鼠附近的一隻怪：' + MARK_D.poacher
   },
@@ -174,6 +169,7 @@ const SKILLS = {
     mp: 8,
     m: 0,
     mark: 'warlord',
+    wt: ['mace', 'flail'],
     tags: ['spell', 'mark'],
     d: '標記滑鼠附近的一隻怪：' + MARK_D.warlord
   },
@@ -226,7 +222,7 @@ const SKILLS = {
     m: 1.1,
     spd: 640,
     el: 'cold',
-    tags: ['spell', 'proj'],
+    tags: ['spell', 'proj', 'elem'],
     d: '往前飛的冰彈，穿過所有敵人、越遠越弱；冰緩 2 秒（移動變慢）'
   },
   arc: {
@@ -237,7 +233,7 @@ const SKILLS = {
     m: 0.9,
     chain: 4,
     el: 'light',
-    tags: ['spell'],
+    tags: ['spell', 'elem'],
     d: '閃電打中滑鼠附近的敵人，再跳 4 次；感電 2 秒（受到的傷害 +15%）'
   },
   slash: {
@@ -289,7 +285,7 @@ const SKILLS = {
     r: 170,
     arc: 1.4,
     stun: 0.6,
-    wt: ['mace'],
+    wt: ['mace', 'flail'],
     tags: ['attack', 'melee', 'aoe'],
     d: '往前重擊地面，扇形範圍的敵人暈眩 0.6 秒，留下碎裂地面 2 秒（怪物緩速 30%），結束時餘震再打一次（×1.2）'
   },
@@ -303,7 +299,7 @@ const SKILLS = {
     r: 110,
     dur: 3,
     el: 'chaos',
-    tags: ['spell', 'aoe', 'dot'],
+    tags: ['spell', 'aoe', 'dot', 'occ'],
     d: '在滑鼠位置下 3 秒毒刃雨：範圍裡的敵人每秒受混沌傷害'
   },
   fireball: {
@@ -318,7 +314,7 @@ const SKILLS = {
     cnt: 1,
     pierce: 0,
     el: 'fire',
-    tags: ['spell', 'proj', 'aoe'],
+    tags: ['spell', 'proj', 'aoe', 'elem'],
     d: '射出火球，打中爆炸（範圍火焰傷害）'
   },
   nova: {
@@ -329,8 +325,7 @@ const SKILLS = {
     m: 1.3,
     r: 165,
     el: 'fire',
-    wt: ['staff'],
-    tags: ['spell', 'aoe'],
+    tags: ['spell', 'aoe', 'elem'],
     d: '以自己為中心爆出一圈火焰；有火灌注就消耗 1 層，範圍 ×1.5 並留下燃燒地面；有冰灌注就消耗 1 層，留下冰緩地面（灌注：撿起元素殘留物得到，點燃、冰緩、感電中的怪死掉會留下）'
   },
   meteor: {
@@ -344,7 +339,7 @@ const SKILLS = {
     r: 125,
     delay: 0.7,
     el: 'fire',
-    tags: ['spell', 'aoe', 'cd'],
+    tags: ['spell', 'aoe', 'cd', 'elem'],
     d: '0.7 秒後隕石砸在滑鼠位置，大範圍火焰傷害'
   },
   wolf: {
@@ -356,7 +351,7 @@ const SKILLS = {
     cd: 2,
     m: 0.5,
     cnt: 2,
-    tags: ['minion', 'cd'],
+    tags: ['minion', 'cd', 'occ'],
     d: '叫出 2 隻戰狼（這張地圖一直跟著你）；再放一次會補滿'
   },
   /* 0.2.4 陷阱、地雷、砲台、圖騰：放在場上的東西（unit），上限一起算 */
@@ -397,6 +392,7 @@ const SKILLS = {
     dur: 10,
     rate: 0.45,
     unit: 'turret',
+    wt: ['xbow'],
     tags: ['attack', 'proj', 'turret', 'cd'],
     d: '架起弩砲台（10 秒），自動射擊附近的敵人'
   },
@@ -412,7 +408,7 @@ const SKILLS = {
     r: 60,
     el: 'fire',
     unit: 'totem',
-    tags: ['spell', 'totem', 'proj', 'cd'],
+    tags: ['spell', 'totem', 'proj', 'cd', 'pri'],
     d: '立起圖騰（8 秒），自動對附近的敵人吐火彈（小範圍爆炸）'
   },
   mirage: {
@@ -486,7 +482,7 @@ const SKILLS = {
     r: 100,
     arc: 1.2,
     armBreak: 1,
-    wt: ['mace'],
+    wt: ['mace', 'flail'],
     tags: ['attack', 'melee'],
     d: '單體重擊，物理擊中削減護甲；打中瀕臨重暈的怪＝碾壓一擊：直接重暈，並震傷周圍 120 內的敵人'
   },
@@ -498,7 +494,7 @@ const SKILLS = {
     m: 1.8,
     r: 120,
     dist: 300,
-    wt: ['mace'],
+    wt: ['mace', 'flail'],
     tags: ['attack', 'melee', 'aoe', 'move'],
     d: '跳到滑鼠位置（最遠 300，跳躍中無敵）砸地，落點留下碎裂地面 2 秒，結束時餘震再打一次（×0.8）'
   },
@@ -509,7 +505,7 @@ const SKILLS = {
     mp: 12,
     m: 1.3,
     r: 55,
-    wt: ['mace'],
+    wt: ['mace', 'flail'],
     tags: ['attack', 'melee', 'aoe'],
     d: '往前一連串 5 處裂地；打到完全破甲的怪會消耗破甲，這一下 ×2'
   },
@@ -636,7 +632,7 @@ const SKILLS = {
     arc: 2.2,
     crit: 50,
     stage: 1,
-    wt: ['flail'],
+    wt: ['mace', 'flail'],
     tags: ['attack', 'melee'],
     d: '甩鏈橫掃，暴擊率提高 50%；1 秒內再按進下一段，3 段越來越寬（範圍 ×1、×1.3、×1.7）'
   },
@@ -646,7 +642,7 @@ const SKILLS = {
     t: 0.3,
     mp: 0,
     m: 0,
-    wt: ['flail'],
+    wt: ['mace', 'flail'],
     tags: ['banner'],
     d: '榮耀滿 100 才能用（擊中、暴擊、擊殺累積）：插下戰旗 10 秒，站在旗子範圍裡傷害提高 30%'
   },
@@ -659,8 +655,7 @@ const SKILLS = {
     spd: 800,
     el: 'chaos',
     wither: 1,
-    wt: ['wand'],
-    tags: ['spell', 'proj'],
+    tags: ['spell', 'proj', 'occ'],
     d: '快速的混沌投射物，擊中疊 1 層凋零（受到的混沌傷害 +5%／層，最多 10 層）'
   },
   corpseboom: {
@@ -672,8 +667,7 @@ const SKILLS = {
     r: 110,
     el: 'fire',
     detonator: 1,
-    wt: ['wand'],
-    tags: ['spell', 'aoe'],
+    tags: ['spell', 'aoe', 'occ'],
     d: '引爆滑鼠附近的一具屍體：屍體最大生命 10% 的火焰範圍傷害，也是引爆器；附近沒有屍體就不能用'
   },
   paperdoll: {
@@ -682,8 +676,7 @@ const SKILLS = {
     t: 0.4,
     mp: 14,
     m: 0.6,
-    wt: ['sceptre'],
-    tags: ['minion'],
+    tags: ['minion', 'occ'],
     d: '消耗身邊的一具屍體，叫出紙人兵 15 秒（最多 4 隻），用這顆寶石的召喚物傷害攻擊；附近沒有屍體就不能用'
   },
   bearmaul: {
@@ -696,7 +689,7 @@ const SKILLS = {
     arc: 2.4,
     form: 'bear',
     wt: ['talisman'],
-    tags: ['attack', 'melee', 'aoe'],
+    tags: ['attack', 'melee', 'aoe', 'pri'],
     d: '變成熊（護甲 ×1.5、移速 −10%），大範圍爪擊，打中 +2 狂怒'
   },
   wolfpounce: {
@@ -710,8 +703,50 @@ const SKILLS = {
     toMob: 1,
     form: 'wolf',
     wt: ['talisman'],
-    tags: ['attack', 'melee', 'move'],
+    tags: ['attack', 'melee', 'move', 'pri'],
     d: '變成狼人（移速 +15%、攻速 +10%），撲向滑鼠附近的敵人，給牠上獵人標記'
+  },
+  /* 0.2.13 盾技能：副手要拿盾（off），基礎傷害看盾的護甲與閃避（shield，照 PoE1 的盾牌粉碎；stats 的 sdmg） */
+  shieldcrush: {
+    n: '盾牌粉碎',
+    ic: 'sk_bash',
+    t: 0.5,
+    mp: 6,
+    m: 1.6,
+    r: 90,
+    arc: 1.6,
+    hsM: 2,
+    off: 'shield',
+    shield: 1,
+    tags: ['attack', 'melee', 'aoe'],
+    d: '用盾往前猛撞，重暈累積 ×2；打中瀕臨重暈的怪＝碾壓，直接重暈並震開周圍。基礎傷害看盾的護甲與閃避'
+  },
+  shieldthrow: {
+    n: '盾牌投擲',
+    ic: 'sk_shieldcharge',
+    t: 0.4,
+    mp: 8,
+    m: 0.9,
+    spd: 700,
+    bounce: 3,
+    off: 'shield',
+    shield: 1,
+    tags: ['attack', 'proj'],
+    d: '丟出盾牌，在敵人之間彈 3 次再飛回手上；飛出去的時候你的格擋率是 0。基礎傷害看盾的護甲與閃避'
+  },
+  /* 0.2.13 原始・植物：地面效果 bloom（mech.js），重放或被引爆器碰到就提早爆 */
+  redbloom: {
+    n: '死亡紅花',
+    ic: 'sk_vampire',
+    t: 0.4,
+    mp: 16,
+    m: 0.4,
+    r: 34,
+    len: 220,
+    dur: 4,
+    boomM: 1.2,
+    tags: ['spell', 'aoe', 'dot', 'pri'],
+    d: '往滑鼠方向鋪一排 5 朵紅花（4 秒）：站在花上的敵人每秒受到物理傷害，其中 20% 吸取為你的生命；時間到整排爆炸，一定造成流血。場上只有一排，再放一次或被引爆器碰到就提早爆'
   }
 };
 /* 光環（0.2.4，照 PoE2）：插在光環欄、開著就一直生效，預留精魄；效果跟著寶石等級與光環效果變強 */
@@ -733,9 +768,8 @@ const AURAS = {
     n: '召喚魔像',
     ic: 'sk_guardtotem',
     sp: 30,
-    wt: ['sceptre'],
     fx: { golem: 1 },
-    d: '拿權杖時，一隻石魔像跟著你打怪；你站在它旁邊時，受到的傷害少 20%（它替你擋）'
+    d: '一隻石魔像跟著你打怪；你站在它旁邊時，受到的傷害少 20%（它替你擋）'
   }
 };
 const AURA_SLOTS = 3,
@@ -794,6 +828,14 @@ const SUPPORTS = {
     need: ['spell', 'attack'],
     conv: 'totem',
     d: '這個技能改成立圖騰（8 秒）：圖騰替你自動施放，傷害更少 30%'
+  },
+  /* 0.2.13：原本的 Meta 寶石改成輔助（mech.js 的 metaEvent）：插在法術上，那招就不能手動施放 */
+  cast_crit: {
+    n: '暴擊施放',
+    ic: 'sup_sp_auto',
+    need: ['spell'],
+    meta: 'crit',
+    d: '這招法術改成自動施放：你暴擊時累積能量（每次 +10），滿 100 自動對那個敵人施放；不能手動施放'
   }
 };
 /* 輔助的分類（0.2.9，照 PoE2 0.3）：同一分類不能插在同一顆技能上，可以跨技能重複；沒寫的分類就是自己（同一顆不能插兩次） */
@@ -856,6 +898,9 @@ const GEM_LV = {
   mk_volt: 13,
   mk_hound: 15,
   cast_crit: 9,
+  shieldcrush: 1,
+  shieldthrow: 3,
+  redbloom: 3,
   multi: 1,
   pierce: 1,
   area: 1,
@@ -940,6 +985,9 @@ const STATN = {
   unitP: ['陷阱、地雷、圖騰、砲台傷害', '%'],
   units: ['陷阱、地雷、圖騰、砲台數量上限', ''],
   minionP: ['召喚物傷害', '%'],
+  elemP: ['元素技能傷害', '%'],
+  occP: ['秘術技能傷害', '%'],
+  priP: ['原始技能傷害', '%'],
   eleP: ['元素傷害', '%'],
   spellP: ['法術傷害', '%'],
   aoe: ['範圍', '%'],
@@ -1819,7 +1867,8 @@ const ptPoints = lv =>
   Math.min(lv, 100) - 1 + 2 * Math.floor(Math.min(lv, 100) / 10) + Math.max(0, Math.floor((lv - 100) / 10));
 
 const ROLL = { t: 0.32, dist: 175, iframe: 0.26, cd: 0.55, perfect: 0.16, slow: 0.55, slowScale: 0.3 };
-const FLASK = { n: 3, heal: 0.5, t: 1.4, perKill: 0.12 };
+/* 藥水：紅水（1）回生命、藍水（2，0.2.13）回魔力，瓶數分開算 */
+const FLASK = { n: 3, heal: 0.5, mp: 0.5, t: 1.4, perKill: 0.12 };
 
 /* ---------- 地圖：階級 1～16，打倒王開放下一階；費用與地圖卡在 maps.js ---------- */
 const TMAX = 16;
@@ -1845,7 +1894,7 @@ const WTN = {
   wand: '魔杖',
   sceptre: '權杖',
   traptool: '陷阱器',
-  talisman: '護符'
+  talisman: '魔符'
 };
 /* 一律雙手的類別（劍、斧、錘的雙手是看底材的 two，0.2.12：單手與雙手是同一類）、可以雙持（只限單手底材）、法系（不能攻擊，給法術加成） */
 const WT2 = new Set(['qstaff', 'bow', 'xbow', 'staff', 'traptool', 'talisman']);
@@ -1857,6 +1906,9 @@ const IMPN = {
   impaleCh: '擊中時 {}% 機率穿刺',
   unitP: '陷阱、地雷傷害 +{}%',
   minionP: '召喚物傷害 +{}%',
+  elemP: '元素技能傷害 +{}%',
+  occP: '秘術技能傷害 +{}%',
+  priP: '原始技能傷害 +{}%',
   block: '格擋率 +{}%',
   projP: '投射物傷害 +{}%',
   spellP: '法術傷害 +{}%',
@@ -2065,7 +2117,7 @@ const WCLS = {
     m: 0.35,
     as: 1.2,
     crit: 0,
-    imp: { spellP: 15, spellLv: 0.5 },
+    imp: { elemP: 15, spellLv: 0.5 },
     ic: [4, 31, 4, 31, 4, 31],
     n: ['木杖', '骨杖', '符杖', '龍骨杖', '水晶法杖', '雷霆杖']
   },
@@ -2073,7 +2125,7 @@ const WCLS = {
     m: 0.3,
     as: 1.3,
     crit: 0,
-    imp: { spellP: 8, castP: 5 },
+    imp: { occP: 8, castP: 5 },
     ic: [31, 31, 31, 31, 31, 31],
     n: ['短杖', '骨魔杖', '雷擊木', '符咒杖', '聖杖', '星辰杖']
   },
@@ -2097,9 +2149,10 @@ const WCLS = {
     m: 1.45,
     as: 1.3,
     crit: 1,
-    imp: { minionP: 10 },
+    /* 0.2.13：每一階的隱性詞不一樣（imps 不乘階級倍率） */
+    imps: [{ block: 6 }, { priP: 12 }, { bleedCh: 15 }, { life: 40 }, { regen: 8 }, { priP: 20 }],
     ic: ['asc_s_paw', 'asc_s_paw', 'asc_s_paw', 'asc_s_paw', 'asc_s_paw', 'asc_s_paw'],
-    n: ['木圖騰', '骨圖騰', '獸牙圖騰', '月石圖騰', '古樹圖騰', '龍魂圖騰']
+    n: ['木魔符', '骨魔符', '獸牙魔符', '月石魔符', '古樹魔符', '龍魂魔符']
   }
 };
 const WLV = [1, 3, 6, 9, 12, 15];
@@ -2111,8 +2164,9 @@ const WEAPON_BASES = Object.entries(WCLS).flatMap(([wt, C]) =>
     const avg = 9 * Math.pow(1.12, lv - 1) * C.m,
       b = { dmg: [Math.max(1, Math.round(avg * 0.6)), Math.round(avg * 1.4)], as: C.as };
     if (C.crit) b.crit = C.crit;
-    for (const k in C.imp) {
-      const v = C.imp[k] * (1 + i * 0.5);
+    const I = C.imps ? C.imps[i] : C.imp;
+    for (const k in I) {
+      const v = I[k] * (C.imps ? 1 : 1 + i * 0.5);
       b[k] = k === 'spellLv' ? Math.floor(v) : Math.round(v);
       if (!b[k]) delete b[k];
     }

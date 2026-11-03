@@ -59,7 +59,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 .sk .roll { font-style: normal; font-size: 26px; }
 .sk s { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.65); transform-origin: bottom; transform: scaleY(var(--v, 0)); border-radius: var(--rad); }
 .sk u { position: absolute; inset: 0; display: grid; place-items: center; text-decoration: none; font-weight: 700; font-size: var(--fs-l); text-shadow: 0 1px 3px #000; }
-.sk[data-k='flask'] u { place-items: end; padding: 0 5px 2px 0; font-size: var(--fs-s); }
+.sk[data-k='mflask'] .ic { filter: hue-rotate(225deg); }
+.sk[data-k='flask'] u,
+.sk[data-k='mflask'] u { place-items: end; padding: 0 5px 2px 0; font-size: var(--fs-s); }
 .sk kbd { position: absolute; left: 3px; top: 1px; font: 700 10px var(--font); color: var(--dim); text-shadow: 0 1px 1px #000; }
 .sk.no .ic { filter: grayscale(1) brightness(0.55); }
 .sk.hit { animation: press 160ms ease-out; }
@@ -269,6 +271,7 @@ body.touch #bar .sk[data-k='s3'] { --x: -32px; --y: -97px; }
 body.touch #bar .sk[data-k='s4'] { --x: 32px; --y: -97px; }
 body.touch #bar .sk[data-k='roll'] { --x: -180px; --y: 0px; width: 56px; height: 56px; }
 body.touch #bar .sk[data-k='flask'] { --x: -156px; --y: -90px; width: 48px; height: 48px; }
+body.touch #bar .sk[data-k='mflask'] { --x: -214px; --y: -58px; width: 48px; height: 48px; }
 body.touch #bar .sk[data-k='use'] { --x: -104px; --y: -148px; width: 48px; height: 48px; }
 .sk .use { font-style: normal; font-size: var(--fs-s); font-weight: 700; }
 /* 浮動搖桿：平常淡淡的在左下，手指按哪裡就出現在哪裡 */

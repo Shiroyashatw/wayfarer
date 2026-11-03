@@ -46,7 +46,13 @@ const LIST = {
   rage: ['status/rage', 0.8, 15, 35],
   pillar: ['holy/holy-pillar', 1.2, 15, 90],
   blinkin: ['arcane/blink-in', 0.8, 20, 50],
-  gas: ['nature/poison-cloud', 1.2, 15, 120]
+  gas: ['nature/poison-cloud', 1.2, 15, 120],
+  /* 0.2.13 第三批（還沒產生前遊戲照舊畫，fxs 找不到就不播）：混沌箭（投射物縮小畫）、御劍訣打中的爆光、中毒、灌注新星、雷鳴擊的落雷 */
+  void: ['shadow/void-orb', 0.8, 15, 60],
+  mmhit: ['projectiles/magic-missile', 0.45, 20, 40, 1.45],
+  poisoned: ['status/poisoned', 0.8, 15, 30],
+  firering: ['fire/fire-ring', 1.0, 20, 100],
+  strike: ['lightning/lightning-strike', 0.9, 20, 100, 1.1]
 };
 
 const SRC = process.argv[2];

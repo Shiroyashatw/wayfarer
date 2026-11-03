@@ -125,6 +125,28 @@ function migrate(s) {
     const i = OLDW[wt].indexOf(it.b);
     it.b = `w_${wt}_${[0, 3, 5][i]}`;
   }
+  /* 0.2.13：暴擊施放從 Meta 寶石改成輔助：技能欄裡「暴擊施放＋孔裡的法術」換成「那顆法術＋暴擊施放輔助」，
+     背包、倉庫裡的暴擊施放拿出孔裡的寶石 */
+  for (const k of o.skills) {
+    const g = k.a;
+    if (!g || g.gem !== 'cast_crit') continue;
+    const sp = (g.sup || []).find(x => x && SKILLS[x.gem]);
+    for (const x of g.sup || []) if (x && x !== sp && !gridAuto(o.inv, x)) gridAuto(o.stash, x);
+    delete g.so, delete g.sup, delete g.en;
+    if (sp) {
+      sp.sup = sp.sup || [null, null];
+      const j = sp.sup.indexOf(null);
+      if (j < 0 && !gridAuto(o.inv, sp.sup[0])) gridAuto(o.stash, sp.sup[0]);
+      sp.sup[Math.max(0, j)] = g;
+      k.a = sp;
+    } else if (!gridAuto(o.inv, g)) gridAuto(o.stash, g);
+    if (!sp) k.a = null;
+  }
+  for (const it of [...o.inv.items, ...o.stash.items])
+    if (it.gem === 'cast_crit' && it.sup) {
+      for (const x of it.sup) if (x && !gridAuto(o.inv, x)) gridAuto(o.stash, x);
+      delete it.so, delete it.sup, delete it.en;
+    }
   /* 副手不合規的（例：雙手劍配盾）收回背包 */
   if (o.eq.off && !offOK(o.eq.weapon, o.eq.off) && gridAuto(o.inv, o.eq.off)) o.eq.off = null;
   return o;

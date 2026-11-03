@@ -83,11 +83,14 @@ function hitCalc(c, m, o = {}) {
   /* 1. 基礎：攻擊＝武器（含本地詞）×技能倍率；法術＝寶石 */
   if (spell) pre[D.el || 'phys'] = spellDmg(c.lv || 1) * D.m;
   else {
-    pre.phys = rnd(ST.dmg[0], ST.dmg[1]);
-    for (const k of ['fire', 'cold', 'light', 'chaos']) {
-      const [lo, hi] = ST.wadd[k];
-      if (hi) pre[k] += rnd(lo, hi);
-    }
+    /* 盾技能（0.2.13）：基礎換成盾的傷害（stats 的 sdmg），不吃武器的附加 */
+    const W = D.shield ? ST.sdmg : ST.dmg;
+    pre.phys = rnd(W[0], W[1]);
+    if (!D.shield)
+      for (const k of ['fire', 'cold', 'light', 'chaos']) {
+        const [lo, hi] = ST.wadd[k];
+        if (hi) pre[k] += rnd(lo, hi);
+      }
     /* 2. 附加：飾品、手套的「攻擊附加」 */
     for (const k in ST.add) {
       const [lo, hi] = ST.add[k];
@@ -113,6 +116,9 @@ function hitCalc(c, m, o = {}) {
       (tg.includes('melee') ? ST.meleeP : 0) +
       (tg.includes('proj') ? ST.projP : 0) +
       (tg.includes('spell') ? ST.spellP : 0) +
+      (tg.includes('elem') ? ST.elemP : 0) +
+      (tg.includes('occ') ? ST.occP : 0) +
+      (tg.includes('pri') ? ST.priP : 0) +
       (tg.includes('aoe') ? ST.aoeP : 0) +
       (o.minion ? ST.minionP : 0) +
       (o.unit ? ST.unitP : 0) +
@@ -145,7 +151,7 @@ function hitCalc(c, m, o = {}) {
     pre[k] *= (1 + (common + typeInc[k]) / 100) * mk;
   }
   /* 暴擊：基礎（攻擊看武器、法術看寶石）×（1＋提高）；易碎直接加；暴擊傷害加成基礎 +100% */
-  const base = spell ? D.crit || 7 : ST.wcrit,
+  const base = spell ? D.crit || 7 : D.shield ? 5 : ST.wcrit,
     brit = m && m.ail && m.ail.brittle && m.ail.brittle.t > G.t ? m.ail.brittle.v : 0,
     chance = Math.min(100, base * (1 + (ST.critInc + (c.critInc || 0)) / 100) + brit);
   const crit = !!(o.crit || P.critNext || Math.random() * 100 < chance);
@@ -213,8 +219,8 @@ function applyAil(m, r, c) {
       100 *
       0.5;
   if (a.hs >= 100) (a.hstun = G.t + (m.boss ? 1.2 : 3)), (a.hs = 0);
-  /* 流血、中毒：要有機率 */
-  if (attack && p.phys > 0 && Math.random() * 100 < ST.bleedCh + (c.bleedCh || 0))
+  /* 流血、中毒：要有機率；流血只有攻擊會造成，c.spellBleed 是例外（死亡紅花的爆炸） */
+  if ((attack || c.spellBleed) && p.phys > 0 && Math.random() * 100 < ST.bleedCh + (c.bleedCh || 0))
     a.bleed = keepMax(a.bleed, p.phys * 0.15 * mag, 5);
   if (p.phys + p.chaos > 0 && Math.random() * 100 < ST.poisonCh + (c.poisonCh || 0)) {
     const n = 1 + ST.poiStack + (c.poiStack || 0);
@@ -349,7 +355,8 @@ const BUFF = {
 function gainBuff(k, t) {
   (P.buf = P.buf || {})[k] = Math.max(P.buf[k] || 0, G.t + t);
 }
-const hasBuff = k => P.buf && P.buf[k] > G.t;
+/* 讀檔時角色（P）還沒建立：當作沒有 buff */
+const hasBuff = k => !!(P && P.buf && P.buf[k] > G.t);
 /* 技能速度、移動速度（給 speedMul／moveMul） */
 const buffSpeed = () => (hasBuff('onslaught') ? 1.2 : 1) * (1 + 0.02 * (P.tail || 0));
 const buffMove = () => (hasBuff('onslaught') ? 1.1 : 1) * (1 + 0.01 * (P.tail || 0));
@@ -452,7 +459,8 @@ function hurtCalc(d, src, el, noEv) {
     if (P.evE < 100) return { ev: 1 };
     P.evE -= 100;
   }
-  if (!noEv && Math.random() * 100 < ST.block) return { block: 1 };
+  /* 盾牌投擲：盾飛出去的時候不能格擋 */
+  if (!noEv && !(P.shieldOut > G.t) && Math.random() * 100 < ST.block) return { block: 1 };
   /* 王、菁英會暴擊（5%，暴擊傷害 +60%）；地圖詞可以讓所有怪暴擊 */
   const crit = m && Math.random() * 100 < (m.boss || m.elite ? 5 : 0) + MM('mcrit');
   if (crit) d *= 1.6 + MM('mcritX');

@@ -289,6 +289,9 @@ function stats(s = S) {
     spellP: 0,
     aoeP: 0,
     minionP: 0,
+    elemP: 0,
+    occP: 0,
+    priP: 0,
     physP: 0,
     eleP: 0,
     fireP: 0,
@@ -462,8 +465,19 @@ function stats(s = S) {
   o.wcrit = avg(W1.crit, W2 && W2.crit);
   o.waps = avg(W1.aps, W2 && W2.aps) * (dual ? 1.1 : 1);
   o.dual = dual;
+  /* 盾技能（0.2.13）：基礎物理＝這面盾的護甲＋閃避（底材照品質＋盾上的詞）×0.14～0.26，每秒出手 1.2 下 */
+  const sh = off && offOK(w, off) && baseOf(off).k === 'shield' ? off : null;
+  o.shield = !!sh;
+  if (sh) {
+    const b = baseOf(sh).b,
+      def =
+        ((b.armor || 0) + (b.ev || 0)) * qMul(sh) +
+        sh.a.reduce((t, a) => t + (DEFK.includes(a.k) && a.k !== 'es' ? a.v : 0), 0);
+    o.sdmg = [def * 0.14, def * 0.26];
+  }
   o.aps = o.waps * (1 + o.as / 100);
   o.asM = o.aps / 1.1;
+  o.sasM = (1.2 * (1 + o.as / 100)) / 1.1;
   o.spd = HERO.spd * (1 + o.ms / 100);
   o.aoeM = 1 + o.aoe / 100;
   o.crit = Math.min(100, o.wcrit * (1 + o.critInc / 100));

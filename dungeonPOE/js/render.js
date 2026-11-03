@@ -275,7 +275,19 @@ function draw() {
   /* 投射物 */
   for (const s of G.shots) {
     /* 有 pixelfx 投射物圖（箭、子彈、飛斧…）就照方向畫序列圖 */
-    if (s.sh && drawSh(s.sh, s.x, s.y, s.shs || 1, s.ang, Math.floor((G.t * FXS[s.sh].fps) % FXS[s.sh].n))) continue;
+    if (s.sh && FXS[s.sh] && drawSh(s.sh, s.x, s.y, s.shs || 1, s.ang, Math.floor((G.t * FXS[s.sh].fps) % FXS[s.sh].n)))
+      continue;
+    /* 丟出去的裝備（擲斧、盾牌投擲）：畫那件裝備的圖示，轉著飛 */
+    const sp = s.spin && artImg(s.spin);
+    if (sp && sp.im.naturalWidth) {
+      const z = s.spz || 34;
+      CX.save();
+      CX.translate(s.x, s.y);
+      CX.rotate(G.t * 18);
+      CX.drawImage(sp.im, sp.r[0], sp.r[1], sp.r[2], sp.r[3], -z / 2, -z / 2, z, z);
+      CX.restore();
+      continue;
+    }
     if (s.wave || s.bolt) {
       CX.save();
       CX.translate(s.x, s.y);
