@@ -11,7 +11,15 @@ const LVMAX = 300;
 /* 距離單位（0.2.42）：1 公尺 = 30 像素（約一個角色寬；主角半徑 16）。名字不能叫 M：game.js 的滑鼠狀態已經叫 M */
 const METER = 30;
 /* 100 級後每一級比前一級多 3% */
-const xpNeed = lv => Math.round(40 * Math.pow(Math.min(lv, 100), 1.7) * Math.pow(1.03, Math.max(0, lv - 100)));
+const xpLate = lv => Math.round(40 * Math.pow(Math.min(lv, 100), 1.7) * Math.pow(1.03, Math.max(0, lv - 100)));
+/* 1～19 級照劇情區調：9 張圖只殺到王出現也有 8600～9300 經驗，打完剛好 Lv20（每張圖約 2 級）；20～34 級慢慢接回原本的曲線，不會撞牆 */
+const xpNeed = lv => {
+  const e = Math.round(215 + 22.6 * lv);
+  if (lv < 20) return e;
+  if (lv >= 35) return xpLate(lv);
+  const t = (lv - 19) / 16;
+  return Math.round(e + (xpLate(lv) - e) * t * t * (3 - 2 * t));
+};
 
 /* ---------- 技能寶石（0.2.2）：技能欄固定 5 格（左鍵、右鍵、Q、E、R），每格 1 顆技能＋2 顆輔助 ----------
    t 出手時間（吃攻擊速度）、mp 魔力、cd 冷卻、m 傷害倍率、tags 標籤（輔助看標籤）、el 傷害全部轉成這個屬性、cls 主題（0.1 的職業） */
@@ -3163,12 +3171,15 @@ const TMAX = 16;
 const tierMul = t => ({ hp: Math.pow(1.32, t - 1), dmg: Math.pow(1.2, t - 1) });
 /* 0.2.27：前幾階放寬（T1～T3 兩成，T4、T5 漸回，避免 T3→T4 斷層）；只影響怪物生命與傷害，經驗、護甲、異常門檻仍看 tierMul */
 const TIER_EASE = [0.8, 0.8, 0.8, 0.87, 0.93];
+const tierEase = n => TIER_EASE[n - 1] || 1;
+/* 世界地圖的內部難度是小數：相鄰兩階之間內插 */
 const tierMob = t => {
   const m = tierMul(t),
-    e = TIER_EASE[t - 1] || 1;
+    i = Math.floor(t),
+    e = tierEase(i) + (tierEase(i + 1) - tierEase(i)) * (t - i);
   return { hp: m.hp * e, dmg: m.dmg * e };
 };
-const tierIlvl = t => t;
+const tierIlvl = t => Math.round(t);
 
 /* ---------- 抗性 ---------- */
 const RESK = ['fire', 'cold', 'light', 'chaos'];
@@ -4561,6 +4572,35 @@ const BOSSES = [
     pat: ['line', 'nova', 'charge', 'slam']
   }
 ];
+/* 墮落十二生肖（世界觀第 5 節）：z 神像的鍵（hide_bake 的 statues）、圖 z_*、招式是王的 7 招重組、cor 是 1 條墮落詞（MAPMOD 的鍵，進裂口就套用） */
+const ZODIAC = [
+  ['rat', '瘟噬鼠皇', 'hghost', 'chaos', ['swipe', 'summon', 'line'], 'poison'],
+  ['ox', '獄鎖魔牛', 'skel', 'phys', ['charge', 'slam', 'swipe'], 'cuTc'],
+  ['tiger', '血牙虎煞', 'wolf', 'phys', ['charge', 'swipe', 'blink'], 'bleed'],
+  ['rabbit', '月蝕狂兔', 'bat', 'cold', ['blink', 'nova', 'swipe'], 'spd2'],
+  ['dragon', '天墜邪龍', 'imp', 'fire', ['nova', 'line', 'slam'], 'pen'],
+  ['snake', '毒涎蛇姬', 'shroom', 'chaos', ['line', 'summon', 'nova'], 'gCorrupt'],
+  ['horse', '焚魂夢魘', 'imp', 'fire', ['charge', 'line', 'slam'], 'ignite'],
+  ['goat', '魔羊祭司', 'judge', 'chaos', ['summon', 'nova', 'blink'], 'cuEn'],
+  ['monkey', '雷魘猴王', 'paper', 'light', ['blink', 'line', 'swipe'], 'gShock'],
+  ['rooster', '業火冥雞', 'imp', 'fire', ['nova', 'charge', 'line'], 'gIgnite'],
+  ['dog', '冥府獄犬', 'bailiff', 'chaos', ['charge', 'summon', 'swipe'], 'maxres1'],
+  ['pig', '屠野魔豬', 'tslime', 'phys', ['charge', 'slam', 'summon'], 'boss']
+].map(([z, n, call, el, pat, cor]) => ({
+  z,
+  n,
+  sp: 'z_' + z,
+  hp: 480,
+  dmg: 22,
+  spd: 140,
+  r: 40,
+  sz: 124,
+  xp: 200,
+  call,
+  ...(el === 'phys' ? {} : { el }),
+  pat,
+  cor
+}));
 const bossPick = no => {
   const l = BOSSES.filter(b => b !== no);
   return l[Math.floor(Math.random() * l.length)];
