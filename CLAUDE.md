@@ -1,5 +1,7 @@
 # 塞令老師 — 給 Claude 的專案說明
 
+**dungeonPOE 已搬走（2026-11-09）**：程式在 https://github.com/Shiroyashatw/dpoe ，本機 `D:\dpoe`，網址 https://shiroyashatw.github.io/dpoe/ 。這個 repo 只剩《塞令老師》（已封存）；dungeonPOE 的工作請到 `D:\dpoe` 開對話，不要在這裡做。
+
 **最高優先：任何改動（新功能、道具、職業與核心、賽制、道具池、羈絆、經濟、平衡、介面）都先讀 `docs/設計原則.md`**：用 MDA 從「要給玩家的樂趣」倒推「玩家行為」再決定機制，照它的隨機性規則（偽隨機、保底不破壞共用池、運氣往前放），上線後用 `stats` 驗證玩家行為。
 
 **每次新對話開始**：先用 Skill 啟動 `ponytail`（最小完整改動）和 `grilling`（先把計畫問清楚再動手；`grill-me` 只是給使用者打 `/grill-me` 的捷徑，模型不能自己呼叫）。
